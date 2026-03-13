@@ -225,6 +225,56 @@ const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; 
   wily_lab:   { label: 'ASSEMBLE',     pay: 6000, seconds: 7, cooldownFrames: 2400 },
   market:     { label: 'STREET DEAL',  pay: 3000, seconds: 3, cooldownFrames: 900  },
 };
+type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string };
+type VendCategory = { id: string; label: string; col: string; items: VendItem[] };
+const VEND_CATALOG: VendCategory[] = [
+  { id: 'food', label: 'FOOD', col: '#00ff41', items: [
+    { id: 'power_pellet',  name: 'POWER PELLET',    desc: 'Off-brand ration. Hunger+30 Thirst+20.',              price: 800,    consumable: true, effect: 'hunger30 thirst20' },
+    { id: 'synth_ramen',   name: 'SYNTH RAMEN',     desc: 'Hot. Questionable protein. Hunger+50 Energy+15.',      price: 1200,   consumable: true, effect: 'hunger50 energy15' },
+    { id: 'recycled_water',name: 'RECYCLED WATER',  desc: 'Distilled twice. Probably fine. Thirst+40.',           price: 400,    consumable: true, effect: 'thirst40' },
+    { id: 'pablo_cola',    name: 'PABLO COLA',      desc: 'Electrolyte formula. Thirst+30 Energy+20.',            price: 600,    consumable: true, effect: 'thirst30 energy20' },
+    { id: 'nutri_pack',    name: 'NUTRI-PACK',      desc: 'Field ration. Full refill. Hunger+60 Thirst+60.',      price: 2000,   consumable: true, effect: 'hunger60 thirst60' },
+    { id: 'stim_shot',     name: 'STIM SHOT',       desc: 'Adrenaline. Energy+50 HP+10. Side effects unlisted.',  price: 3500,   consumable: true, effect: 'energy50 hp10' },
+    { id: 'med_kit',       name: 'MED KIT',         desc: 'Trauma wrap. HP+50. No sterile field needed.',         price: 6000,   consumable: true, effect: 'hp50' },
+    { id: 'antidote',      name: 'ANTIDOTE',        desc: 'Clears poison status immediately.',                    price: 4000,   consumable: true, effect: 'cure_poison' },
+  ]},
+  { id: 'tech', label: 'TECH', col: '#33aaff', items: [
+    { id: 'pablo_device',    name: 'PABLO DEVICE',      desc: 'Unlocks Pablo Corp. terminals & satellite comms.',  price: 8000  },
+    { id: 'burner_phone',    name: 'BURNER PHONE',      desc: 'Encrypted. Untraceable. 48hr battery.',            price: 1500  },
+    { id: 'signal_jammer',   name: 'SIGNAL JAMMER',     desc: 'Disables nearest guard for 30 seconds (3 uses).',  price: 12000 },
+    { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all PABLO CORP. terminals.',       price: 25000 },
+    { id: 'holo_map',        name: 'HOLO MAP',          desc: 'Reveals all locations on the minimap.',            price: 5000  },
+  ]},
+  { id: 'weapons', label: 'WEAPONS', col: '#ff4444', items: [
+    { id: 'combat_knife',   name: 'COMBAT KNIFE',    desc: '+15% attack damage. Silent. Legal in 4 zones.',        price: 3000  },
+    { id: 'stun_baton',     name: 'STUN BATON',      desc: 'Stuns targets on hit. Non-lethal compliance tool.',    price: 8500  },
+    { id: 'compound_bow',   name: 'COMPOUND BOW',    desc: '+25% dmg. Extended range. Quiet operation.',           price: 15000 },
+    { id: 'plasma_pistol',  name: 'PLASMA PISTOL',   desc: '+40% attack damage. PABLO CORP. restricted.',          price: 22000 },
+  ]},
+  { id: 'vehicles', label: 'VEHICLES', col: '#ffcc00', items: [
+    { id: 'cargo_bike',      name: 'CARGO BIKE',      desc: '+20% speed, +5 cargo slots. Single-speed chainless.', price: 28000  },
+    { id: 'hover_scooter',   name: 'HOVER SCOOTER',   desc: '+30% movement speed. Mag-lev. No fuel.',              price: 45000  },
+    { id: 'armored_moped',   name: 'ARMORED MOPED',   desc: '+50% speed, 15% damage resistance.',                  price: 120000 },
+  ]},
+  { id: 'furniture', label: 'FURNITURE', col: '#88ff44', items: [
+    { id: 'futon',          name: 'FUTON',            desc: 'Save & rest from any owned property.',                price: 5000  },
+    { id: 'neon_sign',      name: 'NEON SIGN',        desc: '+10% passive income. Visible from two blocks.',       price: 8000  },
+    { id: 'security_cam',   name: 'SECURITY CAM',     desc: 'Alerts you when threats approach your location.',     price: 12000 },
+    { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ç500 per job cycle.',         price: 18000 },
+  ]},
+  { id: 'realestate', label: 'REAL ESTATE', col: '#cc44ff', items: [
+    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ç2,000 passive income per cycle.',                  price: 75000  },
+    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ç5,000 passive income per cycle.',                  price: 180000 },
+    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ç15,000 passive income per cycle.',                 price: 500000 },
+  ]},
+  { id: 'pro', label: 'PRO UPGRADE', col: '#ff9900', items: [
+    { id: 'salaryman_pro', name: 'SALARYMAN PRO', desc: 'Full AI productivity suite. Unlimited AI access, priority servers, exclusive gear drops, Pro badge. $29/mo.', price: 0 },
+  ]},
+];
+const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
+const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.3, hover_scooter: 1.45, armored_moped: 1.7 };
+const WEAPON_TIER: Record<string, number> = { combat_knife: 1, stun_baton: 2, compound_bow: 3, plasma_pistol: 4 };
+
 // Pablo Corp android guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
   [{ x:500,y:300 },{ x:700,y:300 },{ x:700,y:500 },{ x:500,y:500 }],
@@ -543,6 +593,12 @@ export default function WorldPlay() {
     oregonTick: 0,
     walkFrame: 0,
     guardCooldowns: [] as number[], // per-guard attack cooldown
+    ownedItems: new Set<string>(),
+    vehicle: null as null | string,   // 'hover_scooter' | 'cargo_bike' | 'armored_moped'
+    weaponTier: 0,                    // 0=none, 1=knife, 2=baton, 3=bow, 4=pistol
+    terminalDiscount: false,
+    realEstateIncomeTick: 0,
+    realEstate: [] as string[],       // owned real estate ids
   });
 
   // Reactive state (only what the HUD needs)
@@ -623,6 +679,9 @@ export default function WorldPlay() {
   const cityEventTimer = useRef(0);
   // ── Banking state ─────────────────────────────────────────────────────────
   const [savings,      setSavings]      = useState(0);
+  const [showVend,     setShowVend]     = useState(false);
+  const [vendTab,      setVendTab]      = useState<'food'|'tech'|'weapons'|'vehicles'|'furniture'|'realestate'|'pro'>('food');
+  const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set());
   const [showBank,     setShowBank]     = useState(false);
   const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<Array<{id:number;desc:string;amount:number;bal:number}>>([]);
@@ -828,9 +887,7 @@ export default function WorldPlay() {
       setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ç2,000 CREAM (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
     }
     else if (bid === 'vend')    {
-      g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
-      setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> VEND-O-MATIC — Mystery ration dispensed. Label reads: POWER PELLET (off-brand). Hunger +30. Thirst +30.');
+      sfxHeal(); setShowVend(true);
     }
     else if (bid === 'arcade')  {
       g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
@@ -1121,9 +1178,9 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway;
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend;
     npcDialogRef.current = !!dialog && dialog.bid === 'npc';
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank, showSubway]);
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank, showSubway, showVend]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1356,11 +1413,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       if (!frozen()) {
+        const vMult = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
         let dx = 0, dy = 0;
-        if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD;
-        if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
-        if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD;
-        if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD;
+        if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD * vMult;
+        if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD * vMult;
+        if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD * vMult;
+        if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD * vMult;
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         const col = (px: number, py: number) => BUILDINGS.some(b => px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h);
         let nx = g.px + dx, ny = g.py + dy;
@@ -1612,6 +1670,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.floaters.push({ x: g.px, y: g.py - 30, text: `+ç${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
           sfxCoin();
           addBankTx(INCOME_LABEL, total, g.salary);
+        }
+
+        // ── ECONOMY: Real estate passive income (every 15 ticks) ────────────
+        g.realEstateIncomeTick++;
+        if (g.realEstateIncomeTick >= 15 && g.realEstate.length > 0) {
+          g.realEstateIncomeTick = 0;
+          let reTotal = 0;
+          for (const rid of g.realEstate) reTotal += REAL_ESTATE_INCOME[rid] ?? 0;
+          if (g.ownedItems.has('neon_sign')) reTotal = Math.floor(reTotal * 1.1);
+          if (reTotal > 0) {
+            g.salary += reTotal; setSalary(g.salary);
+            g.floaters.push({ x: g.px + 30, y: g.py - 50, text: `+ç${reTotal.toLocaleString()} RENTAL INCOME`, color: '#cc44ff', life: 80, maxLife: 80 });
+            sfxCoin();
+          }
         }
 
         // ── ECONOMY: Savings interest (every 30 ticks = ~3 min) ───────────
@@ -2961,6 +3033,142 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         </div>
       )}
+
+      {/* ── VEND-O-MATIC SHOP ─────────────────────────────────────────────── */}
+      {showVend && (() => {
+        const g = gs.current;
+        const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
+        const doVendBuy = (item: VendItem) => {
+          if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ç${item.price.toLocaleString()}.`); return; }
+          if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
+          g.salary -= item.price; setSalary(g.salary); sfxCoin();
+          // ── Apply effects ──────────────────────────────────────
+          if (item.consumable && item.effect) {
+            const parts = item.effect.split(' ');
+            for (const p of parts) {
+              if (p.startsWith('hunger'))  { g.hunger  = Math.min(100, g.hunger  + parseInt(p.slice(6)));  setHunger(g.hunger);  }
+              if (p.startsWith('thirst'))  { g.thirst  = Math.min(100, g.thirst  + parseInt(p.slice(6)));  setThirst(g.thirst);  }
+              if (p.startsWith('energy'))  { g.energy  = Math.min(100, g.energy  + parseInt(p.slice(6)));  setEnergy(g.energy);  }
+              if (p.startsWith('hp'))      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
+              if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+            }
+            setNarr(`> VEND-O-MATIC — ${item.name} used. ç${item.price.toLocaleString()} CREAM spent.`);
+            return;
+          }
+          // Non-consumable items
+          g.ownedItems.add(item.id);
+          setOwnedItems(new Set(g.ownedItems));
+          if (item.id === 'pablo_device')   { g.hasDevice = true; setHasDevice(true); }
+          if (item.id === 'netrunner_deck') { g.terminalDiscount = true; }
+          if (VEHICLE_SPEED[item.id]) {
+            const curSpd = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
+            if ((VEHICLE_SPEED[item.id] ?? 1) > curSpd) { g.vehicle = item.id; }
+          }
+          if (WEAPON_TIER[item.id] && (WEAPON_TIER[item.id] ?? 0) > g.weaponTier) {
+            g.weaponTier = WEAPON_TIER[item.id] ?? 0;
+          }
+          if (item.id === 'salaryman_pro') { setShowVend(false); setShowStore(true); return; }
+          if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
+          setNarr(`> VEND-O-MATIC — ${item.name} acquired. ç${item.price.toLocaleString()} CREAM spent. Check your inventory.`);
+        };
+        const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowVend(false); }}>
+            <div style={{ width:760, maxHeight:'90vh', display:'flex', flexDirection:'column', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+              {/* Header */}
+              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+                <div>
+                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#00ff41', letterSpacing:'.18em' }}>VEND-O-MATIC</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>PABLO CORP. AUTOMATED RETAIL · 24 REGIONAL NODES · CREAM ONLY</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>ç{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>CREAM BALANCE</div>
+                  <button onClick={() => setShowVend(false)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC</button>
+                </div>
+              </div>
+              {/* Category tabs */}
+              <div style={{ display:'flex', borderBottom:'1px solid rgba(0,255,65,.12)', flexShrink:0, overflowX:'auto' }}>
+                {VEND_CATALOG.map(c => (
+                  <button key={c.id} onClick={() => setVendTab(c.id as typeof vendTab)}
+                    style={{ padding:'.45rem .9rem', background: vendTab === c.id ? 'rgba(0,255,65,.1)' : 'transparent', border:'none', borderRight:'1px solid rgba(0,255,65,.1)', color: vendTab === c.id ? c.col : 'rgba(0,255,65,.28)', cursor:'pointer', ...VT2, fontSize:'1rem', letterSpacing:'.1em', whiteSpace:'nowrap', flexShrink:0 }}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              {/* Items grid */}
+              <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem', scrollbarWidth:'thin', scrollbarColor:'rgba(0,255,65,.2) transparent' }}>
+                {cat.id === 'pro' ? (
+                  /* PRO upgrade special card */
+                  <div style={{ border:`1px solid rgba(255,153,0,.35)`, padding:'1.2rem', background:'rgba(255,153,0,.04)' }}>
+                    <div style={{ ...VT2, fontSize:'1.6rem', color:'#ff9900', letterSpacing:'.14em', marginBottom:'.4rem' }}>SALARYMAN PRO</div>
+                    <div style={{ fontSize:'.52rem', color:'rgba(255,153,0,.65)', lineHeight:1.8, marginBottom:'.8rem' }}>
+                      Full AI productivity suite. Unlimited AI access on all devices. Priority servers. Exclusive gear drops every month. Pro badge visible to all operatives in every zone. Removes all rate limits on Pablo Corp. terminals.
+                    </div>
+                    <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'.8rem' }}>
+                      {['UNLIMITED AI ACCESS','PRIORITY SERVERS','MONTHLY GEAR DROPS','PRO BADGE','NO RATE LIMITS'].map(f => (
+                        <span key={f} style={{ fontSize:'.42rem', color:'rgba(255,153,0,.55)', border:'1px solid rgba(255,153,0,.25)', padding:'2px 7px' }}>{f}</span>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', gap:'1rem', alignItems:'center' }}>
+                      <div style={{ ...VT2, fontSize:'1.5rem', color:'#ff9900' }}>$29 / MONTH</div>
+                      <button onClick={() => { setShowVend(false); setShowStore(true); }}
+                        style={{ padding:'.5rem 1.4rem', background:'rgba(255,153,0,.15)', border:'1px solid rgba(255,153,0,.5)', color:'#ff9900', cursor:'pointer', ...VT2, fontSize:'1.1rem', letterSpacing:'.1em' }}>
+                        UPGRADE NOW ▶
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                    {cat.items.map(item => {
+                      const owned = g.ownedItems.has(item.id);
+                      const canAfford = g.salary >= item.price;
+                      const isReEstate = cat.id === 'realestate';
+                      const alreadyHas = !item.consumable && owned;
+                      return (
+                        <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.25)' : 'rgba(0,255,65,.12)'}`, background: alreadyHas ? 'rgba(0,255,65,.04)' : 'transparent' }}>
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.2rem' }}>
+                              <span style={{ ...VT2, fontSize:'1.05rem', color: alreadyHas ? '#00ff41' : cat.col, letterSpacing:'.08em' }}>{item.name}</span>
+                              {alreadyHas && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.25)', padding:'1px 5px' }}>OWNED</span>}
+                              {isReEstate && <span style={{ fontSize:'.38rem', color:'rgba(204,68,255,.6)', border:'1px solid rgba(204,68,255,.2)', padding:'1px 5px' }}>PASSIVE INCOME</span>}
+                              {item.consumable && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.4)', border:'1px solid rgba(0,255,65,.15)', padding:'1px 5px' }}>CONSUMABLE</span>}
+                            </div>
+                            <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
+                          </div>
+                          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
+                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ç{item.price.toLocaleString()}</div>
+                            <button
+                              onClick={() => doVendBuy(item)}
+                              disabled={alreadyHas}
+                              style={{ padding:'.25rem .7rem', background: alreadyHas ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: alreadyHas ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: alreadyHas ? 'not-allowed' : 'pointer', ...VT2, fontSize:'.95rem', letterSpacing:'.08em', ...S2 }}>
+                              {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : 'NO CREAM'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {/* Owned items strip */}
+              {ownedItems.size > 0 && (
+                <div style={{ padding:'.5rem 1rem', borderTop:'1px solid rgba(0,255,65,.1)', flexShrink:0 }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.25)', letterSpacing:'.1em', marginBottom:'.3rem' }}>INVENTORY</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:'.3rem' }}>
+                    {[...ownedItems].map(id => {
+                      const found = VEND_CATALOG.flatMap(c => c.items).find(i => i.id === id);
+                      return found ? <span key={id} style={{ fontSize:'.42rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.18)', padding:'2px 7px' }}>{found.name}</span> : null;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── COMMODITY TRADE TERMINAL ──────────────────────────────────────── */}
       {showTrade && (() => {
