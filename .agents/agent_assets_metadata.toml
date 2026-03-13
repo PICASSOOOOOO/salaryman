@@ -42,3 +42,9 @@ id = "MXoIn4u271w0xT97oX0U0"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-f.png"
 type = "image"
 title = "Option F — Neon F Lettermark"
+
+[[outputs]]
+id = "-3auELkPyNF31yPPk4bVO"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-g.png"
+type = "image"
+title = "Option G — Muted Neon F"
