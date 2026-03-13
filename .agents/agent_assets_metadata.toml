@@ -48,3 +48,9 @@ id = "-3auELkPyNF31yPPk4bVO"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-g.png"
 type = "image"
 title = "Option G — Muted Neon F"
+
+[[outputs]]
+id = "1fm0jby1yde4IPL6K8xxm"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-h.png"
+type = "image"
+title = "Option H — Medium Neon F"
