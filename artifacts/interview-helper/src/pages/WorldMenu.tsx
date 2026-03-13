@@ -1,7 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@workspace/replit-auth-web';
 
 type CharClass = 'corporate' | 'outcast' | 'replicant';
+
+// ── Cloud Save Types ─────────────────────────────────────────────────────────
+interface CloudSave {
+  id: number;
+  slotIndex: number;
+  charName: string;
+  charClass: string;
+  level: number;
+  salary: number;
+  lastZone: string;
+  playtime: number;
+  data: Record<string, unknown>;
+  lastSavedAt: string;
+}
+
+function fmtTime(iso: string): string {
+  const d = new Date(iso), now = Date.now();
+  const diff = Math.floor((now - d.getTime()) / 1000);
+  if (diff < 60) return 'JUST NOW';
+  if (diff < 3600) return `${Math.floor(diff / 60)} MIN AGO`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} HR AGO`;
+  return `${Math.floor(diff / 86400)} DAYS AGO`;
+}
+
+function fmtPlaytime(frames: number): string {
+  const secs = Math.floor(frames / 60);
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+  return h > 0 ? `${h}H ${m}M` : `${m}M`;
+}
+
+const CLASS_COLOR: Record<string, string> = {
+  corporate: '#00ff41',
+  outcast: '#88ff44',
+  replicant: '#33ffaa',
+};
+
+const CLASS_BADGE: Record<string, string> = {
+  corporate: 'CORP',
+  outcast: 'OUT',
+  replicant: 'REP',
+};
+
 type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'locations' | 'controls';
 
 const CLASSES = [
@@ -363,7 +406,10 @@ function GuideContent({ section }: { section: GuideSection }) {
 
 export default function WorldMenu() {
   const [, navigate] = useLocation();
+  const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
   const [tab, setTab] = useState<'enter' | 'guide'>('enter');
+  // screen: 'saves' shows the save manager (logged in), 'new' shows the character creator
+  const [screen, setScreen] = useState<'saves' | 'new'>('saves');
   const [step, setStep] = useState<1 | 2>(1);
   const [cls, setCls]   = useState<CharClass>('corporate');
   const [name, setName] = useState('');
@@ -372,6 +418,12 @@ export default function WorldMenu() {
   const [flavorIdx, setFlavorIdx] = useState(0);
   const [players, setPlayers] = useState<number | null>(null);
   const [guideSection, setGuideSection] = useState<GuideSection>('world');
+
+  // Cloud save management
+  const [cloudSaves, setCloudSaves] = useState<CloudSave[]>([]);
+  const [savesLoading, setSavesLoading] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<number>(0);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   // Business registration
   const [hasBiz, setHasBiz] = useState<null | 'yes' | 'no'>(null);
@@ -382,6 +434,51 @@ export default function WorldMenu() {
   const [bizSize, setBizSize] = useState('SOLO OPERATOR');
   const [bizEmail, setBizEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Load cloud saves ────────────────────────────────────────────────────────
+  const loadSaves = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setSavesLoading(true);
+    try {
+      const res = await fetch('/api/salaryman/saves', { credentials: 'include' });
+      if (res.ok) { const j = await res.json(); setCloudSaves(j.saves ?? []); }
+    } catch { /* ignore */ }
+    setSavesLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => { loadSaves(); }, [loadSaves]);
+
+  // ── Continue a save ─────────────────────────────────────────────────────────
+  const handleContinue = (save: CloudSave) => {
+    const charData = (save.data as any);
+    const char = {
+      name: save.charName,
+      class: save.charClass,
+      company: charData.company ?? save.charName + ' OPS',
+      sx: charData.px ?? (save.charClass === 'outcast' ? 460 : 560),
+      sy: charData.py ?? (save.charClass === 'outcast' ? 750 : 320),
+      salary: save.salary,
+      hasBusiness: charData.hasBusiness ?? false,
+      workstation: charData.workstation ?? null,
+      workstationLabel: charData.workstationLabel ?? null,
+      workstationSlot: charData.workstationSlot ?? null,
+      bizRegisteredAt: charData.bizRegisteredAt ?? null,
+      // Attach full state for restoration
+      _savedState: save.data,
+    };
+    localStorage.setItem('sm_char', JSON.stringify(char));
+    localStorage.setItem('sm_slot', String(save.slotIndex));
+    navigate('/world/play');
+  };
+
+  // ── Delete a save ───────────────────────────────────────────────────────────
+  const handleDelete = async (slot: number) => {
+    try {
+      await fetch(`/api/salaryman/saves/${slot}`, { method: 'DELETE', credentials: 'include' });
+      setCloudSaves(prev => prev.filter(s => s.slotIndex !== slot));
+    } catch { /* ignore */ }
+    setDeleteConfirm(null);
+  };
 
   useEffect(() => {
     const t = setInterval(() => setTick(n => n + 1), 500);
@@ -432,13 +529,14 @@ export default function WorldMenu() {
             ? fictitiousIndustry
             : name.trim().toUpperCase() + ' OPS')
       : name.trim().toUpperCase() + ' (DRIFTER)';
+    const startSalary = cls === 'corporate' ? 100000 : cls === 'replicant' ? 50000 : 15000;
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
       company: finalCompany,
       sx: cls === 'outcast' ? 460 : 560,
       sy: cls === 'outcast' ? 750 : 320,
-      salary: cls === 'corporate' ? 100000 : cls === 'replicant' ? 50000 : 15000,
+      salary: startSalary,
       hasBusiness,
       workstation: ws?.bid ?? null,
       workstationLabel: ws?.label ?? null,
@@ -446,6 +544,7 @@ export default function WorldMenu() {
       bizRegisteredAt: hasBusiness ? Date.now() : null,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
+    localStorage.setItem('sm_slot', String(selectedSlot));
     if (hasBusiness) {
       try {
         await fetch('/api/world/register', {
@@ -460,6 +559,25 @@ export default function WorldMenu() {
             companySize: bizType === 'real' ? bizSize : null,
             contactEmail: bizType === 'real' && bizEmail.trim() ? bizEmail.trim() : null,
             isPaid: false,
+          }),
+        });
+      } catch { /* ignore */ }
+    }
+    // ── Cloud save: create initial save for this slot ────────────────────────
+    if (isAuthenticated) {
+      try {
+        await fetch(`/api/salaryman/saves/${selectedSlot}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            charName: char.name,
+            charClass: char.class,
+            level: 1,
+            salary: startSalary,
+            lastZone: cls === 'outcast' ? 'WASTELAND' : 'MINX CITY',
+            playtime: 0,
+            data: { ...char },
           }),
         });
       } catch { /* ignore */ }
@@ -523,7 +641,138 @@ export default function WorldMenu() {
         {/* ── TAB: ENTER WORLD ── */}
         {tab === 'enter' && (
           <>
-            {step === 1 && (
+
+            {/* ── SAVE SLOT MANAGER (logged-in users only) ─────────────────── */}
+            {isAuthenticated && screen === 'saves' && (
+              <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+
+                {/* Header */}
+                <div style={{ borderBottom: '1px solid rgba(0,255,65,.12)', paddingBottom: '.7rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div>
+                    <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE FILES</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
+                      {user?.name ? `OPERATIVE: ${user.name.toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
+                    </div>
+                  </div>
+                  {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}
+                </div>
+
+                {/* 4 save slots */}
+                {[0, 1, 2, 3].map(slot => {
+                  const save = cloudSaves.find(s => s.slotIndex === slot);
+                  const col = save ? CLASS_COLOR[save.charClass] ?? '#00ff41' : 'rgba(0,255,65,.2)';
+                  const isConfirming = deleteConfirm === slot;
+
+                  return (
+                    <div key={slot} style={{ border: `1px solid ${save ? col + '33' : 'rgba(0,255,65,.1)'}`, background: save ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.3)', transition: 'border-color .2s' }}>
+                      {save ? (
+                        /* ── OCCUPIED SLOT ── */
+                        <div style={{ display: 'flex', gap: 0 }}>
+                          {/* Class badge */}
+                          <div style={{ width: 80, background: col + '18', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.3rem', padding: '1rem .5rem', flexShrink: 0, borderRight: `1px solid ${col}22` }}>
+                            <div style={{ ...VT, fontSize: '1.8rem', color: col, textShadow: `0 0 10px ${col}` }}>
+                              {CLASS_BADGE[save.charClass] ?? save.charClass.slice(0,3).toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: '.38rem', color: col + 'aa', letterSpacing: '.1em' }}>SLOT {slot + 1}</div>
+                          </div>
+
+                          {/* Details */}
+                          <div style={{ flex: 1, padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                              <div style={{ ...VT, fontSize: '1.6rem', color: col, letterSpacing: '.1em' }}>{save.charName}</div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.08em' }}>{fmtTime(save.lastSavedAt)}</div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.4rem' }}>
+                              {[
+                                { l: 'CLASS', v: save.charClass.toUpperCase() },
+                                { l: 'LEVEL', v: String(save.level) },
+                                { l: 'CREAM', v: `ç${save.salary.toLocaleString()}` },
+                                { l: 'ZONE', v: save.lastZone },
+                              ].map(({ l, v }) => (
+                                <div key={l} style={{ borderLeft: `2px solid ${col}44`, paddingLeft: '.5rem' }}>
+                                  <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em' }}>{l}</div>
+                                  <div style={{ fontSize: '.55rem', color: col, letterSpacing: '.04em', marginTop: '.1rem' }}>{v}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em' }}>
+                              PLAYTIME: {fmtPlaytime(save.playtime)}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem', padding: '.8rem', justifyContent: 'center', borderLeft: `1px solid ${col}18`, flexShrink: 0 }}>
+                            {isConfirming ? (
+                              <>
+                                <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.7)', letterSpacing: '.06em', textAlign: 'center', marginBottom: '.2rem' }}>ERASE?</div>
+                                <button onClick={() => handleDelete(slot)} style={{ padding: '.4rem .8rem', background: 'rgba(255,40,40,.12)', border: '1px solid rgba(255,60,60,.5)', color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.65rem', letterSpacing: '.08em' }}>CONFIRM</button>
+                                <button onClick={() => setDeleteConfirm(null)} style={{ padding: '.4rem .8rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.65rem', letterSpacing: '.08em' }}>CANCEL</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => handleContinue(save)} style={{ padding: '.55rem 1.1rem', background: col + '18', border: `1px solid ${col}66`, color: col, cursor: 'pointer', fontFamily: 'inherit', fontSize: '.75rem', letterSpacing: '.1em', ...VT, textShadow: `0 0 8px ${col}` }}>CONTINUE</button>
+                                <button onClick={() => setDeleteConfirm(slot)} style={{ padding: '.4rem .9rem', background: 'transparent', border: '1px solid rgba(255,60,60,.2)', color: 'rgba(255,100,100,.4)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.6rem', letterSpacing: '.1em' }}>ERASE</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        /* ── EMPTY SLOT ── */
+                        <button
+                          onClick={() => { setSelectedSlot(slot); setScreen('new'); setStep(1); }}
+                          style={{ width: '100%', padding: '1.3rem 1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1.2rem', textAlign: 'left', fontFamily: 'inherit' }}
+                        >
+                          <div style={{ width: 80, height: 60, border: '1px dashed rgba(0,255,65,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <div style={{ fontSize: '1.5rem', color: 'rgba(0,255,65,.15)' }}>+</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.14em', marginBottom: '.3rem' }}>SLOT {slot + 1} — EMPTY</div>
+                            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>START NEW STORY</div>
+                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', marginTop: '.2rem', letterSpacing: '.06em' }}>Choose your class · Build your legend</div>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Guest note */}
+                <div style={{ borderTop: '1px solid rgba(0,255,65,.06)', paddingTop: '.65rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', lineHeight: 1.7 }}>
+                  Saves are tied to your account and sync across devices. Progress is preserved per story slot. Each slot is a separate operative with its own history.
+                </div>
+              </div>
+            )}
+
+            {/* ── NOT LOGGED IN — prompt to sign in for saves ──────────────── */}
+            {!authLoading && !isAuthenticated && screen === 'saves' && (
+              <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
+                  <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.8, maxWidth: 440 }}>
+                    Sign in to unlock save slots. Your CREAM, level, and operative history are stored to your account — resume any story from any device.
+                  </div>
+                  <button onClick={login} style={{ padding: '.65rem 2rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', fontFamily: 'inherit', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', textShadow: '0 0 8px rgba(0,255,65,.4)' }}>
+                    SIGN IN TO SAVE
+                  </button>
+                  <button onClick={() => setScreen('new')} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.25)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>
+                    PLAY AS GUEST (no saves)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Back button when in 'new' screen ─────────────────────────── */}
+            {screen === 'new' && isAuthenticated && step === 1 && (
+              <div style={{ width: '100%', maxWidth: 820, marginBottom: '-.8rem' }}>
+                <button onClick={() => setScreen('saves')} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em', padding: 0 }}>
+                  ← BACK TO SAVE FILES
+                </button>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginTop: '.2rem' }}>NEW STORY — SLOT {selectedSlot + 1}</div>
+              </div>
+            )}
+
+            {/* ── CHARACTER CREATOR (after guest bypass OR new story selected) ── */}
+            {screen === 'new' && step === 1 && (
               <div style={{ width: '100%', maxWidth: 820, display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SELECT OPERATIVE CLASS</div>
@@ -591,7 +840,7 @@ export default function WorldMenu() {
               </div>
             )}
 
-            {step === 2 && (
+            {screen === 'new' && step === 2 && (
               <div style={{ width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
 
                 {/* Header */}

@@ -648,9 +648,25 @@ export default function WorldPlay() {
   }, []);
 
   const doSave = useCallback((data: object) => {
-    if (char.hasBusiness !== false) {
-      localStorage.setItem('sm_save', JSON.stringify(data));
-    }
+    localStorage.setItem('sm_save', JSON.stringify(data));
+    // ── Cloud save sync ──────────────────────────────────────────────────────
+    const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
+    const g = gs.current;
+    const savePayload = {
+      charName: char.name,
+      charClass: char.class,
+      level: g.level,
+      salary: g.salary,
+      lastZone: g.py >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
+      playtime: g.frame,
+      data: { ...char, ...(data as any), px: g.px, py: g.py },
+    };
+    fetch(`/api/salaryman/saves/${slot}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(savePayload),
+    }).catch(() => {});
   }, [char]);
 
   const enterBuilding = useCallback((bid: string) => {
