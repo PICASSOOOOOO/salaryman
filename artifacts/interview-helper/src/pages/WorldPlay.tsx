@@ -133,6 +133,17 @@ const BUILDINGS = [
   { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(380,1650,120,80) },
   { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(2100,1520,100,100) },
   { id: 'waste_exchange',x: 780,  y:1500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(780,1500,130) },
+  // ── PUBLIC TERMINALS (payphones, kiosks, vans) ───────────────────────────────
+  { id: 'term_west',      x: 160,  y: 560,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_central',   x: 850,  y: 450,  w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
+  { id: 'term_east',      x: 1580, y: 440,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_neon',      x: 2050, y: 510,  w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
+  { id: 'term_north',     x: 2920, y: 450,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_a', x: 340,  y: 1140, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_b', x: 1620, y: 1440, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
+  { id: 'van_west',       x: 500,  y: 1200, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  { id: 'van_central',    x: 1200, y: 1600, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  { id: 'van_east',       x: 2300, y: 1300, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   // ── FAR EAST / FAR SOUTH WASTELAND (new area) ────────────────────────────────
   { id: 'eastern_gate',  x: 2800, y:1100, w: 100, h: 70,  label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(2800,1100,100,70), ...mkDoorE(2800,1100,100,70)] },
   { id: 'deep_camp',     x: 2600, y:1400, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(2600,1400,120,80) },
@@ -275,7 +286,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'antidote',      name: 'ANTIDOTE',        desc: 'Clears poison status immediately.',                    price: 4000,   consumable: true, effect: 'cure_poison' },
   ]},
   { id: 'tech', label: 'TECH', col: '#33aaff', items: [
-    { id: 'pablo_device',    name: 'PABLO DEVICE',      desc: 'Unlocks Pablo Corp. terminals & satellite comms.',  price: 8000  },
+    { id: 'pablo_device',    name: 'DEVICE REPAIR KIT',  desc: 'Repairs a broken personal terminal. Restores full durability.',  price: 5000, consumable: true  },
     { id: 'burner_phone',    name: 'BURNER PHONE',      desc: 'Encrypted. Untraceable. 48hr battery.',            price: 1500  },
     { id: 'signal_jammer',   name: 'SIGNAL JAMMER',     desc: 'Disables nearest guard for 30 seconds (3 uses).',  price: 12000 },
     { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all PABLO CORP. terminals.',       price: 25000 },
@@ -640,7 +651,13 @@ const BUILDING_COST_LABEL: Record<string, string> = {
   arcade: 'FREE', hotel: 'FREE', vend: 'SHOP',
   pablo_store: 'SHOP', pablo_tower: 'FREE',
   north_bunker: 'FREE', outpost_alpha: 'FREE', outpost_beta: 'FREE',
+  term_west: 'FREE', term_central: 'FREE', term_east: 'FREE', term_neon: 'FREE', term_north: 'FREE',
+  term_outpost_a: 'FREE', term_outpost_b: 'FREE',
+  van_west: 'FREE', van_central: 'FREE', van_east: 'FREE',
 };
+
+const IS_PUBLIC_TERMINAL = (id: string) => id.startsWith('term_') || id.startsWith('van_');
+const IS_VAN = (id: string) => id.startsWith('van_');
 
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
@@ -676,7 +693,10 @@ export default function WorldPlay() {
     keys: new Set<string>(),
     frame: 0, blink: 0,
     hp: _ss?.hp ?? 100, salary: _ss?.salary ?? char.salary,
-    hasDevice: false,
+    hasDevice: _ss?.hasDevice ?? (char.class.toLowerCase() === 'corporate'),
+    deviceBroken: _ss?.deviceBroken ?? false,
+    deviceDurability: _ss?.deviceDurability ?? 100,
+    atPublicTerminal: false,
     invincible: 0, flash: 0,
     threats: THREATS_INIT.map(t => ({ ...t })),
     near: null as string | null,
@@ -768,7 +788,9 @@ export default function WorldPlay() {
     return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device. City is safe from major gangs. PABLO guards patrol. Spies lurk in disguise.';
   });
   const [online,  setOnline]  = useState<Peer[]>([]);
-  const [hasDevice, setHasDevice] = useState(false);
+  const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? (char.class.toLowerCase() === 'corporate'));
+  const [deviceBroken, setDeviceBroken] = useState(_ss?.deviceBroken ?? false);
+  const [atPublicTerminal, setAtPublicTerminal] = useState(false);
   const [voice,   setVoice]   = useState(false);
   const [speaking,setSpeaking]= useState(false);
   const [muted,   setMuted]   = useState(false);
@@ -787,7 +809,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'status'|'intel'|'chat'>('status');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'>('city');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -931,6 +953,7 @@ export default function WorldPlay() {
       poisoned: g.poisoned, weaponTier: g.weaponTier, vehicle: g.vehicle,
       terminalDiscount: g.terminalDiscount, passport: g.passport,
       savings: g.savings, loan: g.loan,
+      hasDevice: g.hasDevice, deviceBroken: g.deviceBroken, deviceDurability: g.deviceDurability,
       ownedItems: [...g.ownedItems],
       ownedBuildings: [...g.ownedBuildings],
       cargo: { ...g.cargo },
@@ -1017,9 +1040,19 @@ export default function WorldPlay() {
     }
     else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> PABLO — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'clinic')  {
+      if (g.deviceBroken && g.salary >= 5000) {
+        g.salary -= 5000; g.deviceBroken = false; g.deviceDurability = 100;
+        setSalary(g.salary); setDeviceBroken(false); sfxHeal();
+        setNarr('> DR. WRIGHT\'S CLINIC — [ƒ5,000 FIAT] Device repaired. "Cracked screen, fried board. Standard job. Press [P] — it\'s alive again."');
+        return;
+      }
       if (g.salary >= 10000) {
         g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal();
         let clinicMsg = '> DR. WRIGHT\'S CLINIC — [ƒ10,000 FIAT] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."';
+        if (g.deviceBroken) {
+          g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
+          clinicMsg += ' Device repaired too. "Two birds. One bill."';
+        }
         if (g.dogCompanion.active && (g.dogCompanion.injured || g.dogCompanion.hp < DOG_MAX_HP)) {
           g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
           setDogHp(DOG_MAX_HP); setDogInjured(false);
@@ -1027,7 +1060,7 @@ export default function WorldPlay() {
         }
         setNarr(clinicMsg);
       }
-      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No fiat, no treatment. Even Dr. Wright has bills. Come back with ƒ10,000."'); }
+      else { sfxError(); setNarr(`> DR. WRIGHT'S CLINIC — "No fiat, no treatment. Even Dr. Wright has bills. Come back with ƒ10,000."${g.deviceBroken ? ' Device repair: ƒ5,000 FIAT.' : ''}`); }
     }
     else if (bid === 'megabank'){
       setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
@@ -1259,6 +1292,17 @@ export default function WorldPlay() {
     else if (bid === 'north_market') {
       sfxEnter(); setShowTrade('city');
       setNarr('> NORTH BAZAAR — Quieter than the city markets. Prices are closer to fair. Almost.');
+    }
+    else if (IS_PUBLIC_TERMINAL(bid)) {
+      sfxEnter();
+      gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
+      setShowPablo(true);
+      if (IS_VAN(bid)) {
+        g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy);
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. PABLO AI online. Energy +15. Press [ESC] to leave.`);
+      } else {
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'PUBLIC TERMINAL'} — PABLO AI online. Free access. All productivity apps available. Press [ESC] to close.`);
+      }
     }
     else if (['crystal4','crystal5','crystal6','crystal7'].includes(bid)) {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
@@ -1507,7 +1551,7 @@ export default function WorldPlay() {
     sfxTalk();
     if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
     else {
-      if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); }
+      if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; gs.current.deviceBroken = false; gs.current.deviceDurability = 100; setHasDevice(true); setDeviceBroken(false); setShowStore(true); }
       if (dialog.bid === 'pablo_tower_enter') { setShowOffice(true); }
       setDialog(null);
     }
@@ -1559,7 +1603,13 @@ export default function WorldPlay() {
           }
         }
       }
-      if (e.key === 'p' || e.key === 'P') setShowPablo(v => !v);
+      if (e.key === 'p' || e.key === 'P') {
+        const g = gs.current;
+        if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Screen cracked. Circuitry fried. Find a PUBLIC TERMINAL or repair at DR. WRIGHT\'S.'); }
+        else if (g.atPublicTerminal) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        else { setNarr('> NO DEVICE — You don\'t have a personal terminal. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].'); }
+      }
       if (e.key === 'm' || e.key === 'M') setShowMap(v => !v);
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
@@ -1615,7 +1665,8 @@ export default function WorldPlay() {
       }
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
-        setShowPablo(false); setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
+        setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
+        setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
@@ -1735,7 +1786,9 @@ OPERATIVE STATUS:
 - Game day: ${gameDay} | Survival ticks: ${g.survivalTick}
 - Nearby NPCs (150px): ${nearbyNpcs}
 - Nearby threats (200px): ${nearbyEnemies}
-- Has PABLO device: ${g.hasDevice ? 'YES' : 'NO — needs store activation'}
+- Has personal device: ${g.hasDevice ? (g.deviceBroken ? 'DAMAGED — needs repair' : 'YES') : 'NO'}
+- At public terminal: ${g.atPublicTerminal ? 'YES' : 'NO'}
+- Device durability: ${g.deviceDurability}%
 - Poisoned: ${g.poisoned ? 'YES — find antidote or save point' : 'no'}
 - Bank history entries: ${(gs.current as any).bankHistoryLength ?? 0}
 
@@ -1746,7 +1799,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     if (!pabloIn.trim() || pabloLoad) return;
     const txt = pabloIn.trim(); setPabloIn('');
     setPabloMsgs(m => [...m, { role: 'user', text: txt }]);
-    if (!gs.current.hasDevice) { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Device not activated. Walk to the PABLO STORE and press [E].' }]); return; }
+    const canAccess = (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
+    if (!canAccess) { setPabloMsgs(m => [...m, { role: 'pablo', text: gs.current.deviceBroken ? 'Device damaged. Visit DR. WRIGHT\'S for repair (ƒ5,000) or find a PUBLIC TERMINAL.' : 'No device. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].' }]); return; }
     setPabloLoad(true);
     try {
       const context = buildPabloContext();
@@ -1988,6 +2042,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
+          }
+          if (g.hasDevice && !g.deviceBroken && Math.random() < 0.04) {
+            g.deviceDurability = Math.max(0, g.deviceDurability - 35);
+            if (g.deviceDurability <= 0) {
+              g.deviceBroken = true; setDeviceBroken(true);
+              setNarr('> DEVICE DAMAGED — Your personal terminal took a hit. Screen cracked. Find a PUBLIC TERMINAL or repair at DR. WRIGHT\'S (ƒ5,000).');
+            }
           }
         }
       }
@@ -2738,6 +2799,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           continue;
         }
 
+        // ── PUBLIC TERMINAL rendering (payphones, kiosks, vans) ─────────
+        if (IS_PUBLIC_TERMINAL(b.id)) {
+          const cx2 = bx + b.w / 2, cy2 = by + b.h / 2;
+          const pulse2 = 0.5 + Math.sin(g.frame * 0.06 + bx * 0.01) * 0.5;
+          if (IS_VAN(b.id)) {
+            ctx.fillStyle = `rgba(0,255,65,${0.08 + pulse2 * 0.04})`;
+            ctx.fillRect(bx, by, b.w, b.h);
+            ctx.strokeStyle = `rgba(0,255,65,${0.3 + pulse2 * 0.2})`;
+            ctx.lineWidth = 1; ctx.strokeRect(bx, by, b.w, b.h);
+            ctx.fillStyle = `rgba(0,255,65,${0.15 + pulse2 * 0.1})`;
+            ctx.fillRect(bx + b.w - 8, by + 4, 6, b.h - 8);
+            ctx.fillStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('VAN', cx2, cy2 + 3);
+            ctx.fillStyle = `rgba(0,255,65,${0.3 + pulse2 * 0.2})`;
+            ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText('TERMINAL', cx2, cy2 + 11);
+          } else {
+            ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 6 + pulse2 * 6;
+            ctx.fillStyle = `rgba(0,255,65,${0.12 + pulse2 * 0.08})`;
+            ctx.fillRect(bx, by, b.w, b.h);
+            ctx.strokeStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, b.w, b.h);
+            ctx.fillStyle = `rgba(0,255,65,${0.6 + pulse2 * 0.3})`;
+            ctx.fillRect(cx2 - 3, by + 3, 6, 8);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(b.label === 'PAYPHONE' ? '☎' : '▣', cx2, cy2 + 6);
+          }
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
+          ctx.shadowBlur = 0;
+          continue;
+        }
+
         // ── Default building rendering (2.5D with depth faces) ────────────
         const bd = BUILDING_DEPTH;
         const baseCol = isLocked ? [255,120,50] : b.bright ? [0,255,65] : [0,180,50];
@@ -3294,14 +3390,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
       }
-      const fogStartTX = Math.floor(cx / FOG_TILE);
-      const fogStartTY = Math.floor(cy / FOG_TILE);
-      const fogEndTX = Math.ceil((cx + cw) / FOG_TILE);
-      const fogEndTY = Math.ceil((cy + ch) / FOG_TILE);
+      const fogCamX = g.cam.x, fogCamY = g.cam.y;
+      const fogStartTX = Math.floor(fogCamX / FOG_TILE);
+      const fogStartTY = Math.floor(fogCamY / FOG_TILE);
+      const fogEndTX = Math.ceil((fogCamX + cw) / FOG_TILE);
+      const fogEndTY = Math.ceil((fogCamY + ch) / FOG_TILE);
       for (let fty = fogStartTY; fty <= fogEndTY; fty++) {
         for (let ftx = fogStartTX; ftx <= fogEndTX; ftx++) {
           if (!g.fogRevealed.has(`${ftx},${fty}`)) {
-            const sx = ftx * FOG_TILE - cx, sy = fty * FOG_TILE - cy;
+            const sx = ftx * FOG_TILE - fogCamX, sy = fty * FOG_TILE - fogCamY;
             ctx.fillStyle = 'rgba(0,0,0,.7)';
             ctx.fillRect(sx, sy, FOG_TILE, FOG_TILE);
           }
@@ -3457,7 +3554,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ width: 6, height: 6, background: '#00ff41', boxShadow: '0 0 6px rgba(0,255,65,.7)' }} />
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
           <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && <span style={{ fontSize: '.55rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
+          {hasDevice && !deviceBroken && <span style={{ fontSize: '.55rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
+          {hasDevice && deviceBroken && <span style={{ fontSize: '.55rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '1px 4px' }}>DAMAGED</span>}
           {char.hasBusiness === false && <span style={{ fontSize: '.55rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
         </div>
         <div style={{ display: 'flex', gap: '3px' }}>
@@ -3571,8 +3669,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
               💬 CHAT [C]{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
-            <button onClick={() => { setShowPablo(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.1)' : 'transparent', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🤖 PABLO AI [P]
+            <button onClick={() => {
+              const g = gs.current;
+              if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => !v); setShowTopMenu(false); }
+              else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at DR. WRIGHT\'S.'); setShowTopMenu(false); }
+              else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
+            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.1)' : 'transparent', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : (hasDevice && !deviceBroken) ? 'rgba(0,255,65,.6)' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🤖 PABLO AI [P]{deviceBroken ? ' ⚠' : ''}
             </button>
             <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(0,255,65,.1)' : 'transparent', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🗺 MAP [M]
@@ -3770,35 +3873,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
         );
-        const nearbyNpcs = NPCS.filter(n => Math.hypot(g.px - n.x, g.py - n.y) < 200);
-        const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200);
         const curZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
-        const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
 
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 250, paddingRight: '3%' }}
-            onClick={e => { if (e.target === e.currentTarget) setShowPablo(false); }}>
+            onClick={e => { if (e.target === e.currentTarget) { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); } }}>
             <div style={{ width: 400, maxWidth: '88vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.5)', boxShadow: '0 0 40px rgba(0,255,65,.08)' }}>
 
               {/* ── Header ── */}
               <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>PABLO DEVICE</div>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'PABLO DEVICE'}</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
-                    {hasDevice ? `OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}` : 'NOT REGISTERED — VISIT PABLO STORE'}
+                    {`OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ ...VT, fontSize: '.85rem', color: hasDevice ? '#00ff41' : '#ff4444', letterSpacing: '.08em' }}>{hasDevice ? '● ONLINE' : '○ OFFLINE'}</div>
-                  <button onClick={() => setShowPablo(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', display: 'block', marginTop: '.15rem' }}>ESC ✕</button>
+                  <div style={{ ...VT, fontSize: '.85rem', color: '#00ff41', letterSpacing: '.08em' }}>● ONLINE</div>
+                  <button onClick={() => { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); }} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', display: 'block', marginTop: '.15rem' }}>ESC ✕</button>
                 </div>
               </div>
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: '.25rem', padding: '.35rem .7rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
-                {(['status','intel','chat'] as const).map(t => (
+                {(['city','chat'] as const).map(t => (
                   <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'status' ? '[ STATUS ]' : t === 'intel' ? '[ INTEL ]' : '[ CHAT ]'}
+                    {t === 'city' ? '[ CITY INFO ]' : '[ CHAT ]'}
                   </button>
                 ))}
               </div>
@@ -3806,91 +3906,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* ── Body ── */}
               <div style={{ flex: 1, overflow: 'auto', padding: '.65rem .85rem' }}>
 
-                {/* STATUS TAB */}
-                {pabloTab === 'status' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>OPERATIVE VITALS</div>
-                    <StatRow label="HP" val={`${Math.floor(hp)} / ${gs.current.maxHp}`} bar={(hp / gs.current.maxHp) * 100} />
-                    <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col={salary < 0 ? '#ff4444' : '#00ff41'} />
-                    <StatRow label="SAVINGS" val={`ƒ${savings.toLocaleString()}`} col="#44ffaa" />
-                    <StatRow label="HUNGER" val={`${Math.floor(hunger)}%`} bar={hunger} col={hunger < 30 ? '#ff8844' : undefined} />
-                    <StatRow label="THIRST" val={`${Math.floor(thirst)}%`} bar={thirst} col={thirst < 30 ? '#ff8844' : undefined} />
-                    <StatRow label="ENERGY" val={`${Math.floor(energy)}%`} bar={energy} col={energy < 25 ? '#ffdd44' : undefined} />
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FIELD DATA</div>
-                      <StatRow label="LEVEL" val={`${level}  [EXP: ${exp}]`} />
-                      <StatRow label="ZONE" val={curZone} col={curZone === 'WASTELAND' ? '#88ff44' : '#00ff41'} />
-                      <StatRow label="GANG ZONE" val={gangZone ?? 'NEUTRAL'} col={gangZone ? '#ffaa44' : 'rgba(0,255,65,.4)'} />
-                      <StatRow label="GAME DAY" val={`DAY ${gameDay}`} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.25rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
-                        <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em' }}>PASSPORT</span>
-                        <span style={{ ...VT, fontSize: '.8rem', color: passport ? '#00ff41' : 'rgba(255,100,100,.7)', border: `1px solid ${passport ? 'rgba(0,255,65,.4)' : 'rgba(255,60,60,.3)'}`, padding: '0 .4rem' }}>
-                          {passport ? '✓ VALID — WASTELAND ACCESS' : '✗ NOT ISSUED — CITY ONLY'}
-                        </span>
-                      </div>
-                    </div>
-                    {bankLoan && (
-                      <div style={{ border: `1px solid ${gs.current.frame > bankLoan.dueAt ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.2)'}`, padding: '.45rem', marginTop: '.2rem' }}>
-                        <div style={{ fontSize: '.55rem', color: gs.current.frame > bankLoan.dueAt ? '#ff6666' : 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
-                          {gs.current.frame > bankLoan.dueAt ? '⚠ LOAN OVERDUE' : 'ACTIVE LOAN'}
-                        </div>
-                        <StatRow label="PRINCIPAL" val={`ƒ${bankLoan.amount.toLocaleString()}`} />
-                        <StatRow label="INTEREST" val={`ƒ${bankLoan.interest.toLocaleString()}`} col="#ffaa44" />
-                        <StatRow label="TOTAL DUE" val={`ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}`} col={gs.current.frame > bankLoan.dueAt ? '#ff4444' : '#ffdd44'} />
-                      </div>
-                    )}
-                    {poisoned && (
-                      <div style={{ border: '1px solid rgba(136,255,68,.4)', padding: '.35rem .45rem', fontSize: '.52rem', color: '#88ff44', letterSpacing: '.06em' }}>
-                        ☠ POISONED — HP draining. Find an antidote or SAVE POINT.
-                      </div>
-                    )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.12)', marginTop: '.25rem', lineHeight: 1.6 }}>
-                      PABLO CORP. HEALTH ADVISORY: Eat. Drink. Sleep. In that order. Dr. Wright bills extra for repeat patients.
-                    </div>
-                  </div>
-                )}
-
-                {/* INTEL TAB */}
-                {pabloTab === 'intel' && (
+                {/* CITY INFO TAB */}
+                {pabloTab === 'city' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                    <div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.35rem' }}>ZONE ASSESSMENT</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>MINX CITY — NETWORK STATUS</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
+                      <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
+                      <StatRow label="POPULATION" val="2.4M REGISTERED" />
+                      <StatRow label="FACTION" val="PABLO CORP." col="#b400ff" />
+                      <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
                       <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
                         {curZone === 'MINX CITY'
-                          ? 'MINX CITY — City zone: safe from gang aggro. PABLO CORP. guards patrol standard routes. SPY operatives may monitor near the southern border. Proceed normally.'
-                          : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory active.` : 'Open wasteland.'} Survival drain 1.5×. Stay mobile. Bounties are high. Emergency evac: head north past y=800.`}
+                          ? 'MINX CITY — Corporate zone. PABLO CORP. patrols active. Standard services available.'
+                          : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory.` : 'Open wasteland.'} Survival conditions. Stay mobile.`}
                       </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
-                        NEARBY OPERATIVES ({nearbyNpcs.length})
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PRODUCTIVITY TOOLS</div>
+                      <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.9 }}>
+                        All tools are free on every terminal — personal or public.<br/>
+                        ▸ <span style={{ color: '#ff4444' }}>Interview Solver</span> — Real-time coding interview assistance<br/>
+                        ▸ <span style={{ color: '#ff4444' }}>Screen Scanner</span> — Capture and analyze screen content<br/>
+                        ▸ <span style={{ color: '#33aaff' }}>Voice Listener</span> — Live audio transcription<br/>
+                        ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — AI assistant (this terminal)
                       </div>
-                      {nearbyNpcs.length === 0
-                        ? <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.25)' }}>No contacts in range. Move through the city.</div>
-                        : nearbyNpcs.map(n => (
-                          <div key={n.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(0,255,65,.06)', fontSize: '.52rem', color: 'rgba(0,255,65,.6)' }}>
-                            <span style={{ ...VT, fontSize: '.8rem', color: NPC_COL[n.type] ?? '#00ff41' }}>{n.name}</span>
-                            <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.55rem' }}>{n.type.toUpperCase()} · [E] to talk</span>
-                          </div>
-                        ))
-                      }
                     </div>
-                    <div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
-                        THREAT SCAN ({nearbyEnemies.length})
-                      </div>
-                      {nearbyEnemies.length === 0
-                        ? <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.25)' }}>Area clear. {curZone === 'MINX CITY' ? 'City is secure.' : 'Stay alert — wasteland threats nearby.'}</div>
-                        : nearbyEnemies.map((t, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(255,65,65,.06)', fontSize: '.52rem' }}>
-                            <span style={{ ...VT, fontSize: '.8rem', color: THREAT_COL[t.type] ?? '#ff4444' }}>{t.type.replace(/_/g,' ')}</span>
-                            <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [Space] melee · [Click] shoot</span>
-                          </div>
-                        ))
-                      }
-                    </div>
-                    <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ƒ10k full heal · MARKET/EAST BAZAAR: trade commodities · SHADOW TOWER: floors 1–39 rentable
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
+                      PABLO CORP. — 24 towers, 24 cities, one network. All transmissions logged. All terminals monitored.
                     </div>
                   </div>
                 )}
@@ -3898,48 +3943,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* CHAT TAB */}
                 {pabloTab === 'chat' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
-                    {!hasDevice ? (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                        <div>
-                          <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.4rem' }}>DEVICE LOCKED</div>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>Walk to the <span style={{ color: '#00ff41' }}>PABLO STORE</span> and press [E] to activate.</div>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
+                      {pabloMsgs.length === 0 && (
+                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8 }}>
+                          &gt; PABLO AI ONLINE<br/>
+                          &gt; Ask anything. I know Minx City. Some of it I won't tell you.
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
-                          {pabloMsgs.length === 0 && (
-                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8 }}>
-                              &gt; PABLO AI ONLINE<br/>
-                              &gt; I have your vitals, location, nearby contacts, and threat data.<br/>
-                              &gt; Ask anything. I know Minx City. Some of it I won't tell you.
-                            </div>
-                          )}
-                          {pabloMsgs.map((m, i) => (
-                            <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none' }}>
-                              <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(0,255,65,.3)', marginRight: '.25rem' }}>
-                                {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO]'}
-                              </span>
-                              {m.text}
-                            </div>
-                          ))}
-                          {pabloLoad && (
-                            <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>PABLO . . .</div>
-                          )}
+                      )}
+                      {pabloMsgs.map((m, i) => (
+                        <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none' }}>
+                          <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(0,255,65,.3)', marginRight: '.25rem' }}>
+                            {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO]'}
+                          </span>
+                          {m.text}
                         </div>
-                        <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
-                          <input
-                            value={pabloIn}
-                            onChange={e => setPabloIn(e.target.value)}
-                            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
-                            placeholder="Ask PABLO anything..."
-                            style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#00ff41' }}
-                          />
-                          <button onClick={sendPablo} disabled={pabloLoad}
-                            style={{ background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem' }}>↵</button>
-                        </div>
-                      </>
-                    )}
+                      ))}
+                      {pabloLoad && (
+                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>PABLO . . .</div>
+                      )}
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
+                      <input
+                        value={pabloIn}
+                        onChange={e => setPabloIn(e.target.value)}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
+                        placeholder="Ask PABLO anything..."
+                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#00ff41' }}
+                      />
+                      <button onClick={sendPablo} disabled={pabloLoad}
+                        style={{ background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem' }}>↵</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -4150,17 +4183,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
         const doVendBuy = (item: VendItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
+          if (item.id === 'pablo_device' && !g.hasDevice) { sfxError(); setNarr('> REPAIR KIT — You don\'t have a device to repair. Find one first.'); return; }
+          if (item.id === 'pablo_device' && !g.deviceBroken) { sfxError(); setNarr('> REPAIR KIT — Your device is already working fine.'); return; }
           if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
           g.salary -= item.price; setSalary(g.salary); sfxCoin();
           // ── Apply effects ──────────────────────────────────────
-          if (item.consumable && item.effect) {
-            const parts = item.effect.split(' ');
-            for (const p of parts) {
-              if (p.startsWith('hunger'))  { g.hunger  = Math.min(100, g.hunger  + parseInt(p.slice(6)));  setHunger(g.hunger);  }
-              if (p.startsWith('thirst'))  { g.thirst  = Math.min(100, g.thirst  + parseInt(p.slice(6)));  setThirst(g.thirst);  }
-              if (p.startsWith('energy'))  { g.energy  = Math.min(100, g.energy  + parseInt(p.slice(6)));  setEnergy(g.energy);  }
-              if (p.startsWith('hp'))      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
-              if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+          if (item.consumable) {
+            if (item.id === 'pablo_device') {
+              g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
+              setNarr(`> VEND-O-MATIC — ${item.name} applied. Device restored to full durability. ƒ${item.price.toLocaleString()} FIAT spent.`);
+              return;
+            }
+            if (item.effect) {
+              const parts = item.effect.split(' ');
+              for (const p of parts) {
+                if (p.startsWith('hunger'))  { g.hunger  = Math.min(100, g.hunger  + parseInt(p.slice(6)));  setHunger(g.hunger);  }
+                if (p.startsWith('thirst'))  { g.thirst  = Math.min(100, g.thirst  + parseInt(p.slice(6)));  setThirst(g.thirst);  }
+                if (p.startsWith('energy'))  { g.energy  = Math.min(100, g.energy  + parseInt(p.slice(6)));  setEnergy(g.energy);  }
+                if (p.startsWith('hp'))      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
+                if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+              }
             }
             setNarr(`> VEND-O-MATIC — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
             return;
@@ -4168,7 +4210,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Non-consumable items
           g.ownedItems.add(item.id);
           setOwnedItems(new Set(g.ownedItems));
-          if (item.id === 'pablo_device')   { g.hasDevice = true; setHasDevice(true); }
           if (item.id === 'netrunner_deck') { g.terminalDiscount = true; }
           if (VEHICLE_SPEED[item.id]) {
             const curSpd = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;

@@ -173,13 +173,41 @@ export default function Home() {
       <NavBar />
       <OnboardingModal onComplete={updateMemory} />
 
+      {/* City Info Section */}
+      <div className="relative z-20 px-4 py-3"
+        style={{ background: 'linear-gradient(135deg, rgba(0,255,65,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(0,255,65,0.12)' }}>
+        <div className="flex items-start gap-4">
+          <div className="flex items-center gap-2 shrink-0">
+            <Terminal className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)' }} />
+            <div>
+              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(0,255,65,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>MINX CITY</div>
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE</div>
+            </div>
+          </div>
+          <div className="flex-1 grid grid-cols-3 gap-3" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>2.4M REGISTERED</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>FACTION CONTROL</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(180,0,255,0.7)' }}>PABLO CORP.</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ECONOMY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,204,0,0.7)' }}>ƒ FIAT STANDARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Terminal economy framing */}
       <div className="relative z-20 flex items-center gap-3 px-4 py-2"
         style={{ background: 'rgba(0,255,65,0.03)', borderBottom: '1px solid rgba(0,255,65,0.08)' }}>
         <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(0,255,65,0.35)' }} />
         <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)', letterSpacing: '0.08em', flex: 1 }}>
           <strong style={{ color: 'rgba(0,255,65,0.6)' }}>FREE TERMINAL</strong>
-          {' '}— Interview Solver, Screen Scanner, Voice Listener &amp; PABLO AI are yours to use. Enter the world free — earn FIAT to unlock buildings, property &amp; gear inside.
+          {' '}— Interview Solver, Screen Scanner, Voice Listener &amp; PABLO AI included free on all terminals. No device purchase needed.
         </span>
       </div>
 

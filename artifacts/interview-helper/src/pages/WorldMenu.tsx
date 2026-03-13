@@ -45,7 +45,7 @@ const CLASS_BADGE: Record<string, string> = {
   replicant: 'REP',
 };
 
-type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'locations' | 'controls';
+type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'locations' | 'terminals' | 'controls';
 
 const CLASSES = [
   {
@@ -139,6 +139,7 @@ const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
   { id: 'locations',   label: 'LOCATIONS',    col: '#88ff44' },
+  { id: 'terminals',   label: 'TERMINALS',    col: '#33ffaa' },
   { id: 'controls',    label: 'CONTROLS',     col: '#cc88ff' },
 ];
 
@@ -200,7 +201,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         PABLO CORP. is not a local operation. SENIOR PABLO runs towers in 24 cities across every timezone — Neo-São Paulo, Sector Berlin, Old Shanghai, Neon Lagos, and twenty others no one is allowed to name. He is rarely in Minx City. The rooftop helipad on Floor 62 runs day and night. Operatives near the tower report the sound of rotors at 3 AM — departure. 5 AM — arrival. Different helicopter each time. He moves between towers the way other men move between rooms. Minx City is one floor of a building that never ends.
       </div>
       <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Floor 62: rooftop helipad — his personal fleet runs 24/7. Nobody knows what's on top. Nobody sees him land." col="#cc44ff" />
-      <Row label="PABLO DEVICE" val="The app you're running right now. AI assistant, world map, PABLO network access. Press [P] in-world." col="#00ff41" />
+      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
       <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
@@ -360,6 +361,52 @@ function GuideContent({ section }: { section: GuideSection }) {
     </div>
   );
 
+  if (section === 'terminals') return (
+    <div style={S}>
+      <SectionHead>TERMINALS & DEVICES</SectionHead>
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        PABLO AI is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP. network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
+      </div>
+      <Divider />
+      <SectionHead>PERSONAL DEVICE</SectionHead>
+      <Row label="AVAILABILITY" val="Corporate operatives start with a personal handheld device. Outcast and Replicant operatives must find or purchase one." col="#33ffaa" />
+      <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#00ff41" />
+      <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
+      <Row label="REPAIR" val="Visit DR. WRIGHT'S CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VEND-O-MATIC (ƒ5,000 FIAT). Full heal at DR. WRIGHT'S (ƒ10,000) includes device repair." col="#ffcc00" />
+      <Divider />
+      <SectionHead>PUBLIC TERMINALS</SectionHead>
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        Public terminals are physical objects in the game world. Walk up and press [E] to access. PABLO AI is free on all of them. Use these when your personal device is broken, missing, or if you never had one.
+      </div>
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
+      {[
+        { name: 'WEST PAYPHONE',    loc: 'Western Minx City, near Metro West',       col: '#33ffaa' },
+        { name: 'CENTRAL KIOSK',    loc: 'Central city, near Hotel Famicom',          col: '#33ffaa' },
+        { name: 'EAST PAYPHONE',    loc: 'East district, near Print Shop',            col: '#33ffaa' },
+        { name: 'NEON KIOSK',       loc: 'Near Club Neon, east side',                 col: '#33ffaa' },
+        { name: 'NORTH PAYPHONE',   loc: 'North quarter, near North Gate',            col: '#33ffaa' },
+      ].map(t => (
+        <Row key={t.name} label={t.name} val={t.loc} col={t.col} />
+      ))}
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
+      <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
+      <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
+        Armored vans parked in the wasteland. Each contains a working terminal and a cot for rest. Energy +15 on entry.
+      </div>
+      <Row label="WEST VAN" val="Western wasteland, south of Iron Rats territory." col="#88ff44" />
+      <Row label="CENTRAL VAN" val="Deep wasteland, near Terminus Shelter." col="#88ff44" />
+      <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#88ff44" />
+      <Divider />
+      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored. SENIOR PABLO is watching.
+      </div>
+    </div>
+  );
+
   if (section === 'controls') return (
     <div style={S}>
       <SectionHead>CONTROLS</SectionHead>
@@ -367,11 +414,11 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['WASD / ARROWS', 'Move operative'],
-          ['E', 'Enter building / Talk to NPC'],
+          ['E', 'Enter building / Talk to NPC / Use terminal'],
           ['F', 'Melee attack (72px range)'],
           ['C', 'Open world chat'],
           ['V', 'Toggle voice (mic)'],
-          ['P', 'Open PABLO device (AI)'],
+          ['P', 'Open PABLO device (requires working device)'],
           ['ESC', 'Close panels / dialogs'],
           ['SPACE / ENTER', 'Advance dialog text'],
           ['↑↑↓↓←→←→BA', 'Konami Code (secret)'],
