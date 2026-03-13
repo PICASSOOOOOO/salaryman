@@ -11,7 +11,7 @@ const FREE_ITEMS = [
 ];
 
 const PRO_ITEMS = [
-  { icon: MessageSquare, label: "Everything in Free" },
+  { icon: MessageSquare, label: "PABLO AI Pro — priority responses, full memory & business context" },
   { icon: Mic, label: "Say This — instant verbal bullets to speak right now" },
   { icon: Lightbulb, label: "Get Hint, Full Solution, Explain Approach, Analyze Complexity" },
   { icon: Mic, label: "Live Listen — real-time voice coaching" },
