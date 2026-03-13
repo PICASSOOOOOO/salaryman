@@ -41,8 +41,8 @@ export default function Home() {
             <Terminal className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="font-bold tracking-tight leading-none">Interview Helper</h1>
-            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">LIVE.ASSIST_v1.0</p>
+            <h1 className="font-bold tracking-tight leading-none">DevDocs</h1>
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">v3.1.2 — reference</p>
           </div>
         </div>
       </header>
