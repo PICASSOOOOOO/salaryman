@@ -18,3 +18,9 @@ id = "NM1BpjX_DWklkENa7tEKr"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-b.png"
 type = "image"
 title = "Option B — Abstract Diamond"
+
+[[outputs]]
+id = "L0_VMIdGMx1E20THBlzcW"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-c.png"
+type = "image"
+title = "Option C — Stacked Lines"
