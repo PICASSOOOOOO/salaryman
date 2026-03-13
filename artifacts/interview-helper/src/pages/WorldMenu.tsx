@@ -201,7 +201,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Floor 62: rooftop helipad — his personal fleet runs 24/7. Nobody knows what's on top. Nobody sees him land." col="#cc44ff" />
       <Row label="PABLO DEVICE" val="The app you're running right now. AI assistant, world map, PABLO network access. Press [P] in-world." col="#00ff41" />
-      <Row label="CREAM (ƒ)" val="The only currency that matters. Cream is what Minx City runs on. ƒ1 CREAM = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         This world was painted by Picasso and built by the good folks at PABLO CORP. — 24 towers, 24 cities, one vision. All rights reserved in every timezone.
@@ -732,7 +732,7 @@ export default function WorldMenu() {
                               {[
                                 { l: 'CLASS', v: save.charClass.toUpperCase() },
                                 { l: 'LEVEL', v: String(save.level) },
-                                { l: 'CREAM', v: `ƒ${save.salary.toLocaleString()}` },
+                                { l: 'FIAT', v: `ƒ${save.salary.toLocaleString()}` },
                                 { l: 'ZONE', v: save.lastZone },
                               ].map(({ l, v }) => (
                                 <div key={l} style={{ borderLeft: `2px solid ${col}44`, paddingLeft: '.5rem' }}>
@@ -795,7 +795,7 @@ export default function WorldMenu() {
                 <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
                   <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
                   <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.8, maxWidth: 440 }}>
-                    Sign in to unlock save slots. Your CREAM, level, and operative history are stored to your account — resume any story from any device.
+                    Sign in to unlock save slots. Your FIAT, level, and operative history are stored to your account — resume any story from any device.
                   </div>
                   <button onClick={login} style={{ padding: '.65rem 2rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', fontFamily: 'inherit', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', textShadow: '0 0 8px rgba(0,255,65,.4)' }}>
                     SIGN IN TO SAVE
@@ -914,6 +914,7 @@ export default function WorldMenu() {
                     </button>
                   ))}
                 </div>
+                </div>
 
                 {bizType === 'fictitious' && (
                   <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
@@ -938,7 +939,10 @@ export default function WorldMenu() {
                   <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
-                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever SENIOR PABLO has planned. Hurry up — you're already late.
+                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever SENIOR PABLO has planned. Your progress and FIAT balance will not be saved between sessions. PABLO Corp. has no record of you — which is either very good or very bad.
+                    </div>
+                    <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
+                      You can register a business later at PABLO TOWER. Walk in and use the terminal.
                     </div>
                   </div>
                 )}
