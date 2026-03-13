@@ -480,6 +480,7 @@ export default function WorldPlay() {
   const localStream   = useRef<MediaStream | null>(null);
   const audioCtx      = useRef<AudioContext | null>(null);
   const frozenRef     = useRef(false);
+  const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -1121,6 +1122,7 @@ export default function WorldPlay() {
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
     frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway;
+    npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank, showSubway]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
@@ -1424,7 +1426,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // All threats only aggro when player is near/in wasteland; SPY can go slightly deeper into city outskirts
         const canAggro = g.py > WASTELAND_Y - 150;
 
-        if (canAggro && dist < aggroRange) {
+        if (canAggro && dist < aggroRange && !npcDialogRef.current) {
           const ang = Math.atan2(g.py - t.y, g.px - t.x);
           t.dx = Math.cos(ang) * chaseSpeed; t.dy = Math.sin(ang) * chaseSpeed;
         } else if (t.timer <= 0) {
@@ -1440,7 +1442,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.x = Math.max(10, Math.min(W - 10, nx2));
         t.y = Math.max(10, Math.min(H - 10, ny2));
 
-        if (dist < 14 && g.invincible === 0) {
+        if (dist < 14 && g.invincible === 0 && !npcDialogRef.current) {
           g.hp = Math.max(0, g.hp - 0.4); g.invincible = 50; g.flash = 6;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
