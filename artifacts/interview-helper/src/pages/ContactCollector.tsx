@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp, Mail, Loader2, Check } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useAppMode } from '../hooks/use-app-mode';
 
 const STORAGE_KEY = 'devdocs_contacts';
 
@@ -51,6 +52,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 
 export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
+  const { config } = useAppMode();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [form, setForm] = useState({ ...EMPTY });
   const [showForm, setShowForm] = useState(false);
@@ -126,8 +128,9 @@ export default function ContactCollector() {
     );
     const csv = [header, ...rows].join('\n');
 
+    const appName = config.emailSender;
     const html = `
-      <h2>Your DevDocs Contacts</h2>
+      <h2>Your ${appName} Contacts</h2>
       <p>${contacts.length} contact${contacts.length !== 1 ? 's' : ''} exported on ${new Date().toLocaleDateString()}</p>
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">
         <thead><tr style="background:#1a1a2e;color:white">${fields.map(f => `<th>${f}</th>`).join('')}</tr></thead>
@@ -135,7 +138,7 @@ export default function ContactCollector() {
           `<tr>${fields.map(f => `<td>${c[f] ?? ''}</td>`).join('')}</tr>`
         ).join('')}</tbody>
       </table>
-      <p style="color:#666;font-size:12px;margin-top:16px">Sent from DevDocs</p>
+      <p style="color:#666;font-size:12px;margin-top:16px">Sent from ${appName}</p>
     `;
 
     try {
@@ -144,7 +147,7 @@ export default function ContactCollector() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: user.email,
-          subject: `Your DevDocs Contacts — ${new Date().toLocaleDateString()}`,
+          subject: `Your ${appName} Contacts — ${new Date().toLocaleDateString()}`,
           html,
           text: csv,
         }),
