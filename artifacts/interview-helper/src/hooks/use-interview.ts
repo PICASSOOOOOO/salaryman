@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity' | 'say_it';
 export type SolverStatus = 'idle' | 'thinking' | 'streaming' | 'done' | 'error';
@@ -469,12 +469,30 @@ function saveChatHistory(msgs: ChatMessage[]) {
   } catch {}
 }
 
-function loadBusinessMemory(): string {
+function loadBusinessMemoryLocal(): string {
   return localStorage.getItem(MEMORY_STORAGE_KEY) ?? '';
 }
 
-function saveBusinessMemory(mem: string) {
+async function fetchBusinessMemory(): Promise<string> {
+  try {
+    const res = await fetch('/api/tools/memory');
+    if (!res.ok) return loadBusinessMemoryLocal();
+    const data = await res.json();
+    return data.memory ?? loadBusinessMemoryLocal();
+  } catch {
+    return loadBusinessMemoryLocal();
+  }
+}
+
+async function saveBusinessMemory(mem: string) {
   try { localStorage.setItem(MEMORY_STORAGE_KEY, mem); } catch {}
+  try {
+    await fetch('/api/tools/memory', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memory: mem }),
+    });
+  } catch {}
 }
 
 function parseAction(text: string): { clean: string; action?: ActionCard } {
@@ -511,9 +529,15 @@ async function extractBusinessContext(
 
 export function useAdvisorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChatHistory());
-  const [businessMemory, setBusinessMemory] = useState<string>(() => loadBusinessMemory());
+  const [businessMemory, setBusinessMemory] = useState<string>(() => loadBusinessMemoryLocal());
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    fetchBusinessMemory().then(mem => {
+      if (mem) setBusinessMemory(mem);
+    });
+  }, []);
 
   const send = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
@@ -556,7 +580,7 @@ export function useAdvisorChat() {
           setIsStreaming(false);
 
           // Background: update business memory
-          const currentMem = loadBusinessMemory();
+          const currentMem = loadBusinessMemoryLocal();
           extractBusinessContext(finalHistory, currentMem).then(newMem => {
             if (newMem !== currentMem) {
               setBusinessMemory(newMem);

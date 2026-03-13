@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp, Mail, Loader2, Check } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 
-const STORAGE_KEY = 'devdocs_contacts';
-
 interface Contact {
-  id: string;
+  id: number;
   name: string;
   email: string;
   phone: string;
@@ -54,45 +52,51 @@ export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...EMPTY });
   const [showForm, setShowForm] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
-  useEffect(() => {
+  const loadContacts = useCallback(async () => {
+    if (!isAuthenticated) { setLoading(false); return; }
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setContacts(JSON.parse(saved));
+      const res = await fetch('/api/tools/contacts');
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(data.contacts ?? []);
+      }
     } catch {}
-  }, []);
+    setLoading(false);
+  }, [isAuthenticated]);
 
-  const persist = (list: Contact[]) => {
-    setContacts(list);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !isAuthenticated) return;
+    try {
+      const res = await fetch('/api/tools/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContacts(prev => [data.contact, ...prev]);
+        setForm({ ...EMPTY });
+        setShowForm(false);
+      }
+    } catch {}
   };
 
-  const handleSave = () => {
-    if (!form.name.trim()) return;
-    const contact: Contact = {
-      ...form,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    persist([contact, ...contacts]);
-    setForm({ ...EMPTY });
-    setShowForm(false);
-
-    // Also send to API (Google Sheets hook ready here)
-    fetch('/api/tools/contacts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(contact),
-    }).catch(() => {});
-  };
-
-  const handleDelete = (id: string) => {
-    persist(contacts.filter(c => c.id !== id));
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch(`/api/tools/contacts/${id}`, { method: 'DELETE' });
+      if (res.ok) setContacts(prev => prev.filter(c => c.id !== id));
+    } catch {}
   };
 
   const handleExportCSV = () => {
@@ -199,10 +203,12 @@ export default function ContactCollector() {
                 )}
               </>
             )}
-            <button onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/30 transition-colors">
-              <Plus className="w-4 h-4" /> New Contact
-            </button>
+            {isAuthenticated && (
+              <button onClick={() => setShowForm(v => !v)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/30 transition-colors">
+                <Plus className="w-4 h-4" /> New Contact
+              </button>
+            )}
           </div>
         </div>
 
@@ -270,71 +276,90 @@ export default function ContactCollector() {
           </div>
         </div>
 
-        {/* Contact list */}
-        {contacts.length === 0 ? (
+        {/* Not logged in state */}
+        {!isAuthenticated && !loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center">
               <Users className="w-8 h-8 text-muted-foreground/30" />
             </div>
-            <p className="text-muted-foreground text-sm">No contacts yet — add your first one above</p>
+            <p className="text-muted-foreground text-sm">Sign in to save and access your contacts from any device</p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground mb-2">{contacts.length} contact{contacts.length !== 1 ? 's' : ''}</p>
-            {contacts.map(contact => (
-              <motion.div key={contact.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors"
-                  onClick={() => setExpanded(expanded === contact.id ? null : contact.id)}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
-                      {contact.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-foreground">{contact.name}</p>
-                      <p className="text-xs text-muted-foreground">{contact.email || contact.phone || contact.hometown || '—'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground/40">
-                      {new Date(contact.createdAt).toLocaleDateString()}
-                    </span>
-                    <button onClick={e => { e.stopPropagation(); handleDelete(contact.id); }}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                    {expanded === contact.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                  </div>
-                </div>
+        )}
 
-                <AnimatePresence>
-                  {expanded === contact.id && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                      className="border-t border-border px-5 pb-4 pt-3 overflow-hidden">
-                      <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
-                        {[
-                          ['Phone', contact.phone], ['Address', contact.address], ['Age', contact.age],
-                          ['Ethnicity', contact.ethnicity], ['Hometown', contact.hometown], ['Timezone', contact.timezone],
-                          ['Kids', contact.kids],
-                        ].filter(([, v]) => v).map(([label, value]) => (
-                          <div key={label as string}>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
-                            <p className="text-foreground text-xs mt-0.5">{value}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {contact.bio && (
-                        <div className="mt-3 pt-3 border-t border-border/50">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Bio</span>
-                          <p className="text-xs text-foreground mt-0.5">{contact.bio}</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
+        {/* Loading */}
+        {loading && (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
           </div>
+        )}
+
+        {/* Contact list */}
+        {!loading && isAuthenticated && (
+          contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center">
+                <Users className="w-8 h-8 text-muted-foreground/30" />
+              </div>
+              <p className="text-muted-foreground text-sm">No contacts yet — add your first one above</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground mb-2">{contacts.length} contact{contacts.length !== 1 ? 's' : ''}</p>
+              {contacts.map(contact => (
+                <motion.div key={contact.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors"
+                    onClick={() => setExpanded(expanded === contact.id ? null : contact.id)}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
+                        {contact.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">{contact.name}</p>
+                        <p className="text-xs text-muted-foreground">{contact.email || contact.phone || contact.hometown || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground/40">
+                        {new Date(contact.createdAt).toLocaleDateString()}
+                      </span>
+                      <button onClick={e => { e.stopPropagation(); handleDelete(contact.id); }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      {expanded === contact.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {expanded === contact.id && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        className="border-t border-border px-5 pb-4 pt-3 overflow-hidden">
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                          {[
+                            ['Phone', contact.phone], ['Address', contact.address], ['Age', contact.age],
+                            ['Ethnicity', contact.ethnicity], ['Hometown', contact.hometown], ['Timezone', contact.timezone],
+                            ['Kids', contact.kids],
+                          ].filter(([, v]) => v).map(([label, value]) => (
+                            <div key={label as string}>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
+                              <p className="text-foreground text-xs mt-0.5">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {contact.bio && (
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Bio</span>
+                            <p className="text-xs text-foreground mt-0.5">{contact.bio}</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              ))}
+            </div>
+          )
         )}
       </main>
     </div>

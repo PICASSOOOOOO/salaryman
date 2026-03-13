@@ -1,27 +1,10 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
+import { db, contactsTable, userMemoryTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
-
-// ── In-memory contact store (swap for DB/Sheets later) ────────────────────────
-const contacts: ContactRecord[] = [];
-let nextId = 1;
-
-export interface ContactRecord {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  age: string;
-  ethnicity: string;
-  hometown: string;
-  timezone: string;
-  kids: string;
-  bio: string;
-  createdAt: string;
-}
 
 // ── Strip HTML to plain text ──────────────────────────────────────────────────
 function htmlToText(html: string): string {
@@ -250,41 +233,79 @@ Make questions feel natural, not corporate. Like something a smart CEO would gen
   res.end();
 });
 
-// ── Contacts CRUD ──────────────────────────────────────────────────────────────
+// ── Contacts CRUD (DB-backed, requires auth) ───────────────────────────────────
 
-router.get("/tools/contacts", (_req, res) => {
-  res.json({ contacts });
+router.get("/tools/contacts", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const rows = await db
+    .select()
+    .from(contactsTable)
+    .where(eq(contactsTable.userId, req.user.id))
+    .orderBy(contactsTable.createdAt);
+  res.json({ contacts: rows.reverse() });
 });
 
-router.post("/tools/contacts", (req, res) => {
-  const data = req.body as Omit<ContactRecord, "id" | "createdAt">;
-  const record: ContactRecord = { ...data, id: nextId++, createdAt: new Date().toISOString() };
-  contacts.push(record);
+router.post("/tools/contacts", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const { name, email = "", phone = "", address = "", age = "", ethnicity = "", hometown = "", timezone = "", kids = "", bio = "" } =
+    req.body as Record<string, string>;
+  if (!name?.trim()) { res.status(400).json({ error: "Name required" }); return; }
+  const [record] = await db
+    .insert(contactsTable)
+    .values({ userId: req.user.id, name, email, phone, address, age, ethnicity, hometown, timezone, kids, bio })
+    .returning();
   res.status(201).json({ contact: record });
 });
 
-router.delete("/tools/contacts/:id", (req, res) => {
+router.delete("/tools/contacts/:id", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
   const id = Number(req.params.id);
-  const idx = contacts.findIndex((c) => c.id === id);
-  if (idx === -1) { res.status(404).json({ error: "Not found" }); return; }
-  contacts.splice(idx, 1);
+  const deleted = await db
+    .delete(contactsTable)
+    .where(eq(contactsTable.id, id))
+    .returning();
+  if (deleted.length === 0 || deleted[0].userId !== req.user.id) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
   res.json({ ok: true });
 });
 
-router.get("/tools/contacts/export", (_req, res) => {
-  const fields: (keyof ContactRecord)[] = [
-    "id", "name", "email", "phone", "address", "age", "ethnicity",
-    "hometown", "timezone", "kids", "bio", "createdAt",
-  ];
+router.get("/tools/contacts/export", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const rows = await db
+    .select()
+    .from(contactsTable)
+    .where(eq(contactsTable.userId, req.user.id))
+    .orderBy(contactsTable.createdAt);
+  const fields = ["name", "email", "phone", "address", "age", "ethnicity", "hometown", "timezone", "kids", "bio", "createdAt"] as const;
   const header = fields.join(",");
-  const rows = contacts.map((c) =>
+  const csvRows = rows.map((c) =>
     fields.map((f) => `"${String(c[f] ?? "").replace(/"/g, '""')}"`).join(",")
   );
-  const csv = [header, ...rows].join("\n");
-
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", 'attachment; filename="contacts.csv"');
-  res.send(csv);
+  res.send([header, ...csvRows].join("\n"));
+});
+
+// ── User Memory (ARIA context, DB-backed, requires auth) ───────────────────────
+
+router.get("/tools/memory", async (req, res) => {
+  if (!req.isAuthenticated()) { res.json({ memory: "" }); return; }
+  const [row] = await db
+    .select()
+    .from(userMemoryTable)
+    .where(eq(userMemoryTable.userId, req.user.id));
+  res.json({ memory: row?.memory ?? "" });
+});
+
+router.put("/tools/memory", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const { memory } = req.body as { memory: string };
+  await db
+    .insert(userMemoryTable)
+    .values({ userId: req.user.id, memory: memory ?? "" })
+    .onConflictDoUpdate({ target: userMemoryTable.userId, set: { memory: memory ?? "" } });
+  res.json({ ok: true });
 });
 
 // ── POST /tools/send-email ────────────────────────────────────────────────────
