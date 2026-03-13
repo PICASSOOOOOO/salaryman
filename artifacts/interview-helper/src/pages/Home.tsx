@@ -9,6 +9,7 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { NavBar } from '@/components/NavBar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ProGate } from '@/components/ProGate';
+import { usePlan } from '@/hooks/use-plan';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -24,6 +25,7 @@ const CHAT_STARTERS = [
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const { isPro } = usePlan();
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
@@ -296,7 +298,7 @@ export default function Home() {
             </div>
           </div>
 
-          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} />
+          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} isPro={isPro} />
         </section>
 
         {/* RIGHT PANEL */}

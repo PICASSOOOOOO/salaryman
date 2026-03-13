@@ -1,16 +1,19 @@
 import { motion } from "framer-motion";
-import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star } from "lucide-react";
+import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
 
 const FREE_ITEMS = [
   { icon: MessageSquare, label: "PABLO AI Chat — ask anything, anytime" },
+  { icon: Code2, label: "Decipher & understand any code (via PABLO chat)" },
   { icon: Check, label: "Basic profile & account" },
 ];
 
 const PRO_ITEMS = [
   { icon: MessageSquare, label: "Everything in Free" },
+  { icon: Mic, label: "Say This — instant verbal bullets to speak right now" },
+  { icon: Lightbulb, label: "Get Hint, Full Solution, Explain Approach, Analyze Complexity" },
   { icon: Mic, label: "Live Listen — real-time voice coaching" },
   { icon: Monitor, label: "Scan Screen — AI reads your screen" },
   { icon: Presentation, label: "Presenter Mode — AI-powered slides & interviews" },
