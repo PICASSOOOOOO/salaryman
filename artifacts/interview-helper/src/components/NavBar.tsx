@@ -1,5 +1,6 @@
-import { Terminal, Users, Presentation } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@workspace/replit-auth-web';
 
 const NAV = [
   { path: '/', label: 'DevDocs', icon: Terminal },
@@ -9,6 +10,7 @@ const NAV = [
 
 export function NavBar() {
   const [location, navigate] = useLocation();
+  const { user, isLoading, isAuthenticated, login, logout } = useAuth();
 
   return (
     <header className="h-14 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background/60 backdrop-blur-xl z-20 relative">
@@ -36,6 +38,43 @@ export function NavBar() {
             </button>
           );
         })}
+
+        {/* Auth section */}
+        <div className="ml-2 pl-2 border-l border-border flex items-center gap-2">
+          {isLoading ? (
+            <div className="w-7 h-7 rounded-full bg-muted animate-pulse" />
+          ) : isAuthenticated && user ? (
+            <div className="flex items-center gap-2">
+              {user.profileImageUrl ? (
+                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'}
+                  className="w-7 h-7 rounded-full border border-border object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">
+                  {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                </div>
+              )}
+              <div className="hidden sm:block text-right">
+                <p className="text-xs font-medium text-foreground leading-none">
+                  {user.firstName ?? user.email?.split('@')[0] ?? 'User'}
+                </p>
+                {user.email && (
+                  <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{user.email}</p>
+                )}
+              </div>
+              <button onClick={logout}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Sign out">
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={login}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors">
+              <LogIn className="w-3.5 h-3.5" />
+              Sign in
+            </button>
+          )}
+        </div>
       </nav>
     </header>
   );

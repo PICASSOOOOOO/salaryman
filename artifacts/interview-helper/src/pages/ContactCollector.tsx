@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp, Mail, Loader2, Check } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
+import { useAuth } from '@workspace/replit-auth-web';
 
 const STORAGE_KEY = 'devdocs_contacts';
 
@@ -49,10 +50,13 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 }
 
 export default function ContactCollector() {
+  const { user, isAuthenticated } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [form, setForm] = useState({ ...EMPTY });
   const [showForm, setShowForm] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     try {
@@ -107,6 +111,50 @@ export default function ContactCollector() {
     URL.revokeObjectURL(url);
   };
 
+  const handleEmailContacts = async () => {
+    if (!user?.email || contacts.length === 0 || emailSending) return;
+    setEmailSending(true);
+    setEmailSent(false);
+
+    const fields: (keyof Omit<Contact, 'id'>)[] = [
+      'name', 'email', 'phone', 'address', 'age', 'ethnicity',
+      'hometown', 'timezone', 'kids', 'bio', 'createdAt',
+    ];
+    const header = fields.join(',');
+    const rows = contacts.map(c =>
+      fields.map(f => `"${String(c[f] ?? '').replace(/"/g, '""')}"`).join(',')
+    );
+    const csv = [header, ...rows].join('\n');
+
+    const html = `
+      <h2>Your DevDocs Contacts</h2>
+      <p>${contacts.length} contact${contacts.length !== 1 ? 's' : ''} exported on ${new Date().toLocaleDateString()}</p>
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">
+        <thead><tr style="background:#1a1a2e;color:white">${fields.map(f => `<th>${f}</th>`).join('')}</tr></thead>
+        <tbody>${contacts.map(c =>
+          `<tr>${fields.map(f => `<td>${c[f] ?? ''}</td>`).join('')}</tr>`
+        ).join('')}</tbody>
+      </table>
+      <p style="color:#666;font-size:12px;margin-top:16px">Sent from DevDocs</p>
+    `;
+
+    try {
+      await fetch('/api/tools/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: user.email,
+          subject: `Your DevDocs Contacts — ${new Date().toLocaleDateString()}`,
+          html,
+          text: csv,
+        }),
+      });
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 4000);
+    } catch {}
+    setEmailSending(false);
+  };
+
   const f = (k: keyof typeof EMPTY) => (v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
@@ -131,10 +179,22 @@ export default function ContactCollector() {
           </div>
           <div className="flex items-center gap-2">
             {contacts.length > 0 && (
-              <button onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-semibold hover:bg-emerald-500/25 transition-colors">
-                <Download className="w-4 h-4" /> Export CSV
-              </button>
+              <>
+                <button onClick={handleExportCSV}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-semibold hover:bg-emerald-500/25 transition-colors">
+                  <Download className="w-4 h-4" /> Export CSV
+                </button>
+                {isAuthenticated && user?.email && (
+                  <button onClick={handleEmailContacts} disabled={emailSending}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
+                      ${emailSent
+                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                        : 'bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25'} disabled:opacity-60`}>
+                    {emailSending ? <Loader2 className="w-4 h-4 animate-spin" /> : emailSent ? <Check className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                    {emailSent ? 'Sent!' : 'Email me'}
+                  </button>
+                )}
+              </>
             )}
             <button onClick={() => setShowForm(v => !v)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/20 border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/30 transition-colors">

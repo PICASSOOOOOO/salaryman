@@ -286,4 +286,54 @@ router.get("/tools/contacts/export", (_req, res) => {
   res.send(csv);
 });
 
+// ── POST /tools/send-email ────────────────────────────────────────────────────
+// Sends an email to the user via Resend (requires RESEND_API_KEY env var)
+router.post("/tools/send-email", async (req, res) => {
+  const { to, subject, html, text } = req.body as {
+    to: string;
+    subject: string;
+    html?: string;
+    text?: string;
+  };
+
+  if (!to || !subject || (!html && !text)) {
+    res.status(400).json({ error: "Missing required fields: to, subject, html or text" });
+    return;
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    res.status(503).json({ error: "Email service not configured — RESEND_API_KEY missing" });
+    return;
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "DevDocs <noreply@devdocs.app>",
+        to: [to],
+        subject,
+        html: html ?? `<pre>${text}</pre>`,
+        text: text ?? "",
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      res.status(500).json({ error: `Email failed: ${err}` });
+      return;
+    }
+
+    const data = await response.json();
+    res.json({ ok: true, id: (data as Record<string, unknown>).id });
+  } catch (err) {
+    res.status(500).json({ error: `Email error: ${String(err)}` });
+  }
+});
+
 export default router;
