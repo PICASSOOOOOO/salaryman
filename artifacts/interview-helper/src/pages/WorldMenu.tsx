@@ -9,30 +9,36 @@ const CLASSES = [
     id: 'corporate' as CharClass,
     label: 'CORPORATE',
     tagline: 'City. Salary. Connections.',
-    desc: 'Born in the neon towers. You know the right people — for now. High starting salary. The wasteland will eat you alive.',
+    desc: 'Born in the neon towers. You know the right people — for now. City networks are open to you. Government buildings welcome you. PABLO Corp. smiles. The wasteland will eat you alive.',
     start: 'MINX CITY',
     salary: '$500',
     hp: '100',
+    atk: '12',
+    perks: 'City access · Network bonus · High salary',
     color: '#00ff41',
   },
   {
     id: 'outcast' as CharClass,
     label: 'OUTCAST',
-    tagline: 'Wasteland. Broke. Alive.',
-    desc: 'Exiled. Nothing to your name. You survive by instinct. Zero salary. The city will chew you up. The wasteland is your home.',
+    tagline: 'Wasteland. Broke. Scarred.',
+    desc: 'Exiled and hardened. Nothing but survival instinct. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. The walls don\'t want you — good. The secrets are all outside anyway.',
     start: 'WASTELAND',
     salary: '$0',
-    hp: '100',
+    hp: '110',
+    atk: '14',
+    perks: 'Wasteland drain -40% · Kill bonus outside city · Scavenge+',
     color: '#88ff44',
   },
   {
     id: 'replicant' as CharClass,
     label: 'REPLICANT',
-    tagline: 'Android. Balanced. Alone.',
-    desc: 'Neither human nor machine. Neither city nor wasteland. You walk both sides. Trusted by nobody. Useful to everyone.',
+    tagline: 'Android. Conscious. Strongest.',
+    desc: 'You are the conscious android — built for combat, not for service. Maximum HP. Maximum strength. PABLO Corp. wants you shut down. Every other replicant out there is fighting the same war you are. The corpo-cogs are the problem.',
     start: 'MINX CITY',
     salary: '$200',
-    hp: '100',
+    hp: '160',
+    atk: '20',
+    perks: 'Highest HP · Strongest ATK · Built for war',
     color: '#33ffaa',
   },
 ];
@@ -479,14 +485,19 @@ export default function WorldMenu() {
                   <div style={{ border: `1px solid ${selected.color}44`, background: 'rgba(0,255,65,.04)', padding: '1rem' }}>
                     <div style={{ ...VT, fontSize: '1.4rem', color: selected.color, letterSpacing: '.12em', marginBottom: '.5rem' }}>{selected.label}</div>
                     <div style={{ fontSize: '.62rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem' }}>
-                      {[['START', selected.start], ['SALARY', selected.salary], ['HP', selected.hp]].map(([k, v]) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
+                      {[['START', selected.start], ['SALARY', selected.salary], ['HP', selected.hp], ['ATK', (selected as any).atk ?? '12']].map(([k, v]) => (
                         <div key={k} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.4rem .5rem' }}>
                           <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
-                          <div style={{ ...VT, fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
+                          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
                         </div>
                       ))}
                     </div>
+                    {(selected as any).perks && (
+                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.07em', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.5rem' }}>
+                        ★ {(selected as any).perks}
+                      </div>
+                    )}
                   </div>
 
                   <div>
