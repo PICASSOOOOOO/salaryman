@@ -36,3 +36,9 @@ id = "syk8YUM81L0TbZn7uMsoY"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-e.png"
 type = "image"
 title = "Option E — Neon Bolt"
+
+[[outputs]]
+id = "MXoIn4u271w0xT97oX0U0"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-f.png"
+type = "image"
+title = "Option F — Neon F Lettermark"
