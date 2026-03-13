@@ -503,7 +503,6 @@ export default function WorldPlay() {
     }
     return '> Welcome to Minx City · PST. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device. City is safe from major gangs. PABLO CORP. guards patrol. Spies lurk in disguise.';
   });
-  const [isDead,  setIsDead]  = useState(false);
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
   const [voice,   setVoice]   = useState(false);
@@ -958,8 +957,8 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank;
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade, showBank]);
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank;
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1253,7 +1252,26 @@ export default function WorldPlay() {
         }
       }
 
-      if (g.hp <= 0 && !lastDead) { lastDead = true; sfxDeath(); setIsDead(true); }
+      if (g.hp <= 0 && !lastDead) {
+        lastDead = true;
+        sfxDeath();
+        // ── Auto-respawn at DR. WRIGHT'S CLINIC ──────────────────────────
+        const emergencyFee = 7500;
+        g.hp = g.maxHp; g.hunger = 60; g.thirst = 60; g.energy = 60;
+        g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
+        g.px = 230; g.py = 400;
+        g.salary = Math.max(-50000, g.salary - emergencyFee);
+        g.threats = g.threats.map(t => ({ ...t }));
+        setSalary(g.salary); setHp(Math.floor(g.hp));
+        setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
+        setPoisoned(false);
+        g.floaters.push({ x: 230, y: 380, text: `−ç${emergencyFee.toLocaleString()} EMERGENCY CARE`, color: '#ff6666', life: 120, maxLife: 120 });
+        addBankTx('DR. WRIGHT EMERGENCY CARE', -emergencyFee, g.salary);
+        sfxHeal();
+        const debtNote = g.salary < 0 ? ` You're ç${Math.abs(g.salary).toLocaleString()} in debt. DR. WRIGHT will remember this.` : '';
+        setNarr(`> DEAD. DR. WRIGHT's clinic. Emergency revival — ç${emergencyFee.toLocaleString()} CREAM deducted. "You flatlined. I brought you back. You're welcome. Pay your bill."${debtNote}`);
+      }
+      if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
@@ -2953,29 +2971,6 @@ export default function WorldPlay() {
         );
       })()}
 
-      {/* ── DEATH ── */}
-      {isDead && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.3rem', animation: 'none' }}>GAME OVER</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>INSERT COIN TO CONTINUE</div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
-            <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
-              {char.name} — {char.class.toUpperCase()}<br/>
-              HP: 0 · CREAM: ç{salary.toLocaleString()} · {zone}<br/>
-              <span style={{ color: 'rgba(255,80,80,.25)' }}>DR. WRIGHT SAYS: "Even BELMONT respawned. Get back out there."</span>
-            </div>
-            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
-              <button onClick={() => { const g = gs.current; g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(100); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
-                CONTINUE
-              </button>
-              <button onClick={() => navigate('/world')} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
-                TITLE SCREEN
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
