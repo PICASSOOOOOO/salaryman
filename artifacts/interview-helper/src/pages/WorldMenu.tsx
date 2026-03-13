@@ -148,7 +148,7 @@ const FLAVOR = [
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
-  { id: 'world',       label: 'WORLD',       col: '#00ff41' },
+  { id: 'world',       label: 'MINX CITY',   col: '#00ff41' },
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
@@ -157,6 +157,19 @@ const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
 ];
 
 const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+
+const SERVERS = [
+  { id: 'minx_city',      label: 'MINX CITY',        tz: 'PST',  region: 'Americas West'    },
+  { id: 'neo_york',       label: 'NEO YORK',          tz: 'EST',  region: 'Americas East'    },
+  { id: 'nova_sao',       label: 'NOVA SÃO',          tz: 'BRT',  region: 'Americas South'   },
+  { id: 'neon_london',    label: 'NEON LONDON',       tz: 'GMT',  region: 'Europe West'      },
+  { id: 'cyberlin',       label: 'CYBERLIN',          tz: 'CET',  region: 'Europe Central'   },
+  { id: 'dubai_sector',   label: 'DUBAI SECTOR',      tz: 'GST',  region: 'Middle East'      },
+  { id: 'mumbai_grid',    label: 'MUMBAI GRID',       tz: 'IST',  region: 'South Asia'       },
+  { id: 'tokyo_central',  label: 'TOKYO CENTRAL',     tz: 'JST',  region: 'East Asia'        },
+  { id: 'singapore_mesh', label: 'SINGAPORE MESH',    tz: 'SGT',  region: 'Southeast Asia'   },
+  { id: 'sydney_block',   label: 'SYDNEY BLOCK',      tz: 'AEST', region: 'Oceania'          },
+];
 
 function Row({ label, val, col }: { label: string; val: string; col?: string }) {
   return (
@@ -418,6 +431,7 @@ export default function WorldMenu() {
   const [flavorIdx, setFlavorIdx] = useState(0);
   const [players, setPlayers] = useState<number | null>(null);
   const [guideSection, setGuideSection] = useState<GuideSection>('world');
+  const [selectedServer, setSelectedServer] = useState('minx_city');
 
   // Cloud save management
   const [cloudSaves, setCloudSaves] = useState<CloudSave[]>([]);
@@ -596,7 +610,20 @@ export default function WorldMenu() {
 
       {/* Top bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderBottom: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em' }}>PABLO CORP. / SALARYMAN OS v1.0 &nbsp;·&nbsp; <span style={{ color: 'rgba(0,255,65,.4)' }}>MINX CITY</span> &nbsp;·&nbsp; PST</span>
+        <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+          PABLO CORP. / SALARYMAN OS v1.0 &nbsp;·&nbsp;
+          <select
+            value={selectedServer}
+            onChange={e => setSelectedServer(e.target.value)}
+            style={{ background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.1em', padding: '1px 4px', cursor: 'pointer', outline: 'none' }}
+          >
+            {SERVERS.map(s => (
+              <option key={s.id} value={s.id} style={{ background: '#030803', color: '#00ff41' }}>
+                {s.label} · {s.tz}
+              </option>
+            ))}
+          </select>
+        </span>
         <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>
           {players === -1 ? 'SERVER FULL — MAX 50' : players !== null ? `${players}/50 OPERATIVES ONLINE` : 'CONNECTING...'}
           {tick % 2 === 0 ? ' ▮' : ' ▯'}
@@ -1047,7 +1074,9 @@ export default function WorldMenu() {
 
       {/* Bottom bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>MINX CITY · PST · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 REGIONAL SERVERS</span>
+        <span style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>
+          {(() => { const sv = SERVERS.find(s => s.id === selectedServer) ?? SERVERS[0]; return `${sv.label} · ${sv.tz}`; })()} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 REGIONAL SERVERS
+        </span>
         <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', background: 'transparent', border: '1px solid rgba(0,255,65,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
       </div>
     </div>
