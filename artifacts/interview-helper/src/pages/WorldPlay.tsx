@@ -72,8 +72,8 @@ const BUILDINGS = [
   { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false, doors: mkDoorS(1060,260,110,130) },
   { id: 'eastside_flat',x: 2300, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(2300,380,110,120) },
   // ── MINX CITY WEST ──────────────────────────────────────────────────────────
-  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true,  doors: mkDoorS(370,310,120,70) },
-  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true,  doors: mkDoorS(580,40,260,230) },
+  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO',            bright: true,  doors: mkDoorS(370,310,120,70) },
+  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(580,40,260,230) },
   { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false, doors: mkDoorS(180,370,100,70) },
   { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false, doors: mkDoorS(410,420,120,80) },
   { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(720,360,110,70) },
@@ -117,7 +117,7 @@ const BUILDINGS = [
   { id: 'pawn_shop',     x: 2820, y: 350, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(2820,350,100,70) },
   { id: 'crystal4',      x: 2700, y: 430, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   { id: 'north_clinic',  x: 2620, y: 490, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(2620,490,110,70) },
-  { id: 'terminal_shop', x: 2480, y: 340, w: 130, h: 80,  label: 'PABLO CORP. N',    bright: true,  doors: mkDoorS(2480,340,130,80) },
+  { id: 'terminal_shop', x: 2480, y: 340, w: 130, h: 80,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(2480,340,130,80) },
   { id: 'north_bunker',  x: 3000, y: 200, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(3000,200,120,80) },
   { id: 'north_market',  x: 3050, y: 380, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(3050,380,100,70) },
   { id: 'crystal5',      x: 3000, y: 480, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
@@ -232,6 +232,10 @@ const NPCS = [
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; }
+interface WeaponDef { id: string; label: string; desc: string; atkBonus: number; color: string; type: 'melee' | 'ranged'; range: number; cooldown: number; icon: string; }
+interface MerchantItem { id: string; name: string; desc: string; price: number; effect: string; }
+interface Projectile { x: number; y: number; dx: number; dy: number; life: number; damage: number; type: string; }
+interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
@@ -442,7 +446,7 @@ const DOG_KILL_LINES = [
 const KONAMI_SEQ = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
 
 const STORE_LINES = [
-  '> PABLO CORP. — AUTHORIZED DEVICE OUTLET · MINX CITY · PST',
+  '> PABLO — AUTHORIZED DEVICE OUTLET · MINX CITY · PST',
   '> Minx City belongs to him. The wasteland is for those who forgot that.',
   '> PABLO devices keep you on the network. Like a second quest — but this time the dungeon is real.',
   '> There\'s a rumor: the original PABLO device firmware contains an old game. Unplayable now. SENIOR PABLO was never beaten.',
@@ -450,7 +454,7 @@ const STORE_LINES = [
 ];
 
 const TOWER_LINES = [
-  '> PABLO TOWER — 62 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
+  '> SHADOW TOWER — 62 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
   '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as Midgar. Same as every city that ever fell.',
   '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted by order of SENIOR PABLO.',
   '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
@@ -475,7 +479,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 1, name: 'LOBBY',           desc: 'Buzzing fluorescents. Name cards in the original slots. The super\'s office is behind frosted glass. Nobody has seen the super in three weeks.' },
       { floor: 2, name: 'UNITS 201–208',   desc: 'Lower floor. Long-term residents. Unit 203 has been vacant since \'89 — still listed under someone named TRAVIS. The mail still comes.' },
       { floor: 3, name: 'UNITS 301–308',   desc: 'Unit 308 ran a pirate radio antenna through the wall until the city found it. The hole is still there. Someone put a plant in front of it.' },
-      { floor: 4, name: 'YOUR FLOOR',      desc: 'Your unit. View of the PABLO TOWER roof. The curtains never fully close. You have learned to sleep on the other side of the room.' },
+      { floor: 4, name: 'YOUR FLOOR',      desc: 'Your unit. View of the SHADOW TOWER roof. The curtains never fully close. You have learned to sleep on the other side of the room.' },
       { floor: 5, name: 'UNITS 501–508',   desc: 'Unit 502 has been playing the same album since 1990. Nobody has complained. Nobody ever will.' },
       { floor: 6, name: 'LAUNDRY / STORE', desc: 'Three machines. One prints receipts dated \'87. Maintenance says it\'s a known issue. The receipts are itemized.' },
       { floor: 7, name: 'UNITS 701–708',   desc: 'MAEVE lived in 704. She moved out when she noticed the PABLO CORP. logo was visible from every window at the same angle.' },
@@ -504,7 +508,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   pablo_tower: {
-    label: 'PABLO TOWER', history: 'PABLO TOWER — 62 floors. Built 1986–1991. Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. The plans for floors 40+ were never filed.',
+    label: 'SHADOW TOWER', history: 'SHADOW TOWER — 62 floors. Built 1986–1991. Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. The plans for floors 40+ were never filed.',
     floors: [
       { floor: 1,  name: 'LOBBY / SECURITY', desc: 'PABLO CORP. reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
       { floor: 5,  name: 'PABLO CORP. OFFICES', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
@@ -532,7 +536,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     floors: [
       { floor: 1, name: 'MAIN FLOOR',      desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
       { floor: 2, name: 'VIP SECTION',     desc: 'One booth booked every Friday for four years under TETSUO. He has never shown up. The booth is always full anyway.' },
-      { floor: 3, name: 'DJ BOOTH / BROADCAST', desc: 'Doubles as pirate signal tower on Thursdays. The frequency bleeds into the PABLO TOWER antenna. Intentionally.' },
+      { floor: 3, name: 'DJ BOOTH / BROADCAST', desc: 'Doubles as pirate signal tower on Thursdays. The frequency bleeds into the SHADOW TOWER antenna. Intentionally.' },
       { floor: 4, name: 'ROOF TERRACE',    desc: 'Open air. Floor 62 is visible. Some nights it is lit. Most nights it is not. The bartender says it is random. The regulars say it is not.' },
     ],
   },
@@ -561,7 +565,7 @@ const AMBIENCE_LINES = [
   '> PIRATE FREQUENCY: "…the code is in the walls. It was always in the walls…"',
   '> MARKET ALERT: Black Market running extended hours. Unusual activity near Scrap Yard.',
   '> FIRE DEPT DISPATCH: Structure fire contained. Cause logged: electrical fault. Sector 2.',
-  '> CITIZEN ALERT: Suspicious figures near PABLO TOWER north entrance. Third report this week.',
+  '> CITIZEN ALERT: Suspicious figures near SHADOW TOWER north entrance. Third report this week.',
   '> CITY CENSUS UPDATE: Registered population 14,203. Unregistered: unknown. PABLO CORP. data-reconciliation in progress.',
   '> DISPATCH — Unit 12 requesting backup at wasteland boundary. Standing by.',
   '> EMERGENCY ALERT: Power anomaly detected Sector 3. Grid crews en route. ETA: unknown.',
@@ -705,6 +709,8 @@ export default function WorldPlay() {
     walkFrame: 0,
     guardCooldowns: [] as number[],
     ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
+    projectiles: [] as Projectile[],
+    bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
     weaponTier: _ss?.weaponTier ?? 0,
     terminalDiscount: _ss?.terminalDiscount ?? false,
@@ -742,12 +748,12 @@ export default function WorldPlay() {
       const daysLeft = char.bizRegisteredAt
         ? Math.max(0, 7 - Math.floor((Date.now() - char.bizRegisteredAt) / 86400000))
         : 7;
-      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD move · [E] interact · [F] attack · [M] map.`;
+      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map.`;
     }
     if (char?.hasBusiness === false) {
-      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device.';
+      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device.';
     }
-    return '> Welcome to Minx City · PST. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device. City is safe from major gangs. PABLO CORP. guards patrol. Spies lurk in disguise.';
+    return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device. City is safe from major gangs. PABLO guards patrol. Spies lurk in disguise.';
   });
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
@@ -816,12 +822,15 @@ export default function WorldPlay() {
   const [showWeapons, setShowWeapons] = useState(false);
   const [activeWeapon, setActiveWeapon] = useState('FISTS');
   const activeWeaponRef = useRef('FISTS');
-  const WEAPONS = [
-    { id: 'FISTS', label: 'FISTS', desc: 'Bare knuckles. No bonus.', atkBonus: 0, color: '#00ff41' },
-    { id: 'PIPE', label: 'LEAD PIPE', desc: 'Scrap yard special. +2 ATK.', atkBonus: 2, color: '#88aaff' },
-    { id: 'BLADE', label: 'MONO BLADE', desc: 'Ceramic edge. +5 ATK.', atkBonus: 5, color: '#ff6644' },
-    { id: 'STUN_ROD', label: 'STUN ROD', desc: 'PABLO Corp. issue. +4 ATK.', atkBonus: 4, color: '#ffcc00' },
-    { id: 'RAIL_PISTOL', label: 'RAIL PISTOL', desc: 'Magnetic accelerator. +8 ATK.', atkBonus: 8, color: '#ff44aa' },
+  const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => new Set(['FISTS']));
+  const unlockedWeaponsRef = useRef<Set<string>>(new Set(['FISTS']));
+  const [showMerchant, setShowMerchant] = useState<{ name: string; items: MerchantItem[] } | null>(null);
+  const WEAPONS: WeaponDef[] = [
+    { id: 'FISTS', label: 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#00ff41', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
+    { id: 'SWORD', label: 'SWORD', desc: 'Close-range slash. +6 ATK.', atkBonus: 6, color: '#ff6644', type: 'melee', range: 85, cooldown: 30, icon: 'sword' },
+    { id: 'GUN', label: 'GUN', desc: 'Mid-range projectile. +8 ATK.', atkBonus: 8, color: '#88aaff', type: 'ranged', range: 200, cooldown: 25, icon: 'gun' },
+    { id: 'LASER', label: 'LASER', desc: 'Long beam weapon. +10 ATK.', atkBonus: 10, color: '#ff44aa', type: 'ranged', range: 300, cooldown: 40, icon: 'laser' },
+    { id: 'BOMB', label: 'BOMB', desc: 'Area explosion with delay. +12 ATK.', atkBonus: 12, color: '#ffcc00', type: 'ranged', range: 150, cooldown: 60, icon: 'bomb' },
   ];
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
@@ -991,7 +1000,7 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.pablo_tower, selectedFloor: 0 });
       setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' });
     }
-    else if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
+    else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> PABLO — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'clinic')  {
       if (g.salary >= 10000) {
         g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal();
@@ -1015,9 +1024,8 @@ export default function WorldPlay() {
       setNarr('> KONAMI BANK — Welcome. MEMBER FDIC. EST. 1989. PAX PABLO. Your accounts are now accessible. [ESC] to close.');
     }
     else if (bid === 'armory') {
-      g.hunger = Math.min(100, g.hunger + 15); g.thirst = Math.min(100, g.thirst + 15);
-      g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> ARMORY — Vending machine: RATION PACK [ƒ1,000 FIAT]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
+      sfxEnter(); setShowVend(true); setVendTab('weapons');
+      setNarr('> ARMORY — PABLO-licensed weapon cache. Browse the inventory. FIAT only.');
     }
     else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. PABLO CORP. is not watching. Probably.'); }
     else if (bid === 'hotel')   {
@@ -1097,7 +1105,7 @@ export default function WorldPlay() {
       g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
       setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: GALAGA. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
     }
-    else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. Screen reads: GAME OVER. INSERT COIN TO CONTINUE. 9... 8... 7... Nobody inserts a coin. Nobody has for years.'); }
+    else if (bid === 'bunker')  { g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy); sfxHeal(); setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. You rest briefly. Energy +15. The screen reads: GAME OVER.'); }
     else if (bid === 'radio') {
       const job = QUICK_JOBS.radio;
       if ((g.jobCooldowns['radio'] ?? 0) > 0) { sfxError(); setNarr(`> PIRATE RADIO — Signal on air. "Come back in ${Math.ceil((g.jobCooldowns['radio'] ?? 0) / 60)}s." Dead air.`); return; }
@@ -1152,8 +1160,8 @@ export default function WorldPlay() {
       setNarr('> PRINT SHOP — Unauthorized print run. ƒ2,500 FIAT. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'east_bunker') { setNarr('> EAST BUNKER — Reinforced walls. Supplies enough for six months. Sign reads: EMERGENCY RESERVE — PABLO CORP. PROPERTY. "Emergency" apparently means one person on Floor 62.'); }
-    else if (bid === 'north_gate') { setNarr('> NORTH GATE — Edge of Minx City. Beyond this is open territory. Guards here wear corporate colors but the name on their jackets has been scratched off.'); }
+    else if (bid === 'east_bunker') { g.energy = Math.min(100, g.energy + 20); g.hp = Math.min(g.maxHp, g.hp + 15); setEnergy(g.energy); setHp(Math.floor(g.hp)); sfxHeal(); setNarr('> EAST BUNKER — Reinforced walls. Emergency rations. Energy +20. HP +15. Sign reads: EMERGENCY RESERVE — PABLO CORP. PROPERTY.'); }
+    else if (bid === 'north_gate') { g.energy = Math.min(100, g.energy + 10); setEnergy(g.energy); sfxHeal(); setNarr('> NORTH GATE — Edge of Minx City. You catch your breath. Energy +10. Guards patrol silently. Beyond is open territory.'); }
     else if (bid === 'outpost_alpha') {
       g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 20);
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
@@ -1273,9 +1281,35 @@ export default function WorldPlay() {
     }
   }, []);
 
+  const MERCHANT_DANTE: MerchantItem[] = [
+    { id: 'unlock_sword', name: 'UNLOCK SWORD', desc: 'Close-range slash weapon. +6 ATK.', price: 8000, effect: 'unlock_SWORD' },
+    { id: 'unlock_gun', name: 'UNLOCK GUN', desc: 'Mid-range projectile weapon. +8 ATK.', price: 15000, effect: 'unlock_GUN' },
+    { id: 'hp_up', name: 'HP UP', desc: 'Permanently increases max HP by 20.', price: 10000, effect: 'maxhp20' },
+    { id: 'speed_boost', name: 'SPEED BOOST', desc: 'Permanent +10% movement speed.', price: 12000, effect: 'speed10' },
+  ];
+  const MERCHANT_HAWK: MerchantItem[] = [
+    { id: 'unlock_laser', name: 'UNLOCK LASER', desc: 'Long beam weapon. +10 ATK.', price: 25000, effect: 'unlock_LASER' },
+    { id: 'unlock_bomb', name: 'UNLOCK BOMB', desc: 'Area explosion weapon. +12 ATK.', price: 30000, effect: 'unlock_BOMB' },
+    { id: 'hp_up2', name: 'HP UP II', desc: 'Permanently increases max HP by 40.', price: 20000, effect: 'maxhp40' },
+    { id: 'atk_boost', name: 'ATK BOOST', desc: 'Permanent +5 base attack damage.', price: 18000, effect: 'atk5' },
+    { id: 'armor_plate', name: 'ARMOR PLATE', desc: 'Reduces incoming damage by 15%.', price: 22000, effect: 'armor15' },
+  ];
+
   const enterNpc = useCallback((idx: number) => {
     const n = NPCS[idx];
     sfxTalk();
+    if (n.name === 'DANTE') {
+      setShowMerchant({ name: 'DANTE', items: MERCHANT_DANTE });
+      frozenRef.current = true;
+      setNarr('> DANTE — "I charge by the job. Weapons, upgrades, whatever you need. FIAT only." [ESC] to close.');
+      return;
+    }
+    if (n.name === 'HAWK') {
+      setShowMerchant({ name: 'HAWK', items: MERCHANT_HAWK });
+      frozenRef.current = true;
+      setNarr('> HAWK — "I carry a sword because it\'s consistent. But I sell everything else." [ESC] to close.');
+      return;
+    }
     setDialog({ lines: [`> ${n.name.toUpperCase()}`, `"${n.whisper}"`], idx: 0, bid: 'npc' });
   }, []);
 
@@ -1419,7 +1453,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   // ── Music init — start on first interaction ──────────────────────────────────
@@ -1514,30 +1548,30 @@ export default function WorldPlay() {
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
-      // [F] melee attack
-      if ((e.key === 'f' || e.key === 'F') && !frozenRef.current) {
+      // [Space] melee attack (also F as alias)
+      if (e.key === ' ' && !frozenRef.current && !dialog) {
         const g = gs.current;
         if (g.attackCooldown > 0) return;
-        g.attackCooldown = 35; g.attackFlash = 8;
+        const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+        g.attackCooldown = wpn.cooldown; g.attackFlash = 8;
         sfxAttack();
-        const weaponBonus = WEAPONS.find(w => w.id === activeWeaponRef.current)?.atkBonus ?? 0;
-        const ATK = 20 + (g.level - 1) * 5 + weaponBonus;
+        const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+        const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+        const meleeRange = wpn.type === 'melee' ? wpn.range : 72;
         let hit = false;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
-          if (d < 72) {
+          if (d < meleeRange) {
             hit = true;
             const nhp = t.hp - ATK;
             if (nhp <= 0) {
               sfxKill();
-              // ── Bounty reward ─────────────────────────────────────────────
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const inWaste = g.py >= WASTELAND_Y;
               let bountyAmt = BOUNTY[t.type] ?? 10;
-              if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5); // Outcast waste bonus
+              if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
               g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
-              // ── Damage floater ────────────────────────────────────────────
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               let newExp = g.exp + earned; let newLevel = g.level;
@@ -1560,7 +1594,7 @@ export default function WorldPlay() {
           }
           return t;
         }).filter(Boolean) as Threat[];
-        if (!hit) setNarr('> Miss — no enemy in range. Move closer and press [F].');
+        if (!hit) setNarr('> Miss — no enemy in melee range. Move closer or use [Click] to shoot.');
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
@@ -1569,7 +1603,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); frozenRef.current = false;
+        setShowBank(false); setShowMerchant(null); frozenRef.current = false;
         doSaveRef.current(buildSaveData());
       }
     };
@@ -1577,6 +1611,43 @@ export default function WorldPlay() {
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
   }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
+
+  // ── Mouse click — ranged attack ─────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const handleClick = (e: MouseEvent) => {
+      if (frozenRef.current) return;
+      const g = gs.current;
+      if (g.attackCooldown > 0) return;
+      const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+      if (wpn.type !== 'ranged') {
+        if (!unlockedWeaponsRef.current.has('GUN') && !unlockedWeaponsRef.current.has('LASER') && !unlockedWeaponsRef.current.has('BOMB')) {
+          setNarr('> No ranged weapon equipped. Visit a merchant to unlock guns, lasers, or bombs.');
+        } else {
+          setNarr('> Current weapon is melee only. Switch to a ranged weapon to shoot. [Click weapon wheel]');
+        }
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX + g.cam.x;
+      const clickY = (e.clientY - rect.top) * scaleY + g.cam.y;
+      const angle = Math.atan2(clickY - g.py, clickX - g.px);
+      const speed = 8;
+      g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
+      sfxAttack();
+      const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+      const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+      if (wpn.icon === 'bomb') {
+        g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: wpn.range });
+      } else {
+        g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
+      }
+    };
+    canvas.addEventListener('click', handleClick);
+    return () => canvas.removeEventListener('click', handleClick);
+  }, []);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
   const fetchBillboards = useCallback(async () => {
@@ -1634,7 +1705,7 @@ export default function WorldPlay() {
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
     return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
-WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is FIAT (ƒ). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
+WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of SHADOW TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is FIAT (ƒ). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the Konami code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
@@ -1710,6 +1781,78 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.attackCooldown > 0) g.attackCooldown--;
       if (g.attackFlash > 0) g.attackFlash--;
 
+      // Projectile update
+      g.projectiles = g.projectiles.map(p => ({ ...p, x: p.x + p.dx, y: p.y + p.dy, life: p.life - 1 })).filter(p => {
+        if (p.life <= 0) return false;
+        let hitAny = false;
+        g.threats = g.threats.map(t => {
+          const d = Math.hypot(p.x - t.x, p.y - t.y);
+          if (d < (p.type === 'laser' ? 20 : 14)) {
+            hitAny = true;
+            const nhp = t.hp - p.damage;
+            if (nhp <= 0) {
+              sfxKill();
+              const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+              const inWaste = g.py >= WASTELAND_Y;
+              let bountyAmt = BOUNTY[t.type] ?? 10;
+              if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
+              g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
+              g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+              const earned = THREAT_EXP[t.type] ?? 20;
+              g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+              let newExp = g.exp + earned; let newLevel = g.level;
+              while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
+                newExp -= expToLevel(newLevel); newLevel++;
+                g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
+                sfxLevelUp();
+              }
+              g.exp = newExp; g.level = newLevel;
+              setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+              g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+              return null as unknown as Threat;
+            }
+            sfxHit(); return { ...t, hp: nhp };
+          }
+          return t;
+        }).filter(Boolean) as Threat[];
+        return !hitAny;
+      });
+
+      // Bomb update
+      g.bombs = g.bombs.filter(b => {
+        b.timer--;
+        if (b.timer <= 0) {
+          sfxAttack();
+          g.threats = g.threats.map(t => {
+            const d = Math.hypot(b.x - t.x, b.y - t.y);
+            if (d < b.radius) {
+              const nhp = t.hp - b.damage;
+              if (nhp <= 0) {
+                sfxKill();
+                const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+                const inWaste = g.py >= WASTELAND_Y;
+                let bountyAmt = BOUNTY[t.type] ?? 10;
+                if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
+                g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
+                g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+                const earned = THREAT_EXP[t.type] ?? 20;
+                g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+                let newExp = g.exp + earned; let newLevel = g.level;
+                while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) { newExp -= expToLevel(newLevel); newLevel++; g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10); sfxLevelUp(); }
+                g.exp = newExp; g.level = newLevel; setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+                return null as unknown as Threat;
+              }
+              sfxHit(); return { ...t, hp: nhp };
+            }
+            return t;
+          }).filter(Boolean) as Threat[];
+          g.floaters.push({ x: b.x, y: b.y, text: '💥 BOOM', color: '#ffcc00', life: 40, maxLife: 40 });
+          return false;
+        }
+        return true;
+      });
+
       // Threat respawn
       g.threatRespawn = g.threatRespawn.filter(r => {
         if (g.frame >= r.at) { g.threats.push(mkThreat(r.ox, r.oy, r.type)); return false; }
@@ -1733,7 +1876,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       });
 
       if (!frozen()) {
-        const vMult = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
+        const vMult = (g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1);
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD * vMult;
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD * vMult;
@@ -1824,7 +1967,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.y = Math.max(10, Math.min(H - 10, ny2));
 
         if (dist < 14 && g.invincible === 0 && !npcDialogRef.current) {
-          g.hp = Math.max(0, g.hp - 0.4); g.invincible = 50; g.flash = 6;
+          const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
+          g.hp = Math.max(0, g.hp - 0.4 * armorMult); g.invincible = 50; g.flash = 6;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -2083,7 +2227,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (nb) {
           const b = BUILDINGS.find(b => b.id === nb);
           const lk = g.locks.get(nb);
-          if (nb === 'pablo_tower') setNarr('> PABLO TOWER — The city trembles at its shadow. [E] to approach.');
+          if (nb === 'pablo_tower') setNarr('> SHADOW TOWER — The city trembles at its shadow. [E] to approach.');
           else if (lk?.ownerName) {
             const who = lk.company ? `${lk.ownerName} / ${lk.company}` : lk.ownerName;
             const msg = lk.message ? ` "${lk.message}"` : '';
@@ -2117,7 +2261,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
           if (nearEnemy) {
             const typeLabel = nearEnemy.type.replace(/_/g, ' ');
-            setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — press [F] to attack! Move close and swing. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+            setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — [Space] melee · [Click] shoot. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
           }
         }
       }
@@ -2153,7 +2297,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (newGang === 'iron_rats') setNarr('> IRON RATS TERRITORY — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER\'s old crew. He doesn\'t claim them anymore.');
           else if (newGang === 'void_dogs') setNarr('> VOID DOGS TERRITORY — They broadcast static on loop. The code in the static is an old Famicom game. Nobody has decoded it. Nobody that lived, anyway.');
           else if (newGang === 'static_monks') setNarr('> STATIC MONKS TERRITORY — Silent. They move like shadows. ERDRICK says they guard something buried here from before the collapse. Before even the games.');
-          else if (newGang === 'eastern_bloc') setNarr('> EASTERN BLOC TERRITORY — They don\'t speak. They don\'t negotiate. MOTOKO tracked their signal origin back to a server in PABLO TOWER. Nobody was surprised.');
+          else if (newGang === 'eastern_bloc') setNarr('> EASTERN BLOC TERRITORY — They don\'t speak. They don\'t negotiate. MOTOKO tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.');
         }
       }
 
@@ -2489,7 +2633,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isNear = nb === b.id;
         const isLocked = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
 
-        // ── PABLO TOWER — special villain skyscraper rendering ────────────
+        // ── SHADOW TOWER — special villain skyscraper rendering ────────────
         if (b.id === 'pablo_tower') {
           // Outer glow pulse
           const pulse = 0.18 + Math.sin(g.frame * 0.03) * 0.08;
@@ -2540,7 +2684,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.shadowColor = '#00ff41'; ctx.shadowBlur = isNear ? 10 : 4;
           ctx.fillStyle = isNear ? '#00ff41' : 'rgba(180,0,255,.8)';
           ctx.font = 'bold 11px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('PABLO TOWER', bx + b.w / 2, by + b.h / 2 + 4);
+          ctx.fillText('SHADOW TOWER', bx + b.w / 2, by + b.h / 2 + 4);
           ctx.shadowBlur = 0;
           if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
           continue; // skip default building drawing
@@ -2857,10 +3001,49 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Eyes
       ctx.fillStyle = '#000'; ctx.fillRect(px - 3, py2 - 16, 2, 2); ctx.fillRect(px + 1, py2 - 16, 2, 2);
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      // Attack swing arc
+      // Attack swing arc (varies by weapon)
       if (g.attackFlash > 0) {
-        ctx.strokeStyle = `rgba(255,255,0,${g.attackFlash / 8})`; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(px, py2, 72, 0, Math.PI * 2); ctx.stroke();
+        const curWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+        if (curWpn.type === 'melee') {
+          if (curWpn.icon === 'sword') {
+            ctx.strokeStyle = `rgba(255,100,68,${g.attackFlash / 8})`; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, -0.8, 0.8); ctx.stroke();
+          } else {
+            ctx.strokeStyle = `rgba(255,255,0,${g.attackFlash / 8})`; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+      }
+
+      // Render projectiles
+      for (const p of g.projectiles) {
+        const ppx = p.x + ox, ppy = p.y + oy;
+        if (ppx < -10 || ppx > cw + 10 || ppy < -10 || ppy > ch + 10) continue;
+        if (p.type === 'laser') {
+          ctx.strokeStyle = `rgba(255,68,170,${0.6 + Math.sin(g.frame * 0.2) * 0.3})`; ctx.lineWidth = 3;
+          ctx.shadowColor = '#ff44aa'; ctx.shadowBlur = 8;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 2, ppy - p.dy * 2); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = '#88aaff';
+          ctx.shadowColor = '#88aaff'; ctx.shadowBlur = 6;
+          ctx.beginPath(); ctx.arc(ppx, ppy, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      // Render bombs
+      for (const bm of g.bombs) {
+        const bmx = bm.x + ox, bmy = bm.y + oy;
+        const progress = 1 - bm.timer / 45;
+        if (bm.timer > 0) {
+          ctx.fillStyle = `rgba(255,204,0,${0.5 + Math.sin(g.frame * 0.3) * 0.3})`;
+          ctx.beginPath(); ctx.arc(bmx, bmy, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = `rgba(255,204,0,${0.3 * progress})`; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(bmx, bmy, bm.radius * progress, 0, Math.PI * 2); ctx.stroke();
+        } else {
+          ctx.fillStyle = `rgba(255,200,0,${0.4})`; ctx.beginPath(); ctx.arc(bmx, bmy, bm.radius, 0, Math.PI * 2); ctx.fill();
+        }
       }
       if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
       ctx.fillStyle = 'rgba(0,255,65,.6)'; ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
@@ -3252,7 +3435,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           )}
           <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · F attack · C chat · V voice · P device · ESC close</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
         </div>
         {/* Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'all' }}>
@@ -3547,13 +3730,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         : nearbyEnemies.map((t, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(255,65,65,.06)', fontSize: '.52rem' }}>
                             <span style={{ ...VT, fontSize: '.8rem', color: THREAT_COL[t.type] ?? '#ff4444' }}>{t.type.replace(/_/g,' ')}</span>
-                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [F] attack</span>
+                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [Space] melee · [Click] shoot</span>
                           </div>
                         ))
                       }
                     </div>
                     <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ƒ10k full heal · MARKET/EAST BAZAAR: trade commodities · PABLO TOWER: floors 1–39 rentable
+                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ƒ10k full heal · MARKET/EAST BAZAAR: trade commodities · SHADOW TOWER: floors 1–39 rentable
                     </div>
                   </div>
                 )}
@@ -3647,18 +3830,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
-      {/* ── PABLO TOWER — OFFICE RENTAL ── */}
+      {/* ── SHADOW TOWER — OFFICE RENTAL ── */}
       {showOffice && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>PABLO TOWER</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>SHADOW TOWER</div>
                 <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — COMMERCIAL LEASE. FLOOR 40+ RESTRICTED.</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                 {rentedOffice && (
-                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'PABLO TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.22)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'SHADOW TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.22)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
                     {lockMap.get('pablo_tower') ? '🔒 LOCKED' : 'SET CODE'}
                   </button>
                 )}
@@ -4240,7 +4423,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             padding: '.5rem',
           }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.4rem', borderBottom: '1px solid rgba(0,255,65,.15)', paddingBottom: '.3rem' }}>WEAPONS</div>
-            {WEAPONS.map(w => (
+            {WEAPONS.filter(w => unlockedWeapons.has(w.id)).map(w => {
+              const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
+              return (
               <div
                 key={w.id}
                 onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
@@ -4250,17 +4435,101 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   cursor: 'pointer',
                   background: activeWeapon === w.id ? 'rgba(0,255,65,.1)' : 'transparent',
                   border: activeWeapon === w.id ? '1px solid rgba(0,255,65,.35)' : '1px solid transparent',
+                  display: 'flex', alignItems: 'center', gap: '.4rem',
                 }}
               >
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: w.color, letterSpacing: '.08em' }}>
-                  {activeWeapon === w.id ? '▸ ' : '  '}{w.label}
+                <span style={{ fontSize: '1.1rem', width: 22, textAlign: 'center' }}>{iconMap[w.icon] ?? '?'}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: w.color, letterSpacing: '.08em' }}>
+                    {activeWeapon === w.id ? '▸ ' : '  '}{w.label} <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.3)' }}>{w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</span>
+                  </div>
+                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.06em', marginTop: 1 }}>{w.desc}</div>
                 </div>
-                <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.06em', marginTop: 1 }}>{w.desc}</div>
               </div>
-            ))}
+            );})}
           </div>
         )}
       </div>
+
+      {/* ── MERCHANT PANEL ─────────────────────────────────────────────── */}
+      {showMerchant && (() => {
+        const g = gs.current;
+        const VTM: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const doMerchBuy = (item: MerchantItem) => {
+          if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
+          if (g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
+          g.salary -= item.price; setSalary(g.salary); sfxCoin();
+          g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
+          if (item.effect.startsWith('unlock_')) {
+            const wpnId = item.effect.replace('unlock_', '');
+            unlockedWeaponsRef.current.add(wpnId);
+            setUnlockedWeapons(new Set(unlockedWeaponsRef.current));
+            setActiveWeapon(wpnId); activeWeaponRef.current = wpnId;
+            setNarr(`> ${item.name} unlocked! Weapon equipped. ƒ${item.price.toLocaleString()} FIAT spent.`);
+          } else if (item.effect === 'maxhp20') {
+            g.maxHp += 20; g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp));
+            setNarr(`> HP UP — Max HP increased by 20. Current: ${g.maxHp}. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'maxhp40') {
+            g.maxHp += 40; g.hp = Math.min(g.maxHp, g.hp + 40); setHp(Math.floor(g.hp));
+            setNarr(`> HP UP II — Max HP increased by 40. Current: ${g.maxHp}. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'speed10') {
+            setNarr(`> SPEED BOOST applied. +10% movement speed. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'atk5') {
+            g.level += 0; // ATK is level-based; we'll grant bonus via ownedItems check
+            setNarr(`> ATK BOOST — +5 base attack permanently. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'armor15') {
+            setNarr(`> ARMOR PLATE equipped. Incoming damage reduced by 15%. ƒ${item.price.toLocaleString()} spent.`);
+          } else {
+            setNarr(`> ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent.`);
+          }
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowMerchant(null); frozenRef.current = false; } }}>
+            <div style={{ width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+                <div>
+                  <div style={{ ...VTM, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.14em' }}>{showMerchant.name} — MERCHANT</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>WEAPONS · UPGRADES · FIAT ONLY</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ ...VTM, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>FIAT BALANCE</div>
+                  <button onClick={() => { setShowMerchant(null); frozenRef.current = false; }} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VTM, fontSize:'.95rem' }}>ESC</button>
+                </div>
+              </div>
+              <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem' }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                  {showMerchant.items.map(item => {
+                    const owned = g.ownedItems.has(item.id);
+                    const canAfford = g.salary >= item.price;
+                    return (
+                      <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${owned ? 'rgba(0,255,65,.25)' : 'rgba(0,255,65,.12)'}`, background: owned ? 'rgba(0,255,65,.04)' : 'transparent' }}>
+                        <div>
+                          <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.2rem' }}>
+                            <span style={{ ...VTM, fontSize:'1.05rem', color: owned ? '#00ff41' : '#ff9900', letterSpacing:'.08em' }}>{item.name}</span>
+                            {owned && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.25)', padding:'1px 5px' }}>OWNED</span>}
+                          </div>
+                          <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
+                          <div style={{ ...VTM, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ƒ{item.price.toLocaleString()}</div>
+                          <button
+                            onClick={() => doMerchBuy(item)}
+                            disabled={owned}
+                            style={{ padding:'.25rem .7rem', background: owned ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${owned ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: owned ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: owned ? 'not-allowed' : 'pointer', ...VTM, fontSize:'.95rem', letterSpacing:'.08em' }}>
+                            {owned ? 'OWNED' : canAfford ? 'BUY' : 'NO FIAT'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showLevelUp && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>
