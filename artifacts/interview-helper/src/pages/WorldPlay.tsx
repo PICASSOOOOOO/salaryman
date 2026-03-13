@@ -37,30 +37,78 @@ const NPCS = [
   { name: 'GUARD',     x: 560, y: 300, type: 'corp',    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.' },
   { name: 'SAMUS',     x: 820, y: 290, type: 'android', whisper: 'Bounty is active on someone called SENIOR PABLO. No face. No file. Contract pays in a currency I don\'t recognize. I\'m still deciding whether to take it.' },
   { name: 'SNAKE',     x: 660, y: 510, type: 'human',   whisper: 'FOXHOUND was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
-  // ── Wasteland ──
+  { name: 'HIDEO',     x: 1120, y: 200, type: 'corp',   whisper: 'I designed thirty-seven games. Every one of them ended with a nuclear explosion. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
+  { name: 'LINK',      x: 200,  y: 220, type: 'human',  whisper: 'I\'ve faced Ganon eight separate times. Each time reality reset. This feels different. No restart. No heart containers. Just the city.' },
+  { name: 'WEDGE',     x: 1250, y: 310, type: 'human',  whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
+  { name: 'BIGGS',     x: 1350, y: 420, type: 'human',  whisper: 'Wedge says this is like Midgar. I think it\'s worse. Midgar had Aerith. This city only has the tower.' },
+  { name: 'JESSIE',    x: 1050, y: 400, type: 'human',  whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.' },
+  { name: 'MAEVE',     x: 350,  y: 200, type: 'corp',   whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always.' },
+  { name: 'CURSOR',    x: 1200, y: 150, type: 'android',whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
+  // ── City outskirts / border ──
+  { name: 'CRONO',     x: 90,   y: 350, type: 'human',  whisper: 'Time travel didn\'t help. I came from three different pasts. All of them led here. To this city. To this wall. He\'s been here in every timeline.' },
+  { name: 'FROG',      x: 90,   y: 490, type: 'mutant', whisper: '"It matters not how strait the gate." Old text. Found it carved in the wall near the arcade. Someone knew I would find it.' },
+  { name: 'LUCCA',     x: 1490, y: 290, type: 'human',  whisper: 'I built a time machine and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
   { name: 'RIZER',     x: 240, y: 690, type: 'human',   whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
+  // ── Wasteland ──
   { name: 'KANEDA',    x: 580, y: 880, type: 'human',   whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
   { name: 'TETSUO',    x: 720, y: 820, type: 'mutant',  whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think SENIOR PABLO is what woke up.' },
   { name: 'DR. WILY',  x: 380, y: 820, type: 'human',   whisper: 'My Robot Masters kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One. He thanked me with a gift card.' },
+  { name: 'ZERO',      x: 200, y: 950, type: 'android', whisper: 'I was designed to destroy. Reprogrammed to protect. Doesn\'t matter out here. There\'s nothing left worth protecting. Except maybe the truth of who built this place.' },
+  { name: 'PROTOMAN',  x: 1100, y: 750, type: 'android',whisper: 'My brother kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete. I prefer the wasteland.' },
   { name: 'AX',        x: 960, y: 890, type: 'human',   whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
   { name: 'SCAV',      x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
   { name: 'ERDRICK',   x: 820, y: 960, type: 'human',   whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
+  { name: 'CASSANDRA', x: 650, y: 1080, type: 'mutant', whisper: 'I told them. I told all of them. The city would collapse. Nobody listened. They never do. Now they ask me what comes next. I stopped answering that question.' },
+  { name: 'HAWK',      x: 1320, y: 900, type: 'human',  whisper: 'I was a knight. Then a pirate. Now this. The transformation is complete. I carry a sword because it\'s all I know. The wasteland respects that.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; }
-const THREAT_HP: Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40 };
+const THREAT_HP: Record<string, number>  = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22 };
 const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y}; };
 const THREATS_INIT: Threat[] = [
-  mkThreat(240, 680, 'IRON_RATS'),
-  mkThreat(350, 820, 'IRON_RATS'),
-  mkThreat(560, 750, 'VOID_DOGS'),
-  mkThreat(680, 840, 'VOID_DOGS'),
-  mkThreat(900, 700, 'STATIC_MONKS'),
-  mkThreat(1020, 820, 'STATIC_MONKS'),
-  mkThreat(500, 780, 'MUTANT'),
-  mkThreat(750, 500, 'RAIDER'),
+  // ── City outskirts — left edge back alleys (police don't patrol here) ──
+  mkThreat(70,  190, 'PROWLER'),
+  mkThreat(70,  290, 'PROWLER'),
+  mkThreat(70,  400, 'PROWLER'),
+  mkThreat(75,  490, 'PROWLER'),
+  // ── City outskirts — right edge ──
+  mkThreat(1510, 160, 'PROWLER'),
+  mkThreat(1510, 280, 'PROWLER'),
+  mkThreat(1510, 400, 'PROWLER'),
+  mkThreat(1510, 490, 'PROWLER'),
+  // ── City/Wasteland border zone ──
+  mkThreat(180,  530, 'BORDER_GANG'),
+  mkThreat(380,  545, 'BORDER_GANG'),
+  mkThreat(620,  535, 'BORDER_GANG'),
+  mkThreat(900,  525, 'BORDER_GANG'),
+  mkThreat(1150, 540, 'BORDER_GANG'),
+  mkThreat(1380, 530, 'BORDER_GANG'),
+  // ── Wasteland — IRON RATS ──
+  mkThreat(160,  650, 'IRON_RATS'),
+  mkThreat(240,  720, 'IRON_RATS'),
+  mkThreat(350,  820, 'IRON_RATS'),
+  mkThreat(140,  900, 'IRON_RATS'),
+  mkThreat(300,  980, 'IRON_RATS'),
+  // ── Wasteland — VOID DOGS ──
+  mkThreat(520,  680, 'VOID_DOGS'),
+  mkThreat(640,  780, 'VOID_DOGS'),
+  mkThreat(560,  900, 'VOID_DOGS'),
+  mkThreat(720,  980, 'VOID_DOGS'),
+  mkThreat(780,  700, 'VOID_DOGS'),
+  // ── Wasteland — STATIC MONKS ──
+  mkThreat(880,  630, 'STATIC_MONKS'),
+  mkThreat(1020, 780, 'STATIC_MONKS'),
+  mkThreat(1150, 680, 'STATIC_MONKS'),
+  mkThreat(1300, 820, 'STATIC_MONKS'),
+  mkThreat(1050, 960, 'STATIC_MONKS'),
+  mkThreat(1350, 950, 'STATIC_MONKS'),
+  // ── Wanderers ──
+  mkThreat(480,  800, 'MUTANT'),
+  mkThreat(860,  870, 'MUTANT'),
+  mkThreat(1200, 1050,'RAIDER'),
+  mkThreat(400,  1060,'RAIDER'),
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
@@ -69,6 +117,7 @@ const expToLevel = (lvl: number) => EXP_TABLE[Math.min(lvl - 1, EXP_TABLE.length
 const THREAT_COL: Record<string, string> = {
   IRON_RATS: '#ff4444', VOID_DOGS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
+  PROWLER: '#ff2266', BORDER_GANG: '#ff6600',
 };
 
 const NPC_RANGE = 60;
@@ -179,7 +228,7 @@ export default function WorldPlay() {
   const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
-  const [narration, setNarr]  = useState('> Welcome to Minx City · PST. Find PABLO CORP. Walk to any building or NPC and press [E].');
+  const [narration, setNarr]  = useState('> Welcome to Minx City · PST. WASD move · [E] interact · [F] attack · [P] PABLO device. Threats lurk in the outskirts and wasteland — police keep the city center clean.');
   const [isDead,  setIsDead]  = useState(false);
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
@@ -860,24 +909,70 @@ export default function WorldPlay() {
       }
       if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
 
-      // Mini-map
-      const mmW = 96, mmH = 68, mmX = cw - mmW - 10, mmY = 10;
-      ctx.fillStyle = 'rgba(0,5,0,.9)'; ctx.fillRect(mmX, mmY, mmW, mmH);
-      ctx.strokeStyle = 'rgba(0,255,65,.22)'; ctx.lineWidth = 1; ctx.strokeRect(mmX, mmY, mmW, mmH);
-      const mwY = mmY + (WASTELAND_Y / H) * mmH;
-      ctx.strokeStyle = 'rgba(0,255,65,.15)'; ctx.setLineDash([2, 2]);
-      ctx.beginPath(); ctx.moveTo(mmX, mwY); ctx.lineTo(mmX + mmW, mwY); ctx.stroke(); ctx.setLineDash([]);
-      // Gang zones on minimap
-      for (const gz of GANG_ZONES) { ctx.fillStyle = gz.color.replace('.06', '.15').replace('.05', '.12'); ctx.fillRect(mmX + (gz.x / W) * mmW, mmY + (gz.y / H) * mmH, (gz.w / W) * mmW, (gz.h / H) * mmH); }
+      // ── RDR2-style circular minimap ──────────────────────────────────────────
+      const mmR = 70, mmCX = cw - mmR - 14, mmCY = mmR + 14;
+      const toMX = (wx: number) => mmCX - mmR + (wx / W) * (mmR * 2);
+      const toMY = (wy: number) => mmCY - mmR + (wy / H) * (mmR * 2);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.clip();
+      // Terrain
+      ctx.fillStyle = 'rgba(0,8,0,.93)'; ctx.fillRect(mmCX - mmR, mmCY - mmR, mmR * 2, mmR * 2);
+      const wbMY = toMY(WASTELAND_Y);
+      if (wbMY < mmCY + mmR) { ctx.fillStyle = 'rgba(22,10,0,.88)'; ctx.fillRect(mmCX - mmR, wbMY, mmR * 2, mmR + mmCY - wbMY + mmR); }
+      // Gang zones
+      for (const gz of GANG_ZONES) { ctx.fillStyle = gz.color.replace('.06', '.3').replace('.05', '.25'); ctx.fillRect(toMX(gz.x), toMY(gz.y), (gz.w / W) * mmR * 2, (gz.h / H) * mmR * 2); }
+      // Wasteland line
+      ctx.strokeStyle = 'rgba(0,255,65,.2)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(mmCX - mmR, wbMY); ctx.lineTo(mmCX + mmR, wbMY); ctx.stroke(); ctx.setLineDash([]);
+      // Buildings
       for (const b of BUILDINGS) {
         const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
-        ctx.fillStyle = isLk ? 'rgba(255,120,50,.5)' : b.bright ? 'rgba(0,255,65,.7)' : 'rgba(0,160,50,.35)';
-        ctx.fillRect(mmX + (b.x / W) * mmW, mmY + (b.y / H) * mmH, Math.max(2, (b.w / W) * mmW), Math.max(1, (b.h / H) * mmH));
+        ctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
+        ctx.fillRect(toMX(b.x), toMY(b.y), Math.max(2.5, (b.w / W) * mmR * 2), Math.max(1.5, (b.h / H) * mmR * 2));
       }
-      for (const t of g.threats) { ctx.fillStyle = THREAT_COL[t.type]; ctx.fillRect(mmX + (t.x / W) * mmW - 1, mmY + (t.y / H) * mmH - 1, 2, 2); }
-      for (const [, op] of g.peers) { ctx.fillStyle = '#44aaff'; ctx.fillRect(mmX + (op.x / W) * mmW - 1, mmY + (op.y / H) * mmH - 1, 2, 2); }
-      ctx.fillStyle = '#00ff41'; ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 3;
-      ctx.fillRect(mmX + (g.px / W) * mmW - 2, mmY + (g.py / H) * mmH - 2, 4, 4); ctx.shadowBlur = 0;
+      // NPCs — yellow dots
+      for (const n of NPCS) {
+        ctx.fillStyle = 'rgba(255,220,30,.75)'; ctx.shadowColor = 'rgba(255,220,30,.4)'; ctx.shadowBlur = 3;
+        ctx.beginPath(); ctx.arc(toMX(n.x), toMY(n.y), 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      // Threats — red/orange dots (pulsing)
+      const tPulse = Math.sin(g.frame * 0.12) * 0.4 + 0.6;
+      for (const t of g.threats) {
+        const tc = THREAT_COL[t.type] ?? '#ff4444';
+        ctx.fillStyle = tc; ctx.shadowColor = tc; ctx.shadowBlur = 4 * tPulse;
+        ctx.beginPath(); ctx.arc(toMX(t.x), toMY(t.y), 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      // Other players — cyan
+      for (const [, op] of g.peers) {
+        ctx.fillStyle = '#44aaff'; ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 3;
+        ctx.beginPath(); ctx.arc(toMX(op.x), toMY(op.y), 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      // Player — white glowing triangle pointing up
+      const pmx = toMX(g.px), pmy = toMY(g.py);
+      ctx.fillStyle = '#ffffff'; ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(pmx, pmy - 5); ctx.lineTo(pmx - 3.5, pmy + 3); ctx.lineTo(pmx + 3.5, pmy + 3); ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Vignette edge
+      const vGrad = ctx.createRadialGradient(mmCX, mmCY, mmR * 0.65, mmCX, mmCY, mmR);
+      vGrad.addColorStop(0, 'rgba(0,0,0,0)'); vGrad.addColorStop(1, 'rgba(0,0,0,.6)');
+      ctx.fillStyle = vGrad; ctx.fillRect(mmCX - mmR, mmCY - mmR, mmR * 2, mmR * 2);
+      ctx.restore();
+      // Circle border
+      ctx.strokeStyle = 'rgba(0,255,65,.45)'; ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'rgba(0,255,65,.35)'; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Compass
+      ctx.fillStyle = 'rgba(0,255,65,.55)'; ctx.textAlign = 'center'; ctx.font = 'bold 8px "Share Tech Mono",monospace';
+      ctx.fillText('N', mmCX, mmCY - mmR - 4);
+      ctx.fillText('S', mmCX, mmCY + mmR + 11);
+      ctx.font = '7px "Share Tech Mono",monospace';
+      ctx.fillText('W', mmCX - mmR - 7, mmCY + 3);
+      ctx.fillText('E', mmCX + mmR + 7, mmCY + 3);
+      ctx.textAlign = 'left';
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -982,7 +1077,7 @@ export default function WorldPlay() {
 
       {/* ONLINE PLAYERS — below minimap, top-right */}
       {online.length > 0 && (
-        <div style={{ position: 'absolute', top: 84, right: 10, width: 96, background: 'rgba(0,5,0,.88)', border: '1px solid rgba(0,255,65,.18)', zIndex: 100, padding: '.35rem .45rem' }}>
+        <div style={{ position: 'absolute', top: 170, right: 10, width: 156, background: 'rgba(0,5,0,.88)', border: '1px solid rgba(0,255,65,.18)', zIndex: 100, padding: '.35rem .45rem' }}>
           <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
           {online.slice(0, 5).map(p => (
             <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.5)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
