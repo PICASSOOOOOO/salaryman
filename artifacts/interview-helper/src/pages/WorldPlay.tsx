@@ -202,7 +202,7 @@ const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', and
 
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
-interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; }
+interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
 const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8 };
 const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200 };
@@ -1509,40 +1509,73 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── PABLO CORP android guard patrol + THREAT ELIMINATION ─────────────
+      // ── PABLO CORP android guard patrol + ACTIVE CITY CLEANUP ─────────────
       if (g.guardCooldowns.length < g.guards.length) {
         g.guardCooldowns = new Array(g.guards.length).fill(0);
       }
+
+      // Periodic Pablo Corp cleanup sweep narrations (every ~3000 frames if threats in city)
+      const CITY_THREAT_SCAN_Y = WASTELAND_Y + 80;
+      const cityThreats = g.threats.filter(t => !PASSIVE_THREATS.has(t.type) && t.y < CITY_THREAT_SCAN_Y);
+      if (g.frame % 3000 === 0 && cityThreats.length > 0) {
+        const sectors = ['SECTOR 3', 'SECTOR 7', 'NORTH GRID', 'PLAZA DISTRICT', 'CORP ALLEY', 'SOUTH MESH'];
+        const sector = sectors[Math.floor(g.frame / 3000) % sectors.length];
+        setNarr(`> PABLO CORP BROADCAST: "Cleanup Unit dispatched to ${sector}. Citizens are advised to clear the area. Non-compliance will be logged."`);
+      }
+      if (g.frame % 5400 === 600 && cityThreats.length > 3) {
+        setNarr('> PABLO CORP SECURITY: Elevated threat activity detected in MINX CITY. Strike teams deployed. Stand by.');
+      }
+
       for (let gi = 0; gi < g.guards.length; gi++) {
         const guard = g.guards[gi];
         if (g.guardCooldowns[gi] > 0) g.guardCooldowns[gi]--;
 
-        // Find nearest city threat in range (guards only fight threats in city zone)
+        // Restore persisted hunt target if still alive
         let nearestThreat: Threat | null = null, nearestDist = 9999;
-        for (const t of g.threats) {
+        if (guard.huntTarget !== undefined) {
+          const prev = g.threats[guard.huntTarget];
+          if (prev && !PASSIVE_THREATS.has(prev.type) && prev.y < CITY_THREAT_SCAN_Y) {
+            nearestThreat = prev;
+            nearestDist = Math.hypot(guard.x - prev.x, guard.y - prev.y);
+          } else {
+            guard.huntTarget = undefined;
+          }
+        }
+
+        // Wide-area scan for any city threat (400px range) — overrides only if closer
+        for (let ti = 0; ti < g.threats.length; ti++) {
+          const t = g.threats[ti];
           if (PASSIVE_THREATS.has(t.type)) continue;
+          if (t.y >= CITY_THREAT_SCAN_Y) continue;
           const d = Math.hypot(guard.x - t.x, guard.y - t.y);
-          if (d < 90 && t.y < WASTELAND_Y && d < nearestDist) { nearestThreat = t; nearestDist = d; }
+          if (d < 400 && d < nearestDist) { nearestThreat = t; nearestDist = d; guard.huntTarget = ti; }
         }
 
         if (nearestThreat) {
-          // Chase the threat
+          // Aggressive pursuit — fast sprint toward target
           const ang = Math.atan2(nearestThreat.y - guard.y, nearestThreat.x - guard.x);
-          guard.x += Math.cos(ang) * 0.9;
-          guard.y += Math.sin(ang) * 0.9;
-          // Attack if in range
-          if (nearestDist < 16 && g.guardCooldowns[gi] === 0) {
-            g.guardCooldowns[gi] = 45;
-            nearestThreat.hp -= 12;
-            g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: 'GUARD HIT', color: '#5599ff', life: 40, maxLife: 40 });
+          const spd = nearestDist > 60 ? 1.5 : 1.1;
+          guard.x += Math.cos(ang) * spd;
+          guard.y += Math.sin(ang) * spd;
+          // Engage in melee
+          if (nearestDist < 18 && g.guardCooldowns[gi] === 0) {
+            g.guardCooldowns[gi] = 28;
+            nearestThreat.hp -= 20;
+            g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: '[ CORP HIT ]', color: '#4488ff', life: 38, maxLife: 38 });
             if (nearestThreat.hp <= 0) {
-              g.threats = g.threats.filter(t => t !== nearestThreat);
-              g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 14, text: '[ ELIMINATED ]', color: '#00ff41', life: 80, maxLife: 80 });
+              g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#00ff41', life: 90, maxLife: 90 });
               g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 1800 });
+              g.threats = g.threats.filter(t => t !== nearestThreat);
+              // Clear all guard hunt references to dead target
+              for (const gu of g.guards) { if (gu.huntTarget !== undefined && g.threats[gu.huntTarget] === undefined) gu.huntTarget = undefined; }
+              guard.huntTarget = undefined;
+              // Occasional cleanup confirmation
+              if (Math.random() < 0.35) setNarr('> PABLO CORP: "Target down. Area secured." — Cleanup unit returning to post.');
             }
           }
         } else {
-          // Normal waypoint patrol
+          // No threat found — return to waypoint patrol
+          guard.huntTarget = undefined;
           const route = GUARD_ROUTES[gi % GUARD_ROUTES.length];
           const wp = route[guard.wpIdx % route.length];
           const gdx = wp.x - guard.x, gdy = wp.y - guard.y;
