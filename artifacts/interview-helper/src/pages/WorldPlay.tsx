@@ -453,6 +453,10 @@ export default function WorldPlay() {
     gangZone: null as string | null,
     hunger: 100, thirst: 100, energy: 100,
     survivalTick: 0,
+    incomeTick: 0,
+    interestTick: 0,
+    savings: 0,
+    loan: null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
     exp: 0, level: 1, maxHp: 100,
     poisoned: false, poisonTick: 0,
     attackCooldown: 0,
@@ -553,6 +557,20 @@ export default function WorldPlay() {
   const [powerPct,    setPowerPct]    = useState(100);
   const [cityEvent,   setCityEvent]   = useState<string | null>(null);
   const cityEventTimer = useRef(0);
+  // ── Banking state ─────────────────────────────────────────────────────────
+  const [savings,      setSavings]      = useState(0);
+  const [showBank,     setShowBank]     = useState(false);
+  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
+  const [bankHistory,  setBankHistory]  = useState<Array<{id:number;desc:string;amount:number;bal:number}>>([]);
+  const [bankDepAmt,   setBankDepAmt]   = useState('');
+  const [bankWithAmt,  setBankWithAmt]  = useState('');
+  const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(null);
+  const [bankWireTo,   setBankWireTo]   = useState('');
+  const [bankWireAmt,  setBankWireAmt]  = useState('');
+  const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
+    setBankHistory(h => [{ id: Date.now(), desc, amount, bal }, ...h].slice(0, 30));
+  }, []);
+
   // Player apartment assignment (persistent per character)
   const [aptUnit] = useState<string>(() => {
     const k = `sm_apt_${char?.name}`;
@@ -645,9 +663,13 @@ export default function WorldPlay() {
       else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No cream, no treatment. Even Dr. Wright has bills. Come back with ç10,000."'); }
     }
     else if (bid === 'megabank'){
-      g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20);
-      g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> KONAMI BANK — Vending machine: POWER PELLET [ç1,000 CREAM]. Hunger +20. Thirst +20. Terminal: ACCOUNT SUSPENDED. INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.');
+      setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+      setBankLoan(g.loan ?? null);
+      setSavings(g.savings);
+      setBankTab('accounts');
+      setShowBank(true);
+      frozenRef.current = true;
+      setNarr('> KONAMI BANK — Welcome. MEMBER FDIC. EST. 1989. PAX PABLO. Your accounts are now accessible. [ESC] to close.');
     }
     else if (bid === 'armory') {
       g.hunger = Math.min(100, g.hunger + 15); g.thirst = Math.min(100, g.thirst + 15);
@@ -936,8 +958,8 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade;
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade]);
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank;
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade, showBank]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1070,6 +1092,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
+        setShowBank(false); frozenRef.current = false;
       }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
@@ -1291,7 +1314,6 @@ export default function WorldPlay() {
         g.survivalTick = 0;
         const inWaste = g.py >= WASTELAND_Y;
         const cs2 = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-        // Outcast: wasteland drain is 40% slower; Replicant: never drains energy
         const wasteMultiplier = (cs2.wasteBonus && inWaste) ? 0.6 : 1.0;
         const hDrain = (inWaste ? 2.5 : 1.5) * wasteMultiplier;
         const tDrain = (inWaste ? 3.0 : 2.0) * wasteMultiplier;
@@ -1302,6 +1324,48 @@ export default function WorldPlay() {
         if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); }
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
+
+        // ── ECONOMY: Periodic income by class ─────────────────────────────
+        g.incomeTick++;
+        const cls = char.class.toLowerCase();
+        const INCOME_INTERVAL = cls === 'corporate' ? 5 : cls === 'replicant' ? 8 : 10;
+        const INCOME_AMOUNT   = cls === 'corporate' ? 2500 : cls === 'replicant' ? 1200 : 600;
+        const INCOME_LABEL    = cls === 'corporate' ? 'SALARY DIRECT DEPOSIT' : cls === 'replicant' ? 'GIG PAYMENT PROCESSED' : 'SCAVENGING YIELD';
+        if (g.incomeTick >= INCOME_INTERVAL) {
+          g.incomeTick = 0;
+          const bonus = cls === 'outcast' && inWaste ? Math.floor(Math.random() * 400) : 0;
+          const total = INCOME_AMOUNT + bonus;
+          g.salary += total; setSalary(g.salary);
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ç${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
+          sfxCoin();
+          addBankTx(INCOME_LABEL, total, g.salary);
+        }
+
+        // ── ECONOMY: Savings interest (every 30 ticks = ~3 min) ───────────
+        g.interestTick++;
+        if (g.interestTick >= 30 && g.savings > 0) {
+          g.interestTick = 0;
+          const rawInterest = Math.floor(g.savings * 0.008);
+          if (rawInterest > 0) {
+            const pabloTax = Math.floor(rawInterest * 0.15);
+            const netInterest = rawInterest - pabloTax;
+            g.savings += netInterest; setSavings(g.savings);
+            g.floaters.push({ x: g.px + 20, y: g.py - 40, text: `+ç${netInterest.toLocaleString()} SAVINGS INTEREST`, color: '#44ffaa', life: 80, maxLife: 80 });
+            addBankTx('SAVINGS INTEREST (0.8% APY)', netInterest, g.savings);
+            if (pabloTax > 0) addBankTx('PABLO CORP. INTEREST TAX (15%)', -pabloTax, g.savings);
+          }
+        } else if (g.interestTick >= 30) {
+          g.interestTick = 0;
+        }
+
+        // ── ECONOMY: Loan overdue check ───────────────────────────────────
+        if (g.loan && g.frame > g.loan.dueAt) {
+          const penalty = Math.floor(g.loan.amount * 0.05);
+          g.salary = Math.max(0, g.salary - penalty); setSalary(g.salary);
+          g.floaters.push({ x: g.px, y: g.py - 20, text: `−ç${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
+          addBankTx('PABLO CORP. DEBT PENALTY (5%)', -penalty, g.salary);
+          setNarr('> KONAMI BANK ALERT — Your loan is overdue. PABLO Corp. Debt Collection is now active. ç' + penalty.toLocaleString() + ' CREAM deducted. Repay at KONAMI BANK immediately.');
+        }
       }
 
       // ── LIVING WORLD: Power Grid ─────────────────────────────────────────
@@ -2615,6 +2679,279 @@ export default function WorldPlay() {
           </div>
         </div>
       )}
+
+      {/* ── KONAMI BANK TERMINAL ─────────────────────────────────────────── */}
+      {showBank && (() => {
+        const g = gs.current;
+        const LOAN_OPTIONS = [
+          { amount: 5000,  label: 'ç5K' },
+          { amount: 10000, label: 'ç10K' },
+          { amount: 25000, label: 'ç25K' },
+          { amount: 50000, label: 'ç50K' },
+        ];
+        const VTB: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const STB: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const tabBtn = (active: boolean): React.CSSProperties => ({
+          padding: '.4rem 1rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)',
+          background: active ? 'rgba(0,255,65,.08)' : 'transparent',
+          color: active ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', ...VTB, fontSize: '1.05rem', letterSpacing: '.1em',
+        });
+        const inp: React.CSSProperties = {
+          background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41',
+          padding: '.4rem .65rem', outline: 'none', ...STB, fontSize: '.85rem', caretColor: '#00ff41', boxSizing: 'border-box',
+        };
+        const actBtn = (enabled: boolean): React.CSSProperties => ({
+          padding: '.45rem 1.2rem', border: enabled ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.1)',
+          background: 'rgba(0,255,65,.06)', color: enabled ? '#00ff41' : 'rgba(0,255,65,.2)',
+          cursor: enabled ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em', whiteSpace: 'nowrap',
+        });
+        const doDeposit = () => {
+          const amt = parseInt(bankDepAmt) || 0;
+          if (amt <= 0 || amt > g.salary) { sfxError(); setNarr('> KONAMI BANK — Insufficient checking balance.'); return; }
+          const tax = amt >= 5000 ? Math.floor(amt * 0.12) : 0;
+          g.salary -= amt; setSalary(g.salary);
+          g.savings += (amt - tax); setSavings(g.savings);
+          if (tax > 0) addBankTx('PABLO CORP. DEPOSIT TAX (12%)', -tax, g.salary);
+          addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary);
+          setBankDepAmt(''); sfxCoin();
+          setNarr(`> DEPOSITED ç${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO TAX: ç${tax.toLocaleString()}.` : ' No tax.'} Savings: ç${g.savings.toLocaleString()}.`);
+        };
+        const doWithdraw = () => {
+          const amt = parseInt(bankWithAmt) || 0;
+          if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> KONAMI BANK — Insufficient savings balance.'); return; }
+          g.savings -= amt; g.salary += amt;
+          setSavings(g.savings); setSalary(g.salary);
+          addBankTx('SAVINGS → CHECKING WITHDRAWAL', amt, g.salary);
+          setBankWithAmt(''); sfxCoin();
+          setNarr(`> WITHDREW ç${amt.toLocaleString()} from SAVINGS to CHECKING.`);
+        };
+        const doLoan = (amount: number) => {
+          if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
+          const interest = Math.floor(amount * 0.18);
+          const origFee  = amount >= 25000 ? Math.floor(amount * 0.02) : 0;
+          const received  = amount - origFee;
+          const loan = { amount, interest, issuedAt: g.frame, dueAt: g.frame + 60 * 360 };
+          g.loan = loan; g.salary += received; setSalary(g.salary);
+          setBankLoan(loan);
+          if (origFee > 0) addBankTx('ORIGINATION FEE (2%)', -origFee, g.salary);
+          addBankTx(`LOAN ISSUED @ 18% FLAT`, received, g.salary);
+          sfxCoin();
+          setNarr(`> LOAN APPROVED — ç${amount.toLocaleString()} · Int: ç${interest.toLocaleString()} · Fee: ç${origFee.toLocaleString()} · Repay within ~6 min. Late = penalty.`);
+        };
+        const doRepay = () => {
+          const loan = g.loan; if (!loan) return;
+          const totalDue = loan.amount + loan.interest;
+          if (g.salary < totalDue) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ç${totalDue.toLocaleString()}.`); return; }
+          g.salary -= totalDue; setSalary(g.salary);
+          g.loan = null; setBankLoan(null);
+          addBankTx(`LOAN REPAID ç${loan.amount.toLocaleString()} + ç${loan.interest.toLocaleString()} INT`, -totalDue, g.salary);
+          sfxCoin();
+          setNarr(`> LOAN REPAID — ç${totalDue.toLocaleString()} CREAM. Account standing: CLEAR. Debt collectors stand down.`);
+        };
+        const doWire = () => {
+          const amt = parseInt(bankWireAmt) || 0;
+          const to = bankWireTo.trim().toUpperCase();
+          if (!to || amt <= 0) { sfxError(); return; }
+          const fee = Math.ceil(amt * 0.03);
+          if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ç${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
+          g.salary -= (amt + fee); setSalary(g.salary);
+          addBankTx(`WIRE → ${to}`, -amt, g.salary);
+          addBankTx('PABLO CORP. WIRE TAX (3%)', -fee, g.salary);
+          wsSend({ type: 'wire', to, amount: amt, from: char.name });
+          setBankWireAmt(''); setBankWireTo(''); sfxCoin();
+          setNarr(`> WIRE SENT — ç${amt.toLocaleString()} → ${to}. Fee: ç${fee.toLocaleString()}. PABLO Corp. logged it.`);
+        };
+        const isOverdue = bankLoan ? g.frame > bankLoan.dueAt : false;
+        return (
+          <div onClick={e => { if (e.target === e.currentTarget) { setShowBank(false); frozenRef.current = false; } }}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 310 }}>
+            <div style={{ width: '92%', maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.4)', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div>
+                  <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>K O N A M I   B A N K</div>
+                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>MEMBER FDIC · EST. 1989 · PAX PABLO · MINX CITY BRANCH 01</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
+                  <div style={{ ...VTB, fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</div>
+                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
+                </div>
+              </div>
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
+                {(['accounts','loans','wire','history'] as const).map(t => (
+                  <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
+                  </button>
+                ))}
+                <div style={{ flex: 1 }} />
+                <button onClick={() => { setShowBank(false); frozenRef.current = false; }}
+                  style={{ ...VTB, fontSize: '1rem', color: 'rgba(0,255,65,.35)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '.3rem .75rem', cursor: 'pointer' }}>ESC ×</button>
+              </div>
+              {/* Body */}
+              <div style={{ padding: '.75rem 1.1rem', overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+
+                {/* ── ACCOUNTS ── */}
+                {bankTab === 'accounts' && (<>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                    {[
+                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ç2,500 / 30s' : char.class === 'replicant' ? 'GIG PAY: +ç1,200 / 48s' : 'SCAVENGING: +ç600+ / 60s' },
+                      { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO TAX: 15% ON INTEREST' },
+                    ].map(({ label, val, sub }) => (
+                      <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
+                        <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
+                        <div style={{ ...VTB, fontSize: '2.1rem', color: val > 0 ? '#00ff41' : 'rgba(0,255,65,.3)', letterSpacing: '.06em' }}>ç{val.toLocaleString()}</div>
+                        <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
+                      <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
+                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>PABLO TAX: ç{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
+                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ç5k)</span>}
+                    </div>
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankWithAmt} onChange={e => setBankWithAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
+                      <button onClick={doWithdraw} style={actBtn(parseInt(bankWithAmt) > 0 && parseInt(bankWithAmt) <= savings)}>WITHDRAW ↑</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
+                    Savings earn 0.8% APY per cycle (~3 min). PABLO Corp. takes 15% of all interest. Deposits ≥ ç5,000 subject to 12% Capital Deployment Tax. KONAMI BANK is not liable for seizures during martial law.
+                  </div>
+                </>)}
+
+                {/* ── LOANS ── */}
+                {bankTab === 'loans' && (<>
+                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — KONAMI BANK</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
+                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO Corp. Debt Collection · Loans ≥ ç25k carry 2% origination fee.
+                    </div>
+                  </div>
+                  {!bankLoan ? (
+                    <>
+                      <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.5rem' }}>
+                        {LOAN_OPTIONS.map(opt => {
+                          const int18 = Math.floor(opt.amount * .18);
+                          const fee  = opt.amount >= 25000 ? Math.floor(opt.amount * .02) : 0;
+                          return (
+                            <button key={opt.amount} onClick={() => doLoan(opt.amount)} style={{ padding: '.75rem .4rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
+                              <div style={{ ...VTB, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.06em' }}>{opt.label}</div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ç{int18.toLocaleString()} INT</div>
+                              {fee > 0 && <div style={{ fontSize: '.38rem', color: '#ffaa44' }}>-ç{fee.toLocaleString()} ORIG</div>}
+                              <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.22)', marginTop: '.12rem' }}>DUE ~6 MIN</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
+                        Collateral: NONE REQUIRED. Credit score: PROVISIONAL POSITIVE. One active loan at a time. PABLO Corp. reserves right to restructure debt without notice. This is not a threat.
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(0,255,65,.3)'}`, padding: '.75rem' }}>
+                      <div style={{ fontSize: '.4rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
+                        {isOverdue ? '⚠ LOAN OVERDUE — PABLO DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
+                        {[
+                          { l: 'PRINCIPAL', v: `ç${bankLoan.amount.toLocaleString()}` },
+                          { l: 'INTEREST (18%)', v: `ç${bankLoan.interest.toLocaleString()}` },
+                          { l: 'TOTAL DUE', v: `ç${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
+                        ].map(({ l, v }) => (
+                          <div key={l} style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.45rem' }}>
+                            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
+                            <div style={{ ...VTB, fontSize: '1.15rem', color: isOverdue ? '#ff6666' : '#00ff41' }}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {isOverdue && <div style={{ fontSize: '.46rem', color: 'rgba(255,100,100,.6)', lineHeight: 1.7, border: '1px solid rgba(255,60,60,.2)', padding: '.45rem', marginBottom: '.55rem' }}>⚠ OVERDUE — 5% salary penalty per survival cycle until repaid. Repay immediately.</div>}
+                      <button onClick={doRepay} disabled={salary < bankLoan.amount + bankLoan.interest}
+                        style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
+                        REPAY IN FULL — ç{(bankLoan.amount + bankLoan.interest).toLocaleString()}
+                      </button>
+                      {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ç{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more CREAM.</div>}
+                    </div>
+                  )}
+                </>)}
+
+                {/* ── WIRE ── */}
+                {bankTab === 'wire' && (<>
+                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>Transfer CREAM to any operative in Minx City. 3% PABLO Corp. Wire Tax deducted from sender. Logged. Irreversible.</div>
+                  </div>
+                  {online.filter(p => p.name !== char.name).length > 0 && (
+                    <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem' }}>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem' }}>
+                        {online.filter(p => p.name !== char.name).map(p => (
+                          <button key={p.id} onClick={() => setBankWireTo(p.name)}
+                            style={{ padding: '.28rem .65rem', border: bankWireTo === p.name ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.2)', background: bankWireTo === p.name ? 'rgba(0,255,65,.07)' : 'transparent', color: bankWireTo === p.name ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', ...STB, fontSize: '.72rem' }}>
+                            {p.name} · {p.class.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
+                    <div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
+                      <input value={bankWireTo} onChange={e => setBankWireTo(e.target.value.toUpperCase())} placeholder="OPERATIVE NAME..." style={inp} maxLength={32} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
+                      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                        <input value={bankWireAmt} onChange={e => setBankWireAmt(e.target.value.replace(/\D/g,''))} placeholder="0" style={{ ...inp, maxWidth: 180 }} />
+                        {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>FEE: ç{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ç{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
+                      </div>
+                    </div>
+                    <button onClick={doWire} disabled={!bankWireTo.trim() || !(parseInt(bankWireAmt) > 0)}
+                      style={{ alignSelf: 'flex-start', padding: '.48rem 1.4rem', border: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? 'pointer' : 'default', ...VTB, fontSize: '1.15rem', letterSpacing: '.1em' }}>
+                      SEND WIRE ▶
+                    </button>
+                  </div>
+                </>)}
+
+                {/* ── HISTORY ── */}
+                {bankTab === 'history' && (<>
+                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>ACCOUNT HISTORY — LAST 30 TRANSACTIONS</div>
+                  {bankHistory.length === 0
+                    ? <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', padding: '.8rem', textAlign: 'center' }}>No transactions recorded yet. Deposit, withdraw, take a loan, or send a wire to begin your history.</div>
+                    : <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.15)' }}>
+                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
+                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
+                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
+                        </div>
+                        {bankHistory.map((tx, i) => (
+                          <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
+                            <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
+                            <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ç{Math.abs(tx.amount).toLocaleString()}</div>
+                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ç{tx.bal.toLocaleString()}</div>
+                          </div>
+                        ))}
+                      </div>
+                  }
+                </>)}
+              </div>
+              {/* Footer */}
+              <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.38rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span>KONAMI BANK IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY PABLO CORP. DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
+                <span>ESC TO CLOSE</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── DEATH ── */}
       {isDead && (
