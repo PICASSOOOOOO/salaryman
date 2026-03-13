@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Interview Code Helper"
+title = "SALARYMAN"
 version = "1.0.0"
 id = "artifacts/interview-helper"
 router = "path"
