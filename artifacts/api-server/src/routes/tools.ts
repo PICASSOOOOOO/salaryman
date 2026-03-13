@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getUncachableResendClient } from "../lib/resend";
 
 const router: IRouter = Router();
 
@@ -287,7 +288,7 @@ router.get("/tools/contacts/export", (_req, res) => {
 });
 
 // ── POST /tools/send-email ────────────────────────────────────────────────────
-// Sends an email to the user via Resend (requires RESEND_API_KEY env var)
+// Sends an email via the Resend integration connector
 router.post("/tools/send-email", async (req, res) => {
   const { to, subject, html, text } = req.body as {
     to: string;
@@ -301,36 +302,22 @@ router.post("/tools/send-email", async (req, res) => {
     return;
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    res.status(503).json({ error: "Email service not configured — RESEND_API_KEY missing" });
-    return;
-  }
-
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "DevDocs <noreply@devdocs.app>",
-        to: [to],
-        subject,
-        html: html ?? `<pre>${text}</pre>`,
-        text: text ?? "",
-      }),
+    const { client, fromEmail } = await getUncachableResendClient();
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject,
+      html: html ?? `<pre>${text}</pre>`,
+      text: text ?? "",
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      res.status(500).json({ error: `Email failed: ${err}` });
+    if (error) {
+      res.status(500).json({ error: `Email failed: ${error.message}` });
       return;
     }
 
-    const data = await response.json();
-    res.json({ ok: true, id: (data as Record<string, unknown>).id });
+    res.json({ ok: true, id: data?.id });
   } catch (err) {
     res.status(500).json({ error: `Email error: ${String(err)}` });
   }

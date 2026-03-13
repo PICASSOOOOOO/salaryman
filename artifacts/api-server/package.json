@@ -18,7 +18,8 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "express-session": "^1.19.0",
-    "openid-client": "^6.8.2"
+    "openid-client": "^6.8.2",
+    "resend": "4.0.0"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",

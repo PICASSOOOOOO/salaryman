@@ -1,8 +1,13 @@
-# Workspace
+# Workspace — Frontman by Picassoo.ai
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+pnpm workspace monorepo using TypeScript. "Frontman" is an executive AI productivity suite (CEO assistant) with branding dual-mode: "Frontman by Picassoo.ai" (real) and "DevDocs" (discreet cover). Part of the Picassoo.ai product suite alongside Salaryman and Calll Home.
+
+## Integrations
+- **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.
+- **AI**: OpenAI via Replit integration (`@workspace/integrations-openai-ai-server`)
+- **Auth**: Replit Auth (OIDC) — session stored in PostgreSQL `sessions` table
 
 ## Stack
 
