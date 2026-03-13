@@ -132,7 +132,7 @@ export default function PresenterMode() {
   const [currentQ, setCurrentQ] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
 
-  // ── ARIA prefill from chat action ─────────────────────────────────────────
+  // ── Pablo prefill from chat action ─────────────────────────────────────────
   useEffect(() => {
     try {
       const raw = localStorage.getItem('devdocs_action_prefill');

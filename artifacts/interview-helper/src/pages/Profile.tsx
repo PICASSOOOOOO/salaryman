@@ -197,7 +197,7 @@ export default function Profile() {
         email: data.user.email,
         memberSince: data.user.createdAt,
       },
-      ariaMemory: data.memory,
+      pabloMemory: data.memory,
       contactCount: data.contactCount,
     };
     const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
@@ -275,7 +275,7 @@ export default function Profile() {
               </div>
             </motion.section>
 
-            {/* ARIA Memory */}
+            {/* Pablo Memory */}
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -283,15 +283,15 @@ export default function Profile() {
                   <Brain className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">ARIA Memory</p>
-                  <p className="text-xs text-muted-foreground">What ARIA knows about you — edit or clear anytime</p>
+                  <p className="text-sm font-bold text-foreground">Pablo Memory</p>
+                  <p className="text-xs text-muted-foreground">What Pablo knows about you — edit or clear anytime</p>
                 </div>
               </div>
 
               <textarea
                 value={memoryDraft}
                 onChange={e => setMemoryDraft(e.target.value)}
-                placeholder="ARIA hasn't learned anything about you yet. Start a conversation or complete the onboarding."
+                placeholder="Pablo hasn't learned anything about you yet. Start a conversation or complete the onboarding."
                 rows={6}
                 className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/40 transition-colors resize-none mb-3"
               />
@@ -377,7 +377,7 @@ export default function Profile() {
                   <Trash2 className="w-4 h-4 text-red-400/70" />
                   <div>
                     <p className="text-sm font-semibold text-red-400">Delete all my data</p>
-                    <p className="text-xs text-muted-foreground">Contacts + ARIA memory — cannot be undone</p>
+                    <p className="text-xs text-muted-foreground">Contacts + Pablo memory — cannot be undone</p>
                   </div>
                 </button>
               </div>
@@ -411,9 +411,9 @@ export default function Profile() {
                   <div>
                     <p className="text-sm font-bold text-foreground">Are you sure?</p>
                     <p className="text-xs text-muted-foreground">
-                      {deleteTarget === 'memory' && 'This will clear all of ARIA\'s memory about you.'}
+                      {deleteTarget === 'memory' && 'This will clear all of Pablo\'s memory about you.'}
                       {deleteTarget === 'contacts' && 'This will permanently delete all your contacts.'}
-                      {deleteTarget === 'all' && 'This will delete your contacts and ARIA memory. Cannot be undone.'}
+                      {deleteTarget === 'all' && 'This will delete your contacts and Pablo memory. Cannot be undone.'}
                     </p>
                   </div>
                 </div>

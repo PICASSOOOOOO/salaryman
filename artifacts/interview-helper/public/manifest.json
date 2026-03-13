@@ -1,7 +1,7 @@
 {
   "name": "Frontman by Picassoo.ai",
   "short_name": "Frontman",
-  "description": "Executive productivity suite with ARIA AI assistant",
+  "description": "Executive productivity suite with Pablo AI assistant",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

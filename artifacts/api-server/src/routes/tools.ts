@@ -287,7 +287,7 @@ router.get("/tools/contacts/export", async (req, res) => {
   res.send([header, ...csvRows].join("\n"));
 });
 
-// ── User Memory (ARIA context, DB-backed, requires auth) ───────────────────────
+// ── User Memory (Pablo context, DB-backed, requires auth) ───────────────────────
 
 router.get("/tools/memory", async (req, res) => {
   if (!req.isAuthenticated()) { res.json({ memory: "" }); return; }

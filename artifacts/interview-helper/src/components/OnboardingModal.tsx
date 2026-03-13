@@ -102,7 +102,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const STEPS = [
     {
-      question: `Hey${name ? `, ${name}` : ''}! I'm ARIA — I run Frontman.`,
+      question: `Hey${name ? `, ${name}` : ''}! I'm Pablo — I run Frontman.`,
       sub: "Let me get to know you so I can actually be useful from the start.",
       content: (
         <div className="flex flex-col gap-3">
@@ -236,7 +236,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                       <Bot className="w-5 h-5 text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">ARIA</p>
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Pablo</p>
                       <p className="text-[10px] text-muted-foreground">Quick intro — {STEPS.length - step} step{STEPS.length - step !== 1 ? 's' : ''} left</p>
                     </div>
                   </div>
