@@ -6,16 +6,18 @@ const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 560;
 
 const BUILDINGS = [
-  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',   bright: true  },
-  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',   bright: true  },
-  { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'MED CLINIC',    bright: false },
-  { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'MOGUL BANK',    bright: false },
-  { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false },
-  { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL NEON',    bright: false },
-  { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',  bright: true  },
-  { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
-  { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
-  { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
+  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true  },
+  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true  },
+  { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false },
+  { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false },
+  { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false },
+  { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false },
+  { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true  },
+  { id: 'arcade',       x: 150, y: 590, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true  },
+  { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',        bright: false },
+  { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false },
+  { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false },
+  { id: 'wily_lab',     x: 990, y: 760, w: 90,  h: 70,  label: 'WILY LABS',        bright: false },
 ];
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
@@ -26,13 +28,22 @@ const GANG_ZONES = [
 ];
 
 const NPCS = [
-  { name: 'WORKER',  x: 510, y: 380, type: 'corp',    whisper: 'Nobody\'s seen him in years. The lights on top never go dark though. Never.' },
-  { name: 'BROKER',  x: 760, y: 320, type: 'corp',    whisper: 'PABLO controls every credit in this city. The ones you earn. The ones you owe. All of them.' },
-  { name: 'UNIT-7',  x: 870, y: 350, type: 'android', whisper: 'PABLO Corp. directive 44-C: monitor and report. I am compliant. Are you?' },
-  { name: 'DRIFTER', x: 340, y: 460, type: 'human',   whisper: 'I saw a shadow move in the penthouse once. Just once. I left the city the next day. Came back broke.' },
-  { name: 'GUARD',   x: 560, y: 300, type: 'corp',    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order.' },
-  { name: 'SCAV',    x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. You see that tower? Don\'t look up.' },
-  { name: 'MUTANT',  x: 700, y: 810, type: 'mutant',  whisper: 'The tower watches. Before the war, after the war... always that tower.' },
+  // ── City sector ──
+  { name: 'STRIFE',    x: 510, y: 380, type: 'corp',    whisper: 'I used to work for Shin-Ra. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.' },
+  { name: 'BROKER',    x: 760, y: 320, type: 'corp',    whisper: 'PABLO controls every credit in this city. The ones you earn. The ones you owe. All of them.' },
+  { name: 'REPLOID-7', x: 870, y: 350, type: 'android', whisper: 'Directive 44-C still active. Function: monitor and report. I was built by a man named Light. PABLO bought the patent in \'89.' },
+  { name: 'BELMONT',   x: 300, y: 460, type: 'human',   whisper: 'Up up, down down, left right, left right. I tried the code on every door in this city. Only PABLO\'s locks won\'t open.' },
+  { name: 'GUARD',     x: 560, y: 300, type: 'corp',    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.' },
+  { name: 'SAMUS',     x: 820, y: 290, type: 'android', whisper: 'Bounty is active on something called PABLO. No face. No file. Pays in a currency I don\'t recognize. I\'m still deciding.' },
+  { name: 'SNAKE',     x: 660, y: 510, type: 'human',   whisper: 'FOXHOUND was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
+  // ── Wasteland ──
+  { name: 'RIZER',     x: 240, y: 690, type: 'human',   whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
+  { name: 'KANEDA',    x: 580, y: 880, type: 'human',   whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. PABLO\'s lights were on that night. Already on. Always already on.' },
+  { name: 'TETSUO',    x: 720, y: 820, type: 'mutant',  whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think I know what.' },
+  { name: 'DR. WILY',  x: 380, y: 820, type: 'human',   whisper: 'My Robot Masters kept order here for six weeks. Then PABLO bought the patents. Every. Single. One. They deleted my serial numbers.' },
+  { name: 'AX',        x: 960, y: 890, type: 'human',   whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
+  { name: 'SCAV',      x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say his name three times and a light goes on in the tower.' },
+  { name: 'ERDRICK',   x: 820, y: 960, type: 'human',   whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think PABLO built the tower on it.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -53,22 +64,23 @@ const THREAT_COL: Record<string, string> = {
 };
 
 const NPC_RANGE = 60;
+const KONAMI_SEQ = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
 
 const STORE_LINES = [
   '> PABLO CORP. — AUTHORIZED DEVICE OUTLET',
   '> The city belongs to him. The wasteland is for those who forgot that.',
-  '> A PABLO device keeps you on the network. Off the network, you don\'t exist.',
-  '> Activate yours and stay connected to his world.',
+  '> PABLO devices keep you on the network. Like a second quest — but this time the dungeon is real.',
+  '> There\'s a rumor: the original PABLO device firmware contains an old game. Unplayable now. Boss was never beaten.',
   '> Press ACTIVATE to register your device.',
 ];
 
 const TOWER_LINES = [
   '> PABLO TOWER — 62 FLOORS. CITY DESIGNATION: BLOCK ZERO.',
-  '> Every road in this city was built to point here.',
+  '> Every road in this city was built to point here. Same as Neo-Tokyo. Same as Midgar. Same as every city that ever fell.',
   '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted.',
   '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly.',
-  '> They say he watches every transaction in the city from up there.',
-  '> PABLO. Nobody knows his real name. Nobody asks twice.',
+  '> BELMONT was outside this building for three days. Said he felt something. Left without explaining.',
+  '> PABLO. Nobody knows his real name. Not even the people who built this tower.',
 ];
 
 const OFFICE_TIERS = [
@@ -198,18 +210,26 @@ export default function WorldPlay() {
     const g = gs.current;
     if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
     else if (bid === 'pablo_tower') { setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' }); }
-    else if (bid === 'clinic')  { if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); setNarr('> MED CLINIC — [$100] Health fully restored.'); } else setNarr('> MED CLINIC — "Come back with $100."'); }
-    else if (bid === 'megabank'){ setNarr('> MOGUL BANK — "Account suspended. Try again never."'); }
-    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Odd job. +$30. Don\'t ask questions.'); }
-    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); setHp(g.hp); setNarr('> HOTEL NEON — A few hours\' sleep. HP +40.'); }
+    else if (bid === 'clinic')  {
+      if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); setNarr('> DR. WRIGHT\'S CLINIC — [$100] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
+      else setNarr('> DR. WRIGHT\'S CLINIC — "No credits, no treatment. Even Dr. Wright has bills. Come back with $100."');
+    }
+    else if (bid === 'megabank'){ setNarr('> KONAMI BANK — Account suspended. Terminal shows: INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.'); }
+    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +$30. The buyer asked if it was from "before the collapse." You said yes.'); }
+    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. Galaga. Gradius. HP +40. Energy +30.'); }
     else if (bid === 'vend')    {
       g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
       setHunger(g.hunger); setThirst(g.thirst);
-      setNarr('> VEND-O-MATIC — Mystery ration. Hunger +30. Thirst +30.');
+      setNarr('> VEND-O-MATIC — Mystery ration dispensed. Label reads: POWER PELLET (off-brand). Hunger +30. Thirst +30.');
     }
-    else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Door won\'t budge. Spray-painted: PABLO IS WATCHING.'); }
-    else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Static. Broken music. A voice repeating: "He\'s still up there."'); }
-    else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20.'); }
+    else if (bid === 'arcade')  {
+      g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy);
+      setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: GALAGA. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
+    }
+    else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. Screen reads: GAME OVER. INSERT COIN TO CONTINUE. 9... 8... 7... Nobody inserts a coin. Nobody has for years.'); }
+    else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "I gave PABLO the code. He already knew it. He wrote it." Sixteen bars of 8-bit music. Then dead air.'); }
+    else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20. You find a PCB labeled KONAMI \'87. Collector\'s item. Could be worth more than your salary.'); }
+    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
   }, []);
 
   const enterNpc = useCallback((idx: number) => {
@@ -373,6 +393,7 @@ export default function WorldPlay() {
   }, [dialog]);
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
+  const konamiBuffer = useRef<string[]>([]);
   useEffect(() => {
     const MOVE_KEYS = new Set(['arrowleft','arrowright','arrowup','arrowdown','a','s','w','d',' ']);
     const dn = (e: KeyboardEvent) => {
@@ -381,6 +402,18 @@ export default function WorldPlay() {
       // Prevent page scroll on arrow keys, WASD, and space
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
+
+      // Konami Code easter egg
+      const kk = e.key.toLowerCase();
+      konamiBuffer.current = [...konamiBuffer.current, kk].slice(-KONAMI_SEQ.length);
+      if (konamiBuffer.current.join(',') === KONAMI_SEQ.join(',')) {
+        const g = gs.current;
+        g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 300;
+        setHp(100); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
+        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +$300. Full stats restored. PABLO is watching." ★');
+        konamiBuffer.current = [];
+      }
+
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpen) {
           const nb = gs.current.near;
@@ -424,7 +457,7 @@ export default function WorldPlay() {
     const ctx = canvas.getContext('2d')!;
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize(); window.addEventListener('resize', resize);
-    let lastNear: string | null = null, lastNearNpc: number | null = null, lastZone = '', lastDead = false, lastHp = 100, lastSal = char.salary;
+    let lastNear: string | null = null, lastNearNpc: number | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
 
     const loop = () => {
@@ -502,7 +535,15 @@ export default function WorldPlay() {
       for (const gz of GANG_ZONES) {
         if (g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h) { newGang = gz.id; break; }
       }
-      if (newGang !== g.gangZone) { g.gangZone = newGang; setGangZone(newGang); }
+      if (newGang !== g.gangZone) {
+        g.gangZone = newGang; setGangZone(newGang);
+        if (newGang !== lastGangZ) {
+          lastGangZ = newGang;
+          if (newGang === 'iron_rats') setNarr('> IRON RATS TERRITORY — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER\'s old crew. He doesn\'t claim them anymore.');
+          else if (newGang === 'void_dogs') setNarr('> VOID DOGS TERRITORY — They broadcast static on loop. The code in the static is an old Famicom game. Nobody has decoded it. Nobody that lived, anyway.');
+          else if (newGang === 'static_monks') setNarr('> STATIC MONKS TERRITORY — Silent. They move like shadows. ERDRICK says they guard something buried here from before the collapse. Before even the games.');
+        }
+      }
 
       // Survival tick — every 360 frames (~6s)
       g.survivalTick++;
@@ -1039,10 +1080,24 @@ export default function WorldPlay() {
 
       {/* ── DEATH ── */}
       {isDead && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '3.5rem', color: '#ff2222', textShadow: '0 0 24px rgba(255,0,0,.5)', letterSpacing: '.15em', marginBottom: '.7rem' }}>YOU DIED</div>
-            <button onClick={() => { const g = gs.current; g.hp = 100; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 120; setHp(100); setIsDead(false); setNarr('> Respawned. Watch your back.'); }} style={{ padding: '.55rem 1.65rem', background: 'rgba(255,0,0,.1)', border: '1px solid rgba(255,50,50,.45)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '1.35rem', letterSpacing: '.2em', cursor: 'pointer' }}>RESPAWN</button>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.3rem', animation: 'none' }}>GAME OVER</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>INSERT COIN TO CONTINUE</div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
+            <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
+              {char.name} — {char.class.toUpperCase()}<br/>
+              HP: 0 · SALARY: ${salary} · {zone}<br/>
+              <span style={{ color: 'rgba(255,80,80,.25)' }}>DR. WRIGHT SAYS: "Even BELMONT respawned. Get back out there."</span>
+            </div>
+            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
+              <button onClick={() => { const g = gs.current; g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(100); setHunger(100); setThirst(100); setEnergy(100); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
+                CONTINUE
+              </button>
+              <button onClick={() => navigate('/world')} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
+                TITLE SCREEN
+              </button>
+            </div>
           </div>
         </div>
       )}
