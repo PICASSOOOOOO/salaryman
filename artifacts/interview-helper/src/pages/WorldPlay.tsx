@@ -822,6 +822,9 @@ export default function WorldPlay() {
   const [showWeapons, setShowWeapons] = useState(false);
   const [activeWeapon, setActiveWeapon] = useState('FISTS');
   const activeWeaponRef = useRef('FISTS');
+  const [showTopMenu, setShowTopMenu] = useState(false);
+  const minimapRef = useRef<HTMLCanvasElement>(null);
+  const fogGridRef = useRef<Set<string>>(new Set());
   const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => new Set(['FISTS']));
   const unlockedWeaponsRef = useRef<Set<string>>(new Set(['FISTS']));
   const [showMerchant, setShowMerchant] = useState<{ name: string; items: MerchantItem[] } | null>(null);
@@ -2773,14 +2776,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0;
         // Name label
         if (nDist < 90) {
-          ctx.fillStyle = isNearNpc ? nCol : 'rgba(0,255,65,.3)';
-          ctx.font = `${isNearNpc ? 'bold ' : ''}8px "Share Tech Mono"`;
-          ctx.textAlign = 'center'; ctx.fillText(n.name, nx2, ny2 - 17);
+          ctx.font = `${isNearNpc ? 'bold ' : ''}13px "Share Tech Mono"`;
+          ctx.textAlign = 'center';
+          const nm = n.name;
+          const tw = ctx.measureText(nm).width;
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.beginPath();
+          const pillY = ny2 - 28, pillH = 16, pillR = 4;
+          ctx.roundRect(nx2 - tw / 2 - 5, pillY, tw + 10, pillH, pillR);
+          ctx.fill();
+          ctx.fillStyle = isNearNpc ? nCol : 'rgba(0,255,65,.45)';
+          ctx.fillText(nm, nx2, ny2 - 16);
         }
         if (isNearNpc && !nb) {
           ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)';
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('[E]', nx2, ny2 - 27);
+          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E]', nx2, ny2 - 32);
         }
       }
 
@@ -2793,8 +2804,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
         ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = spk ? '#00ffcc' : 'rgba(100,180,255,.6)'; ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
-        ctx.fillText(op.name, px2, py2 - 12);
+        ctx.font = 'bold 13px "Share Tech Mono"'; ctx.textAlign = 'center';
+        const opNm = op.name;
+        const opTw = ctx.measureText(opNm).width;
+        ctx.fillStyle = 'rgba(0,0,0,.55)';
+        ctx.beginPath(); ctx.roundRect(px2 - opTw / 2 - 5, py2 - 24, opTw + 10, 16, 4); ctx.fill();
+        ctx.fillStyle = spk ? '#00ffcc' : 'rgba(100,180,255,.7)';
+        ctx.fillText(opNm, px2, py2 - 12);
       }
 
       // ── Police patrol units ────────────────────────────────────────────────
@@ -2818,7 +2834,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Label
         const pDist = Math.hypot(g.px - p.x, g.py - p.y);
         if (pDist < 100) {
-          ctx.fillStyle = '#88aaff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const pTw = ctx.measureText('POLICE').width;
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.beginPath(); ctx.roundRect(px2 - pTw / 2 - 5, py2 - 30, pTw + 10, 16, 4); ctx.fill();
+          ctx.fillStyle = '#88aaff';
           ctx.fillText('POLICE', px2, py2 - 18);
         }
       }
@@ -3046,8 +3066,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
       if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
-      ctx.fillStyle = 'rgba(0,255,65,.6)'; ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
-      ctx.fillText(char.name, px, py2 - 24);
+      ctx.font = 'bold 14px "Share Tech Mono"'; ctx.textAlign = 'center';
+      const pnTw = ctx.measureText(char.name).width;
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      ctx.beginPath(); ctx.roundRect(px - pnTw / 2 - 5, py2 - 36, pnTw + 10, 18, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(0,255,65,.7)';
+      ctx.fillText(char.name, px, py2 - 22);
 
       // ── Dog companion sprite ───────────────────────────────────────────────
       if (dog.active) {
@@ -3107,7 +3131,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText('P', gx2, gy2-2);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (gdist2 < 90) {
-          ctx.fillStyle = '#5599ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const gTw = ctx.measureText('PABLO CORP').width;
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.beginPath(); ctx.roundRect(gx2 - gTw / 2 - 5, gy2 - 32, gTw + 10, 16, 4); ctx.fill();
+          ctx.fillStyle = '#5599ff';
           ctx.fillText('PABLO CORP', gx2, gy2 - 20);
         }
       }
@@ -3215,78 +3243,119 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       ctx.restore();
 
-      // ── RDR2-style circular minimap (rendered in screen space, not zoomed) ──
-      const scw = canvas.width, sch = canvas.height;
-      const mmR = 70, mmCX = mmR + 14, mmCY = sch - mmR - 14;
-      const toMX = (wx: number) => mmCX - mmR + (wx / W) * (mmR * 2);
-      const toMY = (wy: number) => mmCY - mmR + (wy / H) * (mmR * 2);
-      ctx.save();
-      ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.clip();
-      // Terrain
-      ctx.fillStyle = 'rgba(0,8,0,.93)'; ctx.fillRect(mmCX - mmR, mmCY - mmR, mmR * 2, mmR * 2);
-      const wbMY = toMY(WASTELAND_Y);
-      if (wbMY < mmCY + mmR) { ctx.fillStyle = 'rgba(22,10,0,.88)'; ctx.fillRect(mmCX - mmR, wbMY, mmR * 2, mmR + mmCY - wbMY + mmR); }
-      // Gang zones
-      for (const gz of GANG_ZONES) { ctx.fillStyle = gz.color.replace('.06', '.3').replace('.05', '.25'); ctx.fillRect(toMX(gz.x), toMY(gz.y), (gz.w / W) * mmR * 2, (gz.h / H) * mmR * 2); }
-      // Wasteland line
-      ctx.strokeStyle = 'rgba(0,255,65,.2)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
-      ctx.beginPath(); ctx.moveTo(mmCX - mmR, wbMY); ctx.lineTo(mmCX + mmR, wbMY); ctx.stroke(); ctx.setLineDash([]);
-      // Buildings
-      for (const b of BUILDINGS) {
-        const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
-        ctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
-        ctx.fillRect(toMX(b.x), toMY(b.y), Math.max(2.5, (b.w / W) * mmR * 2), Math.max(1.5, (b.h / H) * mmR * 2));
+
+      // ── React minimap draw (player-centered, zoomed ~600 world units) ─────
+      const mc = minimapRef.current;
+      if (mc) {
+        const mctx = mc.getContext('2d');
+        if (mctx) {
+          const mmR = 130;
+          const mmD = mmR * 2;
+          mc.width = mmD; mc.height = mmD;
+          const mmCX = mmR, mmCY = mmR;
+          const viewR = 600;
+          const scale = mmR / viewR;
+          const toMX = (wx: number) => mmCX + (wx - g.px) * scale;
+          const toMY = (wy: number) => mmCY + (wy - g.py) * scale;
+
+          mctx.clearRect(0, 0, mmD, mmD);
+          mctx.save();
+          mctx.beginPath(); mctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); mctx.clip();
+
+          mctx.fillStyle = 'rgba(0,8,0,.93)'; mctx.fillRect(0, 0, mmD, mmD);
+          const wbMY = toMY(WASTELAND_Y);
+          if (wbMY < mmD) { mctx.fillStyle = 'rgba(22,10,0,.88)'; mctx.fillRect(0, wbMY, mmD, mmD - wbMY); }
+
+          for (const gz of GANG_ZONES) { mctx.fillStyle = gz.color.replace('.06', '.3').replace('.05', '.25'); mctx.fillRect(toMX(gz.x), toMY(gz.y), gz.w * scale, gz.h * scale); }
+
+          mctx.strokeStyle = 'rgba(0,255,65,.2)'; mctx.lineWidth = 1; mctx.setLineDash([2, 3]);
+          mctx.beginPath(); mctx.moveTo(0, wbMY); mctx.lineTo(mmD, wbMY); mctx.stroke(); mctx.setLineDash([]);
+
+          for (const b of BUILDINGS) {
+            const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
+            mctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
+            mctx.fillRect(toMX(b.x), toMY(b.y), Math.max(3, b.w * scale), Math.max(2, b.h * scale));
+          }
+
+          for (const bb of BILLBOARDS) {
+            const bmx = toMX(bb.x), bmy = toMY(bb.y);
+            const owned = billboardsDataRef.current.some((d: BillboardData) => d.locationId === bb.locationId && d.ownerPlayerName);
+            mctx.fillStyle = owned ? 'rgba(255,0,255,.8)' : 'rgba(0,200,255,.7)';
+            mctx.beginPath(); mctx.moveTo(bmx, bmy - 3); mctx.lineTo(bmx + 2.5, bmy); mctx.lineTo(bmx, bmy + 3); mctx.lineTo(bmx - 2.5, bmy); mctx.closePath(); mctx.fill();
+          }
+
+          for (const n of NPCS) {
+            mctx.fillStyle = 'rgba(255,220,30,.75)'; mctx.shadowColor = 'rgba(255,220,30,.4)'; mctx.shadowBlur = 3;
+            mctx.beginPath(); mctx.arc(toMX(n.x), toMY(n.y), 2.2, 0, Math.PI * 2); mctx.fill();
+          }
+          mctx.shadowBlur = 0;
+
+          const tPulse = Math.sin(g.frame * 0.12) * 0.4 + 0.6;
+          for (const t of g.threats) {
+            const tc = THREAT_COL[t.type] ?? '#ff4444';
+            mctx.fillStyle = tc; mctx.shadowColor = tc; mctx.shadowBlur = 4 * tPulse;
+            mctx.beginPath(); mctx.arc(toMX(t.x), toMY(t.y), 3, 0, Math.PI * 2); mctx.fill();
+          }
+          mctx.shadowBlur = 0;
+
+          for (const [, op] of g.peers) {
+            mctx.fillStyle = '#44aaff'; mctx.shadowColor = '#44aaff'; mctx.shadowBlur = 3;
+            mctx.beginPath(); mctx.arc(toMX(op.x), toMY(op.y), 3, 0, Math.PI * 2); mctx.fill();
+          }
+          mctx.shadowBlur = 0;
+
+          // Fog of war — mark visited cells
+          const fogCell = 40;
+          const visitR = 80;
+          for (let dx = -visitR; dx <= visitR; dx += fogCell) {
+            for (let dy = -visitR; dy <= visitR; dy += fogCell) {
+              const cx = Math.floor((g.px + dx) / fogCell);
+              const cy = Math.floor((g.py + dy) / fogCell);
+              fogGridRef.current.add(`${cx},${cy}`);
+            }
+          }
+          // Draw fog overlay on unvisited cells
+          const fogStartX = Math.floor((g.px - viewR) / fogCell);
+          const fogEndX = Math.ceil((g.px + viewR) / fogCell);
+          const fogStartY = Math.floor((g.py - viewR) / fogCell);
+          const fogEndY = Math.ceil((g.py + viewR) / fogCell);
+          for (let fcx = fogStartX; fcx <= fogEndX; fcx++) {
+            for (let fcy = fogStartY; fcy <= fogEndY; fcy++) {
+              if (!fogGridRef.current.has(`${fcx},${fcy}`)) {
+                const fx = toMX(fcx * fogCell);
+                const fy = toMY(fcy * fogCell);
+                mctx.fillStyle = 'rgba(0,0,0,.7)';
+                mctx.fillRect(fx, fy, fogCell * scale, fogCell * scale);
+              }
+            }
+          }
+
+          // Player — white glowing triangle
+          mctx.fillStyle = '#ffffff'; mctx.shadowColor = '#00ff41'; mctx.shadowBlur = 8;
+          mctx.beginPath(); mctx.moveTo(mmCX, mmCY - 6); mctx.lineTo(mmCX - 4, mmCY + 4); mctx.lineTo(mmCX + 4, mmCY + 4); mctx.closePath(); mctx.fill();
+          mctx.shadowBlur = 0;
+
+          // Vignette edge
+          const vGrad = mctx.createRadialGradient(mmCX, mmCY, mmR * 0.65, mmCX, mmCY, mmR);
+          vGrad.addColorStop(0, 'rgba(0,0,0,0)'); vGrad.addColorStop(1, 'rgba(0,0,0,.6)');
+          mctx.fillStyle = vGrad; mctx.fillRect(0, 0, mmD, mmD);
+          mctx.restore();
+
+          // Circle border
+          mctx.strokeStyle = 'rgba(0,255,65,.45)'; mctx.lineWidth = 2;
+          mctx.shadowColor = 'rgba(0,255,65,.35)'; mctx.shadowBlur = 10;
+          mctx.beginPath(); mctx.arc(mmCX, mmCY, mmR - 1, 0, Math.PI * 2); mctx.stroke();
+          mctx.shadowBlur = 0;
+
+          // Compass labels
+          mctx.fillStyle = 'rgba(0,255,65,.6)'; mctx.textAlign = 'center'; mctx.font = 'bold 10px "Share Tech Mono",monospace';
+          mctx.fillText('N', mmCX, 14);
+          mctx.fillText('S', mmCX, mmD - 6);
+          mctx.font = '9px "Share Tech Mono",monospace';
+          mctx.fillText('W', 10, mmCY + 3);
+          mctx.fillText('E', mmD - 10, mmCY + 3);
+        }
       }
-      // Billboards — magenta/cyan diamonds
-      for (const bb of BILLBOARDS) {
-        const bmx = toMX(bb.x), bmy = toMY(bb.y);
-        const owned = billboardsDataRef.current.some((d: BillboardData) => d.locationId === bb.locationId && d.ownerPlayerName);
-        ctx.fillStyle = owned ? 'rgba(255,0,255,.8)' : 'rgba(0,200,255,.7)';
-        ctx.beginPath(); ctx.moveTo(bmx, bmy - 2.5); ctx.lineTo(bmx + 2, bmy); ctx.lineTo(bmx, bmy + 2.5); ctx.lineTo(bmx - 2, bmy); ctx.closePath(); ctx.fill();
-      }
-      // NPCs — yellow dots
-      for (const n of NPCS) {
-        ctx.fillStyle = 'rgba(255,220,30,.75)'; ctx.shadowColor = 'rgba(255,220,30,.4)'; ctx.shadowBlur = 3;
-        ctx.beginPath(); ctx.arc(toMX(n.x), toMY(n.y), 1.8, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      // Threats — red/orange dots (pulsing)
-      const tPulse = Math.sin(g.frame * 0.12) * 0.4 + 0.6;
-      for (const t of g.threats) {
-        const tc = THREAT_COL[t.type] ?? '#ff4444';
-        ctx.fillStyle = tc; ctx.shadowColor = tc; ctx.shadowBlur = 4 * tPulse;
-        ctx.beginPath(); ctx.arc(toMX(t.x), toMY(t.y), 2.5, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      // Other players — cyan
-      for (const [, op] of g.peers) {
-        ctx.fillStyle = '#44aaff'; ctx.shadowColor = '#44aaff'; ctx.shadowBlur = 3;
-        ctx.beginPath(); ctx.arc(toMX(op.x), toMY(op.y), 2.5, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      // Player — white glowing triangle pointing up
-      const pmx = toMX(g.px), pmy = toMY(g.py);
-      ctx.fillStyle = '#ffffff'; ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 6;
-      ctx.beginPath(); ctx.moveTo(pmx, pmy - 5); ctx.lineTo(pmx - 3.5, pmy + 3); ctx.lineTo(pmx + 3.5, pmy + 3); ctx.closePath(); ctx.fill();
-      ctx.shadowBlur = 0;
-      // Vignette edge
-      const vGrad = ctx.createRadialGradient(mmCX, mmCY, mmR * 0.65, mmCX, mmCY, mmR);
-      vGrad.addColorStop(0, 'rgba(0,0,0,0)'); vGrad.addColorStop(1, 'rgba(0,0,0,.6)');
-      ctx.fillStyle = vGrad; ctx.fillRect(mmCX - mmR, mmCY - mmR, mmR * 2, mmR * 2);
-      ctx.restore();
-      // Circle border
-      ctx.strokeStyle = 'rgba(0,255,65,.45)'; ctx.lineWidth = 1.5;
-      ctx.shadowColor = 'rgba(0,255,65,.35)'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Compass
-      ctx.fillStyle = 'rgba(0,255,65,.55)'; ctx.textAlign = 'center'; ctx.font = 'bold 8px "Share Tech Mono",monospace';
-      ctx.fillText('N', mmCX, mmCY - mmR - 4);
-      ctx.fillText('S', mmCX, mmCY + mmR + 11);
-      ctx.font = '7px "Share Tech Mono",monospace';
-      ctx.fillText('W', mmCX - mmR - 7, mmCY + 3);
-      ctx.fillText('E', mmCX + mmR + 7, mmCY + 3);
-      ctx.textAlign = 'left';
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -3316,19 +3385,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
-      {/* BOTTOM-LEFT — player identity + stats (above minimap) */}
-      <div style={{ position: 'absolute', bottom: 180, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      {/* BOTTOM-LEFT — minimap canvas + player identity + stats */}
+      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.3rem .6rem' }}>
           <div style={{ width: 6, height: 6, background: '#00ff41', boxShadow: '0 0 6px rgba(0,255,65,.7)' }} />
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
-          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && <span style={{ fontSize: '.45rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
-          {char.hasBusiness === false && <span style={{ fontSize: '.45rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
+          <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
+          {hasDevice && <span style={{ fontSize: '.55rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
+          {char.hasBusiness === false && <span style={{ fontSize: '.55rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
         </div>
         <div style={{ display: 'flex', gap: '3px' }}>
           {/* HP */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem', minWidth: 90 }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>HP</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>HP</div>
             <div style={{ position: 'relative', height: 4, background: 'rgba(0,255,65,.15)', width: '100%' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${hpPct}%`, background: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', boxShadow: `0 0 4px ${hpPct > 50 ? 'rgba(0,255,65,.5)' : 'rgba(255,0,0,.5)'}`, transition: 'width .2s, background .2s' }} />
             </div>
@@ -3336,12 +3405,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           {/* Salary */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>FIAT</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>FIAT</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
           </div>
           {/* Zone */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>ZONE</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>ZONE</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '2px' }}>{zone}</div>
           </div>
         </div>
@@ -3353,22 +3422,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
           ].map(({ label, val, col }) => (
             <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 68 }}>
-              <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
+              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
               <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
               </div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: col, letterSpacing: '.04em', marginTop: '1px' }}>{val}</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: col, letterSpacing: '.04em', marginTop: '1px' }}>{val}</div>
             </div>
           ))}
         </div>
         {/* Level / EXP / Poison row */}
         <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 50 }}>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', flex: 1 }}>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
             <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)', marginBottom: '1px' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
             </div>
@@ -3405,63 +3474,82 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>
               )}
               {dogInjured && (
-                <div style={{ fontSize: '.42rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '1px' }}>Needs rest or clinic</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '1px' }}>Needs rest or clinic</div>
               )}
             </div>
           </div>
         )}
+        {/* Minimap canvas */}
+        <canvas ref={minimapRef} width={260} height={260} style={{ width: 260, height: 260, borderRadius: '50%', marginTop: 4, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
       </div>
 
-      {/* ONLINE PLAYERS — top-right */}
-      {online.length > 0 && (
-        <div style={{ position: 'absolute', top: 10, right: 10, width: 156, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', zIndex: 100, padding: '.35rem .45rem' }}>
-          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
-          {online.slice(0, 5).map(p => (
-            <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); chatOpenRef.current = true; }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.75)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
-              {speakIds.has(p.id) && <span style={{ fontSize: '.5rem' }}>🎙</span>}
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+      {/* TOP-RIGHT — Chat / Menu / Pablo AI dropdown */}
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+        <button
+          onClick={() => setShowTopMenu(v => !v)}
+          style={{
+            padding: '.45rem .8rem',
+            background: showTopMenu ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.92)',
+            border: `1px solid ${showTopMenu ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.25)'}`,
+            color: showTopMenu ? '#00ff41' : 'rgba(0,255,65,.55)',
+            cursor: 'pointer',
+            fontFamily: "'VT323',monospace",
+            fontSize: '1rem',
+            letterSpacing: '.1em',
+          }}
+        >
+          ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 7, height: 7, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
+        </button>
+        {showTopMenu && (
+          <div style={{ width: 180, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
+            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
+              💬 CHAT [C]{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
+            </button>
+            <button onClick={() => { setShowPablo(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.1)' : 'transparent', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🤖 PABLO AI [P]
+            </button>
+            <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(0,255,65,.1)' : 'transparent', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🗺 MAP [M]
+            </button>
+            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              📊 STATS
+            </button>
+            <button onClick={toggleVoice} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎙 {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
+            </button>
+            <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: muted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {muted ? '🔇 MUTE' : '♪ SND'}
+            </button>
+            <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
+              <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                ← MAIN MENU
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+            {online.length > 0 && (
+              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 5, paddingTop: 5 }}>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.1em', marginBottom: 4 }}>{online.length} ONLINE</div>
+                {online.slice(0, 5).map(p => (
+                  <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); setShowTopMenu(false); }} style={{ fontSize: '.6rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.65)', lineHeight: 1.8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
+                    {speakIds.has(p.id) && <span style={{ fontSize: '.55rem' }}>🎙</span>}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* BOTTOM — narration + action buttons */}
-      <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10, zIndex: 100, display: 'flex', alignItems: 'flex-end', gap: '.5rem', pointerEvents: 'none' }}>
-        {/* Narration */}
-        <div style={{ flex: 1, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .75rem', pointerEvents: 'none' }}>
+      {/* BOTTOM-CENTER — narration bar */}
+      <div style={{ position: 'absolute', bottom: 10, left: 290, right: 230, zIndex: 100, pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .75rem' }}>
           {nearB && (
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.2rem' }}>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.2rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
-        </div>
-        {/* Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'all' }}>
-          <button onClick={toggleVoice} style={{ padding: '.35rem .6rem', background: voice ? (speaking ? 'rgba(0,255,180,.12)' : 'rgba(0,255,65,.1)') : 'rgba(0,8,0,.92)', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,180,.6)' : 'rgba(0,255,65,.4)') : 'rgba(0,255,65,.35)'}`, color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
-          </button>
-          <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ padding: '.35rem .6rem', background: muted ? 'rgba(255,34,102,.08)' : 'rgba(0,8,0,.92)', border: muted ? '1px solid rgba(255,34,102,.4)' : '1px solid rgba(0,255,65,.35)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            {muted ? '✕ MUTE' : '♪ SND'}
-          </button>
-          <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
-            {unread > 0 && <span style={{ position: 'absolute', top: 2, right: 3, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
-            CHAT [C]
-          </button>
-          <button onClick={() => setShowMap(v => !v)} style={{ padding: '.35rem .6rem', background: showMap ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            MAP [M]
-          </button>
-          <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,8,0,.92)', border: showPablo ? '1px solid rgba(0,255,65,.55)' : hasDevice ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.25)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.7)' : 'rgba(0,255,65,.42)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 64, textAlign: 'center', position: 'relative' }}>
-            <span style={{ fontSize: '.38rem', display: 'block', lineHeight: 1, color: hasDevice ? (showPablo ? '#00ff41' : 'rgba(0,255,65,.6)') : 'rgba(255,60,60,.6)', letterSpacing: '.1em' }}>{hasDevice ? '● AI' : '○ OFF'}</span>
-            PABLO [P]
-          </button>
-          <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,8,0,.92)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.35)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            STATS
-          </button>
-          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ padding: '.35rem .6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            ← MENU
-          </button>
+          <div style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.55rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
         </div>
       </div>
 
@@ -3480,11 +3568,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffaa00', letterSpacing: '.08em' }}>{owner}</div>
                 {data.company && <div style={{ fontSize: '.45rem', color: 'rgba(255,170,0,.45)', letterSpacing: '.07em' }}>{data.company}</div>}
                 <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '2px' }}>{data.count} building{data.count !== 1 ? 's' : ''} claimed</div>
-                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '.3rem .55rem', borderTop: '1px solid rgba(0,255,65,.07)', fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
+          <div style={{ padding: '.3rem .55rem', borderTop: '1px solid rgba(0,255,65,.07)', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
             Total buildings: {BUILDINGS.filter(b => b.id !== 'pablo_tower').length} · Claimed: {Object.values(ownerStats).reduce((a, v) => a + v.count, 0)}
           </div>
         </div>
@@ -3605,7 +3693,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         });
         const StatRow = ({ label, val, col, bar }: { label: string; val: string | number; col?: string; bar?: number }) => (
           <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '.4rem', alignItems: 'center', marginBottom: '.18rem' }}>
-            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
               <span style={{ ...VT, fontSize: '.9rem', color: col ?? '#00ff41', letterSpacing: '.05em' }}>{val}</span>
               {bar !== undefined && (
@@ -3630,7 +3718,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>PABLO DEVICE</div>
-                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
                     {hasDevice ? `OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}` : 'NOT REGISTERED — VISIT PABLO STORE'}
                   </div>
                 </div>
@@ -3655,7 +3743,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* STATUS TAB */}
                 {pabloTab === 'status' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>OPERATIVE VITALS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>OPERATIVE VITALS</div>
                     <StatRow label="HP" val={`${Math.floor(hp)} / ${gs.current.maxHp}`} bar={(hp / gs.current.maxHp) * 100} />
                     <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col={salary < 0 ? '#ff4444' : '#00ff41'} />
                     <StatRow label="SAVINGS" val={`ƒ${savings.toLocaleString()}`} col="#44ffaa" />
@@ -3663,7 +3751,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <StatRow label="THIRST" val={`${Math.floor(thirst)}%`} bar={thirst} col={thirst < 30 ? '#ff8844' : undefined} />
                     <StatRow label="ENERGY" val={`${Math.floor(energy)}%`} bar={energy} col={energy < 25 ? '#ffdd44' : undefined} />
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FIELD DATA</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FIELD DATA</div>
                       <StatRow label="LEVEL" val={`${level}  [EXP: ${exp}]`} />
                       <StatRow label="ZONE" val={curZone} col={curZone === 'WASTELAND' ? '#88ff44' : '#00ff41'} />
                       <StatRow label="GANG ZONE" val={gangZone ?? 'NEUTRAL'} col={gangZone ? '#ffaa44' : 'rgba(0,255,65,.4)'} />
@@ -3677,7 +3765,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                     {bankLoan && (
                       <div style={{ border: `1px solid ${gs.current.frame > bankLoan.dueAt ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.2)'}`, padding: '.45rem', marginTop: '.2rem' }}>
-                        <div style={{ fontSize: '.38rem', color: gs.current.frame > bankLoan.dueAt ? '#ff6666' : 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
+                        <div style={{ fontSize: '.55rem', color: gs.current.frame > bankLoan.dueAt ? '#ff6666' : 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
                           {gs.current.frame > bankLoan.dueAt ? '⚠ LOAN OVERDUE' : 'ACTIVE LOAN'}
                         </div>
                         <StatRow label="PRINCIPAL" val={`ƒ${bankLoan.amount.toLocaleString()}`} />
@@ -3690,7 +3778,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ☠ POISONED — HP draining. Find an antidote or SAVE POINT.
                       </div>
                     )}
-                    <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.12)', marginTop: '.25rem', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.12)', marginTop: '.25rem', lineHeight: 1.6 }}>
                       PABLO CORP. HEALTH ADVISORY: Eat. Drink. Sleep. In that order. Dr. Wright bills extra for repeat patients.
                     </div>
                   </div>
@@ -3700,7 +3788,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {pabloTab === 'intel' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                     <div>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.35rem' }}>ZONE ASSESSMENT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.35rem' }}>ZONE ASSESSMENT</div>
                       <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
                         {curZone === 'MINX CITY'
                           ? 'MINX CITY — City zone: safe from gang aggro. PABLO CORP. guards patrol standard routes. SPY operatives may monitor near the southern border. Proceed normally.'
@@ -3708,7 +3796,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
                         NEARBY OPERATIVES ({nearbyNpcs.length})
                       </div>
                       {nearbyNpcs.length === 0
@@ -3716,13 +3804,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         : nearbyNpcs.map(n => (
                           <div key={n.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(0,255,65,.06)', fontSize: '.52rem', color: 'rgba(0,255,65,.6)' }}>
                             <span style={{ ...VT, fontSize: '.8rem', color: NPC_COL[n.type] ?? '#00ff41' }}>{n.name}</span>
-                            <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.42rem' }}>{n.type.toUpperCase()} · [E] to talk</span>
+                            <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.55rem' }}>{n.type.toUpperCase()} · [E] to talk</span>
                           </div>
                         ))
                       }
                     </div>
                     <div>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
                         THREAT SCAN ({nearbyEnemies.length})
                       </div>
                       {nearbyEnemies.length === 0
@@ -3730,7 +3818,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         : nearbyEnemies.map((t, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(255,65,65,.06)', fontSize: '.52rem' }}>
                             <span style={{ ...VT, fontSize: '.8rem', color: THREAT_COL[t.type] ?? '#ff4444' }}>{t.type.replace(/_/g,' ')}</span>
-                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [Space] melee · [Click] shoot</span>
+                            <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [Space] melee · [Click] shoot</span>
                           </div>
                         ))
                       }
@@ -3791,7 +3879,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
 
               {/* Footer */}
-              <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.35rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
+              <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
                 PABLO CORP. SURVEILLANCE UNIT v1.0 · ALL TRANSMISSIONS LOGGED · SENIOR PABLO IS WATCHING · ESC TO CLOSE
               </div>
             </div>
@@ -3903,7 +3991,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {floorPanel.dir.history}
             </div>
             {/* Floor list */}
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
             {floorPanel.dir.floors.map((fl, fi) => (
               <div key={fi}
                 onClick={() => setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null)}
@@ -3923,21 +4011,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 )}
               </div>
             ))}
-            <div style={{ marginTop: '.8rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
+            <div style={{ marginTop: '.8rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
           </div>
         </div>
       )}
 
       {/* ── POWER GRID HUD INDICATOR ── */}
       {powerPct < 100 && (
-        <div style={{ position: 'absolute', top: '3.5rem', right: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.4rem', border: `1px solid rgba(${powerPct < 30 ? '255,60,60' : '255,140,0'},.5)`, background: 'rgba(0,0,0,.8)', padding: '.3rem .55rem', color: powerPct < 30 ? '#ff4444' : '#ffaa00', letterSpacing: '.1em', animation: powerPct < 30 ? 'smfade 0.6s steps(1) infinite alternate' : 'none' }}>
+        <div style={{ position: 'absolute', top: '3.5rem', right: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', border: `1px solid rgba(${powerPct < 30 ? '255,60,60' : '255,140,0'},.5)`, background: 'rgba(0,0,0,.8)', padding: '.3rem .55rem', color: powerPct < 30 ? '#ff4444' : '#ffaa00', letterSpacing: '.1em', animation: powerPct < 30 ? 'smfade 0.6s steps(1) infinite alternate' : 'none' }}>
           ⚡ POWER {powerPct}%{powerPct < 30 ? ' — BLACKOUT' : ' — REDUCED'}
         </div>
       )}
 
       {/* ── CITY EVENT TICKER ── */}
       {cityEvent && (
-        <div style={{ position: 'absolute', bottom: '3.8rem', left: '50%', transform: 'translateX(-50%)', zIndex: 180, fontFamily: "'Share Tech Mono',monospace", fontSize: '.38rem', color: 'rgba(100,200,255,.7)', letterSpacing: '.08em', whiteSpace: 'nowrap', pointerEvents: 'none', textShadow: '0 0 8px rgba(100,200,255,.3)' }}>
+        <div style={{ position: 'absolute', bottom: '3.8rem', left: '50%', transform: 'translateX(-50%)', zIndex: 180, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(100,200,255,.7)', letterSpacing: '.08em', whiteSpace: 'nowrap', pointerEvents: 'none', textShadow: '0 0 8px rgba(100,200,255,.3)' }}>
           {cityEvent}
         </div>
       )}
@@ -3947,7 +4035,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {jobPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}>
           <div style={{ width: 360, border: '1px solid rgba(0,255,65,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "'Share Tech Mono',monospace" }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#00ff41', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
             <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', marginBottom: '1rem' }}>
               Pay: <strong style={{ color: '#ffdd44' }}>${jobPanel.pay}</strong> · Duration: <strong style={{ color: '#00ff41' }}>{jobPanel.seconds}s</strong>
@@ -4272,7 +4360,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.2em' }}>MINX CITY MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: MINX CITY · PST</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: MINX CITY · PST</div>
                 <button onClick={() => setShowMap(false)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
@@ -4308,11 +4396,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
-                  <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
+                  <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: '.5rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
+            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
               PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} FIAT · [M] or [ESC] to close
             </div>
           </div>
@@ -4341,19 +4429,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.35)', marginBottom: '.3rem' }}>Location ID: {showBillboard.locationId}</div>
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '.6rem' }}>
                 <div style={{ flex: 1, border: '1px solid rgba(0,200,255,.15)', padding: '.5rem', background: 'rgba(0,10,20,.5)' }}>
-                  <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>STATUS</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>STATUS</div>
                   <div style={{ fontSize: '.55rem', color: owned && !expired ? '#ff00ff' : '#00ccff' }}>
                     {owned && !expired ? `OWNED by ${owned}` : 'AVAILABLE'}
                   </div>
                 </div>
                 <div style={{ flex: 1, border: '1px solid rgba(0,200,255,.15)', padding: '.5rem', background: 'rgba(0,10,20,.5)' }}>
-                  <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>PRICE (7 DAYS)</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>PRICE (7 DAYS)</div>
                   <div style={{ fontSize: '.55rem', color: '#ffdd44' }}>ç{price.toLocaleString()} FIAT</div>
                 </div>
               </div>
               {(bbInfo?.adText || bbInfo?.adImageUrl) && (
                 <div style={{ border: '1px solid rgba(255,0,255,.2)', padding: '.5rem', marginBottom: '.6rem', background: 'rgba(255,0,255,.03)' }}>
-                  <div style={{ fontSize: '.42rem', color: 'rgba(255,0,255,.4)', marginBottom: '.2rem', letterSpacing: '.1em' }}>CURRENT AD</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(255,0,255,.4)', marginBottom: '.2rem', letterSpacing: '.1em' }}>CURRENT AD</div>
                   {bbInfo.adImageUrl && (
                     <img src={bbInfo.adImageUrl} alt="Billboard ad" style={{ width: '100%', maxHeight: 120, objectFit: 'contain', marginBottom: '.3rem', border: '1px solid rgba(255,0,255,.15)' }}
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -4362,7 +4450,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               )}
               {bbInfo?.rentedUntil && !expired && (
-                <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>
                   Expires: {new Date(bbInfo.rentedUntil).toLocaleDateString()}
                 </div>
               )}
@@ -4386,7 +4474,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </button>
                 </div>
               )}
-              <div style={{ marginTop: '.6rem', fontSize: '.35rem', color: 'rgba(0,200,255,.2)', letterSpacing: '.08em' }}>
+              <div style={{ marginTop: '.6rem', fontSize: '.55rem', color: 'rgba(0,200,255,.2)', letterSpacing: '.08em' }}>
                 Billboard ads display for all players in Minx City. · Florin currency only. · [ESC] to close
               </div>
             </div>
@@ -4394,61 +4482,58 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── WEAPONS WHEEL — bottom-right ──────────────────────────────────── */}
+      {/* ── WEAPONS WHEEL — bottom-right radial ──────────────────────────── */}
       <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 150, pointerEvents: 'all' }}>
-        <button
+        <div
           onClick={() => setShowWeapons(v => !v)}
           style={{
-            padding: '.4rem .7rem',
-            background: showWeapons ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.88)',
-            border: `1px solid ${showWeapons ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.18)'}`,
-            color: showWeapons ? '#00ff41' : 'rgba(0,255,65,.4)',
-            cursor: 'pointer',
-            fontFamily: "'VT323',monospace",
-            fontSize: '1rem',
-            letterSpacing: '.1em',
+            width: 70, height: 70, borderRadius: '50%',
+            background: showWeapons ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.92)',
+            border: `2px solid ${showWeapons ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.22)'}`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 0 12px rgba(0,255,65,.1)',
           }}
         >
-          ⚔ {activeWeapon}
-        </button>
-        {showWeapons && (
-          <div style={{
-            position: 'absolute',
-            bottom: '100%',
-            right: 0,
-            marginBottom: 6,
-            width: 200,
-            background: 'rgba(0,5,0,.97)',
-            border: '1px solid rgba(0,255,65,.35)',
-            padding: '.5rem',
-          }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.4rem', borderBottom: '1px solid rgba(0,255,65,.15)', paddingBottom: '.3rem' }}>WEAPONS</div>
-            {WEAPONS.filter(w => unlockedWeapons.has(w.id)).map(w => {
-              const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
-              return (
-              <div
-                key={w.id}
-                onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
-                style={{
-                  padding: '.35rem .5rem',
-                  marginBottom: 2,
-                  cursor: 'pointer',
-                  background: activeWeapon === w.id ? 'rgba(0,255,65,.1)' : 'transparent',
-                  border: activeWeapon === w.id ? '1px solid rgba(0,255,65,.35)' : '1px solid transparent',
-                  display: 'flex', alignItems: 'center', gap: '.4rem',
-                }}
-              >
-                <span style={{ fontSize: '1.1rem', width: 22, textAlign: 'center' }}>{iconMap[w.icon] ?? '?'}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: w.color, letterSpacing: '.08em' }}>
-                    {activeWeapon === w.id ? '▸ ' : '  '}{w.label} <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.3)' }}>{w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.05em', marginTop: 2 }}>{activeWeapon}</span>
+        </div>
+        {showWeapons && (() => {
+          const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
+          const available = WEAPONS.filter(w => unlockedWeapons.has(w.id));
+          const wheelR = 90;
+          const count = available.length;
+          return (
+            <div style={{ position: 'absolute', bottom: 35, right: 35, width: 0, height: 0 }}>
+              {available.map((w, i) => {
+                const angle = (-Math.PI / 2) + (i / count) * Math.PI * 2;
+                const x = Math.cos(angle) * wheelR;
+                const y = Math.sin(angle) * wheelR;
+                const isActive = activeWeapon === w.id;
+                return (
+                  <div
+                    key={w.id}
+                    onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
+                    style={{
+                      position: 'absolute',
+                      left: x - 42, top: y - 24,
+                      width: 84, textAlign: 'center',
+                      padding: '.3rem .4rem',
+                      background: isActive ? 'rgba(0,255,65,.15)' : 'rgba(0,5,0,.95)',
+                      border: `1px solid ${isActive ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.2)'}`,
+                      borderRadius: 6, cursor: 'pointer',
+                      boxShadow: isActive ? '0 0 10px rgba(0,255,65,.2)' : 'none',
+                    }}
+                  >
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: w.color, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>
+                      {iconMap[w.icon] ?? '?'} {isActive ? '▸ ' : ''}{w.label}
+                    </div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</div>
                   </div>
-                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.06em', marginTop: 1 }}>{w.desc}</div>
-                </div>
-              </div>
-            );})}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── MERCHANT PANEL ─────────────────────────────────────────────── */}
@@ -4629,12 +4714,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>K O N A M I   B A N K</div>
-                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>MEMBER FDIC · EST. 1989 · PAX PABLO · MINX CITY BRANCH 01</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>MEMBER FDIC · EST. 1989 · PAX PABLO · MINX CITY BRANCH 01</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
                   <div style={{ ...VTB, fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</div>
-                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
                 </div>
               </div>
               {/* Tabs */}
@@ -4659,29 +4744,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO TAX: 15% ON INTEREST' },
                     ].map(({ label, val, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
-                        <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
                         <div style={{ ...VTB, fontSize: '2.1rem', color: val > 0 ? '#00ff41' : 'rgba(0,255,65,.3)', letterSpacing: '.06em' }}>ƒ{val.toLocaleString()}</div>
-                        <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
                       </div>
                     ))}
                   </div>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
-                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>PABLO TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
-                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ƒ5k)</span>}
+                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>PABLO TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
+                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ƒ5k)</span>}
                     </div>
                   </div>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankWithAmt} onChange={e => setBankWithAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doWithdraw} style={actBtn(parseInt(bankWithAmt) > 0 && parseInt(bankWithAmt) <= savings)}>WITHDRAW ↑</button>
                     </div>
                   </div>
-                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
                     Savings earn 0.8% APY per cycle (~3 min). PABLO Corp. takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. KONAMI BANK is not liable for seizures during martial law.
                   </div>
                 </>)}
@@ -4689,14 +4774,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* ── LOANS ── */}
                 {bankTab === 'loans' && (<>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — KONAMI BANK</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — KONAMI BANK</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
                       18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO Corp. Debt Collection · Loans ≥ ƒ25k carry 2% origination fee.
                     </div>
                   </div>
                   {!bankLoan ? (
                     <>
-                      <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.5rem' }}>
                         {LOAN_OPTIONS.map(opt => {
                           const int18 = Math.floor(opt.amount * .18);
@@ -4704,20 +4789,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           return (
                             <button key={opt.amount} onClick={() => doLoan(opt.amount)} style={{ padding: '.75rem .4rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
                               <div style={{ ...VTB, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.06em' }}>{opt.label}</div>
-                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ƒ{int18.toLocaleString()} INT</div>
-                              {fee > 0 && <div style={{ fontSize: '.38rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG</div>}
-                              <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.22)', marginTop: '.12rem' }}>DUE ~6 MIN</div>
+                              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ƒ{int18.toLocaleString()} INT</div>
+                              {fee > 0 && <div style={{ fontSize: '.55rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG</div>}
+                              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', marginTop: '.12rem' }}>DUE ~6 MIN</div>
                             </button>
                           );
                         })}
                       </div>
-                      <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
                         Collateral: NONE REQUIRED. Credit score: PROVISIONAL POSITIVE. One active loan at a time. PABLO Corp. reserves right to restructure debt without notice. This is not a threat.
                       </div>
                     </>
                   ) : (
                     <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(0,255,65,.3)'}`, padding: '.75rem' }}>
-                      <div style={{ fontSize: '.4rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
+                      <div style={{ fontSize: '.55rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
                         {isOverdue ? '⚠ LOAN OVERDUE — PABLO DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
@@ -4727,7 +4812,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           { l: 'TOTAL DUE', v: `ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
                         ].map(({ l, v }) => (
                           <div key={l} style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.45rem' }}>
-                            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
                             <div style={{ ...VTB, fontSize: '1.15rem', color: isOverdue ? '#ff6666' : '#00ff41' }}>{v}</div>
                           </div>
                         ))}
@@ -4737,7 +4822,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
                         REPAY IN FULL — ƒ{(bankLoan.amount + bankLoan.interest).toLocaleString()}
                       </button>
-                      {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ƒ{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more FIAT.</div>}
+                      {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.55rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ƒ{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more FIAT.</div>}
                     </div>
                   )}
                 </>)}
@@ -4745,12 +4830,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* ── WIRE ── */}
                 {bankTab === 'wire' && (<>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% PABLO Corp. Wire Tax deducted from sender. Logged. Irreversible.</div>
                   </div>
                   {online.filter(p => p.name !== char.name).length > 0 && (
                     <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem' }}>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem' }}>
                         {online.filter(p => p.name !== char.name).map(p => (
                           <button key={p.id} onClick={() => setBankWireTo(p.name)}
@@ -4763,14 +4848,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
                     <div>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
                       <input value={bankWireTo} onChange={e => setBankWireTo(e.target.value.toUpperCase())} placeholder="OPERATIVE NAME..." style={inp} maxLength={32} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
                       <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                         <input value={bankWireAmt} onChange={e => setBankWireAmt(e.target.value.replace(/\D/g,''))} placeholder="0" style={{ ...inp, maxWidth: 180 }} />
-                        {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>FEE: ƒ{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ƒ{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
+                        {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>FEE: ƒ{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ƒ{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
                       </div>
                     </div>
                     <button onClick={doWire} disabled={!bankWireTo.trim() || !(parseInt(bankWireAmt) > 0)}
@@ -4782,20 +4867,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                 {/* ── HISTORY ── */}
                 {bankTab === 'history' && (<>
-                  <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>ACCOUNT HISTORY — LAST 30 TRANSACTIONS</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>ACCOUNT HISTORY — LAST 30 TRANSACTIONS</div>
                   {bankHistory.length === 0
                     ? <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', padding: '.8rem', textAlign: 'center' }}>No transactions recorded yet. Deposit, withdraw, take a loan, or send a wire to begin your history.</div>
                     : <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.15)' }}>
-                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
-                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
-                          <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
                         </div>
                         {bankHistory.map((tx, i) => (
                           <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
                             <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
                             <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ƒ{Math.abs(tx.amount).toLocaleString()}</div>
-                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
                           </div>
                         ))}
                       </div>
@@ -4803,7 +4888,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>)}
               </div>
               {/* Footer */}
-              <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.38rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span>KONAMI BANK IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY PABLO CORP. DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
                 <span>ESC TO CLOSE</span>
               </div>
@@ -4882,7 +4967,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ fontSize: '.7rem', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.4)' }}>●</div>
                       <div>
                         <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.7)' }}>{s.label}</div>
-                        <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.28)', marginTop: '.1rem' }}>{s.sub}</div>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.28)', marginTop: '.1rem' }}>{s.sub}</div>
                       </div>
                       <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
                     </button>
@@ -4890,7 +4975,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 })}
               </div>
               {/* Footer */}
-              <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.12)', fontSize: '.38rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.12)', fontSize: '.55rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP. MONITORS ALL TRANSIT ACTIVITY.</span>
                 <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
