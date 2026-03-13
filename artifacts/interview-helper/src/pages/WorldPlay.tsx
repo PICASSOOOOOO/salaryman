@@ -60,79 +60,86 @@ function initCommodityPrices(): Record<string,CargoPrices> {
 }
 const MAX_CARGO = 5;
 
+interface Door { x: number; y: number; w: number; h: number; }
+const DOOR_W = 40;
+const mkDoorS = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x: bx + (bw - DOOR_W) / 2, y: by + bh - 4, w: DOOR_W, h: 8 }];
+const mkDoorN = (bx: number, by: number, bw: number): Door[] => [{ x: bx + (bw - DOOR_W) / 2, y: by - 4, w: DOOR_W, h: 8 }];
+const mkDoorW = (bx: number, by: number, _bw: number, bh: number): Door[] => [{ x: bx - 4, y: by + (bh - DOOR_W) / 2, w: 8, h: DOOR_W }];
+const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x: bx + bw - 4, y: by + (bh - DOOR_W) / 2, w: 8, h: DOOR_W }];
+
 const BUILDINGS = [
   // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
-  { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false },
-  { id: 'eastside_flat',x: 2300, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false },
+  { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false, doors: mkDoorS(1060,260,110,130) },
+  { id: 'eastside_flat',x: 2300, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(2300,380,110,120) },
   // ── MINX CITY WEST ──────────────────────────────────────────────────────────
-  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true  },
-  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true  },
-  { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false },
-  { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false },
-  { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false },
-  { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false },
-  { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true  },
-  { id: 'crystal',      x: 488, y: 482, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
-  { id: 'arcade',       x: 150, y: 590, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true  },
-  { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',        bright: false },
-  { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false },
-  { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false },
-  { id: 'wily_lab',     x: 990, y: 760, w: 90,  h: 70,  label: 'WILY LABS',        bright: false },
+  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true,  doors: mkDoorS(370,310,120,70) },
+  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true,  doors: mkDoorS(580,40,260,230) },
+  { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false, doors: mkDoorS(180,370,100,70) },
+  { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false, doors: mkDoorS(410,420,120,80) },
+  { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(720,360,110,70) },
+  { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false, doors: mkDoorS(920,190,100,120) },
+  { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(920,370,60,60) },
+  { id: 'crystal',      x: 488, y: 482, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'arcade',       x: 150, y: 590, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true,  doors: mkDoorE(150,590,110,75) },
+  { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(300,700,130,80) },
+  { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(580,720,160) },
+  { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(820,680,100,90) },
+  { id: 'wily_lab',     x: 990, y: 760, w: 90,  h: 70,  label: 'WILY LABS',        bright: false, doors: mkDoorW(990,760,90,70) },
   // ── MINX CITY EAST DISTRICT ─────────────────────────────────────────────────
-  { id: 'dojo',         x: 1400, y: 130, w: 120, h: 90, label: 'IRON DOJO',        bright: false },
-  { id: 'data_vault',   x: 1750, y: 190, w: 130, h: 80, label: 'DATA VAULT',       bright: true  },
-  { id: 'nightclub',    x: 2100, y: 310, w: 110, h: 90, label: 'CLUB NEON',        bright: true  },
-  { id: 'east_market',  x: 1400, y: 380, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false },
-  { id: 'east_clinic',  x: 1850, y: 440, w: 110, h: 70, label: 'EAST CLINIC',      bright: false },
-  { id: 'armory',       x: 2400, y: 170, w: 110, h: 80, label: 'ARMORY',           bright: false },
-  { id: 'crystal2',     x: 2600, y: 340, w: 28,  h: 28, label: 'SAVE POINT',       bright: true  },
-  { id: 'print_shop',   x: 1600, y: 590, w: 100, h: 60, label: 'PRINT SHOP',       bright: false },
-  { id: 'east_bunker',  x: 2100, y: 610, w: 110, h: 75, label: 'EAST BUNKER',      bright: false },
-  { id: 'north_gate',   x: 2800, y: 490, w: 90,  h: 60, label: 'NORTH GATE',       bright: false },
+  { id: 'dojo',         x: 1400, y: 130, w: 120, h: 90, label: 'IRON DOJO',        bright: false, doors: mkDoorS(1400,130,120,90) },
+  { id: 'data_vault',   x: 1750, y: 190, w: 130, h: 80, label: 'DATA VAULT',       bright: true,  doors: mkDoorS(1750,190,130,80) },
+  { id: 'nightclub',    x: 2100, y: 310, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(2100,310,110,90) },
+  { id: 'east_market',  x: 1400, y: 380, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(1400,380,110,70) },
+  { id: 'east_clinic',  x: 1850, y: 440, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(1850,440,110,70) },
+  { id: 'armory',       x: 2400, y: 170, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(2400,170,110,80) },
+  { id: 'crystal2',     x: 2600, y: 340, w: 28,  h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'print_shop',   x: 1600, y: 590, w: 100, h: 60, label: 'PRINT SHOP',       bright: false, doors: mkDoorN(1600,590,100) },
+  { id: 'east_bunker',  x: 2100, y: 610, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(2100,610,110) },
+  { id: 'north_gate',   x: 2800, y: 490, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(2800,490,90), ...mkDoorS(2800,490,90,60)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'hotel_midgar',  x: 100,  y: 140, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true  },
-  { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false },
-  { id: 'overlook',      x: 2250, y: 600, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true  },
-  { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE 7',     bright: false },
+  { id: 'hotel_midgar',  x: 100,  y: 140, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(100,140,120,90) },
+  { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1150,510,100,80) },
+  { id: 'overlook',      x: 2250, y: 600, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(2250,600,100) },
+  { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE 7',     bright: false, doors: mkDoorN(1090,650,90) },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
-  { id: 'sub_west',      x:  280, y: 540, w: 80,  h: 55,  label: 'METRO WEST',       bright: true  },
-  { id: 'sub_central',   x:  950, y: 500, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true  },
-  { id: 'sub_east',      x: 1800, y: 540, w: 80,  h: 55,  label: 'METRO EAST',       bright: true  },
-  { id: 'sub_north',     x: 2400, y: 160, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true  },
+  { id: 'sub_west',      x:  280, y: 540, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(280,540,80,55) },
+  { id: 'sub_central',   x:  950, y: 500, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(950,500,80,55) },
+  { id: 'sub_east',      x: 1800, y: 540, w: 80,  h: 55,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(1800,540,80,55) },
+  { id: 'sub_north',     x: 2400, y: 160, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(2400,160,80,55) },
   // ── CHECKPOINTS ───────────────────────────────────────────────────────────────
-  { id: 'checkpoint_w',  x:  60,  y: 845, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false },
-  { id: 'checkpoint_c',  x: 1250, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false },
-  { id: 'checkpoint_e',  x: 2550, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false },
+  { id: 'checkpoint_w',  x:  60,  y: 845, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(60,845,90,50), ...mkDoorE(60,845,90,50)] },
+  { id: 'checkpoint_c',  x: 1250, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(1250,845,90,50), ...mkDoorE(1250,845,90,50)] },
+  { id: 'checkpoint_e',  x: 2550, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(2550,845,90,50), ...mkDoorE(2550,845,90,50)] },
   // ── NORTH QUARTER (new area above y=200) ─────────────────────────────────────
-  { id: 'print_shop2',   x: 2500, y: 100, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false },
-  { id: 'call_home',     x: 2650, y: 250, w: 130, h: 80,  label: 'CALL HOME',        bright: true  },
-  { id: 'noodle_bar',    x: 2820, y: 160, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true  },
-  { id: 'pawn_shop',     x: 2820, y: 350, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false },
-  { id: 'crystal4',      x: 2700, y: 430, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
-  { id: 'north_clinic',  x: 2620, y: 490, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false },
-  { id: 'terminal_shop', x: 2480, y: 340, w: 130, h: 80,  label: 'PABLO CORP. N',    bright: true  },
-  { id: 'north_bunker',  x: 3000, y: 200, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false },
-  { id: 'north_market',  x: 3050, y: 380, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false },
-  { id: 'crystal5',      x: 3000, y: 480, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'print_shop2',   x: 2500, y: 100, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(2500,100,110,70) },
+  { id: 'call_home',     x: 2650, y: 250, w: 130, h: 80,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(2650,250,130,80) },
+  { id: 'noodle_bar',    x: 2820, y: 160, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(2820,160,100,70) },
+  { id: 'pawn_shop',     x: 2820, y: 350, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(2820,350,100,70) },
+  { id: 'crystal4',      x: 2700, y: 430, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'north_clinic',  x: 2620, y: 490, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(2620,490,110,70) },
+  { id: 'terminal_shop', x: 2480, y: 340, w: 130, h: 80,  label: 'PABLO CORP. N',    bright: true,  doors: mkDoorS(2480,340,130,80) },
+  { id: 'north_bunker',  x: 3000, y: 200, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(3000,200,120,80) },
+  { id: 'north_market',  x: 3050, y: 380, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(3050,380,100,70) },
+  { id: 'crystal5',      x: 3000, y: 480, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── WASTELAND OUTPOSTS ───────────────────────────────────────────────────────
-  { id: 'outpost_alpha', x: 200,  y: 1100, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true  },
-  { id: 'outpost_beta',  x: 1500, y: 1400, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true  },
-  { id: 'supply_cache',  x: 800,  y: 1900, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false },
-  { id: 'deep_bunker',   x: 2400, y: 1700, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false },
-  { id: 'crystal3',      x: 1200, y: 2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'outpost_alpha', x: 200,  y: 1100, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(200,1100,120,80) },
+  { id: 'outpost_beta',  x: 1500, y: 1400, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(1500,1400,100,70) },
+  { id: 'supply_cache',  x: 800,  y: 1900, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false, doors: mkDoorN(800,1900,130) },
+  { id: 'deep_bunker',   x: 2400, y: 1700, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(2400,1700,120) },
+  { id: 'crystal3',      x: 1200, y: 2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── HOSTELS / SHELTERS (wasteland) ───────────────────────────────────────────
-  { id: 'prancing_pony', x: 300,  y:1090, w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true  },
-  { id: 'zanarkand_inn', x: 760,  y:1270, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false },
-  { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false },
-  { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true  },
-  { id: 'waste_exchange',x: 780,  y:1500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true  },
+  { id: 'prancing_pony', x: 300,  y:1090, w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true,  doors: mkDoorE(300,1090,110,75) },
+  { id: 'zanarkand_inn', x: 760,  y:1270, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false, doors: mkDoorS(760,1270,120,80) },
+  { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(380,1650,120,80) },
+  { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(2100,1520,100,100) },
+  { id: 'waste_exchange',x: 780,  y:1500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(780,1500,130) },
   // ── FAR EAST / FAR SOUTH WASTELAND (new area) ────────────────────────────────
-  { id: 'eastern_gate',  x: 2800, y:1100, w: 100, h: 70,  label: 'EASTERN GATE',     bright: false },
-  { id: 'deep_camp',     x: 2600, y:1400, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false },
-  { id: 'ruins_alpha',   x: 2900, y:1600, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false },
-  { id: 'crystal6',      x: 2750, y:1750, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
-  { id: 'southern_hub',  x: 1500, y:2100, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true  },
-  { id: 'crystal7',      x: 1650, y:2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'eastern_gate',  x: 2800, y:1100, w: 100, h: 70,  label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(2800,1100,100,70), ...mkDoorE(2800,1100,100,70)] },
+  { id: 'deep_camp',     x: 2600, y:1400, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(2600,1400,120,80) },
+  { id: 'ruins_alpha',   x: 2900, y:1600, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false, doors: [...mkDoorN(2900,1600,130), ...mkDoorS(2900,1600,130,90)] },
+  { id: 'crystal6',      x: 2750, y:1750, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'southern_hub',  x: 1500, y:2100, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(1500,2100,130) },
+  { id: 'crystal7',      x: 1650, y:2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
 ];
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
@@ -1715,6 +1722,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); setHp(Math.floor(g.hp)); }
       }
 
+      const col = (px: number, py: number) => BUILDINGS.some(b => {
+        if (!(px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h)) return false;
+        if (b.doors && b.doors.length > 0) {
+          for (const d of b.doors) {
+            if (px + PSIZE > d.x && px - PSIZE < d.x + d.w && py + PSIZE > d.y && py - PSIZE < d.y + d.h) return false;
+          }
+        }
+        return true;
+      });
+
       if (!frozen()) {
         const vMult = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
         let dx = 0, dy = 0;
@@ -1723,7 +1740,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD * vMult;
         if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD * vMult;
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
-        const col = (px: number, py: number) => BUILDINGS.some(b => px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h);
         let nx = g.px + dx, ny = g.py + dy;
         if (col(nx, g.py)) nx = g.px;
         if (col(g.px, ny)) ny = g.py;
@@ -1775,8 +1791,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             t.dx = Math.cos(ang) * 0.3; t.dy = Math.sin(ang) * 0.3;
             t.timer = 90 + Math.floor(Math.random() * 120);
           }
-          t.x = Math.max(10, Math.min(W - 10, t.x + t.dx));
-          t.y = Math.max(10, Math.min(H - 10, t.y + t.dy));
+          let pnx = t.x + t.dx, pny = t.y + t.dy;
+          if (col(pnx, t.y)) pnx = t.x;
+          if (col(t.x, pny)) pny = t.y;
+          t.x = Math.max(10, Math.min(W - 10, pnx));
+          t.y = Math.max(10, Math.min(H - 10, pny));
           continue;
         }
 
@@ -1796,10 +1815,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.timer = 120 + Math.floor(Math.random() * 140);
         }
 
-        // Major threats can't cross city wall, SPY can
         let nx2 = t.x + t.dx;
         let ny2 = t.y + t.dy;
         if (isMajorThreat && ny2 < CITY_WALL) ny2 = CITY_WALL;
+        if (col(nx2, t.y)) nx2 = t.x;
+        if (col(t.x, ny2)) ny2 = t.y;
         t.x = Math.max(10, Math.min(W - 10, nx2));
         t.y = Math.max(10, Math.min(H - 10, ny2));
 
@@ -1808,6 +1828,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
+          }
+        }
+      }
+
+      const MIN_SEP = 18;
+      const PUSH_STR = 0.4;
+      for (let i = 0; i < g.threats.length; i++) {
+        const a = g.threats[i];
+        const dpx = g.px - a.x, dpy = g.py - a.y;
+        const pdist = Math.sqrt(dpx * dpx + dpy * dpy);
+        if (pdist < MIN_SEP) {
+          const safeDist = pdist < 0.01 ? 0.01 : pdist;
+          const ux = (pdist < 0.01 ? (Math.random() - 0.5) * 2 : dpx / safeDist);
+          const uy = (pdist < 0.01 ? (Math.random() - 0.5) * 2 : dpy / safeDist);
+          const overlap = (MIN_SEP - safeDist) * 0.5;
+          const pushX = -ux * overlap * PUSH_STR;
+          const pushY = -uy * overlap * PUSH_STR;
+          if (!col(a.x + pushX, a.y)) a.x += pushX;
+          if (!col(a.x, a.y + pushY)) a.y += pushY;
+          a.x = Math.max(10, Math.min(W - 10, a.x));
+          a.y = Math.max(10, Math.min(H - 10, a.y));
+        }
+        for (let j = i + 1; j < g.threats.length; j++) {
+          const b = g.threats[j];
+          const ddx = b.x - a.x, ddy = b.y - a.y;
+          const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+          if (dd < MIN_SEP) {
+            const safeDd = dd < 0.01 ? 0.01 : dd;
+            const ux2 = (dd < 0.01 ? (Math.random() - 0.5) * 2 : ddx / safeDd);
+            const uy2 = (dd < 0.01 ? (Math.random() - 0.5) * 2 : ddy / safeDd);
+            const overlap = (MIN_SEP - safeDd) * 0.5;
+            const pxA = -ux2 * overlap * PUSH_STR, pyA = -uy2 * overlap * PUSH_STR;
+            const pxB = ux2 * overlap * PUSH_STR, pyB = uy2 * overlap * PUSH_STR;
+            if (!col(a.x + pxA, a.y)) a.x += pxA;
+            if (!col(a.x, a.y + pyA)) a.y += pyA;
+            if (!col(b.x + pxB, b.y)) b.x += pxB;
+            if (!col(b.x, b.y + pyB)) b.y += pyB;
+            a.x = Math.max(10, Math.min(W - 10, a.x));
+            a.y = Math.max(10, Math.min(H - 10, a.y));
+            b.x = Math.max(10, Math.min(W - 10, b.x));
+            b.y = Math.max(10, Math.min(H - 10, b.y));
           }
         }
       }
