@@ -180,6 +180,7 @@ export function useScreenScan() {
   const [answer, setAnswer] = useState('');
   const [autoPilot, setAutoPilot] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [lastScanMode, setLastScanMode] = useState<'bullets' | 'chat'>('bullets');
   const streamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -197,15 +198,16 @@ export function useScreenScan() {
     return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
   }, []);
 
-  const analyzeFrame = useCallback(async (base64: string) => {
+  const analyzeFrame = useCallback(async (base64: string, responseMode: 'bullets' | 'chat' = 'bullets') => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setAnswer('');
+    setLastScanMode(responseMode);
     setScanStatus('analyzing');
     try {
       await streamSSE(
         '/api/interview/scan',
-        { image: base64 },
+        { image: base64, responseMode },
         abortRef.current.signal,
         (c) => setAnswer(prev => prev + c),
         () => setScanStatus('done'),
@@ -273,7 +275,19 @@ export function useScreenScan() {
     }
     setScanStatus('ready');
     const base64 = captureFrame();
-    if (base64) await analyzeFrame(base64);
+    if (base64) await analyzeFrame(base64, 'bullets');
+  }, [openStream, captureFrame, analyzeFrame]);
+
+  const scanChat = useCallback(async () => {
+    setScanStatus('connecting');
+    const needStream = !streamRef.current;
+    if (needStream) {
+      const ok = await openStream();
+      if (!ok) { setScanStatus('idle'); return; }
+    }
+    setScanStatus('ready');
+    const base64 = captureFrame();
+    if (base64) await analyzeFrame(base64, 'chat');
   }, [openStream, captureFrame, analyzeFrame]);
 
   const startAutoPilot = useCallback(async (secs?: number) => {
@@ -303,9 +317,11 @@ export function useScreenScan() {
     answer,
     autoPilot,
     countdown,
+    lastScanMode,
     intervalSecs,
     setIntervalSecs,
     scanOnce,
+    scanChat,
     startAutoPilot,
     stopStream,
     reset,

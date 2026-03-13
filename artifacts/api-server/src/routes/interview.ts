@@ -65,32 +65,8 @@ router.post("/interview/solve", async (req, res) => {
   res.end();
 });
 
-router.post("/interview/scan", async (req, res) => {
-  const { image } = req.body;
-  if (!image || typeof image !== "string") {
-    res.status(400).json({ error: "Missing image data" });
-    return;
-  }
-
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 400,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${image}`, detail: "high" },
-            },
-            {
-              type: "text",
-              text: `Look at this screenshot carefully. Find any coding interview question, technical problem, chat message, or task description visible on the screen.
+const SCAN_PROMPTS = {
+  bullets: `Look at this screenshot carefully. Find any coding interview question, technical problem, chat message, or task description visible on the screen.
 
 Then give EXACTLY 3 bullet points that the person can read out loud right now to sound smart. Rules: NO code. NO jargon. Each bullet is ONE short plain sentence (max 15 words). Make it sound natural, like something a smart person would say in conversation.
 
@@ -100,7 +76,48 @@ Format:
 • [sentence]
 
 If you cannot identify a clear question, describe what you see and give 3 general smart-sounding things to say about it.`,
+
+  chat: `Look at this screenshot of a technical interview or chat conversation. Find the most recent message or question directed at the person being interviewed.
+
+Write the reply they should type back. The reply must:
+- Sound like a confident senior tech startup CEO typed it quickly and naturally
+- Be 2–4 sentences, no more
+- Show genuine understanding without being showy or showing off
+- Feel human — a little informal is fine ("yeah", "right", "so my thinking here is...", "honestly")
+- NOT sound like AI wrote it — no bullet points, no perfect structure, no formal tone
+- Be direct and specific to what was asked, with the occasional natural hesitation or filler phrase
+- Demonstrate awareness of team dynamics, risk, or production trade-offs where relevant
+
+Output ONLY the reply text. No quotes, no labels, no explanation. Just what they should type.`,
+};
+
+router.post("/interview/scan", async (req, res) => {
+  const { image, responseMode = "bullets" } = req.body;
+  if (!image || typeof image !== "string") {
+    res.status(400).json({ error: "Missing image data" });
+    return;
+  }
+
+  const promptText = SCAN_PROMPTS[responseMode as keyof typeof SCAN_PROMPTS] ?? SCAN_PROMPTS.bullets;
+  const maxTokens = responseMode === "chat" ? 200 : 400;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: maxTokens,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${image}`, detail: "high" },
             },
+            { type: "text", text: promptText },
           ],
         },
       ],

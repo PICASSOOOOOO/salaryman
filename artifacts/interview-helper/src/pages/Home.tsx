@@ -19,7 +19,7 @@ export default function Home() {
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
-  const { scanStatus, answer: scanAnswer, autoPilot, countdown, intervalSecs, setIntervalSecs, scanOnce, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
+  const { scanStatus, answer: scanAnswer, autoPilot, countdown, lastScanMode, intervalSecs, setIntervalSecs, scanOnce, scanChat, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
 
   const displayResponse = activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
@@ -54,6 +54,15 @@ export default function Home() {
     if (typeMode) { stopTyping(); setTypeMode(false); }
   }, [displayResponse]);
 
+  // Auto-start Type Mode after a chat reply scan completes
+  useEffect(() => {
+    if (activePanel === 'scan' && scanStatus === 'done' && lastScanMode === 'chat' && scanAnswer && !typeMode) {
+      resetTyping();
+      setTypeMode(true);
+      startTyping(scanAnswer);
+    }
+  }, [scanStatus, lastScanMode]);
+
   const handleAction = (mode: InterviewMode) => {
     setActivePanel('solve');
     setTypeMode(false);
@@ -72,6 +81,12 @@ export default function Home() {
     setActivePanel('scan'); setTypeMode(false);
     reset(); resetListen();
     scanOnce();
+  };
+
+  const handleChatScan = () => {
+    setActivePanel('scan'); setTypeMode(false);
+    reset(); resetListen();
+    scanChat();
   };
 
   const handleAutoPilot = () => {
@@ -191,25 +206,30 @@ export default function Home() {
                   </div>
                   <span className="font-bold text-xs text-sky-300">SCAN SCREEN</span>
                 </div>
+                {/* Scan Once + Chat Reply */}
                 <div className="grid grid-cols-2 gap-1.5">
                   <button onClick={handleScanOnce} disabled={isAnyBusy}
                     className="py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[10px] font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     Once
                   </button>
-                  <button onClick={handleAutoPilot} disabled={isAnyBusy}
-                    className="py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[10px] font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
-                    <Bot className="w-3 h-3" /> Auto
+                  <button onClick={handleChatScan} disabled={isAnyBusy}
+                    className="py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                    💬 Chat Reply
                   </button>
                 </div>
-                {/* Speed selector */}
-                <div className="flex items-center gap-1 pt-0.5">
-                  <span className="text-[9px] text-muted-foreground/50 mr-0.5">every</span>
+                {/* Auto + speed */}
+                <div className="flex items-center gap-1.5">
+                  <button onClick={handleAutoPilot} disabled={isAnyBusy}
+                    className="flex-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[10px] font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                    <Bot className="w-3 h-3" /> Auto
+                  </button>
+                  <span className="text-[9px] text-muted-foreground/40">every</span>
                   {[5, 10, 15].map(s => (
                     <button key={s} onClick={() => setIntervalSecs(s)} disabled={isAnyBusy}
-                      className={`flex-1 py-0.5 rounded text-[9px] font-bold transition-colors disabled:cursor-not-allowed
+                      className={`px-1.5 py-1.5 rounded text-[9px] font-bold transition-colors disabled:cursor-not-allowed
                         ${intervalSecs === s
                           ? 'bg-sky-500/30 text-sky-200 border border-sky-500/50'
-                          : 'text-muted-foreground/50 hover:text-sky-300 hover:bg-sky-500/10'}`}>
+                          : 'text-muted-foreground/40 hover:text-sky-300 hover:bg-sky-500/10'}`}>
                       {s}s
                     </button>
                   ))}
