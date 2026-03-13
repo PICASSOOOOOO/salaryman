@@ -8,7 +8,8 @@ import PresenterMode from "@/pages/PresenterMode";
 import Profile from "@/pages/Profile";
 import Dashboard from "@/pages/Dashboard";
 import Upgrade from "@/pages/Upgrade";
-import World from "@/pages/World";
+import WorldMenu from "@/pages/WorldMenu";
+import WorldPlay from "@/pages/WorldPlay";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -29,7 +30,8 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/upgrade" component={Upgrade} />
-      <Route path="/world" component={World} />
+      <Route path="/world" component={WorldMenu} />
+      <Route path="/world/play" component={WorldPlay} />
       <Route component={NotFound} />
     </Switch>
   );
