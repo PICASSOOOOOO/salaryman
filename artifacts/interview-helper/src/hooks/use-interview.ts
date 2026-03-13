@@ -173,6 +173,73 @@ export function useVoiceListen() {
   };
 }
 
+export function useScreenScan() {
+  const [scanStatus, setScanStatus] = useState<'idle' | 'capturing' | 'analyzing' | 'done' | 'error'>('idle');
+  const [answer, setAnswer] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+
+  const scanScreen = useCallback(async () => {
+    setScanStatus('capturing');
+    setAnswer('');
+    abortRef.current?.abort();
+
+    try {
+      const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: { frameRate: 1 }, audio: false });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.muted = true;
+      await new Promise<void>((resolve) => { video.onloadedmetadata = () => resolve(); });
+      await video.play();
+
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d')!.drawImage(video, 0, 0);
+      stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+
+      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+      setScanStatus('analyzing');
+      abortRef.current = new AbortController();
+
+      await streamSSE(
+        '/api/interview/scan',
+        { image: base64 },
+        abortRef.current.signal,
+        (c) => setAnswer(prev => prev + c),
+        () => setScanStatus('done'),
+        () => setScanStatus('error')
+      );
+      setScanStatus('done');
+    } catch (e: any) {
+      if (e.name === 'NotAllowedError') {
+        setScanStatus('idle');
+      } else if (e.name !== 'AbortError') {
+        setScanStatus('error');
+      }
+    } finally {
+      abortRef.current = null;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    abortRef.current?.abort();
+    setScanStatus('idle');
+    setAnswer('');
+  }, []);
+
+  return {
+    scanStatus,
+    answer,
+    scanScreen,
+    reset,
+    isCapturing: scanStatus === 'capturing',
+    isAnalyzing: scanStatus === 'analyzing',
+  };
+}
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

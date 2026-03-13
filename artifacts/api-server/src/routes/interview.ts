@@ -65,6 +65,64 @@ router.post("/interview/solve", async (req, res) => {
   res.end();
 });
 
+router.post("/interview/scan", async (req, res) => {
+  const { image } = req.body;
+  if (!image || typeof image !== "string") {
+    res.status(400).json({ error: "Missing image data" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 400,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${image}`, detail: "high" },
+            },
+            {
+              type: "text",
+              text: `Look at this screenshot carefully. Find any coding interview question, technical problem, chat message, or task description visible on the screen.
+
+Then give EXACTLY 3 bullet points that the person can read out loud right now to sound smart. Rules: NO code. NO jargon. Each bullet is ONE short plain sentence (max 15 words). Make it sound natural, like something a smart person would say in conversation.
+
+Format:
+• [sentence]
+• [sentence]
+• [sentence]
+
+If you cannot identify a clear question, describe what you see and give 3 general smart-sounding things to say about it.`,
+            },
+          ],
+        },
+      ],
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("Error in /scan:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to analyze screen" })}\n\n`);
+  }
+
+  res.end();
+});
+
 router.post("/interview/listen", async (req, res) => {
   const { audio } = req.body;
   if (!audio || typeof audio !== "string") {
