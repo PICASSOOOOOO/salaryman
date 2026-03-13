@@ -30,3 +30,9 @@ id = "1N7D_-jDoul1gkzD7dFJF"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-d.png"
 type = "image"
 title = "Option D — Neon Lines"
+
+[[outputs]]
+id = "syk8YUM81L0TbZn7uMsoY"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-e.png"
+type = "image"
+title = "Option E — Neon Bolt"
