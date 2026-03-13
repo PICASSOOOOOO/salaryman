@@ -11,6 +11,9 @@ const W = 2400, H = 2000, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 800;
 
 const BUILDINGS = [
+  // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
+  { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false },
+  { id: 'eastside_flat',x: 1860, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false },
   // ── MINX CITY WEST ──────────────────────────────────────────────────────────
   { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true  },
   { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true  },
@@ -169,10 +172,120 @@ const OFFICE_TIERS = [
   { label: 'EXEC FLOOR',     price: 1500, desc: 'Full suite. AI concierge.' },
 ];
 
+// ── Building floor directories ────────────────────────────────────────────────
+interface BFloor { floor: number; name: string; desc: string; }
+interface BDirectory { label: string; history: string; floors: BFloor[]; }
+const BUILDING_FLOORS: Record<string, BDirectory> = {
+  minx_arms: {
+    label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. PABLO CORP. acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
+    floors: [
+      { floor: 1, name: 'LOBBY',           desc: 'Buzzing fluorescents. Name cards in the original slots. The super\'s office is behind frosted glass. Nobody has seen the super in three weeks.' },
+      { floor: 2, name: 'UNITS 201–208',   desc: 'Lower floor. Long-term residents. Unit 203 has been vacant since \'89 — still listed under someone named TRAVIS. The mail still comes.' },
+      { floor: 3, name: 'UNITS 301–308',   desc: 'Unit 308 ran a pirate radio antenna through the wall until the city found it. The hole is still there. Someone put a plant in front of it.' },
+      { floor: 4, name: 'YOUR FLOOR',      desc: 'Your unit. View of the PABLO TOWER roof. The curtains never fully close. You have learned to sleep on the other side of the room.' },
+      { floor: 5, name: 'UNITS 501–508',   desc: 'Unit 502 has been playing the same album since 1990. Nobody has complained. Nobody ever will.' },
+      { floor: 6, name: 'LAUNDRY / STORE', desc: 'Three machines. One prints receipts dated \'87. Maintenance says it\'s a known issue. The receipts are itemized.' },
+      { floor: 7, name: 'UNITS 701–708',   desc: 'MAEVE lived in 704. She moved out when she noticed the PABLO CORP. logo was visible from every window at the same angle.' },
+      { floor: 8, name: 'ROOF ACCESS',     desc: 'Padlocked. Scratched into the metal: "He can see this roof. He sees all roofs." The padlock is PABLO CORP. branded.' },
+    ],
+  },
+  eastside_flat: {
+    label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing for the east expansion district. PABLO CORP. invested in floors 3–6 quietly in \'92. The remaining floors are still technically independent.',
+    floors: [
+      { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP. SECURITY DIVISION.' },
+      { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KIRA.' },
+      { floor: 3, name: 'UNITS 301–312',   desc: 'PABLO CORP. owned units. Unfurnished. Clean. A realtor shows them every Thursday to nobody.' },
+      { floor: 4, name: 'UNITS 401–412',   desc: 'Community notice board. Someone wrote: "SENIOR PABLO IS IN FLOOR 62. DO NOT LOOK UP." The note has been laminated.' },
+      { floor: 5, name: 'GYM / AMENITIES', desc: 'Functional. Towels provided. One locker has been locked since \'90. The gym log shows it was last used by someone named PROTO.' },
+      { floor: 6, name: 'ROOF GARDEN',     desc: 'Someone is growing vegetables up here without permission. The vegetables are thriving. Nobody has the heart to stop them.' },
+    ],
+  },
+  hotel: {
+    label: 'HOTEL FAMICOM', history: 'Originally THE PACIFIC, renamed \'86 after someone installed a working NES in every room. The cartridges are still there. The TVs still show 1987 channels.',
+    floors: [
+      { floor: 1, name: 'LOBBY / BAR',     desc: 'The bar runs on a tab system. Nobody knows who started the tabs. Nobody asks. One tab has been running since 1983.' },
+      { floor: 2, name: 'STANDARD ROOMS',  desc: 'Working TVs. Channel guide shows programs from \'87. Some of them are still running. One channel is static with audio.' },
+      { floor: 3, name: 'DELUXE ROOMS',    desc: 'Better curtains. A fax machine nobody uses. It still receives faxes. They are detailed and addressed to names that no longer exist.' },
+      { floor: 4, name: 'BUSINESS CENTER', desc: 'One terminal. Password is the hotel name. The printer outputs financial data nobody requested. The paper is continuous-feed.' },
+      { floor: 5, name: 'PENTHOUSE',       desc: 'Reserved indefinitely under a company name that doesn\'t exist. PABLO CORP. acquired it \'93. The room is always warm.' },
+    ],
+  },
+  pablo_tower: {
+    label: 'PABLO TOWER', history: 'PABLO TOWER — 62 floors. Built 1986–1991. Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. The plans for floors 40+ were never filed.',
+    floors: [
+      { floor: 1,  name: 'LOBBY / SECURITY', desc: 'PABLO CORP. reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
+      { floor: 5,  name: 'PABLO CORP. OFFICES', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
+      { floor: 12, name: 'DATA PROCESSING',   desc: 'Server rows. The hum is constant. Visitors report hearing their own name in the static. The IT staff deny this.' },
+      { floor: 20, name: 'EXECUTIVE SUITES',  desc: 'Full glass. City views. Each suite has a panic button. None have ever been pressed.' },
+      { floor: 39, name: 'LAST PUBLIC FLOOR', desc: 'A whiteboard reads: "PHASE THREE IS AUTHORIZED." Nobody has erased it. Nobody has added to it. It has been there for eleven years.' },
+      { floor: 40, name: '── RESTRICTED ──',  desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7.' },
+      { floor: 50, name: '── RESTRICTED ──',  desc: 'Unknown. Floor plans don\'t exist. The windows are opaque from outside. The glass is black on all sides.' },
+      { floor: 62, name: 'PENTHOUSE — PABLO', desc: 'Nobody has been here and returned to describe it. The silhouette in the window has been there for a very long time.' },
+    ],
+  },
+  data_vault: {
+    label: 'DATA VAULT', history: 'Former municipal records archive. PABLO CORP. acquisition 1990. The city\'s records are still inside. So is everything else they collected since.',
+    floors: [
+      { floor: 1, name: 'PUBLIC TERMINALS',   desc: 'Property records. Most transferred to PABLO CORP. The transfer dates are all the same: a Tuesday in \'91.' },
+      { floor: 2, name: 'ARCHIVE-A COLD',     desc: 'Financial records from the pre-collapse era. Some redacted. Some redacted poorly — the names show through the black bar.' },
+      { floor: 3, name: 'ACTIVE SERVERS',     desc: 'Real-time feeds. City traffic. Power grid. Population movement. All of it. The cameras cover every road.' },
+      { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. BELMONT tried once. The lock said no. He said it felt smug about it.' },
+      { floor: 5, name: 'NETWORK HUB',        desc: 'Every signal in Minx City passes through here. The routing logs go back thirty years. Every packet. Every call.' },
+      { floor: 6, name: 'PENTHOUSE SERVER',   desc: 'One server. Running since 1984. Power draw is enormous. Nobody knows what it runs. Nobody has been asked.' },
+    ],
+  },
+  nightclub: {
+    label: 'CLUB NEON', history: 'Three names since 1982. Current owners say the building chose its own identity. The lights have not been fully off since 1988. The original electrical panel was replaced in \'91. Nobody kept the receipt.',
+    floors: [
+      { floor: 1, name: 'MAIN FLOOR',      desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
+      { floor: 2, name: 'VIP SECTION',     desc: 'One booth booked every Friday for four years under TETSUO. He has never shown up. The booth is always full anyway.' },
+      { floor: 3, name: 'DJ BOOTH / BROADCAST', desc: 'Doubles as pirate signal tower on Thursdays. The frequency bleeds into the PABLO TOWER antenna. Intentionally.' },
+      { floor: 4, name: 'ROOF TERRACE',    desc: 'Open air. Floor 62 is visible. Some nights it is lit. Most nights it is not. The bartender says it is random. The regulars say it is not.' },
+    ],
+  },
+  dojo: {
+    label: 'IRON DOJO', history: 'Founded pre-collapse by a fighter who refused to leave when everything else closed. Now the only neutral ground between the city factions. Both sides train here. Nobody fights inside.',
+    floors: [
+      { floor: 1, name: 'TRAINING FLOOR',  desc: 'Sparring mats. Old equipment. A clock that stopped in \'88 — nobody winds it because the sensei says time is a weakness.' },
+      { floor: 2, name: 'STUDY / ARCHIVE', desc: 'Combat records going back decades. A shelf of notebooks. The last one has today\'s date on the cover. It\'s empty.' },
+      { floor: 3, name: 'SENSEI\'S ROOM',  desc: 'Locked. The door has no handle from the outside. Lights on 24/7. Nobody has ever seen the sensei sleep.' },
+    ],
+  },
+};
+
+// ── Police patrol waypoints ───────────────────────────────────────────────────
+const POLICE_ROUTES: { x: number; y: number }[][] = [
+  [{ x:320,y:190 },{ x:700,y:190 },{ x:700,y:460 },{ x:320,y:460 }],
+  [{ x:1100,y:190 },{ x:1500,y:190 },{ x:1500,y:460 },{ x:1100,y:460 }],
+  [{ x:200,y:740 },{ x:700,y:740 },{ x:700,y:460 },{ x:200,y:460 }],
+  [{ x:1500,y:190 },{ x:1900,y:190 },{ x:1900,y:460 },{ x:1500,y:460 }],
+];
+
+// ── Ambient city event lines ──────────────────────────────────────────────────
+const AMBIENCE_LINES = [
+  '> DISPATCH — Unit 7: patrol complete, no incidents. City center secure.',
+  '> CITY BROADCAST: Power grid maintenance window 02:00–04:00 PST. Sector 3 may experience interruptions.',
+  '> PIRATE FREQUENCY: "…the code is in the walls. It was always in the walls…"',
+  '> MARKET ALERT: Black Market running extended hours. Unusual activity near Scrap Yard.',
+  '> FIRE DEPT DISPATCH: Structure fire contained. Cause logged: electrical fault. Sector 2.',
+  '> CITIZEN ALERT: Suspicious figures near PABLO TOWER north entrance. Third report this week.',
+  '> CITY CENSUS UPDATE: Registered population 14,203. Unregistered: unknown. PABLO CORP. data-reconciliation in progress.',
+  '> DISPATCH — Unit 12 requesting backup at wasteland boundary. Standing by.',
+  '> EMERGENCY ALERT: Power anomaly detected Sector 3. Grid crews en route. ETA: unknown.',
+  '> PIRATE FREQUENCY: "…SENIOR PABLO watches from Floor 62. He has always been there. He was there before the building…"',
+  '> FIRE DEPT DISPATCH: Unit 4 responding to report. All hands.',
+  '> BROADCAST: Road maintenance on North Avenue overnight. Expect minor delays.',
+  '> POLICE DISPATCH: Pursuit terminated at Wasteland border. Subjects entered IRON RATS territory. Pursuit abandoned per protocol.',
+  '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. PABLO CORP. infrastructure division responding.',
+];
+
 interface Char { name: string; class: string; company: string; sx: number; sy: number; salary: number; }
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
+interface FloorPanel { bid: string; dir: BDirectory; selectedFloor: number; }
+interface PoliceUnit { x: number; y: number; routeIdx: number; wpIdx: number; progress: number; }
+interface FireEvent { bid: string; x: number; y: number; startFrame: number; intensity: number; }
 
 let seq = 0;
 
@@ -242,6 +355,16 @@ export default function WorldPlay() {
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
     zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
+    // Living world
+    powerLevel: 100,
+    powerTick: 0,
+    powerEventFrames: 0,
+    ambTick: 0,
+    fireTick: 0,
+    fires: [] as FireEvent[],
+    police: POLICE_ROUTES.map((r, i) => ({
+      x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
+    } as PoliceUnit)),
   });
 
   // Reactive state (only what the HUD needs)
@@ -292,6 +415,18 @@ export default function WorldPlay() {
   const [poisoned,    setPoisoned]    = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
+  // Floor panel & living world
+  const [floorPanel,  setFloorPanel]  = useState<FloorPanel | null>(null);
+  const [powerPct,    setPowerPct]    = useState(100);
+  const [cityEvent,   setCityEvent]   = useState<string | null>(null);
+  const cityEventTimer = useRef(0);
+  // Player apartment assignment (persistent per character)
+  const [aptUnit] = useState<string>(() => {
+    const k = `sm_apt_${char?.name}`;
+    let v = localStorage.getItem(k);
+    if (!v) { v = `FLOOR ${Math.floor(Math.random()*7)+2}, UNIT ${Math.floor(Math.random()*8)+1}`; localStorage.setItem(k, v); }
+    return v;
+  });
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const wsSend = useCallback((m: object) => {
@@ -301,15 +436,32 @@ export default function WorldPlay() {
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
     sfxEnter();
-    if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
-    else if (bid === 'pablo_tower') { setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' }); }
+    // ── Residential ───────────────────────────────────────────────────────
+    if (bid === 'minx_arms') {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
+      setNarr(`> MINX ARMS — You are assigned ${aptUnit}. The elevator works on most days. Your mailbox still has someone else's name in it.`);
+    }
+    else if (bid === 'eastside_flat') {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.eastside_flat, selectedFloor: 0 });
+      setNarr(`> EASTSIDE FLATS — Your unit is ${aptUnit}. The lobby camera rotates. It always comes back to you.`);
+    }
+    // ── Floor-directory buildings ─────────────────────────────────────────
+    else if (bid === 'pablo_tower') {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.pablo_tower, selectedFloor: 0 });
+      setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' });
+    }
+    else if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
     else if (bid === 'clinic')  {
       if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [$100] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
       else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No credits, no treatment. Even Dr. Wright has bills. Come back with $100."'); }
     }
     else if (bid === 'megabank'){ setNarr('> KONAMI BANK — Account suspended. Terminal shows: INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.'); }
     else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); sfxCoin(); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +$30. The buyer asked if it was from "before the collapse." You said yes.'); }
-    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal(); setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. Galaga. Gradius. HP +40. Energy +30.'); }
+    else if (bid === 'hotel')   {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
+      g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. HP +40. Energy +30.');
+    }
     else if (bid === 'vend')    {
       g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
       setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
@@ -330,9 +482,9 @@ export default function WorldPlay() {
       localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
       setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
     }
-    else if (bid === 'dojo') { setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger." ATK meditation begins. You feel sharper.'); }
-    else if (bid === 'data_vault') { g.salary += 40; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached salary transfer. +$40. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
-    else if (bid === 'nightclub') { g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Everybody dancing like the city isn\'t burning. Energy +40.'); }
+    else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 40; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached salary transfer. +$40. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
+    else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'east_market') { g.salary += 25; setSalary(g.salary); sfxCoin(); setNarr('> EAST BAZAAR — Traded fragments for credits. +$25. The vendor says: "Everything here was made in the city. Everything here ends up back in the tower."'); }
     else if (bid === 'east_clinic') {
       if (g.salary >= 80) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 80; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [$80] HP +60.'); }
@@ -607,6 +759,7 @@ export default function WorldPlay() {
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
         setShowPablo(false); setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
+        setFloorPanel(null);
       }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
@@ -768,8 +921,72 @@ export default function WorldPlay() {
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
       }
 
+      // ── LIVING WORLD: Power Grid ─────────────────────────────────────────
+      g.powerTick++;
+      if (g.powerEventFrames > 0) {
+        g.powerEventFrames--;
+        if (g.powerEventFrames === 0) { g.powerLevel = 100; setPowerPct(100); }
+      } else if (g.powerTick >= 480) {
+        g.powerTick = 0;
+        if (Math.random() < 0.15) {
+          const evts = [
+            { level: 40, dur: 180, msg: '> POWER GRID: Brownout detected — Sector 3. Emergency crews responding.' },
+            { level: 10, dur: 120, msg: '> EMERGENCY: BLACKOUT — City power grid failure. Backup systems online.' },
+            { level: 70, dur: 90,  msg: '> CITY ALERT: Power fluctuation detected. Grid operating at reduced capacity.' },
+          ];
+          const ev = evts[Math.floor(Math.random() * evts.length)];
+          g.powerLevel = ev.level; g.powerEventFrames = ev.dur;
+          setPowerPct(ev.level); setNarr(ev.msg);
+        }
+      }
+
+      // ── LIVING WORLD: Police patrol movement ────────────────────────────
+      for (const p of g.police) {
+        const route = POLICE_ROUTES[p.routeIdx];
+        const next  = (p.wpIdx + 1) % route.length;
+        const wpA   = route[p.wpIdx], wpB = route[next];
+        p.progress  += 0.003;
+        if (p.progress >= 1) { p.progress = 0; p.wpIdx = next; }
+        p.x = wpA.x + (wpB.x - wpA.x) * p.progress;
+        p.y = wpA.y + (wpB.y - wpA.y) * p.progress;
+      }
+
+      // ── LIVING WORLD: Random fire events ────────────────────────────────
+      g.fireTick++;
+      if (g.fireTick >= 900 && Math.random() < 0.008) {
+        g.fireTick = 0;
+        // Pick a random building in city
+        const cityBlds = BUILDINGS.filter(b => b.y < WASTELAND_Y - 50);
+        const fb = cityBlds[Math.floor(Math.random() * cityBlds.length)];
+        if (!g.fires.find(f => f.bid === fb.id)) {
+          g.fires.push({ bid: fb.id, x: fb.x + fb.w/2, y: fb.y + fb.h/2, startFrame: g.frame, intensity: 0.6 + Math.random()*0.4 });
+          setNarr(`> FIRE DEPT DISPATCH: Structure fire reported at ${fb.label}. Unit 4 responding.`);
+        }
+      }
+      // Extinguish old fires after ~1800 frames
+      g.fires = g.fires.filter(f => {
+        const age = g.frame - f.startFrame;
+        if (age > 1800) { setNarr(`> FIRE DEPT: Fire at ${BUILDINGS.find(b=>b.id===f.bid)?.label??'UNKNOWN'} contained. Cause under investigation.`); return false; }
+        return true;
+      });
+
+      // ── LIVING WORLD: Ambient city events ────────────────────────────────
+      g.ambTick++;
+      if (g.ambTick >= 540) {
+        g.ambTick = 0;
+        if (Math.random() < 0.35) {
+          const line = AMBIENCE_LINES[Math.floor(Math.random() * AMBIENCE_LINES.length)];
+          setCityEvent(line);
+          cityEventTimer.current = 220;
+        }
+      }
+      if (cityEventTimer.current > 0) { cityEventTimer.current--; if (cityEventTimer.current === 0) setCityEvent(null); }
+
       // ── DRAW ─────────────────────────────────────────────────────────────
       if (g.flash > 0) { ctx.fillStyle = `rgba(255,0,0,${g.flash * .05})`; ctx.fillRect(0, 0, cw, ch); }
+      // Power grid darkness overlay (before everything else)
+      const pwDark = (100 - g.powerLevel) / 100;
+      ctx.fillStyle = `rgba(0,0,0,${pwDark * 0.7})`; ctx.fillRect(0, 0, cw, ch);
       ctx.fillStyle = '#030803'; ctx.fillRect(0, 0, cw, ch);
 
       // Grid
@@ -836,6 +1053,81 @@ export default function WorldPlay() {
       drawRoad(380,WASTELAND_Y,380,H,   8, .04, true);
       drawRoad(900,WASTELAND_Y,900,H,   8, .04, true);
       drawRoad(1600,WASTELAND_Y,1600,H, 8, .04, true);
+
+      // ── Street lights ──────────────────────────────────────────────────────
+      const LAMP_SPACING = 90;
+      // Light roads (horizontal avenues + vertical streets)
+      const lampRoads = [
+        { horiz: true,  coord: 190,  from: 0,    to: 2400 },
+        { horiz: true,  coord: 320,  from: 0,    to: 2400 },
+        { horiz: true,  coord: 460,  from: 0,    to: 2400 },
+        { horiz: true,  coord: 550,  from: 0,    to: 2400 },
+        { horiz: true,  coord: 740,  from: 0,    to: 2400 },
+        { horiz: false, coord: 320,  from: 0,    to: WASTELAND_Y },
+        { horiz: false, coord: 700,  from: 0,    to: WASTELAND_Y },
+        { horiz: false, coord: 1100, from: 0,    to: WASTELAND_Y },
+        { horiz: false, coord: 1500, from: 0,    to: WASTELAND_Y },
+        { horiz: false, coord: 1900, from: 0,    to: WASTELAND_Y },
+      ];
+      for (const lr of lampRoads) {
+        const total = lr.to - lr.from;
+        const count = Math.ceil(total / LAMP_SPACING);
+        for (let li = 0; li < count; li++) {
+          const t = lr.from + li * LAMP_SPACING + (LAMP_SPACING / 2);
+          // Alternating sides of road
+          const side = li % 2 === 0 ? -10 : 10;
+          const lx = lr.horiz ? (t + ox) : (lr.coord + side + ox);
+          const ly = lr.horiz ? (lr.coord + side + oy) : (t + oy);
+          if (lx < -20 || lx > cw + 20 || ly < -20 || ly > ch + 20) continue;
+          // Flicker based on frame + index + power level
+          const seed = Math.sin(g.frame * 0.11 + li * 7.3 + lr.coord * 0.02);
+          const pwr  = g.powerLevel / 100;
+          const flickerChance = pwr < 0.5 ? Math.abs(seed) < 0.15 : false;
+          const brightness = flickerChance ? 0.05 : (0.55 + seed * 0.2) * pwr;
+          if (brightness < 0.05) continue;
+          const wc = Math.floor(brightness * 255);
+          const warmR = Math.min(255, wc + 40), warmG = Math.min(255, wc + 30), warmB = Math.max(0, wc - 60);
+          // Lamp post pole
+          ctx.strokeStyle = `rgba(0,60,10,${brightness * 0.6})`; ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (lr.horiz) { ctx.moveTo(lx, ly + (side > 0 ? -14 : 14)); ctx.lineTo(lx, ly); }
+          else           { ctx.moveTo(lx + (side > 0 ? -14 : 14), ly); ctx.lineTo(lx, ly); }
+          ctx.stroke();
+          // Glow halo
+          const glowR = ctx.createRadialGradient(lx, ly, 0, lx, ly, 22 * brightness);
+          glowR.addColorStop(0, `rgba(${warmR},${warmG},${warmB},${brightness * 0.45})`);
+          glowR.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = glowR; ctx.beginPath(); ctx.arc(lx, ly, 22 * brightness, 0, Math.PI*2); ctx.fill();
+          // Bulb
+          ctx.fillStyle = `rgba(${warmR},${warmG},${warmB},${brightness})`;
+          ctx.shadowColor = `rgba(${warmR},${warmG},${warmB},${brightness})`; ctx.shadowBlur = 6 * brightness;
+          ctx.beginPath(); ctx.arc(lx, ly, 2, 0, Math.PI*2); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      // ── Fire effects (behind buildings so only glow peeks out) ─────────────
+      for (const fire of g.fires) {
+        const fx = fire.x + ox, fy = fire.y + oy;
+        if (fx < -80 || fx > cw + 80 || fy < -80 || fy > ch + 80) continue;
+        const age = g.frame - fire.startFrame;
+        const phase = Math.sin(g.frame * 0.18 + fire.x * 0.01) * 0.3 + 0.7;
+        // Orange/red glow
+        const fr2 = ctx.createRadialGradient(fx, fy, 0, fx, fy, 80 * fire.intensity);
+        fr2.addColorStop(0, `rgba(255,120,0,${0.5 * phase * fire.intensity})`);
+        fr2.addColorStop(0.5, `rgba(255,40,0,${0.25 * phase})`);
+        fr2.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = fr2; ctx.beginPath(); ctx.arc(fx, fy, 80 * fire.intensity, 0, Math.PI*2); ctx.fill();
+        // Smoke particles
+        for (let sp = 0; sp < 6; sp++) {
+          const sAngle = Math.sin(g.frame * 0.08 + sp * 1.5) * 0.5;
+          const sy2    = fy - 20 - (age % 60) * 0.7 - sp * 9;
+          const sx2    = fx + Math.sin(sAngle + sp) * 8;
+          const sAlpha = Math.max(0, 0.35 - sp * 0.04);
+          ctx.fillStyle = `rgba(60,30,0,${sAlpha * phase})`;
+          ctx.beginPath(); ctx.arc(sx2, sy2, 4 + sp, 0, Math.PI*2); ctx.fill();
+        }
+      }
 
       // Buildings
       for (const b of BUILDINGS) {
@@ -985,6 +1277,52 @@ export default function WorldPlay() {
         ctx.shadowBlur = 0;
         ctx.fillStyle = spk ? '#00ffcc' : 'rgba(100,180,255,.6)'; ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
         ctx.fillText(op.name, px2, py2 - 12);
+      }
+
+      // ── Police patrol units ────────────────────────────────────────────────
+      for (let pi = 0; pi < g.police.length; pi++) {
+        const p = g.police[pi];
+        const px2 = p.x + ox, py2 = p.y + oy;
+        if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
+        const pFlash = Math.sin(g.frame * 0.2 + pi * 1.7) > 0;
+        ctx.shadowColor = pFlash ? '#4488ff' : '#ff3333'; ctx.shadowBlur = 8;
+        // Police body — blue uniform
+        ctx.fillStyle = '#cc9966'; ctx.beginPath(); ctx.arc(px2, py2 - 8, 3, 0, Math.PI * 2); ctx.fill(); // head
+        ctx.fillStyle = '#1144cc'; ctx.fillRect(px2 - 4, py2 - 5, 8, 6); // torso
+        ctx.fillStyle = '#0d3399'; ctx.fillRect(px2 - 4, py2 + 1, 3, 5); ctx.fillRect(px2 + 1, py2 + 1, 3, 5); // legs
+        ctx.fillStyle = '#ffe066'; ctx.fillRect(px2 - 2, py2 - 4, 4, 2); // badge
+        // Light bar flicker
+        const lb1 = pFlash ? '#4488ff' : '#ff2222';
+        const lb2 = pFlash ? '#ff2222' : '#4488ff';
+        ctx.fillStyle = lb1; ctx.fillRect(px2 - 5, py2 - 13, 4, 3);
+        ctx.fillStyle = lb2; ctx.fillRect(px2 + 1, py2 - 13, 4, 3);
+        ctx.shadowBlur = 0;
+        // Label
+        const pDist = Math.hypot(g.px - p.x, g.py - p.y);
+        if (pDist < 100) {
+          ctx.fillStyle = '#88aaff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('POLICE', px2, py2 - 18);
+        }
+      }
+
+      // ── Fire overlays on burning buildings ─────────────────────────────────
+      for (const fire of g.fires) {
+        const bld = BUILDINGS.find(b => b.id === fire.bid); if (!bld) continue;
+        const fbx = bld.x + ox, fby = bld.y + oy;
+        if (fbx + bld.w < 0 || fbx > cw || fby + bld.h < 0 || fby > ch) continue;
+        const phase2 = Math.sin(g.frame * 0.22 + fire.x * 0.01) * 0.4 + 0.6;
+        ctx.globalAlpha = 0.25 * phase2 * fire.intensity;
+        ctx.fillStyle = '#ff6600'; ctx.fillRect(fbx, fby, bld.w, bld.h);
+        ctx.globalAlpha = 1;
+        // Flame tips
+        for (let ft = 0; ft < 5; ft++) {
+          const fmx = fbx + (ft / 4) * bld.w;
+          const fmy = fby - 4 + Math.sin(g.frame * 0.3 + ft * 1.2) * 5;
+          ctx.fillStyle = ft % 2 === 0 ? '#ff8800' : '#ffcc00';
+          ctx.beginPath(); ctx.moveTo(fmx, fmy); ctx.lineTo(fmx + 5, fby); ctx.lineTo(fmx - 5, fby); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = '#ff2200'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText('🔥 FIRE', fbx + bld.w / 2, fby - 12);
       }
 
       // Threats — type-specific pixel shapes
@@ -1501,6 +1839,63 @@ export default function WorldPlay() {
       {pwPrompt && (
         <PwPrompt label={pwPrompt.label} onCancel={() => { setPwPrompt(null); setPendingBid(null); }}
           onOk={pw => { if (pwPrompt.mode === 'set') wsSend({ type: 'building_lock_set', buildingId: pwPrompt.bid, password: pw }); else wsSend({ type: 'building_lock_check', buildingId: pwPrompt.bid, password: pw }); }} />
+      )}
+
+      {/* ── FLOOR PANEL / ELEVATOR ── */}
+      {floorPanel && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 320 }}>
+          <div style={{ width: 'min(540px, 96vw)', border: '1px solid rgba(0,255,65,.35)', background: 'rgba(2,14,4,.97)', fontFamily: "'Share Tech Mono',monospace", color: '#00ff41', padding: '1.8rem 2rem', maxHeight: '86vh', overflowY: 'auto' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#00ff41', letterSpacing: '.2em' }}>{floorPanel.dir.label}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.15em', marginTop: '.2rem' }}>BUILDING DIRECTORY · ELEVATOR PANEL</div>
+              </div>
+              <button onClick={() => setFloorPanel(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>✕ ESC</button>
+            </div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg,transparent,rgba(0,255,65,.3),transparent)', marginBottom: '.9rem' }} />
+            {/* History */}
+            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, marginBottom: '1rem', padding: '.6rem', border: '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.02)' }}>
+              {floorPanel.dir.history}
+            </div>
+            {/* Floor list */}
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
+            {floorPanel.dir.floors.map((fl, fi) => (
+              <div key={fi}
+                onClick={() => setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null)}
+                style={{
+                  padding: '.55rem .7rem', marginBottom: '.3rem', border: `1px solid ${floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.12)'}`,
+                  background: floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.07)' : 'transparent', cursor: 'pointer',
+                  transition: 'all .15s',
+                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: floorPanel.selectedFloor === fi ? '.4rem' : 0 }}>
+                  <span style={{ color: '#00ff41', fontSize: '.5rem', letterSpacing: '.1em' }}>FL {String(fl.floor).padStart(2,'0')}</span>
+                  <span style={{ color: floorPanel.selectedFloor === fi ? '#00ff41' : 'rgba(0,255,65,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
+                </div>
+                {floorPanel.selectedFloor === fi && (
+                  <div style={{ fontSize: '.43rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7, marginTop: '.2rem', paddingTop: '.3rem', borderTop: '1px solid rgba(0,255,65,.12)' }}>
+                    {fl.desc}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div style={{ marginTop: '.8rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── POWER GRID HUD INDICATOR ── */}
+      {powerPct < 100 && (
+        <div style={{ position: 'absolute', top: '3.5rem', right: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.4rem', border: `1px solid rgba(${powerPct < 30 ? '255,60,60' : '255,140,0'},.5)`, background: 'rgba(0,0,0,.8)', padding: '.3rem .55rem', color: powerPct < 30 ? '#ff4444' : '#ffaa00', letterSpacing: '.1em', animation: powerPct < 30 ? 'smfade 0.6s steps(1) infinite alternate' : 'none' }}>
+          ⚡ POWER {powerPct}%{powerPct < 30 ? ' — BLACKOUT' : ' — REDUCED'}
+        </div>
+      )}
+
+      {/* ── CITY EVENT TICKER ── */}
+      {cityEvent && (
+        <div style={{ position: 'absolute', bottom: '3.8rem', left: '50%', transform: 'translateX(-50%)', zIndex: 180, fontFamily: "'Share Tech Mono',monospace", fontSize: '.38rem', color: 'rgba(100,200,255,.7)', letterSpacing: '.08em', whiteSpace: 'nowrap', pointerEvents: 'none', textShadow: '0 0 8px rgba(100,200,255,.3)' }}>
+          {cityEvent}
+        </div>
       )}
 
       {/* ── LEVEL UP OVERLAY ── */}
