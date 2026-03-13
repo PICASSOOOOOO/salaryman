@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -59,6 +60,56 @@ router.post("/interview/solve", async (req, res) => {
   } catch (err) {
     console.error("Error calling OpenAI:", err);
     res.write(`data: ${JSON.stringify({ error: "Failed to get response from AI" })}\n\n`);
+  }
+
+  res.end();
+});
+
+router.post("/interview/listen", async (req, res) => {
+  const { audio } = req.body;
+  if (!audio || typeof audio !== "string") {
+    res.status(400).json({ error: "Missing audio data" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const audioBuffer = Buffer.from(audio, "base64");
+    const { buffer, format } = await ensureCompatibleFormat(audioBuffer);
+    const transcript = await speechToText(buffer, format);
+
+    if (!transcript || !transcript.trim()) {
+      res.write(`data: ${JSON.stringify({ error: "Could not hear anything. Try again." })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const sayItPrompt = `You are helping a non-technical person sound smart in a coding interview. They just heard this question: "${transcript}"\n\nGive EXACTLY 3 bullet points. Rules: NO code whatsoever. NO jargon. Each bullet is ONE short simple sentence (max 15 words). Write it so they can read it off a screen and say it out loud naturally right now. Think of it as a teleprompter script.\n\nFormat:\n• [sentence]\n• [sentence]\n• [sentence]`;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      max_completion_tokens: 300,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: sayItPrompt },
+      ],
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("Error in /listen:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to process audio" })}\n\n`);
   }
 
   res.end();
