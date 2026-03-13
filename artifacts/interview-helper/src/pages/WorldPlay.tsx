@@ -79,12 +79,14 @@ function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string)
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wsRef     = useRef<WebSocket | null>(null);
-  const animRef   = useRef(0);
-  const peerConns = useRef<Map<string, RTCPeerConnection>>(new Map());
-  const localStream = useRef<MediaStream | null>(null);
-  const audioCtx  = useRef<AudioContext | null>(null);
+  const canvasRef     = useRef<HTMLCanvasElement>(null);
+  const gameRef       = useRef<HTMLDivElement>(null);
+  const wsRef         = useRef<WebSocket | null>(null);
+  const animRef       = useRef(0);
+  const peerConns     = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const localStream   = useRef<MediaStream | null>(null);
+  const audioCtx      = useRef<AudioContext | null>(null);
+  const frozenRef     = useRef(false);
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -94,6 +96,9 @@ export default function WorldPlay() {
   // Redirect to menu if no character
   useEffect(() => { if (!char) navigate('/world'); }, [char]);
   if (!char) return null;
+
+  // Auto-focus game container so keyboard events fire immediately
+  useEffect(() => { gameRef.current?.focus(); }, []);
 
   const gs = useRef({
     px: char.sx, py: char.sy,
@@ -291,31 +296,47 @@ export default function WorldPlay() {
     }
   }, [voice, wsSend]);
 
-  // ── Keyboard ──────────────────────────────────────────────────────────────
-  const anyPanel = useCallback(() => !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead]);
-
+  // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead;
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead]);
+
+  // ── Dialog advance ─────────────────────────────────────────────────────────
+  const advDialog = useCallback(() => {
+    if (!dialog) return;
+    if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
+    else {
+      if (dialog.bid === 'pablo_store') { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); }
+      setDialog(null);
+    }
+  }, [dialog]);
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const MOVE_KEYS = new Set(['arrowleft','arrowright','arrowup','arrowdown','a','s','w','d',' ']);
     const dn = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      // Prevent page scroll on arrow keys, WASD, and space
+      if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
-      if (e.key === 'e' || e.key === 'E') { const nb = gs.current.near; if (nb && !anyPanel() && !chatOpen) tryEnter(nb); }
+      if (e.key === 'e' || e.key === 'E') {
+        const nb = gs.current.near;
+        if (nb && !frozenRef.current && !chatOpen) tryEnter(nb);
+      }
       if (e.key === 'p' || e.key === 'P') setShowPablo(v => !v);
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => !v); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
-      if ((e.key === ' ' || e.key === 'Enter') && dialog) { e.preventDefault(); advDialog(); }
-      if (e.key === 'Escape') { setDialog(null); setShowStore(false); setShowOffice(false); setShowPablo(false); setPwPrompt(null); setPendingBid(null); }
+      if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
+      if (e.key === 'Escape') {
+        setDialog(null); setShowStore(false); setShowOffice(false);
+        setShowPablo(false); setPwPrompt(null); setPendingBid(null);
+      }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
-  }, [anyPanel, chatOpen, dialog, tryEnter, toggleVoice]);
-
-  const advDialog = useCallback(() => {
-    if (!dialog) return;
-    if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
-    else { if (dialog.bid === 'pablo_store') { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); } setDialog(null); }
-  }, [dialog]);
+  }, [chatOpen, dialog, tryEnter, toggleVoice, advDialog]);
 
   // ── PABLO AI ──────────────────────────────────────────────────────────────
   const sendPablo = useCallback(async () => {
@@ -339,7 +360,7 @@ export default function WorldPlay() {
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize(); window.addEventListener('resize', resize);
     let lastNear: string | null = null, lastZone = '', lastDead = false, lastHp = 100, lastSal = char.salary;
-    const frozen = () => !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead;
+    const frozen = () => frozenRef.current;
 
     const loop = () => {
       const g = gs.current;
@@ -502,13 +523,18 @@ export default function WorldPlay() {
     };
     animRef.current = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
-  }, [char, dialog, showStore, showOffice, showPablo, pwPrompt, isDead, speaking]);
+  }, [char, speaking]);
 
   const hpPct = hp;
   const nearB = near ? BUILDINGS.find(b => b.id === near) : null;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#030803', position: 'relative', fontFamily: "'Share Tech Mono',monospace" }}>
+    <div
+      ref={gameRef}
+      tabIndex={0}
+      onClick={() => gameRef.current?.focus()}
+      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#030803', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none' }}
+    >
       {/* Scanlines */}
       <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.14) 2px,rgba(0,0,0,.14) 4px)', pointerEvents: 'none', zIndex: 9999 }} />
 
