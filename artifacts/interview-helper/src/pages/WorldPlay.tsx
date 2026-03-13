@@ -31,20 +31,20 @@ const GANG_ZONES = [
 const NPCS = [
   // ── City sector ──
   { name: 'STRIFE',    x: 510, y: 380, type: 'corp',    whisper: 'I used to work for Shin-Ra. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.' },
-  { name: 'BROKER',    x: 760, y: 320, type: 'corp',    whisper: 'PABLO controls every credit in this city. The ones you earn. The ones you owe. All of them.' },
-  { name: 'REPLOID-7', x: 870, y: 350, type: 'android', whisper: 'Directive 44-C still active. Function: monitor and report. I was built by a man named Light. PABLO bought the patent in \'89.' },
-  { name: 'BELMONT',   x: 300, y: 460, type: 'human',   whisper: 'Up up, down down, left right, left right. I tried the code on every door in this city. Only PABLO\'s locks won\'t open.' },
+  { name: 'BROKER',    x: 760, y: 320, type: 'corp',    whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.' },
+  { name: 'REPLOID-7', x: 870, y: 350, type: 'android', whisper: 'Directive 44-C still active. Function: monitor and report. I was built by a man named Light. SENIOR PABLO bought the patent in \'89.' },
+  { name: 'BELMONT',   x: 300, y: 460, type: 'human',   whisper: 'Up up, down down, left right, left right. I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.' },
   { name: 'GUARD',     x: 560, y: 300, type: 'corp',    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.' },
-  { name: 'SAMUS',     x: 820, y: 290, type: 'android', whisper: 'Bounty is active on something called PABLO. No face. No file. Pays in a currency I don\'t recognize. I\'m still deciding.' },
+  { name: 'SAMUS',     x: 820, y: 290, type: 'android', whisper: 'Bounty is active on someone called SENIOR PABLO. No face. No file. Contract pays in a currency I don\'t recognize. I\'m still deciding whether to take it.' },
   { name: 'SNAKE',     x: 660, y: 510, type: 'human',   whisper: 'FOXHOUND was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
   // ── Wasteland ──
   { name: 'RIZER',     x: 240, y: 690, type: 'human',   whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
-  { name: 'KANEDA',    x: 580, y: 880, type: 'human',   whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. PABLO\'s lights were on that night. Already on. Always already on.' },
-  { name: 'TETSUO',    x: 720, y: 820, type: 'mutant',  whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think I know what.' },
-  { name: 'DR. WILY',  x: 380, y: 820, type: 'human',   whisper: 'My Robot Masters kept order here for six weeks. Then PABLO bought the patents. Every. Single. One. They deleted my serial numbers.' },
+  { name: 'KANEDA',    x: 580, y: 880, type: 'human',   whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
+  { name: 'TETSUO',    x: 720, y: 820, type: 'mutant',  whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think SENIOR PABLO is what woke up.' },
+  { name: 'DR. WILY',  x: 380, y: 820, type: 'human',   whisper: 'My Robot Masters kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One. He thanked me with a gift card.' },
   { name: 'AX',        x: 960, y: 890, type: 'human',   whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
-  { name: 'SCAV',      x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say his name three times and a light goes on in the tower.' },
-  { name: 'ERDRICK',   x: 820, y: 960, type: 'human',   whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think PABLO built the tower on it.' },
+  { name: 'SCAV',      x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
+  { name: 'ERDRICK',   x: 820, y: 960, type: 'human',   whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -75,20 +75,20 @@ const NPC_RANGE = 60;
 const KONAMI_SEQ = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
 
 const STORE_LINES = [
-  '> PABLO CORP. — AUTHORIZED DEVICE OUTLET',
-  '> The city belongs to him. The wasteland is for those who forgot that.',
+  '> PABLO CORP. — AUTHORIZED DEVICE OUTLET · MINX CITY · PST',
+  '> Minx City belongs to him. The wasteland is for those who forgot that.',
   '> PABLO devices keep you on the network. Like a second quest — but this time the dungeon is real.',
-  '> There\'s a rumor: the original PABLO device firmware contains an old game. Unplayable now. Boss was never beaten.',
+  '> There\'s a rumor: the original PABLO device firmware contains an old game. Unplayable now. SENIOR PABLO was never beaten.',
   '> Press ACTIVATE to register your device.',
 ];
 
 const TOWER_LINES = [
-  '> PABLO TOWER — 62 FLOORS. CITY DESIGNATION: BLOCK ZERO.',
-  '> Every road in this city was built to point here. Same as Neo-Tokyo. Same as Midgar. Same as every city that ever fell.',
-  '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted.',
-  '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly.',
+  '> PABLO TOWER — 62 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
+  '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as Midgar. Same as every city that ever fell.',
+  '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted by order of SENIOR PABLO.',
+  '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
   '> BELMONT was outside this building for three days. Said he felt something. Left without explaining.',
-  '> PABLO. Nobody knows his real name. Not even the people who built this tower.',
+  '> SENIOR PABLO. Villain of Minx City. Hero of the rich. Nobody has ever met him face to face and told the story.',
 ];
 
 const OFFICE_TIERS = [
@@ -170,16 +170,16 @@ export default function WorldPlay() {
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
-    zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'CITY',
+    zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
   });
 
   // Reactive state (only what the HUD needs)
   const [hp,      setHp]      = useState(100);
   const [salary,  setSalary]  = useState(char.salary);
-  const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'CITY');
+  const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
-  const [narration, setNarr]  = useState('> Find PABLO CORP. Walk to a building or NPC and press [E].');
+  const [narration, setNarr]  = useState('> Welcome to Minx City · PST. Find PABLO CORP. Walk to any building or NPC and press [E].');
   const [isDead,  setIsDead]  = useState(false);
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
@@ -245,9 +245,9 @@ export default function WorldPlay() {
       setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: GALAGA. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
     }
     else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. Screen reads: GAME OVER. INSERT COIN TO CONTINUE. 9... 8... 7... Nobody inserts a coin. Nobody has for years.'); }
-    else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "I gave PABLO the code. He already knew it. He wrote it." Sixteen bars of 8-bit music. Then dead air.'); }
+    else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "I gave SENIOR PABLO the code. He already knew it. He wrote it." Sixteen bars of 8-bit music. Then dead air.'); }
     else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20. You find a PCB labeled KONAMI \'87. Collector\'s item. Could be worth more than your salary.'); }
-    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
+    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
     else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -434,7 +434,7 @@ export default function WorldPlay() {
         const g = gs.current;
         g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 300;
         setHp(100); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
-        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +$300. Full stats restored. PABLO is watching." ★');
+        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +$300. Full stats restored. SENIOR PABLO is watching." ★');
         konamiBuffer.current = [];
       }
 
@@ -468,7 +468,7 @@ export default function WorldPlay() {
               while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
                 newExp -= expToLevel(newLevel); newLevel++;
                 g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
-                const lText = `★ LEVEL UP! LVL ${newLevel} ★  MAX HP +10  ATK +5  "The city trembles."`;
+                const lText = `★ LEVEL UP! LVL ${newLevel} ★  MAX HP +10  ATK +5  "Minx City trembles."`;
                 setLevelUpText(lText); setShowLevelUp(true);
                 setTimeout(() => setShowLevelUp(false), 3200);
                 setNarr(`> ${lText}`);
@@ -609,7 +609,7 @@ export default function WorldPlay() {
         if (nn !== null && !nb) setNarr(`> ${NPCS[nn].name} — press [E] to listen.`);
       }
 
-      const newZone = g.py < WASTELAND_Y ? 'CITY' : 'WASTELAND';
+      const newZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
       if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); }
 
       // Gang zone detection
@@ -661,7 +661,7 @@ export default function WorldPlay() {
         ctx.fillText('── WASTELAND ──', cw / 2, wby - 5);
       }
       ctx.fillStyle = 'rgba(0,255,65,.02)'; ctx.font = '56px "VT323"'; ctx.textAlign = 'center';
-      ctx.fillText(g.py < WASTELAND_Y ? 'CITY' : 'WASTELAND', cw / 2, ch / 2);
+      ctx.fillText(g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND', cw / 2, ch / 2);
 
       // Gang territory zones
       for (const gz of GANG_ZONES) {
@@ -1206,7 +1206,7 @@ export default function WorldPlay() {
               })}
             </div>
             <div style={{ fontSize: '.48rem', color: 'rgba(140,0,220,.35)', lineHeight: 1.7, borderTop: '1px solid rgba(140,0,220,.12)', paddingTop: '.6rem' }}>
-              Tenants may set a security code. Floors 40+ are permanently sealed by order of PABLO CORP. management. Do not inquire about the penthouse.
+              Tenants may set a security code. Floors 40+ are permanently sealed by order of SENIOR PABLO. Do not inquire about the penthouse.
             </div>
           </div>
         </div>
