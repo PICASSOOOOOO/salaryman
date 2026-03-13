@@ -79,16 +79,14 @@ If you cannot identify a clear question, describe what you see and give 3 genera
 
   chat: `Look at this screenshot of a technical interview or chat conversation. Find the most recent message or question directed at the person being interviewed.
 
-Write the reply they should type back. The reply must:
-- Sound like a confident senior tech startup CEO typed it quickly and naturally
-- Be 2–4 sentences, no more
-- Show genuine understanding without being showy or showing off
-- Feel human — a little informal is fine ("yeah", "right", "so my thinking here is...", "honestly")
-- NOT sound like AI wrote it — no bullet points, no perfect structure, no formal tone
-- Be direct and specific to what was asked, with the occasional natural hesitation or filler phrase
-- Demonstrate awareness of team dynamics, risk, or production trade-offs where relevant
+Write the reply they should type back. Rules:
+- ONE sentence only. Punchy, direct, confident.
+- Sounds like a smart startup CEO who typed it in 3 seconds without overthinking
+- Can start mid-thought ("yeah, exactly —", "right, so —", "honestly,", "that's fair —")
+- Zero corporate speak. Zero perfect grammar required. Just sharp and human.
+- No bullet points. No explanation. Just the one sentence.
 
-Output ONLY the reply text. No quotes, no labels, no explanation. Just what they should type.`,
+Output ONLY the reply text. Nothing else.`,
 };
 
 router.post("/interview/scan", async (req, res) => {
@@ -99,7 +97,7 @@ router.post("/interview/scan", async (req, res) => {
   }
 
   const promptText = SCAN_PROMPTS[responseMode as keyof typeof SCAN_PROMPTS] ?? SCAN_PROMPTS.bullets;
-  const maxTokens = responseMode === "chat" ? 200 : 400;
+  const maxTokens = responseMode === "chat" ? 80 : 400;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
