@@ -613,7 +613,12 @@ export function useAdvisorChat() {
     saveBusinessMemory('');
   }, []);
 
-  return { messages, businessMemory, isStreaming, send, clear, clearMemory };
+  const updateMemory = useCallback((mem: string) => {
+    setBusinessMemory(mem);
+    saveBusinessMemory(mem);
+  }, []);
+
+  return { messages, businessMemory, isStreaming, send, clear, clearMemory, updateMemory };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
