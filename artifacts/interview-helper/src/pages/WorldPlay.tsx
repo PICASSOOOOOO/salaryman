@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
+import {
+  sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxStep, sfxEnter, sfxTalk,
+  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxKonami, sfxError,
+  sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
+} from '../soundEngine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
@@ -234,6 +239,8 @@ export default function WorldPlay() {
   const [hasDevice, setHasDevice] = useState(false);
   const [voice,   setVoice]   = useState(false);
   const [speaking,setSpeaking]= useState(false);
+  const [muted,   setMuted]   = useState(false);
+  const stepFrame = useRef(0);
   const [speakIds,setSpeakIds]= useState<Set<string>>(new Set());
 
   // Chat
@@ -276,31 +283,33 @@ export default function WorldPlay() {
 
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
+    sfxEnter();
     if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
     else if (bid === 'pablo_tower') { setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' }); }
     else if (bid === 'clinic')  {
-      if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); setNarr('> DR. WRIGHT\'S CLINIC — [$100] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
-      else setNarr('> DR. WRIGHT\'S CLINIC — "No credits, no treatment. Even Dr. Wright has bills. Come back with $100."');
+      if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [$100] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
+      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No credits, no treatment. Even Dr. Wright has bills. Come back with $100."'); }
     }
     else if (bid === 'megabank'){ setNarr('> KONAMI BANK — Account suspended. Terminal shows: INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.'); }
-    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +$30. The buyer asked if it was from "before the collapse." You said yes.'); }
-    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. Galaga. Gradius. HP +40. Energy +30.'); }
+    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); sfxCoin(); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +$30. The buyer asked if it was from "before the collapse." You said yes.'); }
+    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal(); setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. Galaga. Gradius. HP +40. Energy +30.'); }
     else if (bid === 'vend')    {
       g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
-      setHunger(g.hunger); setThirst(g.thirst);
+      setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
       setNarr('> VEND-O-MATIC — Mystery ration dispensed. Label reads: POWER PELLET (off-brand). Hunger +30. Thirst +30.');
     }
     else if (bid === 'arcade')  {
-      g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy);
+      g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
       setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: GALAGA. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
     }
     else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Spray-painted: "WW-87 / INSERT COIN." An old terminal runs in the corner. Screen reads: GAME OVER. INSERT COIN TO CONTINUE. 9... 8... 7... Nobody inserts a coin. Nobody has for years.'); }
     else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "I gave SENIOR PABLO the code. He already knew it. He wrote it." Sixteen bars of 8-bit music. Then dead air.'); }
-    else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20. You find a PCB labeled KONAMI \'87. Collector\'s item. Could be worth more than your salary.'); }
-    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
+    else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); sfxCoin(); setNarr('> SCRAP YARD — Sold scrap. +$20. You find a PCB labeled KONAMI \'87. Collector\'s item. Could be worth more than your salary.'); }
+    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); sfxCoin(); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
     else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
+      sfxSave();
       localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
       setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
     }
@@ -308,6 +317,7 @@ export default function WorldPlay() {
 
   const enterNpc = useCallback((idx: number) => {
     const n = NPCS[idx];
+    sfxTalk();
     setDialog({ lines: [`> ${n.name.toUpperCase()}`, `"${n.whisper}"`], idx: 0, bid: 'npc' });
   }, []);
 
@@ -372,7 +382,7 @@ export default function WorldPlay() {
           g.locks.delete(m.buildingId);
           setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
           if (pendingBidRef.current === m.buildingId) { pendingBidRef.current = null; setPendingBid(null); enterBuilding(m.buildingId); }
-        } else if (!m.success) setNarr(`> ACCESS DENIED — ${m.error}`);
+        } else if (!m.success) { sfxError(); setNarr(`> ACCESS DENIED — ${m.error}`); }
         if (m.success && m.action === 'set') setNarr('> Security code set. Building locked to your enterprise.');
         setPwPrompt(null);
       } else if (m.type === 'building_lock_status') {
@@ -455,9 +465,19 @@ export default function WorldPlay() {
     frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead;
   }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead]);
 
+  // ── Music init — start on first interaction ──────────────────────────────────
+  useEffect(() => {
+    initMusic('/soundtrack.mp3');
+    const start = () => { resumeAudioContext(); playMusic(); };
+    window.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('keydown', start, { once: true });
+    return () => { pauseMusic(); };
+  }, []);
+
   // ── Dialog advance ─────────────────────────────────────────────────────────
   const advDialog = useCallback(() => {
     if (!dialog) return;
+    sfxTalk();
     if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
     else {
       if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); }
@@ -485,6 +505,7 @@ export default function WorldPlay() {
         g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 300;
         setHp(100); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
         setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +$300. Full stats restored. SENIOR PABLO is watching." ★');
+        sfxKonami();
         konamiBuffer.current = [];
       }
 
@@ -505,6 +526,7 @@ export default function WorldPlay() {
         const g = gs.current;
         if (g.attackCooldown > 0) return;
         g.attackCooldown = 35; g.attackFlash = 8;
+        sfxAttack();
         const ATK = 20 + (g.level - 1) * 5;
         let hit = false;
         g.threats = g.threats.map(t => {
@@ -513,6 +535,7 @@ export default function WorldPlay() {
             hit = true;
             const nhp = t.hp - ATK;
             if (nhp <= 0) {
+              sfxKill();
               const earned = THREAT_EXP[t.type] ?? 20;
               let newExp = g.exp + earned; let newLevel = g.level;
               while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
@@ -522,12 +545,14 @@ export default function WorldPlay() {
                 setLevelUpText(lText); setShowLevelUp(true);
                 setTimeout(() => setShowLevelUp(false), 3200);
                 setNarr(`> ${lText}`);
+                sfxLevelUp();
               }
               g.exp = newExp; g.level = newLevel;
               setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
               return null as unknown as Threat;
             }
+            sfxHit();
             return { ...t, hp: nhp };
           }
           return t;
@@ -604,6 +629,10 @@ export default function WorldPlay() {
         if (col(g.px, ny)) ny = g.py;
         g.px = Math.max(PSIZE, Math.min(W - PSIZE, nx));
         g.py = Math.max(PSIZE, Math.min(H - PSIZE, ny));
+        if (dx !== 0 || dy !== 0) {
+          stepFrame.current++;
+          if (stepFrame.current % 14 === 0) sfxStep();
+        }
       }
 
       for (const t of g.threats) {
@@ -618,12 +647,12 @@ export default function WorldPlay() {
           // Mutants and gang bosses can poison
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
-            setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
+            sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
           }
         }
       }
 
-      if (g.hp <= 0 && !lastDead) { lastDead = true; setIsDead(true); }
+      if (g.hp <= 0 && !lastDead) { lastDead = true; sfxDeath(); setIsDead(true); }
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
@@ -660,7 +689,7 @@ export default function WorldPlay() {
       }
 
       const newZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
-      if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); }
+      if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); }
 
       // Gang zone detection
       let newGang: string | null = null;
@@ -1104,6 +1133,9 @@ export default function WorldPlay() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'all' }}>
           <button onClick={toggleVoice} style={{ padding: '.35rem .6rem', background: voice ? (speaking ? 'rgba(0,255,180,.12)' : 'rgba(0,255,65,.1)') : 'rgba(0,5,0,.88)', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,180,.6)' : 'rgba(0,255,65,.4)') : 'rgba(0,255,65,.15)'}`, color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
+          </button>
+          <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ padding: '.35rem .6rem', background: muted ? 'rgba(255,34,102,.08)' : 'rgba(0,5,0,.88)', border: muted ? '1px solid rgba(255,34,102,.4)' : '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+            {muted ? '✕ MUTE' : '♪ SND'}
           </button>
           <button onClick={() => { setChatOpen(v => !v); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
             {unread > 0 && <span style={{ position: 'absolute', top: 2, right: 3, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
