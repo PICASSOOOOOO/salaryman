@@ -204,6 +204,7 @@ export default function WorldPlay() {
   const [pabloLoad,setPabloLoad]= useState(false);
   const [pwPrompt, setPwPrompt] = useState<{ bid: string; label: string; mode: 'enter'|'set' } | null>(null);
   const [pendingBid,setPendingBid]=useState<string|null>(null);
+  const pendingBidRef = useRef<string | null>(null);
   const [lockMap,  setLockMap]  = useState<Map<string,{ownerName:string;company?:string;message?:string}>>(new Map());
   const [rentedOffice,setRentedOffice]=useState<string|null>(()=>localStorage.getItem('sm_office'));
   const [hunger,      setHunger]      = useState(100);
@@ -266,9 +267,9 @@ export default function WorldPlay() {
     if (lock !== undefined) {
       if (!lock.ownerName) { enterBuilding(bid); return; }
       const b = BUILDINGS.find(b => b.id === bid);
-      setPendingBid(bid); setPwPrompt({ bid, label: b?.label ?? bid, mode: 'enter' });
+      pendingBidRef.current = bid; setPendingBid(bid); setPwPrompt({ bid, label: b?.label ?? bid, mode: 'enter' });
     } else {
-      setPendingBid(bid); wsSend({ type: 'building_lock_query', buildingId: bid });
+      pendingBidRef.current = bid; setPendingBid(bid); wsSend({ type: 'building_lock_query', buildingId: bid });
     }
   }, [enterBuilding, wsSend]);
 
@@ -321,7 +322,7 @@ export default function WorldPlay() {
         if (m.success && (m.action === 'unlock' || m.action === 'open')) {
           g.locks.delete(m.buildingId);
           setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
-          if (pendingBid === m.buildingId) { setPendingBid(null); enterBuilding(m.buildingId); }
+          if (pendingBidRef.current === m.buildingId) { pendingBidRef.current = null; setPendingBid(null); enterBuilding(m.buildingId); }
         } else if (!m.success) setNarr(`> ACCESS DENIED — ${m.error}`);
         if (m.success && m.action === 'set') setNarr('> Security code set. Building locked to your enterprise.');
         setPwPrompt(null);
@@ -329,7 +330,7 @@ export default function WorldPlay() {
         if (m.locked) {
           g.locks.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message });
           setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message }); return nl; });
-          if (pendingBid === m.buildingId) {
+          if (pendingBidRef.current === m.buildingId) {
             const b = BUILDINGS.find(b => b.id === m.buildingId);
             if (m.message) setNarr(`> ${b?.label ?? m.buildingId} — LOCKED by ${m.ownerName}${m.company ? ' / ' + m.company : ''}: "${m.message}"`);
             setPwPrompt({ bid: m.buildingId, label: b?.label ?? m.buildingId, mode: 'enter' });
@@ -337,7 +338,7 @@ export default function WorldPlay() {
         } else {
           g.locks.delete(m.buildingId);
           setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
-          if (pendingBid === m.buildingId) { setPendingBid(null); enterBuilding(m.buildingId); }
+          if (pendingBidRef.current === m.buildingId) { pendingBidRef.current = null; setPendingBid(null); enterBuilding(m.buildingId); }
         }
       } else if (m.type === 'building_locked') {
         g.locks.set(m.buildingId, { ownerName: m.ownerName, company: m.company });
@@ -487,7 +488,7 @@ export default function WorldPlay() {
       }
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
-        setShowPablo(false); setPwPrompt(null); setPendingBid(null);
+        setShowPablo(false); setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
       }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
