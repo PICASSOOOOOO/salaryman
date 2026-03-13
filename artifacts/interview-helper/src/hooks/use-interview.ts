@@ -337,7 +337,12 @@ const NEARBY_KEYS: Record<string, string> = {
   u:'yi', v:'cb', w:'qe', x:'zc', y:'tu', z:'ax',
 };
 
-function charDelay(ch: string, prev: string): number {
+function charDelay(ch: string, prev: string, fast = false): number {
+  if (fast) {
+    if (ch === '\n') return 120 + Math.random() * 180;
+    if (ch === ' ') return 35 + Math.random() * 55;
+    return 28 + Math.random() * 50;
+  }
   if (ch === '\n') return 350 + Math.random() * 500;
   if (ch === ' ') return 80 + Math.random() * 120;
   if ('({['.includes(prev)) return 100 + Math.random() * 150;
@@ -357,7 +362,8 @@ export function useTypingSimulator() {
     pauseRef.current = id as unknown as number;
   });
 
-  const start = useCallback(async (text: string) => {
+  const start = useCallback(async (text: string, speed: 'code' | 'chat' = 'code') => {
+    const fast = speed === 'chat';
     cancelRef.current = false;
     setDisplayedText('');
     setIsDone(false);
@@ -365,6 +371,10 @@ export function useTypingSimulator() {
 
     let typed = '';
     let charsSinceBreak = 0;
+    // Chat: short burst of rapid typing before brief pause; code: long thoughtful pauses
+    const breakEvery = fast ? [35, 25] : [20, 15];
+    const breakPause = fast ? [150, 250] : [500, 900];
+    const typoRate = fast ? 0.02 : 0.04;
 
     for (let i = 0; i < text.length; i++) {
       if (cancelRef.current) break;
@@ -372,46 +382,38 @@ export function useTypingSimulator() {
       const ch = text[i];
       const prev = i > 0 ? text[i - 1] : '';
 
-      // Random "thinking pause" every 20–35 chars
+      // Thinking pause
       charsSinceBreak++;
-      if (charsSinceBreak > 20 + Math.random() * 15 && ch !== '\n') {
+      if (charsSinceBreak > breakEvery[0] + Math.random() * breakEvery[1] && ch !== '\n') {
         charsSinceBreak = 0;
-        await sleep(500 + Math.random() * 900);
+        await sleep(breakPause[0] + Math.random() * breakPause[1]);
         if (cancelRef.current) break;
       }
 
-      // Occasional typo on lowercase letters (~4% chance)
+      // Occasional typo
       const isLower = ch >= 'a' && ch <= 'z';
-      if (isLower && Math.random() < 0.04) {
+      if (isLower && Math.random() < typoRate) {
         const nearby = NEARBY_KEYS[ch] ?? 'x';
         const wrongChar = nearby[Math.floor(Math.random() * nearby.length)];
-        const mistakeLen = 1 + Math.floor(Math.random() * 2);
+        const mistakeLen = 1;
 
-        // Type the wrong chars
-        for (let m = 0; m < mistakeLen; m++) {
-          typed += wrongChar;
-          setDisplayedText(typed);
-          await sleep(70 + Math.random() * 60);
-          if (cancelRef.current) break;
-        }
-
-        // Pause — "wait, that's wrong"
-        await sleep(180 + Math.random() * 150);
-
-        // Backspace them
-        for (let m = 0; m < mistakeLen; m++) {
-          typed = typed.slice(0, -1);
-          setDisplayedText(typed);
-          await sleep(80 + Math.random() * 60);
-          if (cancelRef.current) break;
-        }
+        typed += wrongChar;
+        setDisplayedText(typed);
+        await sleep(fast ? 40 : 70 + Math.random() * 60);
         if (cancelRef.current) break;
-        await sleep(60 + Math.random() * 80);
+
+        await sleep(fast ? 100 : 180 + Math.random() * 150);
+
+        typed = typed.slice(0, -1);
+        setDisplayedText(typed);
+        await sleep(fast ? 35 : 80 + Math.random() * 60);
+        if (cancelRef.current) break;
+        await sleep(fast ? 25 : 60 + Math.random() * 80);
       }
 
       typed += ch;
       setDisplayedText(typed);
-      await sleep(charDelay(ch, prev));
+      await sleep(charDelay(ch, prev, fast));
     }
 
     if (!cancelRef.current) setIsDone(true);

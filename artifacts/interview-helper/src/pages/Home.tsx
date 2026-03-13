@@ -37,7 +37,8 @@ export default function Home() {
     if (!typeMode) {
       resetTyping();
       setTypeMode(true);
-      startTyping(getTypableText());
+      const speed = (activePanel === 'scan' && lastScanMode === 'chat') ? 'chat' : 'code';
+      startTyping(getTypableText(), speed);
     } else {
       stopTyping();
       setTypeMode(false);
@@ -46,7 +47,8 @@ export default function Home() {
 
   const handleRestartTyping = () => {
     resetTyping();
-    startTyping(getTypableText());
+    const speed = (activePanel === 'scan' && lastScanMode === 'chat') ? 'chat' : 'code';
+    startTyping(getTypableText(), speed);
   };
 
   // Reset type mode when response changes
@@ -54,12 +56,12 @@ export default function Home() {
     if (typeMode) { stopTyping(); setTypeMode(false); }
   }, [displayResponse]);
 
-  // Auto-start Type Mode after a chat reply scan completes
+  // Auto-start Type Mode after a chat reply scan completes — fast/natural speed
   useEffect(() => {
     if (activePanel === 'scan' && scanStatus === 'done' && lastScanMode === 'chat' && scanAnswer && !typeMode) {
       resetTyping();
       setTypeMode(true);
-      startTyping(scanAnswer);
+      startTyping(scanAnswer, 'chat');
     }
   }, [scanStatus, lastScanMode]);
 
