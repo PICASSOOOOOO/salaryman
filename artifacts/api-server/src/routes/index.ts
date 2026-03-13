@@ -7,6 +7,7 @@ import authRouter from "./auth";
 import accountRouter from "./account";
 import workspaceRouter from "./workspace";
 import planRouter from "./plan";
+import worldRouter from "./world";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(toolsRouter);
 router.use(accountRouter);
 router.use(workspaceRouter);
 router.use(planRouter);
+router.use(worldRouter);
 
 export default router;

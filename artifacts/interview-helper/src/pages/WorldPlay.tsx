@@ -12,9 +12,17 @@ const BUILDINGS = [
   { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'MOGUL BANK',    bright: false },
   { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false },
   { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL NEON',    bright: false },
+  { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',  bright: true  },
   { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
   { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
   { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
+];
+
+// ── Gang territories (wasteland) ──────────────────────────────────────────────
+const GANG_ZONES = [
+  { id: 'iron_rats',    name: 'IRON RATS',    x: 100,  y: 580, w: 420, h: 340, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
+  { id: 'void_dogs',    name: 'VOID DOGS',    x: 480,  y: 620, w: 380, h: 380, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
+  { id: 'static_monks', name: 'STATIC MONKS', x: 820,  y: 580, w: 420, h: 360, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
 ];
 
 const NPCS = [
@@ -30,12 +38,19 @@ const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', and
 
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; }
 const THREATS_INIT: Threat[] = [
-  { x: 620, y: 500, dx: 0, dy: 0, type: 'GANG',   timer: 0 },
-  { x: 420, y: 560, dx: 0, dy: 0, type: 'GANG',   timer: 0 },
-  { x: 500, y: 780, dx: 0, dy: 0, type: 'MUTANT', timer: 0 },
-  { x: 750, y: 750, dx: 0, dy: 0, type: 'RAIDER', timer: 0 },
+  { x: 240, y: 680, dx: 0, dy: 0, type: 'IRON_RATS',    timer: 0 },
+  { x: 350, y: 820, dx: 0, dy: 0, type: 'IRON_RATS',    timer: 0 },
+  { x: 560, y: 750, dx: 0, dy: 0, type: 'VOID_DOGS',    timer: 0 },
+  { x: 680, y: 840, dx: 0, dy: 0, type: 'VOID_DOGS',    timer: 0 },
+  { x: 900, y: 700, dx: 0, dy: 0, type: 'STATIC_MONKS', timer: 0 },
+  { x: 1020,y: 820, dx: 0, dy: 0, type: 'STATIC_MONKS', timer: 0 },
+  { x: 500, y: 780, dx: 0, dy: 0, type: 'MUTANT',       timer: 0 },
+  { x: 750, y: 500, dx: 0, dy: 0, type: 'RAIDER',       timer: 0 },
 ];
-const THREAT_COL: Record<string, string> = { GANG: '#ff4444', MUTANT: '#aaff44', RAIDER: '#ff8800' };
+const THREAT_COL: Record<string, string> = {
+  IRON_RATS: '#ff4444', VOID_DOGS: '#ff8800', STATIC_MONKS: '#aaff22',
+  MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
+};
 
 const NPC_RANGE = 60;
 
@@ -63,8 +78,9 @@ const OFFICE_TIERS = [
   { label: 'EXEC FLOOR',     price: 1500, desc: 'Full suite. AI concierge.' },
 ];
 
-interface Char { name: string; class: string; sx: number; sy: number; salary: number; }
-interface Peer { id: string; name: string; x: number; y: number; speaking: boolean; }
+interface Char { name: string; class: string; company: string; sx: number; sy: number; salary: number; }
+interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; }
+interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
 
 let seq = 0;
@@ -122,10 +138,13 @@ export default function WorldPlay() {
     threats: THREATS_INIT.map(t => ({ ...t })),
     near: null as string | null,
     nearNpc: null as number | null,
+    gangZone: null as string | null,
+    hunger: 100, thirst: 100, energy: 100,
+    survivalTick: 0,
     myId: '',
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
-    locks: new Map<string, { ownerName: string }>(),
+    locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
     zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'CITY',
   });
 
@@ -160,8 +179,15 @@ export default function WorldPlay() {
   const [pabloLoad,setPabloLoad]= useState(false);
   const [pwPrompt, setPwPrompt] = useState<{ bid: string; label: string; mode: 'enter'|'set' } | null>(null);
   const [pendingBid,setPendingBid]=useState<string|null>(null);
-  const [lockMap,  setLockMap]  = useState<Map<string,{ownerName:string}>>(new Map());
+  const [lockMap,  setLockMap]  = useState<Map<string,{ownerName:string;company?:string;message?:string}>>(new Map());
   const [rentedOffice,setRentedOffice]=useState<string|null>(()=>localStorage.getItem('sm_office'));
+  const [hunger,      setHunger]      = useState(100);
+  const [thirst,      setThirst]      = useState(100);
+  const [energy,      setEnergy]      = useState(100);
+  const [gangZone,    setGangZone]    = useState<string|null>(null);
+  const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
+  const [showStats,   setShowStats]   = useState(false);
+  const [serverFull,  setServerFull]  = useState(false);
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const wsSend = useCallback((m: object) => {
@@ -176,6 +202,11 @@ export default function WorldPlay() {
     else if (bid === 'megabank'){ setNarr('> MOGUL BANK — "Account suspended. Try again never."'); }
     else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Odd job. +$30. Don\'t ask questions.'); }
     else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); setHp(g.hp); setNarr('> HOTEL NEON — A few hours\' sleep. HP +40.'); }
+    else if (bid === 'vend')    {
+      g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
+      setHunger(g.hunger); setThirst(g.thirst);
+      setNarr('> VEND-O-MATIC — Mystery ration. Hunger +30. Thirst +30.');
+    }
     else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Door won\'t budge. Spray-painted: PABLO IS WATCHING.'); }
     else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Static. Broken music. A voice repeating: "He\'s still up there."'); }
     else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20.'); }
@@ -199,24 +230,32 @@ export default function WorldPlay() {
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&x=${char.sx}&y=${char.sy}`);
+    const makeUrl = (x: number, y: number) =>
+      `${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&company=${encodeURIComponent(char.company ?? '')}&x=${x}&y=${y}`;
+    const ws = new WebSocket(makeUrl(char.sx, char.sy));
     wsRef.current = ws;
     ws.onclose = () => setTimeout(() => {
       if (wsRef.current === ws) {
-        const nws = new WebSocket(`${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&x=${gs.current.px}&y=${gs.current.py}`);
+        const nws = new WebSocket(makeUrl(gs.current.px, gs.current.py));
         wsRef.current = nws;
       }
     }, 3000);
     ws.onmessage = (ev) => {
       let m: any; try { m = JSON.parse(ev.data); } catch { return; }
       const g = gs.current;
-      if (m.type === 'welcome') {
+      if (m.type === 'server_full') {
+        setServerFull(true);
+      } else if (m.type === 'welcome') {
         g.myId = m.id;
         if (m.locks) {
-          const nl = new Map<string, { ownerName: string }>();
-          Object.entries(m.locks).forEach(([bid, v]: any) => { nl.set(bid, { ownerName: v.ownerName }); g.locks.set(bid, v); });
+          const nl = new Map<string, { ownerName: string; company?: string; message?: string }>();
+          Object.entries(m.locks).forEach(([bid, v]: any) => {
+            nl.set(bid, { ownerName: v.ownerName, company: v.company, message: v.message });
+            g.locks.set(bid, v);
+          });
           setLockMap(nl);
         }
+        if (m.ownershipStats) setOwnerStats(m.ownershipStats);
       } else if (m.type === 'player_list') {
         g.peers.clear();
         (m.players as Peer[]).filter(p => p.id !== g.myId).forEach(p => g.peers.set(p.id, p));
@@ -232,20 +271,23 @@ export default function WorldPlay() {
       } else if (m.type === 'chat') {
         setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: m.from, text: m.text, dm: m.room === 'dm' }]);
         if (!chatOpen) setUnread(n => n + 1);
+      } else if (m.type === 'ownership_update') {
+        setOwnerStats(m.stats ?? {});
       } else if (m.type === 'building_lock_result') {
         if (m.success && (m.action === 'unlock' || m.action === 'open')) {
-          g.locks.set(m.buildingId, { ownerName: '' });
+          g.locks.delete(m.buildingId);
           setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
           if (pendingBid === m.buildingId) { setPendingBid(null); enterBuilding(m.buildingId); }
         } else if (!m.success) setNarr(`> ACCESS DENIED — ${m.error}`);
-        if (m.success && m.action === 'set') setNarr('> Security code set.');
+        if (m.success && m.action === 'set') setNarr('> Security code set. Building locked to your enterprise.');
         setPwPrompt(null);
       } else if (m.type === 'building_lock_status') {
         if (m.locked) {
-          g.locks.set(m.buildingId, { ownerName: m.ownerName ?? '' });
-          setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName ?? '' }); return nl; });
+          g.locks.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message });
+          setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message }); return nl; });
           if (pendingBid === m.buildingId) {
             const b = BUILDINGS.find(b => b.id === m.buildingId);
+            if (m.message) setNarr(`> ${b?.label ?? m.buildingId} — LOCKED by ${m.ownerName}${m.company ? ' / ' + m.company : ''}: "${m.message}"`);
             setPwPrompt({ bid: m.buildingId, label: b?.label ?? m.buildingId, mode: 'enter' });
           }
         } else {
@@ -254,8 +296,8 @@ export default function WorldPlay() {
           if (pendingBid === m.buildingId) { setPendingBid(null); enterBuilding(m.buildingId); }
         }
       } else if (m.type === 'building_locked') {
-        g.locks.set(m.buildingId, { ownerName: m.ownerName });
-        setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName }); return nl; });
+        g.locks.set(m.buildingId, { ownerName: m.ownerName, company: m.company });
+        setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName, company: m.company }); return nl; });
       } else if (m.type === 'building_unlocked') {
         g.locks.delete(m.buildingId); setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
       } else if (m.type === 'voice_offer')  handleVoiceOffer(m.from, m.sdp);
@@ -435,7 +477,12 @@ export default function WorldPlay() {
           const b = BUILDINGS.find(b => b.id === nb);
           const lk = g.locks.get(nb);
           if (nb === 'pablo_tower') setNarr('> PABLO TOWER — The city trembles at its shadow. [E] to approach.');
-          else setNarr(`> ${b?.label}${lk?.ownerName ? ' [LOCKED]' : ''} — press [E] to enter.`);
+          else if (lk?.ownerName) {
+            const who = lk.company ? `${lk.ownerName} / ${lk.company}` : lk.ownerName;
+            const msg = lk.message ? ` "${lk.message}"` : '';
+            setNarr(`> ${b?.label} [LOCKED by ${who}]${msg} — [E] to attempt entry.`);
+          }
+          else setNarr(`> ${b?.label} — press [E] to enter.`);
         }
       }
       // Proximity check — NPCs (only when no building nearby)
@@ -449,6 +496,28 @@ export default function WorldPlay() {
 
       const newZone = g.py < WASTELAND_Y ? 'CITY' : 'WASTELAND';
       if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); }
+
+      // Gang zone detection
+      let newGang: string | null = null;
+      for (const gz of GANG_ZONES) {
+        if (g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h) { newGang = gz.id; break; }
+      }
+      if (newGang !== g.gangZone) { g.gangZone = newGang; setGangZone(newGang); }
+
+      // Survival tick — every 360 frames (~6s)
+      g.survivalTick++;
+      if (g.survivalTick >= 360) {
+        g.survivalTick = 0;
+        const inWaste = g.py >= WASTELAND_Y;
+        // Hunger/thirst drain faster in wasteland
+        g.hunger = Math.max(0, g.hunger - (inWaste ? 2.5 : 1.5));
+        g.thirst = Math.max(0, g.thirst - (inWaste ? 3 : 2));
+        g.energy = Math.max(0, g.energy - (inWaste ? 1.5 : 1));
+        // Low stats affect HP / salary
+        if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); }
+        if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 5); }
+        setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
+      }
 
       // ── DRAW ─────────────────────────────────────────────────────────────
       if (g.flash > 0) { ctx.fillStyle = `rgba(255,0,0,${g.flash * .05})`; ctx.fillRect(0, 0, cw, ch); }
@@ -470,6 +539,23 @@ export default function WorldPlay() {
       }
       ctx.fillStyle = 'rgba(0,255,65,.02)'; ctx.font = '56px "VT323"'; ctx.textAlign = 'center';
       ctx.fillText(g.py < WASTELAND_Y ? 'CITY' : 'WASTELAND', cw / 2, ch / 2);
+
+      // Gang territory zones
+      for (const gz of GANG_ZONES) {
+        const gx = gz.x + ox, gy = gz.y + oy;
+        if (gx + gz.w < 0 || gx > cw || gy + gz.h < 0 || gy > ch) continue;
+        ctx.fillStyle = gz.color;
+        ctx.fillRect(gx, gy, gz.w, gz.h);
+        ctx.strokeStyle = gz.border;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.strokeRect(gx, gy, gz.w, gz.h);
+        ctx.setLineDash([]);
+        ctx.fillStyle = gz.border;
+        ctx.font = '7px "Share Tech Mono"';
+        ctx.textAlign = 'center';
+        ctx.fillText(gz.label, gx + gz.w / 2, gy + 12);
+      }
 
       // Roads
       ctx.lineWidth = 16; ctx.strokeStyle = 'rgba(0,255,65,.06)';
@@ -622,6 +708,8 @@ export default function WorldPlay() {
       const mwY = mmY + (WASTELAND_Y / H) * mmH;
       ctx.strokeStyle = 'rgba(0,255,65,.15)'; ctx.setLineDash([2, 2]);
       ctx.beginPath(); ctx.moveTo(mmX, mwY); ctx.lineTo(mmX + mmW, mwY); ctx.stroke(); ctx.setLineDash([]);
+      // Gang zones on minimap
+      for (const gz of GANG_ZONES) { ctx.fillStyle = gz.color.replace('.06', '.15').replace('.05', '.12'); ctx.fillRect(mmX + (gz.x / W) * mmW, mmY + (gz.y / H) * mmH, (gz.w / W) * mmW, (gz.h / H) * mmH); }
       for (const b of BUILDINGS) {
         const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
         ctx.fillStyle = isLk ? 'rgba(255,120,50,.5)' : b.bright ? 'rgba(0,255,65,.7)' : 'rgba(0,160,50,.35)';
@@ -684,6 +772,30 @@ export default function WorldPlay() {
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '2px' }}>{zone}</div>
           </div>
         </div>
+        {/* Survival meters */}
+        <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
+          {[
+            { label: 'HUNGER', val: hunger, col: hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622' },
+            { label: 'THIRST', val: thirst, col: thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622' },
+            { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
+          ].map(({ label, val, col }) => (
+            <div key={label} style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', minWidth: 68 }}>
+              <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
+              <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.07)' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
+              </div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: col, letterSpacing: '.04em', marginTop: '1px' }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        {/* Gang zone indicator */}
+        {gangZone && (
+          <div style={{ marginTop: '3px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.2rem .5rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
+              ⚠ {GANG_ZONES.find(g => g.id === gangZone)?.name} TERRITORY
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ONLINE PLAYERS — below minimap, top-right */}
@@ -721,13 +833,50 @@ export default function WorldPlay() {
             CHAT [C]
           </button>
           <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
-            {hasDevice ? 'PABLO [P]' : 'PABLO [P]'}
+            PABLO [P]
+          </button>
+          <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,5,0,.88)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+            STATS
           </button>
           <button onClick={() => navigate('/world')} style={{ padding: '.35rem .6rem', background: 'rgba(0,5,0,.88)', border: '1px solid rgba(0,255,65,.1)', color: 'rgba(0,255,65,.2)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             ← MENU
           </button>
         </div>
       </div>
+
+      {/* ── PROPERTY STATS PANEL ── */}
+      {showStats && (
+        <div style={{ position: 'absolute', bottom: 120, right: 70, width: 240, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(255,170,0,.3)', zIndex: 200 }}>
+          <div style={{ padding: '.35rem .55rem', borderBottom: '1px solid rgba(255,170,0,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#ffaa00', letterSpacing: '.1em' }}>PROPERTY LEDGER</span>
+            <button onClick={() => setShowStats(false)} style={{ fontSize: '.55rem', color: 'rgba(255,170,0,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
+          </div>
+          <div style={{ padding: '.4rem .55rem', maxHeight: '30vh', overflowY: 'auto' }}>
+            {Object.keys(ownerStats).length === 0 ? (
+              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.07em', padding: '.3rem 0' }}>No buildings claimed yet.</div>
+            ) : Object.entries(ownerStats).sort((a, b) => b[1].count - a[1].count).map(([owner, data]) => (
+              <div key={owner} style={{ borderBottom: '1px solid rgba(0,255,65,.07)', padding: '.3rem 0' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffaa00', letterSpacing: '.08em' }}>{owner}</div>
+                {data.company && <div style={{ fontSize: '.45rem', color: 'rgba(255,170,0,.45)', letterSpacing: '.07em' }}>{data.company}</div>}
+                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '2px' }}>{data.count} building{data.count !== 1 ? 's' : ''} claimed</div>
+                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '.3rem .55rem', borderTop: '1px solid rgba(0,255,65,.07)', fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
+            Total buildings: {BUILDINGS.filter(b => b.id !== 'pablo_tower').length} · Claimed: {Object.values(ownerStats).reduce((a, v) => a + v.count, 0)}
+          </div>
+        </div>
+      )}
+
+      {/* ── SERVER FULL OVERLAY ── */}
+      {serverFull && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
+          <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 OPERATIVES ONLINE — Try again shortly.</div>
+          <button onClick={() => navigate('/world')} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO MENU</button>
+        </div>
+      )}
 
       {/* ── CHAT PANEL ── */}
       {chatOpen && (
