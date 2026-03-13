@@ -6,25 +6,25 @@ const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 560;
 
 const BUILDINGS = [
-  { id: 'pablo_store', x: 480, y: 200, w: 120, h: 80,  label: 'PABLO STORE',  bright: true  },
-  { id: 'office',      x: 680, y: 180, w: 140, h: 100, label: 'OFFICE TOWER', bright: true  },
-  { id: 'clinic',      x: 260, y: 340, w: 100, h: 70,  label: 'MED CLINIC',   bright: false },
-  { id: 'megabank',    x: 460, y: 380, w: 120, h: 80,  label: 'MOGUL BANK',   bright: false },
-  { id: 'market',      x: 680, y: 360, w: 110, h: 70,  label: 'BLACK MARKET', bright: false },
-  { id: 'hotel',       x: 880, y: 200, w: 100, h: 120, label: 'HOTEL NEON',   bright: false },
-  { id: 'bunker',      x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',    bright: false },
-  { id: 'scrap',       x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',   bright: false },
-  { id: 'radio',       x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO', bright: false },
+  { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',   bright: true  },
+  { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',   bright: true  },
+  { id: 'clinic',       x: 180, y: 370, w: 100, h: 70,  label: 'MED CLINIC',    bright: false },
+  { id: 'megabank',     x: 410, y: 420, w: 120, h: 80,  label: 'MOGUL BANK',    bright: false },
+  { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false },
+  { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL NEON',    bright: false },
+  { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
+  { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
+  { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
 ];
 
 const NPCS = [
-  { name: 'WORKER', x: 560, y: 310, type: 'corp'    },
-  { name: 'BROKER', x: 750, y: 290, type: 'corp'    },
-  { name: 'UNIT-7', x: 820, y: 340, type: 'android' },
-  { name: 'DRIFTER',x: 380, y: 440, type: 'human'   },
-  { name: 'GUARD',  x: 500, y: 170, type: 'corp'    },
-  { name: 'SCAV',   x: 450, y: 760, type: 'human'   },
-  { name: 'MUTANT', x: 700, y: 800, type: 'mutant'  },
+  { name: 'WORKER',  x: 510, y: 380, type: 'corp',    whisper: 'Nobody\'s seen him in years. The lights on top never go dark though. Never.' },
+  { name: 'BROKER',  x: 760, y: 320, type: 'corp',    whisper: 'PABLO controls every credit in this city. The ones you earn. The ones you owe. All of them.' },
+  { name: 'UNIT-7',  x: 870, y: 350, type: 'android', whisper: 'PABLO Corp. directive 44-C: monitor and report. I am compliant. Are you?' },
+  { name: 'DRIFTER', x: 340, y: 460, type: 'human',   whisper: 'I saw a shadow move in the penthouse once. Just once. I left the city the next day. Came back broke.' },
+  { name: 'GUARD',   x: 560, y: 300, type: 'corp',    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order.' },
+  { name: 'SCAV',    x: 450, y: 770, type: 'human',   whisper: 'Out here we don\'t say his name. Real bad luck. You see that tower? Don\'t look up.' },
+  { name: 'MUTANT',  x: 700, y: 810, type: 'mutant',  whisper: 'The tower watches. Before the war, after the war... always that tower.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -37,12 +37,23 @@ const THREATS_INIT: Threat[] = [
 ];
 const THREAT_COL: Record<string, string> = { GANG: '#ff4444', MUTANT: '#aaff44', RAIDER: '#ff8800' };
 
+const NPC_RANGE = 60;
+
 const STORE_LINES = [
-  '> PABLO CORP. DEVICE',
-  '> The city is burning. The wasteland is worse.',
-  '> A PABLO device is the only edge you have.',
-  '> Register one and stay connected.',
-  '> Press ACTIVATE to register.',
+  '> PABLO CORP. — AUTHORIZED DEVICE OUTLET',
+  '> The city belongs to him. The wasteland is for those who forgot that.',
+  '> A PABLO device keeps you on the network. Off the network, you don\'t exist.',
+  '> Activate yours and stay connected to his world.',
+  '> Press ACTIVATE to register your device.',
+];
+
+const TOWER_LINES = [
+  '> PABLO TOWER — 62 FLOORS. CITY DESIGNATION: BLOCK ZERO.',
+  '> Every road in this city was built to point here.',
+  '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted.',
+  '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly.',
+  '> They say he watches every transaction in the city from up there.',
+  '> PABLO. Nobody knows his real name. Nobody asks twice.',
 ];
 
 const OFFICE_TIERS = [
@@ -110,6 +121,7 @@ export default function WorldPlay() {
     invincible: 0, flash: 0,
     threats: THREATS_INIT.map(t => ({ ...t })),
     near: null as string | null,
+    nearNpc: null as number | null,
     myId: '',
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
@@ -121,8 +133,9 @@ export default function WorldPlay() {
   const [hp,      setHp]      = useState(100);
   const [salary,  setSalary]  = useState(char.salary);
   const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'CITY');
-  const [near,    setNear]    = useState<string | null>(null);
-  const [narration, setNarr]  = useState('Find the PABLO STORE. Walk up to a building and press [E].');
+  const [near,     setNear]    = useState<string | null>(null);
+  const [nearNpc,  setNearNpc] = useState<number | null>(null);
+  const [narration, setNarr]  = useState('> Find PABLO CORP. Walk to a building or NPC and press [E].');
   const [isDead,  setIsDead]  = useState(false);
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
@@ -157,15 +170,20 @@ export default function WorldPlay() {
 
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
-    if (bid === 'pablo_store') { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
-    else if (bid === 'clinic')   { if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); setNarr('> MED CLINIC — [$100] Health fully restored.'); } else setNarr('> MED CLINIC — "Come back with $100."'); }
-    else if (bid === 'megabank') { setNarr('> MOGUL BANK — "Account suspended. Try again never."'); }
-    else if (bid === 'market')   { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Odd job complete. +$30.'); }
-    else if (bid === 'office')   { setShowOffice(true); }
-    else if (bid === 'hotel')    { g.hp = Math.min(100, g.hp + 40); setHp(g.hp); setNarr('> HOTEL NEON — You sleep for a few hours. HP +40.'); }
-    else if (bid === 'bunker')   { setNarr('> BUNKER-09 — The door won\'t open. Someone painted: KEEP OUT.'); }
-    else if (bid === 'radio')    { setNarr('> PIRATE RADIO — Static, broken music, and a voice reading coordinates.'); }
-    else if (bid === 'scrap')    { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20.'); }
+    if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
+    else if (bid === 'pablo_tower') { setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' }); }
+    else if (bid === 'clinic')  { if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); setNarr('> MED CLINIC — [$100] Health fully restored.'); } else setNarr('> MED CLINIC — "Come back with $100."'); }
+    else if (bid === 'megabank'){ setNarr('> MOGUL BANK — "Account suspended. Try again never."'); }
+    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); setNarr('> BLACK MARKET — Odd job. +$30. Don\'t ask questions.'); }
+    else if (bid === 'hotel')   { g.hp = Math.min(100, g.hp + 40); setHp(g.hp); setNarr('> HOTEL NEON — A few hours\' sleep. HP +40.'); }
+    else if (bid === 'bunker')  { setNarr('> BUNKER-09 — Door won\'t budge. Spray-painted: PABLO IS WATCHING.'); }
+    else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Static. Broken music. A voice repeating: "He\'s still up there."'); }
+    else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20.'); }
+  }, []);
+
+  const enterNpc = useCallback((idx: number) => {
+    const n = NPCS[idx];
+    setDialog({ lines: [`> ${n.name.toUpperCase()}`, `"${n.whisper}"`], idx: 0, bid: 'npc' });
   }, []);
 
   const tryEnter = useCallback((bid: string) => {
@@ -306,7 +324,8 @@ export default function WorldPlay() {
     if (!dialog) return;
     if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
     else {
-      if (dialog.bid === 'pablo_store') { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); }
+      if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; setHasDevice(true); setShowStore(true); }
+      if (dialog.bid === 'pablo_tower_enter') { setShowOffice(true); }
       setDialog(null);
     }
   }, [dialog]);
@@ -321,8 +340,12 @@ export default function WorldPlay() {
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
       if (e.key === 'e' || e.key === 'E') {
-        const nb = gs.current.near;
-        if (nb && !frozenRef.current && !chatOpen) tryEnter(nb);
+        if (!frozenRef.current && !chatOpen) {
+          const nb = gs.current.near;
+          const nn = gs.current.nearNpc;
+          if (nb) tryEnter(nb);
+          else if (nn !== null) enterNpc(nn);
+        }
       }
       if (e.key === 'p' || e.key === 'P') setShowPablo(v => !v);
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => !v); setUnread(0); }
@@ -336,7 +359,7 @@ export default function WorldPlay() {
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
-  }, [chatOpen, dialog, tryEnter, toggleVoice, advDialog]);
+  }, [chatOpen, dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
 
   // ── PABLO AI ──────────────────────────────────────────────────────────────
   const sendPablo = useCallback(async () => {
@@ -359,7 +382,7 @@ export default function WorldPlay() {
     const ctx = canvas.getContext('2d')!;
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize(); window.addEventListener('resize', resize);
-    let lastNear: string | null = null, lastZone = '', lastDead = false, lastHp = 100, lastSal = char.salary;
+    let lastNear: string | null = null, lastNearNpc: number | null = null, lastZone = '', lastDead = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
 
     const loop = () => {
@@ -402,13 +425,26 @@ export default function WorldPlay() {
       g.cam.y = Math.max(0, Math.min(H - ch, g.py - ch / 2));
       const ox = -g.cam.x, oy = -g.cam.y;
 
-      // Proximity check
+      // Proximity check — buildings
       let nb: string | null = null;
-      for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE) { nb = b.id; break; } }
+      for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { nb = b.id; break; } }
       g.near = nb;
       if (nb !== lastNear) {
         lastNear = nb; setNear(nb);
-        if (nb) { const b = BUILDINGS.find(b => b.id === nb); const lk = g.locks.get(nb); setNarr(`> ${b?.label}${lk?.ownerName ? ' [LOCKED]' : ''} — press [E] to enter.`); }
+        if (nb) {
+          const b = BUILDINGS.find(b => b.id === nb);
+          const lk = g.locks.get(nb);
+          if (nb === 'pablo_tower') setNarr('> PABLO TOWER — The city trembles at its shadow. [E] to approach.');
+          else setNarr(`> ${b?.label}${lk?.ownerName ? ' [LOCKED]' : ''} — press [E] to enter.`);
+        }
+      }
+      // Proximity check — NPCs (only when no building nearby)
+      let nn: number | null = null;
+      if (!nb) { for (let i = 0; i < NPCS.length; i++) { if (Math.hypot(g.px - NPCS[i].x, g.py - NPCS[i].y) < NPC_RANGE) { nn = i; break; } } }
+      g.nearNpc = nn;
+      if (nn !== lastNearNpc) {
+        lastNearNpc = nn; setNearNpc(nn);
+        if (nn !== null && !nb) setNarr(`> ${NPCS[nn].name} — press [E] to listen.`);
       }
 
       const newZone = g.py < WASTELAND_Y ? 'CITY' : 'WASTELAND';
@@ -446,13 +482,72 @@ export default function WorldPlay() {
         if (bx + b.w < 0 || bx > cw || by + b.h < 0 || by > ch) continue;
         const isNear = nb === b.id;
         const isLocked = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
+
+        // ── PABLO TOWER — special villain skyscraper rendering ────────────
+        if (b.id === 'pablo_tower') {
+          // Outer glow pulse
+          const pulse = 0.18 + Math.sin(g.frame * 0.03) * 0.08;
+          ctx.shadowColor = isNear ? 'rgba(0,255,65,.7)' : 'rgba(80,0,120,.9)';
+          ctx.shadowBlur = isNear ? 18 : 28;
+          // Main body — dark imposing mass
+          const grad = ctx.createLinearGradient(bx, by, bx, by + b.h);
+          grad.addColorStop(0, 'rgba(12,2,20,.98)');
+          grad.addColorStop(1, 'rgba(4,8,4,.97)');
+          ctx.fillStyle = grad; ctx.fillRect(bx, by, b.w, b.h);
+          ctx.shadowBlur = 0;
+          // Border — purple/green depending on state
+          ctx.strokeStyle = isNear ? 'rgba(0,255,65,.9)' : `rgba(140,0,220,${pulse + .3})`;
+          ctx.lineWidth = isNear ? 2.5 : 1.5; ctx.strokeRect(bx, by, b.w, b.h);
+          // Corner brackets
+          const cs2 = 12; ctx.lineWidth = 2;
+          ctx.strokeStyle = isNear ? 'rgba(0,255,65,.9)' : 'rgba(140,0,220,.7)';
+          [[bx, by, 1, 1], [bx + b.w, by, -1, 1], [bx, by + b.h, 1, -1], [bx + b.w, by + b.h, -1, -1]].forEach(([cx2, cy2, sx, sy]) => {
+            ctx.beginPath(); ctx.moveTo(cx2, cy2 + (sy as number) * cs2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2 + (sx as number) * cs2, cy2); ctx.stroke();
+          });
+          // Window grid — dark building lit windows
+          ctx.fillStyle = `rgba(255,220,120,${.04 + Math.sin(g.frame * 0.02) * .02})`;
+          for (let wr = 0; wr < 8; wr++) {
+            for (let wc = 0; wc < 10; wc++) {
+              const lit = ((wr * 13 + wc * 7 + g.frame * 0) % 17) > 4; // mostly dark
+              if (lit) ctx.fillRect(bx + 10 + wc * 22, by + 12 + wr * 24, 8, 14);
+            }
+          }
+          // Penthouse — top band, always lit
+          const phY = by + 8;
+          ctx.fillStyle = `rgba(255,200,80,${.08 + Math.sin(g.frame * 0.04) * .04})`;
+          ctx.fillRect(bx + 8, phY, b.w - 16, 20);
+          ctx.strokeStyle = `rgba(255,180,50,${.3 + Math.sin(g.frame * 0.04) * .15})`;
+          ctx.lineWidth = 1; ctx.strokeRect(bx + 8, phY, b.w - 16, 20);
+          // Penthouse silhouette — PABLO watching
+          const silX = bx + b.w / 2 + Math.sin(g.frame * 0.008) * 6;
+          const silY = phY + 4;
+          ctx.fillStyle = `rgba(0,0,0,${.8 + Math.sin(g.frame * 0.015) * .15})`;
+          ctx.fillRect(silX - 4, silY, 8, 14); // body
+          ctx.beginPath(); ctx.arc(silX, silY - 3, 4, 0, Math.PI * 2); ctx.fill(); // head
+          // Antenna / spire
+          ctx.strokeStyle = `rgba(0,255,65,${.4 + Math.sin(g.frame * 0.05) * .2})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(bx + b.w / 2, by); ctx.lineTo(bx + b.w / 2, by - 20); ctx.stroke();
+          ctx.fillStyle = `rgba(0,255,65,${.6 + Math.sin(g.frame * 0.1) * .4})`;
+          ctx.beginPath(); ctx.arc(bx + b.w / 2, by - 21, 2.5, 0, Math.PI * 2); ctx.fill();
+          // Label
+          ctx.shadowColor = '#00ff41'; ctx.shadowBlur = isNear ? 10 : 4;
+          ctx.fillStyle = isNear ? '#00ff41' : 'rgba(180,0,255,.8)';
+          ctx.font = 'bold 11px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('PABLO TOWER', bx + b.w / 2, by + b.h / 2 + 4);
+          ctx.shadowBlur = 0;
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
+          continue; // skip default building drawing
+        }
+
+        // ── Default building rendering ────────────────────────────────────
         ctx.strokeStyle = isLocked ? `rgba(255,120,50,${isNear ? .8 : .3})` : b.bright ? `rgba(0,255,65,${isNear ? .9 : .5})` : `rgba(0,180,50,${isNear ? .7 : .3})`;
         ctx.lineWidth = isNear ? 2 : 1; ctx.strokeRect(bx, by, b.w, b.h);
         ctx.fillStyle = isLocked ? 'rgba(255,80,0,.04)' : 'rgba(0,255,65,.025)'; ctx.fillRect(bx, by, b.w, b.h);
         const cs = 7; ctx.lineWidth = 1.5;
         ctx.strokeStyle = isLocked ? 'rgba(255,120,50,.5)' : b.bright ? 'rgba(0,255,65,.7)' : 'rgba(0,200,50,.38)';
         [[bx, by, 1, 1], [bx + b.w, by, -1, 1], [bx, by + b.h, 1, -1], [bx + b.w, by + b.h, -1, -1]].forEach(([cx2, cy2, sx, sy]) => {
-          ctx.beginPath(); ctx.moveTo(cx2, cy2 + sy * cs); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2 + sx * cs, cy2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx2, cy2 + (sy as number) * cs); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2 + (sx as number) * cs, cy2); ctx.stroke();
         });
         ctx.fillStyle = isLocked ? 'rgba(255,140,60,.7)' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.6)') : 'rgba(0,200,50,.42)';
         ctx.font = `${b.bright ? 10 : 9}px "Share Tech Mono"`; ctx.textAlign = 'center';
@@ -461,11 +556,29 @@ export default function WorldPlay() {
       }
 
       // NPCs
-      for (const n of NPCS) {
+      for (let ni = 0; ni < NPCS.length; ni++) {
+        const n = NPCS[ni];
         const nx2 = n.x + ox, ny2 = n.y + oy;
         if (nx2 < -10 || nx2 > cw + 10 || ny2 < -10 || ny2 > ch + 10) continue;
+        const nDist = Math.hypot(g.px - n.x, g.py - n.y);
+        const isNearNpc = nDist < NPC_RANGE;
+        // NPC dot with glow when nearby
+        ctx.shadowColor = NPC_COL[n.type] ?? '#009922';
+        ctx.shadowBlur = isNearNpc ? 8 : 0;
         ctx.fillStyle = NPC_COL[n.type] ?? '#009922'; ctx.fillRect(nx2 - 3, ny2 - 3, 6, 6);
-        if (Math.hypot(g.px - n.x, g.py - n.y) < 70) { ctx.fillStyle = 'rgba(0,255,65,.38)'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText(n.name, nx2, ny2 - 8); }
+        ctx.shadowBlur = 0;
+        // Name label when close
+        if (nDist < 90) {
+          ctx.fillStyle = isNearNpc ? 'rgba(0,255,65,.7)' : 'rgba(0,255,65,.3)';
+          ctx.font = `${isNearNpc ? 'bold ' : ''}8px "Share Tech Mono"`;
+          ctx.textAlign = 'center'; ctx.fillText(n.name, nx2, ny2 - 9);
+        }
+        // [E] prompt when in range
+        if (isNearNpc && !nb) {
+          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)';
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E]', nx2, ny2 - 19);
+        }
       }
 
       // Online players
@@ -720,19 +833,19 @@ export default function WorldPlay() {
         </div>
       )}
 
-      {/* ── OFFICE TOWER ── */}
+      {/* ── PABLO TOWER — OFFICE RENTAL ── */}
       {showOffice && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(0,255,65,.45)', background: 'rgba(0,10,0,.98)', padding: '1.65rem' }}>
+          <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>OFFICE TOWER</div>
-                <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.32)', letterSpacing: '.08em', marginTop: '.15rem' }}>PABLO CORP. MANAGED COMMERCIAL SPACE</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>PABLO TOWER</div>
+                <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — COMMERCIAL LEASE. FLOOR 40+ RESTRICTED.</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                 {rentedOffice && (
-                  <button onClick={() => { const lk = lockMap.get('office'); setPwPrompt({ bid: 'office', label: 'OFFICE TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.22)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
-                    {lockMap.get('office') ? '🔒 LOCKED' : 'SET CODE'}
+                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'PABLO TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.22)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                    {lockMap.get('pablo_tower') ? '🔒 LOCKED' : 'SET CODE'}
                   </button>
                 )}
                 <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.32)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>ESC</button>
@@ -762,8 +875,8 @@ export default function WorldPlay() {
                 );
               })}
             </div>
-            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.16)', lineHeight: 1.7, borderTop: '1px solid rgba(0,255,65,.08)', paddingTop: '.6rem' }}>
-              Tenants may set a security code. PABLO Corp. assumes no liability for mutant incursion or infrastructure failure.
+            <div style={{ fontSize: '.48rem', color: 'rgba(140,0,220,.35)', lineHeight: 1.7, borderTop: '1px solid rgba(140,0,220,.12)', paddingTop: '.6rem' }}>
+              Tenants may set a security code. Floors 40+ are permanently sealed by order of PABLO CORP. management. Do not inquire about the penthouse.
             </div>
           </div>
         </div>
