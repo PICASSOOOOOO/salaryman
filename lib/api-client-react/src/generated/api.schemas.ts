@@ -8,3 +8,58 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface OpenaiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface OpenaiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateOpenaiConversationBody {
+  title: string;
+}
+
+export interface SendOpenaiMessageBody {
+  content: string;
+}
+
+export interface OpenaiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: OpenaiMessage[];
+}
+
+export interface OpenaiError {
+  error: string;
+}
+
+/**
+ * Response mode: hint, solution, explain, complexity
+ */
+export type SolveInterviewQuestionBodyMode =
+  (typeof SolveInterviewQuestionBodyMode)[keyof typeof SolveInterviewQuestionBodyMode];
+
+export const SolveInterviewQuestionBodyMode = {
+  hint: "hint",
+  solution: "solution",
+  explain: "explain",
+  complexity: "complexity",
+} as const;
+
+export interface SolveInterviewQuestionBody {
+  /** The coding interview question text */
+  question: string;
+  /** Programming language (python, javascript, typescript, java, cpp, go, rust) */
+  language: string;
+  /** Response mode: hint, solution, explain, complexity */
+  mode: SolveInterviewQuestionBodyMode;
+}

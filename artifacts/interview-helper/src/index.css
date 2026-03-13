@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+
+  /* Premium Dark IDE Theme */
+  --color-background: hsl(228 20% 6%);
+  --color-foreground: hsl(228 15% 90%);
+  
+  --color-card: hsl(228 20% 9%);
+  --color-card-foreground: hsl(228 15% 90%);
+  
+  --color-popover: hsl(228 20% 9%);
+  --color-popover-foreground: hsl(228 15% 90%);
+  
+  --color-border: hsl(228 20% 16%);
+  --color-input: hsl(228 20% 16%);
+  --color-ring: hsl(215 100% 65%);
+  
+  --color-primary: hsl(215 100% 65%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  
+  --color-secondary: hsl(228 20% 14%);
+  --color-secondary-foreground: hsl(228 15% 90%);
+  
+  --color-muted: hsl(228 20% 12%);
+  --color-muted-foreground: hsl(228 15% 60%);
+  
+  --color-accent: hsl(270 100% 65%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased min-h-screen selection:bg-primary/30 selection:text-primary-foreground;
+    background-image: 
+      radial-gradient(circle at 15% 50%, hsl(215 100% 65% / 0.04), transparent 25%),
+      radial-gradient(circle at 85% 30%, hsl(270 100% 65% / 0.04), transparent 25%);
+    background-attachment: fixed;
+  }
+
+  /* Custom Scrollbar for IDE feel */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full border-[3px] border-solid border-background;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Markdown prose styling */
+  .prose {
+    @apply text-foreground max-w-none;
+  }
+  .prose p {
+    @apply leading-relaxed mb-4 text-muted-foreground text-[15px];
+  }
+  .prose strong {
+    @apply text-foreground font-semibold;
+  }
+  .prose ul {
+    @apply list-disc pl-6 mb-4 space-y-1 text-muted-foreground;
+  }
+  .prose ol {
+    @apply list-decimal pl-6 mb-4 space-y-1 text-muted-foreground;
+  }
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    @apply text-foreground font-semibold tracking-tight mt-8 mb-4;
+  }
+  .prose h1 { @apply text-2xl; }
+  .prose h2 { @apply text-xl; }
+  .prose h3 { @apply text-lg; }
+  
+  .prose pre {
+    @apply !bg-muted !p-0 rounded-xl border border-border overflow-hidden mb-6 mt-2;
+  }
+  .prose p code {
+    @apply bg-secondary text-primary font-mono text-[0.85em] px-1.5 py-0.5 rounded-md;
+  }
+}
