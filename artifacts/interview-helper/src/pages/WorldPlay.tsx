@@ -7,7 +7,7 @@ import {
 } from '../soundEngine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const W = 3200, H = 2400, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
+const W = 3200, H = 2800, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 900;
 const NORTH_Y = 60;
 
@@ -63,7 +63,7 @@ const MAX_CARGO = 5;
 const BUILDINGS = [
   // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
   { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false },
-  { id: 'eastside_flat',x: 1860, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false },
+  { id: 'eastside_flat',x: 2300, y: 380, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false },
   // ── MINX CITY WEST ──────────────────────────────────────────────────────────
   { id: 'pablo_store',  x: 370, y: 310, w: 120, h: 70,  label: 'PABLO CORP.',      bright: true  },
   { id: 'pablo_tower',  x: 580, y:  40, w: 260, h: 230, label: 'PABLO TOWER',      bright: true  },
@@ -79,16 +79,16 @@ const BUILDINGS = [
   { id: 'radio',        x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false },
   { id: 'wily_lab',     x: 990, y: 760, w: 90,  h: 70,  label: 'WILY LABS',        bright: false },
   // ── MINX CITY EAST DISTRICT ─────────────────────────────────────────────────
-  { id: 'dojo',         x: 1200, y: 130, w: 120, h: 90, label: 'IRON DOJO',        bright: false },
-  { id: 'data_vault',   x: 1450, y: 190, w: 130, h: 80, label: 'DATA VAULT',       bright: true  },
-  { id: 'nightclub',    x: 1700, y: 310, w: 110, h: 90, label: 'CLUB NEON',        bright: true  },
-  { id: 'east_market',  x: 1200, y: 380, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false },
-  { id: 'east_clinic',  x: 1530, y: 440, w: 110, h: 70, label: 'EAST CLINIC',      bright: false },
-  { id: 'armory',       x: 1890, y: 170, w: 110, h: 80, label: 'ARMORY',           bright: false },
-  { id: 'crystal2',     x: 2040, y: 340, w: 28,  h: 28, label: 'SAVE POINT',       bright: true  },
-  { id: 'print_shop',   x: 1360, y: 590, w: 100, h: 60, label: 'PRINT SHOP',       bright: false },
-  { id: 'east_bunker',  x: 1700, y: 610, w: 110, h: 75, label: 'EAST BUNKER',      bright: false },
-  { id: 'north_gate',   x: 2150, y: 490, w: 90,  h: 60, label: 'NORTH GATE',       bright: false },
+  { id: 'dojo',         x: 1400, y: 130, w: 120, h: 90, label: 'IRON DOJO',        bright: false },
+  { id: 'data_vault',   x: 1750, y: 190, w: 130, h: 80, label: 'DATA VAULT',       bright: true  },
+  { id: 'nightclub',    x: 2100, y: 310, w: 110, h: 90, label: 'CLUB NEON',        bright: true  },
+  { id: 'east_market',  x: 1400, y: 380, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false },
+  { id: 'east_clinic',  x: 1850, y: 440, w: 110, h: 70, label: 'EAST CLINIC',      bright: false },
+  { id: 'armory',       x: 2400, y: 170, w: 110, h: 80, label: 'ARMORY',           bright: false },
+  { id: 'crystal2',     x: 2600, y: 340, w: 28,  h: 28, label: 'SAVE POINT',       bright: true  },
+  { id: 'print_shop',   x: 1600, y: 590, w: 100, h: 60, label: 'PRINT SHOP',       bright: false },
+  { id: 'east_bunker',  x: 2100, y: 610, w: 110, h: 75, label: 'EAST BUNKER',      bright: false },
+  { id: 'north_gate',   x: 2800, y: 490, w: 90,  h: 60, label: 'NORTH GATE',       bright: false },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
   { id: 'hotel_midgar',  x: 100,  y: 140, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true  },
   { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false },
@@ -115,11 +115,11 @@ const BUILDINGS = [
   { id: 'north_market',  x: 3050, y: 380, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false },
   { id: 'crystal5',      x: 3000, y: 480, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
   // ── WASTELAND OUTPOSTS ───────────────────────────────────────────────────────
-  { id: 'outpost_alpha', x: 140,  y: 960, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true  },
-  { id: 'outpost_beta',  x: 1180, y:1100, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true  },
-  { id: 'supply_cache',  x: 640,  y:1440, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false },
-  { id: 'deep_bunker',   x: 1840, y:1290, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false },
-  { id: 'crystal3',      x:  990, y:1640, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'outpost_alpha', x: 200,  y: 1100, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true  },
+  { id: 'outpost_beta',  x: 1500, y: 1400, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true  },
+  { id: 'supply_cache',  x: 800,  y: 1900, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false },
+  { id: 'deep_bunker',   x: 2400, y: 1700, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false },
+  { id: 'crystal3',      x: 1200, y: 2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
   // ── HOSTELS / SHELTERS (wasteland) ───────────────────────────────────────────
   { id: 'prancing_pony', x: 300,  y:1090, w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true  },
   { id: 'zanarkand_inn', x: 760,  y:1270, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false },
@@ -156,18 +156,18 @@ const NPCS = [
   { name: 'LINK',      x: 200,  y: 220,  type: 'human',   gender: 'm', whisper: 'I\'ve faced Ganon eight separate times. Each time reality reset. This feels different. No restart. No heart containers. Just the city.' },
   { name: 'JESSIE',    x: 1050, y: 400,  type: 'human',   gender: 'f', whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.' },
   // ── City East ──
-  { name: 'HIDEO',     x: 1320, y: 200,  type: 'corp',    gender: 'm', whisper: 'I designed thirty-seven games. Every one of them ended with a nuclear explosion. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
-  { name: 'WEDGE',     x: 1450, y: 330,  type: 'human',   gender: 'm', whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
-  { name: 'BIGGS',     x: 1600, y: 430,  type: 'human',   gender: 'm', whisper: 'Wedge says this is like Midgar. I think it\'s worse. Midgar had Aerith. This city only has the tower.' },
-  { name: 'CURSOR',    x: 1800, y: 240,  type: 'android', gender: 'f', whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
-  { name: 'LUCCA',     x: 2000, y: 310,  type: 'human',   gender: 'f', whisper: 'I built a time machine and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
-  { name: 'AERIS',     x: 1950, y: 490,  type: 'human',   gender: 'f', whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.' },
-  { name: 'RINOA',     x: 2200, y: 380,  type: 'human',   gender: 'f', whisper: 'I came east looking for SeeD. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.' },
+  { name: 'HIDEO',     x: 1520, y: 200,  type: 'corp',    gender: 'm', whisper: 'I designed thirty-seven games. Every one of them ended with a nuclear explosion. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
+  { name: 'WEDGE',     x: 1750, y: 330,  type: 'human',   gender: 'm', whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
+  { name: 'BIGGS',     x: 1900, y: 430,  type: 'human',   gender: 'm', whisper: 'Wedge says this is like Midgar. I think it\'s worse. Midgar had Aerith. This city only has the tower.' },
+  { name: 'CURSOR',    x: 2200, y: 240,  type: 'android', gender: 'f', whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
+  { name: 'LUCCA',     x: 2500, y: 310,  type: 'human',   gender: 'f', whisper: 'I built a time machine and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
+  { name: 'AERIS',     x: 2450, y: 490,  type: 'human',   gender: 'f', whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.' },
+  { name: 'RINOA',     x: 2800, y: 380,  type: 'human',   gender: 'f', whisper: 'I came east looking for SeeD. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.' },
   // ── City outskirts / border ──
   { name: 'CRONO',     x: 90,   y: 350,  type: 'human',   gender: 'm', whisper: 'Time travel didn\'t help. I came from three different pasts. All of them led here. To this city. To this wall. He\'s been here in every timeline.' },
   { name: 'FROG',      x: 90,   y: 490,  type: 'mutant',  gender: 'm', whisper: '"It matters not how strait the gate." Old text. Found it carved in the wall near the arcade. Someone knew I would find it.' },
   { name: 'RIZER',     x: 240,  y: 690,  type: 'human',   gender: 'm', whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
-  { name: 'TERRA',     x: 2300, y: 650,  type: 'mutant',  gender: 'f', whisper: 'Magic doesn\'t work near the tower. I\'ve tried. Something in the signal disrupts it. SENIOR PABLO knows exactly what magic is. He neutralised it on purpose.' },
+  { name: 'TERRA',     x: 2950, y: 650,  type: 'mutant',  gender: 'f', whisper: 'Magic doesn\'t work near the tower. I\'ve tried. Something in the signal disrupts it. SENIOR PABLO knows exactly what magic is. He neutralised it on purpose.' },
   // ── Wasteland ──
   { name: 'KANEDA',    x: 580,  y: 900,  type: 'human',   gender: 'm', whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
   { name: 'TETSUO',    x: 720,  y: 840,  type: 'mutant',  gender: 'm', whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think SENIOR PABLO is what woke up.' },
@@ -199,28 +199,28 @@ const NPCS = [
   { name: 'ISHMAEL',   x: 100,  y: 255,  type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
   { name: 'ATTICUS',   x: 180,  y: 470,  type: 'human',   gender: 'm', whisper: 'My father told me: you never really understand a person until you climb into their skin and walk around in it. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside. Just the tower. Just the apparatus. Just the machine with a name on it.' },
   // ── Mother Base Inn staff & guests ──
-  { name: 'OTACON',    x: 1270, y: 540,  type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
-  { name: 'ICHIGO',    x: 1330, y: 350,  type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
-  { name: 'RIPLEY',    x: 1200, y: 690,  type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
+  { name: 'OTACON',    x: 1470, y: 540,  type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
+  { name: 'ICHIGO',    x: 1530, y: 350,  type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
+  { name: 'RIPLEY',    x: 1350, y: 690,  type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
   // ── The Overlook staff & guests ──
-  { name: 'JACK',      x: 2360, y: 640,  type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
-  { name: 'HOLDEN',    x: 2350, y: 510,  type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
+  { name: 'JACK',      x: 3010, y: 640,  type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
+  { name: 'HOLDEN',    x: 3000, y: 510,  type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
   { name: 'TRAVIS',    x: 230,  y: 625,  type: 'human',   gender: 'm', whisper: 'All the animals come out at night. All of them. The city breeds them. Someday a real rain will wash the streets clean. I wait for that rain. SENIOR PABLO has seventeen meteorology patents. He schedules the rain. He always has.' },
   // ── Safe House 7 residents ──
-  { name: 'SNAKE-P',   x: 2315, y: 555,  type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
-  { name: 'DRIZZT',    x: 2175, y: 530,  type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
+  { name: 'SNAKE-P',   x: 2950, y: 555,  type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
+  { name: 'DRIZZT',    x: 2800, y: 530,  type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
   // ── The Prancing Pony (wasteland inn) ──
-  { name: 'SAMWISE',   x: 420,  y: 1125, type: 'human',   gender: 'm', whisper: 'Mr. Frodo always said there was good in the world worth fighting for. I held onto that across Mordor, across the Dead Marshes. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than Sauron. I think he might be. At least Sauron was honest about the Ring.' },
-  { name: 'MUGEN',     x: 1450, y: 1055, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose. He seemed relieved. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
-  { name: 'FAYE',      x: 1755, y: 875,  type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said. I shot the account manager. They sent another one. I shot that one too. They stopped sending them after the fourth. I think they\'re restructuring.' },
+  { name: 'SAMWISE',   x: 520,  y: 1340, type: 'human',   gender: 'm', whisper: 'Mr. Frodo always said there was good in the world worth fighting for. I held onto that across Mordor, across the Dead Marshes. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than Sauron. I think he might be. At least Sauron was honest about the Ring.' },
+  { name: 'MUGEN',     x: 1750, y: 1300, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose. He seemed relieved. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
+  { name: 'FAYE',      x: 2100, y: 1050, type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said. I shot the account manager. They sent another one. I shot that one too. They stopped sending them after the fourth. I think they\'re restructuring.' },
   // ── Zanarkand Hostel residents ──
-  { name: 'TIDUS',     x: 880,  y: 1300, type: 'human',   gender: 'm', whisper: 'Zanarkand was a dream when I knew it. The real one was already dead a thousand years. The hostel uses the name like it means something. I stay here because maybe it does. Yuna would say: keep moving, keep smiling. I am thinking about both of those things.' },
-  { name: 'YUNA',      x: 760,  y: 1360, type: 'human',   gender: 'f', whisper: 'Zanarkand was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. I understand grave markers. My whole life has been grave markers. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top. I\'m still counting the graves.' },
-  { name: 'VASH',      x: 1600, y: 1450, type: 'human',   gender: 'm', whisper: 'I\'ve caused sixty billion double dollars of damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low — I have been shot at eleven times since Thursday. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
+  { name: 'TIDUS',     x: 1070, y: 1630, type: 'human',   gender: 'm', whisper: 'Zanarkand was a dream when I knew it. The real one was already dead a thousand years. The hostel uses the name like it means something. I stay here because maybe it does. Yuna would say: keep moving, keep smiling. I am thinking about both of those things.' },
+  { name: 'YUNA',      x: 950,  y: 1700, type: 'human',   gender: 'f', whisper: 'Zanarkand was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. I understand grave markers. My whole life has been grave markers. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top. I\'m still counting the graves.' },
+  { name: 'VASH',      x: 2000, y: 1850, type: 'human',   gender: 'm', whisper: 'I\'ve caused sixty billion double dollars of damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low — I have been shot at eleven times since Thursday. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
   // ── Terminus Shelter survivors ──
-  { name: 'CLEM',      x: 500,  y: 1680, type: 'human',   gender: 'f', whisper: 'I\'ve been surviving since I was eight. Walkers. Bandits. A group called Terminus that turned out to eat people. This wasteland is different from all of that. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
+  { name: 'CLEM',      x: 620,  y: 2340, type: 'human',   gender: 'f', whisper: 'I\'ve been surviving since I was eight. Walkers. Bandits. A group called Terminus that turned out to eat people. This wasteland is different from all of that. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
   // ── Fort Dracula deep wasteland ──
-  { name: 'ALUCARD',   x: 2210, y: 1560, type: 'android', gender: 'm', whisper: 'My father built his castle on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. It took everything I had and most of my human side. SENIOR PABLO built his tower the same way. I can see the architecture from here. I know exactly what it takes to bring it down. I am deciding whether I have it in me a second time.' },
+  { name: 'ALUCARD',   x: 2910, y: 2150, type: 'android', gender: 'm', whisper: 'My father built his castle on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. It took everything I had and most of my human side. SENIOR PABLO built his tower the same way. I can see the architecture from here. I know exactly what it takes to bring it down. I am deciding whether I have it in me a second time.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -331,26 +331,30 @@ const THREATS_INIT: Threat[] = [
   mkThreat(1000, 820, 'BORDER_GANG'), mkThreat(1300, 835, 'BORDER_GANG'),
   mkThreat(1700, 820, 'BORDER_GANG'), mkThreat(2100, 830, 'BORDER_GANG'),
   // ── Wasteland — IRON RATS (west) ──
-  mkThreat(160,  870, 'IRON_RATS'), mkThreat(280,  980, 'IRON_RATS'),
-  mkThreat(400,  1100,'IRON_RATS'), mkThreat(150, 1250, 'IRON_RATS'),
-  mkThreat(350, 1380, 'IRON_RATS'), mkThreat(560, 1180, 'IRON_RATS'),
+  mkThreat(160,  920, 'IRON_RATS'), mkThreat(350,  1100, 'IRON_RATS'),
+  mkThreat(500,  1350,'IRON_RATS'), mkThreat(200, 1550, 'IRON_RATS'),
+  mkThreat(450, 1750, 'IRON_RATS'), mkThreat(680, 1400, 'IRON_RATS'),
+  mkThreat(300, 1900, 'IRON_RATS'),
   // ── Wasteland — VOID DOGS (centre) ──
-  mkThreat(720,  920, 'VOID_DOGS'), mkThreat(850, 1050, 'VOID_DOGS'),
-  mkThreat(760, 1200, 'VOID_DOGS'), mkThreat(990, 1300, 'VOID_DOGS'),
-  mkThreat(870,  840, 'VOID_DOGS'), mkThreat(1050,1100, 'VOID_DOGS'),
+  mkThreat(900,  980, 'VOID_DOGS'), mkThreat(1050, 1200, 'VOID_DOGS'),
+  mkThreat(950, 1500, 'VOID_DOGS'), mkThreat(1200, 1650, 'VOID_DOGS'),
+  mkThreat(1050, 900, 'VOID_DOGS'), mkThreat(1300, 1350, 'VOID_DOGS'),
+  mkThreat(850, 1750, 'VOID_DOGS'),
   // ── Wasteland — STATIC MONKS (east-centre) ──
-  mkThreat(1250, 870, 'STATIC_MONKS'), mkThreat(1420,1020,'STATIC_MONKS'),
-  mkThreat(1310,1180,'STATIC_MONKS'),  mkThreat(1560,1320,'STATIC_MONKS'),
-  mkThreat(1260,1450,'STATIC_MONKS'),  mkThreat(1650,1050,'STATIC_MONKS'),
+  mkThreat(1550, 920, 'STATIC_MONKS'), mkThreat(1750,1150,'STATIC_MONKS'),
+  mkThreat(1600,1450,'STATIC_MONKS'),  mkThreat(1900,1650,'STATIC_MONKS'),
+  mkThreat(1550,1800,'STATIC_MONKS'),  mkThreat(2000,1100,'STATIC_MONKS'),
+  mkThreat(1700,1900,'STATIC_MONKS'),
   // ── Wasteland — EASTERN BLOC (far east) ──
-  mkThreat(1870, 940, 'EASTERN_BLOC'), mkThreat(2020,1090,'EASTERN_BLOC'),
-  mkThreat(1940,1260,'EASTERN_BLOC'),  mkThreat(2150,1200,'EASTERN_BLOC'),
-  mkThreat(1820,1430,'EASTERN_BLOC'),  mkThreat(2250,1050,'EASTERN_BLOC'),
+  mkThreat(2300, 1000, 'EASTERN_BLOC'), mkThreat(2550,1250,'EASTERN_BLOC'),
+  mkThreat(2400,1550,'EASTERN_BLOC'),  mkThreat(2750,1450,'EASTERN_BLOC'),
+  mkThreat(2350,1800,'EASTERN_BLOC'),  mkThreat(2900,1200,'EASTERN_BLOC'),
+  mkThreat(2600,2000,'EASTERN_BLOC'),
   // ── Deep wasteland wanderers ──
-  mkThreat(500,  1550,'MUTANT'), mkThreat(900, 1700, 'MUTANT'),
-  mkThreat(1300, 1600,'MUTANT'), mkThreat(1700,1750, 'MUTANT'),
-  mkThreat(650,  1850,'RAIDER'), mkThreat(1200,1870, 'RAIDER'),
-  mkThreat(1900, 1850,'RAIDER'),
+  mkThreat(600,  2100,'MUTANT'), mkThreat(1100, 2300, 'MUTANT'),
+  mkThreat(1600, 2200,'MUTANT'), mkThreat(2200, 2400, 'MUTANT'),
+  mkThreat(800,  2400,'RAIDER'), mkThreat(1500, 2500, 'RAIDER'),
+  mkThreat(2500, 2500,'RAIDER'), mkThreat(3000, 2300, 'RAIDER'),
   // ── SPY infiltrators — disguised, can enter city (rare) ──
   mkThreat(400,  550, 'SPY'), mkThreat(1200, 400, 'SPY'), mkThreat(1900, 600, 'SPY'),
   mkThreat(2700, 350, 'SPY'),
@@ -487,7 +491,7 @@ const POLICE_ROUTES: { x: number; y: number }[][] = [
   [{ x:320,y:190 },{ x:700,y:190 },{ x:700,y:460 },{ x:320,y:460 }],
   [{ x:1100,y:190 },{ x:1500,y:190 },{ x:1500,y:460 },{ x:1100,y:460 }],
   [{ x:200,y:740 },{ x:700,y:740 },{ x:700,y:460 },{ x:200,y:460 }],
-  [{ x:1500,y:190 },{ x:1900,y:190 },{ x:1900,y:460 },{ x:1500,y:460 }],
+  [{ x:1800,y:190 },{ x:2500,y:190 },{ x:2500,y:460 },{ x:1800,y:460 }],
 ];
 
 // ── Ambient city event lines ──────────────────────────────────────────────────
@@ -708,6 +712,16 @@ export default function WorldPlay() {
   const [bbAdText, setBbAdText] = useState('');
   const [bbAdUrl, setBbAdUrl] = useState('');
   const [nearBillboard, setNearBillboard] = useState<string | null>(null);
+  const [showWeapons, setShowWeapons] = useState(false);
+  const [activeWeapon, setActiveWeapon] = useState('FISTS');
+  const activeWeaponRef = useRef('FISTS');
+  const WEAPONS = [
+    { id: 'FISTS', label: 'FISTS', desc: 'Bare knuckles. No bonus.', atkBonus: 0, color: '#00ff41' },
+    { id: 'PIPE', label: 'LEAD PIPE', desc: 'Scrap yard special. +2 ATK.', atkBonus: 2, color: '#88aaff' },
+    { id: 'BLADE', label: 'MONO BLADE', desc: 'Ceramic edge. +5 ATK.', atkBonus: 5, color: '#ff6644' },
+    { id: 'STUN_ROD', label: 'STUN ROD', desc: 'PABLO Corp. issue. +4 ATK.', atkBonus: 4, color: '#ffcc00' },
+    { id: 'RAIL_PISTOL', label: 'RAIL PISTOL', desc: 'Magnetic accelerator. +8 ATK.', atkBonus: 8, color: '#ff44aa' },
+  ];
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
@@ -1314,7 +1328,8 @@ export default function WorldPlay() {
         if (g.attackCooldown > 0) return;
         g.attackCooldown = 35; g.attackFlash = 8;
         sfxAttack();
-        const ATK = 20 + (g.level - 1) * 5;
+        const weaponBonus = WEAPONS.find(w => w.id === activeWeaponRef.current)?.atkBonus ?? 0;
+        const ATK = 20 + (g.level - 1) * 5 + weaponBonus;
         let hit = false;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
@@ -2037,16 +2052,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 190,  from: 0,    to: 2400 },
-        { horiz: true,  coord: 320,  from: 0,    to: 2400 },
-        { horiz: true,  coord: 460,  from: 0,    to: 2400 },
-        { horiz: true,  coord: 550,  from: 0,    to: 2400 },
-        { horiz: true,  coord: 740,  from: 0,    to: 2400 },
+        { horiz: true,  coord: 190,  from: 0,    to: W },
+        { horiz: true,  coord: 320,  from: 0,    to: W },
+        { horiz: true,  coord: 460,  from: 0,    to: W },
+        { horiz: true,  coord: 550,  from: 0,    to: W },
+        { horiz: true,  coord: 740,  from: 0,    to: W },
         { horiz: false, coord: 320,  from: 0,    to: WASTELAND_Y },
         { horiz: false, coord: 700,  from: 0,    to: WASTELAND_Y },
         { horiz: false, coord: 1100, from: 0,    to: WASTELAND_Y },
         { horiz: false, coord: 1500, from: 0,    to: WASTELAND_Y },
         { horiz: false, coord: 1900, from: 0,    to: WASTELAND_Y },
+        { horiz: false, coord: 2500, from: 0,    to: WASTELAND_Y },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
@@ -2059,9 +2075,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const ly = lr.horiz ? (lr.coord + side + oy) : (t + oy);
           if (lx < -20 || lx > cw + 20 || ly < -20 || ly > ch + 20) continue;
           // Flicker based on frame + index + power level
-          const seed = Math.sin(g.frame * 0.11 + li * 7.3 + lr.coord * 0.02);
+          const seed = Math.sin(g.frame * 0.018 + li * 7.3 + lr.coord * 0.02);
           const pwr  = g.powerLevel / 100;
-          const flickerChance = pwr < 0.5 ? Math.abs(seed) < 0.15 : false;
+          const flickerChance = pwr < 0.5 ? Math.abs(seed) < 0.06 : false;
           const brightness = flickerChance ? 0.05 : (0.55 + seed * 0.2) * pwr;
           if (brightness < 0.05) continue;
           const wc = Math.floor(brightness * 255);
@@ -2586,7 +2602,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // ── RDR2-style circular minimap ──────────────────────────────────────────
-      const mmR = 70, mmCX = cw - mmR - 14, mmCY = mmR + 14;
+      const mmR = 70, mmCX = mmR + 14, mmCY = ch - mmR - 14;
       const toMX = (wx: number) => mmCX - mmR + (wx / W) * (mmR * 2);
       const toMY = (wy: number) => mmCY - mmR + (wy / H) * (mmR * 2);
       ctx.save();
@@ -2685,8 +2701,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
-      {/* TOP-LEFT — player identity */}
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      {/* BOTTOM-LEFT — player identity + stats (above minimap) */}
+      <div style={{ position: 'absolute', bottom: 180, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '3px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.3rem .6rem' }}>
           <div style={{ width: 6, height: 6, background: '#00ff41', boxShadow: '0 0 6px rgba(0,255,65,.7)' }} />
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
@@ -2759,9 +2775,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         )}
       </div>
 
-      {/* ONLINE PLAYERS — below minimap, top-right */}
+      {/* ONLINE PLAYERS — top-right */}
       {online.length > 0 && (
-        <div style={{ position: 'absolute', top: 170, right: 10, width: 156, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', zIndex: 100, padding: '.35rem .45rem' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10, width: 156, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', zIndex: 100, padding: '.35rem .45rem' }}>
           <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
           {online.slice(0, 5).map(p => (
             <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.75)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
@@ -3684,6 +3700,57 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         );
       })()}
+
+      {/* ── WEAPONS WHEEL — bottom-right ──────────────────────────────────── */}
+      <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 150, pointerEvents: 'all' }}>
+        <button
+          onClick={() => setShowWeapons(v => !v)}
+          style={{
+            padding: '.4rem .7rem',
+            background: showWeapons ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.88)',
+            border: `1px solid ${showWeapons ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.18)'}`,
+            color: showWeapons ? '#00ff41' : 'rgba(0,255,65,.4)',
+            cursor: 'pointer',
+            fontFamily: "'VT323',monospace",
+            fontSize: '1rem',
+            letterSpacing: '.1em',
+          }}
+        >
+          ⚔ {activeWeapon}
+        </button>
+        {showWeapons && (
+          <div style={{
+            position: 'absolute',
+            bottom: '100%',
+            right: 0,
+            marginBottom: 6,
+            width: 200,
+            background: 'rgba(0,5,0,.97)',
+            border: '1px solid rgba(0,255,65,.35)',
+            padding: '.5rem',
+          }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.4rem', borderBottom: '1px solid rgba(0,255,65,.15)', paddingBottom: '.3rem' }}>WEAPONS</div>
+            {WEAPONS.map(w => (
+              <div
+                key={w.id}
+                onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
+                style={{
+                  padding: '.35rem .5rem',
+                  marginBottom: 2,
+                  cursor: 'pointer',
+                  background: activeWeapon === w.id ? 'rgba(0,255,65,.1)' : 'transparent',
+                  border: activeWeapon === w.id ? '1px solid rgba(0,255,65,.35)' : '1px solid transparent',
+                }}
+              >
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: w.color, letterSpacing: '.08em' }}>
+                  {activeWeapon === w.id ? '▸ ' : '  '}{w.label}
+                </div>
+                <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.06em', marginTop: 1 }}>{w.desc}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {showLevelUp && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>
