@@ -38,7 +38,7 @@ export default function Home() {
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
   const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, send: sendChat, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
 
-  const handlePabloAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
+  const handlePABLOAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
     if (action.autoFill || action.tab) {
       localStorage.setItem('devdocs_action_prefill', JSON.stringify({
         ...action.autoFill,
@@ -312,7 +312,7 @@ export default function Home() {
                 <button onClick={() => setRightTab('chat')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
                     ${rightTab === 'chat' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
-                  <Bot className="w-3.5 h-3.5" /> Pablo
+                  <Bot className="w-3.5 h-3.5" /> PABLO
                 </button>
               </div>
 
@@ -414,12 +414,12 @@ export default function Home() {
                   {chatMessages.length === 0 ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="h-full flex flex-col items-center justify-center gap-4 py-8">
-                      {/* Pablo intro */}
+                      {/* PABLO intro */}
                       <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
                         <Bot className="w-7 h-7 text-emerald-400/60" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-foreground mb-1">Hey, I'm Pablo</p>
+                        <p className="text-sm font-medium text-foreground mb-1">Hey, I'm PABLO</p>
                         <p className="text-xs text-muted-foreground">I run this whole app. Tell me what you're doing and I'll set it all up for you.</p>
                       </div>
                       <div className="flex flex-col gap-2 w-full max-w-xs">
@@ -464,7 +464,7 @@ export default function Home() {
                             <motion.button
                               initial={{ opacity: 0, scale: 0.95, y: 4 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
-                              onClick={() => handlePabloAction(msg.action!)}
+                              onClick={() => handlePABLOAction(msg.action!)}
                               className="mt-2 max-w-[85%] w-full flex items-center gap-3 px-4 py-3 rounded-2xl rounded-tl-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all group text-left"
                             >
                               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/30 transition-colors">
