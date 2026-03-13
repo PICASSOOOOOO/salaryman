@@ -54,7 +54,7 @@ const CLASSES = [
     tagline: 'City. Salary. Connections.',
     desc: 'Born in the neon towers. You know the right people — for now. City networks are open to you. Government buildings welcome you. PABLO Corp. smiles. The wasteland will eat you alive.',
     start: 'MINX CITY',
-    salary: 'ç100,000',
+    salary: 'ƒ100,000',
     hp: '300',
     atk: '16',
     perks: 'City access · Network bonus · High salary',
@@ -66,7 +66,7 @@ const CLASSES = [
     tagline: 'Wasteland. Broke. Scarred.',
     desc: 'Exiled and hardened. Nothing but survival instinct. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. The walls don\'t want you — good. The secrets are all outside anyway.',
     start: 'WASTELAND',
-    salary: 'ç15,000',
+    salary: 'ƒ15,000',
     hp: '280',
     atk: '20',
     perks: 'Wasteland drain -40% · Kill bonus outside city · Scavenge+',
@@ -78,7 +78,7 @@ const CLASSES = [
     tagline: 'Android. Conscious. Strongest.',
     desc: 'You are the conscious android — built for combat, not for service. Maximum HP. Maximum strength. PABLO Corp. wants you shut down. Every other replicant out there is fighting the same war you are. The corpo-cogs are the problem.',
     start: 'MINX CITY',
-    salary: 'ç50,000',
+    salary: 'ƒ50,000',
     hp: '350',
     atk: '24',
     perks: 'Highest HP · Strongest ATK · Built for war',
@@ -201,7 +201,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Floor 62: rooftop helipad — his personal fleet runs 24/7. Nobody knows what's on top. Nobody sees him land." col="#cc44ff" />
       <Row label="PABLO DEVICE" val="The app you're running right now. AI assistant, world map, PABLO network access. Press [P] in-world." col="#00ff41" />
-      <Row label="CREAM (ç)" val="The only currency that matters. Cream is what Minx City runs on. ç1 CREAM = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
+      <Row label="CREAM (ƒ)" val="The only currency that matters. Cream is what Minx City runs on. ƒ1 CREAM = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         This world was painted by Picasso and built by the good folks at PABLO CORP. — 24 towers, 24 cities, one vision. All rights reserved in every timezone.
@@ -343,9 +343,9 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
       {[
         { name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
-        { name: 'SCRAP YARD',   col: '#88ff44', effect: '+$20 salary. PCB labeled KONAMI \'87 found.',                  secret: 'Worth more than a full day\'s work at a corp.' },
+        { name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled KONAMI \'87 found.',                  secret: 'Worth more than a full day\'s work at a corp.' },
         { name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal: "...up up, down down..." Someone gave SENIOR PABLO the code.', secret: '"He already knew it. He wrote it."' },
-        { name: 'WILY LABS',    col: '#88ff44', effect: '+$50 salary. Blueprints everywhere. Abandoned.',               secret: '"Robot Masters were the first to fall. SENIOR PABLO bought them all."' },
+        { name: 'WILY LABS',    col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"Robot Masters were the first to fall. SENIOR PABLO bought them all."' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
@@ -732,7 +732,7 @@ export default function WorldMenu() {
                               {[
                                 { l: 'CLASS', v: save.charClass.toUpperCase() },
                                 { l: 'LEVEL', v: String(save.level) },
-                                { l: 'CREAM', v: `ç${save.salary.toLocaleString()}` },
+                                { l: 'CREAM', v: `ƒ${save.salary.toLocaleString()}` },
                                 { l: 'ZONE', v: save.lastZone },
                               ].map(({ l, v }) => (
                                 <div key={l} style={{ borderLeft: `2px solid ${col}44`, paddingLeft: '.5rem' }}>
@@ -983,11 +983,71 @@ export default function WorldMenu() {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41' }}>FREE</div>
-                          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ç500/rest after day 7</div>
+                          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ƒ500/rest after day 7</div>
                         </div>
                       </div>
                       <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
-                        The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ç500 per rest — the lowest rate in Minx City.
+                        The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ƒ500 per rest — the lowest rate in Minx City.
+                      </div>
+                    </div>
+                  );
+                })()}
+                )}
+
+                {bizType === 'unemployed' && (
+                  <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
+                    <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
+                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever SENIOR PABLO has planned. Hurry up — you're already late.
+                    </div>
+                  </div>
+                )}
+
+                {bizType === 'real' && (
+                  <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
+                    <div>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
+                      <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                      <div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
+                        <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                          {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
+                        <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(0,255,65,.15)' }}>(OPTIONAL)</span></div>
+                      <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                )}
+
+                {bizType !== 'unemployed' && (() => {
+                  const ws = getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN');
+                  return (
+                    <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.85rem' }}>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.3rem' }}>
+                        <div>
+                          <div style={{ ...VT, fontSize: '1.15rem', color: '#00ff41', letterSpacing: '.1em' }}>{ws.label}</div>
+                          <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.07em', marginTop: '.08rem' }}>{ws.slot}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41' }}>FREE</div>
+                          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ƒ500/rest after day 7</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
+                        The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ƒ500 per rest — the lowest rate in Minx City.
                       </div>
                     </div>
                   );

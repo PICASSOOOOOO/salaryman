@@ -298,16 +298,16 @@ export default function World() {
     const g = gs.current;
     if (bid==='pablo_store') { setDialog({lines:STORE_LINES,idx:0,bid}); }
     else if (bid==='clinic') {
-      if(g.salary>=100){ g.hp=100; g.salary-=100; setHp(100); setSalary(g.salary); setMsg('> MED CLINIC — [$100] Health restored.'); }
-      else setMsg('> MED CLINIC — "Come back with $100."');
+      if(g.salary>=100){ g.hp=100; g.salary-=100; setHp(100); setSalary(g.salary); setMsg('> MED CLINIC — [ƒ100] Health restored.'); }
+      else setMsg('> MED CLINIC — "Come back with ƒ100."');
     }
     else if (bid==='megabank') { setMsg('> MOGUL BANK — Account suspended. Try again never.'); }
-    else if (bid==='market')   { g.salary+=30; setSalary(g.salary); setMsg('> BLACK MARKET — Odd job. +$30.'); }
+    else if (bid==='market')   { g.salary+=30; setSalary(g.salary); setMsg('> BLACK MARKET — Odd job. +ƒ30.'); }
     else if (bid==='office')   { setShowOffice(true); }
     else if (bid==='hotel')    { g.hp=Math.min(100,g.hp+40); setHp(g.hp); setMsg('> HOTEL NEON — You rest. HP +40.'); }
     else if (bid==='bunker')   { setMsg('> BUNKER-09 — "We don\'t let strangers in. Move on."'); }
     else if (bid==='radio')    { setMsg('> PIRATE RADIO — Static and broken promises. Someone is broadcasting.'); }
-    else if (bid==='scrap')    { g.salary+=20; setSalary(g.salary); setMsg('> SCRAP YARD — Sold some junk. +$20.'); }
+    else if (bid==='scrap')    { g.salary+=20; setSalary(g.salary); setMsg('> SCRAP YARD — Sold some junk. +ƒ20.'); }
     else setMsg(`> Locked.`);
   }, []);
 
@@ -607,7 +607,7 @@ export default function World() {
         </div>
         {/* Salary */}
         <div style={{ flexShrink:0,borderLeft:'1px solid rgba(0,255,65,.12)',paddingLeft:'.75rem' }}>
-          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 6px rgba(0,255,65,.35)',letterSpacing:'.08em' }}>${salary}</div>
+          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 6px rgba(0,255,65,.35)',letterSpacing:'.08em' }}>ƒ{salary}</div>
         </div>
         {/* Narration */}
         <div style={{ flex:1,fontSize:'.65rem',color:'rgba(0,255,65,.6)',letterSpacing:'.04em',lineHeight:1.5,borderLeft:'1px solid rgba(0,255,65,.1)',paddingLeft:'.75rem' }}>{msg}</div>
@@ -757,14 +757,14 @@ export default function World() {
                   <div key={id} style={{ border:isRented?'1px solid rgba(0,255,65,.7)':'1px solid rgba(0,255,65,.18)',padding:'.75rem',background:isRented?'rgba(0,255,65,.07)':'transparent',position:'relative' }}>
                     {isRented&&<div style={{ position:'absolute',top:4,right:6,fontSize:'.48rem',color:'#00ff41',fontFamily:"'VT323',monospace" }}>LEASED</div>}
                     <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:isRented?'#00ff41':'rgba(0,255,65,.65)',letterSpacing:'.07em',marginBottom:'.2rem' }}>{label}</div>
-                    <div style={{ fontSize:'.65rem',color:isRented?'#00ff41':canAfford?'rgba(0,255,65,.55)':'rgba(255,100,100,.5)',fontFamily:"'VT323',monospace",marginBottom:'.3rem' }}>${price.toLocaleString()}</div>
+                    <div style={{ fontSize:'.65rem',color:isRented?'#00ff41':canAfford?'rgba(0,255,65,.55)':'rgba(255,100,100,.5)',fontFamily:"'VT323',monospace",marginBottom:'.3rem' }}>ƒ{price.toLocaleString()}</div>
                     <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',lineHeight:1.6 }}>{desc}</div>
                     <button onClick={()=>{
                       if(isRented){ localStorage.removeItem('sm_office'); setRentedOffice(null); setMsg(`> Lease cancelled.`); return; }
-                      if(!canAfford){ setMsg(`> Need $${price}. Have $${salary}.`); return; }
+                      if(!canAfford){ setMsg(`> Need ƒ${price}. Have ƒ${salary}.`); return; }
                       const g=gs.current; g.salary-=price; setSalary(g.salary);
                       localStorage.setItem('sm_office',label); setRentedOffice(label);
-                      setMsg(`> ${label} leased. $${price} deducted. Set a security code from the lease panel.`);
+                      setMsg(`> ${label} leased. ƒ${price} deducted. Set a security code from the lease panel.`);
                     }} style={{ marginTop:'.5rem',width:'100%',padding:'.28rem',background:isRented?'rgba(255,50,50,.07)':canAfford?'rgba(0,255,65,.08)':'transparent',border:isRented?'1px solid rgba(255,80,80,.3)':canAfford?'1px solid rgba(0,255,65,.4)':'1px solid rgba(0,255,65,.1)',color:isRented?'rgba(255,80,80,.65)':canAfford?'#00ff41':'rgba(0,255,65,.18)',fontFamily:"'VT323',monospace",fontSize:'.85rem',letterSpacing:'.08em',cursor:canAfford||isRented?'pointer':'default' }}>
                       {isRented?'CANCEL':canAfford?'RENT':'NO FUNDS'}
                     </button>

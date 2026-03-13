@@ -284,12 +284,12 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'futon',          name: 'FUTON',            desc: 'Save & rest from any owned property.',                price: 5000  },
     { id: 'neon_sign',      name: 'NEON SIGN',        desc: '+10% passive income. Visible from two blocks.',       price: 8000  },
     { id: 'security_cam',   name: 'SECURITY CAM',     desc: 'Alerts you when threats approach your location.',     price: 12000 },
-    { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ç500 per job cycle.',         price: 18000 },
+    { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ƒ500 per job cycle.',         price: 18000 },
   ]},
   { id: 'realestate', label: 'REAL ESTATE', col: '#cc44ff', items: [
-    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ç2,000 passive income per cycle.',                  price: 75000  },
-    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ç5,000 passive income per cycle.',                  price: 180000 },
-    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ç15,000 passive income per cycle.',                 price: 500000 },
+    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ƒ2,000 passive income per cycle.',                  price: 75000  },
+    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ƒ5,000 passive income per cycle.',                  price: 180000 },
+    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ƒ15,000 passive income per cycle.',                 price: 500000 },
   ]},
   { id: 'pro', label: 'PRO UPGRADE', col: '#ff9900', items: [
     { id: 'salaryman_pro', name: 'SALARYMAN PRO', desc: 'Full AI productivity suite. Unlimited AI access, priority servers, exclusive gear drops, Pro badge. $29/mo.', price: 0 },
@@ -637,7 +637,7 @@ export default function WorldPlay() {
       const daysLeft = char.bizRegisteredAt
         ? Math.max(0, 7 - Math.floor((Date.now() - char.bizRegisteredAt) / 86400000))
         : 7;
-      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ç500/rest.'} WASD move · [E] interact · [F] attack · [M] map.`;
+      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD move · [E] interact · [F] attack · [M] map.`;
     }
     if (char?.hasBusiness === false) {
       return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device.';
@@ -786,7 +786,7 @@ export default function WorldPlay() {
       const wsRent = 500;
       if (!isFree && g.salary < wsRent) {
         sfxError();
-        setNarr(`> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — Rent overdue. ç${wsRent} required. You're on the clock.`);
+        setNarr(`> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — Rent overdue. ƒ${wsRent} required. You're on the clock.`);
         return;
       }
       if (!isFree) { g.salary -= wsRent; setSalary(g.salary); }
@@ -796,8 +796,8 @@ export default function WorldPlay() {
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       const daysLeft = Math.max(0, 7 - daysSinceReg);
       setNarr(isFree
-        ? `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. FREE rest. HP fully restored. Energy +50. Progress saved. ${daysLeft} free day${daysLeft !== 1 ? 's' : ''} remaining before ç${wsRent}/rest kicks in.`
-        : `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. ç${wsRent} CREAM rent charged. HP fully restored. Energy +50. Progress saved. The city takes its cut.`
+        ? `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. FREE rest. HP fully restored. Energy +50. Progress saved. ${daysLeft} free day${daysLeft !== 1 ? 's' : ''} remaining before ƒ${wsRent}/rest kicks in.`
+        : `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. ƒ${wsRent} CREAM rent charged. HP fully restored. Energy +50. Progress saved. The city takes its cut.`
       );
       sfxHeal();
       return;
@@ -808,9 +808,9 @@ export default function WorldPlay() {
       const rent = 3000;
       if (g.salary >= rent) {
         g.salary -= rent; setSalary(g.salary);
-        setNarr(`> MINX ARMS — RENT PAID: ç${rent.toLocaleString()}. The landlord's drone scans your unit. "Credits received. Another month." You rest.`);
+        setNarr(`> MINX ARMS — RENT PAID: ƒ${rent.toLocaleString()}. The landlord's drone scans your unit. "Credits received. Another month." You rest.`);
       } else {
-        setNarr(`> MINX ARMS — RENT NOTICE. You owe ç${rent.toLocaleString()} and cannot pay. PABLO CORP. HOUSING DIVISION has been notified. Rest anyway — nobody's throwing you out tonight.`);
+        setNarr(`> MINX ARMS — RENT NOTICE. You owe ƒ${rent.toLocaleString()} and cannot pay. PABLO CORP. HOUSING DIVISION has been notified. Rest anyway — nobody's throwing you out tonight.`);
       }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
       // Bed save point — restore all stats
@@ -824,9 +824,9 @@ export default function WorldPlay() {
       const rent = 2000;
       if (g.salary >= rent) {
         g.salary -= rent; setSalary(g.salary);
-        setNarr(`> EASTSIDE FLATS — RENT PAID: ç${rent.toLocaleString()}. Unit ${aptUnit}. The landlord bot sends a confirmation ping. You collapse into your bed.`);
+        setNarr(`> EASTSIDE FLATS — RENT PAID: ƒ${rent.toLocaleString()}. Unit ${aptUnit}. The landlord bot sends a confirmation ping. You collapse into your bed.`);
       } else {
-        setNarr(`> EASTSIDE FLATS — RENT NOTICE. ç${rent.toLocaleString()} outstanding. PABLO CORP. HOUSING will escalate. Rest anyway.`);
+        setNarr(`> EASTSIDE FLATS — RENT NOTICE. ƒ${rent.toLocaleString()} outstanding. PABLO CORP. HOUSING will escalate. Rest anyway.`);
       }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.eastside_flat, selectedFloor: 0 });
       // Bed save point
@@ -842,8 +842,8 @@ export default function WorldPlay() {
     }
     else if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
     else if (bid === 'clinic')  {
-      if (g.salary >= 10000) { g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [ç10,000 CREAM] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
-      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No cream, no treatment. Even Dr. Wright has bills. Come back with ç10,000."'); }
+      if (g.salary >= 10000) { g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [ƒ10,000 CREAM] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
+      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No cream, no treatment. Even Dr. Wright has bills. Come back with ƒ10,000."'); }
     }
     else if (bid === 'megabank'){
       setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
@@ -857,12 +857,12 @@ export default function WorldPlay() {
     else if (bid === 'armory') {
       g.hunger = Math.min(100, g.hunger + 15); g.thirst = Math.min(100, g.thirst + 15);
       g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> ARMORY — Vending machine: RATION PACK [ç1,000 CREAM]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
+      setNarr('> ARMORY — Vending machine: RATION PACK [ƒ1,000 CREAM]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
     }
     else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. PABLO CORP. is not watching. Probably.'); }
     else if (bid === 'hotel')   {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
-      g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      g.hp = Math.min(g.maxHp, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
       setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. HP +40. Energy +30.');
     }
     else if (bid === 'hotel_midgar') {
@@ -870,10 +870,10 @@ export default function WorldPlay() {
         const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 15000;
         setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> HOTEL MIDGAR [ç15,000 CREAM] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
+        setNarr('> HOTEL MIDGAR [ƒ15,000 CREAM] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
       } else {
         sfxError();
-        setNarr('> HOTEL MIDGAR — TIFA shakes her head. "Presidential suite is ç15,000 CREAM. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
+        setNarr('> HOTEL MIDGAR — TIFA shakes her head. "Presidential suite is ƒ15,000 CREAM. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
       }
     }
     else if (bid === 'inn_mother') {
@@ -881,20 +881,20 @@ export default function WorldPlay() {
         g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 6000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> MOTHER BASE INN [ç6,000 CREAM] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
+        setNarr('> MOTHER BASE INN [ƒ6,000 CREAM] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
       } else {
         sfxError();
-        setNarr('> MOTHER BASE INN — OTACON squints at his tablet. "Intel says you\'re short ç6,000. Come back when your cream clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
+        setNarr('> MOTHER BASE INN — OTACON squints at his tablet. "Intel says you\'re short ƒ6,000. Come back when your cream clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
       }
     }
     else if (bid === 'overlook') {
       if (g.salary >= 8000) {
         g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-        setNarr('> THE OVERLOOK [ç8,000 CREAM] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
+        setNarr('> THE OVERLOOK [ƒ8,000 CREAM] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
       } else {
         sfxError();
-        setNarr('> THE OVERLOOK — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with ç8,000 CREAM," he adds, still not looking up.');
+        setNarr('> THE OVERLOOK — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with ƒ8,000 CREAM," he adds, still not looking up.');
       }
     }
     else if (bid === 'safe_house') {
@@ -907,10 +907,10 @@ export default function WorldPlay() {
         g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000;
         setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> THE PRANCING PONY [ç4,000 CREAM] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
+        setNarr('> THE PRANCING PONY [ƒ4,000 CREAM] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
       } else {
         sfxError();
-        setNarr('> THE PRANCING PONY — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be ç4,000 CREAM. Supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs ç4,000.');
+        setNarr('> THE PRANCING PONY — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be ƒ4,000 CREAM. Supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs ƒ4,000.');
       }
     }
     else if (bid === 'zanarkand_inn') {
@@ -928,7 +928,7 @@ export default function WorldPlay() {
       const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 2000;
       setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ç2,000 CREAM (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
+      setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ƒ2,000 CREAM (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
     }
     else if (bid === 'vend')    {
       sfxHeal(); setShowVend(true);
@@ -941,16 +941,16 @@ export default function WorldPlay() {
     else if (bid === 'radio') {
       const job = QUICK_JOBS.radio;
       if ((g.jobCooldowns['radio'] ?? 0) > 0) { sfxError(); setNarr(`> PIRATE RADIO — Signal on air. "Come back in ${Math.ceil((g.jobCooldowns['radio'] ?? 0) / 60)}s." Dead air.`); return; }
-      setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "BROADCAST JOB — ç2,000 CREAM, 4 seconds. Press E again to start."');
+      setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "BROADCAST JOB — ƒ2,000 CREAM, 4 seconds. Press E again to start."');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'scrap') {
       const job = QUICK_JOBS.scrap;
       if ((g.jobCooldowns['scrap'] ?? 0) > 0) { sfxError(); setNarr(`> SCRAP YARD — On cooldown. ${Math.ceil((g.jobCooldowns['scrap'] ?? 0) / 60)}s remaining.`); return; }
-      setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ç3,500 CREAM. 5 seconds." You find a PCB labeled KONAMI \'87.');
+      setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ƒ3,500 CREAM. 5 seconds." You find a PCB labeled KONAMI \'87.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'wily_lab'){ g.salary += 5000; setSalary(g.salary); sfxCoin(); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ç5,000 in the drawer. I won\'t need it." +ç5,000 CREAM.'); }
+    else if (bid === 'wily_lab'){ g.salary += 5000; setSalary(g.salary); sfxCoin(); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ5,000 in the drawer. I won\'t need it." +ƒ5,000 CREAM.'); }
     else if (bid === 'crystal' || bid === 'crystal2' || bid === 'crystal3') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -959,18 +959,18 @@ export default function WorldPlay() {
       setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached cream transfer. +ç4,000 CREAM. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached cream transfer. +ƒ4,000 CREAM. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'east_market') { sfxEnter(); setShowTrade('city'); setNarr('> EAST BAZAAR — The commodity board blinks. Every faction sends couriers through here. What you buy here you sell out there. The margin is yours to keep.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'east_clinic') {
-      if (g.salary >= 8000) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 8000; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [ç8,000 CREAM] HP +60.'); }
-      else { sfxError(); setNarr('> EAST CLINIC — "No cream. I treat wounds, not charity cases." Come back with ç8,000.'); }
+      if (g.salary >= 8000) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 8000; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [ƒ8,000 CREAM] HP +60.'); }
+      else { sfxError(); setNarr('> EAST CLINIC — "No cream. I treat wounds, not charity cases." Come back with ƒ8,000.'); }
     }
     else if (bid === 'print_shop') {
       const job = QUICK_JOBS.print_shop;
       if ((g.jobCooldowns['print_shop'] ?? 0) > 0) { sfxError(); setNarr(`> PRINT SHOP — Machine busy. ${Math.ceil((g.jobCooldowns['print_shop'] ?? 0) / 60)}s until next run.`); return; }
-      setNarr('> PRINT SHOP — Unauthorized print run. ç2,500 CREAM. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
+      setNarr('> PRINT SHOP — Unauthorized print run. ƒ2,500 CREAM. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'east_bunker') { setNarr('> EAST BUNKER — Reinforced walls. Supplies enough for six months. Sign reads: EMERGENCY RESERVE — PABLO CORP. PROPERTY. "Emergency" apparently means one person on Floor 62.'); }
@@ -985,7 +985,7 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP. markings and no tracking code. Inside: ç6,000 CREAM in unregistered tokens. Classic.'); }
+    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP. markings and no tracking code. Inside: ƒ6,000 CREAM in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
@@ -1007,35 +1007,35 @@ export default function WorldPlay() {
     else if (bid === 'call_home') {
       sfxEnter();
       const cost = 5000;
-      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> CALL HOME — Encrypted long-range signal. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ç${cost.toLocaleString()} CREAM]`); }
-      else { sfxError(); setNarr(`> CALL HOME — ç${cost.toLocaleString()} CREAM for a call. "Nothing\'s free in Minx City. Not even a voice."`);}
+      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> CALL HOME — Encrypted long-range signal. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ƒ${cost.toLocaleString()} CREAM]`); }
+      else { sfxError(); setNarr(`> CALL HOME — ƒ${cost.toLocaleString()} CREAM for a call. "Nothing\'s free in Minx City. Not even a voice."`);}
     }
     else if (bid === 'noodle_bar') {
       sfxEnter();
       const cost = 1200;
-      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ç${cost.toLocaleString()} CREAM]`); }
+      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ƒ${cost.toLocaleString()} CREAM]`); }
       else { sfxError(); setNarr('> NOODLE BAR — "No CREAM, no noodles. House rule since the collapse."'); }
     }
     else if (bid === 'pawn_shop') {
       sfxEnter();
       const bonus = 3000 + Math.floor(Math.random() * 4000);
       g.salary += bonus; setSalary(g.salary); sfxCoin();
-      setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ç${bonus.toLocaleString()} CREAM. "Come back with more. I don\'t ask questions."`);
+      setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ƒ${bonus.toLocaleString()} CREAM. "Come back with more. I don\'t ask questions."`);
     }
     else if (bid === 'north_clinic') {
-      if (g.salary >= 8000) { g.hp = g.maxHp; g.salary -= 8000; setHp(g.hp); setSalary(g.salary); g.poisoned = false; setPoisoned(false); sfxHeal(); setNarr('> NORTH CLINIC — "Trauma unit. Full restore. ç8,000." HP maxed. Poison cured.'); }
-      else { sfxError(); setNarr('> NORTH CLINIC — "ç8,000 minimum. Don\'t bleed on the floor."'); }
+      if (g.salary >= 8000) { g.hp = g.maxHp; g.salary -= 8000; setHp(g.hp); setSalary(g.salary); g.poisoned = false; setPoisoned(false); sfxHeal(); setNarr('> NORTH CLINIC — "Trauma unit. Full restore. ƒ8,000." HP maxed. Poison cured.'); }
+      else { sfxError(); setNarr('> NORTH CLINIC — "ƒ8,000 minimum. Don\'t bleed on the floor."'); }
     }
     else if (bid === 'terminal_shop' || bid === 'print_shop2') {
       sfxEnter();
       const passportCost = 12000;
       if (!g.passport && g.salary >= passportCost) {
         g.passport = true; g.salary -= passportCost; setSalary(g.salary); setPassport(true); sfxCoin();
-        setNarr(`> PABLO CORP. NORTH — PASSPORT issued. Official PABLO CORP. stamp. Wasteland crossing authorized. [−ç${passportCost.toLocaleString()} CREAM] "Don\'t lose it. Replacements cost double."`);
+        setNarr(`> PABLO CORP. NORTH — PASSPORT issued. Official PABLO CORP. stamp. Wasteland crossing authorized. [−ƒ${passportCost.toLocaleString()} CREAM] "Don\'t lose it. Replacements cost double."`);
       } else if (g.passport) {
         setNarr('> PABLO CORP. NORTH — "PASSPORT already registered. Wasteland access active."');
       } else {
-        sfxError(); setNarr(`> PABLO CORP. NORTH — PASSPORT costs ç${passportCost.toLocaleString()} CREAM. Current balance insufficient.`);
+        sfxError(); setNarr(`> PABLO CORP. NORTH — PASSPORT costs ƒ${passportCost.toLocaleString()} CREAM. Current balance insufficient.`);
       }
     }
     else if (bid === 'north_bunker') {
@@ -1060,12 +1060,12 @@ export default function WorldPlay() {
     }
     else if (bid === 'deep_camp') {
       g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 4000; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
-      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ç4,000 CREAM into your hand. "We found it in a PABLO cache. We don\'t want their money." HP +25. +ç4,000 CREAM.');
+      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ4,000 CREAM into your hand. "We found it in a PABLO cache. We don\'t want their money." HP +25. +ƒ4,000 CREAM.');
     }
     else if (bid === 'ruins_alpha') {
       const loot = 8000 + Math.floor(Math.random() * 10000);
       g.salary += loot; setSalary(g.salary); sfxCoin();
-      setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ç${loot.toLocaleString()} CREAM in old denomination tokens. Still valid.`);
+      setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ƒ${loot.toLocaleString()} CREAM in old denomination tokens. Still valid.`);
     }
     else if (bid === 'southern_hub') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
@@ -1283,9 +1283,9 @@ export default function WorldPlay() {
       konamiBuffer.current = [...konamiBuffer.current, kk].slice(-KONAMI_SEQ.length);
       if (konamiBuffer.current.join(',') === KONAMI_SEQ.join(',')) {
         const g = gs.current;
-        g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 30000;
-        setHp(100); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
-        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +ç30,000 CREAM. Full stats restored. SENIOR PABLO is watching." ★');
+        g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 30000;
+        setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
+        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +ƒ30,000 CREAM. Full stats restored. SENIOR PABLO is watching." ★');
         sfxKonami();
         konamiBuffer.current = [];
       }
@@ -1329,7 +1329,7 @@ export default function WorldPlay() {
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5); // Outcast waste bonus
               g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
-              g.floaters.push({ x: t.x, y: t.y, text: `+ç${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+              g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
               // ── Damage floater ────────────────────────────────────────────
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
@@ -1422,17 +1422,17 @@ export default function WorldPlay() {
     const g = gs.current;
     const nearbyNpcs = NPCS.filter(n => Math.hypot(g.px - n.x, g.py - n.y) < 150).map(n => n.name).join(', ') || 'none';
     const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
-    const loanStr = g.loan ? `ACTIVE LOAN ç${g.loan.amount.toLocaleString()} + ç${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
+    const loanStr = g.loan ? `ACTIVE LOAN ƒ${g.loan.amount.toLocaleString()} + ƒ${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
     return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
-WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is CREAM (ç). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
+WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is CREAM (ƒ). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the Konami code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
 OPERATIVE STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
-- HP: ${Math.floor(g.hp)}/${g.maxHp} | CREAM: ç${g.salary.toLocaleString()} | Savings: ç${g.savings.toLocaleString()}
+- HP: ${Math.floor(g.hp)}/${g.maxHp} | CREAM: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
 - Zone: ${g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
 - Gang territory: ${g.gangZone ?? 'neutral'}
@@ -1525,7 +1525,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const crossingBorder = ny >= WASTELAND_Y && g.py < WASTELAND_Y;
         if (crossingBorder && !g.passport) {
           ny = WASTELAND_Y - PSIZE - 1;
-          if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot enter the wasteland without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ç12,000 CREAM]');
+          if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot enter the wasteland without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ƒ12,000 CREAM]');
         }
         g.py = Math.max(PSIZE, Math.min(H - PSIZE, ny));
         if (dx !== 0 || dy !== 0) {
@@ -1698,11 +1698,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         setSalary(g.salary); setHp(Math.floor(g.hp));
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
         setPoisoned(false);
-        g.floaters.push({ x: 230, y: 380, text: `−ç${emergencyFee.toLocaleString()} EMERGENCY CARE`, color: '#ff6666', life: 120, maxLife: 120 });
+        g.floaters.push({ x: 230, y: 380, text: `−ƒ${emergencyFee.toLocaleString()} EMERGENCY CARE`, color: '#ff6666', life: 120, maxLife: 120 });
         addBankTx('DR. WRIGHT EMERGENCY CARE', -emergencyFee, g.salary);
         sfxHeal();
-        const debtNote = g.salary < 0 ? ` You're ç${Math.abs(g.salary).toLocaleString()} in debt. DR. WRIGHT will remember this.` : '';
-        setNarr(`> DEAD. DR. WRIGHT's clinic. Emergency revival — ç${emergencyFee.toLocaleString()} CREAM deducted. "You flatlined. I brought you back. You're welcome. Pay your bill."${debtNote}`);
+        const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt. DR. WRIGHT will remember this.` : '';
+        setNarr(`> DEAD. DR. WRIGHT's clinic. Emergency revival — ƒ${emergencyFee.toLocaleString()} CREAM deducted. "You flatlined. I brought you back. You're welcome. Pay your bill."${debtNote}`);
       }
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
@@ -1745,7 +1745,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
         if (nearEnemy) {
           const typeLabel = nearEnemy.type.replace(/_/g, ' ');
-          setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — press [F] to attack! Move close and swing. Bounty: ç${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+          setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — press [F] to attack! Move close and swing. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
         }
       }
 
@@ -1812,7 +1812,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const bonus = cls === 'outcast' && inWaste ? Math.floor(Math.random() * 400) : 0;
           const total = INCOME_AMOUNT + bonus;
           g.salary += total; setSalary(g.salary);
-          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ç${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
           sfxCoin();
           addBankTx(INCOME_LABEL, total, g.salary);
         }
@@ -1826,7 +1826,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (g.ownedItems.has('neon_sign')) reTotal = Math.floor(reTotal * 1.1);
           if (reTotal > 0) {
             g.salary += reTotal; setSalary(g.salary);
-            g.floaters.push({ x: g.px + 30, y: g.py - 50, text: `+ç${reTotal.toLocaleString()} RENTAL INCOME`, color: '#cc44ff', life: 80, maxLife: 80 });
+            g.floaters.push({ x: g.px + 30, y: g.py - 50, text: `+ƒ${reTotal.toLocaleString()} RENTAL INCOME`, color: '#cc44ff', life: 80, maxLife: 80 });
             sfxCoin();
           }
         }
@@ -1840,7 +1840,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const pabloTax = Math.floor(rawInterest * 0.15);
             const netInterest = rawInterest - pabloTax;
             g.savings += netInterest; setSavings(g.savings);
-            g.floaters.push({ x: g.px + 20, y: g.py - 40, text: `+ç${netInterest.toLocaleString()} SAVINGS INTEREST`, color: '#44ffaa', life: 80, maxLife: 80 });
+            g.floaters.push({ x: g.px + 20, y: g.py - 40, text: `+ƒ${netInterest.toLocaleString()} SAVINGS INTEREST`, color: '#44ffaa', life: 80, maxLife: 80 });
             addBankTx('SAVINGS INTEREST (0.8% APY)', netInterest, g.savings);
             if (pabloTax > 0) addBankTx('PABLO CORP. INTEREST TAX (15%)', -pabloTax, g.savings);
           }
@@ -1852,9 +1852,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.loan && g.frame > g.loan.dueAt) {
           const penalty = Math.floor(g.loan.amount * 0.05);
           g.salary = Math.max(0, g.salary - penalty); setSalary(g.salary);
-          g.floaters.push({ x: g.px, y: g.py - 20, text: `−ç${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
+          g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
           addBankTx('PABLO CORP. DEBT PENALTY (5%)', -penalty, g.salary);
-          setNarr('> KONAMI BANK ALERT — Your loan is overdue. PABLO Corp. Debt Collection is now active. ç' + penalty.toLocaleString() + ' CREAM deducted. Repay at KONAMI BANK immediately.');
+          setNarr('> KONAMI BANK ALERT — Your loan is overdue. PABLO Corp. Debt Collection is now active. ƒ' + penalty.toLocaleString() + ' CREAM deducted. Repay at KONAMI BANK immediately.');
         }
 
         // ── OREGON TRAIL RANDOM EVENTS (every 12 survival ticks ≈ 72s) ────
@@ -1863,19 +1863,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.oregonTick = 0;
           const inWaste2 = g.py >= WASTELAND_Y;
           const cityEvents = [
-            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP. seized ç${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
+            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP. seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
             () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
-            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ç${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
+            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 15); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO Corp. deployed free stim-packs city-wide. "Productivity metric: normalized." HP +15.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
-            () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose CREAM tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ç${bonus.toLocaleString()}.`; },
+            () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose CREAM tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
           const wasteEvents = [
             () => { g.hp = Math.max(1, g.hp - 25); setHp(Math.floor(g.hp)); sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
-            () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ç${loot.toLocaleString()} in undelivered CREAM. Their last entry reads: "Don't go north."  You're going north.`; },
+            () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered CREAM. Their last entry reads: "Don't go north."  You're going north.`; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +20. Someone was looking out for you.'; },
             () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
             () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
@@ -2455,6 +2455,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.arc(px, py2, 72, 0, Math.PI * 2); ctx.stroke();
       }
       if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = 'rgba(0,255,65,.6)'; ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
+      ctx.fillText(char.name, px, py2 - 24);
 
       // ── PABLO Corp android guards (city patrol) ──────────────────────────
       for (const guard of g.guards) {
@@ -2704,7 +2706,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           {/* Salary */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem' }}>
             <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>CREAM</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ç{salary.toLocaleString()}</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
           </div>
           {/* Zone */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.25rem .5rem' }}>
@@ -2944,8 +2946,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>OPERATIVE VITALS</div>
                     <StatRow label="HP" val={`${Math.floor(hp)} / ${gs.current.maxHp}`} bar={(hp / gs.current.maxHp) * 100} />
-                    <StatRow label="CREAM" val={`ç${salary.toLocaleString()}`} col={salary < 0 ? '#ff4444' : '#00ff41'} />
-                    <StatRow label="SAVINGS" val={`ç${savings.toLocaleString()}`} col="#44ffaa" />
+                    <StatRow label="CREAM" val={`ƒ${salary.toLocaleString()}`} col={salary < 0 ? '#ff4444' : '#00ff41'} />
+                    <StatRow label="SAVINGS" val={`ƒ${savings.toLocaleString()}`} col="#44ffaa" />
                     <StatRow label="HUNGER" val={`${Math.floor(hunger)}%`} bar={hunger} col={hunger < 30 ? '#ff8844' : undefined} />
                     <StatRow label="THIRST" val={`${Math.floor(thirst)}%`} bar={thirst} col={thirst < 30 ? '#ff8844' : undefined} />
                     <StatRow label="ENERGY" val={`${Math.floor(energy)}%`} bar={energy} col={energy < 25 ? '#ffdd44' : undefined} />
@@ -2967,9 +2969,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ fontSize: '.38rem', color: gs.current.frame > bankLoan.dueAt ? '#ff6666' : 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
                           {gs.current.frame > bankLoan.dueAt ? '⚠ LOAN OVERDUE' : 'ACTIVE LOAN'}
                         </div>
-                        <StatRow label="PRINCIPAL" val={`ç${bankLoan.amount.toLocaleString()}`} />
-                        <StatRow label="INTEREST" val={`ç${bankLoan.interest.toLocaleString()}`} col="#ffaa44" />
-                        <StatRow label="TOTAL DUE" val={`ç${(bankLoan.amount + bankLoan.interest).toLocaleString()}`} col={gs.current.frame > bankLoan.dueAt ? '#ff4444' : '#ffdd44'} />
+                        <StatRow label="PRINCIPAL" val={`ƒ${bankLoan.amount.toLocaleString()}`} />
+                        <StatRow label="INTEREST" val={`ƒ${bankLoan.interest.toLocaleString()}`} col="#ffaa44" />
+                        <StatRow label="TOTAL DUE" val={`ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}`} col={gs.current.frame > bankLoan.dueAt ? '#ff4444' : '#ffdd44'} />
                       </div>
                     )}
                     {poisoned && (
@@ -3017,13 +3019,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         : nearbyEnemies.map((t, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(255,65,65,.06)', fontSize: '.52rem' }}>
                             <span style={{ ...VT, fontSize: '.8rem', color: THREAT_COL[t.type] ?? '#ff4444' }}>{t.type.replace(/_/g,' ')}</span>
-                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ç{(BOUNTY[t.type]??1000).toLocaleString()} · [F] attack</span>
+                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ƒ{(BOUNTY[t.type]??1000).toLocaleString()} · [F] attack</span>
                           </div>
                         ))
                       }
                     </div>
                     <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ç10k full heal · MARKET/EAST BAZAAR: trade commodities · PABLO TOWER: floors 1–39 rentable
+                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ƒ10k full heal · MARKET/EAST BAZAAR: trade commodities · PABLO TOWER: floors 1–39 rentable
                     </div>
                   </div>
                 )}
@@ -3144,14 +3146,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div key={label} style={{ border: isRented ? '1px solid rgba(0,255,65,.65)' : '1px solid rgba(0,255,65,.16)', padding: '.7rem', background: isRented ? 'rgba(0,255,65,.06)' : 'transparent', position: 'relative' }}>
                     {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#00ff41', fontFamily: "'VT323',monospace" }}>LEASED</div>}
                     <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isRented ? '#00ff41' : 'rgba(0,255,65,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
-                    <div style={{ fontSize: '.62rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ç{price.toLocaleString()} CREAM</div>
+                    <div style={{ fontSize: '.62rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ƒ{price.toLocaleString()} CREAM</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.32)', lineHeight: 1.6 }}>{desc}</div>
                     <button onClick={() => {
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
-                      if (!canAfford) { setNarr(`> Need ç${price.toLocaleString()} CREAM. Have ç${salary.toLocaleString()}.`); return; }
+                      if (!canAfford) { setNarr(`> Need ƒ${price.toLocaleString()} CREAM. Have ƒ${salary.toLocaleString()}.`); return; }
                       const g = gs.current; g.salary -= price; setSalary(g.salary);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
-                      setNarr(`> ${label} leased. ç${price.toLocaleString()} CREAM deducted. Set a security code from the lease panel.`);
+                      setNarr(`> ${label} leased. ƒ${price.toLocaleString()} CREAM deducted. Set a security code from the lease panel.`);
                     }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford ? 'rgba(0,255,65,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford ? '1px solid rgba(0,255,65,.38)' : '1px solid rgba(0,255,65,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford ? '#00ff41' : 'rgba(0,255,65,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: canAfford || isRented ? 'pointer' : 'default' }}>
                       {isRented ? 'CANCEL' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
@@ -3254,9 +3256,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       clearInterval(jobTimerRef.current!); jobTimerRef.current = null;
                       const g = gs.current;
                       g.salary += jobPanel.pay; g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
-                      g.floaters.push({ x: g.px, y: g.py - 20, text: `+$${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
+                      g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
                       setSalary(g.salary); sfxCoin();
-                      setNarr(`> JOB COMPLETE — ${jobPanel.label}. +$${jobPanel.pay}. Credits transferred.`);
+                      setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. Credits transferred.`);
                       setJobPanel(null);
                     } else {
                       setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
@@ -3282,7 +3284,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const g = gs.current;
         const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
         const doVendBuy = (item: VendItem) => {
-          if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ç${item.price.toLocaleString()}.`); return; }
+          if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
           g.salary -= item.price; setSalary(g.salary); sfxCoin();
           // ── Apply effects ──────────────────────────────────────
@@ -3295,7 +3297,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (p.startsWith('hp'))      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
               if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
             }
-            setNarr(`> VEND-O-MATIC — ${item.name} used. ç${item.price.toLocaleString()} CREAM spent.`);
+            setNarr(`> VEND-O-MATIC — ${item.name} used. ƒ${item.price.toLocaleString()} CREAM spent.`);
             return;
           }
           // Non-consumable items
@@ -3312,7 +3314,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (item.id === 'salaryman_pro') { setShowVend(false); setShowStore(true); return; }
           if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
-          setNarr(`> VEND-O-MATIC — ${item.name} acquired. ç${item.price.toLocaleString()} CREAM spent. Check your inventory.`);
+          setNarr(`> VEND-O-MATIC — ${item.name} acquired. ƒ${item.price.toLocaleString()} CREAM spent. Check your inventory.`);
         };
         const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
@@ -3327,7 +3329,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>PABLO CORP. AUTOMATED RETAIL · 24 REGIONAL NODES · CREAM ONLY</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>ç{salary.toLocaleString()}</div>
+                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
                   <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>CREAM BALANCE</div>
                   <button onClick={() => setShowVend(false)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC</button>
                 </div>
@@ -3382,7 +3384,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
                           </div>
                           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
-                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ç{item.price.toLocaleString()}</div>
+                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ƒ{item.price.toLocaleString()}</div>
                             <button
                               onClick={() => doVendBuy(item)}
                               disabled={alreadyHas}
@@ -3423,11 +3425,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const c = COMMODITIES.find(x => x.id === cid)!;
           const price = isCity ? cp[cid].cityBuy : cp[cid].wasteBuy;
           if (totalCargo >= MAX_CARGO) { sfxError(); setNarr(`> HOLD FULL — Max ${MAX_CARGO} units. Sell something first.`); return; }
-          if (gs.current.salary < price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ç${price.toLocaleString()}. Have ç${gs.current.salary.toLocaleString()}.`); return; }
+          if (gs.current.salary < price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ƒ${price.toLocaleString()}. Have ƒ${gs.current.salary.toLocaleString()}.`); return; }
           gs.current.salary -= price; setSalary(gs.current.salary);
           gs.current.cargo[cid] = (gs.current.cargo[cid] || 0) + 1;
           setCargo({ ...gs.current.cargo }); sfxCoin();
-          setNarr(`> BOUGHT 1x ${c.name} [ç${price.toLocaleString()} CREAM]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : 'Minx City'} and sell for profit.`);
+          setNarr(`> BOUGHT 1x ${c.name} [ƒ${price.toLocaleString()} CREAM]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : 'Minx City'} and sell for profit.`);
         };
         const doSell = (cid: string) => {
           const c = COMMODITIES.find(x => x.id === cid)!;
@@ -3437,7 +3439,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           gs.current.cargo[cid] -= 1;
           if (gs.current.cargo[cid] <= 0) delete gs.current.cargo[cid];
           setCargo({ ...gs.current.cargo }); sfxCoin();
-          setNarr(`> SOLD 1x ${c.name} [+ç${price.toLocaleString()} CREAM]. Balance: ç${gs.current.salary.toLocaleString()}.`);
+          setNarr(`> SOLD 1x ${c.name} [+ƒ${price.toLocaleString()} CREAM]. Balance: ƒ${gs.current.salary.toLocaleString()}.`);
         };
         const bestRoutes = COMMODITIES.map(c => {
           const cityProfit = cp[c.id].wasteSell - cp[c.id].cityBuy;
@@ -3461,7 +3463,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
                 <div style={{ textAlign:'right' }}>
                   <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.1rem', color:'#00ff41' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', marginTop:'.1rem' }}>ç{salary.toLocaleString()} CREAM</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', marginTop:'.1rem' }}>ƒ{salary.toLocaleString()} CREAM</div>
                   <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
@@ -3472,7 +3474,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display:'flex', gap:'1.2rem', flexWrap:'wrap' }}>
                     {bestRoutes.map(r => (
                       <div key={r.id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)' }}>
-                        {r.name} → <span style={{ color:'#00ff41' }}>+ç{(isCity ? r.cityRoute : r.wasteRoute).toLocaleString()}/unit</span>
+                        {r.name} → <span style={{ color:'#00ff41' }}>+ƒ{(isCity ? r.cityRoute : r.wasteRoute).toLocaleString()}/unit</span>
                       </div>
                     ))}
                   </div>
@@ -3502,16 +3504,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                       <div style={{ textAlign:'right' }}>
                         <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(0,255,65,.08)' : 'transparent', border: canBuy ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canBuy ? '#00ff41' : 'rgba(0,255,65,.2)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
-                          ç{buyPrice.toLocaleString()}
+                          ƒ{buyPrice.toLocaleString()}
                         </button>
                       </div>
                       <div style={{ textAlign:'right' }}>
                         <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(0,255,65,.08)' : 'transparent', border: canSell ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canSell ? '#00ff41' : 'rgba(0,255,65,.18)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
-                          {canSell ? `+ç${sellPrice.toLocaleString()}` : '——'}
+                          {canSell ? `+ƒ${sellPrice.toLocaleString()}` : '——'}
                         </button>
                       </div>
                       <div style={{ textAlign:'right', fontSize:'.48rem', color: profit > 0 ? 'rgba(0,255,65,.55)' : 'rgba(255,80,80,.45)' }}>
-                        {profit > 0 ? `+ç${profit.toLocaleString()}` : `–ç${Math.abs(profit).toLocaleString()}`}
+                        {profit > 0 ? `+ƒ${profit.toLocaleString()}` : `–ƒ${Math.abs(profit).toLocaleString()}`}
                       </div>
                       <div style={{ textAlign:'center', fontFamily:"'VT323',monospace", fontSize:'1.1rem', color: held > 0 ? '#00ff41' : 'rgba(0,255,65,.2)' }}>
                         {held > 0 ? held : '·'}
@@ -3531,7 +3533,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const sellHere = isCity ? cp[id].citySell : cp[id].wasteSell;
                       return (
                         <div key={id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)', border:'1px solid rgba(0,255,65,.18)', padding:'.22rem .5rem' }}>
-                          {qty}× {c.name} → sell here for ç{sellHere.toLocaleString()}/unit
+                          {qty}× {c.name} → sell here for ƒ{sellHere.toLocaleString()}/unit
                         </div>
                       );
                     })}
@@ -3603,7 +3605,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </div>
             <div style={{ marginTop: '.5rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
-              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ç{salary.toLocaleString()} CREAM · [M] or [ESC] to close
+              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} CREAM · [M] or [ESC] to close
             </div>
           </div>
         </div>
@@ -3695,10 +3697,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showBank && (() => {
         const g = gs.current;
         const LOAN_OPTIONS = [
-          { amount: 5000,  label: 'ç5K' },
-          { amount: 10000, label: 'ç10K' },
-          { amount: 25000, label: 'ç25K' },
-          { amount: 50000, label: 'ç50K' },
+          { amount: 5000,  label: 'ƒ5K' },
+          { amount: 10000, label: 'ƒ10K' },
+          { amount: 25000, label: 'ƒ25K' },
+          { amount: 50000, label: 'ƒ50K' },
         ];
         const VTB: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const STB: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
@@ -3725,7 +3727,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (tax > 0) addBankTx('PABLO CORP. DEPOSIT TAX (12%)', -tax, g.salary);
           addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary);
           setBankDepAmt(''); sfxCoin();
-          setNarr(`> DEPOSITED ç${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO TAX: ç${tax.toLocaleString()}.` : ' No tax.'} Savings: ç${g.savings.toLocaleString()}.`);
+          setNarr(`> DEPOSITED ƒ${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO TAX: ƒ${tax.toLocaleString()}.` : ' No tax.'} Savings: ƒ${g.savings.toLocaleString()}.`);
         };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
@@ -3734,7 +3736,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setSavings(g.savings); setSalary(g.salary);
           addBankTx('SAVINGS → CHECKING WITHDRAWAL', amt, g.salary);
           setBankWithAmt(''); sfxCoin();
-          setNarr(`> WITHDREW ç${amt.toLocaleString()} from SAVINGS to CHECKING.`);
+          setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS to CHECKING.`);
         };
         const doLoan = (amount: number) => {
           if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
@@ -3747,30 +3749,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (origFee > 0) addBankTx('ORIGINATION FEE (2%)', -origFee, g.salary);
           addBankTx(`LOAN ISSUED @ 18% FLAT`, received, g.salary);
           sfxCoin();
-          setNarr(`> LOAN APPROVED — ç${amount.toLocaleString()} · Int: ç${interest.toLocaleString()} · Fee: ç${origFee.toLocaleString()} · Repay within ~6 min. Late = penalty.`);
+          setNarr(`> LOAN APPROVED — ƒ${amount.toLocaleString()} · Int: ƒ${interest.toLocaleString()} · Fee: ƒ${origFee.toLocaleString()} · Repay within ~6 min. Late = penalty.`);
         };
         const doRepay = () => {
           const loan = g.loan; if (!loan) return;
           const totalDue = loan.amount + loan.interest;
-          if (g.salary < totalDue) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ç${totalDue.toLocaleString()}.`); return; }
+          if (g.salary < totalDue) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${totalDue.toLocaleString()}.`); return; }
           g.salary -= totalDue; setSalary(g.salary);
           g.loan = null; setBankLoan(null);
-          addBankTx(`LOAN REPAID ç${loan.amount.toLocaleString()} + ç${loan.interest.toLocaleString()} INT`, -totalDue, g.salary);
+          addBankTx(`LOAN REPAID ƒ${loan.amount.toLocaleString()} + ƒ${loan.interest.toLocaleString()} INT`, -totalDue, g.salary);
           sfxCoin();
-          setNarr(`> LOAN REPAID — ç${totalDue.toLocaleString()} CREAM. Account standing: CLEAR. Debt collectors stand down.`);
+          setNarr(`> LOAN REPAID — ƒ${totalDue.toLocaleString()} CREAM. Account standing: CLEAR. Debt collectors stand down.`);
         };
         const doWire = () => {
           const amt = parseInt(bankWireAmt) || 0;
           const to = bankWireTo.trim().toUpperCase();
           if (!to || amt <= 0) { sfxError(); return; }
           const fee = Math.ceil(amt * 0.03);
-          if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ç${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
+          if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
           g.salary -= (amt + fee); setSalary(g.salary);
           addBankTx(`WIRE → ${to}`, -amt, g.salary);
           addBankTx('PABLO CORP. WIRE TAX (3%)', -fee, g.salary);
           wsSend({ type: 'wire', to, amount: amt, from: char.name });
           setBankWireAmt(''); setBankWireTo(''); sfxCoin();
-          setNarr(`> WIRE SENT — ç${amt.toLocaleString()} → ${to}. Fee: ç${fee.toLocaleString()}. PABLO Corp. logged it.`);
+          setNarr(`> WIRE SENT — ƒ${amt.toLocaleString()} → ${to}. Fee: ƒ${fee.toLocaleString()}. PABLO Corp. logged it.`);
         };
         const isOverdue = bankLoan ? g.frame > bankLoan.dueAt : false;
         return (
@@ -3807,12 +3809,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ç2,500 / 30s' : char.class === 'replicant' ? 'GIG PAY: +ç1,200 / 48s' : 'SCAVENGING: +ç600+ / 60s' },
+                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ƒ2,500 / 30s' : char.class === 'replicant' ? 'GIG PAY: +ƒ1,200 / 48s' : 'SCAVENGING: +ƒ600+ / 60s' },
                       { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO TAX: 15% ON INTEREST' },
                     ].map(({ label, val, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
                         <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
-                        <div style={{ ...VTB, fontSize: '2.1rem', color: val > 0 ? '#00ff41' : 'rgba(0,255,65,.3)', letterSpacing: '.06em' }}>ç{val.toLocaleString()}</div>
+                        <div style={{ ...VTB, fontSize: '2.1rem', color: val > 0 ? '#00ff41' : 'rgba(0,255,65,.3)', letterSpacing: '.06em' }}>ƒ{val.toLocaleString()}</div>
                         <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
                       </div>
                     ))}
@@ -3822,8 +3824,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
-                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>PABLO TAX: ç{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
-                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ç5k)</span>}
+                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>PABLO TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
+                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ƒ5k)</span>}
                     </div>
                   </div>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
@@ -3834,7 +3836,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                   <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
-                    Savings earn 0.8% APY per cycle (~3 min). PABLO Corp. takes 15% of all interest. Deposits ≥ ç5,000 subject to 12% Capital Deployment Tax. KONAMI BANK is not liable for seizures during martial law.
+                    Savings earn 0.8% APY per cycle (~3 min). PABLO Corp. takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. KONAMI BANK is not liable for seizures during martial law.
                   </div>
                 </>)}
 
@@ -3843,7 +3845,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — KONAMI BANK</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO Corp. Debt Collection · Loans ≥ ç25k carry 2% origination fee.
+                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO Corp. Debt Collection · Loans ≥ ƒ25k carry 2% origination fee.
                     </div>
                   </div>
                   {!bankLoan ? (
@@ -3856,8 +3858,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           return (
                             <button key={opt.amount} onClick={() => doLoan(opt.amount)} style={{ padding: '.75rem .4rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
                               <div style={{ ...VTB, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.06em' }}>{opt.label}</div>
-                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ç{int18.toLocaleString()} INT</div>
-                              {fee > 0 && <div style={{ fontSize: '.38rem', color: '#ffaa44' }}>-ç{fee.toLocaleString()} ORIG</div>}
+                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ƒ{int18.toLocaleString()} INT</div>
+                              {fee > 0 && <div style={{ fontSize: '.38rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG</div>}
                               <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.22)', marginTop: '.12rem' }}>DUE ~6 MIN</div>
                             </button>
                           );
@@ -3874,9 +3876,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
                         {[
-                          { l: 'PRINCIPAL', v: `ç${bankLoan.amount.toLocaleString()}` },
-                          { l: 'INTEREST (18%)', v: `ç${bankLoan.interest.toLocaleString()}` },
-                          { l: 'TOTAL DUE', v: `ç${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
+                          { l: 'PRINCIPAL', v: `ƒ${bankLoan.amount.toLocaleString()}` },
+                          { l: 'INTEREST (18%)', v: `ƒ${bankLoan.interest.toLocaleString()}` },
+                          { l: 'TOTAL DUE', v: `ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
                         ].map(({ l, v }) => (
                           <div key={l} style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.45rem' }}>
                             <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
@@ -3887,9 +3889,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       {isOverdue && <div style={{ fontSize: '.46rem', color: 'rgba(255,100,100,.6)', lineHeight: 1.7, border: '1px solid rgba(255,60,60,.2)', padding: '.45rem', marginBottom: '.55rem' }}>⚠ OVERDUE — 5% salary penalty per survival cycle until repaid. Repay immediately.</div>}
                       <button onClick={doRepay} disabled={salary < bankLoan.amount + bankLoan.interest}
                         style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
-                        REPAY IN FULL — ç{(bankLoan.amount + bankLoan.interest).toLocaleString()}
+                        REPAY IN FULL — ƒ{(bankLoan.amount + bankLoan.interest).toLocaleString()}
                       </button>
-                      {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ç{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more CREAM.</div>}
+                      {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ƒ{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more CREAM.</div>}
                     </div>
                   )}
                 </>)}
@@ -3922,7 +3924,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
                       <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                         <input value={bankWireAmt} onChange={e => setBankWireAmt(e.target.value.replace(/\D/g,''))} placeholder="0" style={{ ...inp, maxWidth: 180 }} />
-                        {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>FEE: ç{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ç{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
+                        {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.4rem', color: '#ffaa44' }}>FEE: ƒ{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ƒ{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
                       </div>
                     </div>
                     <button onClick={doWire} disabled={!bankWireTo.trim() || !(parseInt(bankWireAmt) > 0)}
@@ -3946,8 +3948,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         {bankHistory.map((tx, i) => (
                           <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
                             <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
-                            <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ç{Math.abs(tx.amount).toLocaleString()}</div>
-                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ç{tx.bal.toLocaleString()}</div>
+                            <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ƒ{Math.abs(tx.amount).toLocaleString()}</div>
+                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
                           </div>
                         ))}
                       </div>
@@ -3964,6 +3966,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
+      {/* ── DEATH ── */}
+      {isDead && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.3rem', animation: 'none' }}>GAME OVER</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>INSERT COIN TO CONTINUE</div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
+            <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
+              {char.name} — {char.class.toUpperCase()}<br/>
+              HP: 0 · CREAM: ƒ{salary.toLocaleString()} · {zone}<br/>
+              <span style={{ color: 'rgba(255,80,80,.25)' }}>DR. WRIGHT SAYS: "Even BELMONT respawned. Get back out there."</span>
+            </div>
+            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
+              <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
+                CONTINUE
+              </button>
+              <button onClick={() => navigate('/world')} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
+                TITLE SCREEN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─────────────────────── SUBWAY FAST TRAVEL ────────────────────────── */}
       {showSubway && (() => {
         const STATIONS = [
@@ -3977,11 +4003,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doRide = (dest: typeof STATIONS[0]) => {
           const g = gs.current;
           if (dest.id === subwayOrigin) { setNarr(`> METRO — You're already at ${dest.label}.`); setShowSubway(false); return; }
-          if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient CREAM. Fare is ç${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
+          if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient CREAM. Fare is ƒ${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
           g.salary -= FARE; setSalary(g.salary);
           g.px = dest.x; g.py = dest.y;
           sfxEnter(); sfxCoin();
-          setNarr(`> METRO — Departed ${origin?.label ?? '???'}. Arrived ${dest.label}. [−ç${FARE.toLocaleString()} CREAM] "PABLO CORP. MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
+          setNarr(`> METRO — Departed ${origin?.label ?? '???'}. Arrived ${dest.label}. [−ƒ${FARE.toLocaleString()} CREAM] "PABLO CORP. MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
           setShowSubway(false);
         };
         return (
@@ -3991,9 +4017,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
                   <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>MINX CITY METRO</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP. RAPID TRANSIT NETWORK · FARE: ç{FARE.toLocaleString()}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP. RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
                 </div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ç{salary.toLocaleString()}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
               </div>
               {/* Origin */}
               <div style={{ padding: '.55rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.1)', fontSize: '.5rem', color: 'rgba(0,255,65,.32)', letterSpacing: '.1em', flexShrink: 0 }}>
@@ -4012,7 +4038,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.7)' }}>{s.label}</div>
                         <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.28)', marginTop: '.1rem' }}>{s.sub}</div>
                       </div>
-                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ç${FARE.toLocaleString()}`}</div>
+                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
                     </button>
                   );
                 })}
