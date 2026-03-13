@@ -100,7 +100,7 @@ const BUILDINGS = [
   { id: 'hotel_midgar',  x: 100,  y: 140, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(100,140,120,90) },
   { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1150,510,100,80) },
   { id: 'overlook',      x: 2250, y: 600, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(2250,600,100) },
-  { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE 7',     bright: false, doors: mkDoorN(1090,650,90) },
+  { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(1090,650,90) },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
   { id: 'sub_west',      x:  280, y: 540, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(280,540,80,55) },
   { id: 'sub_central',   x:  950, y: 500, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(950,500,80,55) },
@@ -144,6 +144,7 @@ const BUILDINGS = [
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
 const GANG_ZONES = [
+  { id: 'minx_city',    name: 'MINX CITY',    x:   0,  y:  920, w: 3200, h:1900, color: 'rgba(180,0,255,.03)', border: 'rgba(180,0,255,.12)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY TERRITORY — DOMINANT FACTION ]' },
   { id: 'iron_rats',    name: 'IRON RATS',    x:   50, y:  920, w:  700, h:1100, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
   { id: 'void_dogs',    name: 'VOID DOGS',    x:  720, y:  960, w:  700, h: 980, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
   { id: 'static_monks', name: 'STATIC MONKS', x: 1390, y:  920, w:  750, h:1000, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
@@ -238,9 +239,9 @@ interface Projectile { x: number; y: number; dx: number; dy: number; life: numbe
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
-const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200 };
+const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, MINX_CITY: 80, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, MINX_CITY: 55, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8 };
+const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, MINX_CITY: 4500, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200 };
 // Non-aggressive minor threats — just wander, don't attack
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER']);
 // Class base stats ─────────────────────────────────────────────────────────────
@@ -361,6 +362,15 @@ const THREATS_INIT: Threat[] = [
   mkThreat(2400,1550,'EASTERN_BLOC'),  mkThreat(2750,1450,'EASTERN_BLOC'),
   mkThreat(2350,1800,'EASTERN_BLOC'),  mkThreat(2900,1200,'EASTERN_BLOC'),
   mkThreat(2600,2000,'EASTERN_BLOC'),
+  // ── Wasteland — MINX CITY (dominant faction — largest presence, strongest stats) ──
+  mkThreat(100,  950, 'MINX_CITY'), mkThreat(400, 1000, 'MINX_CITY'),
+  mkThreat(750, 1100, 'MINX_CITY'), mkThreat(1050, 1050, 'MINX_CITY'),
+  mkThreat(1350, 950, 'MINX_CITY'), mkThreat(1650, 1100, 'MINX_CITY'),
+  mkThreat(2000, 1000, 'MINX_CITY'), mkThreat(2400, 1100, 'MINX_CITY'),
+  mkThreat(2700, 950, 'MINX_CITY'), mkThreat(3000, 1050, 'MINX_CITY'),
+  mkThreat(300, 1400, 'MINX_CITY'), mkThreat(800, 1600, 'MINX_CITY'),
+  mkThreat(1200, 1500, 'MINX_CITY'), mkThreat(1700, 1700, 'MINX_CITY'),
+  mkThreat(2200, 1600, 'MINX_CITY'), mkThreat(2800, 1500, 'MINX_CITY'),
   // ── Deep wasteland wanderers ──
   mkThreat(600,  2100,'MUTANT'), mkThreat(1100, 2300, 'MUTANT'),
   mkThreat(1600, 2200,'MUTANT'), mkThreat(2200, 2400, 'MUTANT'),
@@ -385,7 +395,7 @@ const THREAT_COL: Record<string, string> = {
   IRON_RATS: '#ff4444', VOID_DOGS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
-  SPY: '#ffffaa', PABLO_GUARD: '#5599ff',
+  SPY: '#ffffaa', PABLO_GUARD: '#5599ff', MINX_CITY: '#cc44ff',
   VAGRANT: '#887766', STRAY_DOG: '#aa8855', SCAVENGER: '#99aa66',
 };
 
@@ -708,7 +718,9 @@ export default function WorldPlay() {
     oregonTick: 0,
     walkFrame: 0,
     guardCooldowns: [] as number[],
+    policeCooldowns: [] as number[],
     ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
+    fogRevealed: new Set<string>(),
     projectiles: [] as Projectile[],
     bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
@@ -1069,9 +1081,10 @@ export default function WorldPlay() {
       }
     }
     else if (bid === 'safe_house') {
-      g.hp = Math.min(g.maxHp, g.hp + 35); g.energy = Math.min(100, g.energy + 25);
-      setHp(g.hp); setEnergy(g.energy); sfxHeal();
-      setNarr('> SAFE HOUSE 7 — No name on the door. No sign. RIPLEY nods you in. You rest on a cot. HP +35. Energy +25. No charge. "Out here nobody charges for safety," she says. "That\'s how you know it\'s real."');
+      g.hp = g.maxHp; g.energy = 100; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40);
+      setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
+      doSave({ ...g, salary: g.salary });
+      setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. Full HP. Full energy. Hunger +40. Thirst +40. Progress saved. RIPLEY stands watch. "Nobody gets in unless I say," she says. "Rest. You earned it."');
     }
     else if (bid === 'prancing_pony') {
       if (g.salary >= 4000) {
@@ -1708,7 +1721,7 @@ export default function WorldPlay() {
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
     return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
-WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of SHADOW TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is FIAT (ƒ). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
+WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by IRON RATS, VOID DOGS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the Konami code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
@@ -2192,21 +2205,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp <= 0 && !lastDead) {
         lastDead = true;
         sfxDeath();
-        // ── Auto-respawn at DR. WRIGHT'S CLINIC ──────────────────────────
-        const emergencyFee = 7500;
+        // ── Auto-respawn at SAFE HOUSE ──────────────────────────────────
+        const emergencyFee = 5000;
         g.hp = g.maxHp; g.hunger = 60; g.thirst = 60; g.energy = 60;
         g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
-        g.px = 230; g.py = 400;
+        g.px = 1135; g.py = 682;
         g.salary = Math.max(-50000, g.salary - emergencyFee);
         g.threats = g.threats.map(t => ({ ...t }));
         setSalary(g.salary); setHp(Math.floor(g.hp));
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
         setPoisoned(false);
-        g.floaters.push({ x: 230, y: 380, text: `−ƒ${emergencyFee.toLocaleString()} EMERGENCY CARE`, color: '#ff6666', life: 120, maxLife: 120 });
-        addBankTx('DR. WRIGHT EMERGENCY CARE', -emergencyFee, g.salary);
+        g.floaters.push({ x: 1135, y: 662, text: `−ƒ${emergencyFee.toLocaleString()} RECOVERY`, color: '#ff6666', life: 120, maxLife: 120 });
+        addBankTx('SAFE HOUSE RECOVERY', -emergencyFee, g.salary);
         sfxHeal();
-        const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt. DR. WRIGHT will remember this.` : '';
-        setNarr(`> DEAD. DR. WRIGHT's clinic. Emergency revival — ƒ${emergencyFee.toLocaleString()} FIAT deducted. "You flatlined. I brought you back. You're welcome. Pay your bill."${debtNote}`);
+        const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
+        setNarr(`> DEAD. You wake up at your bed in the SAFE HOUSE. RIPLEY patched you up — ƒ${emergencyFee.toLocaleString()} FIAT deducted for medical supplies. "You were gone for a minute there," she says. "Don't make it a habit."${debtNote}`);
       }
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
@@ -2297,7 +2310,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.gangZone = newGang; setGangZone(newGang);
         if (newGang !== lastGangZ) {
           lastGangZ = newGang;
-          if (newGang === 'iron_rats') setNarr('> IRON RATS TERRITORY — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER\'s old crew. He doesn\'t claim them anymore.');
+          if (newGang === 'minx_city') setNarr('> MINX CITY TERRITORY — The dominant faction. Their purple banners hang from every ruin. SENIOR PABLO\'s reach extends even here. The other gangs operate in their shadow. "Everything south of the wall belongs to Minx City," the soldiers say. "Everything north too. They just don\'t know it yet."');
+          else if (newGang === 'iron_rats') setNarr('> IRON RATS TERRITORY — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER\'s old crew. He doesn\'t claim them anymore.');
           else if (newGang === 'void_dogs') setNarr('> VOID DOGS TERRITORY — They broadcast static on loop. The code in the static is an old Famicom game. Nobody has decoded it. Nobody that lived, anyway.');
           else if (newGang === 'static_monks') setNarr('> STATIC MONKS TERRITORY — Silent. They move like shadows. ERDRICK says they guard something buried here from before the collapse. Before even the games.');
           else if (newGang === 'eastern_bloc') setNarr('> EASTERN BLOC TERRITORY — They don\'t speak. They don\'t negotiate. MOTOKO tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.');
@@ -2428,7 +2442,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // ── LIVING WORLD: Police patrol movement ────────────────────────────
-      for (const p of g.police) {
+      for (let pi = 0; pi < g.police.length; pi++) {
+        const p = g.police[pi];
+        if (!g.policeCooldowns[pi]) g.policeCooldowns[pi] = 0;
+        if (g.policeCooldowns[pi] > 0) g.policeCooldowns[pi]--;
         const route = POLICE_ROUTES[p.routeIdx];
         const next  = (p.wpIdx + 1) % route.length;
         const wpA   = route[p.wpIdx], wpB = route[next];
@@ -2436,13 +2453,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (p.progress >= 1) { p.progress = 0; p.wpIdx = next; }
         p.x = wpA.x + (wpB.x - wpA.x) * p.progress;
         p.y = wpA.y + (wpB.y - wpA.y) * p.progress;
+        if (p.y < WASTELAND_Y && g.policeCooldowns[pi] <= 0) {
+          for (let ti = 0; ti < g.threats.length; ti++) {
+            const t = g.threats[ti];
+            if (PASSIVE_THREATS.has(t.type) || t.type === 'PABLO_GUARD') continue;
+            if (t.y >= WASTELAND_Y) continue;
+            const dx = t.x - p.x, dy = t.y - p.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 120) {
+              const dmg = 12 + Math.random() * 8;
+              t.hp -= dmg;
+              g.policeCooldowns[pi] = 45;
+              g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} POLICE`, color: '#4488ff', life: 40, maxLife: 40 });
+              if (t.hp <= 0) {
+                g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: '#4488ff', life: 60, maxLife: 60 });
+                g.threats.splice(ti, 1); ti--;
+              }
+              break;
+            }
+          }
+        }
       }
 
-      // ── LIVING WORLD: Random fire events ────────────────────────────────
+      // ── LIVING WORLD: Random fire events (reduced ~1/3 of original rate) ──
       g.fireTick++;
-      if (g.fireTick >= 900 && Math.random() < 0.008) {
+      if (g.fireTick >= 2700 && Math.random() < 0.003) {
         g.fireTick = 0;
-        // Pick a random building in city
         const cityBlds = BUILDINGS.filter(b => b.y < WASTELAND_Y - 50);
         const fb = cityBlds[Math.floor(Math.random() * cityBlds.length)];
         if (!g.fires.find(f => f.bid === fb.id)) {
@@ -2636,18 +2672,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isNear = nb === b.id;
         const isLocked = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
 
-        // ── SHADOW TOWER — special villain skyscraper rendering ────────────
+        // ── PABLO TOWER — special villain skyscraper rendering (no blur) ──
         if (b.id === 'pablo_tower') {
-          // Outer glow pulse
           const pulse = 0.18 + Math.sin(g.frame * 0.03) * 0.08;
-          ctx.shadowColor = isNear ? 'rgba(0,255,65,.7)' : 'rgba(80,0,120,.9)';
-          ctx.shadowBlur = isNear ? 18 : 28;
-          // Main body — dark imposing mass
           const grad = ctx.createLinearGradient(bx, by, bx, by + b.h);
           grad.addColorStop(0, 'rgba(12,2,20,.98)');
           grad.addColorStop(1, 'rgba(4,8,4,.97)');
           ctx.fillStyle = grad; ctx.fillRect(bx, by, b.w, b.h);
-          ctx.shadowBlur = 0;
           // Border — purple/green depending on state
           ctx.strokeStyle = isNear ? 'rgba(0,255,65,.9)' : `rgba(140,0,220,${pulse + .3})`;
           ctx.lineWidth = isNear ? 2.5 : 1.5; ctx.strokeRect(bx, by, b.w, b.h);
@@ -2684,11 +2715,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(0,255,65,${.6 + Math.sin(g.frame * 0.1) * .4})`;
           ctx.beginPath(); ctx.arc(bx + b.w / 2, by - 21, 2.5, 0, Math.PI * 2); ctx.fill();
           // Label
-          ctx.shadowColor = '#00ff41'; ctx.shadowBlur = isNear ? 10 : 4;
           ctx.fillStyle = isNear ? '#00ff41' : 'rgba(180,0,255,.8)';
           ctx.font = 'bold 11px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('SHADOW TOWER', bx + b.w / 2, by + b.h / 2 + 4);
-          ctx.shadowBlur = 0;
+          ctx.fillText('PABLO TOWER', bx + b.w / 2, by + b.h / 2 + 4);
           if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
           continue; // skip default building drawing
         }
@@ -2908,6 +2937,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Armored triangle
           ctx.beginPath(); ctx.moveTo(tx,ty-8); ctx.lineTo(tx+7,ty+6); ctx.lineTo(tx-7,ty+6); ctx.closePath(); ctx.fill();
           ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fillRect(tx-2,ty-3,4,7);
+        } else if (t.type === 'MINX_CITY') {
+          // MINX CITY — dominant gang, heavy armored soldier
+          ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-6,ty-9,12,10); // heavy body armor
+          ctx.fillStyle = '#cc44ff'; ctx.beginPath(); ctx.arc(tx,ty-12,4.5,0,Math.PI*2); ctx.fill(); // head
+          ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-8,ty-8,3,7); ctx.fillRect(tx+5,ty-8,3,7); // arms
+          ctx.fillRect(tx-5,ty+1,4,6); ctx.fillRect(tx+1,ty+1,4,6); // legs
+          ctx.fillStyle = '#ee88ff'; ctx.fillRect(tx-4,ty-7,8,2); // visor
+          ctx.fillStyle = '#cc44ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('MC', tx, ty-17);
+          if (chasing) {
+            ctx.fillStyle = '#cc44ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('MINX CITY', tx, ty - 22);
+          }
         } else if (t.type === 'MUTANT') {
           // Irregular blob
           ctx.beginPath(); ctx.arc(tx,ty,6,0,Math.PI*2); ctx.fill();
@@ -3241,6 +3283,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
 
+      // ── FOG OF WAR — dark shroud revealed by player exploration ─────────────
+      const FOG_TILE = 80;
+      const fogRevealRadius = 3;
+      const ptx = Math.floor(g.px / FOG_TILE), pty = Math.floor(g.py / FOG_TILE);
+      for (let dy = -fogRevealRadius; dy <= fogRevealRadius; dy++) {
+        for (let dx = -fogRevealRadius; dx <= fogRevealRadius; dx++) {
+          if (dx*dx + dy*dy <= fogRevealRadius*fogRevealRadius + 1) {
+            g.fogRevealed.add(`${ptx+dx},${pty+dy}`);
+          }
+        }
+      }
+      const fogStartTX = Math.floor(cx / FOG_TILE);
+      const fogStartTY = Math.floor(cy / FOG_TILE);
+      const fogEndTX = Math.ceil((cx + cw) / FOG_TILE);
+      const fogEndTY = Math.ceil((cy + ch) / FOG_TILE);
+      for (let fty = fogStartTY; fty <= fogEndTY; fty++) {
+        for (let ftx = fogStartTX; ftx <= fogEndTX; ftx++) {
+          if (!g.fogRevealed.has(`${ftx},${fty}`)) {
+            const sx = ftx * FOG_TILE - cx, sy = fty * FOG_TILE - cy;
+            ctx.fillStyle = 'rgba(0,0,0,.7)';
+            ctx.fillRect(sx, sy, FOG_TILE, FOG_TILE);
+          }
+        }
+      }
       ctx.restore();
 
 
