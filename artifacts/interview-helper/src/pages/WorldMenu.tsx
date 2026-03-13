@@ -813,7 +813,7 @@ export default function WorldMenu() {
                       onChange={e => { setName(e.target.value); setNameError(''); }}
                       onKeyDown={e => e.key === 'Enter' && handleProceed()}
                       maxLength={28}
-                      placeholder="FIRST  LAST"
+                      placeholder="WHAT'S YOUR NAME"
                       autoFocus
                       style={{ width: '100%', padding: '.65rem .8rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${nameError ? 'rgba(255,60,60,.6)' : name ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'}`, color: '#00ff41', ...S, fontSize: '1rem', letterSpacing: '.1em', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }}
                     />
