@@ -559,6 +559,8 @@ export default function WorldPlay() {
   const audioCtx      = useRef<AudioContext | null>(null);
   const frozenRef     = useRef(false);
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
+  const chatOpenRef   = useRef(false);
+  const zoomRef       = useRef(1);
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -1235,11 +1237,9 @@ export default function WorldPlay() {
     }
   }, [voice, wsSend]);
 
-  // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
-  useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard;
-    npcDialogRef.current = !!dialog && dialog.bid === 'npc';
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade, showBank, showSubway, showVend, showBillboard]);
+  // ── Keep frozenRef in sync synchronously (not in an effect) ──
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard;
+  npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1306,7 +1306,7 @@ export default function WorldPlay() {
       }
 
       if (e.key === 'e' || e.key === 'E') {
-        if (!frozenRef.current && !chatOpen) {
+        if (!frozenRef.current && !chatOpenRef.current) {
           const nb = gs.current.near;
           const nn = gs.current.nearNpc;
           const nbb = gs.current.nearBillboard;
@@ -1320,7 +1320,7 @@ export default function WorldPlay() {
       }
       if (e.key === 'p' || e.key === 'P') setShowPablo(v => !v);
       if (e.key === 'm' || e.key === 'M') setShowMap(v => !v);
-      if (e.key === 'c' || e.key === 'C') { setChatOpen(v => !v); setUnread(0); }
+      if (e.key === 'c' || e.key === 'C') { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
       // [F] melee attack
@@ -1384,7 +1384,7 @@ export default function WorldPlay() {
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
-  }, [chatOpen, dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
+  }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
   const fetchBillboards = useCallback(async () => {
@@ -1484,6 +1484,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     const ctx = canvas.getContext('2d')!;
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize(); window.addEventListener('resize', resize);
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.05 : 0.05;
+      zoomRef.current = Math.max(0.5, Math.min(2, zoomRef.current + delta));
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
 
@@ -1724,10 +1730,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
-      const cw = canvas.width, ch = canvas.height;
+      const zoom = zoomRef.current;
+      const cw = canvas.width / zoom, ch = canvas.height / zoom;
       g.cam.x = Math.max(0, Math.min(W - cw, g.px - cw / 2));
       g.cam.y = Math.max(0, Math.min(H - ch, g.py - ch / 2));
       const ox = -g.cam.x, oy = -g.cam.y;
+
+      ctx.save();
+      ctx.scale(zoom, zoom);
 
       // Proximity check — buildings
       let nb: string | null = null;
@@ -2602,8 +2612,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
 
-      // ── RDR2-style circular minimap ──────────────────────────────────────────
-      const mmR = 70, mmCX = mmR + 14, mmCY = ch - mmR - 14;
+      ctx.restore();
+
+      // ── RDR2-style circular minimap (rendered in screen space, not zoomed) ──
+      const scw = canvas.width, sch = canvas.height;
+      const mmR = 70, mmCX = mmR + 14, mmCY = sch - mmR - 14;
       const toMX = (wx: number) => mmCX - mmR + (wx / W) * (mmR * 2);
       const toMY = (wy: number) => mmCY - mmR + (wy / H) * (mmR * 2);
       ctx.save();
@@ -2677,7 +2690,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       animRef.current = requestAnimationFrame(loop);
     };
     animRef.current = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
+    return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); canvas.removeEventListener('wheel', onWheel); };
   }, [char, speaking]);
 
   const hpPct = hp;
@@ -2781,7 +2794,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', top: 10, right: 10, width: 156, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', zIndex: 100, padding: '.35rem .45rem' }}>
           <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
           {online.slice(0, 5).map(p => (
-            <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.75)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
+            <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); chatOpenRef.current = true; }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.75)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
               {speakIds.has(p.id) && <span style={{ fontSize: '.5rem' }}>🎙</span>}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             </div>
@@ -2809,7 +2822,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ padding: '.35rem .6rem', background: muted ? 'rgba(255,34,102,.08)' : 'rgba(0,8,0,.92)', border: muted ? '1px solid rgba(255,34,102,.4)' : '1px solid rgba(0,255,65,.35)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             {muted ? '✕ MUTE' : '♪ SND'}
           </button>
-          <button onClick={() => { setChatOpen(v => !v); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
+          <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
             {unread > 0 && <span style={{ position: 'absolute', top: 2, right: 3, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             CHAT [C]
           </button>
@@ -2870,7 +2883,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.1em' }}>{dmTarget ? `DM → ${dmTarget.name}` : 'WORLD CHAT'}</span>
             <div style={{ display: 'flex', gap: '.3rem' }}>
               {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
-              <button onClick={() => setChatOpen(false)} style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; }} style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
             </div>
           </div>
           {online.length > 0 && (
@@ -3566,54 +3579,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* ── MAP PANEL (M key) ─────────────────────────────────────────────── */}
-      {showMap && (
+      {showMap && (() => {
+        const mapVR = 300, mapVRy = 250;
+        const vbX = Math.max(0, Math.min(W - mapVR * 2, gs.current.px - mapVR));
+        const vbY = Math.max(0, Math.min(H - mapVRy * 2, gs.current.py - mapVRy));
+        return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}
           onClick={() => setShowMap(false)}>
-          <div style={{ position: 'relative', width: 560, border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace" }}
+          <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.2em' }}>MINX CITY MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                 <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: MINX CITY · PST</div>
                 <button onClick={() => setShowMap(false)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
-            {/* SVG map */}
-            <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a' }}>
-              {/* City vs Wasteland */}
+            <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy * 2}`} preserveAspectRatio="xMidYMid meet">
               <rect x={0} y={0} width={W} height={WASTELAND_Y} fill="rgba(0,10,3,.8)" />
               <rect x={0} y={WASTELAND_Y} width={W} height={H - WASTELAND_Y} fill="rgba(10,5,0,.8)" />
-              <line x1={0} y1={WASTELAND_Y} x2={W} y2={WASTELAND_Y} stroke="rgba(0,255,65,.2)" strokeWidth={4} strokeDasharray="20 10" />
-              <text x={20} y={WASTELAND_Y - 15} fill="rgba(0,255,65,.35)" fontSize={28} fontFamily="Share Tech Mono">MINX CITY</text>
-              <text x={20} y={WASTELAND_Y + 38} fill="rgba(255,130,50,.35)" fontSize={28} fontFamily="Share Tech Mono">WASTELAND</text>
-              {/* Buildings */}
+              <line x1={0} y1={WASTELAND_Y} x2={W} y2={WASTELAND_Y} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
+              <text x={vbX + 10} y={WASTELAND_Y - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
+              <text x={vbX + 10} y={WASTELAND_Y + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">WASTELAND</text>
               {BUILDINGS.map(b => (
                 <g key={b.id}>
-                  <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={b.bright ? 'rgba(0,255,65,.25)' : 'rgba(0,180,55,.14)'} stroke={b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'} strokeWidth={2} />
-                  <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 5} textAnchor="middle" fill="rgba(0,255,65,.5)" fontSize={14} fontFamily="Share Tech Mono">{b.label.substring(0,10)}</text>
+                  <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={b.bright ? 'rgba(0,255,65,.25)' : 'rgba(0,180,55,.14)'} stroke={b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'} strokeWidth={1} />
+                  <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill="rgba(0,255,65,.7)" fontSize={7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
                 </g>
               ))}
-              {/* Billboards */}
               {BILLBOARDS.map(bb => (
                 <g key={bb.locationId}>
-                  <rect x={bb.x - 8} y={bb.y - 8} width={16} height={16} fill="rgba(0,200,255,.2)" stroke="rgba(0,200,255,.5)" strokeWidth={2} />
-                  <text x={bb.x} y={bb.y + 4} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={8} fontFamily="Share Tech Mono">BB</text>
+                  <rect x={bb.x - 4} y={bb.y - 4} width={8} height={8} fill="rgba(0,200,255,.2)" stroke="rgba(0,200,255,.5)" strokeWidth={1} />
+                  <text x={bb.x} y={bb.y + 3} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={5} fontFamily="Share Tech Mono">BB</text>
                 </g>
               ))}
-              {/* Player position */}
-              <circle cx={gs.current.px} cy={gs.current.py} r={18} fill="none" stroke="#00ff41" strokeWidth={3} />
-              <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="#00ff41" />
-              <text x={gs.current.px} y={gs.current.py - 26} textAnchor="middle" fill="#00ff41" fontSize={22} fontFamily="Share Tech Mono">{char.name}</text>
-              {/* Threats */}
+              <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#00ff41" strokeWidth={2} />
+              <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#00ff41" />
+              <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#00ff41" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
               {gs.current.threats.map((t, ti) => (
-                <circle key={ti} cx={t.x} cy={t.y} r={12} fill={THREAT_COL[t.type] ?? '#ff4444'} opacity={0.6} />
+                <circle key={ti} cx={t.x} cy={t.y} r={5} fill={THREAT_COL[t.type] ?? '#ff4444'} opacity={0.6} />
               ))}
-              {/* Spy indicator */}
               {gs.current.threats.filter(t => t.type === 'SPY').map((t, ti) => (
-                <circle key={`spy${ti}`} cx={t.x} cy={t.y} r={16} fill="none" stroke="#ffffaa" strokeWidth={2} strokeDasharray="8 4" />
+                <circle key={`spy${ti}`} cx={t.x} cy={t.y} r={8} fill="none" stroke="#ffffaa" strokeWidth={1} strokeDasharray="4 2" />
               ))}
             </svg>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
               {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
@@ -3621,12 +3631,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: '.5rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
+            <div style={{ marginTop: '.5rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
               PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} FIAT · [M] or [ESC] to close
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── BILLBOARD MARKETPLACE PANEL ────────────────────────────────────── */}
       {showBillboard && (() => {
