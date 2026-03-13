@@ -173,37 +173,36 @@ export function useVoiceListen() {
   };
 }
 
+export type ScanStatus = 'idle' | 'connecting' | 'ready' | 'analyzing' | 'done' | 'error';
+
 export function useScreenScan() {
-  const [scanStatus, setScanStatus] = useState<'idle' | 'capturing' | 'analyzing' | 'done' | 'error'>('idle');
+  const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
   const [answer, setAnswer] = useState('');
+  const [autoPilot, setAutoPilot] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const INTERVAL_SECS = 25;
 
-  const scanScreen = useCallback(async () => {
-    setScanStatus('capturing');
-    setAnswer('');
+  const captureFrame = useCallback((): string | null => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')!.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+  }, []);
+
+  const analyzeFrame = useCallback(async (base64: string) => {
     abortRef.current?.abort();
-
+    abortRef.current = new AbortController();
+    setAnswer('');
+    setScanStatus('analyzing');
     try {
-      const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: { frameRate: 1 }, audio: false });
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.muted = true;
-      await new Promise<void>((resolve) => { video.onloadedmetadata = () => resolve(); });
-      await video.play();
-
-      await new Promise(r => setTimeout(r, 300));
-
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d')!.drawImage(video, 0, 0);
-      stream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
-
-      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-
-      setScanStatus('analyzing');
-      abortRef.current = new AbortController();
-
       await streamSSE(
         '/api/interview/scan',
         { image: base64 },
@@ -214,29 +213,102 @@ export function useScreenScan() {
       );
       setScanStatus('done');
     } catch (e: any) {
-      if (e.name === 'NotAllowedError') {
-        setScanStatus('idle');
-      } else if (e.name !== 'AbortError') {
-        setScanStatus('error');
-      }
+      if (e.name !== 'AbortError') setScanStatus('error');
     } finally {
       abortRef.current = null;
     }
   }, []);
 
-  const reset = useCallback(() => {
+  const startCountdown = useCallback(() => {
+    setCountdown(INTERVAL_SECS);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(countdownRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  const stopStream = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
     abortRef.current?.abort();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    videoRef.current = null;
+    setAutoPilot(false);
+    setCountdown(0);
     setScanStatus('idle');
     setAnswer('');
   }, []);
 
+  const openStream = useCallback(async (): Promise<boolean> => {
+    try {
+      const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: { frameRate: 1 }, audio: false });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.muted = true;
+      await new Promise<void>(res => { video.onloadedmetadata = () => res(); });
+      await video.play();
+      await new Promise(r => setTimeout(r, 400));
+      streamRef.current = stream;
+      videoRef.current = video;
+      stream.getTracks().forEach((t: MediaStreamTrack) => {
+        t.onended = () => stopStream();
+      });
+      return true;
+    } catch (e: any) {
+      if (e.name !== 'NotAllowedError') setScanStatus('error');
+      return false;
+    }
+  }, [stopStream]);
+
+  const scanOnce = useCallback(async () => {
+    setScanStatus('connecting');
+    const needStream = !streamRef.current;
+    if (needStream) {
+      const ok = await openStream();
+      if (!ok) { setScanStatus('idle'); return; }
+    }
+    setScanStatus('ready');
+    const base64 = captureFrame();
+    if (base64) await analyzeFrame(base64);
+  }, [openStream, captureFrame, analyzeFrame]);
+
+  const startAutoPilot = useCallback(async () => {
+    setScanStatus('connecting');
+    const ok = await openStream();
+    if (!ok) { setScanStatus('idle'); return; }
+
+    setAutoPilot(true);
+    const base64 = captureFrame();
+    if (base64) await analyzeFrame(base64);
+
+    startCountdown();
+    intervalRef.current = setInterval(async () => {
+      const frame = captureFrame();
+      if (frame) await analyzeFrame(frame);
+      startCountdown();
+    }, INTERVAL_SECS * 1000);
+  }, [openStream, captureFrame, analyzeFrame, startCountdown]);
+
+  const reset = useCallback(() => {
+    stopStream();
+  }, [stopStream]);
+
   return {
     scanStatus,
     answer,
-    scanScreen,
+    autoPilot,
+    countdown,
+    scanOnce,
+    startAutoPilot,
+    stopStream,
     reset,
-    isCapturing: scanStatus === 'capturing',
+    isConnecting: scanStatus === 'connecting',
     isAnalyzing: scanStatus === 'analyzing',
+    isReady: scanStatus === 'ready' || scanStatus === 'done',
   };
 }
 
