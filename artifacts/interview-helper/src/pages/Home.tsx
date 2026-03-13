@@ -19,7 +19,7 @@ export default function Home() {
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
-  const { scanStatus, answer: scanAnswer, autoPilot, countdown, scanOnce, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
+  const { scanStatus, answer: scanAnswer, autoPilot, countdown, intervalSecs, setIntervalSecs, scanOnce, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
 
   const displayResponse = activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
@@ -200,6 +200,19 @@ export default function Home() {
                     className="py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[10px] font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
                     <Bot className="w-3 h-3" /> Auto
                   </button>
+                </div>
+                {/* Speed selector */}
+                <div className="flex items-center gap-1 pt-0.5">
+                  <span className="text-[9px] text-muted-foreground/50 mr-0.5">every</span>
+                  {[5, 10, 15].map(s => (
+                    <button key={s} onClick={() => setIntervalSecs(s)} disabled={isAnyBusy}
+                      className={`flex-1 py-0.5 rounded text-[9px] font-bold transition-colors disabled:cursor-not-allowed
+                        ${intervalSecs === s
+                          ? 'bg-sky-500/30 text-sky-200 border border-sky-500/50'
+                          : 'text-muted-foreground/50 hover:text-sky-300 hover:bg-sky-500/10'}`}>
+                      {s}s
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

@@ -185,7 +185,7 @@ export function useScreenScan() {
   const abortRef = useRef<AbortController | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const INTERVAL_SECS = 25;
+  const [intervalSecs, setIntervalSecs] = useState(15);
 
   const captureFrame = useCallback((): string | null => {
     const video = videoRef.current;
@@ -219,8 +219,8 @@ export function useScreenScan() {
     }
   }, []);
 
-  const startCountdown = useCallback(() => {
-    setCountdown(INTERVAL_SECS);
+  const startCountdown = useCallback((secs: number) => {
+    setCountdown(secs);
     if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
       setCountdown(prev => {
@@ -276,7 +276,8 @@ export function useScreenScan() {
     if (base64) await analyzeFrame(base64);
   }, [openStream, captureFrame, analyzeFrame]);
 
-  const startAutoPilot = useCallback(async () => {
+  const startAutoPilot = useCallback(async (secs?: number) => {
+    const period = secs ?? intervalSecs;
     setScanStatus('connecting');
     const ok = await openStream();
     if (!ok) { setScanStatus('idle'); return; }
@@ -285,13 +286,13 @@ export function useScreenScan() {
     const base64 = captureFrame();
     if (base64) await analyzeFrame(base64);
 
-    startCountdown();
+    startCountdown(period);
     intervalRef.current = setInterval(async () => {
       const frame = captureFrame();
       if (frame) await analyzeFrame(frame);
-      startCountdown();
-    }, INTERVAL_SECS * 1000);
-  }, [openStream, captureFrame, analyzeFrame, startCountdown]);
+      startCountdown(period);
+    }, period * 1000);
+  }, [openStream, captureFrame, analyzeFrame, startCountdown, intervalSecs]);
 
   const reset = useCallback(() => {
     stopStream();
@@ -302,6 +303,8 @@ export function useScreenScan() {
     answer,
     autoPilot,
     countdown,
+    intervalSecs,
+    setIntervalSecs,
     scanOnce,
     startAutoPilot,
     stopStream,
