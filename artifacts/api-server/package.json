@@ -19,7 +19,8 @@
     "express": "^5",
     "express-session": "^1.19.0",
     "openid-client": "^6.8.2",
-    "resend": "4.0.0"
+    "resend": "4.0.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
@@ -28,6 +29,7 @@
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
     "esbuild": "^0.27.3",
     "tsx": "catalog:"
   }
