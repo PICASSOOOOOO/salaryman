@@ -72,3 +72,63 @@ id = "y3mLWX4pj1gIf30yaYAKi"
 uri = "file://attached_assets/generated_images/frontman-pro-product.png"
 type = "image"
 title = "Frontman Pro — Stripe Product Image"
+
+[[outputs]]
+id = "Zf4XAA_Rf9f-jEYK9v4b6"
+uri = "file://attached_assets/generated_images/frontman-pro-v1.png"
+type = "image"
+title = "V1 — Silver Monogram"
+
+[[outputs]]
+id = "51eTOZLoSKOP3zEa7GVGl"
+uri = "file://attached_assets/generated_images/frontman-pro-v2.png"
+type = "image"
+title = "V2 — Purple-Blue Gradient + Crown"
+
+[[outputs]]
+id = "g2CD6WGeVdp8hOlP2Ixfa"
+uri = "file://attached_assets/generated_images/frontman-pro-v3.png"
+type = "image"
+title = "V3 — Glassmorphism"
+
+[[outputs]]
+id = "B2l6BJhXx6GG_TUqZdXaK"
+uri = "file://attached_assets/generated_images/frontman-pro-v4.png"
+type = "image"
+title = "V4 — Retro Bold Purple"
+
+[[outputs]]
+id = "o0zes4tII-baaWDdVKafg"
+uri = "file://attached_assets/generated_images/frontman-pro-v5.png"
+type = "image"
+title = "V5 — Dark Navy Constellation"
+
+[[outputs]]
+id = "GyONhR6cG5-4ubzeIsTKF"
+uri = "file://attached_assets/generated_images/frontman-pro-v6.png"
+type = "image"
+title = "V6 — Clean White Editorial"
+
+[[outputs]]
+id = "VWnc4hLkgZw8s9FsLYQhy"
+uri = "file://attached_assets/generated_images/frontman-pro-v7.png"
+type = "image"
+title = "V7 — Neon Cyberpunk"
+
+[[outputs]]
+id = "RQVuWD2Jxx_iBVZhl2ISl"
+uri = "file://attached_assets/generated_images/frontman-pro-v8.png"
+type = "image"
+title = "V8 — Black Marble + Gold"
+
+[[outputs]]
+id = "XslGLPngjeCFvQu5klUxh"
+uri = "file://attached_assets/generated_images/frontman-pro-v9.png"
+type = "image"
+title = "V9 — Geometric Hexagon"
+
+[[outputs]]
+id = "GZ1ULXmM6E3VBz63JjSeT"
+uri = "file://attached_assets/generated_images/frontman-pro-v10.png"
+type = "image"
+title = "V10 — Warm Sunset Gradient"
