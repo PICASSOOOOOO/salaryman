@@ -10,6 +10,31 @@ import {
 const W = 2400, H = 2000, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 800;
 
+// ── Commodity Trading (Star Citizen–style economy) ────────────────────────────
+interface Commodity {
+  id: string; name: string;
+  cityBuy: number; citySell: number;
+  wasteBuy: number; wasteSell: number;
+  vol: number; illegal: boolean; unit: string; desc: string;
+}
+const COMMODITIES: Commodity[] = [
+  { id:'stims',    name:'STIMS',             cityBuy:2400,  citySell:1200,  wasteBuy:8500,  wasteSell:5500,  vol:.15, illegal:false, unit:'vial',  desc:'Combat stimulants. PABLO taxes them. Rare in the Wasteland.' },
+  { id:'rations',  name:'FOOD RATIONS',      cityBuy:1500,  citySell:800,   wasteBuy:500,   wasteSell:3200,  vol:.08, illegal:false, unit:'crate', desc:'Surplus in city kitchens. Out there they kill for a crate.' },
+  { id:'scrap',    name:'SCRAP METAL',       cityBuy:900,   citySell:400,   wasteBuy:300,   wasteSell:1800,  vol:.06, illegal:false, unit:'load',  desc:'City junk. Wasteland currency. Haul it south.' },
+  { id:'power',    name:'POWER CELLS',       cityBuy:3000,  citySell:1800,  wasteBuy:6200,  wasteSell:5000,  vol:.10, illegal:false, unit:'cell',  desc:'City grid keeps them cheap. The wastes run dark without them.' },
+  { id:'weapons',  name:'WEAPON PARTS',      cityBuy:5200,  citySell:2500,  wasteBuy:2500,  wasteSell:8500,  vol:.12, illegal:true,  unit:'kit',   desc:'PABLO Decree #12: civilian arms restricted. Raiders do not care.' },
+  { id:'data',     name:'DATA CHIPS',        cityBuy:8000,  citySell:4500,  wasteBuy:3000,  wasteSell:15000, vol:.20, illegal:true,  unit:'chip',  desc:'Stolen PABLO Corp. data. Wiped and resold. Most valuable contraband.' },
+  { id:'implants', name:'ILLICIT IMPLANTS',  cityBuy:12000, citySell:6000,  wasteBuy:5000,  wasteSell:18000, vol:.18, illegal:true,  unit:'unit',  desc:'Banned by PABLO Decree #47. Mako Biotech still ships them south.' },
+  { id:'intel',    name:'INTEL DOSSIERS',    cityBuy:10000, citySell:7000,  wasteBuy:4000,  wasteSell:22000, vol:.25, illegal:true,  unit:'file',  desc:'Every faction wants what every other faction knows. The courier wins.' },
+];
+type CargoPrices = { cityBuy:number; citySell:number; wasteBuy:number; wasteSell:number };
+function initCommodityPrices(): Record<string,CargoPrices> {
+  const r: Record<string,CargoPrices> = {};
+  for (const c of COMMODITIES) r[c.id] = { cityBuy:c.cityBuy, citySell:c.citySell, wasteBuy:c.wasteBuy, wasteSell:c.wasteSell };
+  return r;
+}
+const MAX_CARGO = 5;
+
 const BUILDINGS = [
   // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
   { id: 'minx_arms',    x: 1060, y: 260, w: 110, h: 130, label: 'MINX ARMS',        bright: false },
@@ -55,6 +80,7 @@ const BUILDINGS = [
   { id: 'zanarkand_inn', x: 760,  y:1270, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false },
   { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false },
   { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true  },
+  { id: 'waste_exchange',x: 780,  y:1500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true  },
 ];
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
@@ -429,6 +455,7 @@ export default function WorldPlay() {
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(),
     jobCooldowns: {} as Record<string, number>,
+    cargo: {} as Record<string, number>,
     classInitDone: false,
     myId: '',
     peers: new Map<string, Peer>(),
@@ -497,6 +524,10 @@ export default function WorldPlay() {
   const [levelUpText, setLevelUpText] = useState('');
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
+  const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
+  const [cargo,       setCargo]       = useState<Record<string,number>>({});
+  const [cpTick,      setCpTick]      = useState(0);
+  const commodityPrices = useRef<Record<string,CargoPrices>>(initCommodityPrices());
   const [jobPanel,    setJobPanel]    = useState<{ bid: string; label: string; pay: number; seconds: number; progress: number } | null>(null);
   const jobTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Floor panel & living world
@@ -572,7 +603,7 @@ export default function WorldPlay() {
       g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
       setNarr('> ARMORY — Vending machine: RATION PACK [ç1,000 CREAM]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
     }
-    else if (bid === 'market')  { g.salary += 3000; setSalary(g.salary); sfxCoin(); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +ç3,000 CREAM. The buyer asked if it was from "before the collapse." You said yes.'); }
+    else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. PABLO CORP. is not watching. Probably.'); }
     else if (bid === 'hotel')   {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
       g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
@@ -676,7 +707,8 @@ export default function WorldPlay() {
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
     else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached cream transfer. +ç4,000 CREAM. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
-    else if (bid === 'east_market') { g.salary += 2500; setSalary(g.salary); sfxCoin(); setNarr('> EAST BAZAAR — Traded fragments for cream. +ç2,500 CREAM. The vendor says: "Everything here was made in the city. Everything here ends up back in the tower."'); }
+    else if (bid === 'east_market') { sfxEnter(); setShowTrade('city'); setNarr('> EAST BAZAAR — The commodity board blinks. Every faction sends couriers through here. What you buy here you sell out there. The margin is yours to keep.'); }
+    else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'east_clinic') {
       if (g.salary >= 8000) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 8000; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [ç8,000 CREAM] HP +60.'); }
       else { sfxError(); setNarr('> EAST CLINIC — "No cream. I treat wounds, not charity cases." Come back with ç8,000.'); }
@@ -853,8 +885,8 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel;
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel]);
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade;
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -863,6 +895,26 @@ export default function WorldPlay() {
     window.addEventListener('pointerdown', start, { once: true });
     window.addEventListener('keydown', start, { once: true });
     return () => { pauseMusic(); };
+  }, []);
+
+  // ── Commodity price drift (Star Citizen-style supply/demand oscillation) ─────
+  useEffect(() => {
+    const t = setInterval(() => {
+      const cp = commodityPrices.current;
+      for (const c of COMMODITIES) {
+        const drift = (v: number, base: number) => {
+          const swing = base * c.vol * (Math.random() * 0.4 - 0.2);
+          const meanRev = (base - v) * 0.12;
+          return Math.max(Math.round(base * 0.5), Math.round(v + swing + meanRev));
+        };
+        cp[c.id].cityBuy  = drift(cp[c.id].cityBuy,  c.cityBuy);
+        cp[c.id].citySell = drift(cp[c.id].citySell, c.citySell);
+        cp[c.id].wasteBuy = drift(cp[c.id].wasteBuy, c.wasteBuy);
+        cp[c.id].wasteSell= drift(cp[c.id].wasteSell,c.wasteSell);
+      }
+      setCpTick(n => n + 1);
+    }, 28000);
+    return () => clearInterval(t);
   }, []);
 
   // ── Dialog advance ─────────────────────────────────────────────────────────
@@ -964,7 +1016,7 @@ export default function WorldPlay() {
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
         setShowPablo(false); setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
-        setFloorPanel(null); setShowMap(false);
+        setFloorPanel(null); setShowMap(false); setShowTrade(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
       }
@@ -2314,6 +2366,139 @@ export default function WorldPlay() {
           </div>
         </div>
       )}
+
+      {/* ── COMMODITY TRADE TERMINAL ──────────────────────────────────────── */}
+      {showTrade && (() => {
+        const isCity = showTrade === 'city';
+        const cp = commodityPrices.current;
+        const totalCargo = Object.values(gs.current.cargo).reduce((a, b) => a + b, 0);
+        const loc = isCity ? 'MINX TRADE EXCHANGE' : 'BLACK EXCHANGE — WASTELAND';
+        const doBuy = (cid: string) => {
+          const c = COMMODITIES.find(x => x.id === cid)!;
+          const price = isCity ? cp[cid].cityBuy : cp[cid].wasteBuy;
+          if (totalCargo >= MAX_CARGO) { sfxError(); setNarr(`> HOLD FULL — Max ${MAX_CARGO} units. Sell something first.`); return; }
+          if (gs.current.salary < price) { sfxError(); setNarr(`> INSUFFICIENT CREAM — Need ç${price.toLocaleString()}. Have ç${gs.current.salary.toLocaleString()}.`); return; }
+          gs.current.salary -= price; setSalary(gs.current.salary);
+          gs.current.cargo[cid] = (gs.current.cargo[cid] || 0) + 1;
+          setCargo({ ...gs.current.cargo }); sfxCoin();
+          setNarr(`> BOUGHT 1x ${c.name} [ç${price.toLocaleString()} CREAM]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : 'Minx City'} and sell for profit.`);
+        };
+        const doSell = (cid: string) => {
+          const c = COMMODITIES.find(x => x.id === cid)!;
+          if (!gs.current.cargo[cid] || gs.current.cargo[cid] < 1) { sfxError(); setNarr(`> NO STOCK — You are not carrying any ${c.name}.`); return; }
+          const price = isCity ? cp[cid].citySell : cp[cid].wasteSell;
+          gs.current.salary += price; setSalary(gs.current.salary);
+          gs.current.cargo[cid] -= 1;
+          if (gs.current.cargo[cid] <= 0) delete gs.current.cargo[cid];
+          setCargo({ ...gs.current.cargo }); sfxCoin();
+          setNarr(`> SOLD 1x ${c.name} [+ç${price.toLocaleString()} CREAM]. Balance: ç${gs.current.salary.toLocaleString()}.`);
+        };
+        const bestRoutes = COMMODITIES.map(c => {
+          const cityProfit = cp[c.id].wasteSell - cp[c.id].cityBuy;
+          const wasteProfit = cp[c.id].citySell - cp[c.id].wasteBuy;
+          return { name: c.name, id: c.id, cityRoute: cityProfit, wasteRoute: wasteProfit };
+        }).filter(r => (isCity ? r.cityRoute : r.wasteRoute) > 0)
+          .sort((a, b) => (isCity ? b.cityRoute - a.cityRoute : b.wasteRoute - a.wasteRoute))
+          .slice(0, 3);
+        void cpTick;
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowTrade(null); }}>
+            <div style={{ width:720, maxHeight:'88vh', overflow:'auto', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace" }}>
+              {/* Header */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.8rem' }}>
+                <div>
+                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.6rem', color:'#00ff41', letterSpacing:'.18em' }}>{loc}</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.35)', letterSpacing:'.12em', marginTop:'.15rem' }}>
+                    COMMODITY EXCHANGE · PRICES FLUCTUATE · {isCity ? 'BUY CITY → SELL WASTELAND' : 'BUY WASTELAND → SELL CITY'}
+                  </div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.1rem', color:'#00ff41' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', marginTop:'.1rem' }}>ç{salary.toLocaleString()} CREAM</div>
+                  <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.95rem' }}>ESC</button>
+                </div>
+              </div>
+              {/* Best routes banner */}
+              {bestRoutes.length > 0 && (
+                <div style={{ border:'1px solid rgba(0,255,65,.12)', padding:'.5rem .7rem', marginBottom:'.8rem', background:'rgba(0,255,65,.03)' }}>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.14em', marginBottom:'.3rem' }}>ROUTE ANALYSIS — TOP TRADES FROM HERE</div>
+                  <div style={{ display:'flex', gap:'1.2rem', flexWrap:'wrap' }}>
+                    {bestRoutes.map(r => (
+                      <div key={r.id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)' }}>
+                        {r.name} → <span style={{ color:'#00ff41' }}>+ç{(isCity ? r.cityRoute : r.wasteRoute).toLocaleString()}/unit</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Commodity rows */}
+              <div style={{ display:'flex', flexDirection:'column', gap:'.45rem' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', fontSize:'.4rem', color:'rgba(0,255,65,.25)', letterSpacing:'.1em', paddingBottom:'.3rem', borderBottom:'1px solid rgba(0,255,65,.1)' }}>
+                  <div>COMMODITY</div><div style={{ textAlign:'right' }}>BUY</div><div style={{ textAlign:'right' }}>SELL</div><div style={{ textAlign:'right' }}>BEST SELL</div><div style={{ textAlign:'center' }}>HOLD</div>
+                </div>
+                {COMMODITIES.map(c => {
+                  const buyPrice  = isCity ? cp[c.id].cityBuy  : cp[c.id].wasteBuy;
+                  const sellPrice = isCity ? cp[c.id].citySell : cp[c.id].wasteSell;
+                  const remSell   = isCity ? cp[c.id].wasteSell : cp[c.id].citySell;
+                  const held = gs.current.cargo[c.id] || 0;
+                  const canBuy = gs.current.salary >= buyPrice && totalCargo < MAX_CARGO;
+                  const canSell = held > 0;
+                  const profit = remSell - buyPrice;
+                  return (
+                    <div key={c.id} style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', alignItems:'center', padding:'.4rem .3rem', border:held > 0 ? '1px solid rgba(0,255,65,.22)' : '1px solid transparent', background:held > 0 ? 'rgba(0,255,65,.03)' : 'transparent' }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
+                          <span style={{ fontFamily:"'VT323',monospace", fontSize:'.95rem', color: c.illegal ? 'rgba(255,180,0,.8)' : '#00ff41', letterSpacing:'.07em' }}>{c.name}</span>
+                          {c.illegal && <span style={{ fontSize:'.35rem', padding:'1px 4px', border:'1px solid rgba(255,160,0,.4)', color:'rgba(255,160,0,.6)', letterSpacing:'.08em' }}>CONTRABAND</span>}
+                        </div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.28)', marginTop:'.05rem', lineHeight:1.5 }}>{c.desc}</div>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(0,255,65,.08)' : 'transparent', border: canBuy ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canBuy ? '#00ff41' : 'rgba(0,255,65,.2)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                          ç{buyPrice.toLocaleString()}
+                        </button>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(0,255,65,.08)' : 'transparent', border: canSell ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canSell ? '#00ff41' : 'rgba(0,255,65,.18)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                          {canSell ? `+ç${sellPrice.toLocaleString()}` : '——'}
+                        </button>
+                      </div>
+                      <div style={{ textAlign:'right', fontSize:'.48rem', color: profit > 0 ? 'rgba(0,255,65,.55)' : 'rgba(255,80,80,.45)' }}>
+                        {profit > 0 ? `+ç${profit.toLocaleString()}` : `–ç${Math.abs(profit).toLocaleString()}`}
+                      </div>
+                      <div style={{ textAlign:'center', fontFamily:"'VT323',monospace", fontSize:'1.1rem', color: held > 0 ? '#00ff41' : 'rgba(0,255,65,.2)' }}>
+                        {held > 0 ? held : '·'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Cargo manifest */}
+              {totalCargo > 0 && (
+                <div style={{ marginTop:'.8rem', borderTop:'1px solid rgba(0,255,65,.1)', paddingTop:'.6rem' }}>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.25)', letterSpacing:'.12em', marginBottom:'.35rem' }}>CARGO MANIFEST</div>
+                  <div style={{ display:'flex', gap:'.8rem', flexWrap:'wrap' }}>
+                    {Object.entries(gs.current.cargo).filter(([,q]) => q > 0).map(([id, qty]) => {
+                      const c = COMMODITIES.find(x => x.id === id)!;
+                      if (!c) return null;
+                      const sellHere = isCity ? cp[id].citySell : cp[id].wasteSell;
+                      return (
+                        <div key={id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)', border:'1px solid rgba(0,255,65,.18)', padding:'.22rem .5rem' }}>
+                          {qty}× {c.name} → sell here for ç{sellHere.toLocaleString()}/unit
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div style={{ marginTop:'.7rem', fontSize:'.38rem', color:'rgba(0,255,65,.15)', letterSpacing:'.08em' }}>
+                BUY = you pay · SELL = you receive · BEST SELL = value at the other exchange · Max cargo {MAX_CARGO} units · ESC to close
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── MAP PANEL (M key) ─────────────────────────────────────────────── */}
       {showMap && (

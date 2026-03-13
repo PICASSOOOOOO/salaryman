@@ -43,9 +43,32 @@ const CLASSES = [
   },
 ];
 
-const INDUSTRIES = [
-  'FINANCE', 'TECH', 'SECURITY', 'LOGISTICS', 'PHARMA',
-  'MEDIA', 'ARMS', 'BLACK MARKET', 'SALVAGE', 'ENERGY',
+const REAL_INDUSTRIES = [
+  'SOFTWARE / SAAS', 'MARKETING & ADVERTISING', 'CONSULTING',
+  'HEALTHCARE', 'FINANCE & FINTECH', 'LEGAL / LAWTECH',
+  'EDUCATION / EDTECH', 'E-COMMERCE / RETAIL', 'REAL ESTATE',
+  'MEDIA & ENTERTAINMENT', 'MANUFACTURING', 'LOGISTICS & SUPPLY CHAIN',
+  'FOOD & BEVERAGE', 'NON-PROFIT', 'CONSTRUCTION',
+  'GAMING', 'RECRUITING / HR', 'ARCHITECTURE & DESIGN',
+  'GOVERNMENT / PUBLIC SECTOR', 'INSURANCE',
+];
+
+const FICTITIOUS_INDUSTRIES = [
+  'NEON CAPITAL SOLUTIONS',
+  'SYNAPSE SYSTEMS LLC',
+  'BLACK IRON SECURITY INC.',
+  'PHANTOM FREIGHT CO.',
+  'MAKO BIOTECH GROUP',
+  'STATIC MEDIA WORKS',
+  'EDEN ARMS & MUNITIONS',
+  'SHADOW TRADING POST',
+  'RUST & SALVAGE UNION',
+  'OMEGA POWER GRID',
+  'VIRAL COMMS INC.',
+  'THE JADE SYNDICATE',
+  'ZAIBATSU INTELLIGENCE',
+  'GHOST PROTOCOL RESEARCH',
+  'WARPGATE TRANSIT CORP.',
 ];
 
 const SIZES = ['SOLO OPERATOR', 'SMALL (2-10)', 'MID (11-50)', 'CORP (51-500)', 'MEGACORP (500+)'];
@@ -334,7 +357,8 @@ export default function WorldMenu() {
   // Business registration
   const [bizType, setBizType] = useState<'fictitious' | 'real'>('fictitious');
   const [company, setCompany] = useState('');
-  const [industry, setIndustry] = useState('FINANCE');
+  const [industry, setIndustry] = useState('SOFTWARE / SAAS');
+  const [fictitiousIndustry, setFictitiousIndustry] = useState('NEON CAPITAL SOLUTIONS');
   const [bizSize, setBizSize] = useState('SOLO OPERATOR');
   const [bizEmail, setBizEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -400,7 +424,7 @@ export default function WorldMenu() {
           playerName: char.name,
           businessType: bizType,
           companyName: finalCompany,
-          industry: bizType === 'real' ? industry : null,
+          industry: bizType === 'real' ? industry : fictitiousIndustry,
           companySize: bizType === 'real' ? bizSize : null,
           contactEmail: bizType === 'real' && bizEmail.trim() ? bizEmail.trim() : null,
           isPaid: false,
@@ -558,6 +582,18 @@ export default function WorldMenu() {
                   ))}
                 </div>
 
+                {bizType === 'fictitious' && (
+                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — SELECT FRONT CORPORATION</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
+                      Your operative will be listed under this corporate shell. PABLO Corp. cannot trace it. Rival operatives will see this name above your head.
+                    </div>
+                    <select value={fictitiousIndustry} onChange={e => setFictitiousIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                      {FICTITIOUS_INDUSTRIES.map(fi => <option key={fi} value={fi}>{fi}</option>)}
+                    </select>
+                  </div>
+                )}
+
                 {bizType === 'real' && (
                   <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
@@ -569,7 +605,7 @@ export default function WorldMenu() {
                       <div>
                         <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
                         <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                          {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                          {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
                         </select>
                       </div>
                       <div>
