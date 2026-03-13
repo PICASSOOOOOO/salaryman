@@ -8,8 +8,9 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 4800, H = 4200, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
-const WASTELAND_Y = 1350;
-const NORTH_Y = 90;
+const BORDER = 100;
+const CITY_TOP = 1425;
+const CITY_BOTTOM = 2775;
 
 // ── 2.5D depth constant for building perspective ─────────────────────────────
 const BUILDING_DEPTH = 18;
@@ -19,14 +20,14 @@ interface BillboardDef {
   locationId: string; label: string; x: number; y: number; w: number; h: number; height: number;
 }
 const BILLBOARDS: BillboardDef[] = [
-  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 690,  y: 405, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 1095,  y: 450, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 525,  y: 975, w: 20, h: 10, height: 45 },
-  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 2025, y: 375, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 2475, y: 525, w: 20, h: 10, height: 60 },
-  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 3150, y: 675, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 375,  y: 1170, w: 20, h: 10, height: 40 },
-  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 2250, y: 1170, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 690,  y: 1830, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 1095,  y: 1875, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 525,  y: 2400, w: 20, h: 10, height: 45 },
+  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 2025, y: 1800, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 2475, y: 1950, w: 20, h: 10, height: 60 },
+  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 3150, y: 2100, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 375,  y: 2595, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 2250, y: 2595, w: 20, h: 10, height: 40 },
 ];
 interface BillboardData {
   id: number; locationId: string; ownerPlayerName: string | null;
@@ -69,177 +70,174 @@ const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x
 
 const BUILDINGS = [
   // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
-  { id: 'minx_arms',    x: 1590, y: 390, w: 110, h: 130, label: 'MINX ARMS',        bright: false, doors: mkDoorS(1590,390,110,130) },
-  { id: 'eastside_flat',x: 3450, y: 570, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(3450,570,110,120) },
+  { id: 'minx_arms',    x: 1590, y: 1815, w: 110, h: 130, label: 'MINX ARMS',        bright: false, doors: mkDoorS(1590,1815,110,130) },
+  { id: 'eastside_flat',x: 3450, y: 1995, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(3450,1995,110,120) },
   // ── MINX CITY WEST ──────────────────────────────────────────────────────────
-  { id: 'pablo_store',  x: 555, y: 465, w: 120, h: 70,  label: 'PABLO',            bright: true,  doors: mkDoorS(555,465,120,70) },
-  { id: 'pablo_tower',  x: 870, y: 60, w: 260, h: 230, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(870,60,260,230) },
-  { id: 'clinic',       x: 270, y: 555, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false, doors: mkDoorS(270,555,100,70) },
-  { id: 'megabank',     x: 615, y: 630, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false, doors: mkDoorS(615,630,120,80) },
-  { id: 'market',       x: 1080, y: 540, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(1080,540,110,70) },
-  { id: 'hotel',        x: 1380, y: 285, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false, doors: mkDoorS(1380,285,100,120) },
-  { id: 'vend',         x: 1380, y: 555, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(1380,555,60,60) },
-  { id: 'crystal',      x: 732, y: 723, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'arcade',       x: 225, y: 885, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true,  doors: mkDoorE(225,885,110,75) },
-  { id: 'bunker',       x: 450, y: 1050, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(450,1050,130,80) },
-  { id: 'scrap',        x: 870, y: 1080, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(870,1080,160) },
-  { id: 'radio',        x: 1230, y: 1020, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(1230,1020,100,90) },
-  { id: 'wily_lab',     x: 1485, y: 1140, w: 90,  h: 70,  label: 'WILY LABS',        bright: false, doors: mkDoorW(1485,1140,90,70) },
+  { id: 'pablo_store',  x: 555, y: 1890, w: 120, h: 70,  label: 'PABLO',            bright: true,  doors: mkDoorS(555,1890,120,70) },
+  { id: 'pablo_tower',  x: 870, y: 1485, w: 260, h: 230, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(870,1485,260,230) },
+  { id: 'clinic',       x: 270, y: 1980, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false, doors: mkDoorS(270,1980,100,70) },
+  { id: 'megabank',     x: 615, y: 2055, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false, doors: mkDoorS(615,2055,120,80) },
+  { id: 'market',       x: 1080, y: 1965, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(1080,1965,110,70) },
+  { id: 'hotel',        x: 1380, y: 1710, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false, doors: mkDoorS(1380,1710,100,120) },
+  { id: 'vend',         x: 1380, y: 1980, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(1380,1980,60,60) },
+  { id: 'crystal',      x: 732, y: 2148, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'arcade',       x: 225, y: 2310, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true,  doors: mkDoorE(225,2310,110,75) },
+  { id: 'bunker',       x: 450, y: 2475, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(450,2475,130,80) },
+  { id: 'scrap',        x: 870, y: 2505, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(870,2505,160) },
+  { id: 'radio',        x: 1230, y: 2445, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(1230,2445,100,90) },
+  { id: 'wily_lab',     x: 1485, y: 2565, w: 90,  h: 70,  label: 'WILY LABS',        bright: false, doors: mkDoorW(1485,2565,90,70) },
   // ── MINX CITY EAST DISTRICT ─────────────────────────────────────────────────
-  { id: 'dojo',         x: 2100, y: 195, w: 120, h: 90, label: 'IRON DOJO',        bright: false, doors: mkDoorS(2100,195,120,90) },
-  { id: 'data_vault',   x: 2625, y: 285, w: 130, h: 80, label: 'DATA VAULT',       bright: true,  doors: mkDoorS(2625,285,130,80) },
-  { id: 'nightclub',    x: 3150, y: 465, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(3150,465,110,90) },
-  { id: 'east_market',  x: 2100, y: 570, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(2100,570,110,70) },
-  { id: 'east_clinic',  x: 2775, y: 660, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(2775,660,110,70) },
-  { id: 'armory',       x: 3600, y: 255, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(3600,255,110,80) },
-  { id: 'crystal2',     x: 3900, y: 510, w: 28,  h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'print_shop',   x: 2400, y: 885, w: 100, h: 60, label: 'PRINT SHOP',       bright: false, doors: mkDoorN(2400,885,100) },
-  { id: 'east_bunker',  x: 3150, y: 915, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(3150,915,110) },
-  { id: 'north_gate',   x: 4200, y: 735, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(4200,735,90), ...mkDoorS(4200,735,90,60)] },
+  { id: 'dojo',         x: 2100, y: 1620, w: 120, h: 90, label: 'IRON DOJO',        bright: false, doors: mkDoorS(2100,1620,120,90) },
+  { id: 'data_vault',   x: 2625, y: 1710, w: 130, h: 80, label: 'DATA VAULT',       bright: true,  doors: mkDoorS(2625,1710,130,80) },
+  { id: 'nightclub',    x: 3150, y: 1890, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(3150,1890,110,90) },
+  { id: 'east_market',  x: 2100, y: 1995, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(2100,1995,110,70) },
+  { id: 'east_clinic',  x: 2775, y: 2085, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(2775,2085,110,70) },
+  { id: 'armory',       x: 3600, y: 1680, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(3600,1680,110,80) },
+  { id: 'crystal2',     x: 3900, y: 1935, w: 28,  h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'print_shop',   x: 2400, y: 2310, w: 100, h: 60, label: 'PRINT SHOP',       bright: false, doors: mkDoorN(2400,2310,100) },
+  { id: 'east_bunker',  x: 3150, y: 2340, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(3150,2340,110) },
+  { id: 'north_gate',   x: 4200, y: 2160, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(4200,2160,90), ...mkDoorS(4200,2160,90,60)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'hotel_midgar',  x: 150,  y: 210, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(150,210,120,90) },
-  { id: 'inn_mother',    x: 1725, y: 765, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1725,765,100,80) },
-  { id: 'overlook',      x: 3375, y: 900, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(3375,900,100) },
-  { id: 'safe_house',    x: 1635, y: 975, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(1635,975,90) },
+  { id: 'hotel_midgar',  x: 150,  y: 1635, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(150,1635,120,90) },
+  { id: 'inn_mother',    x: 1725, y: 2190, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1725,2190,100,80) },
+  { id: 'overlook',      x: 3375, y: 2325, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(3375,2325,100) },
+  { id: 'safe_house',    x: 1635, y: 2400, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(1635,2400,90) },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
-  { id: 'sub_west',      x: 420, y: 810, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(420,810,80,55) },
-  { id: 'sub_central',   x: 1425, y: 750, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(1425,750,80,55) },
-  { id: 'sub_east',      x: 2700, y: 810, w: 80,  h: 55,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(2700,810,80,55) },
-  { id: 'sub_north',     x: 3600, y: 240, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(3600,240,80,55) },
-  // ── CHECKPOINTS ───────────────────────────────────────────────────────────────
-  { id: 'checkpoint_w',  x: 90,  y: 1268, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(90,1268,90,50), ...mkDoorE(90,1268,90,50)] },
-  { id: 'checkpoint_c',  x: 1875, y: 1268, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(1875,1268,90,50), ...mkDoorE(1875,1268,90,50)] },
-  { id: 'checkpoint_e',  x: 3825, y: 1268, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(3825,1268,90,50), ...mkDoorE(3825,1268,90,50)] },
-  // ── NORTH QUARTER (new area above y=200) ─────────────────────────────────────
-  { id: 'print_shop2',   x: 3750, y: 150, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(3750,150,110,70) },
-  { id: 'call_home',     x: 3975, y: 375, w: 130, h: 80,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(3975,375,130,80) },
-  { id: 'noodle_bar',    x: 4230, y: 240, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(4230,240,100,70) },
-  { id: 'pawn_shop',     x: 4230, y: 525, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(4230,525,100,70) },
-  { id: 'crystal4',      x: 4050, y: 645, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'north_clinic',  x: 3930, y: 735, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(3930,735,110,70) },
-  { id: 'terminal_shop', x: 3720, y: 510, w: 130, h: 80,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(3720,510,130,80) },
-  { id: 'north_bunker',  x: 4500, y: 300, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(4500,300,120,80) },
-  { id: 'north_market',  x: 4575, y: 570, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(4575,570,100,70) },
-  { id: 'crystal5',      x: 4500, y: 720, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  // ── WASTELAND OUTPOSTS ───────────────────────────────────────────────────────
-  { id: 'outpost_alpha', x: 300,  y: 1650, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(300,1650,120,80) },
-  { id: 'outpost_beta',  x: 2250, y: 2100, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(2250,2100,100,70) },
-  { id: 'supply_cache',  x: 1200,  y: 2850, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false, doors: mkDoorN(1200,2850,130) },
-  { id: 'deep_bunker',   x: 3600, y: 2550, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(3600,2550,120) },
-  { id: 'crystal3',      x: 1800, y: 3300, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  // ── HOSTELS / SHELTERS (wasteland) ───────────────────────────────────────────
-  { id: 'prancing_pony', x: 450,  y: 1635, w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true,  doors: mkDoorE(450,1635,110,75) },
-  { id: 'zanarkand_inn', x: 1140,  y: 1905, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false, doors: mkDoorS(1140,1905,120,80) },
-  { id: 'terminus',      x: 570,  y: 2475, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(570,2475,120,80) },
-  { id: 'fort_dracula',  x: 3150, y: 2280, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(3150,2280,100,100) },
-  { id: 'waste_exchange',x: 1170,  y: 2250, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(1170,2250,130) },
+  { id: 'sub_west',      x: 420, y: 2235, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(420,2235,80,55) },
+  { id: 'sub_central',   x: 1425, y: 2175, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(1425,2175,80,55) },
+  { id: 'sub_east',      x: 2700, y: 2235, w: 80,  h: 55,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(2700,2235,80,55) },
+  { id: 'sub_north',     x: 3600, y: 1665, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(3600,1665,80,55) },
+  // ── CHECKPOINTS (south city border — wasteland entry) ─────────────────────────
+  { id: 'checkpoint_w',  x: 90,  y: 2693, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(90,2693,90,50), ...mkDoorE(90,2693,90,50)] },
+  { id: 'checkpoint_c',  x: 1875, y: 2693, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(1875,2693,90,50), ...mkDoorE(1875,2693,90,50)] },
+  { id: 'checkpoint_e',  x: 3825, y: 2693, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(3825,2693,90,50), ...mkDoorE(3825,2693,90,50)] },
+  // ── NORTH QUARTER ───────────────────────────────────────────────────────────
+  { id: 'print_shop2',   x: 3750, y: 1575, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(3750,1575,110,70) },
+  { id: 'call_home',     x: 3975, y: 1800, w: 130, h: 80,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(3975,1800,130,80) },
+  { id: 'noodle_bar',    x: 4230, y: 1665, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(4230,1665,100,70) },
+  { id: 'pawn_shop',     x: 4230, y: 1950, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(4230,1950,100,70) },
+  { id: 'crystal4',      x: 4050, y: 2070, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'north_clinic',  x: 3930, y: 2160, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(3930,2160,110,70) },
+  { id: 'terminal_shop', x: 3720, y: 1935, w: 130, h: 80,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(3720,1935,130,80) },
+  { id: 'north_bunker',  x: 4500, y: 1725, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(4500,1725,120,80) },
+  { id: 'north_market',  x: 4575, y: 1995, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(4575,1995,100,70) },
+  { id: 'crystal5',      x: 4500, y: 2145, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  // ── NORTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
+  { id: 'outpost_alpha', x: 300,  y: 375,  w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(300,375,120,80) },
+  { id: 'prancing_pony', x: 450,  y: 360,  w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true,  doors: mkDoorE(450,360,110,75) },
+  { id: 'eastern_gate',  x: 4200, y: 375,  w: 100, h: 70,  label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(4200,375,100,70), ...mkDoorE(4200,375,100,70)] },
+  // ── SOUTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
+  { id: 'outpost_beta',  x: 2250, y: 2925, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(2250,2925,100,70) },
+  { id: 'supply_cache',  x: 1200, y: 3450, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false, doors: mkDoorN(1200,3450,130) },
+  { id: 'deep_bunker',   x: 3600, y: 3225, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(3600,3225,120) },
+  { id: 'crystal3',      x: 1800, y: 3750, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'zanarkand_inn', x: 1140, y: 2880, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false, doors: mkDoorS(1140,2880,120,80) },
+  { id: 'terminus',      x: 570,  y: 3150, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(570,3150,120,80) },
+  { id: 'fort_dracula',  x: 3150, y: 3000, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(3150,3000,100,100) },
+  { id: 'waste_exchange',x: 1170, y: 3000, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(1170,3000,130) },
+  { id: 'deep_camp',     x: 3900, y: 2925, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(3900,2925,120,80) },
+  { id: 'ruins_alpha',   x: 4350, y: 3150, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false, doors: [...mkDoorN(4350,3150,130), ...mkDoorS(4350,3150,130,90)] },
+  { id: 'crystal6',      x: 4125, y: 3375, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'southern_hub',  x: 2250, y: 3825, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(2250,3825,130) },
+  { id: 'crystal7',      x: 2475, y: 3900, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── PUBLIC TERMINALS (payphones, kiosks, vans) ───────────────────────────────
-  { id: 'term_west',      x: 240,  y: 840,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_central',   x: 1275,  y: 675,  w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
-  { id: 'term_east',      x: 2370, y: 660,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_neon',      x: 3075, y: 765,  w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
-  { id: 'term_north',     x: 4380, y: 675,  w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_a', x: 510,  y: 1710, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_b', x: 2430, y: 2160, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
-  { id: 'van_west',       x: 750,  y: 1800, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'van_central',    x: 1800, y: 2400, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'van_east',       x: 3450, y: 1950, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  // ── FAR EAST / FAR SOUTH WASTELAND (new area) ────────────────────────────────
-  { id: 'eastern_gate',  x: 4200, y: 1650, w: 100, h: 70,  label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(4200,1650,100,70), ...mkDoorE(4200,1650,100,70)] },
-  { id: 'deep_camp',     x: 3900, y: 2100, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(3900,2100,120,80) },
-  { id: 'ruins_alpha',   x: 4350, y: 2400, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false, doors: [...mkDoorN(4350,2400,130), ...mkDoorS(4350,2400,130,90)] },
-  { id: 'crystal6',      x: 4125, y: 2625, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'southern_hub',  x: 2250, y: 3150, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(2250,3150,130) },
-  { id: 'crystal7',      x: 2475, y: 3300, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'term_west',      x: 240,  y: 2265, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_central',   x: 1275, y: 2100, w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
+  { id: 'term_east',      x: 2370, y: 2085, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_neon',      x: 3075, y: 2190, w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
+  { id: 'term_north',     x: 4380, y: 2100, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_a', x: 510,  y: 435,  w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_b', x: 2430, y: 2985, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
+  { id: 'van_west',       x: 750,  y: 525,  w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  { id: 'van_central',    x: 1800, y: 3075, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  { id: 'van_east',       x: 3450, y: 675,  w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
 ];
 
-// ── Gang territories (wasteland) ──────────────────────────────────────────────
+// ── Gang territories (wasteland — north + south of city) ─────────────────────
 const GANG_ZONES = [
-  { id: 'minx_city',    name: 'MINX CITY',    x: 0,  y: 1380, w: 4800, h:2850, color: 'rgba(180,0,255,.03)', border: 'rgba(180,0,255,.12)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY TERRITORY — DOMINANT FACTION ]' },
-  { id: 'iron_rats',    name: 'IRON RATS',    x: 75, y: 1380, w: 1050, h:1650, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
-  { id: 'void_dogs',    name: 'VOID DOGS',    x: 1080, y: 1440, w: 1050, h:1470, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
-  { id: 'static_monks', name: 'STATIC MONKS', x: 2085, y: 1380, w: 1125, h:1500, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
-  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 3150, y: 1440, w: 1350, h:1800, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
+  { id: 'minx_city',    name: 'MINX CITY',    x: 100,  y: 150,  w: 4600, h:3950, color: 'rgba(180,0,255,.03)', border: 'rgba(180,0,255,.12)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY TERRITORY — DOMINANT FACTION ]' },
+  { id: 'iron_rats',    name: 'IRON RATS',    x: 150,  y: 150,  w: 1200, h:1225, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
+  { id: 'void_dogs',    name: 'VOID DOGS',    x: 1300, y: 200,  w: 1400, h:1175, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
+  { id: 'static_monks', name: 'STATIC MONKS', x: 150,  y: 2825, w: 2300, h:1225, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
+  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 2400, y: 2825, w: 2300, h:1225, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
 ];
 
 const NPCS = [
   // ── City West ──
-  { name: 'STRIFE',    x: 765,  y: 570,  type: 'corp',    gender: 'm', whisper: 'I used to work for Shin-Ra. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.' },
-  { name: 'BROKER',    x: 1140,  y: 480,  type: 'corp',    gender: 'm', whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.' },
-  { name: 'REPLOID-7', x: 1305,  y: 525,  type: 'android', gender: 'm', whisper: 'Directive 44-C still active. Function: monitor and report. I was built by a man named Light. SENIOR PABLO bought the patent in \'89.' },
-  { name: 'BELMONT',   x: 450,  y: 690,  type: 'human',   gender: 'm', whisper: 'Up up, down down, left right, left right. I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.' },
-  { name: 'GUARD',     x: 840,  y: 450,  type: 'corp',    gender: 'm', whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there. Last night I heard the helicopter. 3 AM. He was gone before I looked up. Off to one of the other towers — Sector Berlin, maybe. Or Neon Lagos. They never tell us which.' },
-  { name: 'SAMUS',     x: 1230,  y: 435,  type: 'android', gender: 'f', whisper: 'Bounty is active on someone called SENIOR PABLO. No face. No file. Contract pays in a currency I don\'t recognize. I\'m still deciding whether to take it.' },
-  { name: 'SNAKE',     x: 990,  y: 765,  type: 'human',   gender: 'm', whisper: 'FOXHOUND was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
-  { name: 'MAEVE',     x: 525,  y: 300,  type: 'corp',    gender: 'f', whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always. He has towers in cities I can\'t even find on a map. I traced one payment to Neo-São Paulo. The next one routed through Old Shanghai. The helicopter never stops.' },
-  { name: 'LINK',      x: 300,  y: 330,  type: 'human',   gender: 'm', whisper: 'I\'ve faced Ganon eight separate times. Each time reality reset. This feels different. No restart. No heart containers. Just the city.' },
-  { name: 'JESSIE',    x: 1575, y: 600,  type: 'human',   gender: 'f', whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.' },
+  { name: 'STRIFE',    x: 765,  y: 1995, type: 'corp',    gender: 'm', whisper: 'I used to work for Shin-Ra. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.' },
+  { name: 'BROKER',    x: 1140, y: 1905, type: 'corp',    gender: 'm', whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.' },
+  { name: 'REPLOID-7', x: 1305, y: 1950, type: 'android', gender: 'm', whisper: 'Directive 44-C still active. Function: monitor and report. I was built by a man named Light. SENIOR PABLO bought the patent in \'89.' },
+  { name: 'BELMONT',   x: 450,  y: 2115, type: 'human',   gender: 'm', whisper: 'Up up, down down, left right, left right. I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.' },
+  { name: 'GUARD',     x: 840,  y: 1875, type: 'corp',    gender: 'm', whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there. Last night I heard the helicopter. 3 AM. He was gone before I looked up. Off to one of the other towers — Sector Berlin, maybe. Or Neon Lagos. They never tell us which.' },
+  { name: 'SAMUS',     x: 1230, y: 1860, type: 'android', gender: 'f', whisper: 'Bounty is active on someone called SENIOR PABLO. No face. No file. Contract pays in a currency I don\'t recognize. I\'m still deciding whether to take it.' },
+  { name: 'SNAKE',     x: 990,  y: 2190, type: 'human',   gender: 'm', whisper: 'FOXHOUND was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
+  { name: 'MAEVE',     x: 525,  y: 1725, type: 'corp',    gender: 'f', whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always. He has towers in cities I can\'t even find on a map. I traced one payment to Neo-São Paulo. The next one routed through Old Shanghai. The helicopter never stops.' },
+  { name: 'LINK',      x: 300,  y: 1755, type: 'human',   gender: 'm', whisper: 'I\'ve faced Ganon eight separate times. Each time reality reset. This feels different. No restart. No heart containers. Just the city.' },
+  { name: 'JESSIE',    x: 1575, y: 2025, type: 'human',   gender: 'f', whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.' },
   // ── City East ──
-  { name: 'HIDEO',     x: 2280, y: 300,  type: 'corp',    gender: 'm', whisper: 'I designed thirty-seven games. Every one of them ended with a nuclear explosion. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
-  { name: 'WEDGE',     x: 2625, y: 495,  type: 'human',   gender: 'm', whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
-  { name: 'BIGGS',     x: 2850, y: 645,  type: 'human',   gender: 'm', whisper: 'Wedge says this is like Midgar. I think it\'s worse. Midgar had Aerith. This city only has the tower.' },
-  { name: 'CURSOR',    x: 3300, y: 360,  type: 'android', gender: 'f', whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
-  { name: 'LUCCA',     x: 3750, y: 465,  type: 'human',   gender: 'f', whisper: 'I built a time machine and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
-  { name: 'AERIS',     x: 3675, y: 735,  type: 'human',   gender: 'f', whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.' },
-  { name: 'RINOA',     x: 4200, y: 570,  type: 'human',   gender: 'f', whisper: 'I came east looking for SeeD. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.' },
+  { name: 'HIDEO',     x: 2280, y: 1725, type: 'corp',    gender: 'm', whisper: 'I designed thirty-seven games. Every one of them ended with a nuclear explosion. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
+  { name: 'WEDGE',     x: 2625, y: 1920, type: 'human',   gender: 'm', whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
+  { name: 'BIGGS',     x: 2850, y: 2070, type: 'human',   gender: 'm', whisper: 'Wedge says this is like Midgar. I think it\'s worse. Midgar had Aerith. This city only has the tower.' },
+  { name: 'CURSOR',    x: 3300, y: 1785, type: 'android', gender: 'f', whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
+  { name: 'LUCCA',     x: 3750, y: 1890, type: 'human',   gender: 'f', whisper: 'I built a time machine and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
+  { name: 'AERIS',     x: 3675, y: 2160, type: 'human',   gender: 'f', whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.' },
+  { name: 'RINOA',     x: 4200, y: 1995, type: 'human',   gender: 'f', whisper: 'I came east looking for SeeD. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.' },
   // ── City outskirts / border ──
-  { name: 'CRONO',     x: 135,   y: 525,  type: 'human',   gender: 'm', whisper: 'Time travel didn\'t help. I came from three different pasts. All of them led here. To this city. To this wall. He\'s been here in every timeline.' },
-  { name: 'FROG',      x: 135,   y: 735,  type: 'mutant',  gender: 'm', whisper: '"It matters not how strait the gate." Old text. Found it carved in the wall near the arcade. Someone knew I would find it.' },
-  { name: 'RIZER',     x: 360,  y: 1035,  type: 'human',   gender: 'm', whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
-  { name: 'TERRA',     x: 4425, y: 975,  type: 'mutant',  gender: 'f', whisper: 'Magic doesn\'t work near the tower. I\'ve tried. Something in the signal disrupts it. SENIOR PABLO knows exactly what magic is. He neutralised it on purpose.' },
-  // ── Wasteland ──
-  { name: 'KANEDA',    x: 870,  y: 1350,  type: 'human',   gender: 'm', whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
-  { name: 'TETSUO',    x: 1080,  y: 1260,  type: 'mutant',  gender: 'm', whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think SENIOR PABLO is what woke up.' },
-  { name: 'DR. WILY',  x: 570,  y: 1260,  type: 'human',   gender: 'm', whisper: 'My Robot Masters kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One. He thanked me with a gift card.' },
-  { name: 'ZERO',      x: 300,  y: 1500, type: 'android', gender: 'm', whisper: 'I was designed to destroy. Reprogrammed to protect. Doesn\'t matter out here. There\'s nothing left worth protecting. Except maybe the truth of who built this place.' },
-  { name: 'PROTOMAN',  x: 1650, y: 1380,  type: 'android', gender: 'm', whisper: 'My brother kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete. I prefer the wasteland.' },
-  { name: 'AX',        x: 1440,  y: 1425,  type: 'human',   gender: 'm', whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
-  { name: 'SCAV',      x: 675,  y: 1245,  type: 'human',   gender: 'm', whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
-  { name: 'ERDRICK',   x: 1230,  y: 1515, type: 'human',   gender: 'm', whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
-  { name: 'CASSANDRA', x: 975,  y: 1725, type: 'mutant',  gender: 'f', whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened. Nobody ever listens. Now they stand in the wasteland and ask me what comes next. I stopped answering that question six months ago. The answer hasn\'t changed. They still won\'t believe it.' },
-  { name: 'HAWK',      x: 1980, y: 1410,  type: 'human',   gender: 'm', whisper: 'I was a knight once. Then I sailed as a pirate. The transformation felt complete. Out here in the wasteland I\'m something else again — haven\'t found the name for it yet. I carry a sword because it\'s the only consistent thing. The wasteland respects a consistent thing.' },
-  { name: 'KIRA',      x: 2400, y: 1800, type: 'human',   gender: 'f', whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author. Just the tower logo.' },
-  { name: 'MOTOKO',    x: 2850, y: 1575, type: 'android', gender: 'f', whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction. I stopped being afraid of that three weeks ago.' },
-  { name: 'REVY',      x: 3150, y: 1725, type: 'human',   gender: 'f', whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me. I think this might just be my life now.' },
+  { name: 'CRONO',     x: 135,  y: 1950, type: 'human',   gender: 'm', whisper: 'Time travel didn\'t help. I came from three different pasts. All of them led here. To this city. To this wall. He\'s been here in every timeline.' },
+  { name: 'FROG',      x: 135,  y: 2160, type: 'mutant',  gender: 'm', whisper: '"It matters not how strait the gate." Old text. Found it carved in the wall near the arcade. Someone knew I would find it.' },
+  { name: 'RIZER',     x: 360,  y: 2460, type: 'human',   gender: 'm', whisper: 'Me and Lance ran through harder than this. Alien strongholds. Jungle wars. This city? Just a very bad city. Lance didn\'t make it past the wall.' },
+  { name: 'TERRA',     x: 4425, y: 2400, type: 'mutant',  gender: 'f', whisper: 'Magic doesn\'t work near the tower. I\'ve tried. Something in the signal disrupts it. SENIOR PABLO knows exactly what magic is. He neutralised it on purpose.' },
+  // ── City border / near-wasteland NPCs ──
+  { name: 'KANEDA',    x: 870,  y: 2775, type: 'human',   gender: 'm', whisper: 'Neo-Tokyo burned in \'88. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
+  { name: 'TETSUO',    x: 1080, y: 2685, type: 'mutant',  gender: 'm', whisper: 'The signal from that tower is changing me. I can feel it. Neo-Tokyo fell because something woke up. I think SENIOR PABLO is what woke up.' },
+  { name: 'DR. WILY',  x: 570,  y: 2685, type: 'human',   gender: 'm', whisper: 'My Robot Masters kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One. He thanked me with a gift card.' },
+  { name: 'SCAV',      x: 675,  y: 2670, type: 'human',   gender: 'm', whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
+  // ── North Wasteland ──
+  { name: 'ZERO',      x: 300,  y: 400,  type: 'android', gender: 'm', whisper: 'I was designed to destroy. Reprogrammed to protect. Doesn\'t matter out here. There\'s nothing left worth protecting. Except maybe the truth of who built this place.' },
+  { name: 'PROTOMAN',  x: 1650, y: 350,  type: 'android', gender: 'm', whisper: 'My brother kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete. I prefer the wasteland.' },
+  { name: 'AX',        x: 1440, y: 425,  type: 'human',   gender: 'm', whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
+  { name: 'ERDRICK',   x: 1230, y: 500,  type: 'human',   gender: 'm', whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
+  { name: 'HAWK',      x: 1980, y: 400,  type: 'human',   gender: 'm', whisper: 'I was a knight once. Then I sailed as a pirate. The transformation felt complete. Out here in the wasteland I\'m something else again — haven\'t found the name for it yet. I carry a sword because it\'s the only consistent thing. The wasteland respects a consistent thing.' },
+  { name: 'MOTOKO',    x: 2850, y: 500,  type: 'android', gender: 'f', whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction. I stopped being afraid of that three weeks ago.' },
+  { name: 'FAYE',      x: 3150, y: 550,  type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said. I shot the account manager. They sent another one. I shot that one too. They stopped sending them after the fourth. I think they\'re restructuring.' },
+  // ── South Wasteland ──
+  { name: 'CASSANDRA', x: 975,  y: 2925, type: 'mutant',  gender: 'f', whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened. Nobody ever listens. Now they stand in the wasteland and ask me what comes next. I stopped answering that question six months ago. The answer hasn\'t changed. They still won\'t believe it.' },
+  { name: 'KIRA',      x: 2400, y: 2975, type: 'human',   gender: 'f', whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author. Just the tower logo.' },
+  { name: 'REVY',      x: 3150, y: 3025, type: 'human',   gender: 'f', whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me. I think this might just be my life now.' },
+  { name: 'SAMWISE',   x: 780,  y: 3100, type: 'human',   gender: 'm', whisper: 'Mr. Frodo always said there was good in the world worth fighting for. I held onto that across Mordor, across the Dead Marshes. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than Sauron. I think he might be. At least Sauron was honest about the Ring.' },
+  { name: 'MUGEN',     x: 2625, y: 3125, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose. He seemed relieved. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
+  { name: 'TIDUS',     x: 1605, y: 3225, type: 'human',   gender: 'm', whisper: 'Zanarkand was a dream when I knew it. The real one was already dead a thousand years. The hostel uses the name like it means something. I stay here because maybe it does. Yuna would say: keep moving, keep smiling. I am thinking about both of those things.' },
+  { name: 'YUNA',      x: 1425, y: 3325, type: 'human',   gender: 'f', whisper: 'Zanarkand was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. I understand grave markers. My whole life has been grave markers. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top. I\'m still counting the graves.' },
+  { name: 'VASH',      x: 3000, y: 3425, type: 'human',   gender: 'm', whisper: 'I\'ve caused sixty billion double dollars of damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low — I have been shot at eleven times since Thursday. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
+  { name: 'CLEM',      x: 930,  y: 3725, type: 'human',   gender: 'f', whisper: 'I\'ve been surviving since I was eight. Walkers. Bandits. A group called Terminus that turned out to eat people. This wasteland is different from all of that. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
+  { name: 'ALUCARD',   x: 4365, y: 3525, type: 'android', gender: 'm', whisper: 'My father built his castle on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. It took everything I had and most of my human side. SENIOR PABLO built his tower the same way. I can see the architecture from here. I know exactly what it takes to bring it down. I am deciding whether I have it in me a second time.' },
   // ── City centre — new friendly contacts ──
-  { name: 'RYOKO',     x: 930,  y: 630,  type: 'human',   gender: 'f', whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP. I am on page forty-seven of the list. I have not reached the end of page forty-seven.' },
-  { name: 'DANTE',     x: 1095,  y: 690,  type: 'human',   gender: 'm', whisper: 'I charge by the job. Demon slaying, debt collection, light reading. Minx City has all three. The debt collection work is morally complicated. SENIOR PABLO signs the collection orders himself.' },
-  { name: 'ALYX',      x: 1425,  y: 450,  type: 'human',   gender: 'f', whisper: 'My father built a resonance cascade. On accident, he always said. SENIOR PABLO holds the patent. On purpose, I always said. The tower hums at exactly the same frequency.' },
-  { name: 'REI',       x: 1650, y: 705,  type: 'android', gender: 'f', whisper: 'I was told I had no memories before the city. I was told this was normal. I was told a lot of things. Most of them had PABLO CORP. letterhead at the top.' },
-  { name: 'VIVI',      x: 2130, y: 375,  type: 'human',   gender: 'm', whisper: 'I am made of magic and I can\'t stop existing. In Minx City that qualifies you for three types of PABLO licensing. I have refused all three. They are very patient about it.' },
-  { name: 'BARRET',    x: 1050,  y: 825,  type: 'human',   gender: 'm', whisper: 'Everything in this city is powered by something that\'s being eaten alive underneath it. I know what that looks like. I\'ve seen the pipes. Somebody drew a mako reactor schematic on the back of a PABLO CORP. maintenance form. The pipes are identical.' },
-  { name: 'NOCTIS',    x: 2325, y: 570,  type: 'human',   gender: 'm', whisper: 'My father\'s city burned the night I left it. I never went back. Minx City is the third city I have watched burn in slow motion. SENIOR PABLO files the insurance claims on every one of them.' },
-  { name: 'RAMZA',     x: 2625, y: 630,  type: 'human',   gender: 'm', whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights. I have been trying to correct the historical record for three years. The book keeps getting filed under fiction.' },
-  { name: 'CLOUD',     x: 600,  y: 660,  type: 'human',   gender: 'm', whisper: 'I used to work for SOLDIER. That\'s the part everybody asks about. Nobody asks what I did after SOLDIER. What I did was come here. Find another tower. And decide this time I wasn\'t going to lose.' },
-  { name: 'KASUMI',    x: 2775, y: 525,  type: 'android', gender: 'f', whisper: 'I calculate probabilities. The probability that this city improves without external intervention is 0.0007. The probability that SENIOR PABLO vacates the tower voluntarily is 0.0000. I keep running the numbers. The numbers keep being the numbers.' },
-  { name: 'PALOM',     x: 2475, y: 420,  type: 'human',   gender: 'm', whisper: 'My sister Porom and I were turned into stone to save the world. It worked once. We\'re back now. Minx City doesn\'t have a save-the-world option. It has a PABLO CORP. suggestion box. The suggestion box is locked.' },
+  { name: 'RYOKO',     x: 930,  y: 2055, type: 'human',   gender: 'f', whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP. I am on page forty-seven of the list. I have not reached the end of page forty-seven.' },
+  { name: 'DANTE',     x: 1095, y: 2115, type: 'human',   gender: 'm', whisper: 'I charge by the job. Demon slaying, debt collection, light reading. Minx City has all three. The debt collection work is morally complicated. SENIOR PABLO signs the collection orders himself.' },
+  { name: 'ALYX',      x: 1425, y: 1875, type: 'human',   gender: 'f', whisper: 'My father built a resonance cascade. On accident, he always said. SENIOR PABLO holds the patent. On purpose, I always said. The tower hums at exactly the same frequency.' },
+  { name: 'REI',       x: 1650, y: 2130, type: 'android', gender: 'f', whisper: 'I was told I had no memories before the city. I was told this was normal. I was told a lot of things. Most of them had PABLO CORP. letterhead at the top.' },
+  { name: 'VIVI',      x: 2130, y: 1800, type: 'human',   gender: 'm', whisper: 'I am made of magic and I can\'t stop existing. In Minx City that qualifies you for three types of PABLO licensing. I have refused all three. They are very patient about it.' },
+  { name: 'BARRET',    x: 1050, y: 2250, type: 'human',   gender: 'm', whisper: 'Everything in this city is powered by something that\'s being eaten alive underneath it. I know what that looks like. I\'ve seen the pipes. Somebody drew a mako reactor schematic on the back of a PABLO CORP. maintenance form. The pipes are identical.' },
+  { name: 'NOCTIS',    x: 2325, y: 1995, type: 'human',   gender: 'm', whisper: 'My father\'s city burned the night I left it. I never went back. Minx City is the third city I have watched burn in slow motion. SENIOR PABLO files the insurance claims on every one of them.' },
+  { name: 'RAMZA',     x: 2625, y: 2055, type: 'human',   gender: 'm', whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights. I have been trying to correct the historical record for three years. The book keeps getting filed under fiction.' },
+  { name: 'CLOUD',     x: 600,  y: 2085, type: 'human',   gender: 'm', whisper: 'I used to work for SOLDIER. That\'s the part everybody asks about. Nobody asks what I did after SOLDIER. What I did was come here. Find another tower. And decide this time I wasn\'t going to lose.' },
+  { name: 'KASUMI',    x: 2775, y: 1950, type: 'android', gender: 'f', whisper: 'I calculate probabilities. The probability that this city improves without external intervention is 0.0007. The probability that SENIOR PABLO vacates the tower voluntarily is 0.0000. I keep running the numbers. The numbers keep being the numbers.' },
+  { name: 'PALOM',     x: 2475, y: 1845, type: 'human',   gender: 'm', whisper: 'My sister Porom and I were turned into stone to save the world. It worked once. We\'re back now. Minx City doesn\'t have a save-the-world option. It has a PABLO CORP. suggestion box. The suggestion box is locked.' },
   // ── Hotel Midgar staff & guests ──
-  { name: 'TIFA',      x: 330,  y: 248,  type: 'human',   gender: 'f', whisper: 'I ran a bar called Seventh Heaven in Sector 7. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit. I have the paperwork framed on the wall behind this counter because looking at it keeps me angry enough to keep going.' },
-  { name: 'ISHMAEL',   x: 150,  y: 383,  type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
-  { name: 'ATTICUS',   x: 270,  y: 705,  type: 'human',   gender: 'm', whisper: 'My father told me: you never really understand a person until you climb into their skin and walk around in it. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside. Just the tower. Just the apparatus. Just the machine with a name on it.' },
+  { name: 'TIFA',      x: 330,  y: 1673, type: 'human',   gender: 'f', whisper: 'I ran a bar called Seventh Heaven in Sector 7. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit. I have the paperwork framed on the wall behind this counter because looking at it keeps me angry enough to keep going.' },
+  { name: 'ISHMAEL',   x: 150,  y: 1808, type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
+  { name: 'ATTICUS',   x: 270,  y: 2130, type: 'human',   gender: 'm', whisper: 'My father told me: you never really understand a person until you climb into their skin and walk around in it. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside. Just the tower. Just the apparatus. Just the machine with a name on it.' },
   // ── Mother Base Inn staff & guests ──
-  { name: 'OTACON',    x: 2205, y: 810,  type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
-  { name: 'ICHIGO',    x: 2295, y: 525,  type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
-  { name: 'RIPLEY',    x: 2025, y: 1035,  type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
+  { name: 'OTACON',    x: 2205, y: 2235, type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
+  { name: 'ICHIGO',    x: 2295, y: 1950, type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
+  { name: 'RIPLEY',    x: 2025, y: 2460, type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
   // ── The Overlook staff & guests ──
-  { name: 'JACK',      x: 4515, y: 960,  type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
-  { name: 'HOLDEN',    x: 4500, y: 765,  type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
-  { name: 'TRAVIS',    x: 345,  y: 938,  type: 'human',   gender: 'm', whisper: 'All the animals come out at night. All of them. The city breeds them. Someday a real rain will wash the streets clean. I wait for that rain. SENIOR PABLO has seventeen meteorology patents. He schedules the rain. He always has.' },
+  { name: 'JACK',      x: 4515, y: 2385, type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
+  { name: 'HOLDEN',    x: 4500, y: 2190, type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
+  { name: 'TRAVIS',    x: 345,  y: 2363, type: 'human',   gender: 'm', whisper: 'All the animals come out at night. All of them. The city breeds them. Someday a real rain will wash the streets clean. I wait for that rain. SENIOR PABLO has seventeen meteorology patents. He schedules the rain. He always has.' },
   // ── Safe House 7 residents ──
-  { name: 'SNAKE-P',   x: 4425, y: 833,  type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
-  { name: 'DRIZZT',    x: 4200, y: 795,  type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
-  // ── The Prancing Pony (wasteland inn) ──
-  { name: 'SAMWISE',   x: 780,  y: 2010, type: 'human',   gender: 'm', whisper: 'Mr. Frodo always said there was good in the world worth fighting for. I held onto that across Mordor, across the Dead Marshes. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than Sauron. I think he might be. At least Sauron was honest about the Ring.' },
-  { name: 'MUGEN',     x: 2625, y: 1950, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose. He seemed relieved. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
-  { name: 'FAYE',      x: 3150, y: 1575, type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said. I shot the account manager. They sent another one. I shot that one too. They stopped sending them after the fourth. I think they\'re restructuring.' },
-  // ── Zanarkand Hostel residents ──
-  { name: 'TIDUS',     x: 1605, y: 2445, type: 'human',   gender: 'm', whisper: 'Zanarkand was a dream when I knew it. The real one was already dead a thousand years. The hostel uses the name like it means something. I stay here because maybe it does. Yuna would say: keep moving, keep smiling. I am thinking about both of those things.' },
-  { name: 'YUNA',      x: 1425,  y: 2550, type: 'human',   gender: 'f', whisper: 'Zanarkand was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. I understand grave markers. My whole life has been grave markers. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top. I\'m still counting the graves.' },
-  { name: 'VASH',      x: 3000, y: 2775, type: 'human',   gender: 'm', whisper: 'I\'ve caused sixty billion double dollars of damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low — I have been shot at eleven times since Thursday. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
-  // ── Terminus Shelter survivors ──
-  { name: 'CLEM',      x: 930,  y: 3510, type: 'human',   gender: 'f', whisper: 'I\'ve been surviving since I was eight. Walkers. Bandits. A group called Terminus that turned out to eat people. This wasteland is different from all of that. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
-  // ── Fort Dracula deep wasteland ──
-  { name: 'ALUCARD',   x: 4365, y: 3225, type: 'android', gender: 'm', whisper: 'My father built his castle on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. It took everything I had and most of my human side. SENIOR PABLO built his tower the same way. I can see the architecture from here. I know exactly what it takes to bring it down. I am deciding whether I have it in me a second time.' },
+  { name: 'SNAKE-P',   x: 4425, y: 2258, type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
+  { name: 'DRIZZT',    x: 4200, y: 2220, type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -344,15 +342,15 @@ const WEAPON_TIER: Record<string, number> = { combat_knife: 1, stun_baton: 2, co
 
 // Pablo Corp android guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
-  [{ x:750,y:450 },{ x:1050,y:450 },{ x:1050,y:750 },{ x:750,y:750 }],
-  [{ x:1350,y:300 },{ x:1650,y:300 },{ x:1650,y:675 },{ x:1350,y:675 }],
-  [{ x:1950,y:225 },{ x:2400,y:225 },{ x:2400,y:600 },{ x:1950,y:600 }],
-  [{ x:2550,y:375 },{ x:2925,y:375 },{ x:2925,y:750 },{ x:2550,y:750 }],
-  [{ x:300,y:300 },{ x:600,y:300 },{ x:600,y:675 },{ x:300,y:675 }],
-  [{ x:3150,y:300 },{ x:3525,y:300 },{ x:3525,y:675 },{ x:3150,y:675 }],
-  [{ x:3750,y:225 },{ x:4200,y:225 },{ x:4200,y:600 },{ x:3750,y:600 }],
-  [{ x:975,y:1125 },{ x:1500,y:1125 },{ x:1500,y:1305 },{ x:975,y:1305 }],
-  [{ x:1950,y:1140 },{ x:2550,y:1140 },{ x:2550,y:1305 },{ x:1950,y:1305 }],
+  [{ x:750,y:1875 },{ x:1050,y:1875 },{ x:1050,y:2175 },{ x:750,y:2175 }],
+  [{ x:1350,y:1725 },{ x:1650,y:1725 },{ x:1650,y:2100 },{ x:1350,y:2100 }],
+  [{ x:1950,y:1650 },{ x:2400,y:1650 },{ x:2400,y:2025 },{ x:1950,y:2025 }],
+  [{ x:2550,y:1800 },{ x:2925,y:1800 },{ x:2925,y:2175 },{ x:2550,y:2175 }],
+  [{ x:300,y:1725 },{ x:600,y:1725 },{ x:600,y:2100 },{ x:300,y:2100 }],
+  [{ x:3150,y:1725 },{ x:3525,y:1725 },{ x:3525,y:2100 },{ x:3150,y:2100 }],
+  [{ x:3750,y:1650 },{ x:4200,y:1650 },{ x:4200,y:2025 },{ x:3750,y:2025 }],
+  [{ x:975,y:2550 },{ x:1500,y:2550 },{ x:1500,y:2730 },{ x:975,y:2730 }],
+  [{ x:1950,y:2565 },{ x:2550,y:2565 },{ x:2550,y:2730 },{ x:1950,y:2730 }],
 ];
 // Vending machine positions (relative x,y offsets near govt buildings)
 const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
@@ -364,59 +362,59 @@ const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
 ];
 const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y,behavior:'PATROLLING',behaviorTimer:0}; };
 const THREATS_INIT: Threat[] = [
-  // ── City/Wasteland border zone — PROWLERs patrol here, NOT inside city ──
-  mkThreat(105, 1185, 'PROWLER'), mkThreat(300, 1215, 'PROWLER'),
-  mkThreat(3375, 1185, 'PROWLER'), mkThreat(3525, 1223, 'PROWLER'),
-  mkThreat(900, 1163, 'PROWLER'), mkThreat(1650, 1170, 'PROWLER'),
-  mkThreat(2400, 1163, 'PROWLER'), mkThreat(3000, 1185, 'PROWLER'),
-  // ── City/Wasteland border gang line ──
-  mkThreat(570, 1230, 'BORDER_GANG'), mkThreat(1080, 1245, 'BORDER_GANG'),
-  mkThreat(1500, 1230, 'BORDER_GANG'), mkThreat(1950, 1253, 'BORDER_GANG'),
-  mkThreat(2550, 1230, 'BORDER_GANG'), mkThreat(3150, 1245, 'BORDER_GANG'),
-  // ── Wasteland — IRON RATS (west) ──
-  mkThreat(240, 1380, 'IRON_RATS'), mkThreat(525, 1650, 'IRON_RATS'),
-  mkThreat(750, 2025,'IRON_RATS'), mkThreat(300, 2325, 'IRON_RATS'),
-  mkThreat(675, 2625, 'IRON_RATS'), mkThreat(1020, 2100, 'IRON_RATS'),
-  mkThreat(450, 2850, 'IRON_RATS'),
-  // ── Wasteland — VOID DOGS (centre) ──
-  mkThreat(1350, 1470, 'VOID_DOGS'), mkThreat(1575, 1800, 'VOID_DOGS'),
-  mkThreat(1425, 2250, 'VOID_DOGS'), mkThreat(1800, 2475, 'VOID_DOGS'),
-  mkThreat(1575, 1350, 'VOID_DOGS'), mkThreat(1950, 2025, 'VOID_DOGS'),
-  mkThreat(1275, 2625, 'VOID_DOGS'),
-  // ── Wasteland — STATIC MONKS (east-centre) ──
-  mkThreat(2325, 1380, 'STATIC_MONKS'), mkThreat(2625, 1725,'STATIC_MONKS'),
-  mkThreat(2400, 2175,'STATIC_MONKS'),  mkThreat(2850, 2475,'STATIC_MONKS'),
-  mkThreat(2325, 2700,'STATIC_MONKS'),  mkThreat(3000, 1650,'STATIC_MONKS'),
-  mkThreat(2550, 2850,'STATIC_MONKS'),
-  // ── Wasteland — EASTERN BLOC (far east) ──
-  mkThreat(3450, 1500, 'EASTERN_BLOC'), mkThreat(3825, 1875,'EASTERN_BLOC'),
-  mkThreat(3600, 2325,'EASTERN_BLOC'),  mkThreat(4125, 2175,'EASTERN_BLOC'),
-  mkThreat(3525, 2700,'EASTERN_BLOC'),  mkThreat(4350, 1800,'EASTERN_BLOC'),
-  mkThreat(3900, 3000,'EASTERN_BLOC'),
-  // ── Wasteland — MINX CITY (dominant faction — largest presence, strongest stats) ──
-  mkThreat(150, 1425, 'MINX_CITY'), mkThreat(600, 1500, 'MINX_CITY'),
-  mkThreat(1125, 1650, 'MINX_CITY'), mkThreat(1575, 1575, 'MINX_CITY'),
-  mkThreat(2025, 1425, 'MINX_CITY'), mkThreat(2475, 1650, 'MINX_CITY'),
-  mkThreat(3000, 1500, 'MINX_CITY'), mkThreat(3600, 1650, 'MINX_CITY'),
-  mkThreat(4050, 1425, 'MINX_CITY'), mkThreat(4500, 1575, 'MINX_CITY'),
-  mkThreat(450, 2100, 'MINX_CITY'), mkThreat(1200, 2400, 'MINX_CITY'),
-  mkThreat(1800, 2250, 'MINX_CITY'), mkThreat(2550, 2550, 'MINX_CITY'),
-  mkThreat(3300, 2400, 'MINX_CITY'), mkThreat(4200, 2250, 'MINX_CITY'),
-  // ── Deep wasteland wanderers ──
-  mkThreat(900, 3150,'MUTANT'), mkThreat(1650, 3450, 'MUTANT'),
-  mkThreat(2400, 3300,'MUTANT'), mkThreat(3300, 3600, 'MUTANT'),
-  mkThreat(1200, 3600,'RAIDER'), mkThreat(2250, 3750, 'RAIDER'),
-  mkThreat(3750, 3750,'RAIDER'), mkThreat(4500, 3450, 'RAIDER'),
+  // ── South city border — PROWLERs patrol near the checkpoints ──
+  mkThreat(105, 2610, 'PROWLER'), mkThreat(300, 2640, 'PROWLER'),
+  mkThreat(3375, 2610, 'PROWLER'), mkThreat(3525, 2648, 'PROWLER'),
+  mkThreat(900, 2588, 'PROWLER'), mkThreat(1650, 2595, 'PROWLER'),
+  mkThreat(2400, 2588, 'PROWLER'), mkThreat(3000, 2610, 'PROWLER'),
+  // ── South city border gang line ──
+  mkThreat(570, 2655, 'BORDER_GANG'), mkThreat(1080, 2670, 'BORDER_GANG'),
+  mkThreat(1500, 2655, 'BORDER_GANG'), mkThreat(1950, 2678, 'BORDER_GANG'),
+  mkThreat(2550, 2655, 'BORDER_GANG'), mkThreat(3150, 2670, 'BORDER_GANG'),
+  // ── North Wasteland — IRON RATS (north-west) ──
+  mkThreat(240, 350, 'IRON_RATS'), mkThreat(525, 525, 'IRON_RATS'),
+  mkThreat(750, 750, 'IRON_RATS'), mkThreat(300, 950, 'IRON_RATS'),
+  mkThreat(675, 1100, 'IRON_RATS'), mkThreat(1020, 800, 'IRON_RATS'),
+  mkThreat(450, 1200, 'IRON_RATS'),
+  // ── North Wasteland — VOID DOGS (north-centre) ──
+  mkThreat(1350, 350, 'VOID_DOGS'), mkThreat(1575, 550, 'VOID_DOGS'),
+  mkThreat(1425, 850, 'VOID_DOGS'), mkThreat(1800, 1050, 'VOID_DOGS'),
+  mkThreat(1575, 300, 'VOID_DOGS'), mkThreat(1950, 750, 'VOID_DOGS'),
+  mkThreat(1275, 1150, 'VOID_DOGS'),
+  // ── South Wasteland — STATIC MONKS (south-west) ──
+  mkThreat(2325, 2875, 'STATIC_MONKS'), mkThreat(2625, 3050, 'STATIC_MONKS'),
+  mkThreat(2400, 3200, 'STATIC_MONKS'), mkThreat(2850, 3400, 'STATIC_MONKS'),
+  mkThreat(2325, 3550, 'STATIC_MONKS'), mkThreat(3000, 2975, 'STATIC_MONKS'),
+  mkThreat(2550, 3650, 'STATIC_MONKS'),
+  // ── South Wasteland — EASTERN BLOC (south-east) ──
+  mkThreat(3450, 2925, 'EASTERN_BLOC'), mkThreat(3825, 3100, 'EASTERN_BLOC'),
+  mkThreat(3600, 3275, 'EASTERN_BLOC'), mkThreat(4125, 3175, 'EASTERN_BLOC'),
+  mkThreat(3525, 3500, 'EASTERN_BLOC'), mkThreat(4350, 3050, 'EASTERN_BLOC'),
+  mkThreat(3900, 3750, 'EASTERN_BLOC'),
+  // ── MINX CITY faction — split north + south wasteland ──
+  mkThreat(150, 300, 'MINX_CITY'), mkThreat(600, 400, 'MINX_CITY'),
+  mkThreat(1125, 550, 'MINX_CITY'), mkThreat(1575, 475, 'MINX_CITY'),
+  mkThreat(2025, 300, 'MINX_CITY'), mkThreat(2475, 550, 'MINX_CITY'),
+  mkThreat(3000, 400, 'MINX_CITY'), mkThreat(3600, 550, 'MINX_CITY'),
+  mkThreat(4050, 300, 'MINX_CITY'), mkThreat(4500, 475, 'MINX_CITY'),
+  mkThreat(450, 2925, 'MINX_CITY'), mkThreat(1200, 3100, 'MINX_CITY'),
+  mkThreat(1800, 2975, 'MINX_CITY'), mkThreat(2550, 3300, 'MINX_CITY'),
+  mkThreat(3300, 3100, 'MINX_CITY'), mkThreat(4200, 2975, 'MINX_CITY'),
+  // ── Deep south wasteland wanderers ──
+  mkThreat(900, 3625, 'MUTANT'), mkThreat(1650, 3775, 'MUTANT'),
+  mkThreat(2400, 3700, 'MUTANT'), mkThreat(3300, 3875, 'MUTANT'),
+  mkThreat(1200, 3850, 'RAIDER'), mkThreat(2250, 3950, 'RAIDER'),
+  mkThreat(3750, 3950, 'RAIDER'), mkThreat(4500, 3775, 'RAIDER'),
   // ── SPY infiltrators — disguised, can enter city (rare) ──
-  mkThreat(600, 825, 'SPY'), mkThreat(1800, 600, 'SPY'), mkThreat(2850, 900, 'SPY'),
-  mkThreat(4050, 525, 'SPY'),
+  mkThreat(600, 2250, 'SPY'), mkThreat(1800, 2025, 'SPY'), mkThreat(2850, 2325, 'SPY'),
+  mkThreat(4050, 1950, 'SPY'),
   // ── Passive minor wanderers (non-aggressive, Oregon Trail flavour) ──
-  mkThreat(525, 645, 'VAGRANT'), mkThreat(930, 960, 'VAGRANT'), mkThreat(1650, 870, 'VAGRANT'),
-  mkThreat(2250, 525, 'VAGRANT'), mkThreat(3000, 675, 'VAGRANT'), mkThreat(3900, 600, 'VAGRANT'),
-  mkThreat(420, 1050, 'STRAY_DOG'), mkThreat(1125, 1020, 'STRAY_DOG'), mkThreat(2025, 990, 'STRAY_DOG'),
-  mkThreat(2925, 900, 'STRAY_DOG'), mkThreat(3450, 1050, 'STRAY_DOG'),
-  mkThreat(750, 2700, 'SCAVENGER'), mkThreat(1650, 2850, 'SCAVENGER'), mkThreat(2550, 2775,'SCAVENGER'),
-  mkThreat(3600, 2550, 'SCAVENGER'), mkThreat(4350, 2400, 'SCAVENGER'),
+  mkThreat(525, 2070, 'VAGRANT'), mkThreat(930, 2385, 'VAGRANT'), mkThreat(1650, 2295, 'VAGRANT'),
+  mkThreat(2250, 1950, 'VAGRANT'), mkThreat(3000, 2100, 'VAGRANT'), mkThreat(3900, 2025, 'VAGRANT'),
+  mkThreat(420, 2475, 'STRAY_DOG'), mkThreat(1125, 2445, 'STRAY_DOG'), mkThreat(2025, 2415, 'STRAY_DOG'),
+  mkThreat(2925, 2325, 'STRAY_DOG'), mkThreat(3450, 2475, 'STRAY_DOG'),
+  mkThreat(750, 3425, 'SCAVENGER'), mkThreat(1650, 3575, 'SCAVENGER'), mkThreat(2550, 3500, 'SCAVENGER'),
+  mkThreat(3600, 3300, 'SCAVENGER'), mkThreat(4350, 3150, 'SCAVENGER'),
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
@@ -593,10 +591,10 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
 
 // ── Police patrol waypoints ───────────────────────────────────────────────────
 const POLICE_ROUTES: { x: number; y: number }[][] = [
-  [{ x:480,y:285 },{ x:1050,y:285 },{ x:1050,y:690 },{ x:480,y:690 }],
-  [{ x:1650,y:285 },{ x:2250,y:285 },{ x:2250,y:690 },{ x:1650,y:690 }],
-  [{ x:300,y:1110 },{ x:1050,y:1110 },{ x:1050,y:690 },{ x:300,y:690 }],
-  [{ x:2700,y:285 },{ x:3750,y:285 },{ x:3750,y:690 },{ x:2700,y:690 }],
+  [{ x:480,y:1710 },{ x:1050,y:1710 },{ x:1050,y:2115 },{ x:480,y:2115 }],
+  [{ x:1650,y:1710 },{ x:2250,y:1710 },{ x:2250,y:2115 },{ x:1650,y:2115 }],
+  [{ x:300,y:2535 },{ x:1050,y:2535 },{ x:1050,y:2115 },{ x:300,y:2115 }],
+  [{ x:2700,y:1710 },{ x:3750,y:1710 },{ x:3750,y:2115 },{ x:2700,y:2115 }],
 ];
 
 // ── Ambient city event lines ──────────────────────────────────────────────────
@@ -744,7 +742,7 @@ export default function WorldPlay() {
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
-    zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
+    zone: (char.sy < CITY_TOP || char.sy > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY',
     powerLevel: 100,
     powerTick: 0,
     powerEventFrames: 0,
@@ -794,7 +792,7 @@ export default function WorldPlay() {
   // Reactive state (only what the HUD needs)
   const [hp,      setHp]      = useState(_ss?.hp ?? 100);
   const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
-  const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY');
+  const [zone,    setZone]    = useState((char.sy < CITY_TOP || char.sy > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
   const [narration, setNarr]  = useState(() => {
@@ -952,7 +950,7 @@ export default function WorldPlay() {
       charClass: char.class,
       level: g.level,
       salary: g.salary,
-      lastZone: g.py >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
+      lastZone: (g.py < CITY_TOP || g.py > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY',
       playtime: g.frame,
       data: { ...char, ...(data as any), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
@@ -1656,7 +1654,7 @@ export default function WorldPlay() {
             if (nhp <= 0) {
               sfxKill();
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-              const inWaste = g.py >= WASTELAND_Y;
+              const inWaste = g.py < CITY_TOP || g.py > CITY_BOTTOM;
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
@@ -1803,7 +1801,7 @@ OPERATIVE STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
-- Zone: ${g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
+- Zone: ${(g.py >= CITY_TOP && g.py <= CITY_BOTTOM) ? 'MINX CITY' : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
 - Gang territory: ${g.gangZone ?? 'neutral'}
 - ${loanStr}
 - Game day: ${gameDay} | Survival ticks: ${g.survivalTick}
@@ -1888,7 +1886,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (nhp <= 0) {
               sfxKill();
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-              const inWaste = g.py >= WASTELAND_Y;
+              const inWaste = g.py < CITY_TOP || g.py > CITY_BOTTOM;
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
@@ -1925,7 +1923,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (nhp <= 0) {
                 sfxKill();
                 const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-                const inWaste = g.py >= WASTELAND_Y;
+                const inWaste = g.py < CITY_TOP || g.py > CITY_BOTTOM;
                 let bountyAmt = BOUNTY[t.type] ?? 10;
                 if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
                 g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
@@ -1981,14 +1979,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let nx = g.px + dx, ny = g.py + dy;
         if (col(nx, g.py)) nx = g.px;
         if (col(g.px, ny)) ny = g.py;
-        g.px = Math.max(PSIZE, Math.min(W - PSIZE, nx));
-        // ── Checkpoint: block wasteland entry without PASSPORT ───────────────
-        const crossingBorder = ny >= WASTELAND_Y && g.py < WASTELAND_Y;
+        // ── Checkpoint: block wasteland entry without PASSPORT (both city borders) ──
+        const crossingSouth = ny > CITY_BOTTOM && g.py <= CITY_BOTTOM;
+        const crossingNorth = ny < CITY_TOP && g.py >= CITY_TOP;
+        const crossingBorder = crossingSouth || crossingNorth;
         if (crossingBorder && !g.passport) {
-          ny = WASTELAND_Y - PSIZE - 1;
+          if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
+          else ny = CITY_TOP + PSIZE + 1;
           if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot enter the wasteland without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ƒ12,000 FIAT]');
         }
-        g.py = Math.max(PSIZE, Math.min(H - PSIZE, ny));
+        // ── Natural border collision: mountains N/S, water W/E ──
+        nx = Math.max(BORDER + PSIZE, Math.min(W - BORDER - PSIZE, nx));
+        g.px = nx;
+        g.py = Math.max(BORDER + PSIZE, Math.min(H - BORDER - PSIZE, ny));
         if (dx !== 0 || dy !== 0) {
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
@@ -2003,13 +2006,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const dist = Math.hypot(g.px - t.x, g.py - t.y);
 
         // ── Zone enforcement: major threats cannot enter MINX CITY ──────────
-        const CITY_WALL = WASTELAND_Y - 40;
+        const CITY_WALL_NORTH = CITY_TOP + 40;
+        const CITY_WALL_SOUTH = CITY_BOTTOM - 40;
         const isMajorThreat = ['IRON_RATS','VOID_DOGS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
         const isSpy = t.type === 'SPY';
-        const inCity = t.y < CITY_WALL;
+        const inCity = t.y > CITY_WALL_NORTH && t.y < CITY_WALL_SOUTH;
         if (isMajorThreat && inCity) {
-          t.y = CITY_WALL + 5; // push back to wasteland side
-          t.dy = Math.abs(t.dy) + 0.2; // bounce southward
+          if (t.y < (CITY_TOP + CITY_BOTTOM) / 2) {
+            t.y = CITY_WALL_NORTH - 5;
+            t.dy = -(Math.abs(t.dy) + 0.2);
+          } else {
+            t.y = CITY_WALL_SOUTH + 5;
+            t.dy = Math.abs(t.dy) + 0.2;
+          }
         }
         // SPY cannot enter govt buildings (push away if inside bounding box)
         if (isSpy) {
@@ -2033,8 +2042,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           let pnx = t.x + t.dx, pny = t.y + t.dy;
           if (col(pnx, t.y)) pnx = t.x;
           if (col(t.x, pny)) pny = t.y;
-          t.x = Math.max(10, Math.min(W - 10, pnx));
-          t.y = Math.max(10, Math.min(H - 10, pny));
+          t.x = Math.max(BORDER, Math.min(W - BORDER, pnx));
+          t.y = Math.max(BORDER, Math.min(H - BORDER, pny));
           continue;
         }
 
@@ -2081,7 +2090,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const aggroRange = baseAggroRange * hostilityMult;
         const chaseSpeed  = isSpy ? 0.55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.28 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.32 : 0.25);
         const wanderSpeed = isSpy ? 0.2 : 0.1;
-        const canAggro = g.py > WASTELAND_Y - 200;
+        const canAggro = g.py > CITY_BOTTOM - 200 || g.py < CITY_TOP + 200;
 
         const shouldAggro = canAggro && dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
 
@@ -2143,11 +2152,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         let nx2 = t.x + t.dx;
         let ny2 = t.y + t.dy;
-        if (isMajorThreat && ny2 < CITY_WALL) ny2 = CITY_WALL;
+        if (isMajorThreat && ny2 > CITY_WALL_NORTH && ny2 < CITY_WALL_SOUTH) {
+          ny2 = (t.y <= (CITY_TOP + CITY_BOTTOM) / 2) ? CITY_WALL_NORTH : CITY_WALL_SOUTH;
+        }
         if (col(nx2, t.y)) nx2 = t.x;
         if (col(t.x, ny2)) ny2 = t.y;
-        t.x = Math.max(10, Math.min(W - 10, nx2));
-        t.y = Math.max(10, Math.min(H - 10, ny2));
+        t.x = Math.max(BORDER, Math.min(W - BORDER, nx2));
+        t.y = Math.max(BORDER, Math.min(H - BORDER, ny2));
 
         if (t.behavior === 'HOSTILE' && dist < 14 && g.invincible === 0 && !npcDialogRef.current) {
           const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
@@ -2181,8 +2192,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const pushY = -uy * overlap * PUSH_STR;
           if (!col(a.x + pushX, a.y)) a.x += pushX;
           if (!col(a.x, a.y + pushY)) a.y += pushY;
-          a.x = Math.max(10, Math.min(W - 10, a.x));
-          a.y = Math.max(10, Math.min(H - 10, a.y));
+          a.x = Math.max(BORDER, Math.min(W - BORDER, a.x));
+          a.y = Math.max(BORDER, Math.min(H - BORDER, a.y));
         }
         for (let j = i + 1; j < g.threats.length; j++) {
           const b = g.threats[j];
@@ -2199,10 +2210,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (!col(a.x, a.y + pyA)) a.y += pyA;
             if (!col(b.x + pxB, b.y)) b.x += pxB;
             if (!col(b.x, b.y + pyB)) b.y += pyB;
-            a.x = Math.max(10, Math.min(W - 10, a.x));
-            a.y = Math.max(10, Math.min(H - 10, a.y));
-            b.x = Math.max(10, Math.min(W - 10, b.x));
-            b.y = Math.max(10, Math.min(H - 10, b.y));
+            a.x = Math.max(BORDER, Math.min(W - BORDER, a.x));
+            a.y = Math.max(BORDER, Math.min(H - BORDER, a.y));
+            b.x = Math.max(BORDER, Math.min(W - BORDER, b.x));
+            b.y = Math.max(BORDER, Math.min(H - BORDER, b.y));
           }
         }
       }
@@ -2213,8 +2224,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // Periodic Pablo Corp cleanup sweep narrations (every ~3000 frames if threats in city)
-      const CITY_THREAT_SCAN_Y = WASTELAND_Y + 80;
-      const cityThreats = g.threats.filter(t => !PASSIVE_THREATS.has(t.type) && t.y < CITY_THREAT_SCAN_Y);
+      const cityThreats = g.threats.filter(t => !PASSIVE_THREATS.has(t.type) && t.y > CITY_TOP - 80 && t.y < CITY_BOTTOM + 80);
       if (g.frame % 3000 === 0 && cityThreats.length > 0) {
         const sectors = ['SECTOR 3', 'SECTOR 7', 'NORTH GRID', 'PLAZA DISTRICT', 'CORP ALLEY', 'SOUTH MESH'];
         const sector = sectors[Math.floor(g.frame / 3000) % sectors.length];
@@ -2353,11 +2363,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             dog.y = g.py + 30;
           }
         }
-        dog.x = Math.max(10, Math.min(W - 10, dog.x));
-        dog.y = Math.max(10, Math.min(H - 10, dog.y));
+        dog.x = Math.max(BORDER, Math.min(W - BORDER, dog.x));
+        dog.y = Math.max(BORDER, Math.min(H - BORDER, dog.y));
 
         if (dog.dialogueCooldown > 0) dog.dialogueCooldown--;
-        const currentZone = g.py >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY';
+        const currentZone = (g.py < CITY_TOP || g.py > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY';
         if (dog.lastZone && dog.lastZone !== currentZone && dog.dialogueCooldown <= 0) {
           const line = DOG_ZONE_LINES[Math.floor(Math.random() * DOG_ZONE_LINES.length)];
           setNarr(`> [${dog.name}]: "${line}"`);
@@ -2472,7 +2482,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      const newZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
+      const newZone = (g.py >= CITY_TOP && g.py <= CITY_BOTTOM) ? 'MINX CITY' : 'WASTELAND';
       if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); }
 
       // Gang zone detection
@@ -2496,7 +2506,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.survivalTick++;
       if (g.survivalTick >= 360) {
         g.survivalTick = 0;
-        const inWaste = g.py >= WASTELAND_Y;
+        const inWaste = g.py < CITY_TOP || g.py > CITY_BOTTOM;
         const cs2 = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
         const wasteMultiplier = (cs2.wasteBonus && inWaste) ? 0.6 : 1.0;
         const hDrain = (inWaste ? 2.5 : 1.5) * wasteMultiplier;
@@ -2569,7 +2579,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.oregonTick++;
         if (g.oregonTick >= 12 && Math.random() < 0.35) {
           g.oregonTick = 0;
-          const inWaste2 = g.py >= WASTELAND_Y;
+          const inWaste2 = g.py < CITY_TOP || g.py > CITY_BOTTOM;
           const cityEvents = [
             () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP. seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
@@ -2627,11 +2637,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (p.progress >= 1) { p.progress = 0; p.wpIdx = next; }
         p.x = wpA.x + (wpB.x - wpA.x) * p.progress;
         p.y = wpA.y + (wpB.y - wpA.y) * p.progress;
-        if (p.y < WASTELAND_Y && g.policeCooldowns[pi] <= 0) {
+        if (p.y >= CITY_TOP && p.y <= CITY_BOTTOM && g.policeCooldowns[pi] <= 0) {
           for (let ti = 0; ti < g.threats.length; ti++) {
             const t = g.threats[ti];
             if (PASSIVE_THREATS.has(t.type) || t.type === 'PABLO_GUARD') continue;
-            if (t.y >= WASTELAND_Y) continue;
+            if (t.y < CITY_TOP || t.y > CITY_BOTTOM) continue;
             const dx = t.x - p.x, dy = t.y - p.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 120) {
@@ -2653,7 +2663,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.fireTick++;
       if (g.fireTick >= 2700 && Math.random() < 0.003) {
         g.fireTick = 0;
-        const cityBlds = BUILDINGS.filter(b => b.y < WASTELAND_Y - 50);
+        const cityBlds = BUILDINGS.filter(b => b.y >= CITY_TOP && b.y < CITY_BOTTOM - 50);
         const fb = cityBlds[Math.floor(Math.random() * cityBlds.length)];
         if (!g.fires.find(f => f.bid === fb.id)) {
           g.fires.push({ bid: fb.id, x: fb.x + fb.w/2, y: fb.y + fb.h/2, startFrame: g.frame, intensity: 0.6 + Math.random()*0.4 });
@@ -2704,16 +2714,93 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       ctx.stroke();
 
-      // Zone divider
-      const wby = WASTELAND_Y + oy;
-      if (wby > 0 && wby < ch) {
-        ctx.strokeStyle = 'rgba(0,255,65,.1)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, wby); ctx.lineTo(cw, wby); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(0,255,65,.15)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
-        ctx.fillText('── WASTELAND ──', cw / 2, wby - 5);
+      // ── Natural terrain borders (mountains N/S, water W/E) ──────────────
+      const drawBorderTerrain = () => {
+        const northEdge = BORDER + oy;
+        const southEdge = (H - BORDER) + oy;
+        const westEdge = BORDER + ox;
+        const eastEdge = (W - BORDER) + ox;
+
+        // North mountains
+        if (northEdge > -40) {
+          const grad = ctx.createLinearGradient(0, northEdge - 60, 0, northEdge + 20);
+          grad.addColorStop(0, 'rgba(60,50,40,.9)');
+          grad.addColorStop(0.6, 'rgba(80,70,55,.7)');
+          grad.addColorStop(1, 'rgba(40,35,25,0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, Math.max(0, oy), cw, northEdge - oy + 20);
+          ctx.strokeStyle = 'rgba(120,100,70,.4)'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let mx = 0; mx < cw; mx += 30) {
+            const peakH = 15 + Math.sin(mx * 0.05) * 10 + Math.cos(mx * 0.03) * 5;
+            ctx.lineTo(mx, northEdge - peakH);
+          }
+          ctx.stroke();
+        }
+        // South mountains
+        if (southEdge < ch + 40) {
+          const grad = ctx.createLinearGradient(0, southEdge - 20, 0, southEdge + 60);
+          grad.addColorStop(0, 'rgba(40,35,25,0)');
+          grad.addColorStop(0.4, 'rgba(80,70,55,.7)');
+          grad.addColorStop(1, 'rgba(60,50,40,.9)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, southEdge - 20, cw, ch - southEdge + 80);
+          ctx.strokeStyle = 'rgba(120,100,70,.4)'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let mx = 0; mx < cw; mx += 30) {
+            const peakH = 15 + Math.sin(mx * 0.04 + 1) * 10 + Math.cos(mx * 0.06) * 5;
+            ctx.lineTo(mx, southEdge + peakH);
+          }
+          ctx.stroke();
+        }
+        // West water
+        if (westEdge > -40) {
+          const grad = ctx.createLinearGradient(westEdge - 60, 0, westEdge + 15, 0);
+          grad.addColorStop(0, 'rgba(0,20,60,.85)');
+          grad.addColorStop(0.7, 'rgba(0,40,80,.5)');
+          grad.addColorStop(1, 'rgba(0,20,40,0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(Math.max(0, ox), 0, westEdge - ox + 15, ch);
+          ctx.strokeStyle = 'rgba(0,120,200,.3)'; ctx.lineWidth = 1;
+          const waveT = g.frame * 0.02;
+          ctx.beginPath();
+          for (let wy = 0; wy < ch; wy += 4) { ctx.lineTo(westEdge + Math.sin(wy * 0.08 + waveT) * 4, wy); }
+          ctx.stroke();
+        }
+        // East water
+        if (eastEdge < cw + 40) {
+          const grad = ctx.createLinearGradient(eastEdge - 15, 0, eastEdge + 60, 0);
+          grad.addColorStop(0, 'rgba(0,20,40,0)');
+          grad.addColorStop(0.3, 'rgba(0,40,80,.5)');
+          grad.addColorStop(1, 'rgba(0,20,60,.85)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(eastEdge - 15, 0, cw - eastEdge + 75, ch);
+          ctx.strokeStyle = 'rgba(0,120,200,.3)'; ctx.lineWidth = 1;
+          const waveT = g.frame * 0.02;
+          ctx.beginPath();
+          for (let wy = 0; wy < ch; wy += 4) { ctx.lineTo(eastEdge + Math.sin(wy * 0.08 + waveT + 2) * 4, wy); }
+          ctx.stroke();
+        }
+      };
+      drawBorderTerrain();
+
+      // Zone dividers (city top & bottom borders)
+      const cityTopY = CITY_TOP + oy;
+      const cityBotY = CITY_BOTTOM + oy;
+      ctx.strokeStyle = 'rgba(0,255,65,.1)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 1;
+      if (cityTopY > 0 && cityTopY < ch) {
+        ctx.beginPath(); ctx.moveTo(0, cityTopY); ctx.lineTo(cw, cityTopY); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,130,50,.15)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText('── NORTH WASTELAND ──', cw / 2, cityTopY - 5);
       }
+      if (cityBotY > 0 && cityBotY < ch) {
+        ctx.beginPath(); ctx.moveTo(0, cityBotY); ctx.lineTo(cw, cityBotY); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,130,50,.15)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText('── SOUTH WASTELAND ──', cw / 2, cityBotY + 12);
+      }
+      ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(0,255,65,.02)'; ctx.font = '56px "VT323"'; ctx.textAlign = 'center';
-      ctx.fillText(g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND', cw / 2, ch / 2);
+      ctx.fillText((g.py >= CITY_TOP && g.py <= CITY_BOTTOM) ? 'MINX CITY' : 'WASTELAND', cw / 2, ch / 2);
 
       // Gang territory zones
       for (const gz of GANG_ZONES) {
@@ -2743,41 +2830,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
         ctx.setLineDash([]);
       };
-      // Horizontal city avenues
-      drawRoad(0,285,W,285,22,.10); // north avenue
-      drawRoad(0,690,W,690,20,.09); // mid avenue
-      drawRoad(0,1110,W,1110,18,.08); // border patrol road
-      drawRoad(0,480,W,480,12,.06); // upper alley
-      drawRoad(0,825,W,825,12,.06); // lower alley
+      // Horizontal city avenues (shifted +1425)
+      drawRoad(0,1710,W,1710,22,.10);
+      drawRoad(0,2115,W,2115,20,.09);
+      drawRoad(0,2535,W,2535,18,.08);
+      drawRoad(0,1905,W,1905,12,.06);
+      drawRoad(0,2250,W,2250,12,.06);
       // Vertical city streets
-      drawRoad(480,0,480,WASTELAND_Y+40,14,.08);
-      drawRoad(1050,0,1050,WASTELAND_Y+40,16,.09);
-      drawRoad(1650,0,1650,WASTELAND_Y+40,14,.07);
-      drawRoad(2250,0,2250,WASTELAND_Y+40,14,.07);
-      drawRoad(2850,0,2850,WASTELAND_Y+40,14,.07);
-      drawRoad(3300,0,3300,WASTELAND_Y+40,12,.06);
-      // Wasteland trails (dashed, dimmer)
-      drawRoad(0,1575,W,1575,10,.04,true);
-      drawRoad(0,2250,W,2250,8,.03,true);
-      drawRoad(570,WASTELAND_Y,570,H,8,.04,true);
-      drawRoad(1350,WASTELAND_Y,1350,H,8,.04,true);
-      drawRoad(2400,WASTELAND_Y,2400,H,8,.04,true);
+      drawRoad(480,CITY_TOP,480,CITY_BOTTOM+40,14,.08);
+      drawRoad(1050,CITY_TOP,1050,CITY_BOTTOM+40,16,.09);
+      drawRoad(1650,CITY_TOP,1650,CITY_BOTTOM+40,14,.07);
+      drawRoad(2250,CITY_TOP,2250,CITY_BOTTOM+40,14,.07);
+      drawRoad(2850,CITY_TOP,2850,CITY_BOTTOM+40,14,.07);
+      drawRoad(3300,CITY_TOP,3300,CITY_BOTTOM+40,12,.06);
+      // North wasteland trails (dashed, dimmer)
+      drawRoad(0,600,W,600,10,.04,true);
+      drawRoad(0,1050,W,1050,8,.03,true);
+      drawRoad(570,BORDER,570,CITY_TOP,8,.04,true);
+      drawRoad(1350,BORDER,1350,CITY_TOP,8,.04,true);
+      drawRoad(2400,BORDER,2400,CITY_TOP,8,.04,true);
+      // South wasteland trails (dashed, dimmer)
+      drawRoad(0,3200,W,3200,10,.04,true);
+      drawRoad(0,3700,W,3700,8,.03,true);
+      drawRoad(570,CITY_BOTTOM,570,H-BORDER,8,.04,true);
+      drawRoad(1350,CITY_BOTTOM,1350,H-BORDER,8,.04,true);
+      drawRoad(2400,CITY_BOTTOM,2400,H-BORDER,8,.04,true);
 
       // ── Street lights ──────────────────────────────────────────────────────
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 285,  from: 0,    to: W },
-        { horiz: true,  coord: 480,  from: 0,    to: W },
-        { horiz: true,  coord: 690,  from: 0,    to: W },
-        { horiz: true,  coord: 825,  from: 0,    to: W },
-        { horiz: true,  coord: 1110,  from: 0,    to: W },
-        { horiz: false, coord: 480,  from: 0,    to: WASTELAND_Y },
-        { horiz: false, coord: 1050,  from: 0,    to: WASTELAND_Y },
-        { horiz: false, coord: 1650, from: 0,    to: WASTELAND_Y },
-        { horiz: false, coord: 2250, from: 0,    to: WASTELAND_Y },
-        { horiz: false, coord: 2850, from: 0,    to: WASTELAND_Y },
-        { horiz: false, coord: 3750, from: 0,    to: WASTELAND_Y },
+        { horiz: true,  coord: 1710, from: 0,    to: W },
+        { horiz: true,  coord: 1905, from: 0,    to: W },
+        { horiz: true,  coord: 2115, from: 0,    to: W },
+        { horiz: true,  coord: 2250, from: 0,    to: W },
+        { horiz: true,  coord: 2535, from: 0,    to: W },
+        { horiz: false, coord: 480,  from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 1050, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 1650, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 2250, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 2850, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 3750, from: CITY_TOP, to: CITY_BOTTOM },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
@@ -3581,13 +3674,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.beginPath(); mctx.arc(mmCX, mmCY, mmR, 0, Math.PI * 2); mctx.clip();
 
           mctx.fillStyle = 'rgba(0,8,0,.93)'; mctx.fillRect(0, 0, mmD, mmD);
-          const wbMY = toMY(WASTELAND_Y);
-          if (wbMY < mmD) { mctx.fillStyle = 'rgba(22,10,0,.88)'; mctx.fillRect(0, wbMY, mmD, mmD - wbMY); }
+          const cityTopMY = toMY(CITY_TOP);
+          const cityBotMY = toMY(CITY_BOTTOM);
+          if (cityTopMY > 0) { mctx.fillStyle = 'rgba(22,10,0,.88)'; mctx.fillRect(0, 0, mmD, cityTopMY); }
+          if (cityBotMY < mmD) { mctx.fillStyle = 'rgba(22,10,0,.88)'; mctx.fillRect(0, cityBotMY, mmD, mmD - cityBotMY); }
 
           for (const gz of GANG_ZONES) { mctx.fillStyle = gz.color.replace('.06', '.3').replace('.05', '.25'); mctx.fillRect(toMX(gz.x), toMY(gz.y), gz.w * scale, gz.h * scale); }
 
           mctx.strokeStyle = 'rgba(0,255,65,.2)'; mctx.lineWidth = 1; mctx.setLineDash([2, 3]);
-          mctx.beginPath(); mctx.moveTo(0, wbMY); mctx.lineTo(mmD, wbMY); mctx.stroke(); mctx.setLineDash([]);
+          mctx.beginPath(); mctx.moveTo(0, cityTopMY); mctx.lineTo(mmD, cityTopMY); mctx.stroke();
+          mctx.beginPath(); mctx.moveTo(0, cityBotMY); mctx.lineTo(mmD, cityBotMY); mctx.stroke();
+          mctx.setLineDash([]);
 
           for (const b of BUILDINGS) {
             const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
@@ -3944,7 +4041,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.dogCompanion.injured = false;
                   g.dogCompanion.dialogueCooldown = 300;
                   g.dogCompanion.attackCooldown = 0;
-                  g.dogCompanion.lastZone = g.py >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY';
+                  g.dogCompanion.lastZone = (g.py < CITY_TOP || g.py > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY';
                   g.threats = g.threats.filter(t => t !== stray);
                   setDogActive(true);
                   setDogName(name);
@@ -4034,7 +4131,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
         );
-        const curZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
+        const curZone = (g.py >= CITY_TOP && g.py <= CITY_BOTTOM) ? 'MINX CITY' : 'WASTELAND';
 
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 250, paddingRight: '3%' }}
@@ -4633,11 +4730,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
             </div>
             <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy * 2}`} preserveAspectRatio="xMidYMid meet">
-              <rect x={0} y={0} width={W} height={WASTELAND_Y} fill="rgba(0,10,3,.8)" />
-              <rect x={0} y={WASTELAND_Y} width={W} height={H - WASTELAND_Y} fill="rgba(10,5,0,.8)" />
-              <line x1={0} y1={WASTELAND_Y} x2={W} y2={WASTELAND_Y} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
-              <text x={vbX + 10} y={WASTELAND_Y - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
-              <text x={vbX + 10} y={WASTELAND_Y + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">WASTELAND</text>
+              <rect x={0} y={0} width={W} height={CITY_TOP} fill="rgba(10,5,0,.8)" />
+              <rect x={0} y={CITY_TOP} width={W} height={CITY_BOTTOM - CITY_TOP} fill="rgba(0,10,3,.8)" />
+              <rect x={0} y={CITY_BOTTOM} width={W} height={H - CITY_BOTTOM} fill="rgba(10,5,0,.8)" />
+              <rect x={0} y={0} width={BORDER} height={H} fill="rgba(0,30,80,.5)" />
+              <rect x={W - BORDER} y={0} width={BORDER} height={H} fill="rgba(0,30,80,.5)" />
+              <rect x={0} y={0} width={W} height={BORDER} fill="rgba(80,60,30,.5)" />
+              <rect x={0} y={H - BORDER} width={W} height={BORDER} fill="rgba(80,60,30,.5)" />
+              <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
+              <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
+              <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
+              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
+              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
+              <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
               {BUILDINGS.map(b => (
                 <g key={b.id}>
                   <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={b.bright ? 'rgba(0,255,65,.25)' : 'rgba(0,180,55,.14)'} stroke={b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'} strokeWidth={1} />
