@@ -1,4 +1,5 @@
 import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff } from 'lucide-react';
+import frontmanLogo from '../assets/frontman-logo-c.png';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -21,8 +22,11 @@ export function NavBar() {
           className="flex items-center gap-3 text-foreground cursor-pointer"
           onClick={() => navigate('/')}
         >
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-            <Terminal className="w-3.5 h-3.5 text-white" />
+          <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shadow-lg shadow-primary/20">
+            {isDiscreet
+              ? <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center"><Terminal className="w-3.5 h-3.5 text-white" /></div>
+              : <img src={frontmanLogo} alt="Frontman" className="w-full h-full object-cover" />
+            }
           </div>
           <div>
             <h1 className="font-bold tracking-tight leading-none text-sm">{config.name}</h1>
