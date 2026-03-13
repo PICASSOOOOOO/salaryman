@@ -66,22 +66,24 @@ export function NavBar() {
             <div className="w-7 h-7 rounded-full bg-muted animate-pulse" />
           ) : isAuthenticated && user ? (
             <div className="flex items-center gap-2">
-              {user.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'}
-                  className="w-7 h-7 rounded-full border border-border object-cover" />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">
-                  {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
-                </div>
-              )}
-              <div className="hidden sm:block text-right">
-                <p className="text-xs font-medium text-foreground leading-none">
-                  {user.firstName ?? user.email?.split('@')[0] ?? 'User'}
-                </p>
-                {user.email && (
-                  <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{user.email}</p>
+              <button onClick={() => navigate('/profile')} className="flex items-center gap-2 hover:opacity-80 transition-opacity" title="My account">
+                {user.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt={user.firstName ?? 'User'}
+                    className="w-7 h-7 rounded-full border border-border object-cover" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">
+                    {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                  </div>
                 )}
-              </div>
+                <div className="hidden sm:block text-right">
+                  <p className="text-xs font-medium text-foreground leading-none">
+                    {user.firstName ?? user.email?.split('@')[0] ?? 'User'}
+                  </p>
+                  {user.email && (
+                    <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{user.email}</p>
+                  )}
+                </div>
+              </button>
               <button onClick={logout}
                 className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 title="Sign out">

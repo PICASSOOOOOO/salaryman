@@ -1,0 +1,313 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut } from 'lucide-react';
+import { NavBar } from '@/components/NavBar';
+import { useAuth } from '@workspace/replit-auth-web';
+
+interface AccountData {
+  user: { id: string; email?: string; firstName?: string; lastName?: string; profileImageUrl?: string; createdAt: string };
+  contactCount: number;
+  memory: string;
+  memoryUpdatedAt: string | null;
+}
+
+export default function Profile() {
+  const { user, isAuthenticated, logout } = useAuth();
+  const [data, setData] = useState<AccountData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [memoryDraft, setMemoryDraft] = useState('');
+  const [savingMemory, setSavingMemory] = useState(false);
+  const [memorySaved, setMemorySaved] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<'memory' | 'contacts' | 'all' | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setLoading(false); return; }
+    fetch('/api/account')
+      .then(r => r.json())
+      .then((d: AccountData) => {
+        setData(d);
+        setMemoryDraft(d.memory ?? '');
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [isAuthenticated]);
+
+  const saveMemory = async () => {
+    setSavingMemory(true);
+    try {
+      await fetch('/api/account/memory', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memory: memoryDraft }),
+      });
+      setData(prev => prev ? { ...prev, memory: memoryDraft } : prev);
+      setMemorySaved(true);
+      setTimeout(() => setMemorySaved(false), 2500);
+    } catch {}
+    setSavingMemory(false);
+  };
+
+  const deleteData = async (scope: 'memory' | 'contacts' | 'all') => {
+    setDeleting(true);
+    try {
+      const s = scope === 'all' ? '' : scope;
+      await fetch(`/api/account/data${s ? `?scope=${s}` : ''}`, { method: 'DELETE' });
+      setDeleted(scope);
+      if (scope === 'memory' || scope === 'all') {
+        setMemoryDraft('');
+        setData(prev => prev ? { ...prev, memory: '' } : prev);
+      }
+      if (scope === 'contacts' || scope === 'all') {
+        setData(prev => prev ? { ...prev, contactCount: 0 } : prev);
+      }
+      setTimeout(() => { setDeleted(null); setDeleteTarget(null); }, 2500);
+    } catch {}
+    setDeleting(false);
+  };
+
+  const exportData = () => {
+    if (!data) return;
+    const exportObj = {
+      exportedAt: new Date().toISOString(),
+      profile: {
+        name: [data.user.firstName, data.user.lastName].filter(Boolean).join(' '),
+        email: data.user.email,
+        memberSince: data.user.createdAt,
+      },
+      ariaMemory: data.memory,
+      contactCount: data.contactCount,
+    };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'frontman-my-data.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <NavBar />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-sm">Sign in to manage your account.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = user?.firstName
+    ? [user.firstName, user.lastName].filter(Boolean).join(' ')
+    : user?.email?.split('@')[0] ?? 'User';
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
+      <NavBar />
+
+      <main className="flex-1 p-6 max-w-2xl mx-auto w-full relative z-10">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">My Account</h2>
+            <p className="text-sm text-muted-foreground">Manage your profile, memory, and data</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+          </div>
+        ) : (
+          <div className="space-y-5">
+
+            {/* Profile Card */}
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+              className="bg-card border border-border rounded-2xl p-6">
+              <div className="flex items-center gap-4">
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt={displayName}
+                    className="w-16 h-16 rounded-2xl border border-border object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl font-bold text-primary">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold text-foreground truncate">{displayName}</p>
+                  {user?.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
+                  {data?.user.createdAt && (
+                    <p className="text-xs text-muted-foreground/50 mt-1">
+                      Member since {new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+                <button onClick={logout}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 border border-border hover:border-red-500/20 transition-colors">
+                  <LogOut className="w-3.5 h-3.5" /> Sign out
+                </button>
+              </div>
+            </motion.section>
+
+            {/* ARIA Memory */}
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="bg-card border border-border rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <Brain className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">ARIA Memory</p>
+                  <p className="text-xs text-muted-foreground">What ARIA knows about you — edit or clear anytime</p>
+                </div>
+              </div>
+
+              <textarea
+                value={memoryDraft}
+                onChange={e => setMemoryDraft(e.target.value)}
+                placeholder="ARIA hasn't learned anything about you yet. Start a conversation or complete the onboarding."
+                rows={6}
+                className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/40 transition-colors resize-none mb-3"
+              />
+
+              <div className="flex items-center justify-between">
+                {data?.memoryUpdatedAt && (
+                  <p className="text-[11px] text-muted-foreground/40">
+                    Last updated {new Date(data.memoryUpdatedAt).toLocaleDateString()}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button onClick={() => setDeleteTarget('memory')}
+                    className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                    Clear
+                  </button>
+                  <button onClick={saveMemory} disabled={savingMemory || memoryDraft === data?.memory}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/25 transition-colors disabled:opacity-40">
+                    {savingMemory ? <Loader2 className="w-3 h-3 animate-spin" /> : memorySaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
+                    {memorySaved ? 'Saved' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </motion.section>
+
+            {/* Data Management */}
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="bg-card border border-border rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
+                  <Database className="w-4 h-4 text-primary/70" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">My Data</p>
+                  <p className="text-xs text-muted-foreground">Export or delete your information anytime</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Stats */}
+                <div className="flex gap-3">
+                  <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users className="w-3.5 h-3.5 text-violet-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contacts</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{data?.contactCount ?? 0}</p>
+                  </div>
+                  <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Memory</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{data?.memory ? data.memory.split('\n').filter(Boolean).length : 0}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">lines</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <button onClick={exportData}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/20 border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left">
+                  <Download className="w-4 h-4 text-primary/60" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Export my data</p>
+                    <p className="text-xs text-muted-foreground">Download everything as a JSON file</p>
+                  </div>
+                </button>
+
+                <button onClick={() => setDeleteTarget('contacts')}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/20 border border-border hover:border-red-500/20 hover:bg-red-500/5 transition-colors text-left">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Delete all contacts</p>
+                    <p className="text-xs text-muted-foreground">Permanently remove all saved contacts</p>
+                  </div>
+                </button>
+
+                <button onClick={() => setDeleteTarget('all')}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/15 hover:border-red-500/30 hover:bg-red-500/10 transition-colors text-left">
+                  <Trash2 className="w-4 h-4 text-red-400/70" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-400">Delete all my data</p>
+                    <p className="text-xs text-muted-foreground">Contacts + ARIA memory — cannot be undone</p>
+                  </div>
+                </button>
+              </div>
+            </motion.section>
+
+          </div>
+        )}
+      </main>
+
+      {/* Confirm Delete Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-sm bg-card border border-border rounded-2xl p-6 shadow-2xl"
+          >
+            {deleted ? (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <Check className="w-6 h-6 text-emerald-400" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Done — data deleted.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Are you sure?</p>
+                    <p className="text-xs text-muted-foreground">
+                      {deleteTarget === 'memory' && 'This will clear all of ARIA\'s memory about you.'}
+                      {deleteTarget === 'contacts' && 'This will permanently delete all your contacts.'}
+                      {deleteTarget === 'all' && 'This will delete your contacts and ARIA memory. Cannot be undone.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={() => deleteData(deleteTarget)} disabled={deleting}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 text-sm font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50">
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Delete'}
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}

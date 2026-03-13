@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import ContactCollector from "@/pages/ContactCollector";
 import PresenterMode from "@/pages/PresenterMode";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/contacts" component={ContactCollector} />
       <Route path="/presenter" component={PresenterMode} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );

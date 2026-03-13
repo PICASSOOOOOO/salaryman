@@ -4,6 +4,7 @@ import openaiRouter from "./openai/index";
 import interviewRouter from "./interview";
 import toolsRouter from "./tools";
 import authRouter from "./auth";
+import accountRouter from "./account";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(openaiRouter);
 router.use(interviewRouter);
 router.use(toolsRouter);
+router.use(accountRouter);
 
 export default router;
