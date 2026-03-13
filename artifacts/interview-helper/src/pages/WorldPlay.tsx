@@ -533,6 +533,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
+  const [pabloTab, setPabloTab] = useState<'status'|'intel'|'chat'>('status');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -1110,19 +1111,49 @@ export default function WorldPlay() {
   }, [chatOpen, dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
 
   // ── PABLO AI ──────────────────────────────────────────────────────────────
+  const buildPabloContext = useCallback(() => {
+    const g = gs.current;
+    const nearbyNpcs = NPCS.filter(n => Math.hypot(g.px - n.x, g.py - n.y) < 150).map(n => n.name).join(', ') || 'none';
+    const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
+    const loanStr = g.loan ? `ACTIVE LOAN ç${g.loan.amount.toLocaleString()} + ç${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
+    const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
+    return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
+
+WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Four gang factions (IRON RATS, VOID DOGS, STATIC MONKS, EASTERN BLOC) control wasteland territory. Currency is CREAM (ç). Banks are run by KONAMI BANK. Combat earns bounties. Economy matters.
+
+DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the Konami code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
+
+OPERATIVE STATUS:
+- Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
+- HP: ${Math.floor(g.hp)}/${g.maxHp} | CREAM: ç${g.salary.toLocaleString()} | Savings: ç${g.savings.toLocaleString()}
+- Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
+- Zone: ${g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
+- Gang territory: ${g.gangZone ?? 'neutral'}
+- ${loanStr}
+- Game day: ${gameDay} | Survival ticks: ${g.survivalTick}
+- Nearby NPCs (150px): ${nearbyNpcs}
+- Nearby threats (200px): ${nearbyEnemies}
+- Has PABLO device: ${g.hasDevice ? 'YES' : 'NO — needs store activation'}
+- Poisoned: ${g.poisoned ? 'YES — find antidote or save point' : 'no'}
+- Bank history entries: ${(gs.current as any).bankHistoryLength ?? 0}
+
+Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in character.`;
+  }, [char]);
+
   const sendPablo = useCallback(async () => {
     if (!pabloIn.trim() || pabloLoad) return;
     const txt = pabloIn.trim(); setPabloIn('');
     setPabloMsgs(m => [...m, { role: 'user', text: txt }]);
-    if (!gs.current.hasDevice) { setPabloMsgs(m => [...m, { role: 'pablo', text: '> Device not activated. Visit the PABLO STORE first.' }]); return; }
+    if (!gs.current.hasDevice) { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Device not activated. Walk to the PABLO STORE and press [E].' }]); return; }
     setPabloLoad(true);
     try {
-      const r = await fetch('/api/advisor/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: txt, context: `You are PABLO, a gritty in-world AI for ${char.name} (${char.class}). Be brief and sharp.` }), credentials: 'include' });
+      const context = buildPabloContext();
+      const r = await fetch('/api/advisor/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: txt, context }), credentials: 'include' });
       const d = r.ok ? await r.json() : {};
-      setPabloMsgs(m => [...m, { role: 'pablo', text: d.response ?? '> Signal lost.' }]);
-    } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: '> Network dead.' }]); }
+      setPabloMsgs(m => [...m, { role: 'pablo', text: d.response ?? 'Signal lost. Try again.' }]);
+    } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network dead. Move to higher ground.' }]); }
     setPabloLoad(false);
-  }, [pabloIn, pabloLoad, char]);
+  }, [pabloIn, pabloLoad, buildPabloContext]);
 
   // ── Game loop ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -2212,7 +2243,8 @@ export default function WorldPlay() {
           <button onClick={() => setShowMap(v => !v)} style={{ padding: '.35rem .6rem', background: showMap ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             MAP [M]
           </button>
-          <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.88)', border: showPablo ? '1px solid rgba(0,255,65,.55)' : hasDevice ? '1px solid rgba(0,255,65,.3)' : '1px solid rgba(0,255,65,.1)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.55)' : 'rgba(0,255,65,.22)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 64, textAlign: 'center', position: 'relative' }}>
+            <span style={{ fontSize: '.38rem', display: 'block', lineHeight: 1, color: hasDevice ? (showPablo ? '#00ff41' : 'rgba(0,255,65,.45)') : 'rgba(255,60,60,.5)', letterSpacing: '.1em' }}>{hasDevice ? '● AI' : '○ OFF'}</span>
             PABLO [P]
           </button>
           <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,5,0,.88)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
@@ -2295,41 +2327,204 @@ export default function WorldPlay() {
       )}
 
       {/* ── PABLO PANEL ── */}
-      {showPablo && (
-        <div style={{ position: 'absolute', bottom: 120, right: 70, width: 300, maxHeight: '50vh', background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.38)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
-          <div style={{ padding: '.45rem .65rem', borderBottom: '1px solid rgba(0,255,65,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.12em' }}>PABLO DEVICE</div>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.07em' }}>{hasDevice ? 'ACTIVATED' : 'NOT REGISTERED — VISIT PABLO STORE'}</div>
+      {showPablo && (() => {
+        const g = gs.current;
+        const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const tabS = (active: boolean): React.CSSProperties => ({
+          padding: '.3rem .75rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.12)',
+          background: active ? 'rgba(0,255,65,.08)' : 'transparent',
+          color: active ? '#00ff41' : 'rgba(0,255,65,.3)', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.1em',
+        });
+        const StatRow = ({ label, val, col, bar }: { label: string; val: string | number; col?: string; bar?: number }) => (
+          <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '.4rem', alignItems: 'center', marginBottom: '.18rem' }}>
+            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+              <span style={{ ...VT, fontSize: '.9rem', color: col ?? '#00ff41', letterSpacing: '.05em' }}>{val}</span>
+              {bar !== undefined && (
+                <div style={{ flex: 1, height: 4, background: 'rgba(0,255,65,.08)', maxWidth: 100 }}>
+                  <div style={{ height: '100%', width: `${bar}%`, background: bar > 40 ? (col ?? '#00ff41') : '#ff4444', transition: 'width .3s' }} />
+                </div>
+              )}
             </div>
-            <button onClick={() => setShowPablo(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.75rem' }}>✕</button>
           </div>
-          {!hasDevice ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.1em', marginBottom: '.35rem' }}>DEVICE LOCKED</div>
-                <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.28)', lineHeight: 1.7 }}>Walk to the <span style={{ color: '#00ff41' }}>PABLO STORE</span> and press [E].</div>
+        );
+        const nearbyNpcs = NPCS.filter(n => Math.hypot(g.px - n.x, g.py - n.y) < 200);
+        const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200);
+        const curZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
+        const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
+
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 250, paddingRight: '3%' }}
+            onClick={e => { if (e.target === e.currentTarget) setShowPablo(false); }}>
+            <div style={{ width: 400, maxWidth: '88vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.5)', boxShadow: '0 0 40px rgba(0,255,65,.08)' }}>
+
+              {/* ── Header ── */}
+              <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>PABLO DEVICE</div>
+                  <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
+                    {hasDevice ? `OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}` : 'NOT REGISTERED — VISIT PABLO STORE'}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ ...VT, fontSize: '.85rem', color: hasDevice ? '#00ff41' : '#ff4444', letterSpacing: '.08em' }}>{hasDevice ? '● ONLINE' : '○ OFFLINE'}</div>
+                  <button onClick={() => setShowPablo(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', display: 'block', marginTop: '.15rem' }}>ESC ✕</button>
+                </div>
+              </div>
+
+              {/* ── Tabs ── */}
+              <div style={{ display: 'flex', gap: '.25rem', padding: '.35rem .7rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
+                {(['status','intel','chat'] as const).map(t => (
+                  <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
+                    {t === 'status' ? '[ STATUS ]' : t === 'intel' ? '[ INTEL ]' : '[ CHAT ]'}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Body ── */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '.65rem .85rem' }}>
+
+                {/* STATUS TAB */}
+                {pabloTab === 'status' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>OPERATIVE VITALS</div>
+                    <StatRow label="HP" val={`${Math.floor(hp)} / ${gs.current.maxHp}`} bar={(hp / gs.current.maxHp) * 100} />
+                    <StatRow label="CREAM" val={`ç${salary.toLocaleString()}`} col={salary < 0 ? '#ff4444' : '#00ff41'} />
+                    <StatRow label="SAVINGS" val={`ç${savings.toLocaleString()}`} col="#44ffaa" />
+                    <StatRow label="HUNGER" val={`${Math.floor(hunger)}%`} bar={hunger} col={hunger < 30 ? '#ff8844' : undefined} />
+                    <StatRow label="THIRST" val={`${Math.floor(thirst)}%`} bar={thirst} col={thirst < 30 ? '#ff8844' : undefined} />
+                    <StatRow label="ENERGY" val={`${Math.floor(energy)}%`} bar={energy} col={energy < 25 ? '#ffdd44' : undefined} />
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FIELD DATA</div>
+                      <StatRow label="LEVEL" val={`${level}  [EXP: ${exp}]`} />
+                      <StatRow label="ZONE" val={curZone} col={curZone === 'WASTELAND' ? '#88ff44' : '#00ff41'} />
+                      <StatRow label="GANG ZONE" val={gangZone ?? 'NEUTRAL'} col={gangZone ? '#ffaa44' : 'rgba(0,255,65,.4)'} />
+                      <StatRow label="GAME DAY" val={`DAY ${gameDay}`} />
+                    </div>
+                    {bankLoan && (
+                      <div style={{ border: `1px solid ${gs.current.frame > bankLoan.dueAt ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.2)'}`, padding: '.45rem', marginTop: '.2rem' }}>
+                        <div style={{ fontSize: '.38rem', color: gs.current.frame > bankLoan.dueAt ? '#ff6666' : 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
+                          {gs.current.frame > bankLoan.dueAt ? '⚠ LOAN OVERDUE' : 'ACTIVE LOAN'}
+                        </div>
+                        <StatRow label="PRINCIPAL" val={`ç${bankLoan.amount.toLocaleString()}`} />
+                        <StatRow label="INTEREST" val={`ç${bankLoan.interest.toLocaleString()}`} col="#ffaa44" />
+                        <StatRow label="TOTAL DUE" val={`ç${(bankLoan.amount + bankLoan.interest).toLocaleString()}`} col={gs.current.frame > bankLoan.dueAt ? '#ff4444' : '#ffdd44'} />
+                      </div>
+                    )}
+                    {poisoned && (
+                      <div style={{ border: '1px solid rgba(136,255,68,.4)', padding: '.35rem .45rem', fontSize: '.52rem', color: '#88ff44', letterSpacing: '.06em' }}>
+                        ☠ POISONED — HP draining. Find an antidote or SAVE POINT.
+                      </div>
+                    )}
+                    <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.12)', marginTop: '.25rem', lineHeight: 1.6 }}>
+                      PABLO CORP. HEALTH ADVISORY: Eat. Drink. Sleep. In that order. Dr. Wright bills extra for repeat patients.
+                    </div>
+                  </div>
+                )}
+
+                {/* INTEL TAB */}
+                {pabloTab === 'intel' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                    <div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.35rem' }}>ZONE ASSESSMENT</div>
+                      <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
+                        {curZone === 'MINX CITY'
+                          ? 'MINX CITY — City zone: safe from gang aggro. PABLO CORP. guards patrol standard routes. SPY operatives may monitor near the southern border. Proceed normally.'
+                          : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory active.` : 'Open wasteland.'} Survival drain 1.5×. Stay mobile. Bounties are high. Emergency evac: head north past y=800.`}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
+                        NEARBY OPERATIVES ({nearbyNpcs.length})
+                      </div>
+                      {nearbyNpcs.length === 0
+                        ? <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.25)' }}>No contacts in range. Move through the city.</div>
+                        : nearbyNpcs.map(n => (
+                          <div key={n.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(0,255,65,.06)', fontSize: '.52rem', color: 'rgba(0,255,65,.6)' }}>
+                            <span style={{ ...VT, fontSize: '.8rem', color: NPC_COL[n.type] ?? '#00ff41' }}>{n.name}</span>
+                            <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.42rem' }}>{n.type.toUpperCase()} · [E] to talk</span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>
+                        THREAT SCAN ({nearbyEnemies.length})
+                      </div>
+                      {nearbyEnemies.length === 0
+                        ? <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.25)' }}>Area clear. {curZone === 'MINX CITY' ? 'City is secure.' : 'Stay alert — wasteland threats nearby.'}</div>
+                        : nearbyEnemies.map((t, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '.2rem 0', borderBottom: '1px solid rgba(255,65,65,.06)', fontSize: '.52rem' }}>
+                            <span style={{ ...VT, fontSize: '.8rem', color: THREAT_COL[t.type] ?? '#ff4444' }}>{t.type.replace(/_/g,' ')}</span>
+                            <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)' }}>HP {Math.floor(t.hp)}/{t.maxHp} · ç{(BOUNTY[t.type]??1000).toLocaleString()} · [F] attack</span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                    <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
+                      BUILDINGS: [E] near any building to enter · KONAMI BANK: deposit/loans/wire · DR. WRIGHT: ç10k full heal · MARKET/EAST BAZAAR: trade commodities · PABLO TOWER: floors 1–39 rentable
+                    </div>
+                  </div>
+                )}
+
+                {/* CHAT TAB */}
+                {pabloTab === 'chat' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
+                    {!hasDevice ? (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                        <div>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.4rem' }}>DEVICE LOCKED</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>Walk to the <span style={{ color: '#00ff41' }}>PABLO STORE</span> and press [E] to activate.</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
+                          {pabloMsgs.length === 0 && (
+                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8 }}>
+                              &gt; PABLO AI ONLINE<br/>
+                              &gt; I have your vitals, location, nearby contacts, and threat data.<br/>
+                              &gt; Ask anything. I know Minx City. Some of it I won't tell you.
+                            </div>
+                          )}
+                          {pabloMsgs.map((m, i) => (
+                            <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none' }}>
+                              <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(0,255,65,.3)', marginRight: '.25rem' }}>
+                                {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO]'}
+                              </span>
+                              {m.text}
+                            </div>
+                          ))}
+                          {pabloLoad && (
+                            <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>PABLO . . .</div>
+                          )}
+                        </div>
+                        <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
+                          <input
+                            value={pabloIn}
+                            onChange={e => setPabloIn(e.target.value)}
+                            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
+                            placeholder="Ask PABLO anything..."
+                            style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#00ff41' }}
+                          />
+                          <button onClick={sendPablo} disabled={pabloLoad}
+                            style={{ background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem' }}>↵</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.35rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
+                PABLO CORP. SURVEILLANCE UNIT v1.0 · ALL TRANSMISSIONS LOGGED · SENIOR PABLO IS WATCHING · ESC TO CLOSE
               </div>
             </div>
-          ) : (
-            <>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '.55rem', display: 'flex', flexDirection: 'column', gap: '.35rem', minHeight: 80 }}>
-                {pabloMsgs.length === 0 && <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.7 }}>&gt; PABLO ONLINE<br />&gt; Ask anything.</div>}
-                {pabloMsgs.map((m, i) => (
-                  <div key={i} style={{ fontSize: '.62rem', lineHeight: 1.5, color: m.role === 'user' ? 'rgba(0,255,65,.52)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.4rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.22)' : 'none' }}>
-                    <span style={{ color: 'rgba(0,255,65,.32)', fontFamily: "'VT323',monospace", fontSize: '.72rem', marginRight: '.25rem' }}>{m.role === 'user' ? `[${char.name.slice(0, 8)}]` : '[PABLO]'}</span>{m.text}
-                  </div>
-                ))}
-                {pabloLoad && <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.32)', fontFamily: "'VT323',monospace" }}>...</div>}
-              </div>
-              <div style={{ padding: '.38rem', borderTop: '1px solid rgba(0,255,65,.12)', display: 'flex', gap: '.32rem' }}>
-                <input value={pabloIn} onChange={e => setPabloIn(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendPablo()} placeholder="Ask PABLO..." style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.18)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: '#00ff41' }} />
-                <button onClick={sendPablo} style={{ background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* ── DIALOG ── */}
       {dialog && (
