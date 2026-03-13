@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2 } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
 
@@ -9,6 +9,127 @@ interface AccountData {
   contactCount: number;
   memory: string;
   memoryUpdatedAt: string | null;
+}
+
+function MobileInstallSection() {
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=ffffff&bgcolor=09090b&data=${encodeURIComponent(appUrl)}`;
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="bg-card border border-border rounded-2xl p-6"
+    >
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+          <Smartphone className="w-4 h-4 text-violet-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">Get the Mobile App</p>
+          <p className="text-xs text-muted-foreground">Install Frontman on your phone — no App Store needed</p>
+        </div>
+      </div>
+
+      {isIOS || isAndroid ? (
+        /* On mobile — show inline instructions */
+        <div className="bg-muted/20 border border-border rounded-xl p-4 space-y-3">
+          {isIOS ? (
+            <>
+              <p className="text-xs font-semibold text-foreground">You're on iOS — here's how:</p>
+              <ol className="space-y-2 text-xs text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                  Tap the <Share2 className="w-3 h-3 inline mx-0.5 text-violet-400" /> Share button in Safari (bottom toolbar)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                  Scroll down and tap <strong className="text-foreground">"Add to Home Screen"</strong>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+                  Tap <strong className="text-foreground">Add</strong> — Frontman will appear on your home screen like an app
+                </li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-foreground">You're on Android — here's how:</p>
+              <ol className="space-y-2 text-xs text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                  Tap the <strong className="text-foreground">⋮</strong> menu in Chrome (top-right)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                  Tap <strong className="text-foreground">"Add to Home screen"</strong> or <strong className="text-foreground">"Install app"</strong>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+                  Confirm — Frontman launches like a native app
+                </li>
+              </ol>
+            </>
+          )}
+        </div>
+      ) : (
+        /* On desktop — show QR code + instructions side by side */
+        <div className="flex gap-5 items-start">
+          <div className="shrink-0">
+            <div className="w-[100px] h-[100px] rounded-xl border border-border overflow-hidden bg-[#09090b] flex items-center justify-center">
+              <img
+                src={qrUrl}
+                alt="QR code to open Frontman on your phone"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground/50 text-center mt-1.5">Scan with your phone</p>
+          </div>
+
+          <div className="flex-1 space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-2">On iPhone (Safari):</p>
+              <ol className="space-y-1 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">1.</span>
+                  Scan the QR code to open the app
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">2.</span>
+                  Tap <Share2 className="w-3 h-3 inline mx-0.5" /> Share → <strong className="text-foreground">Add to Home Screen</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">3.</span>
+                  Tap <strong className="text-foreground">Add</strong> — done!
+                </li>
+              </ol>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-2">On Android (Chrome):</p>
+              <ol className="space-y-1 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">1.</span>
+                  Scan the QR code to open the app
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">2.</span>
+                  Tap <strong className="text-foreground">⋮</strong> menu → <strong className="text-foreground">Install app</strong>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-violet-400 font-bold">3.</span>
+                  Confirm — it's on your home screen
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+    </motion.section>
+  );
 }
 
 export default function Profile() {
@@ -195,8 +316,11 @@ export default function Profile() {
               </div>
             </motion.section>
 
+            {/* Mobile Install */}
+            <MobileInstallSection />
+
             {/* Data Management */}
-            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
