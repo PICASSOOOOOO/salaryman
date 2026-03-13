@@ -54,3 +54,9 @@ id = "1fm0jby1yde4IPL6K8xxm"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-h.png"
 type = "image"
 title = "Option H — Medium Neon F"
+
+[[outputs]]
+id = "MP1yFqpf--T_h9UsDDivv"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-i.png"
+type = "image"
+title = "Option I — Pure Neon F"
