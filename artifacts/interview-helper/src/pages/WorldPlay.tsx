@@ -380,7 +380,14 @@ const AMBIENCE_LINES = [
   '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. PABLO CORP. infrastructure division responding.',
 ];
 
-interface Char { name: string; class: string; company: string; sx: number; sy: number; salary: number; }
+interface Char {
+  name: string; class: string; company: string; sx: number; sy: number; salary: number;
+  hasBusiness?: boolean;
+  workstation?: string | null;
+  workstationLabel?: string | null;
+  workstationSlot?: string | null;
+  bizRegisteredAt?: number | null;
+}
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
@@ -480,7 +487,18 @@ export default function WorldPlay() {
   const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
-  const [narration, setNarr]  = useState('> Welcome to Minx City · PST. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device. City is safe from major gangs. PABLO CORP. guards patrol. Spies lurk in disguise.');
+  const [narration, setNarr]  = useState(() => {
+    if (char?.hasBusiness && char.workstationLabel) {
+      const daysLeft = char.bizRegisteredAt
+        ? Math.max(0, 7 - Math.floor((Date.now() - char.bizRegisteredAt) / 86400000))
+        : 7;
+      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ç500/rest.'} WASD move · [E] interact · [F] attack · [M] map.`;
+    }
+    if (char?.hasBusiness === false) {
+      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device.';
+    }
+    return '> Welcome to Minx City · PST. WASD move · [E] interact · [F] attack · [M] map · [P] PABLO device. City is safe from major gangs. PABLO CORP. guards patrol. Spies lurk in disguise.';
+  });
   const [isDead,  setIsDead]  = useState(false);
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(false);
@@ -548,9 +566,42 @@ export default function WorldPlay() {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(m));
   }, []);
 
+  const doSave = useCallback((data: object) => {
+    if (char.hasBusiness !== false) {
+      localStorage.setItem('sm_save', JSON.stringify(data));
+    }
+  }, [char]);
+
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
     sfxEnter();
+
+    // ── WORKSTATION REST ─────────────────────────────────────────────────
+    if (char.hasBusiness && char.workstation === bid) {
+      const daysSinceReg = char.bizRegisteredAt
+        ? Math.floor((Date.now() - char.bizRegisteredAt) / 86400000)
+        : 0;
+      const isFree = daysSinceReg < 7;
+      const wsRent = 500;
+      if (!isFree && g.salary < wsRent) {
+        sfxError();
+        setNarr(`> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — Rent overdue. ç${wsRent} required. You're on the clock.`);
+        return;
+      }
+      if (!isFree) { g.salary -= wsRent; setSalary(g.salary); }
+      g.hp = g.maxHp; g.energy = Math.min(100, g.energy + 50);
+      g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20);
+      setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst);
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+      const daysLeft = Math.max(0, 7 - daysSinceReg);
+      setNarr(isFree
+        ? `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. FREE rest. HP fully restored. Energy +50. Progress saved. ${daysLeft} free day${daysLeft !== 1 ? 's' : ''} remaining before ç${wsRent}/rest kicks in.`
+        : `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. ç${wsRent} CREAM rent charged. HP fully restored. Energy +50. Progress saved. The city takes its cut.`
+      );
+      sfxHeal();
+      return;
+    }
+
     // ── Residential ───────────────────────────────────────────────────────
     if (bid === 'minx_arms') {
       const rent = 3000;
@@ -565,7 +616,7 @@ export default function WorldPlay() {
       g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
       g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
       sfxSave();
-      localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       setNarr(`> MINX ARMS — Your unit: ${aptUnit}. You rest in your bed. HP fully restored. Progress saved. The city can wait.`);
     }
     else if (bid === 'eastside_flat') {
@@ -581,7 +632,7 @@ export default function WorldPlay() {
       g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
       g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
       sfxSave();
-      localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
     }
     // ── Floor-directory buildings ─────────────────────────────────────────
     else if (bid === 'pablo_tower') {
@@ -613,7 +664,7 @@ export default function WorldPlay() {
       if (g.salary >= 15000) {
         const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 15000;
         setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
-        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        doSave({ ...g, salary: g.salary });
         setNarr('> HOTEL MIDGAR [ç15,000 CREAM] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
       } else {
         sfxError();
@@ -624,7 +675,7 @@ export default function WorldPlay() {
       if (g.salary >= 6000) {
         g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 6000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        doSave({ ...g, salary: g.salary });
         setNarr('> MOTHER BASE INN [ç6,000 CREAM] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
       } else {
         sfxError();
@@ -650,7 +701,7 @@ export default function WorldPlay() {
       if (g.salary >= 4000) {
         g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000;
         setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
-        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        doSave({ ...g, salary: g.salary });
         setNarr('> THE PRANCING PONY [ç4,000 CREAM] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
       } else {
         sfxError();
@@ -665,13 +716,13 @@ export default function WorldPlay() {
     else if (bid === 'terminus') {
       g.hp = Math.min(g.maxHp, g.hp + 40); g.hunger = Math.min(100, g.hunger + 35); g.thirst = Math.min(100, g.thirst + 35);
       setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
-      localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+      doSave({ ...g, salary: g.salary });
       setNarr('> TERMINUS SHELTER — CLEM hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "When it rains," she says eventually, "we collect it. That\'s the whole water strategy. That\'s the whole strategy." She says this like it\'s enough. It is.');
     }
     else if (bid === 'fort_dracula') {
       const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 2000;
       setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
-      localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+      doSave({ ...g, salary: g.salary });
       setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ç2,000 CREAM (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
     }
     else if (bid === 'vend')    {
@@ -701,7 +752,7 @@ export default function WorldPlay() {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
       sfxSave();
-      localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
@@ -1951,6 +2002,7 @@ export default function WorldPlay() {
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
           <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.15)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
           {hasDevice && <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.55)', border: '1px solid rgba(0,255,65,.25)', padding: '1px 4px' }}>PABLO</span>}
+          {char.hasBusiness === false && <span style={{ fontSize: '.45rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
         </div>
         <div style={{ display: 'flex', gap: '3px' }}>
           {/* HP */}

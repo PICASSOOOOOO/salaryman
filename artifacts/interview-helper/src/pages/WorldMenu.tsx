@@ -73,6 +73,25 @@ const FICTITIOUS_INDUSTRIES = [
 
 const SIZES = ['SOLO OPERATOR', 'SMALL (2-10)', 'MID (11-50)', 'CORP (51-500)', 'MEGACORP (500+)'];
 
+const WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
+  { match: /TECH|SOFTWARE|SAAS|GAMING|DATA|SYNAPSE|ZAIBATSU/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
+  { match: /MEDIA|ENTERT|RADIO|STATIC|VIRAL|COMMS/i,                   bid: 'radio',       label: 'PIRATE RADIO',  slot: 'BED 2 · DESK 1 · BROADCAST TERMINAL' },
+  { match: /HEALTH|PHARMA|MAKO|MEDICAL|BIOTECH/i,                      bid: 'wily_lab',    label: 'WILY LABS',     slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
+  { match: /MARKET|PRINT|ADVERTIS|DESIGN|ARCH|EDUC/i,                  bid: 'print_shop',  label: 'PRINT SHOP',    slot: 'BED 4 · DESK 2 · PRESS TERMINAL' },
+  { match: /MANUF|LOGIST|CONSTRUCT|SCRAP|RUST|PHANTOM FREIGHT/i,       bid: 'scrap',       label: 'SCRAP YARD',    slot: 'BED 6 · DESK 4 · OPS TERMINAL' },
+  { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'KONAMI BANK',   slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
+  { match: /ARMS|WEAPON|EDEN|BLACK IRON|SECURITY/i,                    bid: 'armory',      label: 'ARMORY',        slot: 'BED 3 · DESK 8 · TACTICAL TERMINAL' },
+  { match: /SHADOW|JADE SYND|GHOST PROTOCOL|SALVAGE/i,                 bid: 'market',      label: 'BLACK MARKET',  slot: 'BED 7 · DESK 5 · SHADOW TERMINAL' },
+  { match: /ENERGY|OMEGA|POWER|WARPGATE/i,                             bid: 'wily_lab',    label: 'WILY LABS',     slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
+  { match: /LEGAL|LAWTECH|CONSULT|RECRUIT|INSURANC/i,                  bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 5 · DESK 6 · LEGAL TERMINAL' },
+  { match: /REAL ESTATE|E-COMMERCE|RETAIL|FOOD|BEVERAGE/i,             bid: 'east_market', label: 'EAST BAZAAR',   slot: 'BED 11 · DESK 3 · TRADE TERMINAL' },
+  { match: /NON-PROFIT|GOVERN|PUBLIC/i,                                bid: 'arcade',      label: "ARCADE '87",    slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
+];
+function getWorkstation(bType: 'fictitious'|'real', ind: string, fictInd: string) {
+  const q = bType === 'real' ? ind : fictInd;
+  return WORKSTATION_ASSIGNMENTS.find(w => w.match.test(q)) ?? WORKSTATION_ASSIGNMENTS[0];
+}
+
 const FLAVOR = [
   'The collapse happened three years ago. Minx City never recovered.',
   'SENIOR PABLO controls every credit in Minx City.',
@@ -355,6 +374,7 @@ export default function WorldMenu() {
   const [guideSection, setGuideSection] = useState<GuideSection>('world');
 
   // Business registration
+  const [hasBiz, setHasBiz] = useState<null | 'yes' | 'no'>(null);
   const [bizType, setBizType] = useState<'fictitious' | 'real'>('fictitious');
   const [company, setCompany] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
@@ -403,9 +423,15 @@ export default function WorldMenu() {
 
   const handleEnterWorld = async () => {
     setSubmitting(true);
-    const finalCompany = bizType === 'real' && company.trim()
-      ? company.trim().toUpperCase()
-      : name.trim().toUpperCase() + ' OPS';
+    const hasBusiness = hasBiz === 'yes';
+    const ws = hasBusiness ? getWorkstation(bizType, industry, fictitiousIndustry) : null;
+    const finalCompany = hasBusiness
+      ? (bizType === 'real' && company.trim()
+          ? company.trim().toUpperCase()
+          : bizType === 'fictitious'
+            ? fictitiousIndustry
+            : name.trim().toUpperCase() + ' OPS')
+      : name.trim().toUpperCase() + ' (DRIFTER)';
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
@@ -413,24 +439,31 @@ export default function WorldMenu() {
       sx: cls === 'outcast' ? 460 : 560,
       sy: cls === 'outcast' ? 750 : 320,
       salary: cls === 'corporate' ? 50000 : cls === 'replicant' ? 20000 : 0,
+      hasBusiness,
+      workstation: ws?.bid ?? null,
+      workstationLabel: ws?.label ?? null,
+      workstationSlot: ws?.slot ?? null,
+      bizRegisteredAt: hasBusiness ? Date.now() : null,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
-    try {
-      await fetch('/api/world/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          playerName: char.name,
-          businessType: bizType,
-          companyName: finalCompany,
-          industry: bizType === 'real' ? industry : fictitiousIndustry,
-          companySize: bizType === 'real' ? bizSize : null,
-          contactEmail: bizType === 'real' && bizEmail.trim() ? bizEmail.trim() : null,
-          isPaid: false,
-        }),
-      });
-    } catch { /* ignore */ }
+    if (hasBusiness) {
+      try {
+        await fetch('/api/world/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            playerName: char.name,
+            businessType: bizType,
+            companyName: finalCompany,
+            industry: bizType === 'real' ? industry : fictitiousIndustry,
+            companySize: bizType === 'real' ? bizSize : null,
+            contactEmail: bizType === 'real' && bizEmail.trim() ? bizEmail.trim() : null,
+            isPaid: false,
+          }),
+        });
+      } catch { /* ignore */ }
+    }
     setSubmitting(false);
     navigate('/world/play');
   };
@@ -560,81 +593,145 @@ export default function WorldMenu() {
 
             {step === 2 && (
               <div style={{ width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+
+                {/* Header */}
                 <div style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '1rem' }}>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.6rem' }}>ENTERPRISE REGISTRATION — {name.trim().toUpperCase()}</div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.4rem' }}>OPERATIONAL REGISTRATION — {name.trim().toUpperCase()}</div>
                   <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.9 }}>
-                    Every operative in Minx City is affiliated with an enterprise. A fictitious front protects you. A real business lets you stake your claim and set up permanent offices across the city.
+                    Are you starting or registering a business in Minx City?
                   </div>
                 </div>
 
+                {/* YES / NO primary choice */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
-                  {(['fictitious', 'real'] as const).map(t => (
-                    <button key={t} onClick={() => setBizType(t)} style={{ padding: '.9rem', border: bizType === t ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: bizType === t ? 'rgba(0,255,65,.07)' : 'transparent', color: bizType === t ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
-                      <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', marginBottom: '.25rem' }}>
-                        {t === 'fictitious' ? 'FICTITIOUS FRONT' : 'REAL ENTERPRISE'}
-                      </div>
-                      <div style={{ fontSize: '.52rem', color: bizType === t ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
-                        {t === 'fictitious'
-                          ? 'Anonymous. Low profile. No paper trail. Your data stays local.'
-                          : 'Real company. Stake territory. Data stored on our servers for paid members. Your brand in-world.'}
-                      </div>
-                    </button>
-                  ))}
+                  <button onClick={() => setHasBiz('yes')} style={{ padding: '1rem', border: hasBiz === 'yes' ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: hasBiz === 'yes' ? 'rgba(0,255,65,.07)' : 'transparent', color: hasBiz === 'yes' ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
+                    <div style={{ ...VT, fontSize: '1.2rem', letterSpacing: '.1em', marginBottom: '.3rem' }}>YES — REGISTER BUSINESS</div>
+                    <div style={{ fontSize: '.5rem', color: hasBiz === 'yes' ? 'rgba(0,255,65,.55)' : 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                      Free bed, desk &amp; work terminal assigned.<br/>Progress and CREAM are saved.<br/>Low rent after 7 days.
+                    </div>
+                  </button>
+                  <button onClick={() => setHasBiz('no')} style={{ padding: '1rem', border: hasBiz === 'no' ? '1px solid rgba(255,100,100,.5)' : '1px solid rgba(0,255,65,.15)', background: hasBiz === 'no' ? 'rgba(255,40,40,.05)' : 'transparent', color: hasBiz === 'no' ? 'rgba(255,130,130,.9)' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
+                    <div style={{ ...VT, fontSize: '1.2rem', letterSpacing: '.1em', marginBottom: '.3rem' }}>NO — ENTER AS DRIFTER</div>
+                    <div style={{ fontSize: '.5rem', color: hasBiz === 'no' ? 'rgba(255,130,130,.45)' : 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                      No address. No record.<br/>Session-local only — progress not saved.<br/>No rent. No ties. No trace.
+                    </div>
+                  </button>
                 </div>
 
-                {bizType === 'fictitious' && (
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — SELECT FRONT CORPORATION</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
-                      Your operative will be listed under this corporate shell. PABLO Corp. cannot trace it. Rival operatives will see this name above your head.
-                    </div>
-                    <select value={fictitiousIndustry} onChange={e => setFictitiousIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                      {FICTITIOUS_INDUSTRIES.map(fi => <option key={fi} value={fi}>{fi}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {bizType === 'real' && (
-                  <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
-                    <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
-                      <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
-                    </div>
+                {/* Business form — shown when YES */}
+                {hasBiz === 'yes' && (
+                  <>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
-                      <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
-                        <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                          {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
-                        <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
+                      {(['fictitious', 'real'] as const).map(t => (
+                        <button key={t} onClick={() => setBizType(t)} style={{ padding: '.9rem', border: bizType === t ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: bizType === t ? 'rgba(0,255,65,.07)' : 'transparent', color: bizType === t ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', marginBottom: '.25rem' }}>
+                            {t === 'fictitious' ? 'FICTITIOUS FRONT' : 'REAL ENTERPRISE'}
+                          </div>
+                          <div style={{ fontSize: '.52rem', color: bizType === t ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                            {t === 'fictitious'
+                              ? 'Anonymous shell corp. No paper trail. PABLO cannot trace it.'
+                              : 'Your actual company. Stake territory. Brand shown in-world.'}
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(0,255,65,.15)' }}>(OPTIONAL — STORED FOR PAID MEMBERS)</span></div>
-                      <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+
+                    {bizType === 'fictitious' && (
+                      <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — SELECT FRONT CORPORATION</div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
+                          Your operative will operate under this shell. PABLO Corp. cannot trace it. Other players see this name above your head.
+                        </div>
+                        <select value={fictitiousIndustry} onChange={e => setFictitiousIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                          {FICTITIOUS_INDUSTRIES.map(fi => <option key={fi} value={fi}>{fi}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    {bizType === 'real' && (
+                      <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
+                        <div>
+                          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
+                          <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                          <div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
+                            <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                              {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
+                            <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                              {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(0,255,65,.15)' }}>(OPTIONAL)</span></div>
+                          <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Workstation assignment preview */}
+                    {(() => {
+                      const ws = getWorkstation(bizType, industry, fictitiousIndustry);
+                      return (
+                        <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.85rem' }}>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.3rem' }}>
+                            <div>
+                              <div style={{ ...VT, fontSize: '1.15rem', color: '#00ff41', letterSpacing: '.1em' }}>{ws.label}</div>
+                              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.07em', marginTop: '.08rem' }}>{ws.slot}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41' }}>FREE</div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ç500/rest after day 7</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
+                            The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ç500 per rest — the lowest rate in Minx City.
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* Drifter warning */}
+                {hasBiz === 'no' && (
+                  <div style={{ border: '1px solid rgba(255,80,80,.2)', background: 'rgba(255,30,30,.04)', padding: '.85rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(255,120,120,.6)', letterSpacing: '.14em', marginBottom: '.4rem' }}>NO ADDRESS — DRIFTER STATUS</div>
+                    <div style={{ fontSize: '.52rem', color: 'rgba(255,120,120,.45)', lineHeight: 1.8 }}>
+                      You will enter Minx City with no registered address. Your progress and CREAM balance will not be saved between sessions. PABLO Corp. has no record of you — which is either very good or very bad.
+                    </div>
+                    <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
+                      You can register a business later at PABLO TOWER. Walk in and use the terminal.
                     </div>
                   </div>
                 )}
 
+                {/* Action buttons */}
                 <div style={{ display: 'flex', gap: '.6rem' }}>
                   <button onClick={() => setStep(1)} style={{ padding: '.65rem 1.2rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', ...VT, fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>← BACK</button>
                   <button
                     onClick={handleEnterWorld}
-                    disabled={submitting}
-                    style={{ flex: 1, padding: '.75rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.7)', color: '#00ff41', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: 'pointer', textShadow: '0 0 12px rgba(0,255,65,.4)' }}
+                    disabled={submitting || hasBiz === null}
+                    style={{ flex: 1, padding: '.75rem', background: hasBiz !== null ? 'rgba(0,255,65,.1)' : 'transparent', border: hasBiz !== null ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.1)', color: hasBiz !== null ? '#00ff41' : 'rgba(0,255,65,.2)', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: hasBiz !== null ? 'pointer' : 'default', textShadow: hasBiz !== null ? '0 0 12px rgba(0,255,65,.4)' : 'none', transition: 'all .15s' }}
                   >
-                    {submitting ? 'REGISTERING...' : `ENTER THE WORLD ${tick % 2 === 0 ? '▶' : '▷'}`}
+                    {submitting ? 'REGISTERING...' : hasBiz === null ? 'SELECT AN OPTION ABOVE' : `ENTER THE WORLD ${tick % 2 === 0 ? '▶' : '▷'}`}
                   </button>
                 </div>
 
                 <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
-                  Real business data is only stored persistently for paid subscribers. All other data is session-local. Server capacity: 50 operatives.
+                  {hasBiz === 'yes'
+                    ? 'Business data stored persistently for paid subscribers. Free workstation available immediately on entry.'
+                    : hasBiz === 'no'
+                    ? 'Session-local only. Refresh and data is gone. No rent. No commitment. You can register later at PABLO TOWER.'
+                    : 'Select YES or NO above to continue.'}
                 </div>
               </div>
             )}
