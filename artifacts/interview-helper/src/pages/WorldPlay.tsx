@@ -11,6 +11,30 @@ const W = 3200, H = 2400, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
 const WASTELAND_Y = 900;
 const NORTH_Y = 60;
 
+// ── 2.5D depth constant for building perspective ─────────────────────────────
+const BUILDING_DEPTH = 18;
+
+// ── Billboard locations ─────────────────────────────────────────────────────
+interface BillboardDef {
+  locationId: string; label: string; x: number; y: number; w: number; h: number; height: number;
+}
+const BILLBOARDS: BillboardDef[] = [
+  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 460,  y: 270, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 730,  y: 300, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 350,  y: 650, w: 20, h: 10, height: 45 },
+  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 1350, y: 250, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 1650, y: 350, w: 20, h: 10, height: 60 },
+  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 2100, y: 450, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 250,  y: 780, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 1500, y: 780, w: 20, h: 10, height: 40 },
+];
+interface BillboardData {
+  id: number; locationId: string; ownerPlayerName: string | null;
+  adText: string | null; adImageUrl: string | null;
+  priceFlorin: number; rentedUntil: string | null; label: string;
+  expired: boolean;
+}
+
 // ── Commodity Trading (Star Citizen–style economy) ────────────────────────────
 interface Commodity {
   id: string; name: string;
@@ -555,6 +579,7 @@ export default function WorldPlay() {
     threats: THREATS_INIT.map(t => ({ ...t })),
     near: null as string | null,
     nearNpc: null as number | null,
+    nearBillboard: null as string | null,
     gangZone: null as string | null,
     hunger: 100, thirst: 100, energy: 100,
     survivalTick: 0,
@@ -664,6 +689,25 @@ export default function WorldPlay() {
   const [poisoned,    setPoisoned]    = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
+  // Billboard marketplace
+  const [billboardsData, setBillboardsData] = useState<BillboardData[]>([]);
+  const billboardsDataRef = useRef<BillboardData[]>([]);
+  const bbImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  useEffect(() => {
+    billboardsDataRef.current = billboardsData;
+    for (const bd of billboardsData) {
+      if (bd.adImageUrl && !bbImagesRef.current.has(bd.adImageUrl)) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = bd.adImageUrl;
+        bbImagesRef.current.set(bd.adImageUrl, img);
+      }
+    }
+  }, [billboardsData]);
+  const [showBillboard, setShowBillboard] = useState<BillboardDef | null>(null);
+  const [bbAdText, setBbAdText] = useState('');
+  const [bbAdUrl, setBbAdUrl] = useState('');
+  const [nearBillboard, setNearBillboard] = useState<string | null>(null);
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
@@ -1178,9 +1222,9 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend;
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard;
     npcDialogRef.current = !!dialog && dialog.bid === 'npc';
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank, showSubway, showVend]);
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, isDead, showMap, jobPanel, showTrade, showBank, showSubway, showVend, showBillboard]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1250,7 +1294,12 @@ export default function WorldPlay() {
         if (!frozenRef.current && !chatOpen) {
           const nb = gs.current.near;
           const nn = gs.current.nearNpc;
+          const nbb = gs.current.nearBillboard;
           if (nb) tryEnter(nb);
+          else if (nbb) {
+            const bb = BILLBOARDS.find(b => b.locationId === nbb);
+            if (bb) { setShowBillboard(bb); fetchBillboards(); }
+          }
           else if (nn !== null) enterNpc(nn);
         }
       }
@@ -1310,7 +1359,7 @@ export default function WorldPlay() {
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
         setShowPablo(false); setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
-        setFloorPanel(null); setShowMap(false); setShowTrade(null);
+        setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
         setShowBank(false); frozenRef.current = false;
@@ -1320,6 +1369,53 @@ export default function WorldPlay() {
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
   }, [chatOpen, dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
+
+  // ── Billboard data fetch ──────────────────────────────────────────────────
+  const fetchBillboards = useCallback(async () => {
+    try {
+      const r = await fetch('/api/billboards', { credentials: 'include' });
+      if (r.ok) { const data = await r.json(); setBillboardsData(data); }
+    } catch { /* silent */ }
+  }, []);
+  useEffect(() => { fetchBillboards(); const iv = setInterval(fetchBillboards, 30000); return () => clearInterval(iv); }, [fetchBillboards]);
+
+  const purchaseBillboard = useCallback(async (bbId: number) => {
+    try {
+      const r = await fetch(`/api/billboards/${bbId}/purchase`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationDays: 7, currentBalance: gs.current.salary }),
+        credentials: 'include',
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const cost = d.cost ?? 0;
+        if (typeof d.newBalance === 'number') {
+          gs.current.salary = d.newBalance;
+        } else {
+          gs.current.salary = Math.max(0, gs.current.salary - cost);
+        }
+        setSalary(gs.current.salary);
+        sfxCoin();
+        setNarr(`> BILLBOARD PURCHASED — ç${cost.toLocaleString()} CREAM deducted. 7 days of ad space. Update your content now.`);
+        fetchBillboards();
+      } else {
+        sfxError(); setNarr(`> PURCHASE FAILED — ${d.error ?? 'Unknown error'}`);
+      }
+    } catch { sfxError(); setNarr('> NETWORK ERROR — Billboard purchase failed.'); }
+  }, [fetchBillboards]);
+
+  const updateBillboardContent = useCallback(async (bbId: number) => {
+    try {
+      const r = await fetch(`/api/billboards/${bbId}/update-content`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adText: bbAdText || null, adImageUrl: bbAdUrl || null }),
+        credentials: 'include',
+      });
+      const d = await r.json();
+      if (d.ok) { sfxCoin(); setNarr('> AD CONTENT UPDATED — Your billboard is now live.'); fetchBillboards(); }
+      else { sfxError(); setNarr(`> UPDATE FAILED — ${d.error ?? 'Not authorized'}`); }
+    } catch { sfxError(); setNarr('> NETWORK ERROR — Content update failed.'); }
+  }, [bbAdText, bbAdUrl, fetchBillboards]);
 
   // ── PABLO AI ──────────────────────────────────────────────────────────────
   const buildPabloContext = useCallback(() => {
@@ -1372,7 +1468,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     const ctx = canvas.getContext('2d')!;
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize(); window.addEventListener('resize', resize);
-    let lastNear: string | null = null, lastNearNpc: number | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
+    let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
 
     const loop = () => {
@@ -1653,6 +1749,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // Proximity check — Billboards
+      let nbb: string | null = null;
+      if (!nb && nn === null) {
+        for (const bb of BILLBOARDS) {
+          if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { nbb = bb.locationId; break; }
+        }
+      }
+      g.nearBillboard = nbb;
+      if (nbb !== lastNearBb) {
+        lastNearBb = nbb; setNearBillboard(nbb);
+        if (nbb) {
+          const bb = BILLBOARDS.find(b => b.locationId === nbb);
+          if (bb) setNarr(`> ${bb.label} — press [E] to view billboard marketplace.`);
+        }
+      }
+
       const newZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
       if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); }
 
@@ -1844,11 +1956,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ctx.fillStyle = `rgba(0,0,0,${pwDark * 0.7})`; ctx.fillRect(0, 0, cw, ch);
       ctx.fillStyle = '#030803'; ctx.fillRect(0, 0, cw, ch);
 
-      // Grid
+      // Isometric diamond grid
       ctx.strokeStyle = 'rgba(0,255,65,.04)'; ctx.lineWidth = 1;
+      const isoHW = TILE * 0.7, isoHH = TILE * 0.35;
       const sgx = Math.floor(g.cam.x / TILE) * TILE, sgy = Math.floor(g.cam.y / TILE) * TILE;
-      for (let gx = sgx; gx < g.cam.x + cw + TILE; gx += TILE) { ctx.beginPath(); ctx.moveTo(gx + ox, 0); ctx.lineTo(gx + ox, ch); ctx.stroke(); }
-      for (let gy = sgy; gy < g.cam.y + ch + TILE; gy += TILE) { ctx.beginPath(); ctx.moveTo(0, gy + oy); ctx.lineTo(cw, gy + oy); ctx.stroke(); }
+      ctx.beginPath();
+      for (let gx = sgx - TILE; gx < g.cam.x + cw + TILE * 2; gx += TILE) {
+        for (let gy = sgy - TILE; gy < g.cam.y + ch + TILE * 2; gy += TILE) {
+          const cx = gx + TILE / 2 + ox, cy = gy + TILE / 2 + oy;
+          if (cx < -TILE || cx > cw + TILE || cy < -TILE || cy > ch + TILE) continue;
+          ctx.moveTo(cx, cy - isoHH);
+          ctx.lineTo(cx + isoHW, cy);
+          ctx.lineTo(cx, cy + isoHH);
+          ctx.lineTo(cx - isoHW, cy);
+          ctx.closePath();
+        }
+      }
+      ctx.stroke();
 
       // Zone divider
       const wby = WASTELAND_Y + oy;
@@ -2064,10 +2188,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           continue;
         }
 
-        // ── Default building rendering ────────────────────────────────────
-        ctx.strokeStyle = isLocked ? `rgba(255,120,50,${isNear ? .8 : .3})` : b.bright ? `rgba(0,255,65,${isNear ? .9 : .5})` : `rgba(0,180,50,${isNear ? .7 : .3})`;
+        // ── Default building rendering (2.5D with depth faces) ────────────
+        const bd = BUILDING_DEPTH;
+        const baseCol = isLocked ? [255,120,50] : b.bright ? [0,255,65] : [0,180,50];
+        const [cr,cg,cb] = baseCol;
+        const topA = isNear ? .12 : .06;
+        const frontA = isNear ? .08 : .04;
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${topA})`; ctx.fillRect(bx, by, b.w, b.h);
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${frontA})`;
+        ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bd * 0.5);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${frontA * 0.7})`;
+        ctx.beginPath(); ctx.moveTo(bx + b.w, by); ctx.lineTo(bx + b.w + bd * 0.5, by + bd * 0.5);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},${isNear ? .8 : .3})`;
         ctx.lineWidth = isNear ? 2 : 1; ctx.strokeRect(bx, by, b.w, b.h);
-        ctx.fillStyle = isLocked ? 'rgba(255,80,0,.04)' : 'rgba(0,255,65,.025)'; ctx.fillRect(bx, by, b.w, b.h);
+        ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bd * 0.5);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.lineTo(bx + b.w, by + b.h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx + b.w, by); ctx.lineTo(bx + b.w + bd * 0.5, by + bd * 0.5);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.stroke();
         const cs = 7; ctx.lineWidth = 1.5;
         ctx.strokeStyle = isLocked ? 'rgba(255,120,50,.5)' : b.bright ? 'rgba(0,255,65,.7)' : 'rgba(0,200,50,.38)';
         [[bx, by, 1, 1], [bx + b.w, by, -1, 1], [bx, by + b.h, 1, -1], [bx + b.w, by + b.h, -1, -1]].forEach(([cx2, cy2, sx, sy]) => {
@@ -2367,6 +2506,70 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Billboard structures ──────────────────────────────────────────────
+      for (const bb of BILLBOARDS) {
+        const bx = bb.x + ox, by = bb.y + oy;
+        if (bx < -60 || bx > cw + 60 || by < -80 || by > ch + 40) continue;
+        const isNearBb = g.nearBillboard === bb.locationId;
+        const bbData = billboardsDataRef.current.find((d: BillboardData) => d.locationId === bb.locationId);
+        const hasOwner = bbData && bbData.ownerPlayerName;
+        const pulse = 0.6 + Math.sin(g.frame * 0.04 + bb.x * 0.01) * 0.3;
+
+        const postW = 6, postH = 50, screenW = 56, screenH = 32;
+        const postX = bx - postW / 2, postY = by - postH;
+        const scrX = bx - screenW / 2, scrY = postY - screenH - 2;
+
+        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(postX, postY, postW, postH);
+        ctx.strokeStyle = 'rgba(0,255,65,.3)'; ctx.lineWidth = 1; ctx.strokeRect(postX, postY, postW, postH);
+
+        const scrGlow = isNearBb ? '#00ff41' : hasOwner ? '#ff00ff' : '#00ccff';
+        ctx.shadowColor = scrGlow; ctx.shadowBlur = isNearBb ? 16 : 8;
+        ctx.fillStyle = '#0a0a1a'; ctx.fillRect(scrX, scrY, screenW, screenH);
+        ctx.strokeStyle = scrGlow; ctx.lineWidth = isNearBb ? 2 : 1;
+        ctx.strokeRect(scrX, scrY, screenW, screenH);
+        ctx.shadowBlur = 0;
+
+        ctx.save(); ctx.beginPath(); ctx.rect(scrX + 2, scrY + 2, screenW - 4, screenH - 4); ctx.clip();
+        if (hasOwner && bbData.adImageUrl) {
+          const adImg = bbImagesRef.current.get(bbData.adImageUrl);
+          if (adImg && adImg.complete && adImg.naturalWidth > 0) {
+            ctx.drawImage(adImg, scrX + 2, scrY + 2, screenW - 4, screenH - 4);
+          } else {
+            ctx.fillStyle = `rgba(255,0,255,${pulse * 0.15})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
+            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('LOADING...', bx, scrY + 16);
+          }
+          if (bbData.adText) {
+            ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(scrX + 2, scrY + screenH - 12, screenW - 4, 10);
+            ctx.fillStyle = '#ff88ff'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(bbData.adText.slice(0, 12), bx, scrY + screenH - 4);
+          }
+        } else if (hasOwner && bbData.adText) {
+          ctx.fillStyle = `rgba(255,0,255,${pulse * 0.15})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
+          ctx.fillStyle = '#ff88ff'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const lines = bbData.adText.match(/.{1,12}/g) || [bbData.adText];
+          lines.slice(0, 3).forEach((line: string, i: number) => ctx.fillText(line, bx, scrY + 10 + i * 8));
+        } else {
+          const scanY = (g.frame * 0.5) % screenH;
+          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.08})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
+          ctx.fillStyle = `rgba(0,200,255,0.06)`; ctx.fillRect(scrX + 2, scrY + scanY, screenW - 4, 2);
+          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.7})`; ctx.font = 'bold 7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('PABLO CORP', bx, scrY + 13);
+          ctx.fillStyle = `rgba(0,200,255,${pulse * 0.4})`; ctx.font = '5px "Share Tech Mono"';
+          ctx.fillText('AD SPACE', bx, scrY + 22);
+        }
+        ctx.restore();
+
+        ctx.fillStyle = `rgba(0,200,255,${pulse * 0.5})`; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText(bb.label, bx, by + 8);
+
+        if (isNearBb) {
+          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)';
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] BILLBOARD', bx, scrY - 6);
+        }
+      }
+
       // ── Floating damage / money numbers ──────────────────────────────────
       for (const fl of g.floaters) {
         const fx = fl.x + ox, fy = fl.y + oy;
@@ -2400,6 +2603,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
         ctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
         ctx.fillRect(toMX(b.x), toMY(b.y), Math.max(2.5, (b.w / W) * mmR * 2), Math.max(1.5, (b.h / H) * mmR * 2));
+      }
+      // Billboards — magenta/cyan diamonds
+      for (const bb of BILLBOARDS) {
+        const bmx = toMX(bb.x), bmy = toMY(bb.y);
+        const owned = billboardsDataRef.current.some((d: BillboardData) => d.locationId === bb.locationId && d.ownerPlayerName);
+        ctx.fillStyle = owned ? 'rgba(255,0,255,.8)' : 'rgba(0,200,255,.7)';
+        ctx.beginPath(); ctx.moveTo(bmx, bmy - 2.5); ctx.lineTo(bmx + 2, bmy); ctx.lineTo(bmx, bmy + 2.5); ctx.lineTo(bmx - 2, bmy); ctx.closePath(); ctx.fill();
       }
       // NPCs — yellow dots
       for (const n of NPCS) {
@@ -3364,6 +3574,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 5} textAnchor="middle" fill="rgba(0,255,65,.5)" fontSize={14} fontFamily="Share Tech Mono">{b.label.substring(0,10)}</text>
                 </g>
               ))}
+              {/* Billboards */}
+              {BILLBOARDS.map(bb => (
+                <g key={bb.locationId}>
+                  <rect x={bb.x - 8} y={bb.y - 8} width={16} height={16} fill="rgba(0,200,255,.2)" stroke="rgba(0,200,255,.5)" strokeWidth={2} />
+                  <text x={bb.x} y={bb.y + 4} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={8} fontFamily="Share Tech Mono">BB</text>
+                </g>
+              ))}
               {/* Player position */}
               <circle cx={gs.current.px} cy={gs.current.py} r={18} fill="none" stroke="#00ff41" strokeWidth={3} />
               <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="#00ff41" />
@@ -3378,7 +3595,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </svg>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap' }}>
-              {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD']].map(([c,l]) => (
+              {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
                   <span style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
@@ -3391,6 +3608,80 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         </div>
       )}
+
+      {/* ── BILLBOARD MARKETPLACE PANEL ────────────────────────────────────── */}
+      {showBillboard && (() => {
+        const bbInfo = billboardsData.find(d => d.locationId === showBillboard.locationId);
+        const owned = bbInfo?.ownerPlayerName;
+        const isOwner = owned === char.name;
+        const expired = bbInfo?.expired;
+        const price = bbInfo?.priceFlorin ?? 5000;
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 370 }}
+            onClick={() => setShowBillboard(null)}>
+            <div style={{ width: 420, border: '1px solid rgba(0,200,255,.3)', background: 'rgba(0,4,8,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace" }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#00ccff', letterSpacing: '.15em' }}>BILLBOARD MARKETPLACE</div>
+                <button onClick={() => setShowBillboard(null)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,200,255,.2)', color: 'rgba(0,200,255,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
+              </div>
+              <div style={{ width: '100%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,200,255,.3), transparent)', marginBottom: '.8rem' }} />
+              <div style={{ fontSize: '.6rem', color: 'rgba(0,200,255,.6)', marginBottom: '.4rem', letterSpacing: '.1em' }}>SLOT: {showBillboard.label}</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.35)', marginBottom: '.3rem' }}>Location ID: {showBillboard.locationId}</div>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '.6rem' }}>
+                <div style={{ flex: 1, border: '1px solid rgba(0,200,255,.15)', padding: '.5rem', background: 'rgba(0,10,20,.5)' }}>
+                  <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>STATUS</div>
+                  <div style={{ fontSize: '.55rem', color: owned && !expired ? '#ff00ff' : '#00ccff' }}>
+                    {owned && !expired ? `OWNED by ${owned}` : 'AVAILABLE'}
+                  </div>
+                </div>
+                <div style={{ flex: 1, border: '1px solid rgba(0,200,255,.15)', padding: '.5rem', background: 'rgba(0,10,20,.5)' }}>
+                  <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.3rem', letterSpacing: '.1em' }}>PRICE (7 DAYS)</div>
+                  <div style={{ fontSize: '.55rem', color: '#ffdd44' }}>ç{price.toLocaleString()} CREAM</div>
+                </div>
+              </div>
+              {(bbInfo?.adText || bbInfo?.adImageUrl) && (
+                <div style={{ border: '1px solid rgba(255,0,255,.2)', padding: '.5rem', marginBottom: '.6rem', background: 'rgba(255,0,255,.03)' }}>
+                  <div style={{ fontSize: '.42rem', color: 'rgba(255,0,255,.4)', marginBottom: '.2rem', letterSpacing: '.1em' }}>CURRENT AD</div>
+                  {bbInfo.adImageUrl && (
+                    <img src={bbInfo.adImageUrl} alt="Billboard ad" style={{ width: '100%', maxHeight: 120, objectFit: 'contain', marginBottom: '.3rem', border: '1px solid rgba(255,0,255,.15)' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  )}
+                  {bbInfo.adText && <div style={{ fontSize: '.5rem', color: '#ff88ff', wordBreak: 'break-word' }}>{bbInfo.adText}</div>}
+                </div>
+              )}
+              {bbInfo?.rentedUntil && !expired && (
+                <div style={{ fontSize: '.42rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>
+                  Expires: {new Date(bbInfo.rentedUntil).toLocaleDateString()}
+                </div>
+              )}
+              {(!owned || expired) && (
+                <button onClick={() => { if (bbInfo) purchaseBillboard(bbInfo.id); }}
+                  style={{ width: '100%', padding: '.5rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.4)', color: '#00ccff', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer', marginBottom: '.5rem' }}>
+                  BUY SLOT — ç{price.toLocaleString()} CREAM
+                </button>
+              )}
+              {isOwner && !expired && (
+                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', background: 'rgba(0,10,5,.5)' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', marginBottom: '.4rem', letterSpacing: '.1em' }}>UPDATE YOUR AD</div>
+                  <input value={bbAdText} onChange={e => setBbAdText(e.target.value)} placeholder="Ad text (max 60 chars)"
+                    maxLength={60}
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.3rem', boxSizing: 'border-box' }} />
+                  <input value={bbAdUrl} onChange={e => setBbAdUrl(e.target.value)} placeholder="Image URL (optional)"
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.4rem', boxSizing: 'border-box' }} />
+                  <button onClick={() => { if (bbInfo) updateBillboardContent(bbInfo.id); }}
+                    style={{ width: '100%', padding: '.4rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>
+                    UPDATE AD
+                  </button>
+                </div>
+              )}
+              <div style={{ marginTop: '.6rem', fontSize: '.35rem', color: 'rgba(0,200,255,.2)', letterSpacing: '.08em' }}>
+                Billboard ads display for all players in Minx City. · Florin currency only. · [ESC] to close
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showLevelUp && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>

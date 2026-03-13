@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import Upgrade from "@/pages/Upgrade";
 import WorldMenu from "@/pages/WorldMenu";
 import WorldPlay from "@/pages/WorldPlay";
+import BillboardAdmin from "@/pages/BillboardAdmin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/upgrade" component={Upgrade} />
       <Route path="/world" component={WorldMenu} />
       <Route path="/world/play" component={WorldPlay} />
+      <Route path="/admin/billboards" component={BillboardAdmin} />
       <Route component={NotFound} />
     </Switch>
   );

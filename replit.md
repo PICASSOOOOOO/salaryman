@@ -6,6 +6,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 
 ### Brand Architecture
 - **Salaryman** — master brand, the world, the game (future MMO: Cyberpunk × Fallout × FF7 × Blade Runner, 1980s Japan post-apocalyptic)
+- **Minx City World** — 2.5D isometric canvas RPG with billboard advertising marketplace (8 ad slots), proximity-based interaction ([E] key), in-game Florin/CREAM currency purchases, admin panel at `/admin/billboards`
 - **PABLO** — in-world mega-corporation that manufactures all the tools (AI assistant, devices, software)
 - **Calll Home** — PABLO's CRM + dialer product, lives inside the suite (insurance industry, needs API connection)
 - **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home, formerly "Frontman")
@@ -98,6 +99,9 @@ Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client insta
 - `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
 - `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
 - Exports: `.` (pool, db, schema), `./schema` (schema only)
+
+- `src/schema/billboards.ts` — billboard advertising marketplace table (id, locationId, ownerPlayerName, adText, adImageUrl, priceFlorin, rentedUntil, createdAt)
+- Billboard API routes in `artifacts/api-server/src/routes/billboards.ts` (GET list, GET by id, POST purchase, POST update-content, POST release)
 
 Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
 

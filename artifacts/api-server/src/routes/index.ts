@@ -9,6 +9,7 @@ import workspaceRouter from "./workspace";
 import planRouter from "./plan";
 import worldRouter from "./world";
 import salarymanSavesRouter from "./salaryman-saves";
+import billboardRouter from "./billboards";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(workspaceRouter);
 router.use(planRouter);
 router.use(worldRouter);
 router.use(salarymanSavesRouter);
+router.use(billboardRouter);
 
 export default router;
