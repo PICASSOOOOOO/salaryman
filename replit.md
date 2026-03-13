@@ -6,7 +6,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 
 ### Brand Architecture
 - **Salaryman** — master brand, the world, the game (future MMO: Cyberpunk × Fallout × FF7 × Blade Runner, 1980s Japan post-apocalyptic)
-- **Minx City World** — 2.5D isometric canvas RPG with billboard advertising marketplace (8 ad slots), proximity-based interaction ([E] key), in-game Florin/CREAM currency purchases, admin panel at `/admin/billboards`
+- **Minx City World** — 2.5D isometric canvas RPG with billboard advertising marketplace (8 ad slots), proximity-based interaction ([E] key), in-game Florin/CREAM currency purchases, admin panel at `/admin/billboards`. World is 4800×4200 with WASTELAND_Y at 1350. Features day/night cycle (worldTime 0-24), behavior state machine for threats (SLEEPING/WORKING/CAMPING/SOCIALIZING/PATROLLING/HOSTILE), faction schedules, conditional hostility based on player class and territory, minimap radius 180px with 900 world unit view.
 - **PABLO** — in-world mega-corporation that manufactures all the tools (AI assistant, devices, software)
 - **Calll Home** — PABLO's CRM + dialer product, lives inside the suite (insurance industry, needs API connection)
 - **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home, formerly "Frontman")
