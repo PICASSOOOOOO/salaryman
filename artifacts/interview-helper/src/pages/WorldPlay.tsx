@@ -139,7 +139,7 @@ interface Floater { x: number; y: number; text: string; color: string; life: num
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; }
 const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55 };
 const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 15, VOID_DOGS: 20, STATIC_MONKS: 25, MUTANT: 18, RAIDER: 30, PROWLER: 10, BORDER_GANG: 16, EASTERN_BLOC: 22, SPY: 50, PABLO_GUARD: 28 };
+const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800 };
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
   replicant:  { maxHp: 160, atkBonus: 8,  wasteBonus: false },
@@ -151,11 +151,11 @@ const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus:
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
 // Quick jobs — bid → { label, pay, seconds, cooldownFrames }
 const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; cooldownFrames: number }> = {
-  scrap:      { label: 'HAUL SCRAP',   pay: 35, seconds: 5, cooldownFrames: 1800 },
-  print_shop: { label: 'PRINT RUN',    pay: 25, seconds: 4, cooldownFrames: 1200 },
-  radio:      { label: 'BROADCAST',    pay: 20, seconds: 4, cooldownFrames: 900  },
-  wily_lab:   { label: 'ASSEMBLE',     pay: 60, seconds: 7, cooldownFrames: 2400 },
-  market:     { label: 'STREET DEAL',  pay: 30, seconds: 3, cooldownFrames: 900  },
+  scrap:      { label: 'HAUL SCRAP',   pay: 3500, seconds: 5, cooldownFrames: 1800 },
+  print_shop: { label: 'PRINT RUN',    pay: 2500, seconds: 4, cooldownFrames: 1200 },
+  radio:      { label: 'BROADCAST',    pay: 2000, seconds: 4, cooldownFrames: 900  },
+  wily_lab:   { label: 'ASSEMBLE',     pay: 6000, seconds: 7, cooldownFrames: 2400 },
+  market:     { label: 'STREET DEAL',  pay: 3000, seconds: 3, cooldownFrames: 900  },
 };
 // Pablo Corp guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
@@ -522,6 +522,13 @@ export default function WorldPlay() {
     sfxEnter();
     // ── Residential ───────────────────────────────────────────────────────
     if (bid === 'minx_arms') {
+      const rent = 3000;
+      if (g.salary >= rent) {
+        g.salary -= rent; setSalary(g.salary);
+        setNarr(`> MINX ARMS — RENT PAID: ç${rent.toLocaleString()}. The landlord's drone scans your unit. "Credits received. Another month." You rest.`);
+      } else {
+        setNarr(`> MINX ARMS — RENT NOTICE. You owe ç${rent.toLocaleString()} and cannot pay. PABLO CORP. HOUSING DIVISION has been notified. Rest anyway — nobody's throwing you out tonight.`);
+      }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
       // Bed save point — restore all stats
       g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
@@ -531,13 +538,19 @@ export default function WorldPlay() {
       setNarr(`> MINX ARMS — Your unit: ${aptUnit}. You rest in your bed. HP fully restored. Progress saved. The city can wait.`);
     }
     else if (bid === 'eastside_flat') {
+      const rent = 2000;
+      if (g.salary >= rent) {
+        g.salary -= rent; setSalary(g.salary);
+        setNarr(`> EASTSIDE FLATS — RENT PAID: ç${rent.toLocaleString()}. Unit ${aptUnit}. The landlord bot sends a confirmation ping. You collapse into your bed.`);
+      } else {
+        setNarr(`> EASTSIDE FLATS — RENT NOTICE. ç${rent.toLocaleString()} outstanding. PABLO CORP. HOUSING will escalate. Rest anyway.`);
+      }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.eastside_flat, selectedFloor: 0 });
       // Bed save point
       g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
       g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
       sfxSave();
       localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
-      setNarr(`> EASTSIDE FLATS — Unit ${aptUnit}. You collapse into your bed. HP restored. Saved. The lobby camera watches the door. Not you.`);
     }
     // ── Floor-directory buildings ─────────────────────────────────────────
     else if (bid === 'pablo_tower') {
@@ -546,57 +559,55 @@ export default function WorldPlay() {
     }
     else if (bid === 'pablo_store')  { setDialog({ lines: STORE_LINES, idx: 0, bid }); }
     else if (bid === 'clinic')  {
-      if (g.salary >= 100) { g.hp = 100; g.salary -= 100; setHp(100); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [$100] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
-      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No credits, no treatment. Even Dr. Wright has bills. Come back with $100."'); }
+      if (g.salary >= 10000) { g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal(); setNarr('> DR. WRIGHT\'S CLINIC — [ç10,000 CREAM] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."'); }
+      else { sfxError(); setNarr('> DR. WRIGHT\'S CLINIC — "No cream, no treatment. Even Dr. Wright has bills. Come back with ç10,000."'); }
     }
     else if (bid === 'megabank'){
-      // Govt building — vending machine outside + bank terminal
       g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20);
-      g.salary = Math.max(0, g.salary - 10); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> KONAMI BANK — Vending machine dispenses a POWER PELLET [$10]. Hunger +20. Thirst +20. Terminal: ACCOUNT SUSPENDED. INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.');
+      g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
+      setNarr('> KONAMI BANK — Vending machine: POWER PELLET [ç1,000 CREAM]. Hunger +20. Thirst +20. Terminal: ACCOUNT SUSPENDED. INSERT COIN TO CONTINUE. You don\'t have a coin. Nobody does.');
     }
     else if (bid === 'armory') {
-      // Vending interaction + ammo purchase flavor
       g.hunger = Math.min(100, g.hunger + 15); g.thirst = Math.min(100, g.thirst + 15);
-      g.salary = Math.max(0, g.salary - 10); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
-      setNarr('> ARMORY — Vending machine: RATION PACK [$10]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
+      g.salary = Math.max(0, g.salary - 1000); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin();
+      setNarr('> ARMORY — Vending machine: RATION PACK [ç1,000 CREAM]. Hunger +15. Thirst +15. The weapons inside are PABLO-licensed. "Come back with the right clearance level," says nobody, because nobody is there.');
     }
-    else if (bid === 'market')  { g.salary += 30; setSalary(g.salary); sfxCoin(); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +$30. The buyer asked if it was from "before the collapse." You said yes.'); }
+    else if (bid === 'market')  { g.salary += 3000; setSalary(g.salary); sfxCoin(); setNarr('> BLACK MARKET — Sold something that used to belong to someone. +ç3,000 CREAM. The buyer asked if it was from "before the collapse." You said yes.'); }
     else if (bid === 'hotel')   {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
       g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
       setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. HP +40. Energy +30.');
     }
     else if (bid === 'hotel_midgar') {
-      if (g.salary >= 150) {
-        const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 150;
+      if (g.salary >= 15000) {
+        const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 15000;
         setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
         localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
-        setNarr('> HOTEL MIDGAR [$150] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
+        setNarr('> HOTEL MIDGAR [ç15,000 CREAM] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
       } else {
         sfxError();
-        setNarr('> HOTEL MIDGAR — TIFA shakes her head. "Presidential suite is $150. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
+        setNarr('> HOTEL MIDGAR — TIFA shakes her head. "Presidential suite is ç15,000 CREAM. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
       }
     }
     else if (bid === 'inn_mother') {
-      if (g.salary >= 60) {
-        g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 60;
+      if (g.salary >= 6000) {
+        g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 6000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
         localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
-        setNarr('> MOTHER BASE INN [$60] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
+        setNarr('> MOTHER BASE INN [ç6,000 CREAM] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
       } else {
         sfxError();
-        setNarr('> MOTHER BASE INN — OTACON squints at his tablet. "Intel says you\'re short $60. Come back when your salary clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
+        setNarr('> MOTHER BASE INN — OTACON squints at his tablet. "Intel says you\'re short ç6,000. Come back when your cream clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
       }
     }
     else if (bid === 'overlook') {
-      if (g.salary >= 80) {
-        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 80;
+      if (g.salary >= 8000) {
+        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-        setNarr('> THE OVERLOOK [$80] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
+        setNarr('> THE OVERLOOK [ç8,000 CREAM] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
       } else {
         sfxError();
-        setNarr('> THE OVERLOOK — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with $80," he adds, still not looking up.');
+        setNarr('> THE OVERLOOK — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with ç8,000 CREAM," he adds, still not looking up.');
       }
     }
     else if (bid === 'safe_house') {
@@ -605,14 +616,14 @@ export default function WorldPlay() {
       setNarr('> SAFE HOUSE 7 — No name on the door. No sign. RIPLEY nods you in. You rest on a cot. HP +35. Energy +25. No charge. "Out here nobody charges for safety," she says. "That\'s how you know it\'s real."');
     }
     else if (bid === 'prancing_pony') {
-      if (g.salary >= 40) {
-        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 40;
+      if (g.salary >= 4000) {
+        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000;
         setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
         localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
-        setNarr('> THE PRANCING PONY [$40] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
+        setNarr('> THE PRANCING PONY [ç4,000 CREAM] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
       } else {
         sfxError();
-        setNarr('> THE PRANCING PONY — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be $40. The supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs $40.');
+        setNarr('> THE PRANCING PONY — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be ç4,000 CREAM. Supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs ç4,000.');
       }
     }
     else if (bid === 'zanarkand_inn') {
@@ -627,10 +638,10 @@ export default function WorldPlay() {
       setNarr('> TERMINUS SHELTER — CLEM hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "When it rains," she says eventually, "we collect it. That\'s the whole water strategy. That\'s the whole strategy." She says this like it\'s enough. It is.');
     }
     else if (bid === 'fort_dracula') {
-      const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 20;
+      const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 2000;
       setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
       localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
-      setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +$20 (he pressed a gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
+      setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ç2,000 CREAM (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
     }
     else if (bid === 'vend')    {
       g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
@@ -645,16 +656,16 @@ export default function WorldPlay() {
     else if (bid === 'radio') {
       const job = QUICK_JOBS.radio;
       if ((g.jobCooldowns['radio'] ?? 0) > 0) { sfxError(); setNarr(`> PIRATE RADIO — Signal on air. "Come back in ${Math.ceil((g.jobCooldowns['radio'] ?? 0) / 60)}s." Dead air.`); return; }
-      setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "BROADCAST JOB — $20, 4 seconds. Press E again to start."');
+      setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "BROADCAST JOB — ç2,000 CREAM, 4 seconds. Press E again to start."');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'scrap') {
       const job = QUICK_JOBS.scrap;
       if ((g.jobCooldowns['scrap'] ?? 0) > 0) { sfxError(); setNarr(`> SCRAP YARD — On cooldown. ${Math.ceil((g.jobCooldowns['scrap'] ?? 0) / 60)}s remaining.`); return; }
-      setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. $35. 5 seconds." You find a PCB labeled KONAMI \'87.');
+      setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ç3,500 CREAM. 5 seconds." You find a PCB labeled KONAMI \'87.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); sfxCoin(); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
+    else if (bid === 'wily_lab'){ g.salary += 5000; setSalary(g.salary); sfxCoin(); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. SENIOR PABLO bought them all. If you find this, take the ç5,000 in the drawer. I won\'t need it." +ç5,000 CREAM.'); }
     else if (bid === 'crystal' || bid === 'crystal2' || bid === 'crystal3') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -663,17 +674,17 @@ export default function WorldPlay() {
       setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 40; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached salary transfer. +$40. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached cream transfer. +ç4,000 CREAM. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
-    else if (bid === 'east_market') { g.salary += 25; setSalary(g.salary); sfxCoin(); setNarr('> EAST BAZAAR — Traded fragments for credits. +$25. The vendor says: "Everything here was made in the city. Everything here ends up back in the tower."'); }
+    else if (bid === 'east_market') { g.salary += 2500; setSalary(g.salary); sfxCoin(); setNarr('> EAST BAZAAR — Traded fragments for cream. +ç2,500 CREAM. The vendor says: "Everything here was made in the city. Everything here ends up back in the tower."'); }
     else if (bid === 'east_clinic') {
-      if (g.salary >= 80) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 80; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [$80] HP +60.'); }
-      else { sfxError(); setNarr('> EAST CLINIC — "No credits. I treat wounds, not charity cases." Come back with $80.'); }
+      if (g.salary >= 8000) { g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 8000; setHp(g.hp); setSalary(g.salary); sfxHeal(); setNarr('> EAST CLINIC — Field medic patches you up. [ç8,000 CREAM] HP +60.'); }
+      else { sfxError(); setNarr('> EAST CLINIC — "No cream. I treat wounds, not charity cases." Come back with ç8,000.'); }
     }
     else if (bid === 'print_shop') {
       const job = QUICK_JOBS.print_shop;
       if ((g.jobCooldowns['print_shop'] ?? 0) > 0) { sfxError(); setNarr(`> PRINT SHOP — Machine busy. ${Math.ceil((g.jobCooldowns['print_shop'] ?? 0) / 60)}s until next run.`); return; }
-      setNarr('> PRINT SHOP — Unauthorized print run. $25. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
+      setNarr('> PRINT SHOP — Unauthorized print run. ç2,500 CREAM. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'east_bunker') { setNarr('> EAST BUNKER — Reinforced walls. Supplies enough for six months. Sign reads: EMERGENCY RESERVE — PABLO CORP. PROPERTY. "Emergency" apparently means one person on Floor 62.'); }
@@ -688,7 +699,7 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 60; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP. markings and no tracking code. Inside: $60 in unregistered credits. Classic.'); }
+    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP. markings and no tracking code. Inside: ç6,000 CREAM in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
@@ -882,9 +893,9 @@ export default function WorldPlay() {
       konamiBuffer.current = [...konamiBuffer.current, kk].slice(-KONAMI_SEQ.length);
       if (konamiBuffer.current.join(',') === KONAMI_SEQ.join(',')) {
         const g = gs.current;
-        g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 300;
+        g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 30000;
         setHp(100); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
-        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +$300. Full stats restored. SENIOR PABLO is watching." ★');
+        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +ç30,000 CREAM. Full stats restored. SENIOR PABLO is watching." ★');
         sfxKonami();
         konamiBuffer.current = [];
       }
@@ -923,7 +934,7 @@ export default function WorldPlay() {
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5); // Outcast waste bonus
               g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
-              g.floaters.push({ x: t.x, y: t.y, text: `+$${bountyAmt}`, color: '#ffdd44', life: 55, maxLife: 55 });
+              g.floaters.push({ x: t.x, y: t.y, text: `+ç${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
               // ── Damage floater ────────────────────────────────────────────
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
@@ -1186,7 +1197,7 @@ export default function WorldPlay() {
         g.thirst = Math.max(0, g.thirst - tDrain);
         g.energy = Math.max(0, g.energy - eDrain);
         if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); }
-        if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 5); }
+        if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
       }
 
@@ -1900,8 +1911,8 @@ export default function WorldPlay() {
           </div>
           {/* Salary */}
           <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.18)', padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '3px' }}>¥</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>${salary}</div>
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '3px' }}>CREAM</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ç{salary.toLocaleString()}</div>
           </div>
           {/* Zone */}
           <div style={{ background: 'rgba(0,6,0,.82)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.2)' : 'rgba(0,255,65,.18)'}`, padding: '.25rem .5rem' }}>
@@ -2171,14 +2182,14 @@ export default function WorldPlay() {
                   <div key={label} style={{ border: isRented ? '1px solid rgba(0,255,65,.65)' : '1px solid rgba(0,255,65,.16)', padding: '.7rem', background: isRented ? 'rgba(0,255,65,.06)' : 'transparent', position: 'relative' }}>
                     {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#00ff41', fontFamily: "'VT323',monospace" }}>LEASED</div>}
                     <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isRented ? '#00ff41' : 'rgba(0,255,65,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
-                    <div style={{ fontSize: '.62rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>${price.toLocaleString()}</div>
+                    <div style={{ fontSize: '.62rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ç{price.toLocaleString()} CREAM</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.32)', lineHeight: 1.6 }}>{desc}</div>
                     <button onClick={() => {
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
-                      if (!canAfford) { setNarr(`> Need $${price}. Have $${salary}.`); return; }
+                      if (!canAfford) { setNarr(`> Need ç${price.toLocaleString()} CREAM. Have ç${salary.toLocaleString()}.`); return; }
                       const g = gs.current; g.salary -= price; setSalary(g.salary);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
-                      setNarr(`> ${label} leased. $${price} deducted. Set a security code from the lease panel.`);
+                      setNarr(`> ${label} leased. ç${price.toLocaleString()} CREAM deducted. Set a security code from the lease panel.`);
                     }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford ? 'rgba(0,255,65,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford ? '1px solid rgba(0,255,65,.38)' : '1px solid rgba(0,255,65,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford ? '#00ff41' : 'rgba(0,255,65,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: canAfford || isRented ? 'pointer' : 'default' }}>
                       {isRented ? 'CANCEL' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
@@ -2354,7 +2365,7 @@ export default function WorldPlay() {
               ))}
             </div>
             <div style={{ marginTop: '.5rem', fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
-              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ${salary} · [M] or [ESC] to close
+              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ç{salary.toLocaleString()} CREAM · [M] or [ESC] to close
             </div>
           </div>
         </div>
@@ -2377,7 +2388,7 @@ export default function WorldPlay() {
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
             <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
               {char.name} — {char.class.toUpperCase()}<br/>
-              HP: 0 · SALARY: ${salary} · {zone}<br/>
+              HP: 0 · CREAM: ç{salary.toLocaleString()} · {zone}<br/>
               <span style={{ color: 'rgba(255,80,80,.25)' }}>DR. WRIGHT SAYS: "Even BELMONT respawned. Get back out there."</span>
             </div>
             <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>

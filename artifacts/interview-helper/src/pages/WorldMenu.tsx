@@ -11,7 +11,7 @@ const CLASSES = [
     tagline: 'City. Salary. Connections.',
     desc: 'Born in the neon towers. You know the right people — for now. City networks are open to you. Government buildings welcome you. PABLO Corp. smiles. The wasteland will eat you alive.',
     start: 'MINX CITY',
-    salary: '$500',
+    salary: 'ç50,000',
     hp: '100',
     atk: '12',
     perks: 'City access · Network bonus · High salary',
@@ -23,7 +23,7 @@ const CLASSES = [
     tagline: 'Wasteland. Broke. Scarred.',
     desc: 'Exiled and hardened. Nothing but survival instinct. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. The walls don\'t want you — good. The secrets are all outside anyway.',
     start: 'WASTELAND',
-    salary: '$0',
+    salary: 'ç0',
     hp: '110',
     atk: '14',
     perks: 'Wasteland drain -40% · Kill bonus outside city · Scavenge+',
@@ -35,7 +35,7 @@ const CLASSES = [
     tagline: 'Android. Conscious. Strongest.',
     desc: 'You are the conscious android — built for combat, not for service. Maximum HP. Maximum strength. PABLO Corp. wants you shut down. Every other replicant out there is fighting the same war you are. The corpo-cogs are the problem.',
     start: 'MINX CITY',
-    salary: '$200',
+    salary: 'ç20,000',
     hp: '160',
     atk: '20',
     perks: 'Highest HP · Strongest ATK · Built for war',
@@ -114,7 +114,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Nobody knows what's on top." col="#cc44ff" />
       <Row label="PABLO DEVICE" val="The app you're running right now. AI assistant, world map, PABLO network access. Press [P] in-world." col="#00ff41" />
-      <Row label="PABLO CREDITS" val="The only currency that matters. Your salary, building locks, and upgrades all run on credits. SENIOR PABLO takes a cut of everything." col="#ffcc00" />
+      <Row label="CREAM (ç)" val="The only currency that matters. Cream is what Minx City runs on. ç1 CREAM = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
     </div>
   );
 
@@ -388,7 +388,7 @@ export default function WorldMenu() {
       company: finalCompany,
       sx: cls === 'outcast' ? 460 : 560,
       sy: cls === 'outcast' ? 750 : 320,
-      salary: cls === 'corporate' ? 500 : cls === 'replicant' ? 200 : 0,
+      salary: cls === 'corporate' ? 50000 : cls === 'replicant' ? 20000 : 0,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
     try {
