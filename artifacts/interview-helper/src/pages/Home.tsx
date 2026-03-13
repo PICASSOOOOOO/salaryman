@@ -5,6 +5,7 @@ import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, 
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { NavBar } from '@/components/NavBar';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -146,18 +147,7 @@ export default function Home() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
-      {/* Header */}
-      <header className="h-16 border-b border-border flex items-center px-6 shrink-0 bg-background/50 backdrop-blur-xl z-10 relative">
-        <div className="flex items-center gap-3 text-foreground">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-            <Terminal className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold tracking-tight leading-none">DevDocs</h1>
-            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">v3.1.2 — reference</p>
-          </div>
-        </div>
-      </header>
+      <NavBar />
 
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 min-h-0">
 
