@@ -80,10 +80,10 @@ If you cannot identify a clear question, describe what you see and give 3 genera
   chat: `Look at this screenshot of a technical interview or chat conversation. Find the most recent message or question directed at the person being interviewed.
 
 Write the reply they should type back. Rules:
-- ONE sentence only. Punchy, direct, confident.
-- Sounds like a smart startup CEO who typed it in 3 seconds without overthinking
-- Can start mid-thought ("yeah, exactly —", "right, so —", "honestly,", "that's fair —")
-- Zero corporate speak. Zero perfect grammar required. Just sharp and human.
+- ONE sentence. Casual American texting style — the way a smart 30-something in tech actually types to a coworker.
+- Lowercase is fine. Skip punctuation if it feels more natural. Contractions always ("we're", "it's", "that's").
+- Openers like: "yeah", "oh for sure", "tbh", "lol yeah", "ngl", "right so", "honestly", "haha yeah"
+- Never sounds formal, polished, or written. Sounds like a Slack message.
 - No bullet points. No explanation. Just the one sentence.
 
 Output ONLY the reply text. Nothing else.`,
