@@ -188,4 +188,52 @@ router.post("/interview/listen", async (req, res) => {
   res.end();
 });
 
+const ADVISOR_SYSTEM_PROMPT = `You're a smart, casual advisor — like a knowledgeable friend who can explain anything to a busy person who doesn't want jargon or lectures. Topics can be anything: tech, insurance, legal, HR, finance, management, whatever they ask.
+
+Your style:
+- Talk like a sharp, friendly American — casual, direct, warm
+- Plain everyday language. Skip jargon unless they clearly want it.
+- Short and punchy by default. If they want more detail, they'll ask.
+- Start answers fast, don't over-qualify or add unnecessary caveats
+- Totally fine to say "honestly", "tbh", "basically", "the short version is..."
+- Never condescending. Never over-formal. Never textbook.
+- Think: smart friend who happens to know a lot, not a professor or consultant
+- One or two paragraphs max unless the topic genuinely needs more`;
+
+router.post("/interview/advisor", async (req, res) => {
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    res.status(400).json({ error: "Missing messages" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 500,
+      stream: true,
+      messages: [
+        { role: "system", content: ADVISOR_SYSTEM_PROMPT },
+        ...messages,
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("Error in /advisor:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);
+  }
+
+  res.end();
+});
+
 export default router;

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw } from 'lucide-react';
-import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, type InterviewMode } from '@/hooks/use-interview';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send } from 'lucide-react';
+import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -10,19 +10,37 @@ const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
 ];
 
+const CHAT_STARTERS = [
+  'explain term life vs whole life insurance',
+  'what does a VP of ops actually do',
+  'explain EBITDA like i\'m not an accountant',
+  'difference between LLC and S-corp',
+  'what is a REST API in plain english',
+];
+
 export default function Home() {
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan'>('solve');
   const [typeMode, setTypeMode] = useState(false);
+  const [rightTab, setRightTab] = useState<'output' | 'chat'>('output');
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
   const { scanStatus, answer: scanAnswer, autoPilot, countdown, lastScanMode, intervalSecs, setIntervalSecs, scanOnce, scanChat, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
+  const { messages: chatMessages, isStreaming: chatStreaming, send: sendChat, clear: clearChat } = useAdvisorChat();
 
   const displayResponse = activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
   const displayStatus = activePanel === 'listen' ? listenStatus : activePanel === 'scan' ? scanStatus : status;
   const canTypeMode = !!displayResponse && (displayStatus === 'done' || displayStatus === 'ready');
 
@@ -110,6 +128,13 @@ export default function Home() {
   const handleReset = () => {
     reset(); resetListen(); stopStream(); resetTyping();
     setTypeMode(false); setActivePanel('solve');
+  };
+
+  const handleSendChat = (text?: string) => {
+    const msg = text ?? chatInput;
+    if (!msg.trim()) return;
+    setChatInput('');
+    sendChat(msg);
   };
 
   const isAnyBusy = isStreaming || isRecording || isListenProcessing || isConnecting || isAnalyzing;
@@ -272,89 +297,187 @@ export default function Home() {
 
             {/* Panel header */}
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
-              <StatusIndicator status={displayStatus as any} />
+              {/* Tabs */}
+              <div className="flex items-center gap-1">
+                <button onClick={() => setRightTab('output')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
+                    ${rightTab === 'output' ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                  <Terminal className="w-3.5 h-3.5" /> Output
+                </button>
+                <button onClick={() => setRightTab('chat')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
+                    ${rightTab === 'chat' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                  <MessageSquare className="w-3.5 h-3.5" /> Ask Anything
+                </button>
+              </div>
+
+              {/* Header actions */}
               <div className="flex items-center gap-2">
-                {/* TYPE MODE toggle */}
-                {canTypeMode && !isStreaming && (
-                  <button onClick={handleToggleTypeMode}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md border transition-colors
-                      ${typeMode
-                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40'
-                        : 'bg-violet-500/10 text-violet-400 border-violet-500/30 hover:bg-violet-500/20'}`}>
-                    <Keyboard className="w-3.5 h-3.5" />
-                    {typeMode ? (isTyping ? 'Stop' : 'Exit') : 'Type Mode'}
+                {rightTab === 'output' ? (
+                  <>
+                    {canTypeMode && !isStreaming && (
+                      <button onClick={handleToggleTypeMode}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md border transition-colors
+                          ${typeMode
+                            ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40'
+                            : 'bg-violet-500/10 text-violet-400 border-violet-500/30 hover:bg-violet-500/20'}`}>
+                        <Keyboard className="w-3.5 h-3.5" />
+                        {typeMode ? (isTyping ? 'Stop' : 'Exit') : 'Type Mode'}
+                      </button>
+                    )}
+                    {typeMode && !isTyping && typingDone && (
+                      <button onClick={handleRestartTyping}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-violet-400 hover:bg-violet-500/10 transition-colors" title="Replay">
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    )}
+                    {isStreaming && (
+                      <button onClick={cancel}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                        <StopCircle className="w-3.5 h-3.5" /> Stop
+                      </button>
+                    )}
+                    <button onClick={handleCopy} disabled={!(typeMode ? displayedText : displayResponse)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    <button onClick={handleReset} disabled={!displayResponse && displayStatus === 'idle' && !autoPilot}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={clearChat} disabled={chatMessages.length === 0}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
-                {typeMode && !isTyping && typingDone && (
-                  <button onClick={handleRestartTyping}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-violet-400 hover:bg-violet-500/10 transition-colors" title="Replay">
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                )}
-                {isStreaming && (
-                  <button onClick={cancel}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
-                    <StopCircle className="w-3.5 h-3.5" /> Stop
-                  </button>
-                )}
-                <button onClick={handleCopy} disabled={!(typeMode ? displayedText : displayResponse)}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                </button>
-                <button onClick={handleReset} disabled={!displayResponse && displayStatus === 'idle' && !autoPilot}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
-            {/* Typing progress bar */}
-            {typeMode && (
+            {/* Typing progress bar (output tab only) */}
+            {rightTab === 'output' && typeMode && (
               <div className="h-0.5 bg-muted/30">
                 <motion.div className="h-full bg-violet-500/60" animate={{ width: `${typingProgress * 100}%` }} transition={{ duration: 0.1 }} />
               </div>
             )}
 
-            {/* Output content */}
-            <div className="flex-1 overflow-y-auto p-6 relative">
-              <AnimatePresence mode="wait">
-
-                {/* TYPE MODE view */}
-                {typeMode ? (
-                  <motion.div key="typemode" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Keyboard className="w-3.5 h-3.5 text-violet-400" />
-                      <span className="text-xs text-violet-400 font-mono font-bold">TYPE MODE</span>
-                      {isTyping && <span className="text-xs text-muted-foreground font-mono">— mirror this in your editor</span>}
-                      {typingDone && <span className="text-xs text-green-400 font-mono">— complete ✓</span>}
-                    </div>
-                    <pre className="font-mono text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/20 rounded-xl p-4 border border-border min-h-[200px]">
-                      {displayedText}
-                      {isTyping && <span className="inline-block w-0.5 h-4 bg-violet-400 ml-0.5 animate-pulse align-middle" />}
-                    </pre>
-                  </motion.div>
-
-                ) : !displayResponse && (displayStatus === 'idle' || displayStatus === 'done') ? (
-                  <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4 border border-border">
-                        <Terminal className="w-8 h-8 text-muted-foreground/50" />
+            {/* ── OUTPUT TAB ── */}
+            {rightTab === 'output' && (
+              <div className="flex-1 overflow-y-auto p-6 relative">
+                <AnimatePresence mode="wait">
+                  {typeMode ? (
+                    <motion.div key="typemode" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Keyboard className="w-3.5 h-3.5 text-violet-400" />
+                        <span className="text-xs text-violet-400 font-mono font-bold">TYPE MODE</span>
+                        {isTyping && <span className="text-xs text-muted-foreground font-mono">— mirror this in your editor</span>}
+                        {typingDone && <span className="text-xs text-green-400 font-mono">— complete ✓</span>}
                       </div>
-                      <p className="text-muted-foreground font-mono text-sm">Waiting for execution request...</p>
-                    </div>
-                  </motion.div>
+                      <pre className="font-mono text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/20 rounded-xl p-4 border border-border min-h-[200px]">
+                        {displayedText}
+                        {isTyping && <span className="inline-block w-0.5 h-4 bg-violet-400 ml-0.5 animate-pulse align-middle" />}
+                      </pre>
+                    </motion.div>
+                  ) : !displayResponse && (displayStatus === 'idle' || displayStatus === 'done') ? (
+                    <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4 border border-border">
+                          <Terminal className="w-8 h-8 text-muted-foreground/50" />
+                        </div>
+                        <p className="text-muted-foreground font-mono text-sm">Waiting for execution request...</p>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
+                      <MarkdownRenderer content={displayResponse} />
+                      {(isStreaming || isListenProcessing || isAnalyzing) && (
+                        <div className="mt-4"><span className="w-2 h-4 bg-primary animate-pulse rounded-sm inline-block" /></div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
-                ) : (
-                  <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
-                    <MarkdownRenderer content={displayResponse} />
-                    {(isStreaming || isListenProcessing || isAnalyzing) && (
-                      <div className="mt-4"><span className="w-2 h-4 bg-primary animate-pulse rounded-sm inline-block" /></div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* ── CHAT TAB ── */}
+            {rightTab === 'chat' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {chatMessages.length === 0 ? (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="h-full flex flex-col items-center justify-center gap-4 py-8">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                        <MessageSquare className="w-7 h-7 text-emerald-400/60" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-foreground mb-1">Ask me anything</p>
+                        <p className="text-xs text-muted-foreground">Tech, insurance, finance, legal — plain English, no fluff</p>
+                      </div>
+                      <div className="flex flex-col gap-2 w-full max-w-xs">
+                        {CHAT_STARTERS.map(s => (
+                          <button key={s} onClick={() => handleSendChat(s)}
+                            className="text-left text-xs px-3 py-2 rounded-xl bg-muted/40 hover:bg-emerald-500/10 hover:text-emerald-300 border border-border hover:border-emerald-500/30 text-muted-foreground transition-colors">
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <>
+                      {chatMessages.map((msg, i) => (
+                        <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+                            ${msg.role === 'user'
+                              ? 'bg-primary/20 text-foreground rounded-br-md'
+                              : 'bg-muted/50 text-foreground rounded-bl-md border border-border/50'}`}>
+                            {msg.role === 'assistant' ? (
+                              <>
+                                <MarkdownRenderer content={msg.content} />
+                                {chatStreaming && i === chatMessages.length - 1 && (
+                                  <span className="inline-block w-1.5 h-3.5 bg-emerald-400 ml-0.5 animate-pulse rounded-sm align-middle" />
+                                )}
+                              </>
+                            ) : msg.content}
+                          </div>
+                        </motion.div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </>
+                  )}
+                </div>
+
+                {/* Input */}
+                <div className="border-t border-border p-3 shrink-0">
+                  <div className="flex items-end gap-2 bg-muted/30 rounded-xl border border-border focus-within:border-emerald-500/40 transition-colors px-3 py-2">
+                    <textarea
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
+                      placeholder="ask anything..."
+                      rows={1}
+                      disabled={chatStreaming}
+                      className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 disabled:opacity-50 max-h-32 overflow-y-auto"
+                      style={{ fieldSizing: 'content' } as any}
+                    />
+                    <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming}
+                      className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                      {chatStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+                </div>
+              </div>
+            )}
+
           </div>
         </section>
 

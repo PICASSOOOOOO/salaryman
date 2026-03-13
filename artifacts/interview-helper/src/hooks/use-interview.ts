@@ -435,6 +435,63 @@ export function useTypingSimulator() {
   return { displayedText, isTyping, isDone, start, stop, reset };
 }
 
+// ── Advisor Chat ─────────────────────────────────────────────────────────────
+
+export type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+export function useAdvisorChat() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const send = useCallback(async (text: string) => {
+    if (!text.trim() || isStreaming) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: text.trim() };
+    const history = [...messages, userMsg];
+    setMessages([...history, { role: 'assistant', content: '' }]);
+    setIsStreaming(true);
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    try {
+      await streamSSE(
+        '/api/interview/advisor',
+        { messages: history.map(m => ({ role: m.role, content: m.content })) },
+        ctrl.signal,
+        (chunk) => {
+          setMessages(prev => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = { role: 'assistant', content: last.content + chunk };
+            return updated;
+          });
+        },
+        () => setIsStreaming(false),
+        (err) => {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', content: `Something went wrong — ${err}` };
+            return updated;
+          });
+          setIsStreaming(false);
+        }
+      );
+    } catch {
+      setIsStreaming(false);
+    }
+  }, [messages, isStreaming]);
+
+  const clear = useCallback(() => {
+    abortRef.current?.abort();
+    setMessages([]);
+    setIsStreaming(false);
+  }, []);
+
+  return { messages, isStreaming, send, clear };
+}
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
