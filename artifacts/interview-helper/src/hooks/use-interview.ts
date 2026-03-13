@@ -312,6 +312,108 @@ export function useScreenScan() {
   };
 }
 
+const NEARBY_KEYS: Record<string, string> = {
+  a:'sq', b:'vn', c:'xv', d:'sf', e:'wr', f:'dg', g:'fh', h:'gj', i:'uo', j:'hk',
+  k:'jl', l:'kp', m:'nj', n:'bm', o:'ip', p:'ol', q:'wa', r:'et', s:'ad', t:'ry',
+  u:'yi', v:'cb', w:'qe', x:'zc', y:'tu', z:'ax',
+};
+
+function charDelay(ch: string, prev: string): number {
+  if (ch === '\n') return 350 + Math.random() * 500;
+  if (ch === ' ') return 80 + Math.random() * 120;
+  if ('({['.includes(prev)) return 100 + Math.random() * 150;
+  if (':'.includes(prev)) return 200 + Math.random() * 300;
+  return 55 + Math.random() * 100;
+}
+
+export function useTypingSimulator() {
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isDone, setIsDone] = useState(false);
+  const cancelRef = useRef(false);
+  const pauseRef = useRef(0);
+
+  const sleep = (ms: number) => new Promise<void>(resolve => {
+    const id = setTimeout(resolve, ms);
+    pauseRef.current = id as unknown as number;
+  });
+
+  const start = useCallback(async (text: string) => {
+    cancelRef.current = false;
+    setDisplayedText('');
+    setIsDone(false);
+    setIsTyping(true);
+
+    let typed = '';
+    let charsSinceBreak = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      if (cancelRef.current) break;
+
+      const ch = text[i];
+      const prev = i > 0 ? text[i - 1] : '';
+
+      // Random "thinking pause" every 20–35 chars
+      charsSinceBreak++;
+      if (charsSinceBreak > 20 + Math.random() * 15 && ch !== '\n') {
+        charsSinceBreak = 0;
+        await sleep(500 + Math.random() * 900);
+        if (cancelRef.current) break;
+      }
+
+      // Occasional typo on lowercase letters (~4% chance)
+      const isLower = ch >= 'a' && ch <= 'z';
+      if (isLower && Math.random() < 0.04) {
+        const nearby = NEARBY_KEYS[ch] ?? 'x';
+        const wrongChar = nearby[Math.floor(Math.random() * nearby.length)];
+        const mistakeLen = 1 + Math.floor(Math.random() * 2);
+
+        // Type the wrong chars
+        for (let m = 0; m < mistakeLen; m++) {
+          typed += wrongChar;
+          setDisplayedText(typed);
+          await sleep(70 + Math.random() * 60);
+          if (cancelRef.current) break;
+        }
+
+        // Pause — "wait, that's wrong"
+        await sleep(180 + Math.random() * 150);
+
+        // Backspace them
+        for (let m = 0; m < mistakeLen; m++) {
+          typed = typed.slice(0, -1);
+          setDisplayedText(typed);
+          await sleep(80 + Math.random() * 60);
+          if (cancelRef.current) break;
+        }
+        if (cancelRef.current) break;
+        await sleep(60 + Math.random() * 80);
+      }
+
+      typed += ch;
+      setDisplayedText(typed);
+      await sleep(charDelay(ch, prev));
+    }
+
+    if (!cancelRef.current) setIsDone(true);
+    setIsTyping(false);
+  }, []);
+
+  const stop = useCallback(() => {
+    cancelRef.current = true;
+    clearTimeout(pauseRef.current);
+    setIsTyping(false);
+  }, []);
+
+  const reset = useCallback(() => {
+    stop();
+    setDisplayedText('');
+    setIsDone(false);
+  }, [stop]);
+
+  return { displayedText, isTyping, isDone, start, stop, reset };
+}
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

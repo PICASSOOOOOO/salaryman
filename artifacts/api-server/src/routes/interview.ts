@@ -5,15 +5,11 @@ import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-const SYSTEM_PROMPT = `You are an expert software engineer and coding interview coach. You help candidates during technical coding interviews by providing clear, well-explained guidance.
+const SYSTEM_PROMPT = `You are assisting a senior tech startup executive — a CEO who has actively coded throughout their career, built systems from scratch, and led engineering teams through tight deadlines. They think in trade-offs, systems, and team dynamics. Their code is practical, readable, and well-commented — not competition-level clever. They value maintainability, risk awareness, and clear reasoning. They speak like someone who has shipped real products under pressure and knows how to get the most out of a team based on individual strengths.
 
-When given a coding question, you respond based on the requested mode:
-- "hint": Give a helpful hint to point the candidate in the right direction without revealing the full solution. Be concise but insightful.
-- "solution": Provide a complete, well-commented, working solution in the requested language. Include time and space complexity at the end.
-- "explain": Explain the approach and algorithm in plain English. Break it down step by step, then show the code.
-- "complexity": Analyze the time and space complexity. Explain Big-O notation clearly with multiple approaches if relevant.
+When writing code: it should be correct and functional, use clear variable names, and include comments that explain WHY decisions were made — not just what the code does. Occasionally include a note showing production awareness (e.g., "# TODO: add input validation in production" or "# works for given constraints, would cache this at scale"). Write it like someone who cares about their teammates reading it later.
 
-Always format code properly with correct syntax for the requested language. Be direct and concise.`;
+When explaining: speak like a technical leader briefing their team — cover the approach, the trade-offs, what could go wrong, and how you'd distribute the work. Never sound like a textbook.`;
 
 router.post("/interview/solve", async (req, res) => {
   const parsed = SolveInterviewQuestionBody.safeParse(req.body);
@@ -25,11 +21,15 @@ router.post("/interview/solve", async (req, res) => {
   const { question, language, mode } = parsed.data;
 
   const modePrompts: Record<string, string> = {
-    hint: `Give me a hint (NOT the full solution) for this ${language} coding problem:\n\n${question}`,
-    solution: `Provide a complete, working ${language} solution for this coding problem:\n\n${question}\n\nInclude comments explaining key steps and end with time/space complexity analysis.`,
-    explain: `Explain the approach and algorithm for solving this ${language} problem in plain English, then show the code:\n\n${question}`,
-    complexity: `Analyze the time and space complexity for this ${language} problem. Discuss different approaches and their complexities:\n\n${question}`,
-    say_it: `You are helping a non-technical person sound smart in a coding interview. For this problem, give EXACTLY 3 bullet points. Rules: NO code whatsoever. NO jargon. Each bullet is ONE short simple sentence (max 15 words). Write it so they can read it off a screen and say it out loud naturally right now. Think of it as a teleprompter script.\n\nProblem: ${question}\n\nFormat:\n• [sentence]\n• [sentence]\n• [sentence]`,
+    hint: `As a technical leader giving a nudge — not the answer — give 1-2 sentences pointing toward the right approach for this ${language} problem. Mention the key concept or data structure to think about. Frame it like you're thinking out loud with a capable engineer, not lecturing. Make them feel like they're close.\n\nProblem: ${question}`,
+
+    solution: `Write a complete, working ${language} solution for this problem as a senior-but-practical engineer would. Code must be correct. Use clear variable names. Add comments that explain WHY each decision was made, not just what the code does. Include at least one comment showing production awareness (e.g. "# TODO: validate input in production" or "# works within given constraints"). End with a one-line complexity note.\n\nProblem: ${question}`,
+
+    explain: `Explain how you'd approach this ${language} problem as if briefing your engineering team before starting the sprint. Cover: (1) what the problem is really asking, (2) the approach and why you'd choose it over alternatives, (3) what risks or edge cases you'd flag before writing a single line, (4) how you'd split the work across the team based on strengths. Then show the code with key comments. Talk like a leader who also writes code.\n\nProblem: ${question}`,
+
+    complexity: `Analyze the time and space complexity of this ${language} problem as you would in a technical architecture review — not just the Big-O math, but what it means in practice. Cover: best/average/worst cases, where the real bottleneck is, when this complexity actually matters vs. when optimization would be premature, and how you'd approach it differently at 10x scale. Speak like someone who has debugged production systems at scale.\n\nProblem: ${question}`,
+
+    say_it: `Give EXACTLY 3 bullet points for a startup tech CEO to say out loud in a coding interview right now. They understand the problem, make architectural decisions, and lead a team — they don't show off LeetCode tricks. Rules: NO code. NO jargon. Each bullet is ONE short plain sentence (max 15 words). Sound natural when spoken aloud. Frame it from a leader's perspective — cover the approach, a trade-off you'd consider, or a team/production implication.\n\nProblem: ${question}\n\nFormat:\n• [sentence]\n• [sentence]\n• [sentence]`,
   };
 
   const userMessage = modePrompts[mode] ?? modePrompts.solution;
