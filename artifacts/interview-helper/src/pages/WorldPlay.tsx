@@ -234,10 +234,10 @@ const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, S
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 350, atkBonus: 12, wasteBonus: false },
-  outcast:    { maxHp: 280, atkBonus: 8,  wasteBonus: true  },
+  replicant:  { maxHp: 500, atkBonus: 18, wasteBonus: false },
+  outcast:    { maxHp: 460, atkBonus: 15, wasteBonus: true  },
   corporate:  { maxHp: 300, atkBonus: 4,  wasteBonus: false },
-  contractor: { maxHp: 280, atkBonus: 6,  wasteBonus: false },
+  contractor: { maxHp: 340, atkBonus: 7,  wasteBonus: false },
 };
 // Govt building IDs — spies can't enter these
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
