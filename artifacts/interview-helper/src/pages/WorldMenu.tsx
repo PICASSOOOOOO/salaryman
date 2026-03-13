@@ -145,6 +145,10 @@ const FLAVOR = [
   'Villain of the poor. Hero of the rich. That\'s SENIOR PABLO.',
   'Gang territory starts where the lights end.',
   'Server: MINX CITY · PST — 24 regional servers worldwide.',
+  'SENIOR PABLO\'s helicopter left the tower at 3 AM. Nobody knows which city. Nobody asks.',
+  'They say he has towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
+  'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP. network never sleeps — and neither does he.',
+  'The helipad on Floor 62 runs day and night. Sometimes two birds land at once. He\'s in neither.',
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
@@ -210,9 +214,16 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         No one has seen SENIOR PABLO. Not in person. The tower carries his name. Every device carries his firmware. Every credit transaction flows through his network. Villain of Minx City. Hero of the rich. Floor 40 of PABLO Tower is the highest any operative has been allowed. Floors 41–62 are sealed. Keypad access. Wrong code: instant lockout. The name "SENIOR PABLO" is reserved — no operative may use it.
       </div>
-      <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Nobody knows what's on top." col="#cc44ff" />
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        PABLO CORP. is not a local operation. SENIOR PABLO runs towers in 24 cities across every timezone — Neo-São Paulo, Sector Berlin, Old Shanghai, Neon Lagos, and twenty others no one is allowed to name. He is rarely in Minx City. The rooftop helipad on Floor 62 runs day and night. Operatives near the tower report the sound of rotors at 3 AM — departure. 5 AM — arrival. Different helicopter each time. He moves between towers the way other men move between rooms. Minx City is one floor of a building that never ends.
+      </div>
+      <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Floor 62: rooftop helipad — his personal fleet runs 24/7. Nobody knows what's on top. Nobody sees him land." col="#cc44ff" />
       <Row label="PABLO DEVICE" val="The app you're running right now. AI assistant, world map, PABLO network access. Press [P] in-world." col="#00ff41" />
       <Row label="CREAM (ç)" val="The only currency that matters. Cream is what Minx City runs on. ç1 CREAM = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
+      <Divider />
+      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        This world was painted by Picasso and built by the good folks at PABLO CORP. — 24 towers, 24 cities, one vision. All rights reserved in every timezone.
+      </div>
     </div>
   );
 
@@ -1075,7 +1086,7 @@ export default function WorldMenu() {
       {/* Bottom bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>
-          {(() => { const sv = SERVERS.find(s => s.id === selectedServer) ?? SERVERS[0]; return `${sv.label} · ${sv.tz}`; })()} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 REGIONAL SERVERS
+          {(() => { const sv = SERVERS.find(s => s.id === selectedServer) ?? SERVERS[0]; return `${sv.label} · ${sv.tz}`; })()} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 TOWERS · 24 CITIES · PABLO CORP. INTERNATIONAL
         </span>
         <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', background: 'transparent', border: '1px solid rgba(0,255,65,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
       </div>
