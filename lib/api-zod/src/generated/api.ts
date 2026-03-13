@@ -103,6 +103,6 @@ export const SolveInterviewQuestionBody = zod.object({
       "Programming language (python, javascript, typescript, java, cpp, go, rust)",
     ),
   mode: zod
-    .enum(["hint", "solution", "explain", "complexity"])
+    .enum(["hint", "solution", "explain", "complexity", "say_it"])
     .describe("Response mode: hint, solution, explain, complexity"),
 });

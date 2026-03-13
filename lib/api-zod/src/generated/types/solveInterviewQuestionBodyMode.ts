@@ -17,4 +17,5 @@ export const SolveInterviewQuestionBodyMode = {
   solution: "solution",
   explain: "explain",
   complexity: "complexity",
+  say_it: "say_it",
 } as const;

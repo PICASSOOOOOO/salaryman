@@ -253,7 +253,7 @@ components:
         mode:
           type: string
           description: "Response mode: hint, solution, explain, complexity"
-          enum: [hint, solution, explain, complexity]
+          enum: [hint, solution, explain, complexity, say_it]
       required:
         - question
         - language

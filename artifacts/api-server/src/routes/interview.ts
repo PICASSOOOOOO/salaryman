@@ -28,6 +28,7 @@ router.post("/interview/solve", async (req, res) => {
     solution: `Provide a complete, working ${language} solution for this coding problem:\n\n${question}\n\nInclude comments explaining key steps and end with time/space complexity analysis.`,
     explain: `Explain the approach and algorithm for solving this ${language} problem in plain English, then show the code:\n\n${question}`,
     complexity: `Analyze the time and space complexity for this ${language} problem. Discuss different approaches and their complexities:\n\n${question}`,
+    say_it: `You are helping a non-technical person sound smart in a coding interview. For this problem, give EXACTLY 3 bullet points. Rules: NO code whatsoever. NO jargon. Each bullet is ONE short simple sentence (max 15 words). Write it so they can read it off a screen and say it out loud naturally right now. Think of it as a teleprompter script.\n\nProblem: ${question}\n\nFormat:\n• [sentence]\n• [sentence]\n• [sentence]`,
   };
 
   const userMessage = modePrompts[mode] ?? modePrompts.solution;

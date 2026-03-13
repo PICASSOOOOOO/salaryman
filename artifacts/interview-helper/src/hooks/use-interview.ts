@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity';
+export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity' | 'say_it';
 export type SolverStatus = 'idle' | 'thinking' | 'streaming' | 'done' | 'error';
 
 export function useInterviewSolver() {
