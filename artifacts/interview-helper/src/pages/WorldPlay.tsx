@@ -13,6 +13,7 @@ const BUILDINGS = [
   { id: 'market',       x: 720, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false },
   { id: 'hotel',        x: 920, y: 190, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false },
   { id: 'vend',         x: 920, y: 370, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true  },
+  { id: 'crystal',      x: 488, y: 482, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
   { id: 'arcade',       x: 150, y: 590, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true  },
   { id: 'bunker',       x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',        bright: false },
   { id: 'scrap',        x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false },
@@ -47,17 +48,24 @@ const NPCS = [
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
-interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; }
+interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; }
+const THREAT_HP: Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40 };
+const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y}; };
 const THREATS_INIT: Threat[] = [
-  { x: 240, y: 680, dx: 0, dy: 0, type: 'IRON_RATS',    timer: 0 },
-  { x: 350, y: 820, dx: 0, dy: 0, type: 'IRON_RATS',    timer: 0 },
-  { x: 560, y: 750, dx: 0, dy: 0, type: 'VOID_DOGS',    timer: 0 },
-  { x: 680, y: 840, dx: 0, dy: 0, type: 'VOID_DOGS',    timer: 0 },
-  { x: 900, y: 700, dx: 0, dy: 0, type: 'STATIC_MONKS', timer: 0 },
-  { x: 1020,y: 820, dx: 0, dy: 0, type: 'STATIC_MONKS', timer: 0 },
-  { x: 500, y: 780, dx: 0, dy: 0, type: 'MUTANT',       timer: 0 },
-  { x: 750, y: 500, dx: 0, dy: 0, type: 'RAIDER',       timer: 0 },
+  mkThreat(240, 680, 'IRON_RATS'),
+  mkThreat(350, 820, 'IRON_RATS'),
+  mkThreat(560, 750, 'VOID_DOGS'),
+  mkThreat(680, 840, 'VOID_DOGS'),
+  mkThreat(900, 700, 'STATIC_MONKS'),
+  mkThreat(1020, 820, 'STATIC_MONKS'),
+  mkThreat(500, 780, 'MUTANT'),
+  mkThreat(750, 500, 'RAIDER'),
 ];
+
+// ── EXP / Level table ─────────────────────────────────────────────────────────
+const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+const expToLevel = (lvl: number) => EXP_TABLE[Math.min(lvl - 1, EXP_TABLE.length - 1)];
 const THREAT_COL: Record<string, string> = {
   IRON_RATS: '#ff4444', VOID_DOGS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
@@ -153,6 +161,11 @@ export default function WorldPlay() {
     gangZone: null as string | null,
     hunger: 100, thirst: 100, energy: 100,
     survivalTick: 0,
+    exp: 0, level: 1, maxHp: 100,
+    poisoned: false, poisonTick: 0,
+    attackCooldown: 0,
+    attackFlash: 0,
+    threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
     myId: '',
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
@@ -200,6 +213,11 @@ export default function WorldPlay() {
   const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
+  const [level,       setLevel]       = useState(1);
+  const [exp,         setExp]         = useState(0);
+  const [poisoned,    setPoisoned]    = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpText, setLevelUpText] = useState('');
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const wsSend = useCallback((m: object) => {
@@ -230,6 +248,12 @@ export default function WorldPlay() {
     else if (bid === 'radio')   { setNarr('> PIRATE RADIO — Signal: "...up up, down down, left right, left right..." A voice: "I gave PABLO the code. He already knew it. He wrote it." Sixteen bars of 8-bit music. Then dead air.'); }
     else if (bid === 'scrap')   { g.salary += 20; setSalary(g.salary); setNarr('> SCRAP YARD — Sold scrap. +$20. You find a PCB labeled KONAMI \'87. Collector\'s item. Could be worth more than your salary.'); }
     else if (bid === 'wily_lab'){ g.salary += 50; setSalary(g.salary); setNarr('> WILY LABS — The door slides open. Blueprints everywhere. A note on the terminal: "Robot Masters were the first to fall. PABLO bought them all. If you find this, take the ¥50 in the drawer. I won\'t need it." +$50.'); }
+    else if (bid === 'crystal') {
+      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
+      setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
+      localStorage.setItem('sm_save', JSON.stringify({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary }));
+      setNarr(`> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`);
+    }
   }, []);
 
   const enterNpc = useCallback((idx: number) => {
@@ -426,6 +450,41 @@ export default function WorldPlay() {
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => !v); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
+      // [F] melee attack
+      if ((e.key === 'f' || e.key === 'F') && !frozenRef.current) {
+        const g = gs.current;
+        if (g.attackCooldown > 0) return;
+        g.attackCooldown = 35; g.attackFlash = 8;
+        const ATK = 20 + (g.level - 1) * 5;
+        let hit = false;
+        g.threats = g.threats.map(t => {
+          const d = Math.hypot(g.px - t.x, g.py - t.y);
+          if (d < 72) {
+            hit = true;
+            const nhp = t.hp - ATK;
+            if (nhp <= 0) {
+              const earned = THREAT_EXP[t.type] ?? 20;
+              let newExp = g.exp + earned; let newLevel = g.level;
+              while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
+                newExp -= expToLevel(newLevel); newLevel++;
+                g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
+                const lText = `★ LEVEL UP! LVL ${newLevel} ★  MAX HP +10  ATK +5  "The city trembles."`;
+                setLevelUpText(lText); setShowLevelUp(true);
+                setTimeout(() => setShowLevelUp(false), 3200);
+                setNarr(`> ${lText}`);
+              }
+              g.exp = newExp; g.level = newLevel;
+              setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+              g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+              return null as unknown as Threat;
+            }
+            return { ...t, hp: nhp };
+          }
+          return t;
+        }).filter(Boolean) as Threat[];
+        if (!hit) setNarr('> Miss — no enemy in range. Move closer and press [F].');
+        setExp(g.exp);
+      }
       if (e.key === 'Escape') {
         setDialog(null); setShowStore(false); setShowOffice(false);
         setShowPablo(false); setPwPrompt(null); setPendingBid(null);
@@ -466,6 +525,22 @@ export default function WorldPlay() {
       if (g.invincible > 0) g.invincible--;
       if (g.flash > 0) g.flash--;
 
+      // Cooldown ticks
+      if (g.attackCooldown > 0) g.attackCooldown--;
+      if (g.attackFlash > 0) g.attackFlash--;
+
+      // Threat respawn
+      g.threatRespawn = g.threatRespawn.filter(r => {
+        if (g.frame >= r.at) { g.threats.push(mkThreat(r.ox, r.oy, r.type)); return false; }
+        return true;
+      });
+
+      // Poison tick
+      if (g.poisoned) {
+        g.poisonTick++;
+        if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); setHp(Math.floor(g.hp)); }
+      }
+
       if (!frozen()) {
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD;
@@ -488,7 +563,14 @@ export default function WorldPlay() {
         else if (t.timer <= 0) { const ang = Math.random() * Math.PI * 2; t.dx = Math.cos(ang) * 0.6; t.dy = Math.sin(ang) * 0.6; t.timer = 80 + Math.floor(Math.random() * 80); }
         t.x = Math.max(10, Math.min(W - 10, t.x + t.dx));
         t.y = Math.max(10, Math.min(H - 10, t.y + t.dy));
-        if (dist < 14 && g.invincible === 0) { g.hp = Math.max(0, g.hp - 0.4); g.invincible = 20; g.flash = 6; }
+        if (dist < 14 && g.invincible === 0) {
+          g.hp = Math.max(0, g.hp - 0.4); g.invincible = 20; g.flash = 6;
+          // Mutants and gang bosses can poison
+          if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
+            g.poisoned = true; g.poisonTick = 0;
+            setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
+          }
+        }
       }
 
       if (g.hp <= 0 && !lastDead) { lastDead = true; setIsDead(true); }
@@ -667,6 +749,22 @@ export default function WorldPlay() {
           continue; // skip default building drawing
         }
 
+        // ── SAVE POINT crystal — glowing diamond ──────────────────────────
+        if (b.id === 'crystal') {
+          const cx2 = bx + b.w / 2, cy2 = by + b.h / 2;
+          const pulse2 = 0.5 + Math.sin(g.frame * 0.07) * 0.5;
+          const sz = 9 + pulse2 * 3;
+          ctx.shadowColor = '#aaffff'; ctx.shadowBlur = 12 + pulse2 * 10;
+          ctx.fillStyle = `rgba(80,255,255,${0.5 + pulse2 * 0.4})`;
+          ctx.beginPath(); ctx.moveTo(cx2, cy2 - sz); ctx.lineTo(cx2 + sz * 0.6, cy2); ctx.lineTo(cx2, cy2 + sz); ctx.lineTo(cx2 - sz * 0.6, cy2); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(180,255,255,${0.4 + pulse2 * 0.4})`; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('SAVE', cx2, cy2 + sz + 8);
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(180,255,255,.9)' : 'rgba(180,255,255,.3)'; ctx.fillText('[E] SAVE', cx2, cy2 - sz - 6); }
+          continue;
+        }
+
         // ── Default building rendering ────────────────────────────────────
         ctx.strokeStyle = isLocked ? `rgba(255,120,50,${isNear ? .8 : .3})` : b.bright ? `rgba(0,255,65,${isNear ? .9 : .5})` : `rgba(0,180,50,${isNear ? .7 : .3})`;
         ctx.lineWidth = isNear ? 2 : 1; ctx.strokeRect(bx, by, b.w, b.h);
@@ -726,20 +824,39 @@ export default function WorldPlay() {
         const tx = t.x + ox, ty = t.y + oy;
         if (tx < -10 || tx > cw + 10 || ty < -10 || ty > ch + 10) continue;
         const tc = THREAT_COL[t.type] ?? '#ff4444';
-        const chasing = Math.hypot(g.px - t.x, g.py - t.y) < 120;
+        const dist2 = Math.hypot(g.px - t.x, g.py - t.y);
+        const chasing = dist2 < 120;
         ctx.shadowColor = tc; ctx.shadowBlur = chasing ? 8 : 3;
         ctx.fillStyle = chasing ? tc : `${tc}77`; ctx.fillRect(tx - 4, ty - 4, 8, 8);
         ctx.shadowBlur = 0;
-        if (chasing) { ctx.fillStyle = tc; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText(t.type, tx, ty - 8); }
+        if (chasing) {
+          ctx.fillStyle = tc; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(t.type, tx, ty - 10);
+          // HP bar
+          const barW = 24, barH = 3;
+          const bx = tx - barW / 2, by = ty - 8;
+          ctx.fillStyle = '#330000'; ctx.fillRect(bx, by, barW, barH);
+          ctx.fillStyle = tc; ctx.fillRect(bx, by, barW * (t.hp / t.maxHp), barH);
+        }
+        // Attack range ring when cooldown just fired
+        if (g.attackFlash > 0 && dist2 < 72) {
+          ctx.strokeStyle = `rgba(255,255,100,${g.attackFlash / 8})`; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(tx, ty, 10, 0, Math.PI * 2); ctx.stroke();
+        }
       }
 
       // Player
       const px = g.px + ox, py2 = g.py + oy;
-      const pcol = g.invincible % 4 < 2 ? '#00ff41' : 'rgba(0,255,65,.2)';
-      ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 10;
+      const pcol = g.invincible % 4 < 2 ? (g.poisoned ? '#88ff44' : '#00ff41') : 'rgba(0,255,65,.2)';
+      ctx.shadowColor = g.poisoned ? '#88ff44' : '#00ff41'; ctx.shadowBlur = 10;
       ctx.fillStyle = pcol;
       ctx.beginPath(); ctx.moveTo(px, py2 - PSIZE); ctx.lineTo(px + PSIZE * .65, py2 + PSIZE * .5); ctx.lineTo(px - PSIZE * .65, py2 + PSIZE * .5); ctx.closePath(); ctx.fill();
       ctx.shadowBlur = 0;
+      // Attack swing arc
+      if (g.attackFlash > 0) {
+        ctx.strokeStyle = `rgba(255,255,0,${g.attackFlash / 8})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, py2, 72, 0, Math.PI * 2); ctx.stroke();
+      }
       if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
 
       // Mini-map
@@ -777,6 +894,10 @@ export default function WorldPlay() {
       onClick={() => gameRef.current?.focus()}
       style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#030803', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none' }}
     >
+      <style>{`
+        @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
+        @keyframes smblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+      `}</style>
       {/* Scanlines */}
       <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.14) 2px,rgba(0,0,0,.14) 4px)', pointerEvents: 'none', zIndex: 9999 }} />
 
@@ -829,6 +950,25 @@ export default function WorldPlay() {
             </div>
           ))}
         </div>
+        {/* Level / EXP / Poison row */}
+        <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
+          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', minWidth: 50 }}>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
+          </div>
+          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', flex: 1 }}>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
+            <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.07)', marginBottom: '1px' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
+            </div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
+          </div>
+          {poisoned && (
+            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.22rem .5rem', animation: 'smblink 0.7s step-end infinite' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#88ff44', letterSpacing: '.1em' }}>PSN</div>
+            </div>
+          )}
+        </div>
         {/* Gang zone indicator */}
         {gangZone && (
           <div style={{ marginTop: '3px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.2rem .5rem' }}>
@@ -862,7 +1002,7 @@ export default function WorldPlay() {
             </div>
           )}
           <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em' }}>WASD move · E enter · C chat · V voice · P device · ESC close</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em' }}>WASD move · E enter · F attack · C chat · V voice · P device · ESC close</div>
         </div>
         {/* Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'all' }}>
@@ -1078,6 +1218,15 @@ export default function WorldPlay() {
           onOk={pw => { if (pwPrompt.mode === 'set') wsSend({ type: 'building_lock_set', buildingId: pwPrompt.bid, password: pw }); else wsSend({ type: 'building_lock_check', buildingId: pwPrompt.bid, password: pw }); }} />
       )}
 
+      {/* ── LEVEL UP OVERLAY ── */}
+      {showLevelUp && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>
+          <div style={{ textAlign: 'center', animation: 'smfade 3.2s ease-out forwards' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2rem,7vw,4.5rem)', color: '#ffcc00', textShadow: '0 0 40px rgba(255,200,0,.8), 0 0 80px rgba(255,200,0,.4)', letterSpacing: '.25em', whiteSpace: 'pre' }}>{levelUpText}</div>
+          </div>
+        </div>
+      )}
+
       {/* ── DEATH ── */}
       {isDead && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
@@ -1091,7 +1240,7 @@ export default function WorldPlay() {
               <span style={{ color: 'rgba(255,80,80,.25)' }}>DR. WRIGHT SAYS: "Even BELMONT respawned. Get back out there."</span>
             </div>
             <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
-              <button onClick={() => { const g = gs.current; g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(100); setHunger(100); setThirst(100); setEnergy(100); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
+              <button onClick={() => { const g = gs.current; g.hp = 100; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(100); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
                 CONTINUE
               </button>
               <button onClick={() => navigate('/world')} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>

@@ -218,7 +218,7 @@ export default function WorldMenu() {
               </button>
 
               <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em', lineHeight: 1.8 }}>
-                WASD — move &nbsp;·&nbsp; E — enter/talk &nbsp;·&nbsp; C — chat &nbsp;·&nbsp; V — voice &nbsp;·&nbsp; P — PABLO device
+                WASD — move &nbsp;·&nbsp; E — enter/talk &nbsp;·&nbsp; F — attack &nbsp;·&nbsp; C — chat &nbsp;·&nbsp; V — voice &nbsp;·&nbsp; P — PABLO device
               </div>
             </div>
           </div>
