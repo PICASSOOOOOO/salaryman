@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight, Clock, X, Zap } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
@@ -10,6 +10,8 @@ import { NavBar } from '@/components/NavBar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
+
+const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -25,7 +27,11 @@ const CHAT_STARTERS = [
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const { isPro } = usePlan();
+  const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
+  const [trialBanner, setTrialBanner] = useState(() => {
+    return isTrial && !localStorage.getItem(TRIAL_SEEN_KEY);
+  });
+  const dismissTrialBanner = () => { localStorage.setItem(TRIAL_SEEN_KEY, '1'); setTrialBanner(false); };
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
@@ -166,6 +172,29 @@ export default function Home() {
 
       <NavBar />
       <OnboardingModal onComplete={updateMemory} />
+
+      {/* ── 7-day trial welcome banner ── */}
+      <AnimatePresence>
+        {trialBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="relative z-20 flex items-center gap-3 px-4 py-2.5"
+            style={{ background: 'rgba(255,165,0,0.07)', borderBottom: '1px solid rgba(255,165,0,0.25)' }}
+          >
+            <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(255,165,0,0.8)' }} />
+            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.75)', letterSpacing: '0.08em', flex: 1 }}>
+              <strong style={{ color: 'rgba(255,165,0,0.95)' }}>7-DAY FREE TRIAL STARTED.</strong>
+              {' '}All Pro features unlocked for {trialDaysLeft > 1 ? `${trialDaysLeft} more days` : `${trialHoursLeft} more hours`}. No card required.
+            </span>
+            <a href="/upgrade" style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(255,165,0,0.8)', letterSpacing: '0.08em', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Zap className="w-3 h-3" /> Upgrade early →
+            </a>
+            <button onClick={dismissTrialBanner} style={{ color: 'rgba(255,165,0,0.4)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 0.2rem', lineHeight: 1 }}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 min-h-0">
 

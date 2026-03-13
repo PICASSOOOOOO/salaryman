@@ -1,4 +1,4 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -33,7 +33,7 @@ export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
-  const { isPro } = usePlan();
+  const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
 
   const NAV = [
     { path: '/', label: config.navLabel, icon: Terminal, pro: false },
@@ -70,10 +70,17 @@ export function NavBar() {
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className="status-dot" style={{ width: '5px', height: '5px' }} />
-            <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.08em' }}>
-              {isPro ? 'PRO ACCESS' : 'FREE TIER'}
-            </span>
+            <span className="status-dot" style={{ width: '5px', height: '5px', background: isTrial ? 'rgba(255,165,0,0.8)' : undefined }} />
+            {isTrial ? (
+              <span className="display-text text-xs flex items-center gap-1" style={{ color: 'rgba(255,165,0,0.75)', letterSpacing: '0.08em' }}>
+                <Clock className="w-2.5 h-2.5" />
+                TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft} DAYS LEFT` : `${trialHoursLeft}H LEFT`}
+              </span>
+            ) : (
+              <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.08em' }}>
+                {isPro ? 'PRO ACCESS' : 'FREE TIER'}
+              </span>
+            )}
           </span>
           <BlinkingClock />
         </div>
@@ -218,7 +225,26 @@ export function NavBar() {
             WORLD
           </button>
 
-          {!isPro && (
+          {isTrial ? (
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="flex items-center gap-1.5 px-3 py-2 ml-1 transition-all"
+              style={{
+                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: '0.6rem',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,165,0,0.9)',
+                border: '1px solid rgba(255,165,0,0.45)',
+                background: 'rgba(255,165,0,0.08)',
+                boxShadow: '0 0 10px rgba(255,165,0,0.08)',
+                animation: trialDaysLeft <= 2 ? 'smfade 1.2s steps(1) infinite alternate' : 'none',
+              }}
+            >
+              <Clock className="w-3 h-3" />
+              {trialDaysLeft > 1 ? `${trialDaysLeft}D TRIAL` : `${trialHoursLeft}H LEFT`} · UPGRADE
+            </button>
+          ) : !isPro && (
             <button
               onClick={() => navigate('/upgrade')}
               className="flex items-center gap-1.5 px-3 py-2 ml-1 transition-all"

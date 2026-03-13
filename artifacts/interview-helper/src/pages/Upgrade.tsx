@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb } from "lucide-react";
+import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -22,7 +22,7 @@ const PRO_ITEMS = [
 ];
 
 export default function Upgrade() {
-  const { isPro, isOwner, loading } = usePlan();
+  const { isPro, isOwner, isTrial, trialDaysLeft, trialHoursLeft, loading } = usePlan();
   const { isAuthenticated, login } = useAuth();
 
   return (
@@ -48,8 +48,30 @@ export default function Upgrade() {
           </motion.div>
         </div>
 
+        {/* Trial status banner */}
+        {!loading && isTrial && (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+            style={{ border: '1px solid rgba(255,165,0,0.35)', background: 'rgba(255,165,0,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(255,165,0,0.4)', background: 'rgba(255,165,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Clock className="w-5 h-5" style={{ color: 'rgba(255,165,0,0.85)' }} />
+            </div>
+            <div className="flex-1">
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(255,165,0,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+                7-DAY FREE TRIAL ACTIVE — {trialDaysLeft > 1 ? `${trialDaysLeft} DAYS REMAINING` : `${trialHoursLeft} HOURS REMAINING`}
+              </p>
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.5)', letterSpacing: '0.06em' }}>
+                All Pro features unlocked. No payment required during trial. Upgrade before it ends to keep access.
+              </p>
+            </div>
+            <div style={{ width: '120px', height: '6px', background: 'rgba(255,165,0,0.15)', flexShrink: 0, overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: 'rgba(255,165,0,0.6)', width: `${(trialDaysLeft / 7) * 100}%`, transition: 'width 0.3s ease' }} />
+            </div>
+          </motion.div>
+        )}
+
         {/* Already pro banner */}
-        {!loading && isPro && (
+        {!loading && isPro && !isTrial && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="mb-8 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-6 py-4 flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">

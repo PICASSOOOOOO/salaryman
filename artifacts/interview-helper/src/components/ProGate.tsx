@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap, Lock } from "lucide-react";
+import { Zap, Lock, Clock } from "lucide-react";
 import { usePlan } from "../hooks/use-plan";
 
 interface ProGateProps {
@@ -9,10 +9,34 @@ interface ProGateProps {
 }
 
 export function ProGate({ children, feature = "This feature", inline = false }: ProGateProps) {
-  const { isPro, loading } = usePlan();
+  const { isPro, isTrial, trialDaysLeft, trialHoursLeft, loading } = usePlan();
 
   if (loading) return <>{children}</>;
-  if (isPro) return <>{children}</>;
+  if (isPro) {
+    // During trial, render children + a subtle trial countdown ribbon
+    if (isTrial) {
+      return (
+        <div className="relative">
+          {children}
+          <div
+            className="absolute top-0 right-0 flex items-center gap-1 px-2 py-0.5 z-10 pointer-events-none"
+            style={{
+              background: 'rgba(255,165,0,0.12)',
+              border: '1px solid rgba(255,165,0,0.25)',
+              fontSize: '0.55rem',
+              fontFamily: "'Share Tech Mono', monospace",
+              color: 'rgba(255,165,0,0.7)',
+              letterSpacing: '0.08em',
+            }}
+          >
+            <Clock className="w-2.5 h-2.5" />
+            TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft}d` : `${trialHoursLeft}h`} LEFT
+          </div>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
 
   if (inline) {
     return (
@@ -55,6 +79,25 @@ export function ProBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold tracking-wider border border-primary/20 ml-1">
       <Zap className="w-2.5 h-2.5" /> PRO
+    </span>
+  );
+}
+
+export function TrialBadge() {
+  const { isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
+  if (!isTrial) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold tracking-wider ml-1"
+      style={{
+        border: '1px solid rgba(255,165,0,0.4)',
+        background: 'rgba(255,165,0,0.1)',
+        color: 'rgba(255,165,0,0.9)',
+        fontFamily: "'Share Tech Mono', monospace",
+      }}
+    >
+      <Clock className="w-2.5 h-2.5" />
+      {trialDaysLeft > 1 ? `${trialDaysLeft}D TRIAL` : `${trialHoursLeft}H LEFT`}
     </span>
   );
 }
