@@ -6,3 +6,15 @@ id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
 type = "image"
 title = "Frontman Logo — v2 (subtle)"
+
+[[outputs]]
+id = "L5PURQlW_6c6X-2feRBeM"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-a.png"
+type = "image"
+title = "Option A — F Lettermark"
+
+[[outputs]]
+id = "NM1BpjX_DWklkENa7tEKr"
+uri = "file://artifacts/interview-helper/src/assets/frontman-logo-b.png"
+type = "image"
+title = "Option B — Abstract Diamond"
