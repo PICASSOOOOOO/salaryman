@@ -130,6 +130,18 @@ const NPCS = [
   { name: 'KIRA',      x: 1600, y: 1200, type: 'human',   gender: 'f', whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author. Just the tower logo.' },
   { name: 'MOTOKO',    x: 1900, y: 1050, type: 'android', gender: 'f', whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction. I stopped being afraid of that three weeks ago.' },
   { name: 'REVY',      x: 2100, y: 1150, type: 'human',   gender: 'f', whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me. I think this might just be my life now.' },
+  // ── City centre — new friendly contacts ──
+  { name: 'RYOKO',     x: 620,  y: 420,  type: 'human',   gender: 'f', whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP. I am on page forty-seven of the list. I have not reached the end of page forty-seven.' },
+  { name: 'DANTE',     x: 730,  y: 460,  type: 'human',   gender: 'm', whisper: 'I charge by the job. Demon slaying, debt collection, light reading. Minx City has all three. The debt collection work is morally complicated. SENIOR PABLO signs the collection orders himself.' },
+  { name: 'ALYX',      x: 950,  y: 300,  type: 'human',   gender: 'f', whisper: 'My father built a resonance cascade. On accident, he always said. SENIOR PABLO holds the patent. On purpose, I always said. The tower hums at exactly the same frequency.' },
+  { name: 'REI',       x: 1100, y: 470,  type: 'android', gender: 'f', whisper: 'I was told I had no memories before the city. I was told this was normal. I was told a lot of things. Most of them had PABLO CORP. letterhead at the top.' },
+  { name: 'VIVI',      x: 1420, y: 250,  type: 'human',   gender: 'm', whisper: 'I am made of magic and I can\'t stop existing. In Minx City that qualifies you for three types of PABLO licensing. I have refused all three. They are very patient about it.' },
+  { name: 'BARRET',    x: 700,  y: 550,  type: 'human',   gender: 'm', whisper: 'Everything in this city is powered by something that\'s being eaten alive underneath it. I know what that looks like. I\'ve seen the pipes. Somebody drew a mako reactor schematic on the back of a PABLO CORP. maintenance form. The pipes are identical.' },
+  { name: 'NOCTIS',    x: 1550, y: 380,  type: 'human',   gender: 'm', whisper: 'My father\'s city burned the night I left it. I never went back. Minx City is the third city I have watched burn in slow motion. SENIOR PABLO files the insurance claims on every one of them.' },
+  { name: 'RAMZA',     x: 1750, y: 420,  type: 'human',   gender: 'm', whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights. I have been trying to correct the historical record for three years. The book keeps getting filed under fiction.' },
+  { name: 'CLOUD',     x: 400,  y: 440,  type: 'human',   gender: 'm', whisper: 'I used to work for SOLDIER. That\'s the part everybody asks about. Nobody asks what I did after SOLDIER. What I did was come here. Find another tower. And decide this time I wasn\'t going to lose.' },
+  { name: 'KASUMI',    x: 1850, y: 350,  type: 'android', gender: 'f', whisper: 'I calculate probabilities. The probability that this city improves without external intervention is 0.0007. The probability that SENIOR PABLO vacates the tower voluntarily is 0.0000. I keep running the numbers. The numbers keep being the numbers.' },
+  { name: 'PALOM',     x: 1650, y: 280,  type: 'human',   gender: 'm', whisper: 'My sister Porom and I were turned into stone to save the world. It worked once. We\'re back now. Minx City doesn\'t have a save-the-world option. It has a PABLO CORP. suggestion box. The suggestion box is locked.' },
   // ── Hotel Midgar staff & guests ──
   { name: 'TIFA',      x: 220,  y: 165,  type: 'human',   gender: 'f', whisper: 'I ran a bar called Seventh Heaven in Sector 7. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit. I have the paperwork framed on the wall behind this counter because looking at it keeps me angry enough to keep going.' },
   { name: 'ISHMAEL',   x: 100,  y: 255,  type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
@@ -168,10 +180,10 @@ const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATI
 const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800 };
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 160, atkBonus: 8,  wasteBonus: false },
-  outcast:    { maxHp: 110, atkBonus: 4,  wasteBonus: true  },
-  corporate:  { maxHp: 100, atkBonus: 0,  wasteBonus: false },
-  contractor: { maxHp: 90,  atkBonus: 2,  wasteBonus: false },
+  replicant:  { maxHp: 350, atkBonus: 12, wasteBonus: false },
+  outcast:    { maxHp: 280, atkBonus: 8,  wasteBonus: true  },
+  corporate:  { maxHp: 300, atkBonus: 4,  wasteBonus: false },
+  contractor: { maxHp: 280, atkBonus: 6,  wasteBonus: false },
 };
 // Govt building IDs — spies can't enter these
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
@@ -200,17 +212,15 @@ const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
 ];
 const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y}; };
 const THREATS_INIT: Threat[] = [
-  // ── City outskirts — left edge ──
-  mkThreat(70,  200, 'PROWLER'), mkThreat(70, 340, 'PROWLER'),
-  mkThreat(70,  470, 'PROWLER'), mkThreat(70, 620, 'PROWLER'),
-  // ── City outskirts — right edge ──
-  mkThreat(2320, 180, 'PROWLER'), mkThreat(2320, 330, 'PROWLER'),
-  mkThreat(2320, 480, 'PROWLER'), mkThreat(2320, 640, 'PROWLER'),
-  // ── City/Wasteland border zone (wider, sparse) ──
-  mkThreat(200,  760, 'BORDER_GANG'), mkThreat(500,  775, 'BORDER_GANG'),
-  mkThreat(800,  760, 'BORDER_GANG'), mkThreat(1100, 770, 'BORDER_GANG'),
-  mkThreat(1400, 760, 'BORDER_GANG'), mkThreat(1700, 775, 'BORDER_GANG'),
-  mkThreat(2050, 760, 'BORDER_GANG'),
+  // ── City/Wasteland border zone — PROWLERs patrol here, NOT inside city ──
+  mkThreat(70,  790, 'PROWLER'), mkThreat(200, 810, 'PROWLER'),
+  mkThreat(2250, 790, 'PROWLER'), mkThreat(2350, 815, 'PROWLER'),
+  mkThreat(600,  775, 'PROWLER'), mkThreat(1100, 780, 'PROWLER'),
+  mkThreat(1600, 775, 'PROWLER'), mkThreat(2000, 790, 'PROWLER'),
+  // ── City/Wasteland border gang line ──
+  mkThreat(380,  820, 'BORDER_GANG'), mkThreat(720,  830, 'BORDER_GANG'),
+  mkThreat(1000, 820, 'BORDER_GANG'), mkThreat(1300, 835, 'BORDER_GANG'),
+  mkThreat(1700, 820, 'BORDER_GANG'), mkThreat(2100, 830, 'BORDER_GANG'),
   // ── Wasteland — IRON RATS (west) ──
   mkThreat(160,  870, 'IRON_RATS'), mkThreat(280,  980, 'IRON_RATS'),
   mkThreat(400,  1100,'IRON_RATS'), mkThreat(150, 1250, 'IRON_RATS'),
@@ -1202,12 +1212,14 @@ export default function WorldPlay() {
           }
         }
 
-        // ── Speed tuning (slower, more menacing) ────────────────────────────
-        const aggroRange  = isSpy ? 80 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 55 : 70;
-        const chaseSpeed  = isSpy ? 1.1 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.45 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.5 : 0.42);
-        const wanderSpeed = isSpy ? 0.5 : 0.22;
+        // ── Speed tuning ─────────────────────────────────────────────────────
+        const aggroRange  = isSpy ? 90 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 60 : 75;
+        const chaseSpeed  = isSpy ? 1.0 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.5 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.55 : 0.45);
+        const wanderSpeed = isSpy ? 0.45 : 0.2;
+        // All threats only aggro when player is near/in wasteland; SPY can go slightly deeper into city outskirts
+        const canAggro = g.py > WASTELAND_Y - 150;
 
-        if (dist < aggroRange) {
+        if (canAggro && dist < aggroRange) {
           const ang = Math.atan2(g.py - t.y, g.px - t.x);
           t.dx = Math.cos(ang) * chaseSpeed; t.dy = Math.sin(ang) * chaseSpeed;
         } else if (t.timer <= 0) {
@@ -1224,7 +1236,7 @@ export default function WorldPlay() {
         t.y = Math.max(10, Math.min(H - 10, ny2));
 
         if (dist < 14 && g.invincible === 0) {
-          g.hp = Math.max(0, g.hp - 0.4); g.invincible = 20; g.flash = 6;
+          g.hp = Math.max(0, g.hp - 0.4); g.invincible = 50; g.flash = 6;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -1305,6 +1317,15 @@ export default function WorldPlay() {
       if (nn !== lastNearNpc) {
         lastNearNpc = nn; setNearNpc(nn);
         if (nn !== null && !nb) setNarr(`> ${NPCS[nn].name} — press [E] to listen.`);
+      }
+
+      // Proximity check — enemies (show [F] attack prompt if close enough)
+      if (!nb && nn === null) {
+        const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
+        if (nearEnemy) {
+          const typeLabel = nearEnemy.type.replace(/_/g, ' ');
+          setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — press [F] to attack! Move close and swing. Bounty: ç${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+        }
       }
 
       const newZone = g.py < WASTELAND_Y ? 'MINX CITY' : 'WASTELAND';
