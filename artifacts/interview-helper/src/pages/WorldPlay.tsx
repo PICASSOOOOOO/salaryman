@@ -547,6 +547,27 @@ function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string)
   );
 }
 
+// ── Building cost map (FIAT costs shown on labels) ──────────────────────────
+const BUILDING_COST: Record<string, number> = {
+  clinic: 10000, east_clinic: 8000, north_clinic: 8000,
+  hotel_midgar: 15000, inn_mother: 6000, overlook: 8000,
+  prancing_pony: 4000, zanarkand_inn: 0, terminus: 0, fort_dracula: 0,
+  call_home: 5000, noodle_bar: 1200,
+  terminal_shop: 12000, print_shop2: 12000,
+};
+const BUILDING_COST_LABEL: Record<string, string> = {
+  clinic: 'ƒ10K', east_clinic: 'ƒ8K', north_clinic: 'ƒ8K',
+  hotel_midgar: 'ƒ15K', inn_mother: 'ƒ6K', overlook: 'ƒ8K',
+  prancing_pony: 'ƒ4K', zanarkand_inn: 'FREE', terminus: 'FREE', fort_dracula: 'FREE',
+  call_home: 'ƒ5K', noodle_bar: 'ƒ1.2K',
+  terminal_shop: 'ƒ12K', print_shop2: 'ƒ12K',
+  crystal: 'FREE', crystal2: 'FREE', crystal3: 'FREE', crystal4: 'FREE',
+  crystal5: 'FREE', crystal6: 'FREE', crystal7: 'FREE',
+  arcade: 'FREE', hotel: 'FREE', vend: 'SHOP',
+  pablo_store: 'SHOP', pablo_tower: 'FREE',
+  north_bunker: 'FREE', outpost_alpha: 'FREE', outpost_beta: 'FREE',
+};
+
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
@@ -574,12 +595,13 @@ export default function WorldPlay() {
   // Auto-focus game container so keyboard events fire immediately
   useEffect(() => { gameRef.current?.focus(); }, []);
 
+  const _ss = (char as any)?._savedState;
   const gs = useRef({
     px: char.sx, py: char.sy,
     cam: { x: 0, y: 0 },
     keys: new Set<string>(),
     frame: 0, blink: 0,
-    hp: 100, salary: char.salary,
+    hp: _ss?.hp ?? 100, salary: _ss?.salary ?? char.salary,
     hasDevice: false,
     invincible: 0, flash: 0,
     threats: THREATS_INIT.map(t => ({ ...t })),
@@ -587,29 +609,28 @@ export default function WorldPlay() {
     nearNpc: null as number | null,
     nearBillboard: null as string | null,
     gangZone: null as string | null,
-    hunger: 100, thirst: 100, energy: 100,
+    hunger: _ss?.hunger ?? 100, thirst: _ss?.thirst ?? 100, energy: _ss?.energy ?? 100,
     survivalTick: 0,
     incomeTick: 0,
     interestTick: 0,
-    savings: 0,
-    loan: null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
-    exp: 0, level: 1, maxHp: 100,
-    poisoned: false, poisonTick: 0,
+    savings: _ss?.savings ?? 0,
+    loan: _ss?.loan ?? null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
+    exp: _ss?.exp ?? 0, level: _ss?.level ?? 1, maxHp: _ss?.maxHp ?? 100,
+    poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
     floaters: [] as Floater[],
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
-    ownedBuildings: new Set<string>(),
+    ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
     jobCooldowns: {} as Record<string, number>,
-    cargo: {} as Record<string, number>,
+    cargo: (_ss?.cargo && typeof _ss.cargo === 'object' ? { ..._ss.cargo } : {}) as Record<string, number>,
     classInitDone: false,
     myId: '',
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
     zone: char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
-    // Living world
     powerLevel: 100,
     powerTick: 0,
     powerEventFrames: 0,
@@ -619,22 +640,21 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
-    // New systems
-    passport: false,
+    passport: _ss?.passport ?? false,
     oregonTick: 0,
     walkFrame: 0,
-    guardCooldowns: [] as number[], // per-guard attack cooldown
-    ownedItems: new Set<string>(),
-    vehicle: null as null | string,   // 'hover_scooter' | 'cargo_bike' | 'armored_moped'
-    weaponTier: 0,                    // 0=none, 1=knife, 2=baton, 3=bow, 4=pistol
-    terminalDiscount: false,
+    guardCooldowns: [] as number[],
+    ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
+    vehicle: (_ss?.vehicle ?? null) as null | string,
+    weaponTier: _ss?.weaponTier ?? 0,
+    terminalDiscount: _ss?.terminalDiscount ?? false,
     realEstateIncomeTick: 0,
-    realEstate: [] as string[],       // owned real estate ids
+    realEstate: Array.isArray(_ss?.realEstate) ? [..._ss.realEstate] : [] as string[],
   });
 
   // Reactive state (only what the HUD needs)
-  const [hp,      setHp]      = useState(100);
-  const [salary,  setSalary]  = useState(char.salary);
+  const [hp,      setHp]      = useState(_ss?.hp ?? 100);
+  const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
   const [zone,    setZone]    = useState(char.sy >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
@@ -679,20 +699,20 @@ export default function WorldPlay() {
   const pendingBidRef = useRef<string | null>(null);
   const [lockMap,  setLockMap]  = useState<Map<string,{ownerName:string;company?:string;message?:string}>>(new Map());
   const [rentedOffice,setRentedOffice]=useState<string|null>(()=>localStorage.getItem('sm_office'));
-  const [hunger,      setHunger]      = useState(100);
-  const [thirst,      setThirst]      = useState(100);
-  const [energy,      setEnergy]      = useState(100);
+  const [hunger,      setHunger]      = useState(_ss?.hunger ?? 100);
+  const [thirst,      setThirst]      = useState(_ss?.thirst ?? 100);
+  const [energy,      setEnergy]      = useState(_ss?.energy ?? 100);
   const [gangZone,    setGangZone]    = useState<string|null>(null);
   const [showSubway,  setShowSubway]  = useState(false);
   const [subwayOrigin,setSubwayOrigin]= useState<string>('');
   const [oregonEvent, setOregonEvent] = useState<string|null>(null);
-  const [passport,    setPassport]    = useState(false);
+  const [passport,    setPassport]    = useState(_ss?.passport ?? false);
   const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
-  const [level,       setLevel]       = useState(1);
-  const [exp,         setExp]         = useState(0);
-  const [poisoned,    setPoisoned]    = useState(false);
+  const [level,       setLevel]       = useState(_ss?.level ?? 1);
+  const [exp,         setExp]         = useState(_ss?.exp ?? 0);
+  const [poisoned,    setPoisoned]    = useState(_ss?.poisoned ?? false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
   // Billboard marketplace
@@ -727,7 +747,7 @@ export default function WorldPlay() {
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
-  const [cargo,       setCargo]       = useState<Record<string,number>>({});
+  const [cargo,       setCargo]       = useState<Record<string,number>>(_ss?.cargo && typeof _ss.cargo === 'object' ? { ..._ss.cargo } : {});
   const [cpTick,      setCpTick]      = useState(0);
   const commodityPrices = useRef<Record<string,CargoPrices>>(initCommodityPrices());
   const [jobPanel,    setJobPanel]    = useState<{ bid: string; label: string; pay: number; seconds: number; progress: number } | null>(null);
@@ -738,17 +758,17 @@ export default function WorldPlay() {
   const [cityEvent,   setCityEvent]   = useState<string | null>(null);
   const cityEventTimer = useRef(0);
   // ── Banking state ─────────────────────────────────────────────────────────
-  const [savings,      setSavings]      = useState(0);
+  const [savings,      setSavings]      = useState(_ss?.savings ?? 0);
   const [showVend,     setShowVend]     = useState(false);
   const [vendTab,      setVendTab]      = useState<'food'|'tech'|'weapons'|'vehicles'|'furniture'|'realestate'|'pro'>('food');
-  const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set());
+  const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
   const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<Array<{id:number;desc:string;amount:number;bal:number}>>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
-  const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(null);
+  const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
   const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
@@ -770,7 +790,6 @@ export default function WorldPlay() {
 
   const doSave = useCallback((data: object) => {
     localStorage.setItem('sm_save', JSON.stringify(data));
-    // ── Cloud save sync ──────────────────────────────────────────────────────
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const g = gs.current;
     const savePayload = {
@@ -780,7 +799,7 @@ export default function WorldPlay() {
       salary: g.salary,
       lastZone: g.py >= WASTELAND_Y ? 'WASTELAND' : 'MINX CITY',
       playtime: g.frame,
-      data: { ...char, ...(data as any), px: g.px, py: g.py },
+      data: { ...char, ...(data as any), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned },
     };
     fetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
@@ -789,6 +808,34 @@ export default function WorldPlay() {
       body: JSON.stringify(savePayload),
     }).catch(() => {});
   }, [char]);
+
+  const doSaveRef = useRef(doSave);
+  doSaveRef.current = doSave;
+
+  const buildSaveData = useCallback(() => {
+    const g = gs.current;
+    return {
+      name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary,
+      hp: g.hp, maxHp: g.maxHp, hunger: g.hunger, thirst: g.thirst, energy: g.energy,
+      poisoned: g.poisoned, weaponTier: g.weaponTier, vehicle: g.vehicle,
+      terminalDiscount: g.terminalDiscount, passport: g.passport,
+      savings: g.savings, loan: g.loan,
+      ownedItems: [...g.ownedItems],
+      ownedBuildings: [...g.ownedBuildings],
+      cargo: { ...g.cargo },
+      realEstate: [...g.realEstate],
+    };
+  }, [char]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      doSaveRef.current(buildSaveData());
+    }, 30000);
+    return () => {
+      clearInterval(interval);
+      doSaveRef.current(buildSaveData());
+    };
+  }, [buildSaveData]);
 
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
@@ -1379,6 +1426,7 @@ export default function WorldPlay() {
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
         setShowBank(false); frozenRef.current = false;
+        doSaveRef.current(buildSaveData());
       }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
@@ -1754,7 +1802,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const msg = lk.message ? ` "${lk.message}"` : '';
             setNarr(`> ${b?.label} [LOCKED by ${who}]${msg} — [E] to attempt entry.`);
           }
-          else setNarr(`> ${b?.label} — press [E] to enter.`);
+          else {
+            const cost = BUILDING_COST[nb];
+            const costLabel = BUILDING_COST_LABEL[nb];
+            if (cost && cost > 0) setNarr(`> ${b?.label} [${costLabel} FIAT] — press [E] to enter. Earn FIAT to access.`);
+            else if (costLabel === 'FREE') setNarr(`> ${b?.label} [FREE] — press [E] to enter.`);
+            else if (costLabel === 'SHOP') setNarr(`> ${b?.label} [SHOP] — press [E] to browse. FIAT required to purchase.`);
+            else setNarr(`> ${b?.label} — press [E] to enter.`);
+          }
         }
       }
       // Proximity check — NPCs (only when no building nearby)
@@ -2242,6 +2297,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = isLocked ? 'rgba(255,140,60,.7)' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.6)') : 'rgba(0,200,50,.42)';
         ctx.font = `${b.bright ? 10 : 9}px "Share Tech Mono"`; ctx.textAlign = 'center';
         ctx.fillText(b.label + (isLocked ? ' 🔒' : ''), bx + b.w / 2, by + b.h / 2 + 4);
+        const costLbl = BUILDING_COST_LABEL[b.id];
+        if (costLbl && !isLocked) {
+          ctx.font = '7px "Share Tech Mono"';
+          ctx.fillStyle = costLbl === 'FREE' ? 'rgba(0,255,65,.5)' : costLbl === 'SHOP' ? 'rgba(255,200,60,.5)' : 'rgba(255,200,60,.6)';
+          ctx.fillText(costLbl, bx + b.w / 2, by + b.h / 2 + 14);
+        }
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 7); }
       }
 
@@ -2836,7 +2897,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,8,0,.92)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.35)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             STATS
           </button>
-          <button onClick={() => navigate('/world')} style={{ padding: '.35rem .6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ padding: '.35rem .6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             ← MENU
           </button>
         </div>
@@ -2872,7 +2933,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 OPERATIVES ONLINE — Try again shortly.</div>
-          <button onClick={() => navigate('/world')} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO MENU</button>
+          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO MENU</button>
         </div>
       )}
 
@@ -3419,7 +3480,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               onClick={() => doVendBuy(item)}
                               disabled={alreadyHas}
                               style={{ padding:'.25rem .7rem', background: alreadyHas ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: alreadyHas ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: alreadyHas ? 'not-allowed' : 'pointer', ...VT2, fontSize:'.95rem', letterSpacing:'.08em', ...S2 }}>
-                              {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : 'NO FIAT'}
+                              {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : 'EARN FIAT'}
                             </button>
                           </div>
                         </div>
@@ -4061,7 +4122,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. DR. WRIGHT patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
                 CONTINUE
               </button>
-              <button onClick={() => navigate('/world')} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
+              <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
                 TITLE SCREEN
               </button>
             </div>

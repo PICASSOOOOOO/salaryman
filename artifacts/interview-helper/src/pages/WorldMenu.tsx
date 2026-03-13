@@ -443,6 +443,8 @@ export default function WorldMenu() {
   const [submitting, setSubmitting] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
 
+  const [autoResumed, setAutoResumed] = useState(false);
+
   // ── Load cloud saves ────────────────────────────────────────────────────────
   const loadSaves = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -455,6 +457,14 @@ export default function WorldMenu() {
   }, [isAuthenticated]);
 
   useEffect(() => { loadSaves(); }, [loadSaves]);
+
+  useEffect(() => {
+    if (autoResumed || savesLoading || !isAuthenticated || cloudSaves.length === 0) return;
+    const skipFlag = sessionStorage.getItem('sm_show_saves');
+    if (skipFlag) { sessionStorage.removeItem('sm_show_saves'); setAutoResumed(true); return; }
+    const latest = [...cloudSaves].sort((a, b) => new Date(b.lastSavedAt).getTime() - new Date(a.lastSavedAt).getTime())[0];
+    if (latest) { setAutoResumed(true); handleContinue(latest); }
+  }, [cloudSaves, savesLoading, isAuthenticated, autoResumed]);
 
   // ── Continue a save ─────────────────────────────────────────────────────────
   const handleContinue = (save: CloudSave) => {
@@ -803,6 +813,9 @@ export default function WorldMenu() {
                   <button onClick={() => setScreen('new')} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.25)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>
                     PLAY AS GUEST (no saves)
                   </button>
+                  <div style={{ fontSize: '.42rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.06em', lineHeight: 1.7, marginTop: '.3rem', maxWidth: 400 }}>
+                    ⚠ Guest mode: the world is free to explore, but nothing is saved. Log in to keep your FIAT, gear, and progress.
+                  </div>
                 </div>
               </div>
             )}
@@ -914,7 +927,6 @@ export default function WorldMenu() {
                     </button>
                   ))}
                 </div>
-                </div>
 
                 {bizType === 'fictitious' && (
                   <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
@@ -943,66 +955,6 @@ export default function WorldMenu() {
                     </div>
                     <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
                       You can register a business later at PABLO TOWER. Walk in and use the terminal.
-                    </div>
-                  </div>
-                )}
-
-                {bizType === 'real' && (
-                  <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
-                    <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
-                      <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
-                      <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
-                        <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                          {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
-                        <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
-                          {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(0,255,65,.15)' }}>(OPTIONAL)</span></div>
-                      <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
-                    </div>
-                  </div>
-                )}
-
-                {bizType !== 'unemployed' && (() => {
-                  const ws = getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN');
-                  return (
-                    <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.85rem' }}>
-                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.3rem' }}>
-                        <div>
-                          <div style={{ ...VT, fontSize: '1.15rem', color: '#00ff41', letterSpacing: '.1em' }}>{ws.label}</div>
-                          <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.07em', marginTop: '.08rem' }}>{ws.slot}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41' }}>FREE</div>
-                          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ƒ500/rest after day 7</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
-                        The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ƒ500 per rest — the lowest rate in Minx City.
-                      </div>
-                    </div>
-                  );
-                })()}
-                )}
-
-                {bizType === 'unemployed' && (
-                  <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
-                    <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
-                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever SENIOR PABLO has planned. Hurry up — you're already late.
                     </div>
                   </div>
                 )}

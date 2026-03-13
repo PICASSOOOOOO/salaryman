@@ -173,6 +173,16 @@ export default function Home() {
       <NavBar />
       <OnboardingModal onComplete={updateMemory} />
 
+      {/* Terminal economy framing */}
+      <div className="relative z-20 flex items-center gap-3 px-4 py-2"
+        style={{ background: 'rgba(0,255,65,0.03)', borderBottom: '1px solid rgba(0,255,65,0.08)' }}>
+        <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(0,255,65,0.35)' }} />
+        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)', letterSpacing: '0.08em', flex: 1 }}>
+          <strong style={{ color: 'rgba(0,255,65,0.6)' }}>FREE TERMINAL</strong>
+          {' '}— Interview Solver, Screen Scanner, Voice Listener &amp; PABLO AI are yours to use. Enter the world free — earn FIAT to unlock buildings, property &amp; gear inside.
+        </span>
+      </div>
+
       {/* ── 7-day trial welcome banner ── */}
       <AnimatePresence>
         {trialBanner && (
