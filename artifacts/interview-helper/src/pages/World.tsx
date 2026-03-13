@@ -28,6 +28,7 @@ const BUILDINGS = [
   { id: 'apt2',        x: 200,  y: 470,  w: 100, h: 120, label: 'APT BLOCK 1B',      bright: false },
   { id: 'factory',     x: 1300, y: 260,  w: 180, h: 140, label: 'FACTORY 7',         bright: false },
   { id: 'atm',         x: 870,  y: 470,  w: 50,  h: 50,  label: 'ATM',               bright: true  },
+  { id: 'office',      x: 1100, y: 500,  w: 180, h: 130, label: 'OFFICE TOWER',      bright: true  },
   { id: 'bunker',      x: 500,  y: 1400, w: 160, h: 100, label: 'BUNKER-09',         bright: false },
   { id: 'scrap',       x: 800,  y: 1350, w: 200, h: 80,  label: 'SCRAP YARD',        bright: false },
   { id: 'outpost',     x: 300,  y: 1500, w: 120, h: 90,  label: 'OUTPOST DELTA',     bright: false },
@@ -196,6 +197,8 @@ export default function World() {
   const [narration, setNarration] = useState('PABLO CORP. DEVICE v1.0 — WASD/ARROWS to move. [E] interact. [P] PABLO device.');
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPablo, setShowPablo] = useState(false);
+  const [showOffice, setShowOffice] = useState(false);
+  const [rentedOffice, setRentedOffice] = useState<string | null>(() => localStorage.getItem('salaryman_office'));
   const [pabloInput, setPabloInput] = useState('');
   const [pabloMessages, setPabloMessages] = useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloLoading, setPabloLoading] = useState(false);
@@ -228,7 +231,7 @@ export default function World() {
       if ((e.key === 'e' || e.key === 'E') && gsRef.current.nearBuilding && !dialog && !showPablo) {
         handleEnter(gsRef.current.nearBuilding);
       }
-      if (e.key === 'Escape') { setDialog(null); setShowUpgrade(false); setShowPablo(false); }
+      if (e.key === 'Escape') { setDialog(null); setShowUpgrade(false); setShowPablo(false); setShowOffice(false); }
     };
     const up = (e: KeyboardEvent) => gsRef.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown', down);
@@ -250,6 +253,8 @@ export default function World() {
       } else {
         setNarration('> MED CLINIC — "That\'ll be $100. You can\'t afford it. Get out."');
       }
+    } else if (bid === 'office') {
+      setShowOffice(true);
     } else if (bid === 'megabank') {
       setNarration('> MOGUL BANK — "Access restricted to account holders. Your balance: insufficient to matter."');
     } else if (bid === 'atm') {
@@ -334,7 +339,7 @@ export default function World() {
       if (gs.invincible > 0) gs.invincible--;
       if (gs.damageFlash > 0) gs.damageFlash--;
 
-      const frozen = !!dialog || showUpgrade || showPablo || isDead;
+      const frozen = !!dialog || showUpgrade || showPablo || showOffice || isDead;
 
       // ── Player movement ──
       if (!frozen) {
@@ -586,7 +591,7 @@ export default function World() {
 
     animRef.current = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); };
-  }, [character, dialog, showUpgrade, showPablo, isDead]);
+  }, [character, dialog, showUpgrade, showPablo, showOffice, isDead]);
 
   if (!character) return <CharacterSelect onStart={handleCharacterStart} />;
 
@@ -702,6 +707,68 @@ export default function World() {
             <div style={{ display: 'flex', gap: '.75rem' }}>
               <button onClick={() => { setShowUpgrade(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.75rem', background: 'rgba(0,255,65,.14)', border: '1px solid rgba(0,255,65,.7)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>UPGRADE TO PRO</button>
               <button onClick={() => { setShowUpgrade(false); setNarration(`> PABLO device activated for ${character.name}. Basic tier registered. Press [P] to open your device.`); }} style={{ padding: '.75rem 1.25rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.45)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em', cursor: 'pointer' }}>TAKE FREE</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Office Tower ── */}
+      {showOffice && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,5,0,.93)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+          <div style={{ width: 540, maxWidth: '92vw', border: '1px solid rgba(0,255,65,.6)', background: 'rgba(0,15,0,.98)', boxShadow: '0 0 40px rgba(0,255,65,.15)', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em' }}>OFFICE TOWER</div>
+                <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', marginTop: '.2rem' }}>PUBLIC COMMERCIAL SPACE — CITY SECTOR — PABLO CORP. MANAGED</div>
+              </div>
+              <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem' }}>[ESC]</button>
+            </div>
+
+            {rentedOffice && (
+              <div style={{ marginBottom: '1rem', padding: '.6rem .8rem', border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,255,65,.07)', fontSize: '.65rem', color: '#00ff41', letterSpacing: '.06em' }}>
+                ▸ CURRENT LEASE: <span style={{ color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.85rem' }}>{rentedOffice}</span> — Active until end of session.
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '1.5rem' }}>
+              {[
+                { tier: 'HOT DESK',        price: 50,   period: '/day',  perks: ['Open floor plan', 'Shared comms terminal', 'Coffee + water', 'No lock code'] },
+                { tier: 'PRIVATE OFFICE',  price: 200,  period: '/mo',   perks: ['Single room', 'Personal lock code', 'Filing cabinet', 'Window view (alley)'] },
+                { tier: 'TEAM SUITE',      price: 500,  period: '/mo',   perks: ['4-desk suite', 'Conference room access', 'Private comms line', 'Secure floor entry'] },
+                { tier: 'EXEC FLOOR',      price: 1500, period: '/mo',   perks: ['Full executive suite', 'PABLO Corp. adjacency', 'Rooftop access', 'AI concierge'] },
+              ].map(({ tier, price, period, perks }) => {
+                const isRented = rentedOffice === tier;
+                const canAfford = stats.salary >= price;
+                return (
+                  <div key={tier} style={{ border: isRented ? '1px solid rgba(0,255,65,.8)' : '1px solid rgba(0,255,65,.2)', padding: '.9rem', background: isRented ? 'rgba(0,255,65,.08)' : 'transparent', position: 'relative' }}>
+                    {isRented && <div style={{ position: 'absolute', top: 6, right: 8, fontSize: '.55rem', color: '#00ff41', fontFamily: "'VT323',monospace", letterSpacing: '.1em' }}>LEASED ✓</div>}
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: isRented ? '#00ff41' : 'rgba(0,255,65,.75)', letterSpacing: '.08em', marginBottom: '.2rem' }}>{tier}</div>
+                    <div style={{ fontSize: '.75rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.6)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", letterSpacing: '.06em', marginBottom: '.5rem' }}>
+                      ${price.toLocaleString()}<span style={{ fontSize: '.6rem' }}>{period}</span>
+                    </div>
+                    {perks.map(p => <div key={p} style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.8, letterSpacing: '.04em' }}>· {p}</div>)}
+                    <button
+                      onClick={() => {
+                        const gs = gsRef.current;
+                        if (isRented) { localStorage.removeItem('salaryman_office'); setRentedOffice(null); setNarration(`> Lease cancelled for ${tier}.`); return; }
+                        if (!canAfford) { setNarration(`> OFFICE TOWER — Insufficient funds. ${tier} requires $${price}. Balance: $${Math.floor(stats.salary)}.`); return; }
+                        gs.stats.salary -= price;
+                        setStats({ ...gs.stats });
+                        localStorage.setItem('salaryman_office', tier);
+                        setRentedOffice(tier);
+                        setNarration(`> OFFICE TOWER — ${tier} leased. $${price} deducted. Access code transmitted to your PABLO device.`);
+                      }}
+                      style={{ marginTop: '.65rem', width: '100%', padding: '.35rem', background: isRented ? 'rgba(255,50,50,.08)' : canAfford ? 'rgba(0,255,65,.1)' : 'rgba(0,255,65,.03)', border: isRented ? '1px solid rgba(255,80,80,.4)' : canAfford ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.15)', color: isRented ? 'rgba(255,80,80,.7)' : canAfford ? '#00ff41' : 'rgba(0,255,65,.25)', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.1em', cursor: canAfford || isRented ? 'pointer' : 'default' }}
+                    >
+                      {isRented ? 'CANCEL LEASE' : canAfford ? 'RENT NOW' : 'INSUFFICIENT $'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.8, letterSpacing: '.06em', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.75rem' }}>
+              All leases managed by PABLO Corp. Real Estate Division. Tenant assumes all risk of mutant incursion, gang activity, and infrastructure failure. No refunds after activation.
             </div>
           </div>
         </div>
