@@ -22,3 +22,6 @@ export * from "./messages";
 export * from "./auth";
 export * from "./contacts";
 export * from "./user-memory";
+export * from "./projects";
+export * from "./notes";
+export * from "./brand-kit";

@@ -1,4 +1,4 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import frontmanLogo from '../assets/frontman-logo-c.png';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -13,6 +13,7 @@ export function NavBar() {
     { path: '/', label: config.navLabel, icon: Terminal },
     { path: '/presenter', label: 'Presenter', icon: Presentation },
     { path: '/contacts', label: 'Contacts', icon: Users },
+    { path: '/dashboard', label: 'Workspace', icon: LayoutDashboard },
   ];
 
   return (
