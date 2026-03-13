@@ -7,8 +7,9 @@ import {
 } from '../soundEngine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const W = 2400, H = 2000, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
-const WASTELAND_Y = 800;
+const W = 3200, H = 2400, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
+const WASTELAND_Y = 900;
+const NORTH_Y = 60;
 
 // ── Commodity Trading (Star Citizen–style economy) ────────────────────────────
 interface Commodity {
@@ -69,6 +70,26 @@ const BUILDINGS = [
   { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false },
   { id: 'overlook',      x: 2250, y: 600, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true  },
   { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE 7',     bright: false },
+  // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
+  { id: 'sub_west',      x:  280, y: 540, w: 80,  h: 55,  label: 'METRO WEST',       bright: true  },
+  { id: 'sub_central',   x:  950, y: 500, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true  },
+  { id: 'sub_east',      x: 1800, y: 540, w: 80,  h: 55,  label: 'METRO EAST',       bright: true  },
+  { id: 'sub_north',     x: 2400, y: 160, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true  },
+  // ── CHECKPOINTS ───────────────────────────────────────────────────────────────
+  { id: 'checkpoint_w',  x:  60,  y: 845, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false },
+  { id: 'checkpoint_c',  x: 1250, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false },
+  { id: 'checkpoint_e',  x: 2550, y: 845, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false },
+  // ── NORTH QUARTER (new area above y=200) ─────────────────────────────────────
+  { id: 'print_shop2',   x: 2500, y: 100, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false },
+  { id: 'call_home',     x: 2650, y: 250, w: 130, h: 80,  label: 'CALL HOME',        bright: true  },
+  { id: 'noodle_bar',    x: 2820, y: 160, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true  },
+  { id: 'pawn_shop',     x: 2820, y: 350, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false },
+  { id: 'crystal4',      x: 2700, y: 430, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'north_clinic',  x: 2620, y: 490, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false },
+  { id: 'terminal_shop', x: 2480, y: 340, w: 130, h: 80,  label: 'PABLO CORP. N',    bright: true  },
+  { id: 'north_bunker',  x: 3000, y: 200, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false },
+  { id: 'north_market',  x: 3050, y: 380, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false },
+  { id: 'crystal5',      x: 3000, y: 480, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
   // ── WASTELAND OUTPOSTS ───────────────────────────────────────────────────────
   { id: 'outpost_alpha', x: 140,  y: 960, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true  },
   { id: 'outpost_beta',  x: 1180, y:1100, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true  },
@@ -81,14 +102,21 @@ const BUILDINGS = [
   { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false },
   { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true  },
   { id: 'waste_exchange',x: 780,  y:1500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true  },
+  // ── FAR EAST / FAR SOUTH WASTELAND (new area) ────────────────────────────────
+  { id: 'eastern_gate',  x: 2800, y:1100, w: 100, h: 70,  label: 'EASTERN GATE',     bright: false },
+  { id: 'deep_camp',     x: 2600, y:1400, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false },
+  { id: 'ruins_alpha',   x: 2900, y:1600, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false },
+  { id: 'crystal6',      x: 2750, y:1750, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  { id: 'southern_hub',  x: 1500, y:2100, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true  },
+  { id: 'crystal7',      x: 1650, y:2200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
 ];
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
 const GANG_ZONES = [
-  { id: 'iron_rats',    name: 'IRON RATS',    x:   50, y:  820, w: 650, h: 900, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
-  { id: 'void_dogs',    name: 'VOID DOGS',    x:  660, y:  860, w: 580, h: 780, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
-  { id: 'static_monks', name: 'STATIC MONKS', x: 1210, y:  820, w: 620, h: 800, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
-  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 1800, y:  870, w: 580, h: 920, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
+  { id: 'iron_rats',    name: 'IRON RATS',    x:   50, y:  920, w:  700, h:1100, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
+  { id: 'void_dogs',    name: 'VOID DOGS',    x:  720, y:  960, w:  700, h: 980, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
+  { id: 'static_monks', name: 'STATIC MONKS', x: 1390, y:  920, w:  750, h:1000, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
+  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 2100, y:  960, w:  900, h:1200, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
 ];
 
 const NPCS = [
@@ -175,9 +203,11 @@ const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', and
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; }
-const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800 };
+const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8 };
+const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200 };
+// Non-aggressive minor threats — just wander, don't attack
+const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
   replicant:  { maxHp: 350, atkBonus: 12, wasteBonus: false },
@@ -195,12 +225,17 @@ const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; 
   wily_lab:   { label: 'ASSEMBLE',     pay: 6000, seconds: 7, cooldownFrames: 2400 },
   market:     { label: 'STREET DEAL',  pay: 3000, seconds: 3, cooldownFrames: 900  },
 };
-// Pablo Corp guard patrol waypoints inside city
+// Pablo Corp android guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
   [{ x:500,y:300 },{ x:700,y:300 },{ x:700,y:500 },{ x:500,y:500 }],
   [{ x:900,y:200 },{ x:1100,y:200 },{ x:1100,y:450 },{ x:900,y:450 }],
   [{ x:1300,y:150 },{ x:1600,y:150 },{ x:1600,y:400 },{ x:1300,y:400 }],
   [{ x:1700,y:250 },{ x:1950,y:250 },{ x:1950,y:500 },{ x:1700,y:500 }],
+  [{ x:200,y:200 },{ x:400,y:200 },{ x:400,y:450 },{ x:200,y:450 }],
+  [{ x:2100,y:200 },{ x:2350,y:200 },{ x:2350,y:450 },{ x:2100,y:450 }],
+  [{ x:2500,y:150 },{ x:2800,y:150 },{ x:2800,y:400 },{ x:2500,y:400 }],
+  [{ x:650,y:750 },{ x:1000,y:750 },{ x:1000,y:870 },{ x:650,y:870 }],
+  [{ x:1300,y:760 },{ x:1700,y:760 },{ x:1700,y:870 },{ x:1300,y:870 }],
 ];
 // Vending machine positions (relative x,y offsets near govt buildings)
 const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
@@ -244,6 +279,14 @@ const THREATS_INIT: Threat[] = [
   mkThreat(1900, 1850,'RAIDER'),
   // ── SPY infiltrators — disguised, can enter city (rare) ──
   mkThreat(400,  550, 'SPY'), mkThreat(1200, 400, 'SPY'), mkThreat(1900, 600, 'SPY'),
+  mkThreat(2700, 350, 'SPY'),
+  // ── Passive minor wanderers (non-aggressive, Oregon Trail flavour) ──
+  mkThreat(350,  430, 'VAGRANT'), mkThreat(620,  640, 'VAGRANT'), mkThreat(1100, 580, 'VAGRANT'),
+  mkThreat(1500, 350, 'VAGRANT'), mkThreat(2000, 450, 'VAGRANT'), mkThreat(2600, 400, 'VAGRANT'),
+  mkThreat(280,  700, 'STRAY_DOG'), mkThreat(750,  680, 'STRAY_DOG'), mkThreat(1350, 660, 'STRAY_DOG'),
+  mkThreat(1950, 600, 'STRAY_DOG'), mkThreat(2300, 700, 'STRAY_DOG'),
+  mkThreat(500, 1800, 'SCAVENGER'), mkThreat(1100,1900, 'SCAVENGER'), mkThreat(1700,1850,'SCAVENGER'),
+  mkThreat(2400,1700, 'SCAVENGER'), mkThreat(2900,1600, 'SCAVENGER'),
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
@@ -254,6 +297,7 @@ const THREAT_COL: Record<string, string> = {
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
   SPY: '#ffffaa', PABLO_GUARD: '#5599ff',
+  VAGRANT: '#887766', STRAY_DOG: '#aa8855', SCAVENGER: '#99aa66',
 };
 
 const NPC_RANGE = 60;
@@ -493,6 +537,11 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
+    // New systems
+    passport: false,
+    oregonTick: 0,
+    walkFrame: 0,
+    guardCooldowns: [] as number[], // per-guard attack cooldown
   });
 
   // Reactive state (only what the HUD needs)
@@ -546,6 +595,10 @@ export default function WorldPlay() {
   const [thirst,      setThirst]      = useState(100);
   const [energy,      setEnergy]      = useState(100);
   const [gangZone,    setGangZone]    = useState<string|null>(null);
+  const [showSubway,  setShowSubway]  = useState(false);
+  const [subwayOrigin,setSubwayOrigin]= useState<string>('');
+  const [oregonEvent, setOregonEvent] = useState<string|null>(null);
+  const [passport,    setPassport]    = useState(false);
   const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
@@ -819,6 +872,89 @@ export default function WorldPlay() {
       g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
     }
+    else if (['sub_west','sub_central','sub_east','sub_north'].includes(bid)) {
+      sfxEnter();
+      setSubwayOrigin(bid);
+      setShowSubway(true);
+      setNarr('> MINX CITY METRO — Automated turnstiles. The network runs on PABLO CORP. rails. Select your destination.');
+    }
+    else if (['checkpoint_w','checkpoint_c','checkpoint_e'].includes(bid)) {
+      if (g.passport) {
+        setNarr('> CHECKPOINT — Guard scans your PASSPORT. "Document valid. PABLO CORP. Decree 17-B: report suspicious activity in the wasteland. Move along."');
+      } else {
+        sfxError();
+        setNarr('> CHECKPOINT — Guard blocks the gate. "PASSPORT required to enter the wasteland. Obtain one at PABLO CORP. or the PRINT SHOP."');
+      }
+    }
+    else if (bid === 'call_home') {
+      sfxEnter();
+      const cost = 5000;
+      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> CALL HOME — Encrypted long-range signal. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ç${cost.toLocaleString()} CREAM]`); }
+      else { sfxError(); setNarr(`> CALL HOME — ç${cost.toLocaleString()} CREAM for a call. "Nothing\'s free in Minx City. Not even a voice."`);}
+    }
+    else if (bid === 'noodle_bar') {
+      sfxEnter();
+      const cost = 1200;
+      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ç${cost.toLocaleString()} CREAM]`); }
+      else { sfxError(); setNarr('> NOODLE BAR — "No CREAM, no noodles. House rule since the collapse."'); }
+    }
+    else if (bid === 'pawn_shop') {
+      sfxEnter();
+      const bonus = 3000 + Math.floor(Math.random() * 4000);
+      g.salary += bonus; setSalary(g.salary); sfxCoin();
+      setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ç${bonus.toLocaleString()} CREAM. "Come back with more. I don\'t ask questions."`);
+    }
+    else if (bid === 'north_clinic') {
+      if (g.salary >= 8000) { g.hp = g.maxHp; g.salary -= 8000; setHp(g.hp); setSalary(g.salary); g.poisoned = false; setPoisoned(false); sfxHeal(); setNarr('> NORTH CLINIC — "Trauma unit. Full restore. ç8,000." HP maxed. Poison cured.'); }
+      else { sfxError(); setNarr('> NORTH CLINIC — "ç8,000 minimum. Don\'t bleed on the floor."'); }
+    }
+    else if (bid === 'terminal_shop' || bid === 'print_shop2') {
+      sfxEnter();
+      const passportCost = 12000;
+      if (!g.passport && g.salary >= passportCost) {
+        g.passport = true; g.salary -= passportCost; setSalary(g.salary); setPassport(true); sfxCoin();
+        setNarr(`> PABLO CORP. NORTH — PASSPORT issued. Official PABLO CORP. stamp. Wasteland crossing authorized. [−ç${passportCost.toLocaleString()} CREAM] "Don\'t lose it. Replacements cost double."`);
+      } else if (g.passport) {
+        setNarr('> PABLO CORP. NORTH — "PASSPORT already registered. Wasteland access active."');
+      } else {
+        sfxError(); setNarr(`> PABLO CORP. NORTH — PASSPORT costs ç${passportCost.toLocaleString()} CREAM. Current balance insufficient.`);
+      }
+    }
+    else if (bid === 'north_bunker') {
+      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
+      setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+      setNarr('> NORTH BUNKER — Fully stocked emergency shelter. All stats fully restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. PABLO CORP. AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
+    }
+    else if (bid === 'north_market') {
+      sfxEnter(); setShowTrade('city');
+      setNarr('> NORTH BAZAAR — Quieter than the city markets. Prices are closer to fair. Almost.');
+    }
+    else if (['crystal4','crystal5','crystal6','crystal7'].includes(bid)) {
+      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
+      setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxSave();
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+      setNarr(`> SAVE POINT — Crystal pulse. All stats restored. Saved. LVL:${g.level}`);
+    }
+    else if (bid === 'eastern_gate') {
+      g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
+      setNarr('> EASTERN GATE — The last marked structure before the deep wasteland. Someone painted: "YOU WENT FAR ENOUGH." You didn\'t listen. Hunger +20. Thirst +20.');
+    }
+    else if (bid === 'deep_camp') {
+      g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 4000; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
+      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ç4,000 CREAM into your hand. "We found it in a PABLO cache. We don\'t want their money." HP +25. +ç4,000 CREAM.');
+    }
+    else if (bid === 'ruins_alpha') {
+      const loot = 8000 + Math.floor(Math.random() * 10000);
+      g.salary += loot; setSalary(g.salary); sfxCoin();
+      setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ç${loot.toLocaleString()} CREAM in old denomination tokens. Still valid.`);
+    }
+    else if (bid === 'southern_hub') {
+      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
+      setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. Everything restored. Progress saved. "Nobody from PABLO Corp has ever been here." You believe them.');
+    }
   }, []);
 
   const enterNpc = useCallback((idx: number) => {
@@ -968,8 +1104,8 @@ export default function WorldPlay() {
 
   // ── Keep frozenRef in sync so game loop never needs to restart for panel changes ──
   useEffect(() => {
-    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank;
-  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank]);
+    frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway;
+  }, [dialog, showStore, showOffice, showPablo, pwPrompt, showMap, jobPanel, showTrade, showBank, showSubway]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -1213,10 +1349,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (col(nx, g.py)) nx = g.px;
         if (col(g.px, ny)) ny = g.py;
         g.px = Math.max(PSIZE, Math.min(W - PSIZE, nx));
+        // ── Checkpoint: block wasteland entry without PASSPORT ───────────────
+        const crossingBorder = ny >= WASTELAND_Y && g.py < WASTELAND_Y;
+        if (crossingBorder && !g.passport) {
+          ny = WASTELAND_Y - PSIZE - 1;
+          if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot enter the wasteland without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ç12,000 CREAM]');
+        }
         g.py = Math.max(PSIZE, Math.min(H - PSIZE, ny));
         if (dx !== 0 || dy !== 0) {
           stepFrame.current++;
+          g.walkFrame = (g.walkFrame + 1) % 28;
           if (stepFrame.current % 14 === 0) sfxStep();
+        } else {
+          g.walkFrame = 0;
         }
       }
 
@@ -1243,10 +1388,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
+        // ── Passive threats — wander only, never aggro ───────────────────────
+        const isPassive = PASSIVE_THREATS.has(t.type);
+        if (isPassive) {
+          if (t.timer <= 0) {
+            const ang = Math.random() * Math.PI * 2;
+            t.dx = Math.cos(ang) * 0.3; t.dy = Math.sin(ang) * 0.3;
+            t.timer = 90 + Math.floor(Math.random() * 120);
+          }
+          t.x = Math.max(10, Math.min(W - 10, t.x + t.dx));
+          t.y = Math.max(10, Math.min(H - 10, t.y + t.dy));
+          continue;
+        }
+
         // ── Speed tuning ─────────────────────────────────────────────────────
         const aggroRange  = isSpy ? 90 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 60 : 75;
-        const chaseSpeed  = isSpy ? 1.0 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.5 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.55 : 0.45);
-        const wanderSpeed = isSpy ? 0.45 : 0.2;
+        const chaseSpeed  = isSpy ? 0.9 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.45 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.5 : 0.4);
+        const wanderSpeed = isSpy ? 0.35 : 0.18;
         // All threats only aggro when player is near/in wasteland; SPY can go slightly deeper into city outskirts
         const canAggro = g.py > WASTELAND_Y - 150;
 
@@ -1275,23 +1433,50 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── PABLO CORP android guard patrol (city only) ──────────────────────
+      // ── PABLO CORP android guard patrol + THREAT ELIMINATION ─────────────
+      if (g.guardCooldowns.length < g.guards.length) {
+        g.guardCooldowns = new Array(g.guards.length).fill(0);
+      }
       for (let gi = 0; gi < g.guards.length; gi++) {
         const guard = g.guards[gi];
-        const route = GUARD_ROUTES[gi % GUARD_ROUTES.length];
-        const wp = route[guard.wpIdx % route.length];
-        const gdx = wp.x - guard.x, gdy = wp.y - guard.y;
-        const gdist = Math.hypot(gdx, gdy);
-        if (gdist < 4) {
-          guard.wpIdx = (guard.wpIdx + 1) % route.length;
-        } else {
-          guard.x += (gdx / gdist) * 0.6;
-          guard.y += (gdy / gdist) * 0.6;
+        if (g.guardCooldowns[gi] > 0) g.guardCooldowns[gi]--;
+
+        // Find nearest city threat in range (guards only fight threats in city zone)
+        let nearestThreat: Threat | null = null, nearestDist = 9999;
+        for (const t of g.threats) {
+          if (PASSIVE_THREATS.has(t.type)) continue;
+          const d = Math.hypot(guard.x - t.x, guard.y - t.y);
+          if (d < 90 && t.y < WASTELAND_Y && d < nearestDist) { nearestThreat = t; nearestDist = d; }
         }
-        // Guards hostile to player if too close and player is Replicant
-        const gdist2 = Math.hypot(g.px - guard.x, g.py - guard.y);
-        if (gdist2 < 14 && g.invincible === 0 && char.class.toLowerCase() === 'replicant') {
-          g.hp = Math.max(0, g.hp - 0.2); g.invincible = 30; g.flash = 4;
+
+        if (nearestThreat) {
+          // Chase the threat
+          const ang = Math.atan2(nearestThreat.y - guard.y, nearestThreat.x - guard.x);
+          guard.x += Math.cos(ang) * 0.9;
+          guard.y += Math.sin(ang) * 0.9;
+          // Attack if in range
+          if (nearestDist < 16 && g.guardCooldowns[gi] === 0) {
+            g.guardCooldowns[gi] = 45;
+            nearestThreat.hp -= 12;
+            g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: 'GUARD HIT', color: '#5599ff', life: 40, maxLife: 40 });
+            if (nearestThreat.hp <= 0) {
+              g.threats = g.threats.filter(t => t !== nearestThreat);
+              g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 14, text: '[ ELIMINATED ]', color: '#00ff41', life: 80, maxLife: 80 });
+              g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 1800 });
+            }
+          }
+        } else {
+          // Normal waypoint patrol
+          const route = GUARD_ROUTES[gi % GUARD_ROUTES.length];
+          const wp = route[guard.wpIdx % route.length];
+          const gdx = wp.x - guard.x, gdy = wp.y - guard.y;
+          const gdist = Math.hypot(gdx, gdy);
+          if (gdist < 4) {
+            guard.wpIdx = (guard.wpIdx + 1) % route.length;
+          } else {
+            guard.x += (gdx / gdist) * 0.55;
+            guard.y += (gdy / gdist) * 0.55;
+          }
         }
       }
 
@@ -1435,6 +1620,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.floaters.push({ x: g.px, y: g.py - 20, text: `−ç${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
           addBankTx('PABLO CORP. DEBT PENALTY (5%)', -penalty, g.salary);
           setNarr('> KONAMI BANK ALERT — Your loan is overdue. PABLO Corp. Debt Collection is now active. ç' + penalty.toLocaleString() + ' CREAM deducted. Repay at KONAMI BANK immediately.');
+        }
+
+        // ── OREGON TRAIL RANDOM EVENTS (every 12 survival ticks ≈ 72s) ────
+        g.oregonTick++;
+        if (g.oregonTick >= 12 && Math.random() < 0.35) {
+          g.oregonTick = 0;
+          const inWaste2 = g.py >= WASTELAND_Y;
+          const cityEvents = [
+            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP. seized ç${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
+            () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
+            () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
+            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ç${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
+            () => { g.hp = Math.min(g.maxHp, g.hp + 15); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO Corp. deployed free stim-packs city-wide. "Productivity metric: normalized." HP +15.'; },
+            () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
+            () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose CREAM tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ç${bonus.toLocaleString()}.`; },
+          ];
+          const wasteEvents = [
+            () => { g.hp = Math.max(1, g.hp - 25); setHp(Math.floor(g.hp)); sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
+            () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
+            () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
+            () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ç${loot.toLocaleString()} in undelivered CREAM. Their last entry reads: "Don't go north."  You're going north.`; },
+            () => { g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +20. Someone was looking out for you.'; },
+            () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
+            () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
+          ];
+          const pool = inWaste2 ? wasteEvents : cityEvents;
+          const msg = pool[Math.floor(Math.random() * pool.length)]();
+          setNarr(msg);
+        } else if (g.oregonTick >= 12) {
+          g.oregonTick = 0;
         }
       }
 
@@ -1946,10 +2161,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ctx.globalAlpha = bodyAlpha * 0.3; ctx.fillStyle = '#000';
       ctx.beginPath(); ctx.ellipse(px, py2 + 9, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = bodyAlpha;
-      // Boots
-      ctx.fillStyle = '#224422'; ctx.fillRect(px - 6, py2 + 4, 4, 5); ctx.fillRect(px + 2, py2 + 4, 4, 5);
-      // Legs
-      ctx.fillStyle = '#335533'; ctx.fillRect(px - 5, py2 - 1, 4, 6); ctx.fillRect(px + 1, py2 - 1, 4, 6);
+      // Boots + Legs (walk animation)
+      const wf = g.walkFrame;
+      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3; // left leg swing
+      const rLeg = -lLeg; // right leg swings opposite
+      ctx.fillStyle = '#224422';
+      ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); // left boot
+      ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5); // right boot
+      ctx.fillStyle = '#335533';
+      ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); // left leg
+      ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6); // right leg
       // Body / jacket
       ctx.fillStyle = g.poisoned ? '#557722' : pcol;
       ctx.fillRect(px - 7, py2 - 9, 14, 9);
@@ -2401,6 +2622,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <StatRow label="ZONE" val={curZone} col={curZone === 'WASTELAND' ? '#88ff44' : '#00ff41'} />
                       <StatRow label="GANG ZONE" val={gangZone ?? 'NEUTRAL'} col={gangZone ? '#ffaa44' : 'rgba(0,255,65,.4)'} />
                       <StatRow label="GAME DAY" val={`DAY ${gameDay}`} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.25rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+                        <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em' }}>PASSPORT</span>
+                        <span style={{ ...VT, fontSize: '.8rem', color: passport ? '#00ff41' : 'rgba(255,100,100,.7)', border: `1px solid ${passport ? 'rgba(0,255,65,.4)' : 'rgba(255,60,60,.3)'}`, padding: '0 .4rem' }}>
+                          {passport ? '✓ VALID — WASTELAND ACCESS' : '✗ NOT ISSUED — CITY ONLY'}
+                        </span>
+                      </div>
                     </div>
                     {bankLoan && (
                       <div style={{ border: `1px solid ${gs.current.frame > bankLoan.dueAt ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.2)'}`, padding: '.45rem', marginTop: '.2rem' }}>
@@ -3181,6 +3408,69 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.38rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span>KONAMI BANK IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY PABLO CORP. DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
                 <span>ESC TO CLOSE</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─────────────────────── SUBWAY FAST TRAVEL ────────────────────────── */}
+      {showSubway && (() => {
+        const STATIONS = [
+          { id: 'sub_west',    label: 'METRO WEST',    sub: 'Sector 1 · Industrial District', x: 280,  y: 540 },
+          { id: 'sub_central', label: 'METRO CENTRAL', sub: 'Sector 4 · Commercial Hub',      x: 950,  y: 500 },
+          { id: 'sub_east',    label: 'METRO EAST',    sub: 'Sector 7 · Corporate Row',       x: 1800, y: 540 },
+          { id: 'sub_north',   label: 'METRO NORTH',   sub: 'North Quarter · Edge District',  x: 2400, y: 160 },
+        ];
+        const FARE = 800;
+        const origin = STATIONS.find(s => s.id === subwayOrigin);
+        const doRide = (dest: typeof STATIONS[0]) => {
+          const g = gs.current;
+          if (dest.id === subwayOrigin) { setNarr(`> METRO — You're already at ${dest.label}.`); setShowSubway(false); return; }
+          if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient CREAM. Fare is ç${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
+          g.salary -= FARE; setSalary(g.salary);
+          g.px = dest.x; g.py = dest.y;
+          sfxEnter(); sfxCoin();
+          setNarr(`> METRO — Departed ${origin?.label ?? '???'}. Arrived ${dest.label}. [−ç${FARE.toLocaleString()} CREAM] "PABLO CORP. MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
+          setShowSubway(false);
+        };
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}>
+            <div style={{ background: '#050505', border: '2px solid rgba(0,255,65,.45)', width: 'min(580px,92vw)', fontFamily: '"VT323", monospace', color: '#00ff41', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
+                <div>
+                  <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>MINX CITY METRO</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP. RAPID TRANSIT NETWORK · FARE: ç{FARE.toLocaleString()}</div>
+                </div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ç{salary.toLocaleString()}</div>
+              </div>
+              {/* Origin */}
+              <div style={{ padding: '.55rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.1)', fontSize: '.5rem', color: 'rgba(0,255,65,.32)', letterSpacing: '.1em', flexShrink: 0 }}>
+                CURRENT STATION: <span style={{ color: '#00ff41' }}>{origin?.label ?? 'UNKNOWN'}</span>
+              </div>
+              {/* Station list */}
+              <div style={{ padding: '.7rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '.55rem', overflowY: 'auto' }}>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.25rem' }}>SELECT DESTINATION</div>
+                {STATIONS.map(s => {
+                  const isCurrent = s.id === subwayOrigin;
+                  return (
+                    <button key={s.id} onClick={() => doRide(s)} disabled={isCurrent}
+                      style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.55rem', alignItems: 'center', padding: '.6rem .8rem', background: isCurrent ? 'rgba(0,255,65,.06)' : 'rgba(0,255,65,.02)', border: isCurrent ? '1px solid rgba(0,255,65,.45)' : '1px solid rgba(0,255,65,.18)', color: '#00ff41', cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                      <div style={{ fontSize: '.7rem', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.4)' }}>●</div>
+                      <div>
+                        <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.7)' }}>{s.label}</div>
+                        <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.28)', marginTop: '.1rem' }}>{s.sub}</div>
+                      </div>
+                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ç${FARE.toLocaleString()}`}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Footer */}
+              <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.12)', fontSize: '.38rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+                <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP. MONITORS ALL TRANSIT ACTIVITY.</span>
+                <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
             </div>
           </div>
