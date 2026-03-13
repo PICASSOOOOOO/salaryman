@@ -192,3 +192,63 @@ id = "ro_dMImKRkpd46DBWPIQQ"
 uri = "file://attached_assets/generated_images/frontman-pro-v20.png"
 type = "image"
 title = "V20 — Ink Wash Calligraphy"
+
+[[outputs]]
+id = "YnKbboQx2bzvhGWXgeLHu"
+uri = "file://attached_assets/generated_images/frontman-sil-v1.png"
+type = "image"
+title = "V1 — Heavy Bold Serif"
+
+[[outputs]]
+id = "blzO5pQqnUI5fehmtCWry"
+uri = "file://attached_assets/generated_images/frontman-sil-v2.png"
+type = "image"
+title = "V2 — Thin Light Sans-Serif"
+
+[[outputs]]
+id = "liHciXE7CqSg0ufDim-Fn"
+uri = "file://attached_assets/generated_images/frontman-sil-v3.png"
+type = "image"
+title = "V3 — Tall Condensed Gothic"
+
+[[outputs]]
+id = "dmZKUTCw5lauxmzNQ9N3D"
+uri = "file://attached_assets/generated_images/frontman-sil-v4.png"
+type = "image"
+title = "V4 — Cursive Script"
+
+[[outputs]]
+id = "l5QJFHX2uzjsNwE9bYHTt"
+uri = "file://attached_assets/generated_images/frontman-sil-v5.png"
+type = "image"
+title = "V5 — Retro Slab Serif"
+
+[[outputs]]
+id = "h90EjR-fSXxlv_zjx_xzu"
+uri = "file://attached_assets/generated_images/frontman-sil-v6.png"
+type = "image"
+title = "V6 — Futuristic Geometric"
+
+[[outputs]]
+id = "iDfu06nD0bDHTjFFfuvPk"
+uri = "file://attached_assets/generated_images/frontman-sil-v7.png"
+type = "image"
+title = "V7 — Blackletter Gothic"
+
+[[outputs]]
+id = "CuR2DRKFGHsvORRlHoWV6"
+uri = "file://attached_assets/generated_images/frontman-sil-v8.png"
+type = "image"
+title = "V8 — Wide Tracked Uppercase"
+
+[[outputs]]
+id = "x1TXNnadN8lxaQdwm9wFI"
+uri = "file://attached_assets/generated_images/frontman-sil-v9.png"
+type = "image"
+title = "V9 — Handwritten Marker"
+
+[[outputs]]
+id = "AH7eTvr6iMtUgJ_ScSOOY"
+uri = "file://attached_assets/generated_images/frontman-sil-v10.png"
+type = "image"
+title = "V10 — Rounded Bubbly"
