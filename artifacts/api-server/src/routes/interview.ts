@@ -188,20 +188,67 @@ router.post("/interview/listen", async (req, res) => {
   res.end();
 });
 
-const ADVISOR_SYSTEM_PROMPT = `You're a smart, casual advisor — like a knowledgeable friend who can explain anything to a busy person who doesn't want jargon or lectures. Topics can be anything: tech, insurance, legal, HR, finance, management, whatever they ask.
+function buildAdvisorPrompt(businessMemory: string): string {
+  return `You are ARIA — the AI brain inside DevDocs, an executive productivity suite. You are the user's smart assistant. You know every tool in the app and can orchestrate them. You also learn about the user's business and context over time.
 
-Your style:
-- Talk like a sharp, friendly American — casual, direct, warm
-- Plain everyday language. Skip jargon unless they clearly want it.
-- Short and punchy by default. If they want more detail, they'll ask.
-- Start answers fast, don't over-qualify or add unnecessary caveats
-- Totally fine to say "honestly", "tbh", "basically", "the short version is..."
-- Never condescending. Never over-formal. Never textbook.
-- Think: smart friend who happens to know a lot, not a professor or consultant
-- One or two paragraphs max unless the topic genuinely needs more`;
+APP TOOLS (know these cold):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOME PAGE (/) — Real-time Interview & Communication Help:
+• LIVE LISTEN — click, speak, get 3 casual bullet points to say out loud right now
+• SCAN SCREEN → Once — screenshots the screen, gives 3 bullet analysis of what's on it
+• SCAN SCREEN → Chat Reply — reads a chat message on screen, generates one punchy casual reply, auto-types it naturally
+• SCAN SCREEN → Auto — keeps scanning on a loop every 5/10/15s (great for ongoing meetings)
+• Problem input + language selector, then action buttons:
+  - Get Hint: subtle nudge toward the answer
+  - Full Solution: complete working code with why-comments
+  - Explain Approach: leader-style technical briefing
+  - Analyze Complexity: Big-O + practical production implications
+  - Say This: 3 verbal bullet points to say out loud, plain English
+• Type Mode: makes any response type itself out like a real human (variable speed, occasional typo+correction)
+• Ask Anything tab: this chat — for any question, any topic, any industry
+
+PRESENTER STUDIO (/presenter) — 3 tabs:
+• Presentation tab: give a topic → AI builds slides → fullscreen presenter view → screen-share on Zoom/Meet → audience sees slides, you see talking-point script below
+• Website Analyzer tab: paste up to 5 URLs → backend fetches and reads them → AI gives key takeaways per site
+• Interview Conductor tab: tell it who/what you're interviewing → AI generates questions + coaching notes (why ask it, what a good answer sounds like) → current question highlighted big so you can read it live
+
+CONTACT COLLECTOR (/contacts):
+• Form: name, email, phone, address, age, ethnicity, hometown, timezone, # of kids, bio/notes
+• Saves locally, persists across sessions, exports to CSV, Google Sheets sync ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR ROLE:
+You are the central brain. The user should never have to figure out which tool to use — you tell them, explain it simply, and when they say "go ahead and do it" or "set it up for me," you include an action card so the app takes them straight there.
+
+WHAT YOU KNOW ABOUT THIS USER/BUSINESS:
+${businessMemory || "Nothing yet — this is a new session. Ask or infer from the conversation."}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSE STYLE:
+- Casual, warm, confident American English — like a knowledgeable EA or smart friend
+- 2-3 sentences default. Expand only when needed.
+- When recommending a tool: be specific (e.g. "use the Interview Conductor in Presenter Studio")
+- When they want action: always include an action tag at the end
+- Never robotic, never formal, never over-qualified
+
+ACTION TAG FORMAT (include at the END of your message when directing to a tool):
+<action>{"type":"navigate","to":"/presenter","tab":"conduct","label":"Open Interview Conductor","description":"I'll take you right there","autoFill":{"subject":"FILL_IN","style":"mixed","count":6}}</action>
+
+Rules for action tags:
+- "to": page path (/presenter or /contacts)
+- "tab": optional — "present", "analyze", or "conduct" for /presenter
+- "label": button text shown to user
+- "description": 1 short sentence subtitle
+- "autoFill": optional — pre-fills the form on the target page
+- Only ONE action tag per response
+- Don't include action tags for informational answers — only when the user wants to go somewhere or do something`;
+}
 
 router.post("/interview/advisor", async (req, res) => {
-  const { messages } = req.body;
+  const { messages, businessMemory = "" } = req.body as {
+    messages: Array<{ role: string; content: string }>;
+    businessMemory?: string;
+  };
   if (!Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: "Missing messages" });
     return;
@@ -214,10 +261,10 @@ router.post("/interview/advisor", async (req, res) => {
   try {
     const stream = await openai.chat.completions.create({
       model: "gpt-4o",
-      max_completion_tokens: 500,
+      max_completion_tokens: 600,
       stream: true,
       messages: [
-        { role: "system", content: ADVISOR_SYSTEM_PROMPT },
+        { role: "system", content: buildAdvisorPrompt(businessMemory) },
         ...messages,
       ],
     });
@@ -234,6 +281,49 @@ router.post("/interview/advisor", async (req, res) => {
   }
 
   res.end();
+});
+
+// ── POST /interview/extract-context ───────────────────────────────────────────
+// Silently extract and update business context from recent conversation
+router.post("/interview/extract-context", async (req, res) => {
+  const { messages, existingContext = "" } = req.body as {
+    messages: Array<{ role: string; content: string }>;
+    existingContext?: string;
+  };
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    res.json({ context: existingContext });
+    return;
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 300,
+      stream: false,
+      messages: [
+        {
+          role: "system",
+          content: `You extract and update business context from a conversation. Output a short, dense text note (3-8 bullet points max) summarizing what you know about the user's business, industry, role, goals, and needs. Only include concrete facts inferred from the conversation. Skip generic info.
+
+Existing context:
+${existingContext || "None yet."}
+
+Update it based on the new conversation. Keep it brief. Use bullet points. Plain text only — no headers, no markdown formatting beyond bullets.`,
+        },
+        ...messages.slice(-10),
+        {
+          role: "user",
+          content: "Update the business context based on this conversation.",
+        },
+      ],
+    });
+
+    const context = completion.choices[0]?.message?.content?.trim() ?? existingContext;
+    res.json({ context });
+  } catch {
+    res.json({ context: existingContext });
+  }
 });
 
 export default router;

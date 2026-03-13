@@ -132,6 +132,38 @@ export default function PresenterMode() {
   const [currentQ, setCurrentQ] = useState(0);
   const [expanded, setExpanded] = useState<number | null>(null);
 
+  // ── ARIA prefill from chat action ─────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('devdocs_action_prefill');
+      if (!raw) return;
+      const prefill = JSON.parse(raw) as Record<string, unknown>;
+      const age = Date.now() - ((prefill._ts as number) || 0);
+      if (age > 30000) { localStorage.removeItem('devdocs_action_prefill'); return; }
+      localStorage.removeItem('devdocs_action_prefill');
+
+      const tab = prefill.tab as ActiveTab | undefined;
+      if (tab) setTab(tab);
+
+      if (tab === 'conduct' || prefill.subject) {
+        if (prefill.subject) setInterviewSubject(prefill.subject as string);
+        if (prefill.role) setInterviewRole(prefill.role as string);
+        if (prefill.style) setInterviewStyle(prefill.style as 'technical' | 'casual' | 'mixed');
+        if (prefill.count) setQuestionCount(Number(prefill.count));
+        if (tab === 'conduct') setTab('conduct');
+      } else if (tab === 'present' || prefill.topic) {
+        if (prefill.topic) setTopic(prefill.topic as string);
+        if (prefill.context) setContext(prefill.context as string);
+        if (prefill.slideCount) setSlideCount(Number(prefill.slideCount));
+        if (tab === 'present') setTab('present');
+      } else if (tab === 'analyze' || prefill.urls) {
+        if (Array.isArray(prefill.urls)) setUrls(prefill.urls as string[]);
+        if (prefill.focus) setAnalysisFocus(prefill.focus as string);
+        if (tab === 'analyze') setTab('analyze');
+      }
+    } catch {}
+  }, []);
+
   const generateInterview = () => {
     if (!interviewSubject.trim()) return;
     setConductingInterview(true);

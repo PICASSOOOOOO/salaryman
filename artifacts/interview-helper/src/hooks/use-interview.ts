@@ -437,10 +437,81 @@ export function useTypingSimulator() {
 
 // ── Advisor Chat ─────────────────────────────────────────────────────────────
 
-export type ChatMessage = { role: 'user' | 'assistant'; content: string };
+export interface ActionCard {
+  type: string;
+  to: string;
+  tab?: string;
+  label: string;
+  description?: string;
+  autoFill?: Record<string, unknown>;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  action?: ActionCard;
+}
+
+const CHAT_STORAGE_KEY = 'devdocs_chat_history';
+const MEMORY_STORAGE_KEY = 'devdocs_business_memory';
+const MAX_STORED_MESSAGES = 40;
+
+function loadChatHistory(): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveChatHistory(msgs: ChatMessage[]) {
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs.slice(-MAX_STORED_MESSAGES)));
+  } catch {}
+}
+
+function loadBusinessMemory(): string {
+  return localStorage.getItem(MEMORY_STORAGE_KEY) ?? '';
+}
+
+function saveBusinessMemory(mem: string) {
+  try { localStorage.setItem(MEMORY_STORAGE_KEY, mem); } catch {}
+}
+
+function parseAction(text: string): { clean: string; action?: ActionCard } {
+  const match = text.match(/<action>([\s\S]*?)<\/action>/);
+  if (!match) return { clean: text };
+  try {
+    const action = JSON.parse(match[1]) as ActionCard;
+    const clean = text.replace(/<action>[\s\S]*?<\/action>/, '').trim();
+    return { clean, action };
+  } catch {
+    return { clean: text.replace(/<action>[\s\S]*?<\/action>/, '').trim() };
+  }
+}
+
+async function extractBusinessContext(
+  messages: ChatMessage[],
+  existingContext: string
+): Promise<string> {
+  try {
+    const res = await fetch('/api/interview/extract-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: messages.slice(-12).map(m => ({ role: m.role, content: m.content })),
+        existingContext,
+      }),
+    });
+    const data = await res.json();
+    return data.context ?? existingContext;
+  } catch {
+    return existingContext;
+  }
+}
 
 export function useAdvisorChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChatHistory());
+  const [businessMemory, setBusinessMemory] = useState<string>(() => loadBusinessMemory());
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -449,47 +520,76 @@ export function useAdvisorChat() {
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
     const history = [...messages, userMsg];
-    setMessages([...history, { role: 'assistant', content: '' }]);
+    const withPlaceholder: ChatMessage[] = [...history, { role: 'assistant', content: '' }];
+    setMessages(withPlaceholder);
+    saveChatHistory(withPlaceholder);
     setIsStreaming(true);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    let fullText = '';
+
     try {
       await streamSSE(
         '/api/interview/advisor',
-        { messages: history.map(m => ({ role: m.role, content: m.content })) },
+        {
+          messages: history.map(m => ({ role: m.role, content: m.content })),
+          businessMemory,
+        },
         ctrl.signal,
         (chunk) => {
+          fullText += chunk;
           setMessages(prev => {
             const updated = [...prev];
-            const last = updated[updated.length - 1];
-            updated[updated.length - 1] = { role: 'assistant', content: last.content + chunk };
+            updated[updated.length - 1] = { role: 'assistant', content: fullText };
             return updated;
           });
         },
-        () => setIsStreaming(false),
-        (err) => {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', content: `Something went wrong — ${err}` };
-            return updated;
+        () => {
+          // Parse action tags and finalize
+          const { clean, action } = parseAction(fullText);
+          const finalMsg: ChatMessage = { role: 'assistant', content: clean, action };
+          const finalHistory = [...history, finalMsg];
+          setMessages(finalHistory);
+          saveChatHistory(finalHistory);
+          setIsStreaming(false);
+
+          // Background: update business memory
+          const currentMem = loadBusinessMemory();
+          extractBusinessContext(finalHistory, currentMem).then(newMem => {
+            if (newMem !== currentMem) {
+              setBusinessMemory(newMem);
+              saveBusinessMemory(newMem);
+            }
           });
+        },
+        (err) => {
+          const errMsg: ChatMessage = { role: 'assistant', content: `Something went wrong — ${err}` };
+          const finalHistory = [...history, errMsg];
+          setMessages(finalHistory);
+          saveChatHistory(finalHistory);
           setIsStreaming(false);
         }
       );
     } catch {
       setIsStreaming(false);
     }
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, businessMemory]);
 
   const clear = useCallback(() => {
     abortRef.current?.abort();
     setMessages([]);
+    saveChatHistory([]);
     setIsStreaming(false);
   }, []);
 
-  return { messages, isStreaming, send, clear };
+  const clearMemory = useCallback(() => {
+    setBusinessMemory('');
+    saveBusinessMemory('');
+  }, []);
+
+  return { messages, businessMemory, isStreaming, send, clear, clearMemory };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

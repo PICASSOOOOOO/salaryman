@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
@@ -12,14 +13,15 @@ const LANGUAGES = [
 ];
 
 const CHAT_STARTERS = [
-  'explain term life vs whole life insurance',
-  'what does a VP of ops actually do',
-  'explain EBITDA like i\'m not an accountant',
-  'difference between LLC and S-corp',
-  'what is a REST API in plain english',
+  'hey i\'m conducting an interview — what tools should i use and can you set it up?',
+  'i have a zoom call in 10 minutes, what should i prepare?',
+  'can you build me a presentation on why we should expand into insurance?',
+  'what\'s the best way to use this app for a sales meeting?',
+  'analyze these competitor sites for me',
 ];
 
 export default function Home() {
+  const [, navigate] = useLocation();
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
@@ -33,7 +35,18 @@ export default function Home() {
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
   const { scanStatus, answer: scanAnswer, autoPilot, countdown, lastScanMode, intervalSecs, setIntervalSecs, scanOnce, scanChat, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
-  const { messages: chatMessages, isStreaming: chatStreaming, send: sendChat, clear: clearChat } = useAdvisorChat();
+  const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, send: sendChat, clear: clearChat, clearMemory } = useAdvisorChat();
+
+  const handleAriaAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
+    if (action.autoFill || action.tab) {
+      localStorage.setItem('devdocs_action_prefill', JSON.stringify({
+        ...action.autoFill,
+        tab: action.tab,
+        _ts: Date.now(),
+      }));
+    }
+    navigate(action.to);
+  };
 
   const displayResponse = activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
 
@@ -297,7 +310,7 @@ export default function Home() {
                 <button onClick={() => setRightTab('chat')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
                     ${rightTab === 'chat' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
-                  <MessageSquare className="w-3.5 h-3.5" /> Ask Anything
+                  <Bot className="w-3.5 h-3.5" /> ARIA
                 </button>
               </div>
 
@@ -399,12 +412,13 @@ export default function Home() {
                   {chatMessages.length === 0 ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       className="h-full flex flex-col items-center justify-center gap-4 py-8">
+                      {/* ARIA intro */}
                       <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                        <MessageSquare className="w-7 h-7 text-emerald-400/60" />
+                        <Bot className="w-7 h-7 text-emerald-400/60" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-foreground mb-1">Ask me anything</p>
-                        <p className="text-xs text-muted-foreground">Tech, insurance, finance, legal — plain English, no fluff</p>
+                        <p className="text-sm font-medium text-foreground mb-1">Hey, I'm ARIA</p>
+                        <p className="text-xs text-muted-foreground">I run this whole app. Tell me what you're doing and I'll set it all up for you.</p>
                       </div>
                       <div className="flex flex-col gap-2 w-full max-w-xs">
                         {CHAT_STARTERS.map(s => (
@@ -417,9 +431,18 @@ export default function Home() {
                     </motion.div>
                   ) : (
                     <>
+                      {/* Memory chip */}
+                      {businessMemory && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-[11px] text-emerald-400/70">
+                          <Brain className="w-3 h-3 shrink-0" />
+                          <span className="flex-1 line-clamp-1">{businessMemory.split('\n')[0].replace(/^[•\-*]\s*/, '')}</span>
+                          <button onClick={clearMemory} className="text-muted-foreground/40 hover:text-red-400 transition-colors text-[10px]">forget</button>
+                        </div>
+                      )}
+
                       {chatMessages.map((msg, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                           <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed
                             ${msg.role === 'user'
                               ? 'bg-primary/20 text-foreground rounded-br-md'
@@ -433,6 +456,27 @@ export default function Home() {
                               </>
                             ) : msg.content}
                           </div>
+
+                          {/* Action card */}
+                          {msg.role === 'assistant' && msg.action && !chatStreaming && (
+                            <motion.button
+                              initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              onClick={() => handleAriaAction(msg.action!)}
+                              className="mt-2 max-w-[85%] w-full flex items-center gap-3 px-4 py-3 rounded-2xl rounded-tl-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all group text-left"
+                            >
+                              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/30 transition-colors">
+                                <ArrowRight className="w-4 h-4 text-emerald-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-emerald-300 truncate">{msg.action.label}</p>
+                                {msg.action.description && (
+                                  <p className="text-[11px] text-emerald-400/60 truncate">{msg.action.description}</p>
+                                )}
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-emerald-400/40 group-hover:text-emerald-400 transition-colors shrink-0" />
+                            </motion.button>
+                          )}
                         </motion.div>
                       ))}
                       <div ref={chatEndRef} />
@@ -452,7 +496,7 @@ export default function Home() {
                           handleSendChat();
                         }
                       }}
-                      placeholder="ask anything..."
+                      placeholder="tell me what you're doing, I'll set it up..."
                       rows={1}
                       disabled={chatStreaming}
                       className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 disabled:opacity-50 max-h-32 overflow-y-auto"
