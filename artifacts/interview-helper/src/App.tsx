@@ -7,6 +7,7 @@ import ContactCollector from "@/pages/ContactCollector";
 import PresenterMode from "@/pages/PresenterMode";
 import Profile from "@/pages/Profile";
 import Dashboard from "@/pages/Dashboard";
+import Upgrade from "@/pages/Upgrade";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/presenter" component={PresenterMode} />
       <Route path="/profile" component={Profile} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/upgrade" component={Upgrade} />
       <Route component={NotFound} />
     </Switch>
   );

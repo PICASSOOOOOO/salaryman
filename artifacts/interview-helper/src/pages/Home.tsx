@@ -8,6 +8,7 @@ import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { NavBar } from '@/components/NavBar';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { ProGate } from '@/components/ProGate';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -196,6 +197,7 @@ export default function Home() {
 
           {/* CAPTURE BUTTONS */}
           {!autoPilot && (
+            <ProGate inline feature="Live Listen & Scan Screen">
             <div className="grid grid-cols-2 gap-3">
               {/* LIVE LISTEN */}
               <motion.button onClick={handleListen}
@@ -268,6 +270,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            </ProGate>
           )}
 
           {/* PROBLEM DESCRIPTION */}

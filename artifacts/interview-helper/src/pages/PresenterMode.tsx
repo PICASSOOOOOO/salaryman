@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Presentation, ChevronLeft, ChevronRight, Maximize2, Minimize2, Globe, Mic2, Loader2, X, Plus, MessageSquare } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { ProGate } from '@/components/ProGate';
+import { usePlan } from '@/hooks/use-plan';
 
 interface Slide {
   title: string;
@@ -73,6 +75,7 @@ function streamSSESimple(
 type ActiveTab = 'present' | 'analyze' | 'conduct';
 
 export default function PresenterMode() {
+  const { isPro, loading: planLoading } = usePlan();
   const [tab, setTab] = useState<ActiveTab>('present');
 
   // ── Presentation ──────────────────────────────────────────────────────────
@@ -182,6 +185,15 @@ export default function PresenterMode() {
 
   const slide = presentation?.slides[currentSlide];
   const totalSlides = presentation?.slides.length ?? 0;
+
+  if (!planLoading && !isPro) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <NavBar />
+        <ProGate feature="Presenter Mode" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">

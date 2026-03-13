@@ -4,6 +4,8 @@ import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp, Mail, Loader2
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
+import { ProGate } from '@/components/ProGate';
+import { usePlan } from '@/hooks/use-plan';
 
 interface Contact {
   id: number;
@@ -51,6 +53,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
+  const { isPro, loading: planLoading } = usePlan();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...EMPTY });
@@ -163,6 +166,15 @@ export default function ContactCollector() {
   };
 
   const f = (k: keyof typeof EMPTY) => (v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  if (!planLoading && !isPro) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <NavBar />
+        <ProGate feature="Contacts" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

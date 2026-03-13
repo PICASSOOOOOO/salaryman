@@ -6,6 +6,7 @@ import toolsRouter from "./tools";
 import authRouter from "./auth";
 import accountRouter from "./account";
 import workspaceRouter from "./workspace";
+import planRouter from "./plan";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(interviewRouter);
 router.use(toolsRouter);
 router.use(accountRouter);
 router.use(workspaceRouter);
+router.use(planRouter);
 
 export default router;

@@ -1,19 +1,28 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap } from 'lucide-react';
 import frontmanLogo from '../assets/frontman-logo-c.png';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
+import { usePlan } from '../hooks/use-plan';
+
+const NAV_ITEMS = [
+  { path: '/', pro: false },
+  { path: '/presenter', pro: true },
+  { path: '/contacts', pro: true },
+  { path: '/dashboard', pro: true },
+];
 
 export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
-  const { mode, config, toggleMode, isDiscreet } = useAppMode();
+  const { config, toggleMode, isDiscreet } = useAppMode();
+  const { isPro } = usePlan();
 
   const NAV = [
-    { path: '/', label: config.navLabel, icon: Terminal },
-    { path: '/presenter', label: 'Presenter', icon: Presentation },
-    { path: '/contacts', label: 'Contacts', icon: Users },
-    { path: '/dashboard', label: 'Workspace', icon: LayoutDashboard },
+    { path: '/', label: config.navLabel, icon: Terminal, pro: false },
+    { path: '/presenter', label: 'Presenter', icon: Presentation, pro: true },
+    { path: '/contacts', label: 'Contacts', icon: Users, pro: true },
+    { path: '/dashboard', label: 'Workspace', icon: LayoutDashboard, pro: true },
   ];
 
   return (
@@ -48,19 +57,35 @@ export function NavBar() {
       </div>
 
       <nav className="flex items-center gap-1">
-        {NAV.map(({ path, label, icon: Icon }) => {
+        {NAV.map(({ path, label, icon: Icon, pro }) => {
           const active = location === path || (path !== '/' && location.startsWith(path));
+          const locked = pro && !isPro;
           return (
             <button key={path} onClick={() => navigate(path)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
                 ${active
                   ? 'bg-primary/20 text-primary border border-primary/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                  : locked
+                    ? 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
               <Icon className="w-3.5 h-3.5" />
               {label}
+              {locked && (
+                <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary/70 border border-primary/20 leading-none">
+                  PRO
+                </span>
+              )}
             </button>
           );
         })}
+
+        {!isPro && (
+          <button onClick={() => navigate('/upgrade')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors ml-1">
+            <Zap className="w-3.5 h-3.5" />
+            Upgrade
+          </button>
+        )}
 
         <div className="ml-2 pl-2 border-l border-border flex items-center gap-2">
           {isLoading ? (

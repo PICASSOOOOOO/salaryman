@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
+import { ProGate } from '@/components/ProGate';
+import { usePlan } from '@/hooks/use-plan';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -465,6 +467,7 @@ type Tab = 'projects' | 'knowledge' | 'creative';
 
 export default function Dashboard() {
   const { isAuthenticated } = useAuth();
+  const { isPro, loading: planLoading } = usePlan();
   const [tab, setTab] = useState<Tab>('projects');
 
   const tabs: { id: Tab; label: string; icon: React.FC<any> }[] = [
@@ -480,6 +483,15 @@ export default function Dashboard() {
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground text-sm">Sign in to access your workspace.</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!planLoading && !isPro) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <NavBar />
+        <ProGate feature="Workspace" />
       </div>
     );
   }

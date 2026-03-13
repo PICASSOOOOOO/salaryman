@@ -4,6 +4,17 @@
 
 pnpm workspace monorepo using TypeScript. "Frontman" is an executive AI productivity suite (CEO assistant) with branding dual-mode: "Frontman by Picassoo.ai" (real) and "DevDocs" (discreet cover). Part of the Picassoo.ai product suite alongside Salaryman and Calll Home.
 
+## Freemium Model
+
+- **Free tier**: PABLO AI chat only (fully functional, always free)
+- **Pro tier** ($19/mo): Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Workspace (Projects, Knowledge Base, Creative Kit)
+- **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
+- **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
+- **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email
+- **Webhook endpoint**: `POST /api/plan/activate` — protected by `WEBHOOK_SECRET` env var for Stripe/payment callbacks
+- **DB table**: `user_tiers` — stores tier assignments; auto-created by `ensureTables()` in `plan.ts`
+- **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
+
 ## Integrations
 - **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.
 - **AI**: OpenAI via Replit integration (`@workspace/integrations-openai-ai-server`)
