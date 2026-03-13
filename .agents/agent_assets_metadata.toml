@@ -66,3 +66,9 @@ id = "Pny8yFoIMmeoJ_-ge_dCn"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo-j.png"
 type = "image"
 title = "Option J — 80s Neon F"
+
+[[outputs]]
+id = "y3mLWX4pj1gIf30yaYAKi"
+uri = "file://attached_assets/generated_images/frontman-pro-product.png"
+type = "image"
+title = "Frontman Pro — Stripe Product Image"
