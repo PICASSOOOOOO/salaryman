@@ -1,4 +1,4 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -189,6 +189,34 @@ export function NavBar() {
               </button>
             );
           })}
+
+          <button
+            onClick={() => navigate('/world')}
+            className="flex items-center gap-1.5 px-3 py-2 transition-all"
+            style={{
+              fontFamily: "'Share Tech Mono', monospace",
+              fontSize: '0.65rem',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'rgba(0,255,65,0.7)',
+              border: '1px solid rgba(0,255,65,0.35)',
+              background: 'rgba(0,255,65,0.06)',
+              marginRight: '0.25rem',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.12)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.6)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#00ff41';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.06)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.35)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,65,0.7)';
+            }}
+          >
+            <Globe className="w-3 h-3" />
+            WORLD
+          </button>
 
           {!isPro && (
             <button
