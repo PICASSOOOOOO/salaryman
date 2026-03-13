@@ -2442,30 +2442,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* TOP-LEFT — player identity */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .6rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.3rem .6rem' }}>
           <div style={{ width: 6, height: 6, background: '#00ff41', boxShadow: '0 0 6px rgba(0,255,65,.7)' }} />
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
-          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.15)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.55)', border: '1px solid rgba(0,255,65,.25)', padding: '1px 4px' }}>PABLO</span>}
+          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
+          {hasDevice && <span style={{ fontSize: '.45rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
           {char.hasBusiness === false && <span style={{ fontSize: '.45rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
         </div>
         <div style={{ display: 'flex', gap: '3px' }}>
           {/* HP */}
-          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.18)', padding: '.25rem .5rem', minWidth: 90 }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '3px' }}>HP</div>
-            <div style={{ position: 'relative', height: 4, background: 'rgba(0,255,65,.08)', width: '100%' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem', minWidth: 90 }}>
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>HP</div>
+            <div style={{ position: 'relative', height: 4, background: 'rgba(0,255,65,.15)', width: '100%' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${hpPct}%`, background: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', boxShadow: `0 0 4px ${hpPct > 50 ? 'rgba(0,255,65,.5)' : 'rgba(255,0,0,.5)'}`, transition: 'width .2s, background .2s' }} />
             </div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', letterSpacing: '.06em', marginTop: '2px' }}>{Math.floor(hpPct)}/100</div>
           </div>
           {/* Salary */}
-          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.18)', padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '3px' }}>CREAM</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem' }}>
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>CREAM</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ç{salary.toLocaleString()}</div>
           </div>
           {/* Zone */}
-          <div style={{ background: 'rgba(0,6,0,.82)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.2)' : 'rgba(0,255,65,.18)'}`, padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '3px' }}>ZONE</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.25rem .5rem' }}>
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>ZONE</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '2px' }}>{zone}</div>
           </div>
         </div>
@@ -2476,9 +2476,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             { label: 'THIRST', val: thirst, col: thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622' },
             { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
           ].map(({ label, val, col }) => (
-            <div key={label} style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', minWidth: 68 }}>
-              <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
-              <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.07)' }}>
+            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 68 }}>
+              <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
+              <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
               </div>
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: col, letterSpacing: '.04em', marginTop: '1px' }}>{val}</div>
@@ -2487,13 +2487,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
         {/* Level / EXP / Poison row */}
         <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
-          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', minWidth: 50 }}>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 50 }}>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
           </div>
-          <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(0,255,65,.14)', padding: '.22rem .45rem', flex: 1 }}>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
-            <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.07)', marginBottom: '1px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', flex: 1 }}>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
+            <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)', marginBottom: '1px' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
             </div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
@@ -2516,10 +2516,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ONLINE PLAYERS — below minimap, top-right */}
       {online.length > 0 && (
-        <div style={{ position: 'absolute', top: 170, right: 10, width: 156, background: 'rgba(0,5,0,.88)', border: '1px solid rgba(0,255,65,.18)', zIndex: 100, padding: '.35rem .45rem' }}>
-          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
+        <div style={{ position: 'absolute', top: 170, right: 10, width: 156, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', zIndex: 100, padding: '.35rem .45rem' }}>
+          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.25rem' }}>{online.length} ONLINE</div>
           {online.slice(0, 5).map(p => (
-            <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.5)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
+            <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); }} style={{ fontSize: '.55rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.75)', lineHeight: 1.7, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
               {speakIds.has(p.id) && <span style={{ fontSize: '.5rem' }}>🎙</span>}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             </div>
@@ -2530,38 +2530,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* BOTTOM — narration + action buttons */}
       <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10, zIndex: 100, display: 'flex', alignItems: 'flex-end', gap: '.5rem', pointerEvents: 'none' }}>
         {/* Narration */}
-        <div style={{ flex: 1, background: 'rgba(0,6,0,.88)', border: '1px solid rgba(0,255,65,.18)', padding: '.5rem .75rem', pointerEvents: 'none' }}>
+        <div style={{ flex: 1, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .75rem', pointerEvents: 'none' }}>
           {nearB && (
-            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.2rem' }}>
+            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.2rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em' }}>WASD move · E enter · F attack · C chat · V voice · P device · ESC close</div>
+          <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.42rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · F attack · C chat · V voice · P device · ESC close</div>
         </div>
         {/* Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', pointerEvents: 'all' }}>
-          <button onClick={toggleVoice} style={{ padding: '.35rem .6rem', background: voice ? (speaking ? 'rgba(0,255,180,.12)' : 'rgba(0,255,65,.1)') : 'rgba(0,5,0,.88)', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,180,.6)' : 'rgba(0,255,65,.4)') : 'rgba(0,255,65,.15)'}`, color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={toggleVoice} style={{ padding: '.35rem .6rem', background: voice ? (speaking ? 'rgba(0,255,180,.12)' : 'rgba(0,255,65,.1)') : 'rgba(0,8,0,.92)', border: `1px solid ${voice ? (speaking ? 'rgba(0,255,180,.6)' : 'rgba(0,255,65,.4)') : 'rgba(0,255,65,.35)'}`, color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
           </button>
-          <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ padding: '.35rem .6rem', background: muted ? 'rgba(255,34,102,.08)' : 'rgba(0,5,0,.88)', border: muted ? '1px solid rgba(255,34,102,.4)' : '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ padding: '.35rem .6rem', background: muted ? 'rgba(255,34,102,.08)' : 'rgba(0,8,0,.92)', border: muted ? '1px solid rgba(255,34,102,.4)' : '1px solid rgba(0,255,65,.35)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             {muted ? '✕ MUTE' : '♪ SND'}
           </button>
-          <button onClick={() => { setChatOpen(v => !v); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
+          <button onClick={() => { setChatOpen(v => !v); setUnread(0); }} style={{ padding: '.35rem .6rem', background: chatOpen ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center', position: 'relative' }}>
             {unread > 0 && <span style={{ position: 'absolute', top: 2, right: 3, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             CHAT [C]
           </button>
-          <button onClick={() => setShowMap(v => !v)} style={{ padding: '.35rem .6rem', background: showMap ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.88)', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => setShowMap(v => !v)} style={{ padding: '.35rem .6rem', background: showMap ? 'rgba(0,255,65,.1)' : 'rgba(0,8,0,.92)', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.35)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             MAP [M]
           </button>
-          <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.88)', border: showPablo ? '1px solid rgba(0,255,65,.55)' : hasDevice ? '1px solid rgba(0,255,65,.3)' : '1px solid rgba(0,255,65,.1)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.55)' : 'rgba(0,255,65,.22)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 64, textAlign: 'center', position: 'relative' }}>
-            <span style={{ fontSize: '.38rem', display: 'block', lineHeight: 1, color: hasDevice ? (showPablo ? '#00ff41' : 'rgba(0,255,65,.45)') : 'rgba(255,60,60,.5)', letterSpacing: '.1em' }}>{hasDevice ? '● AI' : '○ OFF'}</span>
+          <button onClick={() => setShowPablo(v => !v)} style={{ padding: '.35rem .6rem', background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,8,0,.92)', border: showPablo ? '1px solid rgba(0,255,65,.55)' : hasDevice ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.25)', color: showPablo ? '#00ff41' : hasDevice ? 'rgba(0,255,65,.7)' : 'rgba(0,255,65,.42)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 64, textAlign: 'center', position: 'relative' }}>
+            <span style={{ fontSize: '.38rem', display: 'block', lineHeight: 1, color: hasDevice ? (showPablo ? '#00ff41' : 'rgba(0,255,65,.6)') : 'rgba(255,60,60,.6)', letterSpacing: '.1em' }}>{hasDevice ? '● AI' : '○ OFF'}</span>
             PABLO [P]
           </button>
-          <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,5,0,.88)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.28)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => setShowStats(v => !v)} style={{ padding: '.35rem .6rem', background: showStats ? 'rgba(255,170,0,.08)' : 'rgba(0,8,0,.92)', border: showStats ? '1px solid rgba(255,170,0,.4)' : '1px solid rgba(0,255,65,.35)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.58rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             STATS
           </button>
-          <button onClick={() => navigate('/world')} style={{ padding: '.35rem .6rem', background: 'rgba(0,5,0,.88)', border: '1px solid rgba(0,255,65,.1)', color: 'rgba(0,255,65,.2)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
+          <button onClick={() => navigate('/world')} style={{ padding: '.35rem .6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", minWidth: 56, textAlign: 'center' }}>
             ← MENU
           </button>
         </div>
