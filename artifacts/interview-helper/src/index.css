@@ -1,100 +1,414 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: 'Outfit', sans-serif;
+  --font-sans: 'Share Tech Mono', monospace;
   --font-mono: 'Fira Code', monospace;
+  --font-display: 'VT323', monospace;
 
-  /* Premium Dark IDE Theme */
-  --color-background: hsl(228 20% 6%);
-  --color-foreground: hsl(228 15% 90%);
-  
-  --color-card: hsl(228 20% 9%);
-  --color-card-foreground: hsl(228 15% 90%);
-  
-  --color-popover: hsl(228 20% 9%);
-  --color-popover-foreground: hsl(228 15% 90%);
-  
-  --color-border: hsl(228 20% 16%);
-  --color-input: hsl(228 20% 16%);
-  --color-ring: hsl(215 100% 65%);
-  
-  --color-primary: hsl(215 100% 65%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  
-  --color-secondary: hsl(228 20% 14%);
-  --color-secondary-foreground: hsl(228 15% 90%);
-  
-  --color-muted: hsl(228 20% 12%);
-  --color-muted-foreground: hsl(228 15% 60%);
-  
-  --color-accent: hsl(270 100% 65%);
-  --color-accent-foreground: hsl(0 0% 100%);
-  
-  --color-destructive: hsl(0 84% 60%);
+  /* PABLO Device — Phosphor Green CRT Theme */
+  --color-background: hsl(120 60% 2%);
+  --color-foreground: hsl(120 100% 75%);
+
+  --color-card: hsl(120 50% 4%);
+  --color-card-foreground: hsl(120 100% 75%);
+
+  --color-popover: hsl(120 50% 4%);
+  --color-popover-foreground: hsl(120 100% 75%);
+
+  --color-border: hsl(120 60% 14%);
+  --color-input: hsl(120 50% 6%);
+  --color-ring: hsl(120 100% 50%);
+
+  --color-primary: hsl(120 100% 50%);
+  --color-primary-foreground: hsl(120 60% 2%);
+
+  --color-secondary: hsl(120 50% 7%);
+  --color-secondary-foreground: hsl(120 100% 65%);
+
+  --color-muted: hsl(120 40% 6%);
+  --color-muted-foreground: hsl(120 60% 40%);
+
+  --color-accent: hsl(120 100% 50%);
+  --color-accent-foreground: hsl(120 60% 2%);
+
+  --color-destructive: hsl(0 100% 50%);
   --color-destructive-foreground: hsl(0 0% 100%);
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 1px;
+  --radius-xl: 2px;
 }
 
 :root {
   color-scheme: dark;
 }
 
+/* ─── CRT Scan Lines Overlay ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ─── CRT Vignette Overlay ─── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
+  pointer-events: none;
+  z-index: 9997;
+}
+
 @layer base {
   body {
-    @apply bg-background text-foreground font-sans antialiased min-h-screen selection:bg-primary/30 selection:text-primary-foreground;
-    background-image: 
-      radial-gradient(circle at 15% 50%, hsl(215 100% 65% / 0.04), transparent 25%),
-      radial-gradient(circle at 85% 30%, hsl(270 100% 65% / 0.04), transparent 25%);
-    background-attachment: fixed;
+    @apply bg-background text-foreground font-sans min-h-screen;
+    background-color: #030803;
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(0, 255, 65, 0.04) 0%, transparent 60%);
+    animation: crt-flicker 10s infinite;
   }
 
-  /* Custom Scrollbar for IDE feel */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full border-[3px] border-solid border-background;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
-  }
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.5); }
 
-  /* Markdown prose styling */
-  .prose {
-    @apply text-foreground max-w-none;
+  /* ─── Selection ─── */
+  ::selection { background: rgba(0,255,65,0.3); color: #00ff41; }
+
+  /* ─── Markdown prose ─── */
+  .prose { @apply text-foreground max-w-none; }
+  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(0,255,65,0.8); }
+  .prose strong { @apply font-bold; color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6); }
+  .prose em { color: rgba(0,255,65,0.7); font-style: normal; }
+  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(0,255,65,0.8); }
+  .prose li { @apply mb-1 text-sm; }
+  .prose li::marker { color: #00ff41; }
+  .prose h1, .prose h2, .prose h3 {
+    color: #00ff41;
+    text-shadow: 0 0 12px rgba(0,255,65,0.7);
+    font-family: 'VT323', monospace;
+    letter-spacing: 0.05em;
+    @apply font-normal mb-3 mt-5;
   }
-  .prose p {
-    @apply leading-relaxed mb-4 text-muted-foreground text-[15px];
+  .prose h1 { font-size: 2rem; }
+  .prose h2 { font-size: 1.6rem; }
+  .prose h3 { font-size: 1.3rem; }
+  .prose code {
+    font-family: 'Fira Code', monospace;
+    background: rgba(0,255,65,0.08);
+    border: 1px solid rgba(0,255,65,0.2);
+    padding: 0.1em 0.4em;
+    color: #00ff41;
+    text-shadow: 0 0 6px rgba(0,255,65,0.4);
+    border-radius: 0;
   }
-  .prose strong {
-    @apply text-foreground font-semibold;
-  }
-  .prose ul {
-    @apply list-disc pl-6 mb-4 space-y-1 text-muted-foreground;
-  }
-  .prose ol {
-    @apply list-decimal pl-6 mb-4 space-y-1 text-muted-foreground;
-  }
-  .prose h1, .prose h2, .prose h3, .prose h4 {
-    @apply text-foreground font-semibold tracking-tight mt-8 mb-4;
-  }
-  .prose h1 { @apply text-2xl; }
-  .prose h2 { @apply text-xl; }
-  .prose h3 { @apply text-lg; }
-  
   .prose pre {
-    @apply !bg-muted !p-0 rounded-xl border border-border overflow-hidden mb-6 mt-2;
+    background: rgba(0,255,65,0.04) !important;
+    border: 1px solid rgba(0,255,65,0.2) !important;
+    border-radius: 0 !important;
   }
-  .prose p code {
-    @apply bg-secondary text-primary font-mono text-[0.85em] px-1.5 py-0.5 rounded-md;
+  .prose pre code {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
   }
+  .prose a { color: #00ff41; text-decoration: underline; text-underline-offset: 3px; }
+  .prose blockquote {
+    border-left: 2px solid rgba(0,255,65,0.4);
+    padding-left: 1rem;
+    color: rgba(0,255,65,0.6);
+    margin-left: 0;
+    font-style: normal;
+  }
+  .prose hr { border-color: rgba(0,255,65,0.2); }
+  .prose table { width: 100%; }
+  .prose th { color: #00ff41; border-bottom: 1px solid rgba(0,255,65,0.3); text-align: left; padding: 0.5rem; }
+  .prose td { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 0.5rem; color: rgba(0,255,65,0.7); }
+
+  /* Syntax highlighter override */
+  .shiki, .shiki span { background: transparent !important; }
+}
+
+/* ─── Animations ─── */
+@keyframes crt-flicker {
+  0%, 100%     { opacity: 1; }
+  92%          { opacity: 1; }
+  93%          { opacity: 0.96; }
+  94%          { opacity: 1; }
+  96%          { opacity: 0.98; }
+  97%          { opacity: 1; }
+}
+
+@keyframes scanline-move {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes phosphor-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(0,255,65,0.6), 0 0 16px rgba(0,255,65,0.3); }
+  50%      { text-shadow: 0 0 12px rgba(0,255,65,0.9), 0 0 24px rgba(0,255,65,0.5), 0 0 40px rgba(0,255,65,0.2); }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+@keyframes crt-on {
+  0%   { transform: scaleY(0.005) scaleX(1); opacity: 0.8; }
+  8%   { transform: scaleY(0.005) scaleX(1); opacity: 1; }
+  14%  { transform: scaleY(1.01) scaleX(1.01); }
+  20%  { transform: scaleY(0.98) scaleX(0.98); }
+  30%  { transform: scaleY(1); }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes data-scroll {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes glitch-1 {
+  0%, 95%, 100% { clip-path: inset(0); transform: translate(0); }
+  96% { clip-path: inset(30% 0 20% 0); transform: translate(-3px, 1px); }
+  97% { clip-path: inset(60% 0 5% 0); transform: translate(3px, -1px); }
+  98% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 2px); }
+}
+
+/* ─── Utility Classes ─── */
+.crt-text {
+  color: #00ff41;
+  text-shadow: 0 0 8px rgba(0,255,65,0.6), 0 0 16px rgba(0,255,65,0.3);
+}
+
+.crt-text-pulse {
+  color: #00ff41;
+  animation: phosphor-pulse 3s ease-in-out infinite;
+}
+
+.crt-border {
+  border: 1px solid rgba(0,255,65,0.3);
+  box-shadow: 0 0 8px rgba(0,255,65,0.08), inset 0 0 8px rgba(0,255,65,0.03);
+}
+
+.crt-border-bright {
+  border: 1px solid rgba(0,255,65,0.6);
+  box-shadow: 0 0 12px rgba(0,255,65,0.2), inset 0 0 12px rgba(0,255,65,0.05);
+}
+
+.crt-panel {
+  background: rgba(0, 20, 0, 0.85);
+  border: 1px solid rgba(0,255,65,0.25);
+  box-shadow:
+    0 0 0 1px rgba(0,255,65,0.05),
+    inset 0 0 30px rgba(0,255,65,0.03);
+}
+
+.crt-panel-active {
+  background: rgba(0, 30, 0, 0.9);
+  border: 1px solid rgba(0,255,65,0.6);
+  box-shadow:
+    0 0 16px rgba(0,255,65,0.15),
+    inset 0 0 20px rgba(0,255,65,0.06);
+}
+
+.crt-btn {
+  background: transparent;
+  border: 1px solid rgba(0,255,65,0.4);
+  color: #00ff41;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  transition: all 0.15s;
+  cursor: pointer;
+  position: relative;
+  padding: 0.4rem 0.8rem;
+}
+
+.crt-btn:hover {
+  background: rgba(0,255,65,0.12);
+  border-color: rgba(0,255,65,0.8);
+  box-shadow: 0 0 12px rgba(0,255,65,0.2);
+  text-shadow: 0 0 8px rgba(0,255,65,0.6);
+}
+
+.crt-btn-primary {
+  background: rgba(0,255,65,0.15);
+  border: 1px solid rgba(0,255,65,0.7);
+  color: #00ff41;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  box-shadow: 0 0 10px rgba(0,255,65,0.15);
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  transition: all 0.15s;
+}
+
+.crt-btn-primary:hover {
+  background: rgba(0,255,65,0.25);
+  box-shadow: 0 0 20px rgba(0,255,65,0.3);
+  text-shadow: 0 0 8px rgba(0,255,65,0.8);
+}
+
+.crt-input {
+  background: rgba(0, 15, 0, 0.9);
+  border: 1px solid rgba(0,255,65,0.3);
+  color: #00ff41;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  caret-color: #00ff41;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.crt-input:focus {
+  border-color: rgba(0,255,65,0.7);
+  box-shadow: 0 0 12px rgba(0,255,65,0.15), inset 0 0 8px rgba(0,255,65,0.04);
+}
+
+.crt-input::placeholder {
+  color: rgba(0,255,65,0.3);
+}
+
+.crt-label {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: rgba(0,255,65,0.5);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.crt-divider {
+  border: none;
+  border-top: 1px solid rgba(0,255,65,0.15);
+  width: 100%;
+}
+
+.cursor-blink::after {
+  content: '_';
+  animation: cursor-blink 1s step-end infinite;
+  color: #00ff41;
+}
+
+.glitch {
+  animation: glitch-1 8s infinite;
+}
+
+/* ─── Status Dot ─── */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff41;
+  box-shadow: 0 0 6px #00ff41;
+  animation: phosphor-pulse 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+.status-dot.offline {
+  background: rgba(0,255,65,0.2);
+  box-shadow: none;
+  animation: none;
+}
+
+.status-dot.warning {
+  background: #ffaa00;
+  box-shadow: 0 0 6px #ffaa00;
+}
+
+/* ─── VT323 Display Text ─── */
+.display-text {
+  font-family: 'VT323', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Tab / Nav Active ─── */
+.crt-tab {
+  border-bottom: 2px solid transparent;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(0,255,65,0.4);
+  padding: 0.5rem 0.75rem;
+  transition: all 0.15s;
+  cursor: pointer;
+  background: transparent;
+  border-top: 1px solid transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+}
+
+.crt-tab:hover {
+  color: rgba(0,255,65,0.8);
+  background: rgba(0,255,65,0.05);
+}
+
+.crt-tab.active {
+  color: #00ff41;
+  border-top-color: rgba(0,255,65,0.5);
+  border-left-color: rgba(0,255,65,0.5);
+  border-right-color: rgba(0,255,65,0.5);
+  border-bottom-color: transparent;
+  background: rgba(0,255,65,0.08);
+  text-shadow: 0 0 8px rgba(0,255,65,0.5);
+}
+
+/* ─── Scrolling Data BG ─── */
+.data-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.data-bg::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: rgba(0,255,65,0.03);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  line-height: 1.4;
+  word-break: break-all;
+  pointer-events: none;
+  z-index: 0;
+  animation: data-scroll 60s linear infinite;
+}
+
+/* ─── Override Radix / shadcn components ─── */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* ─── Code block override ─── */
+pre {
+  background: rgba(0, 15, 0, 0.9) !important;
+  border: 1px solid rgba(0,255,65,0.2) !important;
+  border-radius: 0 !important;
+  padding: 1rem !important;
+}
+
+code {
+  font-family: 'Fira Code', monospace !important;
+  color: #00ff41 !important;
 }

@@ -1,13 +1,24 @@
-# Workspace — Frontman by Picassoo.ai
+# Workspace — Salaryman by Picassoo.ai (PABLO device)
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. "Frontman" is an executive AI productivity suite (CEO assistant) with branding dual-mode: "Frontman by Picassoo.ai" (real) and "DevDocs" (discreet cover). Part of the Picassoo.ai product suite alongside Salaryman and Calll Home.
+pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — an AI-powered executive productivity suite and the foundation of a post-apocalyptic MMO world. **PABLO** is the in-world mega-corporation whose products power the suite. The app is the "PABLO device" players carry. Branding dual-mode: "SALARYMAN / PABLO CORP. DEVICE v1.0" (real) and "DevDocs" (discreet cover). Part of the Picassoo.ai product suite.
+
+### Brand Architecture
+- **Salaryman** — master brand, the world, the game (future MMO: Cyberpunk × Fallout × FF7 × Blade Runner, 1980s Japan post-apocalyptic)
+- **PABLO** — in-world mega-corporation that manufactures all the tools (AI assistant, devices, software)
+- **Calll Home** — PABLO's CRM + dialer product, lives inside the suite (insurance industry, needs API connection)
+- **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home, formerly "Frontman")
+
+### UI Theme
+- CRT/Pip-Boy aesthetic: phosphor green (#00ff41) on black, scan lines, VT323 + Share Tech Mono fonts
+- All borders square (no border-radius), terminal language (UPPERCASE labels, monospace)
+- Multiple skins planned (same features, different look)
 
 ## Freemium Model
 
 - **Free tier**: PABLO AI chat only (fully functional, always free)
-- **Pro tier** ($19/mo): Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Workspace (Projects, Knowledge Base, Creative Kit)
+- **Pro tier** ($29/mo): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Workspace
 - **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
 - **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
 - **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email

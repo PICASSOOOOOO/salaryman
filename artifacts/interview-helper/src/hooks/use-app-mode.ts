@@ -3,17 +3,17 @@ import { useState, useEffect, useCallback } from 'react';
 export type AppMode = 'branded' | 'discreet';
 
 export const BRANDED_CONFIG = {
-  name: 'Frontman',
-  sub: 'by Picassoo.ai',
-  navLabel: 'Frontman',
-  emailSender: 'Frontman',
-  description: 'Your executive AI suite',
+  name: 'SALARYMAN',
+  sub: 'PABLO CORP. DEVICE v1.0',
+  navLabel: 'PABLO',
+  emailSender: 'Salaryman',
+  description: 'PABLO AI — Executive Field Unit',
 } as const;
 
 export const DISCREET_CONFIG = {
-  name: 'DevDocs',
+  name: 'DEVDOCS',
   sub: 'v3.1.2 — reference',
-  navLabel: 'DevDocs',
+  navLabel: 'DEVDOCS',
   emailSender: 'DevDocs',
   description: 'Developer reference tools',
 } as const;

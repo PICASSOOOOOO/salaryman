@@ -34,13 +34,16 @@ export default function Upgrade() {
         {/* Header */}
         <div className="text-center mb-10 mt-6">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-4">
-              <Star className="w-3 h-3" /> Frontman by Picassoo.ai
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 crt-border" style={{ background: 'rgba(0,255,65,0.06)' }}>
+              <Star className="w-3 h-3" style={{ color: '#00ff41' }} />
+              <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP. — SALARYMAN</span>
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-3">Simple, honest pricing</h1>
-            <p className="text-muted-foreground max-w-md mx-auto">
+            <h1 className="display-text mb-3" style={{ fontSize: '2.5rem', color: '#00ff41', textShadow: '0 0 20px rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
+              ACCESS TIERS
+            </h1>
+            <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
               Start free with PABLO. Upgrade when you're ready to unlock the full suite.
-              No tricks, no hidden fees.
+              No tricks. No hidden fees.
             </p>
           </motion.div>
         </div>
@@ -104,7 +107,7 @@ export default function Upgrade() {
             <div className="mb-5">
               <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Pro</p>
               <div className="flex items-end gap-1 mb-1">
-                <span className="text-4xl font-bold text-foreground">$19</span>
+                <span className="text-4xl font-bold text-foreground">$29</span>
                 <span className="text-muted-foreground text-sm mb-1">/mo</span>
               </div>
               <p className="text-xs text-muted-foreground">Full access to all tools</p>
@@ -153,8 +156,8 @@ export default function Upgrade() {
           className="bg-card border border-border rounded-2xl p-6 space-y-4">
           <p className="text-sm font-bold text-foreground">Good to know</p>
           {[
-            ["Will PABLO always be free?", "Yes. PABLO chat is the core of Frontman and will always be available on the free plan."],
-            ["How do I upgrade?", "Payments are launching soon through Picassoo.ai. You can request early access by emailing hello@picassoo.ai."],
+            ["Will PABLO always be free?", "Yes. PABLO chat is the core of Salaryman and will always be available on the free tier."],
+            ["How do I upgrade?", "Payments are launching soon. You can request early access by emailing hello@picassoo.ai."],
             ["Can I cancel anytime?", "Absolutely. No contracts, no lock-in."],
             ["I'm a startup — is there a discount?", "Yes. Reach out and we'll work something out."],
           ].map(([q, a]) => (
