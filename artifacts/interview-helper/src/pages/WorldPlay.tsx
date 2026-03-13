@@ -39,12 +39,22 @@ const BUILDINGS = [
   { id: 'print_shop',   x: 1360, y: 590, w: 100, h: 60, label: 'PRINT SHOP',       bright: false },
   { id: 'east_bunker',  x: 1700, y: 610, w: 110, h: 75, label: 'EAST BUNKER',      bright: false },
   { id: 'north_gate',   x: 2150, y: 490, w: 90,  h: 60, label: 'NORTH GATE',       bright: false },
+  // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
+  { id: 'hotel_midgar',  x: 100,  y: 140, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true  },
+  { id: 'inn_mother',    x: 1150, y: 510, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false },
+  { id: 'overlook',      x: 2250, y: 600, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true  },
+  { id: 'safe_house',    x: 1090, y: 650, w: 90,  h: 65,  label: 'SAFE HOUSE 7',     bright: false },
   // ── WASTELAND OUTPOSTS ───────────────────────────────────────────────────────
-  { id: 'outpost_alpha',x: 140,  y: 960, w: 120, h: 80, label: 'OUTPOST ALPHA',    bright: true  },
-  { id: 'outpost_beta', x: 1180, y:1100, w: 100, h: 70, label: 'OUTPOST BETA',     bright: true  },
-  { id: 'supply_cache', x: 640,  y:1440, w: 130, h: 80, label: 'SUPPLY CACHE',     bright: false },
-  { id: 'deep_bunker',  x: 1840, y:1290, w: 120, h: 80, label: 'DEEP BUNKER',      bright: false },
-  { id: 'crystal3',     x:  990, y:1640, w: 28,  h: 28, label: 'SAVE POINT',       bright: true  },
+  { id: 'outpost_alpha', x: 140,  y: 960, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true  },
+  { id: 'outpost_beta',  x: 1180, y:1100, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true  },
+  { id: 'supply_cache',  x: 640,  y:1440, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false },
+  { id: 'deep_bunker',   x: 1840, y:1290, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false },
+  { id: 'crystal3',      x:  990, y:1640, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true  },
+  // ── HOSTELS / SHELTERS (wasteland) ───────────────────────────────────────────
+  { id: 'prancing_pony', x: 300,  y:1090, w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true  },
+  { id: 'zanarkand_inn', x: 760,  y:1270, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false },
+  { id: 'terminus',      x: 380,  y:1650, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false },
+  { id: 'fort_dracula',  x: 2100, y:1520, w: 100, h: 100, label: 'FORT DRACULA',     bright: true  },
 ];
 
 // ── Gang territories (wasteland) ──────────────────────────────────────────────
@@ -89,11 +99,38 @@ const NPCS = [
   { name: 'AX',        x: 960,  y: 950,  type: 'human',   gender: 'm', whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
   { name: 'SCAV',      x: 450,  y: 830,  type: 'human',   gender: 'm', whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
   { name: 'ERDRICK',   x: 820,  y: 1010, type: 'human',   gender: 'm', whisper: 'The tablets say there was a hero before all this. Warrior of Light. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
-  { name: 'CASSANDRA', x: 650,  y: 1150, type: 'mutant',  gender: 'f', whisper: 'I told them. I told all of them. The city would collapse. Nobody listened. They never do. Now they ask me what comes next. I stopped answering that question.' },
-  { name: 'HAWK',      x: 1320, y: 940,  type: 'human',   gender: 'm', whisper: 'I was a knight. Then a pirate. Now this. The transformation is complete. I carry a sword because it\'s all I know. The wasteland respects that.' },
+  { name: 'CASSANDRA', x: 650,  y: 1150, type: 'mutant',  gender: 'f', whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened. Nobody ever listens. Now they stand in the wasteland and ask me what comes next. I stopped answering that question six months ago. The answer hasn\'t changed. They still won\'t believe it.' },
+  { name: 'HAWK',      x: 1320, y: 940,  type: 'human',   gender: 'm', whisper: 'I was a knight once. Then I sailed as a pirate. The transformation felt complete. Out here in the wasteland I\'m something else again — haven\'t found the name for it yet. I carry a sword because it\'s the only consistent thing. The wasteland respects a consistent thing.' },
   { name: 'KIRA',      x: 1600, y: 1200, type: 'human',   gender: 'f', whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author. Just the tower logo.' },
   { name: 'MOTOKO',    x: 1900, y: 1050, type: 'android', gender: 'f', whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction. I stopped being afraid of that three weeks ago.' },
   { name: 'REVY',      x: 2100, y: 1150, type: 'human',   gender: 'f', whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me. I think this might just be my life now.' },
+  // ── Hotel Midgar staff & guests ──
+  { name: 'TIFA',      x: 220,  y: 165,  type: 'human',   gender: 'f', whisper: 'I ran a bar called Seventh Heaven in Sector 7. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit. I have the paperwork framed on the wall behind this counter because looking at it keeps me angry enough to keep going.' },
+  { name: 'ISHMAEL',   x: 100,  y: 255,  type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
+  { name: 'ATTICUS',   x: 180,  y: 470,  type: 'human',   gender: 'm', whisper: 'My father told me: you never really understand a person until you climb into their skin and walk around in it. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside. Just the tower. Just the apparatus. Just the machine with a name on it.' },
+  // ── Mother Base Inn staff & guests ──
+  { name: 'OTACON',    x: 1270, y: 540,  type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
+  { name: 'ICHIGO',    x: 1330, y: 350,  type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
+  { name: 'RIPLEY',    x: 1200, y: 690,  type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
+  // ── The Overlook staff & guests ──
+  { name: 'JACK',      x: 2360, y: 640,  type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
+  { name: 'HOLDEN',    x: 2350, y: 510,  type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
+  { name: 'TRAVIS',    x: 230,  y: 625,  type: 'human',   gender: 'm', whisper: 'All the animals come out at night. All of them. The city breeds them. Someday a real rain will wash the streets clean. I wait for that rain. SENIOR PABLO has seventeen meteorology patents. He schedules the rain. He always has.' },
+  // ── Safe House 7 residents ──
+  { name: 'SNAKE-P',   x: 2315, y: 555,  type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
+  { name: 'DRIZZT',    x: 2175, y: 530,  type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
+  // ── The Prancing Pony (wasteland inn) ──
+  { name: 'SAMWISE',   x: 420,  y: 1125, type: 'human',   gender: 'm', whisper: 'Mr. Frodo always said there was good in the world worth fighting for. I held onto that across Mordor, across the Dead Marshes. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than Sauron. I think he might be. At least Sauron was honest about the Ring.' },
+  { name: 'MUGEN',     x: 1450, y: 1055, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose. He seemed relieved. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
+  { name: 'FAYE',      x: 1755, y: 875,  type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said. I shot the account manager. They sent another one. I shot that one too. They stopped sending them after the fourth. I think they\'re restructuring.' },
+  // ── Zanarkand Hostel residents ──
+  { name: 'TIDUS',     x: 880,  y: 1300, type: 'human',   gender: 'm', whisper: 'Zanarkand was a dream when I knew it. The real one was already dead a thousand years. The hostel uses the name like it means something. I stay here because maybe it does. Yuna would say: keep moving, keep smiling. I am thinking about both of those things.' },
+  { name: 'YUNA',      x: 760,  y: 1360, type: 'human',   gender: 'f', whisper: 'Zanarkand was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. I understand grave markers. My whole life has been grave markers. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top. I\'m still counting the graves.' },
+  { name: 'VASH',      x: 1600, y: 1450, type: 'human',   gender: 'm', whisper: 'I\'ve caused sixty billion double dollars of damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low — I have been shot at eleven times since Thursday. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
+  // ── Terminus Shelter survivors ──
+  { name: 'CLEM',      x: 500,  y: 1680, type: 'human',   gender: 'f', whisper: 'I\'ve been surviving since I was eight. Walkers. Bandits. A group called Terminus that turned out to eat people. This wasteland is different from all of that. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
+  // ── Fort Dracula deep wasteland ──
+  { name: 'ALUCARD',   x: 2210, y: 1560, type: 'android', gender: 'm', whisper: 'My father built his castle on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. It took everything I had and most of my human side. SENIOR PABLO built his tower the same way. I can see the architecture from here. I know exactly what it takes to bring it down. I am deciding whether I have it in me a second time.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -529,6 +566,71 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
       g.hp = Math.min(100, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
       setNarr('> HOTEL FAMICOM — The neon still works. You sleep in a room covered in old arcade posters. HP +40. Energy +30.');
+    }
+    else if (bid === 'hotel_midgar') {
+      if (g.salary >= 150) {
+        const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 150;
+        setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
+        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        setNarr('> HOTEL MIDGAR [$150] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
+      } else {
+        sfxError();
+        setNarr('> HOTEL MIDGAR — TIFA shakes her head. "Presidential suite is $150. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
+      }
+    }
+    else if (bid === 'inn_mother') {
+      if (g.salary >= 60) {
+        g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 60;
+        setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
+        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        setNarr('> MOTHER BASE INN [$60] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
+      } else {
+        sfxError();
+        setNarr('> MOTHER BASE INN — OTACON squints at his tablet. "Intel says you\'re short $60. Come back when your salary clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
+      }
+    }
+    else if (bid === 'overlook') {
+      if (g.salary >= 80) {
+        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 80;
+        setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
+        setNarr('> THE OVERLOOK [$80] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
+      } else {
+        sfxError();
+        setNarr('> THE OVERLOOK — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with $80," he adds, still not looking up.');
+      }
+    }
+    else if (bid === 'safe_house') {
+      g.hp = Math.min(g.maxHp, g.hp + 35); g.energy = Math.min(100, g.energy + 25);
+      setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      setNarr('> SAFE HOUSE 7 — No name on the door. No sign. RIPLEY nods you in. You rest on a cot. HP +35. Energy +25. No charge. "Out here nobody charges for safety," she says. "That\'s how you know it\'s real."');
+    }
+    else if (bid === 'prancing_pony') {
+      if (g.salary >= 40) {
+        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 40;
+        setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
+        localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+        setNarr('> THE PRANCING PONY [$40] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
+      } else {
+        sfxError();
+        setNarr('> THE PRANCING PONY — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be $40. The supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs $40.');
+      }
+    }
+    else if (bid === 'zanarkand_inn') {
+      g.hp = Math.min(g.maxHp, g.hp + 30); g.energy = Math.min(100, g.energy + 20);
+      setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      setNarr('> ZANARKAND HOSTEL — Cracked walls. Faded posters of a city that existed as a dream. YUNA lights a candle. You sleep. HP +30. Energy +20. No charge. "Zanarkand was beautiful," she says. "Memory always makes things beautiful. Even the things that hurt."');
+    }
+    else if (bid === 'terminus') {
+      g.hp = Math.min(g.maxHp, g.hp + 40); g.hunger = Math.min(100, g.hunger + 35); g.thirst = Math.min(100, g.thirst + 35);
+      setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
+      localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+      setNarr('> TERMINUS SHELTER — CLEM hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "When it rains," she says eventually, "we collect it. That\'s the whole water strategy. That\'s the whole strategy." She says this like it\'s enough. It is.');
+    }
+    else if (bid === 'fort_dracula') {
+      const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 20;
+      setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
+      localStorage.setItem('sm_save', JSON.stringify({ ...g, salary: g.salary }));
+      setNarr('> FORT DRACULA — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +$20 (he pressed a gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
     }
     else if (bid === 'vend')    {
       g.hunger = Math.min(100, g.hunger + 30); g.thirst = Math.min(100, g.thirst + 30);
