@@ -101,16 +101,16 @@ const SIZES = ['SOLO OPERATOR', 'SMALL (2-10)', 'MID (11-50)', 'CORP (51-500)', 
 const WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
   { match: /TECH|SOFTWARE|SAAS|GAMING|DATA|SYNAPSE|ZAIBATSU/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
   { match: /MEDIA|ENTERT|RADIO|STATIC|VIRAL|COMMS/i,                   bid: 'radio',       label: 'PIRATE RADIO',  slot: 'BED 2 · DESK 1 · BROADCAST TERMINAL' },
-  { match: /HEALTH|PHARMA|MAKO|MEDICAL|BIOTECH/i,                      bid: 'wily_lab',    label: 'WILY LABS',     slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
+  { match: /HEALTH|PHARMA|MAKO|MEDICAL|BIOTECH/i,                      bid: 'wily_lab',    label: 'OXIDE LABS',    slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
   { match: /MARKET|PRINT|ADVERTIS|DESIGN|ARCH|EDUC/i,                  bid: 'print_shop',  label: 'PRINT SHOP',    slot: 'BED 4 · DESK 2 · PRESS TERMINAL' },
   { match: /MANUF|LOGIST|CONSTRUCT|SCRAP|RUST|PHANTOM FREIGHT/i,       bid: 'scrap',       label: 'SCRAP YARD',    slot: 'BED 6 · DESK 4 · OPS TERMINAL' },
-  { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'KONAMI BANK',   slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
+  { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'IRON TRUST BANK', slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
   { match: /ARMS|WEAPON|EDEN|BLACK IRON|SECURITY/i,                    bid: 'armory',      label: 'ARMORY',        slot: 'BED 3 · DESK 8 · TACTICAL TERMINAL' },
   { match: /SHADOW|JADE SYND|GHOST PROTOCOL|SALVAGE/i,                 bid: 'market',      label: 'BLACK MARKET',  slot: 'BED 7 · DESK 5 · SHADOW TERMINAL' },
-  { match: /ENERGY|OMEGA|POWER|WARPGATE/i,                             bid: 'wily_lab',    label: 'WILY LABS',     slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
+  { match: /ENERGY|OMEGA|POWER|WARPGATE/i,                             bid: 'wily_lab',    label: 'OXIDE LABS',    slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
   { match: /LEGAL|LAWTECH|CONSULT|RECRUIT|INSURANC/i,                  bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 5 · DESK 6 · LEGAL TERMINAL' },
   { match: /REAL ESTATE|E-COMMERCE|RETAIL|FOOD|BEVERAGE/i,             bid: 'east_market', label: 'EAST BAZAAR',   slot: 'BED 11 · DESK 3 · TRADE TERMINAL' },
-  { match: /NON-PROFIT|GOVERN|PUBLIC/i,                                bid: 'arcade',      label: "ARCADE '87",    slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
+  { match: /NON-PROFIT|GOVERN|PUBLIC/i,                                bid: 'arcade',      label: 'PIXEL ARCADE',  slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
 ];
 function getWorkstation(bType: 'fictitious'|'real', ind: string, fictInd: string) {
   const q = bType === 'real' ? ind : fictInd;
@@ -255,7 +255,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       {[
         { label: 'HUNGER', col: '#00ff41', drain: '−1.5/tick (city) · −2.5/tick (wasteland)', crit: 'HP drains when HUNGER = 0', restore: 'VEND-O-MATIC +30 · PABLO STORE consumables' },
         { label: 'THIRST', col: '#33aaff', drain: '−2/tick (city) · −3/tick (wasteland)', crit: 'HP drains when THIRST = 0', restore: 'VEND-O-MATIC +30' },
-        { label: 'ENERGY', col: '#ffcc00', drain: '−1/tick (city) · −1.5/tick (wasteland)', crit: 'Salary −5/tick when ENERGY < 20', restore: 'HOTEL FAMICOM +30 · ARCADE \'87 +20' },
+        { label: 'ENERGY', col: '#ffcc00', drain: '−1/tick (city) · −1.5/tick (wasteland)', crit: 'Salary −5/tick when ENERGY < 20', restore: 'HOTEL NEON +30 · PIXEL ARCADE +20' },
       ].map(m => (
         <div key={m.label} style={{ border: `1px solid ${m.col}22`, background: `${m.col}06`, padding: '.6rem .75rem', marginBottom: '.4rem' }}>
           <div style={{ ...VT, fontSize: '1.1rem', color: m.col, letterSpacing: '.1em', marginBottom: '.3rem' }}>{m.label}</div>
@@ -324,10 +324,10 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
       {[
         { name: 'PABLO TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Konami Code is real.' },
-        { name: 'DR. WRIGHT\'S',   col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'Even BELMONT gets patched up here.' },
-        { name: 'KONAMI BANK',     col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are SENIOR PABLO\'s favorite revenue stream.' },
-        { name: 'HOTEL FAMICOM',   col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys say GALAGA on the back.' },
-        { name: 'ARCADE \'87',     col: '#00ff41', effect: '+20 Energy. One machine still running: GALAGA.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
+        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'Even BELMONT gets patched up here.' },
+        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are SENIOR PABLO\'s favorite revenue stream.' },
+        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
+        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: GALAGA.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
         { name: 'VEND-O-MATIC',   col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
         { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
         { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($29/mo). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
@@ -344,9 +344,9 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
       {[
         { name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
-        { name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled KONAMI \'87 found.',                  secret: 'Worth more than a full day\'s work at a corp.' },
+        { name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
         { name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal: "...up up, down down..." Someone gave SENIOR PABLO the code.', secret: '"He already knew it. He wrote it."' },
-        { name: 'WILY LABS',    col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"Robot Masters were the first to fall. SENIOR PABLO bought them all."' },
+        { name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. SENIOR PABLO bought them all."' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
@@ -372,7 +372,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="AVAILABILITY" val="Corporate operatives start with a personal handheld device. Outcast and Replicant operatives must find or purchase one." col="#33ffaa" />
       <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#00ff41" />
       <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
-      <Row label="REPAIR" val="Visit DR. WRIGHT'S CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VEND-O-MATIC (ƒ5,000 FIAT). Full heal at DR. WRIGHT'S (ƒ10,000) includes device repair." col="#ffcc00" />
+      <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VEND-O-MATIC (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
       <Divider />
       <SectionHead>PUBLIC TERMINALS</SectionHead>
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
@@ -443,7 +443,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         ['RIZER', 'Contra — "Thirty lives. I had thirty lives and I spent them all trying to get past floor 40. No cheats work."'],
         ['KANEDA', 'Akira — "Minx City was supposed to be Neo-Tokyo. SENIOR PABLO liked the name. Bought the trademark."'],
         ['TETSUO', 'Akira — "I can feel the tower thinking. It knows I\'m here. SENIOR PABLO always knows."'],
-        ['DR. WILY', 'Mega Man — "I built the first AI for SENIOR PABLO. He thanked me with a gift card."'],
+        ['DR. OXIDE', 'Unknown Origin — "I built the first AI for SENIOR PABLO. He thanked me with a gift card."'],
         ['ERDRICK', 'Dragon Quest — "There was a hero before all this. Warrior of Light. I think SENIOR PABLO built the tower on their tomb."'],
       ].map(([name, quote]) => (
         <div key={name} style={{ display: 'flex', gap: '.6rem', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)', alignItems: 'flex-start' }}>
@@ -530,8 +530,8 @@ export default function WorldMenu() {
       name: save.charName,
       class: save.charClass,
       company: str('company') ?? save.charName + ' OPS',
-      sx: num('px') ?? 1135,
-      sy: num('py') ?? 2107,
+      sx: num('px') ?? 5555,
+      sy: num('py') ?? 5620,
       salary: save.salary,
       hasBusiness: bool('hasBusiness'),
       workstation: str('workstation'),
@@ -626,7 +626,7 @@ export default function WorldMenu() {
           : name.trim().toUpperCase() + ' OPS';
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN') : null;
     const startSalary = cls === 'corporate' ? 150000 : cls === 'replicant' ? 60000 : cls === 'outcast' ? 15000 : 50000;
-    const spawnPos = cls === 'outcast' ? { x: 1200, y: 3100 } : cls === 'replicant' ? { x: 300, y: 2400 } : { x: 1135, y: 2107 };
+    const spawnPos = cls === 'outcast' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
