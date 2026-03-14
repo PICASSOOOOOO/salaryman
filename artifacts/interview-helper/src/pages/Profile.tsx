@@ -128,6 +128,23 @@ function MobileInstallSection() {
           </div>
         </div>
       )}
+
+      <div className="mt-4 pt-4 border-t border-border">
+        <a
+          href={`${appUrl}${import.meta.env.BASE_URL}mobile`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-sm">
+            📱
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-emerald-400">Mobile Game Terminal</p>
+            <p className="text-[10px] text-muted-foreground">Check stats, chat with Pablo AI, and view your business overview from your phone</p>
+          </div>
+        </a>
+      </div>
     </motion.section>
   );
 }

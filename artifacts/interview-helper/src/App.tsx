@@ -11,6 +11,7 @@ import Upgrade from "@/pages/Upgrade";
 import WorldMenu from "@/pages/WorldMenu";
 import WorldPlay from "@/pages/WorldPlay";
 import BillboardAdmin from "@/pages/BillboardAdmin";
+import MobileTerminal from "@/pages/MobileTerminal";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/world" component={WorldMenu} />
       <Route path="/world/play" component={WorldPlay} />
       <Route path="/admin/billboards" component={BillboardAdmin} />
+      <Route path="/mobile" component={MobileTerminal} />
       <Route component={NotFound} />
     </Switch>
   );
