@@ -1214,10 +1214,65 @@ const AMBIENCE_LINES = [
 interface Char {
   name: string; class: string; company: string; sx: number; sy: number; salary: number;
   hasBusiness?: boolean;
+  bizType?: 'real' | 'fictitious' | 'unemployed';
   workstation?: string | null;
   workstationLabel?: string | null;
   workstationSlot?: string | null;
   bizRegisteredAt?: number | null;
+}
+
+interface QuestTask {
+  id: string;
+  label: string;
+  done: boolean;
+  mapMarker?: { x: number; y: number; label: string };
+}
+interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  tasks: QuestTask[];
+  completed: boolean;
+}
+
+const SHELTER_BUILDINGS = ['bunker', 'east_bunker', 'north_bunker', 'terminus', 'deep_bunker'];
+const CAMPSITE_IDS = ['zanarkand_inn', 'deep_camp', 'outpost_alpha'];
+const UNEMPLOYED_SPAWN_BUILDINGS = [...SHELTER_BUILDINGS, ...CAMPSITE_IDS];
+
+function getHamletSpawn(char: Char): { x: number; y: number; buildingId: string } {
+  if (char.bizType === 'unemployed' || !char.hasBusiness) {
+    const bid = UNEMPLOYED_SPAWN_BUILDINGS[Math.floor(Math.random() * UNEMPLOYED_SPAWN_BUILDINGS.length)];
+    const b = BUILDINGS.find(bb => bb.id === bid)!;
+    return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: bid };
+  }
+  const b = BUILDINGS.find(bb => bb.id === 'minx_arms')!;
+  return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: 'minx_arms' };
+}
+
+function getHamletLabel(bid: string): string {
+  const b = BUILDINGS.find(bb => bb.id === bid);
+  return b?.label ?? 'SHELTER';
+}
+
+function createFirstMission(char: Char): Quest | null {
+  if (char.bizType === 'unemployed' || !char.hasBusiness) return null;
+  const towerB = BUILDINGS.find(b => b.id === 'pablo_tower')!;
+  const storeB = BUILDINGS.find(b => b.id === 'pablo_store')!;
+  const wsB = char.workstation ? BUILDINGS.find(b => b.id === char.workstation) : null;
+  return {
+    id: 'establish_business',
+    title: 'ESTABLISH YOUR BUSINESS',
+    description: `Set up your ${char.company} operation in Minx City. Customize your workspace, get signage, and prepare for business.`,
+    completed: false,
+    tasks: [
+      { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'WORKSTATION' } : undefined },
+      { id: 'visit_tower', label: 'Register at SHADOW TOWER (PABLO Corp HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
+      { id: 'get_device', label: 'Pick up your PABLO device from the PABLO store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO STORE' } },
+      { id: 'customize_costume', label: 'Customize your operative appearance', done: false },
+      { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'SIGNAGE' } : undefined },
+      { id: 'pablo_auto', label: '(Optional) Use PABLO AI to automate business setup', done: false },
+    ],
+  };
 }
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
@@ -1403,6 +1458,15 @@ export default function WorldPlay() {
     interiorFade: 0,
     interiorFadeDir: 0 as -1 | 0 | 1,
     interiorFadeCallback: null as null | (() => void),
+    quests: (_ss?.quests ?? (() => { const m = createFirstMission(char); return m ? [m] : []; })()) as Quest[],
+    hamletBuildingId: (() => {
+      const saved = _ss?.hamletBuildingId as string | undefined;
+      if (!saved) return getHamletSpawn(char).buildingId;
+      const isEmployed = char.bizType !== 'unemployed' && char.hasBusiness;
+      const savedIsEmployed = saved === 'minx_arms';
+      if (isEmployed !== savedIsEmployed) return getHamletSpawn(char).buildingId;
+      return saved;
+    })(),
   });
 
   const savedDog = (() => {
@@ -1562,6 +1626,8 @@ export default function WorldPlay() {
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
   const [showGoldExchange, setShowGoldExchange] = useState(false);
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
+  const [showQuests, setShowQuests] = useState(false);
+  const [quests, setQuests] = useState<Quest[]>(() => gs.current.quests);
   const [calendarStr, setCalendarStr] = useState('');
   const [weatherStr, setWeatherStr] = useState('');
   const [radLevel, setRadLevel] = useState(0);
@@ -1638,6 +1704,8 @@ export default function WorldPlay() {
       realEstate: [...g.realEstate],
       worldTime: g.worldTime,
       diedLastSession: g.diedLastSession,
+      quests: g.quests,
+      hamletBuildingId: g.hamletBuildingId,
     };
   }, [char]);
 
@@ -1675,6 +1743,8 @@ export default function WorldPlay() {
 
     // ── WORKSTATION REST ─────────────────────────────────────────────────
     if (char.hasBusiness && char.workstation === bid) {
+      completeQuestTask('establish_business', 'visit_workstation');
+      completeQuestTask('establish_business', 'setup_signage');
       const daysSinceReg = char.bizRegisteredAt
         ? Math.floor((Date.now() - char.bizRegisteredAt) / 86400000)
         : 0;
@@ -2083,6 +2153,19 @@ export default function WorldPlay() {
     };
   }, []);
 
+  const completeQuestTask = useCallback((questId: string, taskId: string) => {
+    const g = gs.current;
+    const quest = g.quests.find(q => q.id === questId);
+    if (!quest || quest.completed) return;
+    const task = quest.tasks.find(t => t.id === taskId);
+    if (!task || task.done) return;
+    task.done = true;
+    if (quest.tasks.filter(t => t.id !== 'pablo_auto').every(t => t.done)) {
+      quest.completed = true;
+    }
+    setQuests([...g.quests]);
+  }, []);
+
   const enterBuilding = useCallback((bid: string) => {
     sfxEnter();
     const b = BUILDINGS.find(bl => bl.id === bid);
@@ -2386,7 +2469,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   useEffect(() => {
@@ -2430,8 +2513,8 @@ export default function WorldPlay() {
     sfxTalk();
     if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
     else {
-      if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; gs.current.deviceBroken = false; gs.current.deviceDurability = 100; setHasDevice(true); setDeviceBroken(false); setShowStore(true); }
-      if (dialog.bid === 'pablo_tower_enter') { setShowOffice(true); }
+      if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; gs.current.deviceBroken = false; gs.current.deviceDurability = 100; setHasDevice(true); setDeviceBroken(false); setShowStore(true); completeQuestTask('establish_business', 'get_device'); }
+      if (dialog.bid === 'pablo_tower_enter') { setShowOffice(true); completeQuestTask('establish_business', 'visit_tower'); }
       setDialog(null);
     }
   }, [dialog]);
@@ -2520,6 +2603,7 @@ export default function WorldPlay() {
         else { setNarr('> NO DEVICE — You don\'t have a personal terminal. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].'); }
       }
       if (e.key === 'm' || e.key === 'M') setShowMap(v => !v);
+      if (e.key === 'q' || e.key === 'Q') setShowQuests(v => !v);
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
       if ((e.key === 'r' || e.key === 'R') && radioVisibleRef.current && !frozenRef.current && !chatOpenRef.current) {
@@ -2597,7 +2681,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); frozenRef.current = false;
+        setShowBank(false); setShowMerchant(null); setShowQuests(false); frozenRef.current = false;
         doSaveRef.current(buildSaveData());
       }
     };
@@ -5459,6 +5543,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           mctx.shadowBlur = 0;
 
+          const qPulse = Math.sin(g.frame * 0.08) * 0.4 + 0.6;
+          for (const quest of g.quests) {
+            if (quest.completed) continue;
+            for (const task of quest.tasks) {
+              if (task.done || !task.mapMarker) continue;
+              const mx = toMX(task.mapMarker.x), my = toMY(task.mapMarker.y);
+              mctx.strokeStyle = `rgba(255,200,60,${qPulse})`; mctx.lineWidth = 1.5;
+              mctx.setLineDash([3, 2]);
+              mctx.beginPath(); mctx.arc(mx, my, 6, 0, Math.PI * 2); mctx.stroke();
+              mctx.setLineDash([]);
+              mctx.fillStyle = `rgba(255,200,60,${qPulse * 0.8})`;
+              mctx.beginPath(); mctx.arc(mx, my, 2.5, 0, Math.PI * 2); mctx.fill();
+            }
+          }
+
           // Fog of war — mark visited cells
           const fogCell = 40;
           const visitR = 80;
@@ -5803,6 +5902,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               👤 COSTUME
             </button>
+            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(0,255,65,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
+            </button>
             <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); gs.current.boomerMode = nb; try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} setNarr(nb ? '> BOOMER MODE — ON. You call them "HP potions" now.' : '> BOOMER MODE — OFF. Back to corporate speak.'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: boomerMode ? 'rgba(255,170,0,.08)' : 'transparent', border: boomerMode ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎮 BOOMER {boomerMode ? 'ON' : 'OFF'}
             </button>
@@ -6141,6 +6243,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showOffice && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
+            {char.hasBusiness && (
+              <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.04)', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em' }}>MINX CITY BUSINESS</div>
+                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
                 <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>SHADOW TOWER</div>
@@ -6641,9 +6749,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {gs.current.threats.filter(t => t.type === 'SPY').map((t, ti) => (
                 <circle key={`spy${ti}`} cx={t.x} cy={t.y} r={8} fill="none" stroke="#ffffaa" strokeWidth={1} strokeDasharray="4 2" />
               ))}
+              {quests.filter(q => !q.completed).flatMap(q => q.tasks.filter(t => !t.done && t.mapMarker)).map((task, ti) => (
+                <g key={`quest${ti}`}>
+                  <circle cx={task.mapMarker!.x} cy={task.mapMarker!.y} r={10} fill="none" stroke="#ffcc44" strokeWidth={2} strokeDasharray="6 3" />
+                  <circle cx={task.mapMarker!.x} cy={task.mapMarker!.y} r={4} fill="#ffcc44" opacity={0.8} />
+                  <text x={task.mapMarker!.x} y={task.mapMarker!.y - 14} textAnchor="middle" fill="#ffcc44" fontSize={7} fontFamily="Share Tech Mono">{task.mapMarker!.label}</text>
+                </g>
+              ))}
             </svg>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-              {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD']].map(([c,l]) => (
+              {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
                   <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
@@ -7186,45 +7301,86 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── DEATH ── */}
-      {showIndoorStart && (
+      {/* ── HAMLET SPAWN / WAKE UP ── */}
+      {showIndoorStart && (() => {
+        const g = gs.current;
+        const hamletBid = g.hamletBuildingId;
+        const isUnemployed = char.bizType === 'unemployed' || !char.hasBusiness;
+        const hamletB = BUILDINGS.find(b => b.id === hamletBid);
+        const hamletLabel = hamletB?.label ?? 'SHELTER';
+        const isShelter = SHELTER_BUILDINGS.includes(hamletBid);
+        const isCampsite = CAMPSITE_IDS.includes(hamletBid);
+        const spawnColor = isUnemployed ? 'rgba(255,200,60,' : 'rgba(0,255,65,';
+        const accentColor = isUnemployed ? '#ffcc44' : '#00ff41';
+        return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 450, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 500, padding: '2rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.15em', marginBottom: '1.5rem', opacity: 0.7 }}>MINX ARMS — FLOOR 4 — YOUR UNIT</div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)', marginBottom: '1.2rem' }} />
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.5)', lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
-              Fluorescent light buzzes overhead. The curtains don't fully close.<br/>
-              Through the gap: SHADOW TOWER's silhouette against a green-black sky.<br/>
-              Your PABLO device blinks on the nightstand. A notification pulses.<br/>
-              The building intercom crackles: "...all residents... PABLO CORP. advisory..."<br/>
-              You're already dressed. You were expecting this.
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: accentColor, letterSpacing: '.15em', marginBottom: '1.5rem', opacity: 0.7 }}>
+              {isUnemployed
+                ? `${hamletLabel} — YOUR HAMLET`
+                : 'MINX ARMS — FLOOR 4 — YOUR UNIT'}
             </div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.15), transparent)', marginBottom: '1.5rem' }} />
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em', marginBottom: '1.2rem' }}>
-              View of the city from your window. Unit 408. Rent: paid through PABLO CORP.
+            <div style={{ width: '100%', height: '1px', background: `linear-gradient(90deg, transparent, ${spawnColor}.3), transparent)`, marginBottom: '1.2rem' }} />
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: `${spawnColor}.5)`, lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
+              {isUnemployed ? (
+                isShelter ? (<>
+                  The shelter is cold. Concrete walls. A single overhead light buzzes.<br/>
+                  Your cot is wedged between twenty others. Someone coughs in the dark.<br/>
+                  No PABLO device. No corporate shield. Just the city and your wits.<br/>
+                  The door is unlocked. The street waits outside.
+                </>) : isCampsite ? (<>
+                  The campsite fire has burned to embers. Wasteland wind rattles the tarp.<br/>
+                  Your pack is where you left it. Nothing stolen — this time.<br/>
+                  No company name above your head. No one looking for you.<br/>
+                  You can hear the city hum from here. Or you can walk further out.
+                </>) : (<>
+                  The bunker hatch creaks. Emergency lighting casts long shadows.<br/>
+                  Pre-collapse supplies line the walls. Someone patched the ventilation.<br/>
+                  PABLO CORP. forgot this place exists. That's why you're here.<br/>
+                  Time to move.
+                </>)
+              ) : (<>
+                Fluorescent light buzzes overhead. The curtains don't fully close.<br/>
+                Through the gap: SHADOW TOWER's silhouette against a green-black sky.<br/>
+                Your PABLO device blinks on the nightstand. A notification pulses.<br/>
+                The building intercom crackles: "...all residents... PABLO CORP. advisory..."<br/>
+                You're already dressed. You were expecting this.
+              </>)}
+            </div>
+            <div style={{ width: '100%', height: '1px', background: `linear-gradient(90deg, transparent, ${spawnColor}.15), transparent)`, marginBottom: '1.5rem' }} />
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: `${spawnColor}.3)`, letterSpacing: '.08em', marginBottom: '1.2rem' }}>
+              {isUnemployed
+                ? `Hamlet: ${hamletLabel}. No corporate affiliation. Register a business at PABLO TOWER anytime.`
+                : 'View of the city from your window. Unit 408. Rent: paid through PABLO CORP.'}
             </div>
             <button
               onClick={() => {
                 const g = gs.current;
-                const minxB = BUILDINGS.find(b => b.id === 'minx_arms')!;
-                g.px = minxB.x + minxB.w / 2;
-                g.py = minxB.y + minxB.h + 20;
-                const def = getInterior('minx_arms')!;
-                g.interior = {
-                  bid: 'minx_arms', def,
-                  px: 50, py: 50,
-                  savedWorldX: g.px, savedWorldY: g.py,
-                };
+                const spawnBid = g.hamletBuildingId;
+                const spawnB = BUILDINGS.find(b => b.id === spawnBid) ?? BUILDINGS.find(b => b.id === 'minx_arms')!;
+                g.px = spawnB.x + spawnB.w / 2;
+                g.py = spawnB.y + spawnB.h + 20;
+                const def = getInterior(spawnBid);
+                if (def) {
+                  g.interior = {
+                    bid: spawnBid, def,
+                    px: 50, py: 50,
+                    savedWorldX: g.px, savedWorldY: g.py,
+                  };
+                }
                 setShowIndoorStart(false);
-                setNarr('> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
+                setNarr(isUnemployed
+                  ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
+                  : '> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
               }}
-              style={{ padding: '.65rem 2rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(0,255,65,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(0,255,65,.5)'}`, color: accentColor, fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
             >
               WAKE UP
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {showHospitalPrompt && !hospitalCinematic && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 460, flexDirection: 'column', gap: '1rem' }}>
@@ -7326,27 +7482,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const emergencyFee = 5000;
                     g.hp = g.maxHp; g.hunger = 70; g.thirst = 70; g.energy = 60;
                     g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
-                    const clinicB = BUILDINGS.find(b => b.id === 'clinic')!;
-                    g.px = clinicB.x + clinicB.w / 2;
-                    g.py = clinicB.y + clinicB.h + 20;
-                    g.salary = Math.max(-50000, g.salary - emergencyFee);
                     g.threats = g.threats.map(t => ({ ...t }));
-                    setSalary(g.salary); setHp(g.maxHp);
-                    setHunger(70); setThirst(70); setEnergy(60);
-                    setPoisoned(false);
                     g.diedLastSession = false;
                     try { localStorage.removeItem('sm_died_last_session'); } catch {}
-                    addBankTx('HOSPITAL EMERGENCY RECOVERY', -emergencyFee, g.salary);
-                    const def = getInterior('clinic')!;
-                    g.interior = {
-                      bid: 'clinic', def,
-                      px: 40, py: 110,
-                      savedWorldX: g.px, savedWorldY: g.py,
-                    };
-                    setHospitalCinematic(null);
-                    const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
-                    setNarr(`> CITY CLINIC — You wake up in a hospital bed. Monitors beep. Stats partially restored. ƒ${emergencyFee.toLocaleString()} FIAT deducted.${debtNote} Walk to the EXIT when you're ready.`);
-                    sfxHeal();
+                    const hamletBid = g.hamletBuildingId;
+                    const hamletB = BUILDINGS.find(b => b.id === hamletBid);
+                    const clinicB = BUILDINGS.find(b => b.id === 'clinic')!;
+                    const isShelterSpawn = SHELTER_BUILDINGS.includes(hamletBid) || CAMPSITE_IDS.includes(hamletBid);
+                    if (isShelterSpawn && hamletB) {
+                      g.px = hamletB.x + hamletB.w / 2;
+                      g.py = hamletB.y + hamletB.h + 20;
+                      g.salary = Math.max(-50000, g.salary - Math.floor(emergencyFee * 0.3));
+                      setSalary(g.salary); setHp(g.maxHp);
+                      setHunger(70); setThirst(70); setEnergy(60);
+                      setPoisoned(false);
+                      addBankTx('STREET MEDIC RECOVERY', -Math.floor(emergencyFee * 0.3), g.salary);
+                      setHospitalCinematic(null);
+                      const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
+                      setNarr(`> ${getHamletLabel(hamletBid).toUpperCase()} — You come to on a thin mattress. Someone patched you up. Stats partially restored. ƒ${Math.floor(emergencyFee * 0.3).toLocaleString()} FIAT deducted.${debtNote}`);
+                      sfxHeal();
+                    } else {
+                      const spawnB = hamletB ?? clinicB;
+                      g.px = spawnB.x + spawnB.w / 2;
+                      g.py = spawnB.y + spawnB.h + 20;
+                      g.salary = Math.max(-50000, g.salary - emergencyFee);
+                      setSalary(g.salary); setHp(g.maxHp);
+                      setHunger(70); setThirst(70); setEnergy(60);
+                      setPoisoned(false);
+                      addBankTx('HOSPITAL EMERGENCY RECOVERY', -emergencyFee, g.salary);
+                      setHospitalCinematic(null);
+                      const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
+                      setNarr(`> ${getHamletLabel(hamletBid).toUpperCase()} — Emergency services brought you home. Stats partially restored. ƒ${emergencyFee.toLocaleString()} FIAT deducted.${debtNote}`);
+                      sfxHeal();
+                    }
                   }}
                   style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer', animation: 'smblink 1.5s ease-in-out infinite alternate' }}
                 >
@@ -7547,7 +7715,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.8rem' }}>CHARACTER CUSTOMIZATION</div>
               <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
                 {COSTUMES.map(c => (
-                  <button key={c.id} onClick={() => { gs.current.activeCostume = c.id; setActiveCostume(c.id); setNarr(`> COSTUME — Equipped: ${c.name}. ${c.desc}`); }}
+                  <button key={c.id} onClick={() => { gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> COSTUME — Equipped: ${c.name}. ${c.desc}`); }}
                     style={{ display:'flex', justifyContent:'space-between', padding:'.5rem .8rem', background: activeCostume === c.id ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${activeCostume === c.id ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.12)'}`, color: activeCostume === c.id ? '#00ff41' : 'rgba(0,255,65,.5)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
                     <span>{c.name}</span>
                     {activeCostume === c.id && <span style={{ fontSize:'.8rem' }}>EQUIPPED</span>}
@@ -7555,6 +7723,84 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ))}
               </div>
               <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── QUEST / MISSION PANEL ─────────────────────────────────────────── */}
+      {showQuests && (() => {
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const activeQuests = quests.filter(q => !q.completed);
+        const completedQuests = quests.filter(q => q.completed);
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowQuests(false); }}>
+            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.8rem' }}>
+                <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc44', letterSpacing:'.18em' }}>MISSIONS</div>
+                <button onClick={() => setShowQuests(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
+              </div>
+              <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(255,200,60,.3),transparent)', marginBottom:'.8rem' }} />
+
+              {activeQuests.length === 0 && completedQuests.length === 0 && (
+                <div style={{ fontSize:'.6rem', color:'rgba(255,200,60,.3)', textAlign:'center', padding:'2rem 0' }}>
+                  No active missions. Explore Minx City to find objectives.
+                </div>
+              )}
+
+              {activeQuests.map(quest => (
+                <div key={quest.id} style={{ border:'1px solid rgba(255,200,60,.25)', padding:'.8rem', marginBottom:'.6rem', background:'rgba(255,200,60,.03)' }}>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#ffcc44', letterSpacing:'.12em', marginBottom:'.3rem' }}>{quest.title}</div>
+                  <div style={{ fontSize:'.52rem', color:'rgba(255,200,60,.45)', lineHeight:1.7, marginBottom:'.6rem' }}>{quest.description}</div>
+                  <div style={{ fontSize:'.45rem', color:'rgba(255,200,60,.3)', letterSpacing:'.12em', marginBottom:'.4rem' }}>OBJECTIVES</div>
+                  {quest.tasks.map(task => (
+                    <div key={task.id} style={{ display:'flex', alignItems:'center', gap:'.5rem', padding:'.3rem .4rem', marginBottom:'.2rem', background: task.done ? 'rgba(0,255,65,.04)' : 'transparent', border:`1px solid ${task.done ? 'rgba(0,255,65,.15)' : 'rgba(255,200,60,.1)'}` }}>
+                      <div style={{ width:12, height:12, border:`1px solid ${task.done ? '#00ff41' : 'rgba(255,200,60,.4)'}`, background: task.done ? 'rgba(0,255,65,.3)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.5rem', flexShrink:0 }}>
+                        {task.done && <span style={{ color:'#00ff41' }}>✓</span>}
+                      </div>
+                      <div style={{ fontSize:'.55rem', color: task.done ? 'rgba(0,255,65,.5)' : 'rgba(255,200,60,.6)', textDecoration: task.done ? 'line-through' : 'none', flex:1 }}>{task.label}</div>
+                      {task.mapMarker && !task.done && (
+                        <div style={{ fontSize:'.4rem', color:'rgba(0,200,255,.5)', border:'1px solid rgba(0,200,255,.2)', padding:'1px 4px', flexShrink:0 }}>MAP</div>
+                      )}
+                    </div>
+                  ))}
+                  {char.hasBusiness && quest.id === 'establish_business' && (
+                    <div style={{ marginTop:'.6rem', borderTop:'1px solid rgba(255,200,60,.1)', paddingTop:'.5rem' }}>
+                      <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.1em', marginBottom:'.3rem' }}>PABLO AUTOMATION</div>
+                      <button onClick={() => {
+                        completeQuestTask('establish_business', 'pablo_auto');
+                        setShowQuests(false);
+                        setShowPablo(true);
+                        setNarr('> PABLO AI — Business setup automation initiated. Use the PABLO device to configure your enterprise.');
+                      }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(0,255,65,.06)', border:'1px solid rgba(0,255,65,.25)', color:'rgba(0,255,65,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
+                        USE PABLO AI TO AUTOMATE BUSINESS SETUP
+                      </button>
+                      <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.2)', marginTop:'.2rem' }}>
+                        Optional: Let PABLO handle signage, workspace configuration, and registration paperwork.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {completedQuests.length > 0 && (
+                <>
+                  <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em', marginTop:'.6rem', marginBottom:'.4rem' }}>COMPLETED</div>
+                  {completedQuests.map(quest => (
+                    <div key={quest.id} style={{ border:'1px solid rgba(0,255,65,.12)', padding:'.5rem .6rem', marginBottom:'.3rem', background:'rgba(0,255,65,.02)' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(0,255,65,.4)', letterSpacing:'.1em' }}>{quest.title}</div>
+                        <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', border:'1px solid rgba(0,255,65,.15)', padding:'1px 5px' }}>DONE</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <div style={{ fontSize:'.42rem', color:'rgba(255,200,60,.2)', marginTop:'.6rem', lineHeight:1.6 }}>
+                Mission objectives are tracked automatically. Active targets are marked on the MAP [M].
+              </div>
             </div>
           </div>
         );
