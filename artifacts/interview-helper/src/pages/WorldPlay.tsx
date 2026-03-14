@@ -1569,6 +1569,7 @@ export default function WorldPlay() {
   const [dialogueNpcName, setDialogueNpcName] = useState('');
   const [dialogueNode, setDialogueNode] = useState<DialogueNode | null>(null);
   const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [hudExpanded, setHudExpanded] = useState(false);
   const [showCostume, setShowCostume] = useState(false);
   const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
@@ -5572,38 +5573,52 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* UPPER-LEFT — player identity + stats + minimap */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.4rem .7rem' }}>
-          <div style={{ width: 8, height: 8, background: '#00ff41', boxShadow: '0 0 8px rgba(0,255,65,.7)' }} />
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
-          <span style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.5rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && !deviceBroken && <span style={{ fontSize: '.7rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '2px 6px' }}>PABLO MX-75</span>}
-          {hasDevice && deviceBroken && <span style={{ fontSize: '.7rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '2px 6px' }}>DAMAGED</span>}
-          {char.hasBusiness === false && <span style={{ fontSize: '.7rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '2px 6px', animation: 'none' }}>UNSAVED</span>}
+        <div onClick={() => setHudExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', gap: '.6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.5rem .8rem', cursor: 'pointer', userSelect: 'none' }}>
+          <div style={{ width: 10, height: 10, background: '#00ff41', boxShadow: '0 0 8px rgba(0,255,65,.7)' }} />
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
+          <span style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.5rem' }}>{char.class.toUpperCase()}</span>
+          {hasDevice && !deviceBroken && <span style={{ fontSize: '.8rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '2px 6px' }}>PABLO MX-75</span>}
+          {hasDevice && deviceBroken && <span style={{ fontSize: '.8rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '2px 6px' }}>DAMAGED</span>}
+          {char.hasBusiness === false && <span style={{ fontSize: '.8rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '2px 6px' }}>UNSAVED</span>}
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.4)', marginLeft: '.3rem' }}>{hudExpanded ? '▲' : '▼'}</span>
         </div>
+        {hudExpanded && (<>
         <div style={{ display: 'flex', gap: '4px' }}>
           {/* HP */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${hpColor}55`, padding: '.3rem .6rem', minWidth: 70 }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>HP</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.35rem', color: hpColor, letterSpacing: '.06em', textShadow: `0 0 8px ${hpGlow}`, transition: 'color .3s' }}>{Math.floor(hp)}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${hpColor}55`, padding: '.4rem .7rem', minWidth: 80 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>{boomerize('HP', boomerMode)}</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.5rem', color: hpColor, letterSpacing: '.06em', textShadow: `0 0 8px ${hpGlow}`, transition: 'color .3s' }}>{Math.floor(hp)}</div>
           </div>
           {/* Salary */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem' }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>FIAT</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.4rem .7rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>SALARY</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
           </div>
           {/* DEF */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,180,255,.38)', padding: '.3rem .6rem' }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,180,255,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>DEF</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#44aaff', letterSpacing: '.06em', marginTop: '3px' }}>{(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,180,255,.38)', padding: '.4rem .7rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,180,255,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>DEF</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#44aaff', letterSpacing: '.06em', marginTop: '3px' }}>{(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus}</div>
           </div>
+          {/* Net Worth */}
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.4rem .7rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.12em', marginBottom: '4px' }}>NET WORTH</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#FFD700', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{(salary + goldBalance * FIAT_PER_GOLD).toLocaleString()}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
           {/* Zone */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.3rem .6rem' }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>ZONE</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{zone}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.4rem .7rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>ZONE</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{boomerize(zone, boomerMode)}</div>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${(() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? 'rgba(255,200,50,.45)' : 'rgba(100,120,255,.45)'; })()}`, padding: '.3rem .6rem' }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>TIME</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })(), letterSpacing: '.06em', marginTop: '3px' }}>
+          {/* Current Map Location */}
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.4rem .7rem', flex: 1 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>LOCATION</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{nearB ? nearB.label : (gangZone ? (GANG_ZONES.find(g => g.id === gangZone)?.name ?? zone) : zone)}</div>
+          </div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${(() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? 'rgba(255,200,50,.45)' : 'rgba(100,120,255,.45)'; })()}`, padding: '.4rem .7rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>TIME</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })(), letterSpacing: '.06em', marginTop: '3px' }}>
               {String(Math.floor(gs.current.worldTime)).padStart(2,'0')}:{String(Math.floor((gs.current.worldTime % 1) * 60)).padStart(2,'0')} {gs.current.worldTime >= 6 && gs.current.worldTime < 18 ? '☀' : '☾'}
             </div>
           </div>
@@ -5615,92 +5630,93 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             { label: 'THIRST', val: thirst, col: thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622' },
             { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
           ].map(({ label, val, col }) => (
-            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', minWidth: 85 }}>
-              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{label}</div>
-              <div style={{ position: 'relative', height: 5, background: 'rgba(0,255,65,.14)' }}>
+            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', minWidth: 95 }}>
+              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize(label, boomerMode)}</div>
+              <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.14)' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
               </div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: col, letterSpacing: '.04em', marginTop: '2px' }}>{val}</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: col, letterSpacing: '.04em', marginTop: '2px' }}>{val}</div>
             </div>
           ))}
         </div>
         {/* Level / EXP / Poison row */}
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', minWidth: 60 }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>LVL</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', minWidth: 65 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize('LVL', boomerMode)}</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', flex: 1 }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>EXP</div>
-            <div style={{ position: 'relative', height: 5, background: 'rgba(0,255,65,.14)', marginBottom: '2px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', flex: 1 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize('EXP', boomerMode)}</div>
+            <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.14)', marginBottom: '2px' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
             </div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
           </div>
           {poisoned && (
-            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.3rem .6rem', animation: 'smblink 0.7s step-end infinite' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#88ff44', letterSpacing: '.1em' }}>PSN</div>
+            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.4rem .6rem', animation: 'smblink 0.7s step-end infinite' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#88ff44', letterSpacing: '.1em' }}>{boomerize('PSN', boomerMode)}</div>
             </div>
           )}
         </div>
-        {/* Gold + Calendar + Radiation row */}
+        {/* Gold + Calendar + Weather row */}
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.3rem .55rem', minWidth: 60 }}>
-            <div style={{ fontSize: '.7rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.1em', marginBottom: '3px' }}>GOLD</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#FFD700', letterSpacing: '.06em' }}>{goldBalance}g</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.4rem .6rem', minWidth: 65 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.1em', marginBottom: '3px' }}>GOLD</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#FFD700', letterSpacing: '.06em' }}>{goldBalance}g</div>
           </div>
           {calendarStr && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.3rem .55rem', flex: 1 }}>
-              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.4rem .6rem', flex: 1 }}>
+              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
             </div>
           )}
           {weatherStr && weatherStr !== 'CLEAR' && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.3rem .55rem' }}>
-              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
+            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.4rem .6rem' }}>
+              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
             </div>
           )}
         </div>
         {/* Radiation meter */}
         {radLevel > 0 && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: '1px solid rgba(40,255,40,.45)', padding: '.3rem .6rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#44ff44', letterSpacing: '.1em' }}>☢ RAD {(radLevel * 100).toFixed(0)}%</span>
-            <div style={{ flex: 1, height: 4, background: 'rgba(40,255,40,.15)' }}>
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: '1px solid rgba(40,255,40,.45)', padding: '.4rem .7rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: '#44ff44', letterSpacing: '.1em' }}>☢ RAD {(radLevel * 100).toFixed(0)}%</span>
+            <div style={{ flex: 1, height: 5, background: 'rgba(40,255,40,.15)' }}>
               <div style={{ height: '100%', width: `${radLevel * 100}%`, background: radLevel > 0.6 ? '#ff4444' : '#44ff44', transition: 'width .3s' }} />
             </div>
           </div>
         )}
         {/* Gang zone indicator */}
         {gangZone && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.3rem .6rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.4rem .7rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
               ⚠ {GANG_ZONES.find(g => g.id === gangZone)?.name} TERRITORY
             </div>
           </div>
         )}
         {/* Dog companion HUD */}
         {dogActive && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.45)' : 'rgba(255,170,68,.45)'}`, padding: '.3rem .6rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-            <span style={{ fontSize: '.9rem' }}>🐾</span>
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.45)' : 'rgba(255,170,68,.45)'}`, padding: '.4rem .7rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+            <span style={{ fontSize: '1.1rem' }}>🐾</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44', letterSpacing: '.08em' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: dogInjured ? '#ff4444' : '#ffaa44', letterSpacing: '.08em' }}>
                 {dogName} {dogInjured && '— INJURED'}
               </div>
               {!dogInjured && (
                 <>
-                  <div style={{ position: 'relative', height: 5, background: 'rgba(255,170,68,.15)', marginTop: '3px' }}>
+                  <div style={{ position: 'relative', height: 6, background: 'rgba(255,170,68,.15)', marginTop: '3px' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(dogHp / DOG_MAX_HP) * 100}%`, background: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : (dogHp / DOG_MAX_HP) > 0.25 ? '#ff8800' : '#ff4444', transition: 'width .2s' }} />
                   </div>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ffaa44', marginTop: '2px' }}>{dogHp}/{DOG_MAX_HP}</div>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#ffaa44', marginTop: '2px' }}>{dogHp}/{DOG_MAX_HP}</div>
                 </>
               )}
               {dogInjured && (
-                <div style={{ fontSize: '.7rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '2px' }}>Needs rest or clinic</div>
+                <div style={{ fontSize: '.85rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '2px' }}>Needs rest or clinic</div>
               )}
             </div>
           </div>
         )}
+        </>)}
         {/* Minimap canvas */}
         <canvas ref={minimapRef} width={360} height={360} style={{ width: 360, height: 360, borderRadius: '50%', marginTop: 5, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
       </div>
@@ -5792,7 +5808,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                ← TERMINAL
+                ← IMMIGRATION
               </button>
             </div>
             {online.length > 0 && (
@@ -5814,12 +5830,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <div style={{ position: 'absolute', bottom: 10, left: 20, right: 200, zIndex: 100, pointerEvents: 'none' }}>
         <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.6rem .9rem' }}>
           {nearB && (
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.3rem' }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.3rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '1rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.7rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
+          <div style={{ fontSize: '1.15rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.85rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
         </div>
       </div>
 
