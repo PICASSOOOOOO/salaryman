@@ -1,5 +1,4 @@
 let _ctx: AudioContext | null = null;
-let _musicEl: HTMLAudioElement | null = null;
 let _musicVol = 0.35;
 let _sfxVol   = 0.55;
 let _muted    = false;
@@ -241,27 +240,19 @@ export function sfxZoneCross() {
 
 // ── Music ─────────────────────────────────────────────────────────────────────
 
-export function initMusic(src: string) {
-  if (_musicEl) { _musicEl.pause(); _musicEl = null; }
-  const el = new Audio(src);
-  el.loop = true;
-  el.volume = _muted ? 0 : _musicVol;
-  el.preload = 'auto';
-  _musicEl = el;
-}
+export function initMusic(_src?: string) {}
 
 export function playMusic() {
-  if (!_musicEl) return;
-  _musicEl.play().catch(() => {});
+  startAmbient();
 }
 
 export function pauseMusic() {
-  _musicEl?.pause();
+  stopAmbient();
 }
 
 export function setMusicVolume(v: number) {
   _musicVol = v;
-  if (_musicEl && !_muted) _musicEl.volume = v;
+  _applyAmbientVolume();
 }
 
 export function setSfxVolume(v: number) {
@@ -274,15 +265,259 @@ export function getSfxVol(): number { return _sfxVol; }
 
 export function toggleMute(): boolean {
   _muted = !_muted;
-  if (_musicEl) _musicEl.volume = _muted ? 0 : _musicVol;
+  _applyAmbientVolume();
   return _muted;
 }
 
 export function setMuted(m: boolean) {
   _muted = m;
-  if (_musicEl) _musicEl.volume = _muted ? 0 : _musicVol;
+  _applyAmbientVolume();
 }
 
 export function resumeAudioContext() {
   _ctx?.resume();
+}
+
+// ── Procedural Ambient Soundtrack (dystopian stock score) ─────────────────────
+
+interface AmbientLayer {
+  osc: OscillatorNode;
+  gain: GainNode;
+  filter?: BiquadFilterNode;
+}
+
+let _ambientLayers: AmbientLayer[] = [];
+let _ambientMaster: GainNode | null = null;
+let _ambientRunning = false;
+let _ambientTimers: ReturnType<typeof setTimeout>[] = [];
+let _swellInterval: ReturnType<typeof setInterval> | null = null;
+let _driftInterval: ReturnType<typeof setInterval> | null = null;
+
+function _applyAmbientVolume() {
+  if (_ambientMaster) {
+    const c = ctx();
+    const target = _muted ? 0 : _musicVol;
+    _ambientMaster.gain.cancelScheduledValues(c.currentTime);
+    _ambientMaster.gain.setTargetAtTime(target, c.currentTime, 0.05);
+  }
+}
+
+function startAmbient() {
+  if (_ambientRunning) return;
+  _ambientRunning = true;
+  const c = ctx();
+
+  _ambientMaster = c.createGain();
+  _ambientMaster.gain.value = 0;
+  _ambientMaster.connect(c.destination);
+
+  const masterTarget = _muted ? 0 : _musicVol;
+  _ambientMaster.gain.setTargetAtTime(masterTarget, c.currentTime, 2.0);
+
+  _createDroneLayer(c, 36, 'sine', 0.18);
+  _createDroneLayer(c, 48, 'sine', 0.10);
+  _createDroneLayer(c, 55, 'triangle', 0.06);
+
+  _createStringLayer(c, 73.42, 0.04);
+  _createStringLayer(c, 82.41, 0.035);
+  _createStringLayer(c, 98.00, 0.03);
+
+  _createPulseLayer(c, 30, 0.08);
+
+  _startSwells(c);
+  _startDrift(c);
+}
+
+function _createDroneLayer(c: AudioContext, freq: number, type: OscillatorType, vol: number) {
+  const g = c.createGain();
+  g.gain.value = vol;
+  g.connect(_ambientMaster!);
+
+  const o = c.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  o.connect(g);
+  o.start();
+
+  _ambientLayers.push({ osc: o, gain: g });
+}
+
+function _createStringLayer(c: AudioContext, freq: number, vol: number) {
+  const flt = c.createBiquadFilter();
+  flt.type = 'lowpass';
+  flt.frequency.value = 400;
+  flt.Q.value = 2;
+  flt.connect(_ambientMaster!);
+
+  const g = c.createGain();
+  g.gain.value = vol;
+  g.connect(flt);
+
+  const o = c.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.value = freq;
+  o.detune.value = (Math.random() - 0.5) * 15;
+  o.connect(g);
+  o.start();
+
+  _ambientLayers.push({ osc: o, gain: g, filter: flt });
+}
+
+function _createPulseLayer(c: AudioContext, freq: number, vol: number) {
+  const g = c.createGain();
+  g.gain.value = 0;
+  g.connect(_ambientMaster!);
+
+  const o = c.createOscillator();
+  o.type = 'sine';
+  o.frequency.value = freq;
+  o.connect(g);
+  o.start();
+
+  _ambientLayers.push({ osc: o, gain: g });
+
+  const pulseCycle = () => {
+    if (!_ambientRunning) return;
+    const now = c.currentTime;
+    const period = 4 + Math.random() * 4;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + period * 0.4);
+    g.gain.linearRampToValueAtTime(0, now + period);
+    const tid = setTimeout(pulseCycle, period * 1000);
+    _ambientTimers.push(tid);
+  };
+  pulseCycle();
+}
+
+function _startSwells(c: AudioContext) {
+  const swellOnce = () => {
+    if (!_ambientRunning || !_ambientMaster) return;
+
+    const dissonantFreqs = [110, 116.54, 123.47, 130.81, 138.59, 146.83, 155.56, 164.81];
+    const f1 = dissonantFreqs[Math.floor(Math.random() * dissonantFreqs.length)];
+    const f2 = f1 * (1 + (Math.random() * 0.06 - 0.03));
+
+    const dur = 6 + Math.random() * 10;
+    const vol = 0.015 + Math.random() * 0.025;
+
+    const flt = c.createBiquadFilter();
+    flt.type = 'bandpass';
+    flt.frequency.value = 200 + Math.random() * 300;
+    flt.Q.value = 1.5 + Math.random() * 3;
+    flt.connect(_ambientMaster!);
+
+    const g = c.createGain();
+    g.gain.value = 0;
+    g.connect(flt);
+
+    const o1 = c.createOscillator();
+    o1.type = 'sawtooth';
+    o1.frequency.value = f1;
+    o1.connect(g);
+
+    const o2 = c.createOscillator();
+    o2.type = 'sawtooth';
+    o2.frequency.value = f2;
+    o2.connect(g);
+
+    const now = c.currentTime;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + dur * 0.3);
+    g.gain.linearRampToValueAtTime(vol * 0.7, now + dur * 0.6);
+    g.gain.linearRampToValueAtTime(0, now + dur);
+
+    o1.start(now);
+    o1.stop(now + dur + 0.1);
+    o2.start(now);
+    o2.stop(now + dur + 0.1);
+  };
+
+  const tid = setTimeout(swellOnce, 2000);
+  _ambientTimers.push(tid);
+
+  _swellInterval = setInterval(() => {
+    if (!_ambientRunning) return;
+    swellOnce();
+  }, 8000 + Math.random() * 6000);
+}
+
+function _startDrift(c: AudioContext) {
+  _driftInterval = setInterval(() => {
+    if (!_ambientRunning) return;
+    for (const layer of _ambientLayers) {
+      if (layer.osc && layer.osc.frequency) {
+        const base = layer.osc.frequency.value;
+        const drift = base + (Math.random() - 0.5) * 2;
+        layer.osc.frequency.setTargetAtTime(drift, c.currentTime, 3 + Math.random() * 4);
+      }
+      if (layer.filter) {
+        const base = layer.filter.frequency.value;
+        const drift = base + (Math.random() - 0.5) * 80;
+        layer.filter.frequency.setTargetAtTime(Math.max(100, drift), c.currentTime, 2 + Math.random() * 3);
+      }
+      if (layer.osc.detune) {
+        const drift = (Math.random() - 0.5) * 20;
+        layer.osc.detune.setTargetAtTime(drift, c.currentTime, 4 + Math.random() * 4);
+      }
+    }
+  }, 5000);
+}
+
+let _teardownTimer: ReturnType<typeof setTimeout> | null = null;
+
+function stopAmbient() {
+  if (!_ambientRunning) return;
+  _ambientRunning = false;
+
+  for (const tid of _ambientTimers) clearTimeout(tid);
+  _ambientTimers = [];
+  if (_swellInterval) { clearInterval(_swellInterval); _swellInterval = null; }
+  if (_driftInterval) { clearInterval(_driftInterval); _driftInterval = null; }
+  if (_teardownTimer) { clearTimeout(_teardownTimer); _teardownTimer = null; }
+
+  const oldLayers = _ambientLayers;
+  const oldMaster = _ambientMaster;
+  _ambientLayers = [];
+  _ambientMaster = null;
+
+  const c = _ctx;
+  if (c && oldMaster) {
+    oldMaster.gain.cancelScheduledValues(c.currentTime);
+    oldMaster.gain.setTargetAtTime(0, c.currentTime, 0.5);
+  }
+
+  _teardownTimer = setTimeout(() => {
+    _teardownTimer = null;
+    for (const layer of oldLayers) {
+      try { layer.osc.stop(); } catch (_e) {}
+      try { layer.osc.disconnect(); } catch (_e) {}
+      try { layer.gain.disconnect(); } catch (_e) {}
+      if (layer.filter) try { layer.filter.disconnect(); } catch (_e) {}
+    }
+    if (oldMaster) {
+      try { oldMaster.disconnect(); } catch (_e) {}
+    }
+  }, 2000);
+}
+
+export function fadeOutAmbient(duration = 1.5) {
+  if (!_ambientRunning || !_ambientMaster || !_ctx) return;
+  _ambientMaster.gain.cancelScheduledValues(_ctx.currentTime);
+  _ambientMaster.gain.setTargetAtTime(0, _ctx.currentTime, duration / 4);
+}
+
+export function fadeInAmbient(duration = 2.0) {
+  if (!_ambientRunning || !_ctx) {
+    startAmbient();
+    return;
+  }
+  if (!_ambientMaster) return;
+  const target = _muted ? 0 : _musicVol;
+  _ambientMaster.gain.cancelScheduledValues(_ctx.currentTime);
+  _ambientMaster.gain.setTargetAtTime(target, _ctx.currentTime, duration / 4);
+}
+
+export function isAmbientRunning(): boolean {
+  return _ambientRunning;
 }

@@ -4,6 +4,7 @@ import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
+  fadeOutAmbient, fadeInAmbient,
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
@@ -2482,14 +2483,26 @@ export default function WorldPlay() {
     return () => clearInterval(id);
   }, [!!hospitalCinematic]);
 
-  // ── Music init — start on first interaction ──────────────────────────────────
+  // ── Ambient soundtrack — start on first interaction ──────────────────────────
   useEffect(() => {
-    initMusic('/soundtrack.mp3');
+    initMusic();
     const start = () => { resumeAudioContext(); playMusic(); };
     window.addEventListener('pointerdown', start, { once: true });
     window.addEventListener('keydown', start, { once: true });
-    return () => { pauseMusic(); };
+    return () => {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+      pauseMusic();
+    };
   }, []);
+
+  useEffect(() => {
+    if (radioOn) {
+      fadeOutAmbient(1.5);
+    } else {
+      fadeInAmbient(2.0);
+    }
+  }, [radioOn]);
 
   // ── Commodity price drift (Star Citizen-style supply/demand oscillation) ─────
   useEffect(() => {
