@@ -85,58 +85,63 @@ const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x
 
 const BUILDINGS = [
   // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
-  { id: 'minx_arms',    x: 5500, y: 5550, w: 110, h: 130, label: 'MINX ARMS',        bright: false, doors: mkDoorS(5500,5550,110,130) },
-  { id: 'eastside_flat',x: 8100, y: 5550, w: 110, h: 120, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(8100,5550,110,120) },
+  { id: 'minx_arms',    x: 5420, y: 5420, w: 130, h: 150, label: 'MINX ARMS',        bright: false, doors: mkDoorS(5420,5420,130,150) },
+  { id: 'eastside_flat',x: 8220, y: 5420, w: 130, h: 140, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(8220,5420,130,140) },
   // ── CITY WEST DISTRICT ──────────────────────────────────────────────────────
-  { id: 'pablo_store',  x: 5800, y: 5900, w: 120, h: 70,  label: 'PABLO',            bright: true,  doors: mkDoorS(5800,5900,120,70) },
-  { id: 'pablo_tower',  x: 6100, y: 5150, w: 260, h: 230, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(6100,5150,260,230) },
-  { id: 'clinic',       x: 5500, y: 6050, w: 100, h: 70,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5500,6050,100,70) },
-  { id: 'megabank',     x: 5800, y: 6050, w: 120, h: 80,  label: 'IRON TRUST BANK',  bright: false, doors: mkDoorS(5800,6050,120,80) },
-  { id: 'market',       x: 6500, y: 6050, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(6500,6050,110,70) },
-  { id: 'hotel',        x: 6350, y: 5550, w: 100, h: 120, label: 'HOTEL NEON',       bright: false, doors: mkDoorS(6350,5550,100,120), radio: true },
-  { id: 'vend',         x: 6200, y: 6100, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(6200,6100,60,60) },
-  { id: 'crystal',      x: 6900, y: 6150, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'arcade',       x: 5500, y: 6400, w: 110, h: 75,  label: 'PIXEL ARCADE',     bright: true,  doors: mkDoorE(5500,6400,110,75), radio: true },
-  { id: 'bunker',       x: 5500, y: 6850, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(5500,6850,130,80), radio: true },
-  { id: 'scrap',        x: 5900, y: 6950, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(5900,6950,160) },
-  { id: 'radio',        x: 6700, y: 6400, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(6700,6400,100,90) },
-  { id: 'wily_lab',     x: 7200, y: 6450, w: 90,  h: 70,  label: 'OXIDE LABS',       bright: false, doors: mkDoorW(7200,6450,90,70) },
+  { id: 'pablo_store',  x: 5730, y: 5870, w: 140, h: 80,  label: 'PABLO',            bright: true,  doors: mkDoorS(5730,5870,140,80) },
+  { id: 'pablo_tower',  x: 6050, y: 5120, w: 280, h: 250, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(6050,5120,280,250) },
+  { id: 'clinic',       x: 5420, y: 5870, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5420,5870,120,80) },
+  { id: 'megabank',     x: 5730, y: 6020, w: 140, h: 90,  label: 'IRON TRUST BANK',  bright: false, doors: mkDoorS(5730,6020,140,90) },
+  { id: 'market',       x: 6420, y: 6020, w: 130, h: 80,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(6420,6020,130,80) },
+  { id: 'hotel',        x: 6380, y: 5420, w: 120, h: 140, label: 'HOTEL NEON',       bright: false, doors: mkDoorS(6380,5420,120,140), radio: true },
+  { id: 'vend',         x: 6220, y: 6120, w: 70,  h: 70,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(6220,6120,70,70) },
+  { id: 'crystal',      x: 6900, y: 6130, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'arcade',       x: 5420, y: 6320, w: 130, h: 85,  label: 'PIXEL ARCADE',     bright: true,  doors: mkDoorE(5420,6320,130,85), radio: true },
+  { id: 'bunker',       x: 5420, y: 6770, w: 150, h: 90,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(5420,6770,150,90), radio: true },
+  { id: 'scrap',        x: 5880, y: 6870, w: 180, h: 80,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(5880,6870,180) },
+  { id: 'radio',        x: 6720, y: 6320, w: 120, h: 100, label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(6720,6320,120,100) },
+  { id: 'wily_lab',     x: 7220, y: 6320, w: 110, h: 80,  label: 'OXIDE LABS',       bright: false, doors: mkDoorW(7220,6320,110,80) },
   // ── CITY EAST DISTRICT ──────────────────────────────────────────────────────
-  { id: 'dojo',         x: 6700, y: 5250, w: 120, h: 90, label: 'IRON DOJO',        bright: false, doors: mkDoorS(6700,5250,120,90) },
-  { id: 'data_vault',   x: 7300, y: 5250, w: 130, h: 80, label: 'DATA VAULT',       bright: true,  doors: mkDoorS(7300,5250,130,80) },
-  { id: 'nightclub',    x: 6900, y: 5600, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(6900,5600,110,90), radio: true },
-  { id: 'east_market',  x: 7500, y: 5650, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(7500,5650,110,70) },
-  { id: 'east_clinic',  x: 7200, y: 6050, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(7200,6050,110,70) },
-  { id: 'armory',       x: 7900, y: 5250, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(7900,5250,110,80) },
-  { id: 'crystal2',     x: 8600, y: 5700, w: 28,  h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'print_shop',   x: 7700, y: 6400, w: 100, h: 60, label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7700,6400,100) },
-  { id: 'east_bunker',  x: 6900, y: 6850, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(6900,6850,110) },
-  { id: 'north_gate',   x: 8500, y: 5300, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(8500,5300,90), ...mkDoorS(8500,5300,90,60)] },
+  { id: 'dojo',         x: 6720, y: 5140, w: 140, h: 100, label: 'IRON DOJO',        bright: false, doors: mkDoorS(6720,5140,140,100) },
+  { id: 'data_vault',   x: 7220, y: 5140, w: 150, h: 90,  label: 'DATA VAULT',       bright: true,  doors: mkDoorS(7220,5140,150,90) },
+  { id: 'nightclub',    x: 6920, y: 5470, w: 130, h: 100, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(6920,5470,130,100), radio: true },
+  { id: 'east_market',  x: 7420, y: 5570, w: 130, h: 80,  label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(7420,5570,130,80) },
+  { id: 'east_clinic',  x: 7220, y: 5870, w: 130, h: 80,  label: 'EAST CLINIC',      bright: false, doors: mkDoorS(7220,5870,130,80) },
+  { id: 'armory',       x: 7920, y: 5140, w: 130, h: 90,  label: 'ARMORY',           bright: false, doors: mkDoorS(7920,5140,130,90) },
+  { id: 'crystal2',     x: 8650, y: 5570, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'print_shop',   x: 7720, y: 6320, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7720,6320,120) },
+  { id: 'east_bunker',  x: 6920, y: 6770, w: 130, h: 85,  label: 'EAST BUNKER',      bright: false, doors: mkDoorN(6920,6770,130) },
+  { id: 'north_gate',   x: 8520, y: 5180, w: 100, h: 70,  label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(8520,5180,100), ...mkDoorS(8520,5180,100,70)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'hotel_midgar',  x: 5450, y: 5200, w: 120, h: 90,  label: 'GRAND MERIDIAN',   bright: true,  doors: mkDoorS(5450,5200,120,90), radio: true },
-  { id: 'inn_mother',    x: 5900, y: 6400, w: 100, h: 80,  label: 'SWITCHBOARD INN',  bright: false, doors: mkDoorS(5900,6400,100,80), radio: true },
-  { id: 'overlook',      x: 6400, y: 6850, w: 100, h: 85,  label: 'THE PINNACLE',     bright: true,  doors: mkDoorN(6400,6850,100), radio: true },
-  { id: 'safe_house',    x: 6350, y: 6450, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6350,6450,90), radio: true },
+  { id: 'hotel_midgar',  x: 5420, y: 5140, w: 140, h: 100, label: 'GRAND MERIDIAN',   bright: true,  doors: mkDoorS(5420,5140,140,100), radio: true },
+  { id: 'inn_mother',    x: 5880, y: 6320, w: 120, h: 90,  label: 'SWITCHBOARD INN',  bright: false, doors: mkDoorS(5880,6320,120,90), radio: true },
+  { id: 'overlook',      x: 6420, y: 6770, w: 120, h: 95,  label: 'THE PINNACLE',     bright: true,  doors: mkDoorN(6420,6770,120), radio: true },
+  { id: 'safe_house',    x: 6370, y: 6320, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6370,6320,110), radio: true },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
-  { id: 'sub_west',      x: 5700, y: 7100, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(5700,7100,80,55) },
-  { id: 'sub_central',   x: 6700, y: 7100, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(6700,7100,80,55) },
-  { id: 'sub_east',      x: 7700, y: 7100, w: 80,  h: 55,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(7700,7100,80,55) },
-  { id: 'sub_north',     x: 8500, y: 5500, w: 80,  h: 55,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(8500,5500,80,55) },
+  { id: 'sub_west',      x: 5720, y: 7020, w: 90,  h: 65,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(5720,7020,90,65) },
+  { id: 'sub_central',   x: 6720, y: 7020, w: 90,  h: 65,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(6720,7020,90,65) },
+  { id: 'sub_east',      x: 7720, y: 7020, w: 90,  h: 65,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(7720,7020,90,65) },
+  { id: 'sub_north',     x: 8520, y: 5420, w: 90,  h: 65,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(8520,5420,90,65) },
   // ── CHECKPOINTS (south city border — wasteland entry) ─────────────────────────
-  { id: 'checkpoint_w',  x: 5500, y: 7400, w: 90,  h: 50,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(5500,7400,90,50), ...mkDoorE(5500,7400,90,50)] },
-  { id: 'checkpoint_c',  x: 7200, y: 7400, w: 90,  h: 50,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(7200,7400,90,50), ...mkDoorE(7200,7400,90,50)] },
-  { id: 'checkpoint_e',  x: 8800, y: 7400, w: 90,  h: 50,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(8800,7400,90,50), ...mkDoorE(8800,7400,90,50)] },
+  { id: 'checkpoint_w',  x: 5420, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(5420,7420,100,55), ...mkDoorE(5420,7420,100,55)] },
+  { id: 'checkpoint_c',  x: 7220, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(7220,7420,100,55), ...mkDoorE(7220,7420,100,55)] },
+  { id: 'checkpoint_e',  x: 8720, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(8720,7420,100,55), ...mkDoorE(8720,7420,100,55)] },
   // ── NORTH QUARTER ───────────────────────────────────────────────────────────
-  { id: 'print_shop2',   x: 8600, y: 5600, w: 110, h: 70,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(8600,5600,110,70) },
-  { id: 'call_home',     x: 7700, y: 6000, w: 130, h: 80,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(7700,6000,130,80) },
-  { id: 'noodle_bar',    x: 8300, y: 6050, w: 100, h: 70,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(8300,6050,100,70) },
-  { id: 'pawn_shop',     x: 8200, y: 6400, w: 100, h: 70,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(8200,6400,100,70) },
-  { id: 'crystal4',      x: 8700, y: 6950, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'north_clinic',  x: 7400, y: 6850, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(7400,6850,110,70) },
-  { id: 'terminal_shop', x: 7900, y: 6850, w: 130, h: 80,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(7900,6850,130,80) },
-  { id: 'north_bunker',  x: 8400, y: 6850, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(8400,6850,120,80), radio: true },
-  { id: 'north_market',  x: 8500, y: 7200, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(8500,7200,100,70) },
-  { id: 'crystal5',      x: 8700, y: 7200, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'print_shop2',   x: 8620, y: 5470, w: 130, h: 80,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(8620,5470,130,80) },
+  { id: 'call_home',     x: 7720, y: 5870, w: 150, h: 90,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(7720,5870,150,90) },
+  { id: 'noodle_bar',    x: 8220, y: 5870, w: 120, h: 80,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(8220,5870,120,80) },
+  { id: 'pawn_shop',     x: 8220, y: 6320, w: 120, h: 80,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(8220,6320,120,80) },
+  { id: 'crystal4',      x: 8720, y: 6870, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  { id: 'north_clinic',  x: 7420, y: 6770, w: 130, h: 80,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(7420,6770,130,80) },
+  { id: 'terminal_shop', x: 7920, y: 6770, w: 150, h: 90,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(7920,6770,150,90) },
+  { id: 'north_bunker',  x: 8420, y: 6770, w: 140, h: 90,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(8420,6770,140,90), radio: true },
+  { id: 'north_market',  x: 8520, y: 7120, w: 120, h: 80,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(8520,7120,120,80) },
+  { id: 'crystal5',      x: 8720, y: 7120, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
+  // ── CITY DENSITY — Additional infill buildings ──────────────────────────────
+  { id: 'food_court',    x: 6020, y: 6320, w: 140, h: 90,  label: 'FOOD COURT',       bright: true,  doors: mkDoorS(6020,6320,140,90) },
+  { id: 'plaza_market',  x: 7620, y: 5420, w: 120, h: 80,  label: 'CENTRAL PLAZA',    bright: true,  doors: mkDoorS(7620,5420,120,80) },
+  { id: 'vehicle_dealer',x: 8420, y: 6320, w: 130, h: 80,  label: 'MOTOR DEPOT',      bright: true,  doors: mkDoorS(8420,6320,130,80) },
+  { id: 'depot_south',   x: 6220, y: 6770, w: 120, h: 85,  label: 'TRANSIT DEPOT',    bright: false, doors: mkDoorN(6220,6770,120) },
   // ── NORTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
   { id: 'outpost_alpha', x: 2000, y: 1500, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(2000,1500,120,80), radio: true },
   { id: 'prancing_pony', x: 3000, y: 1200, w: 110, h: 75,  label: 'THE RUST PORCH',   bright: true,  doors: mkDoorE(3000,1200,110,75), radio: true },
@@ -169,6 +174,59 @@ const BUILDINGS = [
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
+
+// ── City Sectors (12 named sectors for the city hierarchy) ──────────────────
+interface CitySector { id: string; name: string; x: number; y: number; w: number; h: number; }
+const CITY_SECTORS: CitySector[] = [
+  { id: 's1',  name: 'SECTOR 1 · SHADOW DISTRICT',    x: 5400, y: 5100, w: 600,  h: 400 },
+  { id: 's2',  name: 'SECTOR 2 · TOWER QUARTER',       x: 6000, y: 5100, w: 700,  h: 400 },
+  { id: 's3',  name: 'SECTOR 3 · IRON DOJO ROW',       x: 6700, y: 5100, w: 700,  h: 400 },
+  { id: 's4',  name: 'SECTOR 4 · ARMORY HEIGHTS',      x: 7400, y: 5100, w: 600,  h: 400 },
+  { id: 's5',  name: 'SECTOR 5 · NORTH GATE',          x: 8000, y: 5100, w: 1000, h: 400 },
+  { id: 's6',  name: 'SECTOR 6 · WEST MARKET',         x: 5400, y: 5500, w: 900,  h: 500 },
+  { id: 's7',  name: 'SECTOR 7 · NEON STRIP',          x: 6300, y: 5500, w: 900,  h: 500 },
+  { id: 's8',  name: 'SECTOR 8 · CORPORATE ROW',       x: 7200, y: 5500, w: 900,  h: 500 },
+  { id: 's9',  name: 'SECTOR 9 · EAST EDGE',           x: 8100, y: 5500, w: 900,  h: 500 },
+  { id: 's10', name: 'SECTOR 10 · INDUSTRIAL SOUTH',   x: 5400, y: 6000, w: 1200, h: 750 },
+  { id: 's11', name: 'SECTOR 11 · SOUTH GRID',         x: 6600, y: 6000, w: 1200, h: 750 },
+  { id: 's12', name: 'SECTOR 12 · TRANSIT CORRIDOR',   x: 7800, y: 6000, w: 1200, h: 750 },
+];
+function getCurrentSector(px: number, py: number): string {
+  if (!inCityBounds(px, py)) return 'WASTELAND';
+  for (const s of CITY_SECTORS) {
+    if (px >= s.x && px < s.x + s.w && py >= s.y && py < s.y + s.h) return s.name;
+  }
+  return 'MINX CITY · OUTSKIRTS';
+}
+
+// ── Parked vehicle locations (stealable) ─────────────────────────────────────
+interface ParkedVehicle { x: number; y: number; type: string; stolen: boolean; }
+const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
+  { x: 5760, y: 5850, type: 'cargo_bike', stolen: false },
+  { x: 6760, y: 5850, type: 'cargo_bike', stolen: false },
+  { x: 7760, y: 5850, type: 'hover_scooter', stolen: false },
+  { x: 8260, y: 5850, type: 'cargo_bike', stolen: false },
+  { x: 5760, y: 6280, type: 'hover_scooter', stolen: false },
+  { x: 6760, y: 6730, type: 'cargo_bike', stolen: false },
+  { x: 7760, y: 6730, type: 'armored_moped', stolen: false },
+  { x: 8760, y: 6280, type: 'cargo_bike', stolen: false },
+];
+const STEAL_RANGE = 35;
+const STEAL_CHANCE = 0.65;
+
+// ── Road bounds for on-road speed detection ──────────────────────────────────
+const ROAD_HALF_W = 30;
+const CITY_ROADS_H = [5400, 5850, 6300, 6750, 7200];
+const CITY_ROADS_V = [5700, 6200, 6700, 7200, 7700, 8200, 8700];
+function isOnRoad(px: number, py: number): boolean {
+  if (!inCityBounds(px, py)) return false;
+  for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
+  for (const rx of CITY_ROADS_V) { if (Math.abs(px - rx) < ROAD_HALF_W) return true; }
+  return false;
+}
+
+// ── NPC idle behavior types ──────────────────────────────────────────────────
+type NpcIdleBehavior = 'WALKING' | 'SITTING' | 'STANDING' | 'BROWSING' | 'EATING' | 'TALKING';
 
 // ── Gang territories (wasteland — north + south of city) ─────────────────────
 const GANG_ZONES_BASE = [
@@ -250,7 +308,7 @@ function shiftTerritories(frame: number) {
   GANG_ZONES = [...drifted, ...TERRITORY_FRAGMENTS];
 }
 
-interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian'; }
+interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian'; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
   { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank',
@@ -452,6 +510,79 @@ const NPCS: NpcDef[] = [
   { name: 'LAREN VEIL', x: 6400, y: 6520, type: 'human', gender: 'f', job: 'Exile', home: 'safe_house', workplace: 'dojo',
     whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same.',
     backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to PABLO Corp. She now trains at the Iron Dojo and works odd jobs.' },
+  // ── City Pedestrians — crowd density NPCs with idle behaviors ──
+  { name: 'CITIZEN', x: 5750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Just passing through.', backstory: 'Another face in the crowd.' },
+  { name: 'CITIZEN', x: 6250, y: 5400, type: 'human', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Mind your own business.', backstory: 'Another face in the crowd.' },
+  { name: 'CITIZEN', x: 6750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Late for work.', backstory: 'Another face in the crowd.' },
+  { name: 'CITIZEN', x: 7250, y: 5400, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'The tower watches everything.', backstory: 'Another PABLO Corp. employee.' },
+  { name: 'CITIZEN', x: 7750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Keep moving.', backstory: 'Another face in the crowd.' },
+  { name: 'CITIZEN', x: 8250, y: 5400, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Processing.', backstory: 'Service android on transit.' },
+  { name: 'SHOPPER', x: 6450, y: 6050, type: 'human', gender: 'f', job: 'Shopper', home: 'minx_arms', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'These prices are criminal.', backstory: 'Browsing the Black Market stalls.' },
+  { name: 'SHOPPER', x: 6520, y: 6080, type: 'human', gender: 'm', job: 'Shopper', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'Looking for parts.', backstory: 'Browsing the Black Market stalls.' },
+  { name: 'SHOPPER', x: 7450, y: 5600, type: 'human', gender: 'f', job: 'Shopper', home: 'hotel', workplace: 'east_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'The bazaar has fresh produce today.', backstory: 'Browsing the East Bazaar.' },
+  { name: 'SHOPPER', x: 7480, y: 5630, type: 'human', gender: 'm', job: 'Shopper', home: 'inn_mother', workplace: 'east_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'Need rations for the week.', backstory: 'Shopping at the East Bazaar.' },
+  { name: 'DINER', x: 8250, y: 5900, type: 'human', gender: 'f', job: 'Diner', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
+    whisper: 'Best ramen in Sector 9.', backstory: 'Having lunch at the noodle bar.' },
+  { name: 'DINER', x: 8280, y: 5920, type: 'human', gender: 'm', job: 'Diner', home: 'minx_arms', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
+    whisper: 'The broth is suspiciously good.', backstory: 'Eating noodles.' },
+  { name: 'DINER', x: 6050, y: 6350, type: 'human', gender: 'f', job: 'Diner', home: 'inn_mother', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
+    whisper: 'At least the food court is cheap.', backstory: 'Eating at the food court.' },
+  { name: 'DINER', x: 6080, y: 6370, type: 'human', gender: 'm', job: 'Diner', home: 'bunker', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
+    whisper: 'Synthetic protein, but it fills you up.', backstory: 'Having a meal at the food court.' },
+  { name: 'LOITERER', x: 5750, y: 5850, type: 'human', gender: 'm', job: 'Unemployed', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'STANDING',
+    whisper: 'Nothing to do. Nowhere to go.', backstory: 'Standing on the corner.' },
+  { name: 'LOITERER', x: 6750, y: 5850, type: 'human', gender: 'f', job: 'Unemployed', home: 'inn_mother', workplace: 'radio', role: 'pedestrian', idleBehavior: 'STANDING',
+    whisper: 'Waiting for something to happen.', backstory: 'Standing on the street.' },
+  { name: 'LOITERER', x: 7750, y: 5850, type: 'human', gender: 'm', job: 'Day Laborer', home: 'eastside_flat', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'STANDING',
+    whisper: 'Shift starts in an hour.', backstory: 'Waiting for work.' },
+  { name: 'BENCH SITTER', x: 6200, y: 6300, type: 'human', gender: 'f', job: 'Retiree', home: 'minx_arms', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'SITTING',
+    whisper: 'I remember when this was all fields.', backstory: 'Sitting on a bench, watching the world.' },
+  { name: 'BENCH SITTER', x: 7200, y: 6300, type: 'human', gender: 'm', job: 'Retiree', home: 'eastside_flat', workplace: 'print_shop', role: 'pedestrian', idleBehavior: 'SITTING',
+    whisper: 'The city changes but the benches stay.', backstory: 'Resting on a bench.' },
+  { name: 'BENCH SITTER', x: 8200, y: 6300, type: 'android', gender: 'f', job: 'Off-Duty', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'SITTING',
+    whisper: 'Conserving power.', backstory: 'Android in low-power mode on a bench.' },
+  { name: 'GOSSIPER', x: 5900, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'inn_mother', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
+    whisper: 'Did you hear about the fire in Sector 2?', backstory: 'Chatting with a friend on the street.' },
+  { name: 'GOSSIPER', x: 5920, y: 6760, type: 'human', gender: 'm', job: 'Gossip', home: 'bunker', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
+    whisper: 'They say SENIOR PABLO never sleeps.', backstory: 'Chatting with a friend on the street.' },
+  { name: 'GOSSIPER', x: 7200, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'overlook', workplace: 'east_bunker', role: 'pedestrian', idleBehavior: 'TALKING',
+    whisper: 'The guards are getting worse.', backstory: 'Two friends talking near the road.' },
+  { name: 'GOSSIPER', x: 7220, y: 6760, type: 'human', gender: 'm', job: 'Gossip', home: 'overlook', workplace: 'east_bunker', role: 'pedestrian', idleBehavior: 'TALKING',
+    whisper: 'I heard they arrested someone at the checkpoint.', backstory: 'Two friends talking near the road.' },
+  { name: 'COMMUTER', x: 5720, y: 7050, type: 'human', gender: 'f', job: 'Commuter', home: 'minx_arms', workplace: 'pablo_tower', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'The metro is always late.', backstory: 'Heading to the Metro West station.' },
+  { name: 'COMMUTER', x: 6720, y: 7050, type: 'corp', gender: 'm', job: 'Commuter', home: 'eastside_flat', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Fare went up again.', backstory: 'Heading to Metro Central.' },
+  { name: 'COMMUTER', x: 7720, y: 7050, type: 'human', gender: 'f', job: 'Commuter', home: 'hotel', workplace: 'call_home', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Third shift this week.', backstory: 'Walking to Metro East.' },
+  { name: 'WORKER', x: 5600, y: 6300, type: 'human', gender: 'm', job: 'Janitor', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Someone has to clean up after PABLO.', backstory: 'City maintenance worker.' },
+  { name: 'WORKER', x: 7600, y: 6300, type: 'human', gender: 'f', job: 'Courier', home: 'inn_mother', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Package for Sector 12.', backstory: 'Courier on delivery.' },
+  { name: 'PLAZA VENDOR', x: 7650, y: 5450, type: 'human', gender: 'm', job: 'Street Vendor', home: 'inn_mother', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
+    whisper: 'Fresh synth-fruit! Cheap!', backstory: 'Vendor at Central Plaza.' },
+  { name: 'PLAZA VENDOR', x: 7680, y: 5470, type: 'human', gender: 'f', job: 'Street Vendor', home: 'overlook', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
+    whisper: 'Hot rations! Two for one!', backstory: 'Vendor at Central Plaza.' },
+  { name: 'NORTH BAZAAR SHOPPER', x: 8550, y: 7150, type: 'human', gender: 'f', job: 'Shopper', home: 'north_bunker', workplace: 'north_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'The North Bazaar has the real stuff.', backstory: 'Shopping in the north market.' },
+  { name: 'NORTH BAZAAR SHOPPER', x: 8580, y: 7170, type: 'human', gender: 'm', job: 'Shopper', home: 'north_bunker', workplace: 'north_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+    whisper: 'Need scrap for repairs.', backstory: 'Shopping at the North Bazaar.' },
+  { name: 'OFFICER KANE BRIGGS', x: 7300, y: 5850, type: 'corp', gender: 'm', job: 'Police Sergeant', home: 'eastside_flat', workplace: 'pablo_tower', role: 'police', idleBehavior: 'WALKING',
+    whisper: 'Move along, citizen. Nothing to see here.', backstory: 'Senior police sergeant. Heavily armed. Very dangerous when provoked.' },
+  { name: 'OFFICER YARA CHEN', x: 8000, y: 6300, type: 'corp', gender: 'f', job: 'Military Officer', home: 'north_bunker', workplace: 'armory', role: 'police', idleBehavior: 'WALKING',
+    whisper: 'PABLO Corp. military division. Stand down or face consequences.', backstory: 'Military officer assigned to city security. Armed with military-grade equipment.' },
+  { name: 'SGT. IRON HOLTZ', x: 6500, y: 7200, type: 'corp', gender: 'm', job: 'Border Guard', home: 'bunker', workplace: 'checkpoint_c', role: 'police', idleBehavior: 'STANDING',
+    whisper: 'Papers. Now. Or you don\'t pass.', backstory: 'Checkpoint guard. Known for zero-tolerance enforcement.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -549,9 +680,9 @@ interface Projectile { x: number; y: number; dx: number; dy: number; life: numbe
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
-const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, MINX_CITY: 80, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, MINX_CITY: 55, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, MINX_CITY: 4500, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
+const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
+const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 8000, MINX_CITY: 12000, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
@@ -1075,6 +1206,13 @@ export default function WorldPlay() {
     projectiles: [] as Projectile[],
     bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
+    parkedVehicles: PARKED_VEHICLES_INIT.map(v => ({ ...v })),
+    policeAlertTimer: 0,
+    policeAlertX: 0,
+    policeAlertY: 0,
+    subwayTransit: false,
+    subwayTransitTimer: 0,
+    subwayTransitDest: null as null | { x: number; y: number; label: string },
     weaponTier: _ss?.weaponTier ?? 0,
     terminalDiscount: _ss?.terminalDiscount ?? false,
     realEstateIncomeTick: 0,
@@ -2134,6 +2272,9 @@ export default function WorldPlay() {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
           if (d < meleeRange) {
             hit = true;
+            if (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') {
+              g.policeAlertTimer = 450; g.policeAlertX = g.px; g.policeAlertY = g.py;
+            }
             const nhp = t.hp - ATK;
             if (nhp <= 0) {
               sfxKill();
@@ -2495,10 +2636,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      if (!frozen()) {
+      if (!frozen() && !g.subwayTransit) {
         const shiftHeld = g.keys.has('shift');
         const sprintMult = shiftHeld ? 1.6 : 1;
-        const vMult = (g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
+        const onRoad = isOnRoad(g.px, g.py);
+        const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
+        const vMult = (g.vehicle ? (onRoad ? baseVehicleSpeed : 1 + (baseVehicleSpeed - 1) * 0.3) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD * vMult;
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD * vMult;
@@ -2804,7 +2947,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Engage in melee
           if (nearestDist < 18 && g.guardCooldowns[gi] === 0) {
             g.guardCooldowns[gi] = 28;
-            nearestThreat.hp -= 20;
+            nearestThreat.hp -= 45;
             g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: '[ CORP HIT ]', color: '#4488ff', life: 38, maxLife: 38 });
             if (nearestThreat.hp <= 0) {
               g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#00ff41', life: 90, maxLife: 90 });
@@ -3139,7 +3282,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       if (g.sewerExitTimer > 0) g.sewerExitTimer--;
 
-      const newZone = inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND';
+      const newZone = getCurrentSector(g.px, g.py);
       if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); }
 
       // Gang zone detection
@@ -3290,11 +3433,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── LIVING WORLD: Police patrol movement ────────────────────────────
+      // ── LIVING WORLD: Police patrol movement + player aggro response ──
+      if (g.policeAlertTimer > 0) g.policeAlertTimer--;
       for (let pi = 0; pi < g.police.length; pi++) {
         const p = g.police[pi];
         if (!g.policeCooldowns[pi]) g.policeCooldowns[pi] = 0;
         if (g.policeCooldowns[pi] > 0) g.policeCooldowns[pi]--;
+
+        if (g.policeAlertTimer > 0) {
+          const dToOrigin = Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
+          if (dToOrigin < 600) {
+            const ang = Math.atan2(g.py - p.y, g.px - p.x);
+            p.x += Math.cos(ang) * 2.2;
+            p.y += Math.sin(ang) * 2.2;
+            const dToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
+            if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0) {
+              g.policeCooldowns[pi] = 25;
+              const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
+              g.hp = Math.max(0, g.hp - 4 * armorMult); g.invincible = 40; g.flash = 6;
+              g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
+            }
+            continue;
+          }
+        }
+
         const route = POLICE_ROUTES[p.routeIdx];
         const next  = (p.wpIdx + 1) % route.length;
         const wpA   = route[p.wpIdx], wpB = route[next];
@@ -3310,9 +3472,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const dx = t.x - p.x, dy = t.y - p.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 120) {
-              const dmg = 12 + Math.random() * 8;
+              const dmg = 25 + Math.random() * 15;
               t.hp -= dmg;
-              g.policeCooldowns[pi] = 45;
+              g.policeCooldowns[pi] = 35;
               g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} POLICE`, color: '#4488ff', life: 40, maxLife: 40 });
               if (t.hp <= 0) {
                 g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: '#4488ff', life: 60, maxLife: 60 });
@@ -3321,6 +3483,80 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               }
               break;
             }
+          }
+        }
+      }
+
+      // ── NPC event reaction system — flee or spectate on nearby combat/fire ──
+      {
+        const combatActive = g.threats.some(t => t.behavior === 'HOSTILE' && Math.hypot(t.x - g.px, t.y - g.py) < 150);
+        const fireNearby = g.fires.length > 0;
+        const eventX = combatActive ? g.px : (fireNearby ? g.fires[0].x : 0);
+        const eventY = combatActive ? g.py : (fireNearby ? g.fires[0].y : 0);
+        const hasEvent = combatActive || fireNearby;
+        for (const npc of NPCS) {
+          if (!npc.origX) { npc.origX = npc.x; npc.origY = npc.y; }
+          if (!npc.reactTimer) npc.reactTimer = 0;
+          if (npc.reactTimer > 0) npc.reactTimer--;
+          if (g.frame % 30 === 0 && hasEvent) {
+            const npcEvtDist = Math.hypot(npc.x - eventX, npc.y - eventY);
+            if (npcEvtDist < 200 && npc.reactState !== 'FLEEING' && npc.reactState !== 'SPECTATING' && npc.reactTimer === 0) {
+              const willFlee = Math.random() < 0.65 || npc.role === 'pedestrian';
+              npc.reactState = willFlee ? 'FLEEING' : 'SPECTATING';
+              npc.reactTimer = 300;
+            }
+          }
+          if (npc.reactState === 'FLEEING') {
+            const fleeAng = Math.atan2(npc.y - eventY, npc.x - eventX);
+            npc.x += Math.cos(fleeAng) * 1.5;
+            npc.y += Math.sin(fleeAng) * 1.5;
+            if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
+          } else if (npc.reactState === 'SPECTATING') {
+            const npcDist = Math.hypot(npc.x - eventX, npc.y - eventY);
+            if (npcDist > 80) {
+              const watchAng = Math.atan2(eventY - npc.y, eventX - npc.x);
+              npc.x += Math.cos(watchAng) * 0.3;
+              npc.y += Math.sin(watchAng) * 0.3;
+            }
+            if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
+          }
+        }
+      }
+
+      // ── Subway transit animation ──
+      if (g.subwayTransit) {
+        g.subwayTransitTimer--;
+        if (g.subwayTransitTimer <= 0 && g.subwayTransitDest) {
+          g.px = g.subwayTransitDest.x; g.py = g.subwayTransitDest.y;
+          const arrLabel = g.subwayTransitDest.label;
+          g.subwayTransit = false;
+          g.subwayTransitDest = null;
+          setNarr(`> METRO — Arrived at ${arrLabel}. "Please watch the gap."`);
+          sfxEnter();
+        }
+      }
+
+      // ── Parked vehicle steal interaction ──
+      const nearAnyBuilding = BUILDINGS.some(b => g.px >= b.x - 20 && g.px <= b.x + b.w + 20 && g.py >= b.y - 20 && g.py <= b.y + b.h + 20);
+      const nearAnyNpc = NPCS.some(nn => Math.hypot(g.px - nn.x, g.py - nn.y) < NPC_RANGE);
+      if (g.keys.has('e') && !g.vehicle && !nearAnyBuilding && !nearAnyNpc) {
+        for (const pv of g.parkedVehicles) {
+          if (pv.stolen) continue;
+          const pvDist = Math.hypot(g.px - pv.x, g.py - pv.y);
+          if (pvDist < STEAL_RANGE) {
+            g.keys.delete('e');
+            if (Math.random() < STEAL_CHANCE) {
+              pv.stolen = true;
+              g.vehicle = pv.type;
+              g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace('_', ' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
+              setNarr(`> POLICE ALERT — You hotwired a ${pv.type.replace('_', ' ')}. All units converging.`);
+              g.policeAlertTimer = 300;
+              g.policeAlertX = g.px; g.policeAlertY = g.py;
+            } else {
+              g.floaters.push({ x: g.px, y: g.py - 16, text: 'STEAL FAILED', color: '#ff4444', life: 40, maxLife: 40 });
+              setNarr('> Hotwire attempt failed. The alarm triggered briefly.');
+            }
+            break;
           }
         }
       }
@@ -3588,20 +3824,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
         ctx.setLineDash([]);
       };
-      // Horizontal city avenues — modern grid
-      drawRoad(CITY_LEFT,5400,CITY_RIGHT,5400,22,.10);
-      drawRoad(CITY_LEFT,5850,CITY_RIGHT,5850,20,.09);
-      drawRoad(CITY_LEFT,6300,CITY_RIGHT,6300,20,.09);
-      drawRoad(CITY_LEFT,6750,CITY_RIGHT,6750,18,.08);
-      drawRoad(CITY_LEFT,7200,CITY_RIGHT,7200,18,.08);
-      // Vertical city streets — modern grid
-      drawRoad(5700,CITY_TOP,5700,CITY_BOTTOM+40,16,.09);
-      drawRoad(6200,CITY_TOP,6200,CITY_BOTTOM+40,14,.08);
-      drawRoad(6700,CITY_TOP,6700,CITY_BOTTOM+40,16,.09);
-      drawRoad(7200,CITY_TOP,7200,CITY_BOTTOM+40,14,.08);
-      drawRoad(7700,CITY_TOP,7700,CITY_BOTTOM+40,14,.07);
-      drawRoad(8200,CITY_TOP,8200,CITY_BOTTOM+40,14,.07);
-      drawRoad(8700,CITY_TOP,8700,CITY_BOTTOM+40,12,.06);
+      // Horizontal city avenues — wide urban corridors
+      drawRoad(CITY_LEFT,5400,CITY_RIGHT,5400,34,.12);
+      drawRoad(CITY_LEFT,5850,CITY_RIGHT,5850,30,.11);
+      drawRoad(CITY_LEFT,6300,CITY_RIGHT,6300,30,.11);
+      drawRoad(CITY_LEFT,6750,CITY_RIGHT,6750,28,.10);
+      drawRoad(CITY_LEFT,7200,CITY_RIGHT,7200,28,.10);
+      // Vertical city streets — wide urban corridors
+      drawRoad(5700,CITY_TOP,5700,CITY_BOTTOM+40,26,.11);
+      drawRoad(6200,CITY_TOP,6200,CITY_BOTTOM+40,24,.10);
+      drawRoad(6700,CITY_TOP,6700,CITY_BOTTOM+40,26,.11);
+      drawRoad(7200,CITY_TOP,7200,CITY_BOTTOM+40,24,.10);
+      drawRoad(7700,CITY_TOP,7700,CITY_BOTTOM+40,24,.09);
+      drawRoad(8200,CITY_TOP,8200,CITY_BOTTOM+40,24,.09);
+      drawRoad(8700,CITY_TOP,8700,CITY_BOTTOM+40,22,.08);
       // North wasteland trails (dashed, dimmer)
       drawRoad(0,1800,W,1800,10,.04,true);
       drawRoad(0,3200,W,3200,8,.03,true);
@@ -3840,34 +4076,103 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 7); }
       }
 
+      // ── Parked vehicles on streets ──
+      for (const pv of g.parkedVehicles) {
+        if (pv.stolen) continue;
+        const pvx = pv.x + ox, pvy = pv.y + oy;
+        if (pvx < -30 || pvx > cw + 30 || pvy < -20 || pvy > ch + 20) continue;
+        const pvDist = Math.hypot(g.px - pv.x, g.py - pv.y);
+        const pvNear = pvDist < STEAL_RANGE;
+        ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = pvNear ? 8 : 2;
+        ctx.fillStyle = 'rgba(0,0,0,.2)';
+        ctx.beginPath(); ctx.ellipse(pvx, pvy + 6, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
+        const vCol = pv.type === 'cargo_bike' ? '#886622' : pv.type === 'hover_scooter' ? '#2266aa' : '#553344';
+        ctx.fillStyle = vCol; ctx.fillRect(pvx - 8, pvy - 4, 16, 8);
+        ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 9, pvy - 2, 2, 2); ctx.fillRect(pvx + 7, pvy - 2, 2, 2);
+        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx - 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(pvx + 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        if (pvNear && !g.vehicle) {
+          ctx.fillStyle = g.blink ? 'rgba(255,204,0,.85)' : 'rgba(255,204,0,.3)';
+          ctx.font = '12px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] STEAL', pvx, pvy - 14);
+          ctx.fillStyle = 'rgba(255,204,0,.6)';
+          ctx.fillText(pv.type.replace('_', ' ').toUpperCase(), pvx, pvy - 26);
+        }
+      }
+
       // NPCs — pixel sprite bodies (schedule-aware positions)
       for (let ni = 0; ni < NPCS.length; ni++) {
         const n = NPCS[ni];
-        const sPos = getNpcSchedulePos(n, g.worldTime ?? 0);
+        const isFleeing = n.reactState === 'FLEEING';
+        const isSpectating = n.reactState === 'SPECTATING';
+        const sPos = (isFleeing || isSpectating) ? { x: n.x, y: n.y } : getNpcSchedulePos(n, g.worldTime ?? 0);
         const nx2 = sPos.x + ox, ny2 = sPos.y + oy;
         if (nx2 < -14 || nx2 > cw + 14 || ny2 < -14 || ny2 > ch + 14) continue;
         const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
         const isNearNpc = nDist < NPC_RANGE;
-        const nCol = NPC_COL[n.type] ?? '#009922';
+        const nCol = isFleeing ? '#ff4444' : isSpectating ? '#ffaa00' : (NPC_COL[n.type] ?? '#009922');
         ctx.shadowColor = nCol; ctx.shadowBlur = isNearNpc ? 6 : 0;
         const isFemale = (n as { gender?: string }).gender === 'f';
-        // Shadow
+        const idle = n.idleBehavior ?? 'WALKING';
         ctx.fillStyle = 'rgba(0,0,0,.25)';
         ctx.beginPath(); ctx.ellipse(nx2, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-        if (isFemale) {
-          // Female sprite
-          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill(); // head
-          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5); // torso
-          // Hair bun
+        if (idle === 'SITTING' && !isFleeing) {
+          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 4, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 3, ny2 - 1, 6, 4);
+          ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 3, 8, 3);
+          ctx.fillStyle = '#443322'; ctx.fillRect(nx2 - 6, ny2 + 2, 12, 3);
+        } else if (idle === 'EATING' && !isFleeing) {
+          if (isFemale) {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
+            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
+          }
+          ctx.fillStyle = '#ffcc88'; ctx.fillRect(nx2 + 4, ny2 - 4, 4, 3);
+        } else if (idle === 'BROWSING' && !isFleeing) {
+          if (isFemale) {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
+            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
+          }
+          const bob = Math.sin(g.frame * 0.05 + ni) * 2;
+          ctx.fillStyle = '#c8906c'; ctx.fillRect(nx2 + 5, ny2 - 3 + bob, 2, 4);
+        } else if (idle === 'TALKING' && !isFleeing) {
+          if (isFemale) {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
+            ctx.fillStyle = '#553322'; ctx.fillRect(nx2 - 3, ny2 - 12, 7, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
+          }
+          if (g.frame % 60 < 30) {
+            ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('...', nx2 + 8, ny2 - 12);
+          }
+        } else if (isFemale) {
+          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
           ctx.fillStyle = '#553322'; ctx.fillRect(nx2 - 3, ny2 - 12, 7, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12, 2, 0, Math.PI * 2); ctx.fill();
-          // Skirt
           ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
         } else {
-          // Male sprite
-          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill(); // head
-          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6); // torso (wider)
-          // Pants / legs
+          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
           ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
+        }
+        if (isFleeing) {
+          ctx.fillStyle = 'rgba(255,68,68,.7)'; ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('!', nx2, ny2 - 16);
         }
         ctx.shadowBlur = 0;
         // Name label
@@ -4669,6 +4974,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.globalAlpha = 1;
         }
         ctx.restore();
+      }
+
+      if (g.subwayTransit) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,.85)';
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.font = 'bold 24px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillStyle = '#00ff41';
+        ctx.fillText('METRO IN TRANSIT', cw / 2, ch / 2 - 20);
+        ctx.font = '14px "Share Tech Mono"'; ctx.fillStyle = 'rgba(0,255,65,.6)';
+        const dest = g.subwayTransitDest?.label ?? '???';
+        ctx.fillText(`Destination: ${dest}`, cw / 2, ch / 2 + 10);
+        const dots = '.'.repeat((Math.floor(g.frame / 20) % 4) + 1);
+        ctx.fillText(`Arriving${dots}`, cw / 2, ch / 2 + 35);
+        for (let si = 0; si < 8; si++) {
+          const sx = (Math.sin(g.frame * 0.03 + si * 0.8) * 0.5 + 0.5) * cw;
+          const sy = ch / 2 + 60 + si * 4;
+          ctx.fillStyle = `rgba(0,255,65,${0.1 + Math.sin(g.frame * 0.05 + si) * 0.05})`;
+          ctx.fillRect(sx - 40, sy, 80, 1);
+        }
+        ctx.restore();
+      }
+
+      if (g.policeAlertTimer > 0) {
+        const alertAlpha = Math.min(0.3, g.policeAlertTimer / 450 * 0.3) * (Math.sin(g.frame * 0.15) * 0.5 + 0.5);
+        ctx.fillStyle = `rgba(255,0,0,${alertAlpha})`;
+        ctx.fillRect(0, 0, cw, 3); ctx.fillRect(0, ch - 3, cw, 3);
+        ctx.fillRect(0, 0, 3, ch); ctx.fillRect(cw - 3, 0, 3, ch);
       }
 
       animRef.current = requestAnimationFrame(loop);
@@ -6349,16 +6681,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           { id: 'sub_east',    label: 'METRO EAST',    sub: 'Sector 7 · Corporate Row',       x: 7740, y: 7130 },
           { id: 'sub_north',   label: 'METRO NORTH',   sub: 'North Quarter · Edge District',  x: 8540, y: 5530 },
         ];
-        const FARE = 800;
+        const FARE = 500;
         const origin = STATIONS.find(s => s.id === subwayOrigin);
         const doRide = (dest: typeof STATIONS[0]) => {
           const g = gs.current;
           if (dest.id === subwayOrigin) { setNarr(`> METRO — You're already at ${dest.label}.`); setShowSubway(false); return; }
           if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient FIAT. Fare is ƒ${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
           g.salary -= FARE; setSalary(g.salary);
-          g.px = dest.x; g.py = dest.y;
           sfxEnter(); sfxCoin();
-          setNarr(`> METRO — Departed ${origin?.label ?? '???'}. Arrived ${dest.label}. [−ƒ${FARE.toLocaleString()} FIAT] "PABLO CORP. MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
+          g.subwayTransit = true;
+          g.subwayTransitTimer = 90;
+          g.subwayTransitDest = { x: dest.x, y: dest.y, label: dest.label };
+          setNarr(`> METRO — Boarding at ${origin?.label ?? '???'}. Destination: ${dest.label}. [−ƒ${FARE.toLocaleString()} FIAT] "PABLO CORP. MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
           setShowSubway(false);
         };
         return (
