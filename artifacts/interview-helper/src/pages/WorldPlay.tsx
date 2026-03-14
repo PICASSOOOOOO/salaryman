@@ -6,6 +6,8 @@ import {
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
+import { PabloOnboarding } from '../components/PabloOnboarding';
+import type { OnboardingAnswers } from '../components/PabloOnboarding';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
@@ -1467,6 +1469,7 @@ export default function WorldPlay() {
       if (isEmployed !== savedIsEmployed) return getHamletSpawn(char).buildingId;
       return saved;
     })(),
+    pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone ?? true) : false,
   });
 
   const savedDog = (() => {
@@ -1706,6 +1709,7 @@ export default function WorldPlay() {
       diedLastSession: g.diedLastSession,
       quests: g.quests,
       hamletBuildingId: g.hamletBuildingId,
+      pabloOnboardingDone: g.pabloOnboardingDone,
     };
   }, [char]);
 
@@ -6072,8 +6076,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {/* ── PABLO ONBOARDING (first Terminal open) ── */}
+      {showPablo && !gs.current.pabloOnboardingDone && (
+        <PabloOnboarding
+          charName={char.name}
+          charClass={char.class}
+          onComplete={(answers: OnboardingAnswers) => {
+            gs.current.pabloOnboardingDone = true;
+            setPabloMsgs(m => [...m, {
+              role: 'pablo' as const,
+              text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
+            }]);
+            setNarr('> PABLO ONBOARDING COMPLETE. Your profile has been calibrated. Terminal is now fully operational.');
+            doSaveRef.current(buildSaveData());
+          }}
+        />
+      )}
+
       {/* ── PABLO PANEL ── */}
-      {showPablo && (() => {
+      {showPablo && gs.current.pabloOnboardingDone && (() => {
         const g = gs.current;
         const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
