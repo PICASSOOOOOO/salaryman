@@ -45,7 +45,7 @@ const CLASS_BADGE: Record<string, string> = {
   replicant: 'REP',
 };
 
-type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'locations' | 'terminals' | 'controls';
+type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'landmarks' | 'terminals' | 'controls';
 
 const CLASSES = [
   {
@@ -119,18 +119,18 @@ function getWorkstation(bType: 'fictitious'|'real', ind: string, fictInd: string
 
 const FLAVOR = [
   'The collapse happened three years ago. Minx City never recovered.',
-  'SENIOR PABLO controls every credit in Minx City.',
-  'The wasteland is everything south of the wall. He owns that too.',
+  'PABLO CORP. controls every credit in Minx City.',
+  'The wasteland is everything south of the wall. The corp owns that too.',
   'Your PABLO device is your only edge.',
-  'Credits don\'t grow on ruins — but SENIOR PABLO always finds a way.',
-  'Every building in Minx City has a price. He set them all.',
-  'Villain of the poor. Hero of the rich. That\'s SENIOR PABLO.',
+  'Credits don\'t grow on ruins — but the corp always finds a way.',
+  'Every building in Minx City has a price. The corp set them all.',
+  'Villain of the poor. Hero of the rich. That\'s PABLO CORP.',
   'Gang territory starts where the lights end.',
   'Server: MINX CITY · PST — 24 regional servers worldwide.',
-  'SENIOR PABLO\'s helicopter left the tower at 3 AM. Nobody knows which city. Nobody asks.',
-  'They say he has towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
-  'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP. network never sleeps — and neither does he.',
-  'The helipad on Floor 62 runs day and night. Sometimes two birds land at once. He\'s in neither.',
+  'A helicopter left the tower at 3 AM. Nobody knows which city it came from. Nobody asks.',
+  'They say there are towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
+  'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP. network never sleeps.',
+  'The helipad on Floor 62 runs day and night. Someone is always arriving. Someone is always leaving.',
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
@@ -138,7 +138,7 @@ const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
-  { id: 'locations',   label: 'LOCATIONS',    col: '#88ff44' },
+  { id: 'landmarks',   label: 'LANDMARKS',    col: '#88ff44' },
   { id: 'terminals',   label: 'TERMINALS',    col: '#33ffaa' },
   { id: 'controls',    label: 'CONTROLS',     col: '#cc88ff' },
 ];
@@ -185,27 +185,28 @@ function GuideContent({ section }: { section: GuideSection }) {
     <div style={S}>
       <SectionHead>MINX CITY</SectionHead>
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        The collapse came without warning. Three years ago PABLO Corp. cut the power grid for 48 hours. When it came back on, SENIOR PABLO owned everything. Minx City runs on PABLO credits now. There is no alternative. 24 regional servers mirror the same story across every timezone — the collapse is global.
+        The collapse came without warning. Three years ago PABLO CORP. cut the power grid for 48 hours. When it came back on, the corp owned everything. Minx City runs on PABLO credits now. There is no alternative. 24 regional servers mirror the same story across every timezone — the collapse is global.
       </div>
-      <Row label="SERVER" val="MINX CITY · PST — Your regional instance. 24 servers worldwide, each tied to a timezone. The lore is the same everywhere. SENIOR PABLO is everywhere." col="#cc44ff" />
+      <Row label="SERVER" val="MINX CITY · PST — Your regional instance. 24 servers worldwide, each tied to a timezone. The lore is the same everywhere. PABLO CORP. is everywhere." col="#cc44ff" />
       <Divider />
       <Row label="MINX CITY" val="The neon side. Corporate towers. Clinics. Banks. Streets patrolled by automated sentries no one admits to deploying. High salary potential. Wasteland keeps creeping north." col="#00ff41" />
       <Row label="WASTELAND" val="Everything south of the wall. Three gang territories carve it up. Survival meters drain 1.5× faster here. Your salary bleeds if your energy collapses. High risk, high EXP." col="#88ff44" />
       <Row label="THE BORDER" val="The invisible line between city and wasteland. No wall, no sign. Just the moment the sky changes from neon to smoke. Most corps never cross it." col="#aaff22" />
       <Divider />
-      <SectionHead>SENIOR PABLO</SectionHead>
+      <SectionHead>HISTORY OF MINX CITY</SectionHead>
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        No one has seen SENIOR PABLO. Not in person. The tower carries his name. Every device carries his firmware. Every credit transaction flows through his network. Villain of Minx City. Hero of the rich. Floor 40 of PABLO Tower is the highest any operative has been allowed. Floors 41–62 are sealed. Keypad access. Wrong code: instant lockout. The name "SENIOR PABLO" is reserved — no operative may use it.
+        Before the collapse, Minx City was a mid-tier coastal hub — shipping, tech startups, and a bloated public sector. The power grid failure three years ago wiped the old order overnight. Martial law lasted six weeks. When it lifted, PABLO CORP. had already bought the utilities, the hospitals, and both newspapers. The transition was silent. Nobody voted. Nobody protested. The lights came back on — and everything had a new owner.
       </div>
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        PABLO CORP. is not a local operation. SENIOR PABLO runs towers in 24 cities across every timezone — Neo-São Paulo, Sector Berlin, Old Shanghai, Neon Lagos, and twenty others no one is allowed to name. He is rarely in Minx City. The rooftop helipad on Floor 62 runs day and night. Operatives near the tower report the sound of rotors at 3 AM — departure. 5 AM — arrival. Different helicopter each time. He moves between towers the way other men move between rooms. Minx City is one floor of a building that never ends.
+        The city split into two halves. North of the wall: corporate towers, automated patrols, neon storefronts, and a population that learned to stop asking questions. South of the wall: the wasteland — three gang territories, radiation pockets, and everyone who couldn't afford to stay. The border has no sign. Just the moment the sky changes from neon to smoke.
       </div>
-      <Row label="PABLO TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: restricted by order of SENIOR PABLO. Floor 62: rooftop helipad — his personal fleet runs 24/7. Nobody knows what's on top. Nobody sees him land." col="#cc44ff" />
+      <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
       <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
-      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. SENIOR PABLO controls the mint. He takes a cut of everything." col="#ffcc00" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything." col="#ffcc00" />
+      <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        This world was painted by Picasso and built by the good folks at PABLO CORP. — 24 towers, 24 cities, one vision. All rights reserved in every timezone.
+        Minx City. 24 regional servers. Same story. Same collapse. Same neon. All rights reserved in every timezone.
       </div>
     </div>
   );
@@ -282,13 +283,13 @@ function GuideContent({ section }: { section: GuideSection }) {
           id: 'IRON RATS', col: '#ff4444', zone: 'Western wasteland',
           entry: '"IRON RATS territory. You\'re the meal."',
           enemies: 'IRON_RATS — HP 30 · EXP 20 · fast, swarming',
-          lore: 'Former construction workers. Turned feral after SENIOR PABLO seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
+          lore: 'Former construction workers. Turned feral after PABLO CORP. seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
         },
         {
           id: 'VOID DOGS', col: '#ff8800', zone: 'Central wasteland',
           entry: '"VOID DOGS don\'t negotiate."',
           enemies: 'VOID_DOGS — HP 40 · EXP 28 · balanced, patrol-heavy',
-          lore: 'Ex-security contractors cut loose when SENIOR PABLO automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
+          lore: 'Ex-security contractors cut loose when PABLO CORP. automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
         },
         {
           id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
@@ -314,18 +315,18 @@ function GuideContent({ section }: { section: GuideSection }) {
     </div>
   );
 
-  if (section === 'locations') return (
+  if (section === 'landmarks') return (
     <div style={S}>
-      <SectionHead>LOCATIONS</SectionHead>
+      <SectionHead>LANDMARKS</SectionHead>
       <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other operatives.
       </div>
       <Divider />
       <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
       {[
-        { name: 'PABLO TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Konami Code is real.' },
-        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'Even BELMONT gets patched up here.' },
-        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are SENIOR PABLO\'s favorite revenue stream.' },
+        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
+        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
+        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
         { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
         { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: GALAGA.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
         { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
@@ -345,8 +346,8 @@ function GuideContent({ section }: { section: GuideSection }) {
       {[
         { name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
         { name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
-        { name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal: "...up up, down down..." Someone gave SENIOR PABLO the code.', secret: '"He already knew it. He wrote it."' },
-        { name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. SENIOR PABLO bought them all."' },
+        { name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
+        { name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
@@ -402,7 +403,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#88ff44" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored. SENIOR PABLO is watching.
+        PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
       </div>
     </div>
   );
@@ -411,18 +412,14 @@ function GuideContent({ section }: { section: GuideSection }) {
     <div style={S}>
       <SectionHead>CONTROLS</SectionHead>
       <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['WASD / ARROWS', 'Move operative'],
-          ['E', 'Enter building / Talk to NPC / Use terminal'],
-          ['F', 'Melee attack (72px range)'],
-          ['C', 'Open world chat'],
-          ['V', 'Toggle voice (mic)'],
-          ['P', 'Open PABLO device (requires working device)'],
-          ['ESC', 'Close panels / dialogs'],
-          ['SPACE / ENTER', 'Advance dialog text'],
-          ['↑↑↓↓←→←→BA', 'Konami Code (secret)'],
-          ['Click canvas', 'Focus game window'],
+          ['SHIFT + MOVE', 'Sprint (1.6× speed)'],
+          ['E', 'Enter building / Talk / Use terminal / Loot'],
+          ['F / SPACE', 'Melee attack (72px range)'],
+          ['CLICK', 'Ranged attack (requires ranged weapon)'],
         ].map(([key, desc]) => (
           <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
@@ -431,26 +428,50 @@ function GuideContent({ section }: { section: GuideSection }) {
         ))}
       </div>
       <Divider />
-      <SectionHead>NPCS</SectionHead>
-      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
-        9 named NPCs roam the world. Each has a unique whisper referencing games from the era. Approach and press [E] to talk. They won't repeat themselves.
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL & DEVICE ──</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
+        {[
+          ['P', 'Open PABLO device (personal terminal)'],
+          ['E at KIOSK', 'Access public terminal (payphones, kiosks, vans)'],
+          ['ESC', 'Close any open panel or dialog'],
+          ['SPACE / ENTER', 'Advance dialog text'],
+        ].map(([key, desc]) => (
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+            <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+          </div>
+        ))}
       </div>
-      {[
-        ['STRIFE', 'FF7 — "The planet\'s been trying to tell us something for years. Nobody\'s listening. You listening?"'],
-        ['BELMONT', 'Castlevania — "Whip. Sub-weapons. Holy water. None of it works on SENIOR PABLO. Believe me. I tried."'],
-        ['SAMUS', 'Metroid — "I\'ve scanned every floor of that tower. Floor 53 registers as occupied. No life signs."'],
-        ['SNAKE', 'Metal Gear — "A weapon to surpass Metal Gear. SENIOR PABLO built it. It\'s called the PABLO device. You\'re holding it."'],
-        ['RIZER', 'Contra — "Thirty lives. I had thirty lives and I spent them all trying to get past floor 40. No cheats work."'],
-        ['KANEDA', 'Akira — "Minx City was supposed to be Neo-Tokyo. SENIOR PABLO liked the name. Bought the trademark."'],
-        ['TETSUO', 'Akira — "I can feel the tower thinking. It knows I\'m here. SENIOR PABLO always knows."'],
-        ['DR. OXIDE', 'Unknown Origin — "I built the first AI for SENIOR PABLO. He thanked me with a gift card."'],
-        ['ERDRICK', 'Dragon Quest — "There was a hero before all this. Warrior of Light. I think SENIOR PABLO built the tower on their tomb."'],
-      ].map(([name, quote]) => (
-        <div key={name} style={{ display: 'flex', gap: '.6rem', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)', alignItems: 'flex-start' }}>
-          <div style={{ ...VT, fontSize: '.95rem', color: '#33ffaa', minWidth: 70, flexShrink: 0 }}>{name}</div>
-          <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.7, fontStyle: 'italic' }}>{quote}</div>
-        </div>
-      ))}
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MAP & NAVIGATION ──</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
+        {[
+          ['M', 'Toggle world map overlay'],
+          ['SCROLL WHEEL', 'Zoom in / out (0.8× – 2.5×)'],
+          ['R', 'Toggle radio (near radio buildings)'],
+        ].map(([key, desc]) => (
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+            <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+          </div>
+        ))}
+      </div>
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── SOCIAL & BUSINESS ──</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
+        {[
+          ['C', 'Open world chat'],
+          ['V', 'Toggle voice (mic)'],
+          ['E at BANK', 'Deposit salary / view balance / transfer credits'],
+          ['E at STORE', 'Browse inventory / buy items / sell cargo'],
+          ['E at EXCHANGE', 'Trade commodities (buy low, sell high)'],
+        ].map(([key, desc]) => (
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+            <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -585,7 +606,7 @@ export default function WorldMenu() {
     const n = name.trim().toUpperCase();
     if (!n) return;
     if (n === 'SENIOR PABLO' || n === 'SENIORPABLO' || n.replace(/\s+/g,'') === 'SENIORPABLO') {
-      setNameError('RESERVED — That name belongs to him. Choose another.');
+      setNameError('RESERVED — That name is restricted by PABLO CORP. Choose another.');
       return;
     }
     setNameError('');
@@ -1124,7 +1145,7 @@ export default function WorldMenu() {
                       <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', marginTop: '.3rem', ...VT }}>⚠ {nameError}</div>
                     )}
                     <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em', marginTop: '.25rem' }}>
-                      Enter your full name — first and last. "SENIOR PABLO" is reserved.
+                      Enter your full name — first and last. Some names are restricted.
                     </div>
                   </div>
 
@@ -1195,7 +1216,7 @@ export default function WorldMenu() {
                   <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
-                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever SENIOR PABLO has planned. Your progress and FIAT balance will not be saved between sessions. PABLO Corp. has no record of you — which is either very good or very bad.
+                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever the corp has planned. Your progress and FIAT balance will not be saved between sessions. PABLO CORP. has no record of you — which is either very good or very bad.
                     </div>
                     <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
                       You can register a business later at PABLO TOWER. Walk in and use the terminal.

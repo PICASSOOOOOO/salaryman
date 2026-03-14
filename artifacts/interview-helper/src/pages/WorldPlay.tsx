@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxStep, sfxEnter, sfxTalk,
-  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxKonami, sfxError,
+  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
@@ -1072,7 +1072,6 @@ const DOG_KILL_LINES = [
   "Target down. We make a good team. Mostly me.",
   "That one won't bother us again. Unless it respawns. They always respawn.",
 ];
-const KONAMI_SEQ = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
 
 const STORE_LINES = [
   '> PABLO — AUTHORIZED DEVICE OUTLET · MINX CITY · PST',
@@ -2430,28 +2429,14 @@ export default function WorldPlay() {
   }, [dialog]);
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
-  const konamiBuffer = useRef<string[]>([]);
   useEffect(() => {
     const MOVE_KEYS = new Set(['arrowleft','arrowright','arrowup','arrowdown','a','s','w','d',' ']);
     const dn = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      // Prevent page scroll on arrow keys, WASD, and space
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
       gs.current.lastMoveTime = Date.now();
-
-      // Konami Code easter egg
-      const kk = e.key.toLowerCase();
-      konamiBuffer.current = [...konamiBuffer.current, kk].slice(-KONAMI_SEQ.length);
-      if (konamiBuffer.current.join(',') === KONAMI_SEQ.join(',')) {
-        const g = gs.current;
-        g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary += 30000;
-        setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary);
-        setNarr('> ★ KONAMI CODE ACCEPTED ★ — "He knew you\'d find it. He left it there on purpose. +ƒ30,000 FIAT. Full stats restored. SENIOR PABLO is watching." ★');
-        sfxKonami();
-        konamiBuffer.current = [];
-      }
 
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpenRef.current) {
@@ -2597,8 +2582,12 @@ export default function WorldPlay() {
       }
     };
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
+    const onBlur = () => gs.current.keys.clear();
+    const onVisChange = () => { if (document.hidden) gs.current.keys.clear(); };
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
-    return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); window.removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVisChange); };
   }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog, handleRadioToggle]);
 
   // ── Mouse click — ranged attack ─────────────────────────────────────────
@@ -2737,8 +2726,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   // ── Game loop ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
+    const ctx = canvas.getContext('2d', { alpha: false })!;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let logW = canvas.offsetWidth, logH = canvas.offsetHeight;
+    const resize = () => {
+      logW = canvas.offsetWidth;
+      logH = canvas.offsetHeight;
+      canvas.width = Math.round(logW * dpr);
+      canvas.height = Math.round(logH * dpr);
+      canvas.style.width = logW + 'px';
+      canvas.style.height = logH + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
     resize(); window.addEventListener('resize', resize);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -2752,7 +2751,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     const loop = () => {
       const g = gs.current;
       const zoom = zoomRef.current;
-      const cw = canvas.width / zoom, ch = canvas.height / zoom;
+      const cw = logW / zoom, ch = logH / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
       if (g.worldTimeTick >= 60) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
@@ -2761,9 +2760,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         setCalendarStr(getCalendarString(g.calendar));
         setWeatherStr(g.calendar.weather);
       }
-      updateWeatherParticles(g.weatherParticles, cw, ch);
+      updateWeatherParticles(g.weatherParticles, logW, logH);
       if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
-        g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, 8, cw, ch));
+        g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, 8, logW, logH));
       }
       const radResult = getRadiationLevel(g.px, g.py);
       const rl = radResult.intensity;
@@ -3502,7 +3501,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.interior) {
         ctx.restore();
         ctx.save();
-        const icw = canvas.width, ich = canvas.height;
+        const icw = logW, ich = logH;
         const itr = g.interior;
         const iDef = itr.def;
         const iScale = Math.min(icw / (iDef.width + 80), ich / (iDef.height + 80));
