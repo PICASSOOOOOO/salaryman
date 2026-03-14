@@ -3141,6 +3141,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           return false;
         };
+        if (iCol(itr.px, itr.py)) {
+          for (let r = 8; r <= 200; r += 8) {
+            let escaped = false;
+            for (const [ox, oy] of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,r],[r,-r],[-r,-r]]) {
+              if (!iCol(itr.px + ox, itr.py + oy)) { itr.px += ox; itr.py += oy; escaped = true; break; }
+            }
+            if (escaped) break;
+          }
+        }
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD;
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
@@ -7601,9 +7610,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.py = spawnB.y + spawnB.h + 20;
                 const def = getInterior(spawnBid);
                 if (def) {
+                  let spawnIx = def.exitX + def.exitW / 2;
+                  let spawnIy = def.exitY - 20;
+                  const spawnICol = (ipx: number, ipy: number) => {
+                    if (ipx < PSIZE + 6 || ipx > def.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > def.height - PSIZE) return true;
+                    for (const obj of def.objects) {
+                      if (obj.type === 'window' || obj.type === 'plant') continue;
+                      if (ipx + PSIZE > obj.x && ipx - PSIZE < obj.x + obj.w && ipy + PSIZE > obj.y && ipy - PSIZE < obj.y + obj.h) return true;
+                    }
+                    return false;
+                  };
+                  if (spawnICol(spawnIx, spawnIy)) {
+                    for (let r = 8; r <= 200; r += 8) {
+                      let escaped = false;
+                      for (const [ox, oy] of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,r],[r,-r],[-r,-r]]) {
+                        if (!spawnICol(spawnIx + ox, spawnIy + oy)) { spawnIx += ox; spawnIy += oy; escaped = true; break; }
+                      }
+                      if (escaped) break;
+                    }
+                  }
                   g.interior = {
                     bid: spawnBid, def,
-                    px: 50, py: 50,
+                    px: spawnIx, py: spawnIy,
                     savedWorldX: g.px, savedWorldY: g.py,
                   };
                 }
