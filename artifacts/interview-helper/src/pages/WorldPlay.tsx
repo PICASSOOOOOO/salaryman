@@ -5,6 +5,7 @@ import {
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxKonami, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
 } from '../soundEngine';
+import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 4800, H = 4200, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
@@ -78,18 +79,18 @@ const BUILDINGS = [
   { id: 'clinic',       x: 270, y: 1980, w: 100, h: 70,  label: 'DR. WRIGHT\'S',    bright: false, doors: mkDoorS(270,1980,100,70) },
   { id: 'megabank',     x: 615, y: 2055, w: 120, h: 80,  label: 'KONAMI BANK',      bright: false, doors: mkDoorS(615,2055,120,80) },
   { id: 'market',       x: 1080, y: 1965, w: 110, h: 70,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(1080,1965,110,70) },
-  { id: 'hotel',        x: 1380, y: 1710, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false, doors: mkDoorS(1380,1710,100,120) },
+  { id: 'hotel',        x: 1380, y: 1710, w: 100, h: 120, label: 'HOTEL FAMICOM',    bright: false, doors: mkDoorS(1380,1710,100,120), radio: true },
   { id: 'vend',         x: 1380, y: 1980, w: 60,  h: 60,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(1380,1980,60,60) },
   { id: 'crystal',      x: 732, y: 2148, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'arcade',       x: 225, y: 2310, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true,  doors: mkDoorE(225,2310,110,75) },
-  { id: 'bunker',       x: 450, y: 2475, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(450,2475,130,80) },
+  { id: 'arcade',       x: 225, y: 2310, w: 110, h: 75,  label: 'ARCADE \'87',      bright: true,  doors: mkDoorE(225,2310,110,75), radio: true },
+  { id: 'bunker',       x: 450, y: 2475, w: 130, h: 80,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(450,2475,130,80), radio: true },
   { id: 'scrap',        x: 870, y: 2505, w: 160, h: 70,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(870,2505,160) },
   { id: 'radio',        x: 1230, y: 2445, w: 100, h: 90,  label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(1230,2445,100,90) },
   { id: 'wily_lab',     x: 1485, y: 2565, w: 90,  h: 70,  label: 'WILY LABS',        bright: false, doors: mkDoorW(1485,2565,90,70) },
   // ── MINX CITY EAST DISTRICT ─────────────────────────────────────────────────
   { id: 'dojo',         x: 2100, y: 1620, w: 120, h: 90, label: 'IRON DOJO',        bright: false, doors: mkDoorS(2100,1620,120,90) },
   { id: 'data_vault',   x: 2625, y: 1710, w: 130, h: 80, label: 'DATA VAULT',       bright: true,  doors: mkDoorS(2625,1710,130,80) },
-  { id: 'nightclub',    x: 3150, y: 1890, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(3150,1890,110,90) },
+  { id: 'nightclub',    x: 3150, y: 1890, w: 110, h: 90, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(3150,1890,110,90), radio: true },
   { id: 'east_market',  x: 2100, y: 1995, w: 110, h: 70, label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(2100,1995,110,70) },
   { id: 'east_clinic',  x: 2775, y: 2085, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(2775,2085,110,70) },
   { id: 'armory',       x: 3600, y: 1680, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(3600,1680,110,80) },
@@ -98,10 +99,10 @@ const BUILDINGS = [
   { id: 'east_bunker',  x: 3150, y: 2340, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(3150,2340,110) },
   { id: 'north_gate',   x: 4200, y: 2160, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(4200,2160,90), ...mkDoorS(4200,2160,90,60)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'hotel_midgar',  x: 150,  y: 1635, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(150,1635,120,90) },
-  { id: 'inn_mother',    x: 1725, y: 2190, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1725,2190,100,80) },
-  { id: 'overlook',      x: 3375, y: 2325, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(3375,2325,100) },
-  { id: 'safe_house',    x: 1635, y: 2400, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(1635,2400,90) },
+  { id: 'hotel_midgar',  x: 150,  y: 1635, w: 120, h: 90,  label: 'HOTEL MIDGAR',     bright: true,  doors: mkDoorS(150,1635,120,90), radio: true },
+  { id: 'inn_mother',    x: 1725, y: 2190, w: 100, h: 80,  label: 'MOTHER BASE INN',  bright: false, doors: mkDoorS(1725,2190,100,80), radio: true },
+  { id: 'overlook',      x: 3375, y: 2325, w: 100, h: 85,  label: 'THE OVERLOOK',     bright: true,  doors: mkDoorN(3375,2325,100), radio: true },
+  { id: 'safe_house',    x: 1635, y: 2400, w: 90,  h: 65,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(1635,2400,90), radio: true },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
   { id: 'sub_west',      x: 420, y: 2235, w: 80,  h: 55,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(420,2235,80,55) },
   { id: 'sub_central',   x: 1425, y: 2175, w: 80,  h: 55,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(1425,2175,80,55) },
@@ -119,26 +120,26 @@ const BUILDINGS = [
   { id: 'crystal4',      x: 4050, y: 2070, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   { id: 'north_clinic',  x: 3930, y: 2160, w: 110, h: 70,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(3930,2160,110,70) },
   { id: 'terminal_shop', x: 3720, y: 1935, w: 130, h: 80,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(3720,1935,130,80) },
-  { id: 'north_bunker',  x: 4500, y: 1725, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(4500,1725,120,80) },
+  { id: 'north_bunker',  x: 4500, y: 1725, w: 120, h: 80,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(4500,1725,120,80), radio: true },
   { id: 'north_market',  x: 4575, y: 1995, w: 100, h: 70,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(4575,1995,100,70) },
   { id: 'crystal5',      x: 4500, y: 2145, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── NORTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
-  { id: 'outpost_alpha', x: 300,  y: 375,  w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(300,375,120,80) },
-  { id: 'prancing_pony', x: 450,  y: 360,  w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true,  doors: mkDoorE(450,360,110,75) },
+  { id: 'outpost_alpha', x: 300,  y: 375,  w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(300,375,120,80), radio: true },
+  { id: 'prancing_pony', x: 450,  y: 360,  w: 110, h: 75,  label: 'THE PRANCING PONY',bright: true,  doors: mkDoorE(450,360,110,75), radio: true },
   { id: 'eastern_gate',  x: 4200, y: 375,  w: 100, h: 70,  label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(4200,375,100,70), ...mkDoorE(4200,375,100,70)] },
   // ── SOUTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
-  { id: 'outpost_beta',  x: 2250, y: 2925, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(2250,2925,100,70) },
+  { id: 'outpost_beta',  x: 2250, y: 2925, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(2250,2925,100,70), radio: true },
   { id: 'supply_cache',  x: 1200, y: 3450, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false, doors: mkDoorN(1200,3450,130) },
-  { id: 'deep_bunker',   x: 3600, y: 3225, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(3600,3225,120) },
+  { id: 'deep_bunker',   x: 3600, y: 3225, w: 120, h: 80,  label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(3600,3225,120), radio: true },
   { id: 'crystal3',      x: 1800, y: 3750, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'zanarkand_inn', x: 1140, y: 2880, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false, doors: mkDoorS(1140,2880,120,80) },
-  { id: 'terminus',      x: 570,  y: 3150, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(570,3150,120,80) },
-  { id: 'fort_dracula',  x: 3150, y: 3000, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(3150,3000,100,100) },
+  { id: 'zanarkand_inn', x: 1140, y: 2880, w: 120, h: 80,  label: 'ZANARKAND HOSTEL', bright: false, doors: mkDoorS(1140,2880,120,80), radio: true },
+  { id: 'terminus',      x: 570,  y: 3150, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(570,3150,120,80), radio: true },
+  { id: 'fort_dracula',  x: 3150, y: 3000, w: 100, h: 100, label: 'FORT DRACULA',     bright: true,  doors: mkDoorW(3150,3000,100,100), radio: true },
   { id: 'waste_exchange',x: 1170, y: 3000, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(1170,3000,130) },
-  { id: 'deep_camp',     x: 3900, y: 2925, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(3900,2925,120,80) },
+  { id: 'deep_camp',     x: 3900, y: 2925, w: 120, h: 80,  label: 'DEEP CAMP',        bright: false, doors: mkDoorS(3900,2925,120,80), radio: true },
   { id: 'ruins_alpha',   x: 4350, y: 3150, w: 130, h: 90,  label: 'RUINS ALPHA',      bright: false, doors: [...mkDoorN(4350,3150,130), ...mkDoorS(4350,3150,130,90)] },
   { id: 'crystal6',      x: 4125, y: 3375, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'southern_hub',  x: 2250, y: 3825, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(2250,3825,130) },
+  { id: 'southern_hub',  x: 2250, y: 3825, w: 130, h: 90,  label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(2250,3825,130), radio: true },
   { id: 'crystal7',      x: 2475, y: 3900, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── PUBLIC TERMINALS (payphones, kiosks, vans) ───────────────────────────────
   { id: 'term_west',      x: 240,  y: 2265, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
@@ -152,6 +153,8 @@ const BUILDINGS = [
   { id: 'van_central',    x: 1800, y: 3075, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 3450, y: 675,  w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
 ];
+
+const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
 
 // ── Gang territories (wasteland — north + south of city) ─────────────────────
 const GANG_ZONES = [
@@ -923,6 +926,8 @@ export default function WorldPlay() {
   const [showDogName, setShowDogName] = useState(false);
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
+  const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
+
   const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
     setBankHistory(h => [{ id: Date.now(), desc, amount, bal }, ...h].slice(0, 30));
   }, []);
@@ -992,9 +997,22 @@ export default function WorldPlay() {
     };
   }, [buildSaveData]);
 
+  const handleRadioToggle = useCallback(() => {
+    const result = toggleRadio();
+    if (result.on) {
+      setNarr('> You turn the dial. Static. Then music. RADIO 107.3 — MINX CITY FM. The signal bleeds through the walls. Something familiar. Something human.');
+    } else {
+      setNarr('> You switch the radio off. Silence returns. The wasteland hum fills the gap.');
+    }
+  }, [toggleRadio]);
+
   const enterBuilding = useCallback((bid: string) => {
     const g = gs.current;
     sfxEnter();
+
+    if (RADIO_BUILDINGS.has(bid)) {
+      showRadio();
+    }
 
     // ── WORKSTATION REST ─────────────────────────────────────────────────
     if (char.hasBusiness && char.workstation === bid) {
@@ -1634,6 +1652,9 @@ export default function WorldPlay() {
       if (e.key === 'm' || e.key === 'M') setShowMap(v => !v);
       if (e.key === 'c' || e.key === 'C') { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); }
       if (e.key === 'v' || e.key === 'V') toggleVoice();
+      if ((e.key === 'r' || e.key === 'R') && radioVisibleRef.current && !frozenRef.current && !chatOpenRef.current) {
+        handleRadioToggle();
+      }
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
       // [Space] melee attack (also F as alias)
       if (e.key === ' ' && !frozenRef.current && !dialog) {
@@ -1698,7 +1719,7 @@ export default function WorldPlay() {
     const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); };
-  }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog]);
+  }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog, handleRadioToggle]);
 
   // ── Mouse click — ranged attack ─────────────────────────────────────────
   useEffect(() => {
@@ -2423,6 +2444,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { nb = b.id; break; } }
       g.near = nb;
       if (nb !== lastNear) {
+        if (lastNear && RADIO_BUILDINGS.has(lastNear) && (!nb || !RADIO_BUILDINGS.has(nb))) {
+          hideRadio();
+        }
         lastNear = nb; setNear(nb);
         if (nb) {
           const b = BUILDINGS.find(b => b.id === nb);
@@ -4379,6 +4403,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ⚡ POWER {powerPct}%{powerPct < 30 ? ' — BLACKOUT' : ' — REDUCED'}
         </div>
       )}
+
+      {/* ── RADIO HUD + HIDDEN PLAYER ── */}
+      <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
+      <RadioPlayer playing={radioOn} mounted={playerEverMounted} />
 
       {/* ── CITY EVENT TICKER ── */}
       {cityEvent && (
