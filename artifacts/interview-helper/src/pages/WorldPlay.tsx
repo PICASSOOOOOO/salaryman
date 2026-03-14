@@ -2751,6 +2751,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
     const loop = () => {
       const g = gs.current;
+      const zoom = zoomRef.current;
+      const cw = canvas.width / zoom, ch = canvas.height / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
       if (g.worldTimeTick >= 60) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
@@ -3478,9 +3480,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       cameraLookAheadRef.current.x += (dx2 * lookAheadDist - cameraLookAheadRef.current.x) * laLerp;
       cameraLookAheadRef.current.y += (dy2 * lookAheadDist - cameraLookAheadRef.current.y) * laLerp;
 
-      const zoom = zoomRef.current;
-      const cw = canvas.width / zoom, ch = canvas.height / zoom;
-
       // During building entry, pan camera toward building entrance
       let focusX = g.px + cameraLookAheadRef.current.x;
       let focusY = g.py + cameraLookAheadRef.current.y;
@@ -3634,7 +3633,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         ctx.restore();
-        rafRef.current = requestAnimationFrame(loop);
+        animRef.current = requestAnimationFrame(loop);
         return;
       }
 
