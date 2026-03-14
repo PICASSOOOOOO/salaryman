@@ -149,10 +149,7 @@ const BUILDINGS = [
   { id: 'term_neon',      x: 3075, y: 2190, w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
   { id: 'term_north',     x: 4380, y: 2100, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
   { id: 'term_outpost_a', x: 510,  y: 435,  w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_b', x: 2430, y: 2985, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
-  { id: 'van_west',       x: 750,  y: 525,  w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_central',    x: 1800, y: 3075, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'van_east',       x: 3450, y: 675,  w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -756,8 +753,8 @@ const BUILDING_COST_LABEL: Record<string, string> = {
   pablo_store: 'SHOP', pablo_tower: 'FREE',
   north_bunker: 'FREE', outpost_alpha: 'FREE', outpost_beta: 'FREE',
   term_west: 'FREE', term_central: 'FREE', term_east: 'FREE', term_neon: 'FREE', term_north: 'FREE',
-  term_outpost_a: 'FREE', term_outpost_b: 'FREE',
-  van_west: 'FREE', van_central: 'FREE', van_east: 'FREE',
+  term_outpost_a: 'FREE',
+  van_central: 'FREE',
 };
 
 const IS_PUBLIC_TERMINAL = (id: string) => id.startsWith('term_') || id.startsWith('van_');
@@ -1032,10 +1029,17 @@ export default function WorldPlay() {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(m));
   }, []);
 
-  const doSave = useCallback((data: object) => {
+  const canAccessTerminal = useCallback(() => {
+    const g = gs.current;
+    const nearTerminal = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop');
+    return (g.hasDevice && !g.deviceBroken) || g.atPublicTerminal || nearTerminal;
+  }, []);
+
+  const doSave = useCallback((data: object, forceCloud = false) => {
     const g = gs.current;
     const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
     localStorage.setItem('sm_save', JSON.stringify({ ...data, ...dogSave }));
+    if (!forceCloud && !canAccessTerminal()) return;
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
       charName: char.name,
@@ -1044,7 +1048,7 @@ export default function WorldPlay() {
       salary: g.salary,
       lastZone: (g.py < CITY_TOP || g.py > CITY_BOTTOM) ? 'WASTELAND' : 'MINX CITY',
       playtime: g.frame,
-      data: { ...char, ...(data as any), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
+      data: { ...char, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
     fetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
@@ -1052,7 +1056,7 @@ export default function WorldPlay() {
       credentials: 'include',
       body: JSON.stringify(savePayload),
     }).catch(() => {});
-  }, [char]);
+  }, [char, canAccessTerminal]);
 
   const doSaveRef = useRef(doSave);
   doSaveRef.current = doSave;
@@ -1076,11 +1080,17 @@ export default function WorldPlay() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      doSaveRef.current(buildSaveData());
+      const g = gs.current;
+      if (g.hasDevice && !g.deviceBroken) {
+        doSaveRef.current(buildSaveData());
+      }
     }, 30000);
     return () => {
       clearInterval(interval);
-      doSaveRef.current(buildSaveData());
+      const g = gs.current;
+      if (g.hasDevice && !g.deviceBroken) {
+        doSaveRef.current(buildSaveData());
+      }
     };
   }, [buildSaveData]);
 
@@ -4129,143 +4139,163 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
-      {/* BOTTOM-LEFT — minimap canvas + player identity + stats */}
-      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.3rem .6rem' }}>
-          <div style={{ width: 6, height: 6, background: '#00ff41', boxShadow: '0 0 6px rgba(0,255,65,.7)' }} />
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
-          <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.45rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && !deviceBroken && <span style={{ fontSize: '.55rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '1px 4px' }}>PABLO</span>}
-          {hasDevice && deviceBroken && <span style={{ fontSize: '.55rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '1px 4px' }}>DAMAGED</span>}
-          {char.hasBusiness === false && <span style={{ fontSize: '.55rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '1px 4px', animation: 'none' }}>UNSAVED</span>}
+      {/* UPPER-LEFT — player identity + stats + minimap */}
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.4rem .7rem' }}>
+          <div style={{ width: 8, height: 8, background: '#00ff41', boxShadow: '0 0 8px rgba(0,255,65,.7)' }} />
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
+          <span style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.5rem' }}>{char.class.toUpperCase()}</span>
+          {hasDevice && !deviceBroken && <span style={{ fontSize: '.7rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '2px 6px' }}>PABLO MX-75</span>}
+          {hasDevice && deviceBroken && <span style={{ fontSize: '.7rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '2px 6px' }}>DAMAGED</span>}
+          {char.hasBusiness === false && <span style={{ fontSize: '.7rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '2px 6px', animation: 'none' }}>UNSAVED</span>}
         </div>
-        <div style={{ display: 'flex', gap: '3px' }}>
+        <div style={{ display: 'flex', gap: '4px' }}>
           {/* HP */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem', minWidth: 90 }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>HP</div>
-            <div style={{ position: 'relative', height: 4, background: 'rgba(0,255,65,.15)', width: '100%' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${hpPct}%`, background: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', boxShadow: `0 0 4px ${hpPct > 50 ? 'rgba(0,255,65,.5)' : 'rgba(255,0,0,.5)'}`, transition: 'width .2s, background .2s' }} />
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem', minWidth: 110 }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>HP</div>
+            <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.15)', width: '100%' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${hpPct}%`, background: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', boxShadow: `0 0 6px ${hpPct > 50 ? 'rgba(0,255,65,.5)' : 'rgba(255,0,0,.5)'}`, transition: 'width .2s, background .2s' }} />
             </div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', letterSpacing: '.06em', marginTop: '2px' }}>{Math.floor(hpPct)}/100</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', letterSpacing: '.06em', marginTop: '3px' }}>{Math.floor(hpPct)}/100</div>
           </div>
           {/* Salary */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>FIAT</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '2px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>FIAT</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
           </div>
           {/* Zone */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>ZONE</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '2px' }}>{zone}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.3rem .6rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>ZONE</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{zone}</div>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${(() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? 'rgba(255,200,50,.45)' : 'rgba(100,120,255,.45)'; })()}`, padding: '.25rem .5rem' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '3px' }}>TIME</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })(), letterSpacing: '.06em', marginTop: '2px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${(() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? 'rgba(255,200,50,.45)' : 'rgba(100,120,255,.45)'; })()}`, padding: '.3rem .6rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>TIME</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })(), letterSpacing: '.06em', marginTop: '3px' }}>
               {String(Math.floor(gs.current.worldTime)).padStart(2,'0')}:{String(Math.floor((gs.current.worldTime % 1) * 60)).padStart(2,'0')} {gs.current.worldTime >= 6 && gs.current.worldTime < 18 ? '☀' : '☾'}
             </div>
           </div>
         </div>
         {/* Survival meters */}
-        <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
           {[
             { label: 'HUNGER', val: hunger, col: hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622' },
             { label: 'THIRST', val: thirst, col: thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622' },
             { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
           ].map(({ label, val, col }) => (
-            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 68 }}>
-              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>{label}</div>
-              <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)' }}>
+            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', minWidth: 85 }}>
+              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{label}</div>
+              <div style={{ position: 'relative', height: 5, background: 'rgba(0,255,65,.14)' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
               </div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: col, letterSpacing: '.04em', marginTop: '1px' }}>{val}</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: col, letterSpacing: '.04em', marginTop: '2px' }}>{val}</div>
             </div>
           ))}
         </div>
         {/* Level / EXP / Poison row */}
-        <div style={{ display: 'flex', gap: '3px', marginTop: '3px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', minWidth: 50 }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>LVL</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', minWidth: 60 }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>LVL</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.22rem .45rem', flex: 1 }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '2px' }}>EXP</div>
-            <div style={{ position: 'relative', height: 3, background: 'rgba(0,255,65,.14)', marginBottom: '1px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.3rem .55rem', flex: 1 }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>EXP</div>
+            <div style={{ position: 'relative', height: 5, background: 'rgba(0,255,65,.14)', marginBottom: '2px' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
             </div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
           </div>
           {poisoned && (
-            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.22rem .5rem', animation: 'smblink 0.7s step-end infinite' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#88ff44', letterSpacing: '.1em' }}>PSN</div>
+            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.3rem .6rem', animation: 'smblink 0.7s step-end infinite' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#88ff44', letterSpacing: '.1em' }}>PSN</div>
             </div>
           )}
         </div>
         {/* Gang zone indicator */}
         {gangZone && (
-          <div style={{ marginTop: '3px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.2rem .5rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.3rem .6rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
               ⚠ {GANG_ZONES.find(g => g.id === gangZone)?.name} TERRITORY
             </div>
           </div>
         )}
         {/* Dog companion HUD */}
         {dogActive && (
-          <div style={{ marginTop: '3px', background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.45)' : 'rgba(255,170,68,.45)'}`, padding: '.22rem .5rem', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-            <span style={{ fontSize: '.7rem' }}>🐾</span>
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.45)' : 'rgba(255,170,68,.45)'}`, padding: '.3rem .6rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+            <span style={{ fontSize: '.9rem' }}>🐾</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: dogInjured ? '#ff4444' : '#ffaa44', letterSpacing: '.08em' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44', letterSpacing: '.08em' }}>
                 {dogName} {dogInjured && '— INJURED'}
               </div>
               {!dogInjured && (
                 <>
-                  <div style={{ position: 'relative', height: 3, background: 'rgba(255,170,68,.15)', marginTop: '2px' }}>
+                  <div style={{ position: 'relative', height: 5, background: 'rgba(255,170,68,.15)', marginTop: '3px' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(dogHp / DOG_MAX_HP) * 100}%`, background: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : (dogHp / DOG_MAX_HP) > 0.25 ? '#ff8800' : '#ff4444', transition: 'width .2s' }} />
                   </div>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ffaa44', marginTop: '1px' }}>{dogHp}/{DOG_MAX_HP}</div>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ffaa44', marginTop: '2px' }}>{dogHp}/{DOG_MAX_HP}</div>
                 </>
               )}
               {dogInjured && (
-                <div style={{ fontSize: '.55rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '1px' }}>Needs rest or clinic</div>
+                <div style={{ fontSize: '.7rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '2px' }}>Needs rest or clinic</div>
               )}
             </div>
           </div>
         )}
         {/* Minimap canvas */}
-        <canvas ref={minimapRef} width={360} height={360} style={{ width: 360, height: 360, borderRadius: '50%', marginTop: 4, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
+        <canvas ref={minimapRef} width={360} height={360} style={{ width: 360, height: 360, borderRadius: '50%', marginTop: 5, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
       </div>
 
       {/* TOP-RIGHT — Pause / Chat / Menu / Pablo AI dropdown */}
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
-            onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }}
+            onClick={() => {
+              const g = gs.current;
+              const nearTerminal = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop');
+              const hasWorkingDevice = g.hasDevice && !g.deviceBroken;
+              if (nearTerminal || hasWorkingDevice) {
+                sessionStorage.setItem('sm_show_saves', '1');
+                if (nearTerminal) sessionStorage.setItem('sm_at_physical_terminal', '1');
+                doSaveRef.current(buildSaveData()); navigate('/world');
+              } else {
+                setNarr('> NO TERMINAL ACCESS — You need a working Pablo Terminal MX-75 or must be near a public terminal to pause and save.');
+              }
+            }}
             style={{
-              padding: '.45rem .7rem',
+              padding: '.5rem .8rem',
               background: 'rgba(0,5,0,.92)',
               border: '1px solid rgba(255,200,50,.35)',
               color: 'rgba(255,200,50,.7)',
               cursor: 'pointer',
               fontFamily: "'VT323',monospace",
-              fontSize: '1rem',
+              fontSize: '1.1rem',
               letterSpacing: '.1em',
             }}
           >
             ⏸ PAUSE
           </button>
           <button
-            onClick={() => setShowTopMenu(v => !v)}
+            onClick={() => {
+              const g = gs.current;
+              const nearTerminal = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop');
+              const hasWorkingDevice = g.hasDevice && !g.deviceBroken;
+              if (nearTerminal || hasWorkingDevice) {
+                setShowTopMenu(v => !v);
+              } else {
+                setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75 to access the menu.');
+              }
+            }}
             style={{
-              padding: '.45rem .8rem',
+              padding: '.5rem .9rem',
               background: showTopMenu ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.92)',
               border: `1px solid ${showTopMenu ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.25)'}`,
               color: showTopMenu ? '#00ff41' : 'rgba(0,255,65,.55)',
               cursor: 'pointer',
               fontFamily: "'VT323',monospace",
-              fontSize: '1rem',
+              fontSize: '1.1rem',
               letterSpacing: '.1em',
             }}
           >
-            ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 7, height: 7, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
+            ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
           </button>
         </div>
         {showTopMenu && (
@@ -4294,7 +4324,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {muted ? '🔇 MUTE' : '♪ SND'}
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
-              <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 ← TERMINAL
               </button>
             </div>
@@ -4314,15 +4344,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       </div>
 
       {/* BOTTOM-CENTER — narration bar */}
-      <div style={{ position: 'absolute', bottom: 10, left: 290, right: 230, zIndex: 100, pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .75rem' }}>
+      <div style={{ position: 'absolute', bottom: 10, left: 20, right: 200, zIndex: 100, pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.6rem .9rem' }}>
           {nearB && (
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.2rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.3rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
-          <div style={{ marginTop: '.3rem', fontSize: '.55rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
+          <div style={{ fontSize: '1rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.7rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
         </div>
       </div>
 
@@ -5206,27 +5236,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* ── WEAPONS WHEEL — bottom-right radial ──────────────────────────── */}
-      <div style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 150, pointerEvents: 'all' }}>
+      <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
         <div
           onClick={() => setShowWeapons(v => !v)}
           style={{
-            width: 70, height: 70, borderRadius: '50%',
-            background: showWeapons ? 'rgba(0,255,65,.12)' : 'rgba(0,5,0,.92)',
-            border: `2px solid ${showWeapons ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.22)'}`,
+            width: 90, height: 90, borderRadius: '50%',
+            background: showWeapons ? 'rgba(0,255,65,.14)' : 'rgba(0,5,0,.92)',
+            border: `3px solid ${showWeapons ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.28)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 0 12px rgba(0,255,65,.1)',
+            cursor: 'pointer', boxShadow: '0 0 18px rgba(0,255,65,.15)',
           }}
         >
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.05em', marginTop: 2 }}>{activeWeapon}</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.06em', marginTop: 3 }}>{activeWeapon}</span>
         </div>
         {showWeapons && (() => {
           const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
           const available = WEAPONS.filter(w => unlockedWeapons.has(w.id));
-          const wheelR = 90;
+          const wheelR = 140;
           const count = available.length;
           return (
-            <div style={{ position: 'absolute', bottom: 35, right: 35, width: 0, height: 0 }}>
+            <div style={{ position: 'absolute', bottom: 45, right: 45, width: 0, height: 0 }}>
               {available.map((w, i) => {
                 const angle = (-Math.PI / 2) + (i / count) * Math.PI * 2;
                 const x = Math.cos(angle) * wheelR;
@@ -5238,19 +5268,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
                     style={{
                       position: 'absolute',
-                      left: x - 42, top: y - 24,
-                      width: 84, textAlign: 'center',
-                      padding: '.3rem .4rem',
-                      background: isActive ? 'rgba(0,255,65,.15)' : 'rgba(0,5,0,.95)',
-                      border: `1px solid ${isActive ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.2)'}`,
-                      borderRadius: 6, cursor: 'pointer',
-                      boxShadow: isActive ? '0 0 10px rgba(0,255,65,.2)' : 'none',
+                      left: x - 60, top: y - 32,
+                      width: 120, textAlign: 'center',
+                      padding: '.5rem .6rem',
+                      background: isActive ? 'rgba(0,255,65,.18)' : 'rgba(0,5,0,.96)',
+                      border: `2px solid ${isActive ? 'rgba(0,255,65,.7)' : 'rgba(0,255,65,.25)'}`,
+                      borderRadius: 8, cursor: 'pointer',
+                      boxShadow: isActive ? '0 0 16px rgba(0,255,65,.3)' : '0 0 6px rgba(0,0,0,.4)',
                     }}
                   >
-                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: w.color, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: w.color, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
                       {iconMap[w.icon] ?? '?'} {isActive ? '▸ ' : ''}{w.label}
                     </div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</div>
+                    <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.45)', marginTop: 3 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</div>
                   </div>
                 );
               })}

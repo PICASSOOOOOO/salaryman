@@ -491,6 +491,14 @@ export default function WorldMenu() {
   const [checkingName, setCheckingName] = useState(false);
 
   const [autoResumed, setAutoResumed] = useState(false);
+  const [showCinematic, setShowCinematic] = useState(false);
+  const [cinematicLine, setCinematicLine] = useState(0);
+  const [showEntryButtons, setShowEntryButtons] = useState(true);
+  const [atPhysicalTerminal] = useState(() => {
+    const flag = sessionStorage.getItem('sm_at_physical_terminal');
+    if (flag) sessionStorage.removeItem('sm_at_physical_terminal');
+    return !!flag;
+  });
 
   // ── Load cloud saves ────────────────────────────────────────────────────────
   const loadSaves = useCallback(async () => {
@@ -509,26 +517,27 @@ export default function WorldMenu() {
     if (autoResumed || savesLoading || !isAuthenticated || cloudSaves.length === 0) return;
     const skipFlag = sessionStorage.getItem('sm_show_saves');
     if (skipFlag) { sessionStorage.removeItem('sm_show_saves'); setAutoResumed(true); return; }
-    const latest = [...cloudSaves].sort((a, b) => new Date(b.lastSavedAt).getTime() - new Date(a.lastSavedAt).getTime())[0];
-    if (latest) { setAutoResumed(true); handleContinue(latest); }
+    setAutoResumed(true);
   }, [cloudSaves, savesLoading, isAuthenticated, autoResumed]);
 
   // ── Continue a save ─────────────────────────────────────────────────────────
   const handleContinue = (save: CloudSave) => {
-    const charData = (save.data as any);
+    const d = save.data;
+    const str = (k: string) => typeof d[k] === 'string' ? d[k] as string : null;
+    const num = (k: string) => typeof d[k] === 'number' ? d[k] as number : null;
+    const bool = (k: string) => typeof d[k] === 'boolean' ? (d[k] as boolean) : false;
     const char = {
       name: save.charName,
       class: save.charClass,
-      company: charData.company ?? save.charName + ' OPS',
-      sx: charData.px ?? 1135,
-      sy: charData.py ?? 2107,
+      company: str('company') ?? save.charName + ' OPS',
+      sx: num('px') ?? 1135,
+      sy: num('py') ?? 2107,
       salary: save.salary,
-      hasBusiness: charData.hasBusiness ?? false,
-      workstation: charData.workstation ?? null,
-      workstationLabel: charData.workstationLabel ?? null,
-      workstationSlot: charData.workstationSlot ?? null,
-      bizRegisteredAt: charData.bizRegisteredAt ?? null,
-      // Attach full state for restoration
+      hasBusiness: bool('hasBusiness'),
+      workstation: str('workstation'),
+      workstationLabel: str('workstationLabel'),
+      workstationSlot: num('workstationSlot') ?? null,
+      bizRegisteredAt: str('bizRegisteredAt'),
       _savedState: save.data,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
@@ -713,13 +722,13 @@ export default function WorldMenu() {
           <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSOO.AI — PABLO CORP. WORLD</div>
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
-          <div style={{ marginTop: '.3rem', fontSize: '.52rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ WAKE UP — YOU'RE LATE FOR WORK</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.52rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP. TERMINAL INTERFACE v1.0</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
         </div>
 
         {/* ── TAB BAR ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(0,255,65,.18)', overflow: 'hidden' }}>
-          {([['enter', 'ENTER WORLD'], ['guide', 'FIELD GUIDE']] as const).map(([id, label]) => (
+          {([['enter', 'TERMINAL'], ['guide', 'FIELD GUIDE']] as const).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -742,17 +751,197 @@ export default function WorldMenu() {
           ))}
         </div>
 
-        {/* ── TAB: ENTER WORLD ── */}
+        {/* ── TAB: TERMINAL ── */}
         {tab === 'enter' && (
           <>
 
+            {/* ── CONTEXT-SENSITIVE ENTRY BUTTONS ─────────────────────────── */}
+            {screen === 'saves' && !showCinematic && showEntryButtons && (
+              <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', marginBottom: '.2rem' }}>SELECT OPERATION MODE</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                  {/* WAKE UP — new game */}
+                  <button
+                    onClick={() => {
+                      const seen = localStorage.getItem('sm_cinematic_seen');
+                      if (seen) {
+                        setScreen('new'); setStep(1);
+                      } else {
+                        setShowCinematic(true);
+                        setCinematicLine(0);
+                      }
+                    }}
+                    style={{
+                      padding: '1.2rem 1rem', background: 'rgba(0,255,65,.06)',
+                      border: '1px solid rgba(0,255,65,.5)', color: '#00ff41',
+                      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>WAKE UP</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
+                      New operative. Fresh deployment. Start your story from the beginning.
+                    </div>
+                  </button>
+
+                  {/* MULTI-PLAYER MODE — returning player with save */}
+                  <button
+                    onClick={() => {
+                      if (isAuthenticated && cloudSaves.length > 0) {
+                        setShowEntryButtons(false);
+                      } else if (isAuthenticated) {
+                        setScreen('new');
+                      } else {
+                        login();
+                      }
+                    }}
+                    disabled={isAuthenticated && cloudSaves.length === 0}
+                    style={{
+                      padding: '1.2rem 1rem',
+                      background: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.06)' : !isAuthenticated ? 'rgba(255,200,50,.04)' : 'transparent',
+                      border: `1px solid ${(isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.5)' : !isAuthenticated ? 'rgba(255,200,50,.3)' : 'rgba(0,255,65,.15)'}`,
+                      color: (isAuthenticated && cloudSaves.length > 0) ? '#33aaff' : !isAuthenticated ? 'rgba(255,200,50,.6)' : 'rgba(0,255,65,.2)',
+                      cursor: (isAuthenticated && cloudSaves.length === 0) ? 'default' : 'pointer',
+                      textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
+                    }}
+                  >
+                    <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>MULTI-PLAYER MODE</div>
+                    <div style={{ fontSize: '.48rem', color: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.45)' : !isAuthenticated ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
+                      {isAuthenticated && cloudSaves.length > 0
+                        ? `Resume your story. ${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file.`
+                        : !isAuthenticated ? 'Sign in to access saved operatives.' : 'No saves found. Start a new story first.'}
+                    </div>
+                  </button>
+
+                  {/* RESURRECT — died last session */}
+                  {(() => {
+                    const lastSave = localStorage.getItem('sm_save');
+                    const diedLastSession = lastSave && (() => { try { const d = JSON.parse(lastSave); return d.hp !== undefined && d.hp <= 0; } catch { return false; } })();
+                    const canResurrect = !!(diedLastSession && isAuthenticated && cloudSaves.length > 0);
+                    return (
+                      <button
+                        onClick={() => {
+                          if (canResurrect) {
+                            const latest = [...cloudSaves].sort((a, b) => new Date(b.lastSavedAt).getTime() - new Date(a.lastSavedAt).getTime())[0];
+                            if (latest) {
+                              const maxHp = typeof latest.data['maxHp'] === 'number' ? latest.data['maxHp'] : 100;
+                              latest.data['hp'] = maxHp;
+                              handleContinue(latest);
+                            }
+                          }
+                        }}
+                        disabled={!canResurrect}
+                        style={{
+                          padding: '1.2rem 1rem',
+                          background: canResurrect ? 'rgba(255,40,40,.06)' : 'transparent',
+                          border: `1px solid ${canResurrect ? 'rgba(255,60,60,.5)' : 'rgba(0,255,65,.1)'}`,
+                          color: canResurrect ? '#ff6666' : 'rgba(0,255,65,.15)',
+                          cursor: canResurrect ? 'pointer' : 'default',
+                          textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
+                        }}
+                      >
+                        <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>RESURRECT</div>
+                        <div style={{ fontSize: '.48rem', color: canResurrect ? 'rgba(255,80,80,.45)' : 'rgba(0,255,65,.12)', lineHeight: 1.7 }}>
+                          {canResurrect ? 'You died. DR. WRIGHT patched you up. Return to your last position.'
+                           : diedLastSession && !isAuthenticated ? 'You died — sign in to resurrect your operative.'
+                           : diedLastSession ? 'You died — no save data found. Start a new story.'
+                           : 'No death recorded. Operative status: ALIVE.'}
+                        </div>
+                      </button>
+                    );
+                  })()}
+
+                  {/* STORY MODE — grayed out */}
+                  <div
+                    style={{
+                      padding: '1.2rem 1rem', background: 'transparent',
+                      border: '1px solid rgba(0,255,65,.08)',
+                      color: 'rgba(0,255,65,.12)',
+                      textAlign: 'left', fontFamily: 'inherit', position: 'relative',
+                    }}
+                  >
+                    <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem', opacity: .4 }}>STORY MODE</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.1)', lineHeight: 1.7 }}>
+                      Single-player campaign. Chapter-based progression.
+                    </div>
+                    <div style={{
+                      position: 'absolute', top: 8, right: 10,
+                      ...VT, fontSize: '.8rem', color: 'rgba(255,200,60,.4)',
+                      letterSpacing: '.12em', border: '1px solid rgba(255,200,60,.2)',
+                      padding: '2px 8px', background: 'rgba(255,200,60,.04)',
+                    }}>COMING SOON</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── CINEMATIC INTRO — "Wake up, you're late for work" ─────────── */}
+            {showCinematic && (
+              <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+                <div style={{ width: '100%', background: 'rgba(0,0,0,.8)', border: '1px solid rgba(0,255,65,.25)', padding: '2rem 1.5rem', textAlign: 'center' }}>
+                  {[
+                    '...',
+                    '> ALARM CLOCK: 06:00 AM',
+                    '> The screen on your nightstand buzzes.',
+                    '> "WAKE UP — YOU\'RE LATE FOR WORK."',
+                    '> You open your eyes. Neon bleeds through the blinds.',
+                    '> Minx City is already running. It never stopped.',
+                    '> PABLO CORP. notification: "Your shift started 3 hours ago."',
+                    '> "CLOCK IN OR GET WRITTEN UP."',
+                    '> You pull yourself together. The city waits for no one.',
+                    '> ...',
+                    '> PABLO CORP. TERMINAL ACCESS GRANTED.',
+                  ].slice(0, cinematicLine + 1).map((line, i) => (
+                    <div key={i} style={{
+                      ...VT, fontSize: '1.1rem',
+                      color: i === cinematicLine ? '#00ff41' : 'rgba(0,255,65,.35)',
+                      letterSpacing: '.08em', lineHeight: 2.2,
+                      textShadow: i === cinematicLine ? '0 0 12px rgba(0,255,65,.4)' : 'none',
+                      transition: 'color .3s',
+                    }}>{line}</div>
+                  ))}
+                </div>
+                {cinematicLine < 10 ? (
+                  <button
+                    onClick={() => setCinematicLine(l => l + 1)}
+                    style={{
+                      padding: '.55rem 2rem', background: 'rgba(0,255,65,.08)',
+                      border: '1px solid rgba(0,255,65,.4)', color: '#00ff41',
+                      ...VT, fontSize: '1.1rem', letterSpacing: '.14em', cursor: 'pointer',
+                    }}
+                  >
+                    {tick % 2 === 0 ? '▶' : '▷'} CONTINUE
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { localStorage.setItem('sm_cinematic_seen', '1'); setShowCinematic(false); setScreen('new'); setStep(1); }}
+                    style={{
+                      padding: '.7rem 2.5rem', background: 'rgba(0,255,65,.12)',
+                      border: '1px solid rgba(0,255,65,.7)', color: '#00ff41',
+                      ...VT, fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer',
+                      textShadow: '0 0 12px rgba(0,255,65,.5)',
+                    }}
+                  >
+                    BEGIN — CREATE OPERATIVE {tick % 2 === 0 ? '▶' : '▷'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { localStorage.setItem('sm_cinematic_seen', '1'); setShowCinematic(false); setScreen('new'); setStep(1); }}
+                  style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.42rem', letterSpacing: '.1em' }}
+                >
+                  SKIP INTRO →
+                </button>
+              </div>
+            )}
+
             {/* ── SAVE SLOT MANAGER (logged-in users only) ─────────────────── */}
-            {isAuthenticated && screen === 'saves' && (
+            {isAuthenticated && screen === 'saves' && !showCinematic && !showEntryButtons && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
                 {/* Header */}
                 <div style={{ borderBottom: '1px solid rgba(0,255,65,.12)', paddingBottom: '.7rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div>
+                    <button onClick={() => setShowEntryButtons(true)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.42rem', letterSpacing: '.1em', padding: 0, marginBottom: '.3rem', display: 'block' }}>← BACK TO TERMINAL</button>
                     <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE FILES</div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
                       {user?.name ? `OPERATIVE: ${user.name.toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
@@ -761,14 +950,21 @@ export default function WorldMenu() {
                   {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}
                 </div>
 
+                {!atPhysicalTerminal && (
+                  <div style={{ fontSize: '.4rem', color: 'rgba(255,200,50,.4)', letterSpacing: '.1em', marginBottom: '.2rem', padding: '.4rem .6rem', border: '1px solid rgba(255,200,50,.15)', background: 'rgba(255,200,50,.03)' }}>
+                    DEVICE ACCESS ONLY — VISIT A PUBLIC TERMINAL TO MANAGE ADDITIONAL SAVE SLOTS
+                  </div>
+                )}
+
                 {/* 4 save slots */}
                 {[0, 1, 2, 3].map(slot => {
                   const save = cloudSaves.find(s => s.slotIndex === slot);
                   const col = save ? CLASS_COLOR[save.charClass] ?? '#00ff41' : 'rgba(0,255,65,.2)';
                   const isConfirming = deleteConfirm === slot;
+                  const slotLocked = slot > 0 && !atPhysicalTerminal;
 
                   return (
-                    <div key={slot} style={{ border: `1px solid ${save ? col + '33' : 'rgba(0,255,65,.1)'}`, background: save ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.3)', transition: 'border-color .2s' }}>
+                    <div key={slot} style={{ border: `1px solid ${save ? col + '33' : 'rgba(0,255,65,.1)'}`, background: save ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.3)', transition: 'border-color .2s', opacity: slotLocked ? 0.35 : 1, pointerEvents: slotLocked ? 'none' : 'auto' }}>
                       {save ? (
                         /* ── OCCUPIED SLOT ── */
                         <div style={{ display: 'flex', gap: 0 }}>
@@ -848,7 +1044,7 @@ export default function WorldMenu() {
             )}
 
             {/* ── NOT LOGGED IN — prompt to sign in for saves ──────────────── */}
-            {!authLoading && !isAuthenticated && screen === 'saves' && (
+            {!authLoading && !isAuthenticated && screen === 'saves' && !showEntryButtons && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
                   <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
@@ -1064,7 +1260,7 @@ export default function WorldMenu() {
                     disabled={submitting || checkingName}
                     style={{ flex: 1, padding: '.75rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.7)', color: '#00ff41', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (submitting || checkingName) ? 'wait' : 'pointer', textShadow: '0 0 12px rgba(0,255,65,.4)' }}
                   >
-                    {submitting ? 'REGISTERING...' : checkingName ? 'VERIFYING NAME...' : `WAKE UP — YOU'RE LATE FOR WORK ${tick % 2 === 0 ? '▶' : '▷'}`}
+                    {submitting ? 'REGISTERING...' : checkingName ? 'VERIFYING NAME...' : `DEPLOY OPERATIVE ${tick % 2 === 0 ? '▶' : '▷'}`}
                   </button>
                 </div>
 
