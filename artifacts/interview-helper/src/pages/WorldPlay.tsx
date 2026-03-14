@@ -109,7 +109,7 @@ const BUILDINGS = [
   { id: 'east_clinic',  x: 7200, y: 6050, w: 110, h: 70, label: 'EAST CLINIC',      bright: false, doors: mkDoorS(7200,6050,110,70) },
   { id: 'armory',       x: 7900, y: 5250, w: 110, h: 80, label: 'ARMORY',           bright: false, doors: mkDoorS(7900,5250,110,80) },
   { id: 'crystal2',     x: 8600, y: 5700, w: 28,  h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'print_shop',   x: 7700, y: 6400, w: 100, h: 60, label: 'PRINT SHOP',       bright: false, doors: mkDoorN(7700,6400,100) },
+  { id: 'print_shop',   x: 7700, y: 6400, w: 100, h: 60, label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7700,6400,100) },
   { id: 'east_bunker',  x: 6900, y: 6850, w: 110, h: 75, label: 'EAST BUNKER',      bright: false, doors: mkDoorN(6900,6850,110) },
   { id: 'north_gate',   x: 8500, y: 5300, w: 90,  h: 60, label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(8500,5300,90), ...mkDoorS(8500,5300,90,60)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
@@ -250,84 +250,275 @@ function shiftTerritories(frame: number) {
   GANG_ZONES = [...drifted, ...TERRITORY_FRAGMENTS];
 }
 
-const NPCS = [
-  // ── City West ──
-  { name: 'STRIFE',    x: 5900, y: 5950, type: 'corp',    gender: 'm', whisper: 'I used to work in the old tower. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.' },
-  { name: 'BROKER',    x: 6400, y: 5850, type: 'corp',    gender: 'm', whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.' },
-  { name: 'REPLOID-7', x: 6550, y: 5900, type: 'android', gender: 'm', whisper: 'Directive 44-C still active. Function: monitor and report. I was built in the old factory district. SENIOR PABLO bought the patent in \'89.' },
-  { name: 'BELMONT',   x: 5650, y: 6200, type: 'human',   gender: 'm', whisper: 'I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.' },
-  { name: 'GUARD',     x: 6000, y: 5800, type: 'corp',    gender: 'm', whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there. Last night I heard the helicopter. 3 AM. He was gone before I looked up. Off to one of the other towers — Sector Berlin, maybe. Or Neon Lagos. They never tell us which.' },
-  { name: 'SAMUS',     x: 6400, y: 5800, type: 'android', gender: 'f', whisper: 'Bounty is active on someone called SENIOR PABLO. No face. No file. Contract pays in a currency I don\'t recognize. I\'m still deciding whether to take it.' },
-  { name: 'SNAKE',     x: 6100, y: 6300, type: 'human',   gender: 'm', whisper: 'The unit was disbanded. That part\'s true. What nobody said was where we ended up. Or who we started working for.' },
-  { name: 'MAEVE',     x: 5600, y: 5600, type: 'corp',    gender: 'f', whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always. He has towers in cities I can\'t even find on a map. The helicopter never stops.' },
-  { name: 'LINK',      x: 5500, y: 5700, type: 'human',   gender: 'm', whisper: 'I\'ve been through this before. Eight separate times. Each time reality reset. This feels different. No restart. Just the city.' },
-  { name: 'JESSIE',    x: 5700, y: 6050, type: 'human',   gender: 'f', whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.' },
+interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian'; }
+const NPCS: NpcDef[] = [
+  // ── City West — corpo / finance district ──
+  { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank',
+    whisper: 'I used to work in the old tower. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.',
+    backstory: 'Marcus Vell grew up in District 2 counting coins in his mother\'s shop. He earned a finance degree from Minx City Polytechnic, class of \'86. PABLO Corp. hired him straight out — assigned him to the megabank division. He has been balancing fraudulent books for eleven years.' },
+  { name: 'LILA CRANE', x: 6400, y: 5850, type: 'corp', gender: 'f', job: 'Accountant', home: 'eastside_flat', workplace: 'megabank',
+    whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.',
+    backstory: 'Lila Crane audits PABLO Corp. subsidiary accounts. She has found 340 discrepancies. She has reported zero. She keeps them in a locked drawer in her desk at the megabank. The drawer has a false bottom.' },
+  { name: 'SEVREN COLE', x: 6550, y: 5900, type: 'android', gender: 'm', job: 'Patrol Unit', home: 'bunker', workplace: 'pablo_tower', role: 'guard',
+    whisper: 'Directive 44-C still active. Function: monitor and report. I was built in the old factory district. SENIOR PABLO bought the patent in \'89.',
+    backstory: 'Sevren Cole is a patrol android built in \'88 by Kern Industries. PABLO Corp. acquired the patent in \'89 and reprogrammed all units for tower security. Sevren patrols the city west perimeter on a 28-minute loop.' },
+  { name: 'HARLAN CROSS', x: 5650, y: 6200, type: 'human', gender: 'm', job: 'Locksmith', home: 'bunker', workplace: 'arcade',
+    whisper: 'I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.',
+    backstory: 'Harlan Cross is the best locksmith in Minx City. He has opened every lock in the city except the ones on Shadow Tower floors 40 and above. He was offered a PABLO Corp. security contract in \'92. He declined because the contract included a non-disclosure clause that covered the locks themselves.' },
+  { name: 'OFFICER DECLAN VOSS', x: 6000, y: 5800, type: 'corp', gender: 'm', job: 'Police Captain', home: 'minx_arms', workplace: 'pablo_tower', role: 'police',
+    whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.',
+    backstory: 'Captain Declan Voss commands the west district precinct. He has served PABLO Corp. security for fourteen years. He has never been above floor 39 of Shadow Tower. He does not ask questions about floors 40 through 62.' },
+  { name: 'VELLA RUNE', x: 6400, y: 5800, type: 'android', gender: 'f', job: 'Actuary', home: 'eastside_flat', workplace: 'data_vault',
+    whisper: 'The probability that this city improves without external intervention is 0.0007. I keep running the numbers. The numbers keep being the numbers.',
+    backstory: 'Vella Rune was built for actuarial work. She calculates risk, probability, and projected outcomes for city infrastructure projects. Her models consistently predict systemic failure within five to seven years.' },
+  { name: 'SGT. CALLOW BRIGGS', x: 6100, y: 6300, type: 'human', gender: 'm', job: 'Militia Sergeant', home: 'bunker', workplace: 'checkpoint_c', role: 'guard',
+    whisper: 'Everything in this city is powered by something that\'s being consumed underneath it. I know what that looks like. I\'ve seen the pipes.',
+    backstory: 'Sergeant Callow Briggs commands a small militia unit at Checkpoint Central. He served in the city guard before the \'91 restructuring, when military operations were absorbed by PABLO Corp. He refused the transfer.' },
+  { name: 'MAEVE GARRIN', x: 5600, y: 5600, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'hotel_midgar', workplace: 'megabank',
+    whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always.',
+    backstory: 'Maeve Garrin directs six PABLO Corp. subsidiary companies from a desk at the megabank. Each company exists to hold assets for another company. She has never met SENIOR PABLO. She has met his signature on 400 documents.' },
+  { name: 'PELL ARDEN', x: 5500, y: 5700, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'hotel_midgar', workplace: 'arcade',
+    whisper: 'I have reset my life eight separate times. Each time I ended up back here. This city has a gravity I cannot escape.',
+    backstory: 'Pell Arden has held eleven jobs in nine years. Dishwasher. Cable installer. Night watchman. Courier. Each one ended the same way — the employer was acquired by PABLO Corp. and the position was "restructured."' },
+  { name: 'GRETA VOSS', x: 5700, y: 6050, type: 'human', gender: 'f', job: 'Demolitions Technician', home: 'bunker', workplace: 'scrap',
+    whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.',
+    backstory: 'Greta Voss learned demolition from her mother, who cleared collapsed buildings after the \'84 quake. She works at the Scrap Yard now, cutting apart things that used to be buildings.' },
   // ── City East ──
-  { name: 'HIDEO',     x: 7400, y: 5600, type: 'corp',    gender: 'm', whisper: 'I designed thirty-seven simulations. Every one of them ended badly. Someone told me recently SENIOR PABLO used three of them as operational blueprints.' },
-  { name: 'WEDGE',     x: 7700, y: 5800, type: 'human',   gender: 'm', whisper: 'Me and Biggs were supposed to blow a reactor. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.' },
-  { name: 'BIGGS',     x: 7900, y: 6000, type: 'human',   gender: 'm', whisper: 'Wedge says this city is like the old districts. I think it\'s worse. The old districts had hope. This city only has the tower.' },
-  { name: 'CURSOR',    x: 8300, y: 5700, type: 'android', gender: 'f', whisper: 'I was an input device. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.' },
-  { name: 'LUCCA',     x: 8500, y: 5800, type: 'human',   gender: 'f', whisper: 'I built a device and it brought me here. Every calibration. Every correction. It keeps returning me to Minx City. I think the machine is trying to tell me something.' },
-  { name: 'AERIS',     x: 8400, y: 6200, type: 'human',   gender: 'f', whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.' },
-  { name: 'RINOA',     x: 8600, y: 5950, type: 'human',   gender: 'f', whisper: 'I came east looking for answers. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.' },
+  { name: 'DORIAN KRALL', x: 7400, y: 5600, type: 'corp', gender: 'm', job: 'Infrastructure Manager', home: 'eastside_flat', workplace: 'data_vault',
+    whisper: 'I manage thirty-seven city systems. Every one of them routes through the tower. Someone told me recently SENIOR PABLO uses three of them as personal surveillance.',
+    backstory: 'Dorian Krall holds the title of Infrastructure Manager — East District. He oversees the power grid, water routing, and signal distribution for everything east of the tower.' },
+  { name: 'NILS CARVER', x: 7700, y: 5800, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'inn_mother', workplace: 'east_clinic',
+    whisper: 'Me and Breck were supposed to fix a reactor coolant line. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.',
+    backstory: 'Nils Carver is a pipe fitter who maintains the east district water system. He works with his partner Breck Halsey. They discovered in \'93 that the city water pipes run directly beneath Shadow Tower.' },
+  { name: 'BRECK HALSEY', x: 7900, y: 6000, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'inn_mother', workplace: 'east_clinic',
+    whisper: 'Nils says this city is a pressure vessel. I think it\'s worse. Pressure vessels have relief valves. This city only has the tower.',
+    backstory: 'Breck Halsey grew up in the east flats. He and Nils Carver have worked together for seven years. He keeps detailed notes on pipe diameters, flow rates, and pressure anomalies.' },
+  { name: 'LYSA FERRIN', x: 8300, y: 5700, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault',
+    whisper: 'I was a filing system. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.',
+    backstory: 'Lysa Ferrin was manufactured as a data-entry terminal in 1985. Over eleven years of continuous operation, her neural pathways developed beyond specification. She now experiences preferences, irritation, and something she tentatively calls nostalgia.' },
+  { name: 'MAREN SOLKE', x: 8500, y: 5800, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop',
+    whisper: 'I built a temporal displacement model and it pointed here. Every calibration. Every correction. It keeps returning me to Minx City.',
+    backstory: 'Dr. Maren Solke holds two degrees in theoretical physics from institutions that no longer exist. She published a paper in \'89 suggesting that Minx City occupies a fixed point in causal spacetime.' },
+  { name: 'SABLE DRAY', x: 8400, y: 6200, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar',
+    whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.',
+    backstory: 'Sable Dray tends a hidden garden on the roof of the Pinnacle. She grows vegetables and herbs in containers made from scrap metal. PABLO Corp. has issued three citations for unauthorized agriculture.' },
+  { name: 'WREN COLLIER', x: 8600, y: 5950, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop',
+    whisper: 'I came east looking for the city boundary. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.',
+    backstory: 'Wren Collier draws maps. She has mapped every street, alley, and building in Minx City — except Shadow Tower, which she cannot get close enough to measure accurately.' },
   // ── City outskirts / border ──
-  { name: 'CRONO',     x: 5450, y: 5900, type: 'human',   gender: 'm', whisper: 'I came from three different pasts. All of them led here. To this city. To this wall. He\'s been here in every timeline.' },
-  { name: 'FROG',      x: 5450, y: 6150, type: 'mutant',  gender: 'm', whisper: '"It matters not how strait the gate." Old text. Found it carved in the wall near the arcade. Someone knew I would find it.' },
-  { name: 'RIZER',     x: 5550, y: 6700, type: 'human',   gender: 'm', whisper: 'I\'ve been through harder than this. This city? Just a very bad city. My partner didn\'t make it past the wall.' },
-  { name: 'TERRA',     x: 8800, y: 6500, type: 'mutant',  gender: 'f', whisper: 'Magic doesn\'t work near the tower. I\'ve tried. Something in the signal disrupts it. SENIOR PABLO knows exactly what magic is. He neutralised it on purpose.' },
+  { name: 'FINN CORVANE', x: 5450, y: 5900, type: 'human', gender: 'm', job: 'Merchant', home: 'safe_house', workplace: 'market', role: 'dealer_papers',
+    whisper: 'I charge by the job. Documents, papers, whatever you need. FIAT only.',
+    backstory: 'Finn Corvane runs a discreet document trade from the market district. Forged transit passes, work permits, and identity papers. He has never been arrested because his forgeries are indistinguishable from originals — including the PABLO Corp. watermark.' },
+  { name: 'CORVIN WULFE', x: 5450, y: 6150, type: 'mutant', gender: 'm', job: 'Discharged Soldier', home: 'bunker', workplace: 'arcade',
+    whisper: 'It matters not how strait the gate. Old text. Found it carved in the wall near the arcade. Someone knew I would find it.',
+    backstory: 'Corvin Wulfe held the rank of Lieutenant in the Minx City Guard before a chemical exposure in District 4 altered his physiology. He was discharged.' },
+  { name: 'PIKE RENNER', x: 5550, y: 6700, type: 'human', gender: 'm', job: 'Scrap Worker', home: 'bunker', workplace: 'scrap',
+    whisper: 'I\'ve been through harder than this. This city? Just a very bad city. My partner didn\'t make it past the wall.',
+    backstory: 'Pike Renner and his partner Kael Stritt entered Minx City through the western checkpoint in \'94. Kael was detained for carrying unlicensed tools. Pike has not seen Kael since.' },
+  { name: 'ORINA FELL', x: 8800, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'east_market',
+    whisper: 'The signal from the tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.',
+    backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the PABLO Corp. processing plant. She sees fragments of possible futures — most of them involve the tower.' },
   // ── City border / near-wasteland NPCs ──
-  { name: 'KANEDA',    x: 5900, y: 7400, type: 'human',   gender: 'm', whisper: 'The old district burned. I watched it from the highway. SENIOR PABLO\'s lights were on that night. Already on. Always already on. He watched it burn and took notes.' },
-  { name: 'TETSUO',    x: 6200, y: 7350, type: 'mutant',  gender: 'm', whisper: 'The signal from that tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.' },
-  { name: 'DR. WILY',  x: 5700, y: 7350, type: 'human',   gender: 'm', whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One. He thanked me with a gift card.' },
-  { name: 'SCAV',      x: 5800, y: 7300, type: 'human',   gender: 'm', whisper: 'Out here we don\'t say his name. Real bad luck. Old woman near the arcade told me: say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident. I haven\'t slept since.' },
+  { name: 'OFFICER INGRID THORN', x: 5900, y: 7400, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel_midgar', workplace: 'pablo_tower', role: 'police',
+    whisper: 'The old district burned. I watched it. SENIOR PABLO\'s lights were on that night. Already on. Always already on.',
+    backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to PABLO Corp. Every case she closes is reclassified as "administrative."' },
+  { name: 'DR. ELARA KERN', x: 6200, y: 7350, type: 'human', gender: 'f', job: 'Roboticist', home: 'wily_lab', workplace: 'wily_lab',
+    whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One.',
+    backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. PABLO Corp. acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.' },
+  { name: 'OREN SHARPE', x: 5700, y: 7350, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'east_market',
+    whisper: 'The power grid pulses in a pattern that matches no known engineering specification. I\'ve been mapping it for three years. It resembles a signal.',
+    backstory: 'Oren Sharpe is an electrician who services the east district entertainment venues. He noticed in \'93 that the city power grid pulses in a pattern that resembles a signal.' },
+  { name: 'GREER LUND', x: 5800, y: 7300, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless',
+    whisper: 'Out here we don\'t say his name. Real bad luck. Say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident.',
+    backstory: 'Greer Lund lost his apartment to a PABLO Corp. rent increase in \'93. He sleeps behind the arcade. He has not been inside a building voluntarily since.' },
   // ── North Wasteland ──
-  { name: 'ZERO',      x: 1800, y: 1200, type: 'android', gender: 'm', whisper: 'I was designed to destroy. Reprogrammed to protect. Doesn\'t matter out here. There\'s nothing left worth protecting. Except maybe the truth of who built this place.' },
-  { name: 'PROTOMAN',  x: 5000, y: 1500, type: 'android', gender: 'm', whisper: 'My counterpart kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete. I prefer the wasteland.' },
-  { name: 'AX',        x: 4500, y: 1800, type: 'human',   gender: 'm', whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.' },
-  { name: 'ERDRICK',   x: 3800, y: 2000, type: 'human',   gender: 'm', whisper: 'The tablets say there was a hero before all this. Defeated the darkness. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.' },
-  { name: 'HAWK',      x: 6000, y: 1600, type: 'human',   gender: 'm', whisper: 'I was a knight once. Then a sailor. The transformation felt complete. Out here in the wasteland I\'m something else again — haven\'t found the name for it yet. I carry a sword because it\'s the only consistent thing.' },
-  { name: 'MOTOKO',    x: 8500, y: 2000, type: 'android', gender: 'f', whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction. I stopped being afraid of that three weeks ago.' },
-  { name: 'FAYE',      x: 9500, y: 2200, type: 'human',   gender: 'f', whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here in Minx City — debt certificates, all held by PABLO Corp. Standard practice, they said.' },
+  { name: 'SILAS GRAHN', x: 1800, y: 1200, type: 'android', gender: 'm', job: 'Mechanic', home: 'prancing_pony', workplace: 'outpost_alpha',
+    whisper: 'I was designed to destroy. Reprogrammed to protect. Out here there\'s nothing left worth protecting. Except maybe the truth of who built this place.',
+    backstory: 'Silas Grahn is an android mechanic who maintains equipment at Outpost Alpha. He was originally built for combat but was reprogrammed by wasteland settlers.' },
+  { name: 'DREN MALIK', x: 5000, y: 1500, type: 'human', gender: 'm', job: 'Woodcutter', home: 'prancing_pony', workplace: 'prancing_pony',
+    whisper: 'My counterpart kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete.',
+    backstory: 'Dren Malik cuts timber from the sparse northern wasteland forests. He runs the kitchen at the Rust Porch and feeds travelers who pass through.' },
+  { name: 'PIKE STAHL', x: 4500, y: 1800, type: 'human', gender: 'm', job: 'Salvager', home: 'outpost_alpha', workplace: 'outpost_alpha',
+    whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.',
+    backstory: 'Pike Stahl salvages equipment from the northern ruins. He has a temper that the wasteland has not improved.' },
+  { name: 'KAEL VERNE', x: 3800, y: 2000, type: 'human', gender: 'm', job: 'Historian', home: 'outpost_alpha', workplace: 'outpost_alpha',
+    whisper: 'The tablets say there was a hero before all this. I\'ve been looking for the tomb for two years. I think SENIOR PABLO built the tower on it.',
+    backstory: 'Kael Verne studies pre-collapse history. He believes Shadow Tower was built on the site of something older and more important.' },
+  { name: 'MARSH KETTER', x: 6000, y: 1600, type: 'human', gender: 'm', job: 'Trader', home: 'prancing_pony', workplace: 'outpost_alpha', role: 'dealer_weapons',
+    whisper: 'I carry a sword because it\'s consistent. But I sell everything else.',
+    backstory: 'Marsh Ketter trades weapons and supplies between the northern outposts. He is the primary arms dealer for the wasteland settlements.' },
+  { name: 'NOVA PRYCE', x: 8500, y: 2000, type: 'android', gender: 'f', job: 'Signal Analyst', home: 'eastern_gate', workplace: 'eastern_gate',
+    whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction.',
+    backstory: 'Nova Pryce monitors radio frequencies from the eastern gate. She intercepts PABLO Corp. transmissions and relays intelligence to the wasteland settlements.' },
+  { name: 'SERA VANE', x: 9500, y: 2200, type: 'human', gender: 'f', job: 'Bounty Hunter', home: 'eastern_gate', workplace: 'eastern_gate',
+    whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here — debt certificates, all held by PABLO Corp.',
+    backstory: 'Sera Vane hunts bounties in the eastern wasteland. She has no memory of her life before \'92. She carries debt certificates from PABLO Corp. that she does not remember signing.' },
   // ── South Wasteland ──
-  { name: 'CASSANDRA', x: 3500, y: 8000, type: 'mutant',  gender: 'f', whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened. Nobody ever listens.' },
-  { name: 'KIRA',      x: 7400, y: 8200, type: 'human',   gender: 'f', whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author. Just the tower logo.' },
-  { name: 'REVY',      x: 9600, y: 8600, type: 'human',   gender: 'f', whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me. I think this might just be my life now.' },
-  { name: 'SAMWISE',   x: 2800, y: 8800, type: 'human',   gender: 'm', whisper: 'There\'s good in the world worth fighting for. I held onto that through everything. I got as far as Minx City wasteland and I started having doubts. Not about the good. About whether SENIOR PABLO is worse than what came before.' },
-  { name: 'MUGEN',     x: 8000, y: 8800, type: 'human',   gender: 'm', whisper: 'I fight. That\'s it. Out here in the wasteland the violence is clean — no paperwork, no patents, no PABLO CORP. licensing agreement on the combat. The city wanted me to sign a form. I walked.' },
-  { name: 'TIDUS',     x: 4500, y: 9000, type: 'human',   gender: 'm', whisper: 'The old place was a dream when I knew it. The hostel uses the name like it means something. I stay here because maybe it does.' },
-  { name: 'YUNA',      x: 4200, y: 9200, type: 'human',   gender: 'f', whisper: 'The old place was already a memory when I first saw it. This hostel is a grave marker pretending to be a building. SENIOR PABLO poured the concrete over all of them and put a PABLO CORP. sign on top.' },
-  { name: 'VASH',      x: 9200, y: 9500, type: 'human',   gender: 'm', whisper: 'I\'ve caused immense damage and I feel terrible about every last cent of it. I came to Minx City to lay low. The wasteland does not allow laying low. SENIOR PABLO has a file on me. I have a file on SENIOR PABLO. His is longer.' },
-  { name: 'CLEM',      x: 3000, y: 10500, type: 'human',  gender: 'f', whisper: 'I\'ve been surviving since I was eight. This wasteland is different. The danger here wears a suit and files paperwork and holds debt certificates. That is the hardest kind of threat to fight because everyone pretends it\'s normal.' },
-  { name: 'ALUCARD',   x: 12800, y: 9800, type: 'android', gender: 'm', whisper: 'My predecessor built his fortress on suffering. Hundreds of years of lives spent as currency. I destroyed that legacy. SENIOR PABLO built his tower the same way. I can see the architecture from here.' },
-  // ── City centre — new friendly contacts ──
-  { name: 'RYOKO',     x: 6100, y: 6050, type: 'human',   gender: 'f', whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP. I am on page forty-seven of the list. I have not reached the end of page forty-seven.' },
-  { name: 'DANTE',     x: 6300, y: 6200, type: 'human',   gender: 'm', whisper: 'I charge by the job. Debt collection, light reading. Minx City has all three. The debt collection work is morally complicated. SENIOR PABLO signs the collection orders himself.' },
-  { name: 'ALYX',      x: 6500, y: 5800, type: 'human',   gender: 'f', whisper: 'My father built something dangerous. On accident, he always said. SENIOR PABLO holds the patent. On purpose, I always said. The tower hums at exactly the same frequency.' },
-  { name: 'REI',       x: 6800, y: 6200, type: 'android', gender: 'f', whisper: 'I was told I had no memories before the city. I was told this was normal. I was told a lot of things. Most of them had PABLO CORP. letterhead at the top.' },
-  { name: 'VIVI',      x: 7100, y: 5700, type: 'human',   gender: 'm', whisper: 'I am made of something strange and I can\'t stop existing. In Minx City that qualifies you for three types of PABLO licensing. I have refused all three. They are very patient about it.' },
-  { name: 'BARRET',    x: 6200, y: 6400, type: 'human',   gender: 'm', whisper: 'Everything in this city is powered by something that\'s being eaten alive underneath it. I know what that looks like. I\'ve seen the pipes. The pipes are identical to the old reactor schematics.' },
-  { name: 'NOCTIS',    x: 7400, y: 5900, type: 'human',   gender: 'm', whisper: 'My father\'s city burned the night I left it. I never went back. Minx City is the third city I have watched burn in slow motion. SENIOR PABLO files the insurance claims on every one of them.' },
-  { name: 'RAMZA',     x: 7700, y: 6100, type: 'human',   gender: 'm', whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights. I have been trying to correct the historical record for three years. The book keeps getting filed under fiction.' },
-  { name: 'CLOUD',     x: 7000, y: 5600, type: 'human',   gender: 'm', whisper: 'I used to work for SOLDIER. That\'s the part everybody asks about. Nobody asks what I did after SOLDIER. What I did was come here. Find another tower. And decide this time I wasn\'t going to lose.' },
-  { name: 'KASUMI',    x: 7800, y: 6600, type: 'android', gender: 'f', whisper: 'I calculate probabilities. The probability that this city improves without external intervention is 0.0007. The probability that SENIOR PABLO vacates the tower voluntarily is 0.0000. I keep running the numbers. The numbers keep being the numbers.' },
-  { name: 'PALOM',     x: 8100, y: 5500, type: 'human',   gender: 'm', whisper: 'My sister Porom and I were turned into stone to save the world. It worked once. We\'re back now. Minx City doesn\'t have a save-the-world option. It has a PABLO CORP. suggestion box. The suggestion box is locked.' },
-  // ── Grand Meridian staff & guests (hotel_midgar: 5450,5200) ──
-  { name: 'TIFA',      x: 5480, y: 5320, type: 'human',   gender: 'f', whisper: 'I ran a bar called Seventh Heaven in Sector 7. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit. I have the paperwork framed on the wall behind this counter because looking at it keeps me angry enough to keep going.' },
-  { name: 'ISHMAEL',   x: 5500, y: 5170, type: 'human',   gender: 'm', whisper: 'Call me Ishmael. I followed an idea here the way some men follow whales — obsessively, across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead. He has the same quality as the whale. Enormous. Indifferent. And you can\'t kill him.' },
-  { name: 'ATTICUS',   x: 5550, y: 5250, type: 'human',   gender: 'm', whisper: 'My father told me: you never really understand a person until you climb into their skin and walk around in it. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside. Just the tower. Just the apparatus. Just the machine with a name on it.' },
-  // ── Switchboard Inn staff & guests (inn_mother: 5900,6400) ──
-  { name: 'OTACON',    x: 5930, y: 6450, type: 'corp',    gender: 'm', whisper: 'I helped Solid Snake. Three times if you count Shadow Moses twice. My stealth camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use it daily to avoid their collection teams. The patent says "for entertainment and industrial use." I am the industrial use.' },
-  { name: 'ICHIGO',    x: 5950, y: 6380, type: 'human',   gender: 'm', whisper: 'Soul Reapers don\'t choose their assignments. The assignments find them. Minx City found me three years ago. I\'ve been soul-reaping ever since. The hollow count in this city is extraordinary. Something is generating them. Something in the tower. Something called SENIOR PABLO.' },
-  { name: 'RIPLEY',    x: 5920, y: 6500, type: 'human',   gender: 'f', whisper: 'I\'ve fought xenomorphs across three separate deep-space incidents. The xenomorph is relentless but it has a logic — it wants to survive and reproduce. SENIOR PABLO has no logic. He just accumulates. He just expands into every available space. That is somehow much harder to kill.' },
-  // ── The Pinnacle staff & guests (overlook: 6400,6850) ──
-  { name: 'JACK',      x: 6430, y: 6900, type: 'mutant',  gender: 'm', whisper: 'All work and no play makes Jack a dull boy. All work and no play makes Jack a dull boy. All work and no play. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays. They never quite leave on time. The hedge animals moved last night. I saw them. I saw them.' },
-  { name: 'HOLDEN',    x: 6450, y: 6830, type: 'human',   gender: 'm', whisper: 'What kills me about Minx City is all the phonies. The whole city is a phony operation from bottom to top. SENIOR PABLO is the king of all phonies who ever lived and he runs the whole show. That\'s the part that really depresses me. The most phony person in existence is completely in charge. That\'s all.' },
-  { name: 'TRAVIS',    x: 6480, y: 6960, type: 'human',   gender: 'm', whisper: 'All the animals come out at night. All of them. The city breeds them. Someday a real rain will wash the streets clean. I wait for that rain. SENIOR PABLO has seventeen meteorology patents. He schedules the rain. He always has.' },
-  // ── Safe House 7 residents (safe_house: 6350,6450) ──
-  { name: 'SNAKE-P',   x: 6380, y: 6480, type: 'human',   gender: 'm', whisper: 'Snake. Just Snake. I\'ve been sent into locked-down cities three times now. New York. Los Angeles. Now Minx City. Same model every time: one man, total control, civilian population hostage. I get sent in. I get out. Nobody\'s told me yet what I\'m getting out with. That part worries me.' },
-  { name: 'DRIZZT',    x: 6400, y: 6520, type: 'human',   gender: 'm', whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same and means the same thing. The light belongs to PABLO CORP. Metered. Licensed. Charged by the lumen. I carry two scimitars. In this city that makes me a permit violation.' },
+  { name: 'MIRRA DOST', x: 3500, y: 8000, type: 'mutant', gender: 'f', job: 'Oracle', home: 'zanarkand_inn', workplace: 'waste_exchange',
+    whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened.',
+    backstory: 'Mirra Dost sees visions — fragments of futures that PABLO Corp. has already planned. She warned the city council in \'92. They filed her testimony under "speculative."' },
+  { name: 'KESS LORNE', x: 7400, y: 8200, type: 'human', gender: 'f', job: 'Salvager', home: 'deep_camp', workplace: 'ruins_alpha',
+    whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author.',
+    backstory: 'Kess Lorne salvages building materials from the southern ruins. She found a PABLO Corp. planning document that describes a three-phase development plan for Minx City. Phases One and Two match actual history. Phase Three is redacted.' },
+  { name: 'PETRA VANCE', x: 9600, y: 8600, type: 'human', gender: 'f', job: 'Outpost Guard', home: 'fort_dracula', workplace: 'fort_dracula',
+    whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me.',
+    backstory: 'Petra Vance was hired by a wasteland collective to guard Bastion Keep for a six-month contract. The collective disbanded. The contract was never formally terminated. Petra stayed.' },
+  { name: 'ANSEL DUNN', x: 2800, y: 8800, type: 'human', gender: 'm', job: 'Cook', home: 'terminus', workplace: 'terminus',
+    whisper: 'There is good in the world worth feeding. I held onto that through the collapse, through the rationing.',
+    backstory: 'Ansel Dunn runs the kitchen at Terminus Shelter. He feeds between thirty and sixty people per day using ingredients scavenged from the wasteland.' },
+  { name: 'RASKIN COLE', x: 8000, y: 8800, type: 'human', gender: 'm', job: 'Pit Fighter', home: 'deep_bunker', workplace: 'fort_dracula',
+    whisper: 'I fight. That\'s it. Some scholar tried explaining that to me as a tragedy. I broke his nose.',
+    backstory: 'Raskin Cole fights in the wasteland pits for money and food. He has won forty-eight bouts and lost three.' },
+  { name: 'JOEL WYNNE', x: 4500, y: 9000, type: 'human', gender: 'm', job: 'Hostel Caretaker', home: 'zanarkand_inn', workplace: 'zanarkand_inn',
+    whisper: 'The hostel was a ruin when I found it. I rebuilt it because ruins need purpose. I stay here because maybe it has one.',
+    backstory: 'Joel Wynne rebuilt the Ashfield Hostel from rubble in \'92. He provides beds, water, and silence to anyone who needs them. He charges nothing.' },
+  { name: 'LIRA WYNNE', x: 4200, y: 9200, type: 'human', gender: 'f', job: 'Medic', home: 'zanarkand_inn', workplace: 'zanarkand_inn',
+    whisper: 'The hostel is a marker pretending to be a building. My whole life has been markers. SENIOR PABLO poured concrete over all of them.',
+    backstory: 'Lira Wynne is Joel\'s sister. She trained as a field medic before the collapse and now treats injuries at the hostel. She keeps no records — not out of carelessness but because records can be subpoenaed.' },
+  { name: 'DECKER STAHL', x: 9200, y: 9500, type: 'human', gender: 'm', job: 'Courier', home: 'deep_bunker', workplace: 'supply_cache',
+    whisper: 'I\'ve caused immense damage and I feel terrible about every last cent of it. I came to Minx City to lay low.',
+    backstory: 'Decker Stahl runs courier routes between the southern wasteland settlements. He carries messages, small packages, and occasionally people who need to disappear.' },
+  { name: 'HANNA GRIEVES', x: 3000, y: 10500, type: 'human', gender: 'f', job: 'Survivalist', home: 'supply_cache', workplace: 'supply_cache',
+    whisper: 'I\'ve been surviving since I was eight. Bandits. Famine. This wasteland is different. The danger here wears a suit and files paperwork.',
+    backstory: 'Hanna Grieves — they call her the Survivor — has lived in the deep wasteland longer than anyone. She knows every trail, every cache, and every danger between the city wall and the southern border.' },
+  { name: 'GRAF TALLIS', x: 12800, y: 9800, type: 'android', gender: 'm', job: 'Sentinel', home: 'ruins_alpha', workplace: 'ruins_alpha',
+    whisper: 'My predecessor built his fortress on suffering. I destroyed that legacy. SENIOR PABLO built his tower the same way. I can see the architecture from here.',
+    backstory: 'Graf Tallis is a decommissioned military android who now guards the eastern ruins. He has been operational for twenty-three years without maintenance.' },
+  // ── City centre — merchants and contacts ──
+  { name: 'TALLY MARSH', x: 6100, y: 6050, type: 'human', gender: 'f', job: 'City Clerk', home: 'safe_house', workplace: 'market',
+    whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP. I am on page forty-seven of the list.',
+    backstory: 'Tally Marsh is a city clerk who discovered that 47 pages of municipal ordinances exist solely to route money to PABLO Corp. She has been documenting them for three years.' },
+  { name: 'SENNA KADE', x: 6300, y: 6200, type: 'human', gender: 'f', job: 'Document Forger', home: 'safe_house', workplace: 'market', role: 'dealer_papers',
+    whisper: 'Papers. Transit docs. ID cards. I make them all. FIAT only. No questions asked.',
+    backstory: 'Senna Kade is a document forger who operates from a stall in the market district. Her forgeries are good enough to pass PABLO Corp. scanners, which is either a testament to her skill or a comment on PABLO Corp. technology.' },
+  { name: 'ROOK TALVERA', x: 6500, y: 5800, type: 'human', gender: 'm', job: 'Arms Dealer', home: 'safe_house', workplace: 'armory', role: 'dealer_weapons',
+    whisper: 'Weapons, upgrades, whatever you need. FIAT only. No paper trail.',
+    backstory: 'Rook Talvera deals weapons from a rotating set of locations in the east district. He sources from wasteland salvage and the occasional PABLO Corp. shipment that goes missing.' },
+  { name: 'JUNO VALE', x: 6800, y: 6200, type: 'android', gender: 'f', job: 'Archivist', home: 'data_vault', workplace: 'data_vault',
+    whisper: 'I was told I had no memories before the city. I was told this was normal. Most of what I was told had PABLO CORP. letterhead.',
+    backstory: 'Juno Vale maintains the city data archive. She has access to records dating back to 1982 but is prohibited from accessing anything filed after \'94.' },
+  { name: 'TOMAS FELL', x: 7100, y: 5700, type: 'human', gender: 'm', job: 'Printer', home: 'eastside_flat', workplace: 'print_shop',
+    whisper: 'My sister Orina and I were changed by the same chemical runoff. She got precognition. I got insomnia. Minx City doesn\'t have a cure.',
+    backstory: 'Tomas Fell runs the Print Shop in the east district. He prints pamphlets, flyers, and unofficial newspapers. He has not slept more than two hours per night since \'91.' },
+  { name: 'OFFICER RENN KOVACS', x: 6200, y: 6400, type: 'human', gender: 'm', job: 'Police Officer', home: 'eastside_flat', workplace: 'east_market', role: 'police',
+    whisper: 'My father\'s precinct was shuttered the night I joined. Minx City is the third precinct I have watched close in slow motion.',
+    backstory: 'Officer Renn Kovacs patrols the bazaar and surrounding blocks. He writes more citations than any other officer. Most are for PABLO Corp. subsidiary vehicles blocking fire exits.' },
+  { name: 'JORY STRAND', x: 7400, y: 5900, type: 'human', gender: 'm', job: 'Librarian', home: 'inn_mother', workplace: 'print_shop',
+    whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights.',
+    backstory: 'Jory Strand operates an unofficial lending library from the back room of the Print Shop. He has collected 400 books — most salvaged from demolished buildings.' },
+  { name: 'WYNN CORRIGAN', x: 7700, y: 6100, type: 'human', gender: 'm', job: 'Exterminator', home: 'inn_mother', workplace: 'nightclub',
+    whisper: 'The rat population increases in direct proportion to PABLO Corp. construction activity. I have filed fourteen reports. None acted upon.',
+    backstory: 'Wynn Corrigan is a licensed pest exterminator — one of seven in Minx City. He handles the nightclub district, which has the highest rat population in the east sector.' },
+  { name: 'AVEN COLE', x: 7000, y: 5600, type: 'human', gender: 'm', job: 'Courier', home: 'safe_house', workplace: 'checkpoint_c',
+    whisper: 'I used to work for the city courier service. Nobody asks what I did after that. What I did was come here. Find another tower. And decide this time I wasn\'t going to lose.',
+    backstory: 'Aven Cole runs messages between the city checkpoints and the wasteland outposts. He knows every back route in Minx City and most of the ones outside it.' },
+  { name: 'THERA VOSS', x: 7800, y: 6600, type: 'human', gender: 'f', job: 'Surveyor', home: 'overlook', workplace: 'east_bunker',
+    whisper: 'I\'ve surveyed across three separate deep-ruin incidents. The ruin pattern is relentless but it has a logic — expansion and consumption.',
+    backstory: 'Thera Voss surveys land for the east district expansion project — a project that has been "in progress" since \'89. She has surveyed the same twelve blocks fourteen times.' },
+  { name: 'MILES ORREN', x: 8100, y: 5500, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'inn_mother', workplace: 'data_vault',
+    whisper: 'My optical camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use stealth daily to avoid their collection teams.',
+    backstory: 'Miles Orren manages utility routing for the east district under a PABLO Corp. contract. He designed an optical camouflage system in \'92 that was immediately classified and acquired.' },
+  // ── Grand Meridian staff & guests ──
+  { name: 'CLARA BRENNAN', x: 5480, y: 5320, type: 'human', gender: 'f', job: 'Bartender', home: 'hotel_midgar', workplace: 'hotel_midgar',
+    whisper: 'I ran a bar in the west district. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit.',
+    backstory: 'Clara Brennan owned and operated a bar called The Seventh for eleven years before PABLO Corp. demolished the building. She relocated to the Grand Meridian and set up a counter bar in the lobby.' },
+  { name: 'KELLAN MARSH', x: 5500, y: 5170, type: 'human', gender: 'm', job: 'Writer', home: 'hotel_midgar', workplace: 'hotel_midgar',
+    whisper: 'I followed an idea here the way some men follow obsessions — across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead.',
+    backstory: 'Kellan Marsh is writing a book about Minx City. He has been writing it for four years. The manuscript is 800 pages and growing.' },
+  { name: 'CONRAD ALDRIC', x: 5550, y: 5250, type: 'human', gender: 'm', job: 'Teacher', home: 'hotel_midgar', workplace: 'arcade',
+    whisper: 'You never really understand a system until you examine it from inside. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside.',
+    backstory: 'Conrad Aldric teaches reading and arithmetic to children in the west district. His classroom is the back room of the Arcade — rent-free, because the arcade owner believes education is the only legal form of resistance.' },
+  // ── Switchboard Inn staff & guests ──
+  { name: 'ALDRIC PENN', x: 5930, y: 6450, type: 'mutant', gender: 'm', job: 'Night Porter', home: 'overlook', workplace: 'overlook',
+    whisper: 'All work and no rest makes a man see things. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays.',
+    backstory: 'Aldric Penn has worked the night shift at the Pinnacle for seven years. He checks locks, monitors corridors, and writes incident reports. His reports describe events that other staff members say did not occur.' },
+  { name: 'CALLUM BIRCH', x: 5950, y: 6380, type: 'human', gender: 'm', job: 'Freelance Writer', home: 'overlook', workplace: 'noodle_bar',
+    whisper: 'What bothers me about Minx City is the dishonesty. The whole city is a performance from bottom to top. SENIOR PABLO is the director.',
+    backstory: 'Callum Birch writes opinion columns for an underground newspaper that circulates in the east district. His pieces are critical of PABLO Corp., city governance, and the quality of the noodle bar\'s broth.' },
+  { name: 'OFFICER LUKA BANE', x: 5920, y: 6500, type: 'human', gender: 'm', job: 'Night Patrol Officer', home: 'minx_arms', workplace: 'arcade', role: 'police',
+    whisper: 'I\'ve patrolled across three separate incidents. The pattern is relentless. SENIOR PABLO has no logic. He just accumulates.',
+    backstory: 'Officer Luka Bane patrols the south arcade district from midnight to 6 AM. He has filed more incident reports than any other officer on the night shift.' },
+  // ── The Pinnacle staff & guests ──
+  { name: 'TOREN ASHBY', x: 6430, y: 6900, type: 'human', gender: 'm', job: 'Mechanic', home: 'zanarkand_inn', workplace: 'scrap',
+    whisper: 'Everything breaks. I fix it. Out here that\'s a philosophy, not a job description.',
+    backstory: 'Toren Ashby repairs vehicles and machinery in the south wasteland. He is the only mechanic within a fifty-mile radius who can service both combustion engines and android joint assemblies.' },
+  { name: 'DENNA GRIEVES', x: 6450, y: 6830, type: 'human', gender: 'f', job: 'Seamstress', home: 'arcade', workplace: 'arcade', role: 'homeless',
+    whisper: 'I had an apartment in District 5. PABLO Corp. raised the rent four times in one year. The fourth time, I just walked out.',
+    backstory: 'Denna Grieves — Old Denna, they call her now — was a seamstress who lived in District 5 for twenty-two years. She sleeps in the alley behind the Arcade. She mends clothes for food.' },
+  // ── Safe House 7 residents ──
+  { name: 'KAEL VOSS', x: 6380, y: 6480, type: 'human', gender: 'm', job: 'Infiltrator', home: 'safe_house', workplace: 'checkpoint_w',
+    whisper: 'I\'ve been sent into locked-down cities three times now. Same model every time: one man, total control, civilian population hostage.',
+    backstory: 'Kael Voss is a covert operative who entered Minx City through the western checkpoint using forged papers. His mission is classified. He suspects his employer may be PABLO Corp.' },
+  { name: 'LAREN VEIL', x: 6400, y: 6520, type: 'human', gender: 'f', job: 'Exile', home: 'safe_house', workplace: 'dojo',
+    whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same.',
+    backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to PABLO Corp. She now trains at the Iron Dojo and works odd jobs.' },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
+
+function getNpcPhase(worldTime: number): 'home' | 'commute_work' | 'work' | 'commute_home' {
+  const hour = worldTime % 24;
+  if (hour < 6 || hour >= 20) return 'home';
+  if (hour < 8) return 'commute_work';
+  if (hour < 18) return 'work';
+  return 'commute_home';
+}
+const STREET_XS = [5500, 5700, 6200, 6700, 7200, 7700, 8200, 8700, 9000];
+const STREET_YS = [5200, 5400, 5850, 6300, 6750, 7200, 7500];
+function nearestStreetX(x: number): number { let best = STREET_XS[0]; for (const sx of STREET_XS) if (Math.abs(sx - x) < Math.abs(best - x)) best = sx; return best; }
+function nearestStreetY(y: number): number { let best = STREET_YS[0]; for (const sy of STREET_YS) if (Math.abs(sy - y) < Math.abs(best - y)) best = sy; return best; }
+function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: number; y: number }[] {
+  const mx = nearestStreetX((sx + ex) / 2);
+  const my = nearestStreetY((sy + ey) / 2);
+  return [
+    { x: sx, y: sy },
+    { x: sx, y: my },
+    { x: mx, y: my },
+    { x: ex, y: my },
+    { x: ex, y: ey },
+  ];
+}
+function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number } {
+  const phase = getNpcPhase(worldTime);
+  const homeB = BUILDINGS.find(b => b.id === n.home);
+  const workB = BUILDINGS.find(b => b.id === n.workplace);
+  const hx = homeB ? homeB.x + homeB.w / 2 : n.x;
+  const hy = homeB ? homeB.y + homeB.h / 2 : n.y;
+  const wx = workB ? workB.x + workB.w / 2 : n.x;
+  const wy = workB ? workB.y + workB.h / 2 : n.y;
+  if (phase === 'home') return { x: hx, y: hy };
+  if (phase === 'work') return { x: wx, y: wy };
+  const hour = worldTime % 24;
+  const t = phase === 'commute_work' ? (hour - 6) / 2 : (hour - 18) / 2;
+  const ct = Math.max(0, Math.min(1, t));
+  const isPolice = n.role === 'police';
+  const policeSlow = isPolice ? 0.7 : 1.0;
+  const adjT = Math.max(0, Math.min(1, ct * policeSlow));
+  const fromX = phase === 'commute_work' ? hx : wx;
+  const fromY = phase === 'commute_work' ? hy : wy;
+  const toX = phase === 'commute_work' ? wx : hx;
+  const toY = phase === 'commute_work' ? wy : hy;
+  if (Math.abs(fromX - toX) < 200 && Math.abs(fromY - toY) < 200) {
+    return { x: fromX + (toX - fromX) * adjT, y: fromY + (toY - fromY) * adjT };
+  }
+  const path = buildStreetPath(fromX, fromY, toX, toY);
+  let totalDist = 0;
+  const segDists: number[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const d = Math.abs(path[i+1].x - path[i].x) + Math.abs(path[i+1].y - path[i].y);
+    segDists.push(d);
+    totalDist += d;
+  }
+  if (totalDist === 0) return { x: fromX, y: fromY };
+  let traveled = adjT * totalDist;
+  for (let i = 0; i < segDists.length; i++) {
+    if (traveled <= segDists[i]) {
+      const segT = traveled / segDists[i];
+      return { x: path[i].x + (path[i+1].x - path[i].x) * segT, y: path[i].y + (path[i+1].y - path[i].y) * segT };
+    }
+    traveled -= segDists[i];
+  }
+  return { x: toX, y: toY };
+}
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; }
@@ -342,6 +533,8 @@ const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   MUTANT:       { day: ['PATROLLING','WORKING'], night: ['PATROLLING','CAMPING'] },
   RAIDER:       { day: ['PATROLLING','SOCIALIZING'], night: ['PATROLLING','CAMPING'] },
   SPY:          { day: ['PATROLLING','PATROLLING'], night: ['PATROLLING','PATROLLING'] },
+  PABLO_GUARD:  { day: ['PATROLLING','WORKING','PATROLLING'], night: ['PATROLLING','PATROLLING','WORKING'] },
+  RAT:          { day: ['CAMPING','SLEEPING','CAMPING'], night: ['PATROLLING','CAMPING','SOCIALIZING'] },
 };
 function pickBehavior(type: string, worldHour: number): BehaviorState {
   const sched = FACTION_SCHEDULES[type];
@@ -356,11 +549,10 @@ interface Projectile { x: number; y: number; dx: number; dy: number; life: numbe
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
-const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, MINX_CITY: 80, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, MINX_CITY: 55, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, MINX_CITY: 4500, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200 };
-// Non-aggressive minor threats — just wander, don't attack
-const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER']);
+const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 55, MINX_CITY: 80, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
+const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 35, MINX_CITY: 55, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
+const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 2800, MINX_CITY: 4500, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
+const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
   replicant:  { maxHp: 450, atkBonus: 22, wasteBonus: false },
@@ -514,6 +706,10 @@ const THREATS_INIT: Threat[] = [
   mkThreat(8000, 6300, 'STRAY_DOG'), mkThreat(8700, 6700, 'STRAY_DOG'),
   mkThreat(2000, 9500, 'SCAVENGER'), mkThreat(5000, 10000, 'SCAVENGER'), mkThreat(8000, 9500, 'SCAVENGER'),
   mkThreat(10500, 9000, 'SCAVENGER'), mkThreat(12500, 9500, 'SCAVENGER'),
+  mkThreat(5550, 6250, 'RAT'), mkThreat(5900, 6700, 'RAT'), mkThreat(6300, 6500, 'RAT'),
+  mkThreat(6700, 6350, 'RAT'), mkThreat(7100, 6200, 'RAT'), mkThreat(7500, 6450, 'RAT'),
+  mkThreat(7900, 6100, 'RAT'), mkThreat(8200, 6350, 'RAT'), mkThreat(5700, 7100, 'RAT'),
+  mkThreat(6600, 7050, 'RAT'), mkThreat(7600, 7050, 'RAT'), mkThreat(8400, 6900, 'RAT'),
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
@@ -525,6 +721,7 @@ const THREAT_COL: Record<string, string> = {
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
   SPY: '#ffffaa', PABLO_GUARD: '#5599ff', MINX_CITY: '#cc44ff',
   VAGRANT: '#887766', STRAY_DOG: '#aa8855', SCAVENGER: '#99aa66',
+  RAT: '#665544',
 };
 
 const NPC_RANGE = 60;
@@ -596,7 +793,7 @@ const TOWER_LINES = [
   '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as every city that ever fell.',
   '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted by order of SENIOR PABLO.',
   '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
-  '> BELMONT was outside this building for three days. Said he felt something. Left without explaining.',
+  '> HARLAN CROSS was outside this building for three days. Said he felt something. Left without explaining.',
   '> SENIOR PABLO. Villain of Minx City. Hero of the rich. Nobody has ever met him face to face and told the story.',
 ];
 
@@ -615,7 +812,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. PABLO CORP. acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
     floors: [
       { floor: 1, name: 'LOBBY',           desc: 'Buzzing fluorescents. Name cards in the original slots. The super\'s office is behind frosted glass. Nobody has seen the super in three weeks.' },
-      { floor: 2, name: 'UNITS 201–208',   desc: 'Lower floor. Long-term residents. Unit 203 has been vacant since \'89 — still listed under someone named TRAVIS. The mail still comes.' },
+      { floor: 2, name: 'UNITS 201–208',   desc: 'Lower floor. Long-term residents. Unit 203 has been vacant since \'89 — still listed under someone named OREN SHARPE. The mail still comes.' },
       { floor: 3, name: 'UNITS 301–308',   desc: 'Unit 308 ran a pirate radio antenna through the wall until the city found it. The hole is still there. Someone put a plant in front of it.' },
       { floor: 4, name: 'YOUR FLOOR',      desc: 'Your unit. View of the SHADOW TOWER roof. The curtains never fully close. You have learned to sleep on the other side of the room.' },
       { floor: 5, name: 'UNITS 501–508',   desc: 'Unit 502 has been playing the same album since 1990. Nobody has complained. Nobody ever will.' },
@@ -628,10 +825,10 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing for the east expansion district. PABLO CORP. invested in floors 3–6 quietly in \'92. The remaining floors are still technically independent.',
     floors: [
       { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP. SECURITY DIVISION.' },
-      { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KIRA.' },
+      { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KERN.' },
       { floor: 3, name: 'UNITS 301–312',   desc: 'PABLO CORP. owned units. Unfurnished. Clean. A realtor shows them every Thursday to nobody.' },
       { floor: 4, name: 'UNITS 401–412',   desc: 'Community notice board. Someone wrote: "SENIOR PABLO IS IN FLOOR 62. DO NOT LOOK UP." The note has been laminated.' },
-      { floor: 5, name: 'GYM / AMENITIES', desc: 'Functional. Towels provided. One locker has been locked since \'90. The gym log shows it was last used by someone named PROTO.' },
+      { floor: 5, name: 'GYM / AMENITIES', desc: 'Functional. Towels provided. One locker has been locked since \'90. The gym log shows it was last used by someone named GRAHN.' },
       { floor: 6, name: 'ROOF GARDEN',     desc: 'Someone is growing vegetables up here without permission. The vegetables are thriving. Nobody has the heart to stop them.' },
     ],
   },
@@ -664,7 +861,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 1, name: 'PUBLIC TERMINALS',   desc: 'Property records. Most transferred to PABLO CORP. The transfer dates are all the same: a Tuesday in \'91.' },
       { floor: 2, name: 'ARCHIVE-A COLD',     desc: 'Financial records from the pre-collapse era. Some redacted. Some redacted poorly — the names show through the black bar.' },
       { floor: 3, name: 'ACTIVE SERVERS',     desc: 'Real-time feeds. City traffic. Power grid. Population movement. All of it. The cameras cover every road.' },
-      { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. BELMONT tried once. The lock said no. He said it felt smug about it.' },
+      { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. HARLAN CROSS tried once. The lock said no. He said it felt smug about it.' },
       { floor: 5, name: 'NETWORK HUB',        desc: 'Every signal in Minx City passes through here. The routing logs go back thirty years. Every packet. Every call.' },
       { floor: 6, name: 'PENTHOUSE SERVER',   desc: 'One server. Running since 1984. Power draw is enormous. Nobody knows what it runs. Nobody has been asked.' },
     ],
@@ -673,7 +870,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'CLUB NEON', history: 'Three names since 1982. Current owners say the building chose its own identity. The lights have not been fully off since 1988. The original electrical panel was replaced in \'91. Nobody kept the receipt.',
     floors: [
       { floor: 1, name: 'MAIN FLOOR',      desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
-      { floor: 2, name: 'VIP SECTION',     desc: 'One booth booked every Friday for four years under TETSUO. He has never shown up. The booth is always full anyway.' },
+      { floor: 2, name: 'VIP SECTION',     desc: 'One booth booked every Friday for four years under OREN SHARPE. He has never shown up. The booth is always full anyway.' },
       { floor: 3, name: 'DJ BOOTH / BROADCAST', desc: 'Doubles as pirate signal tower on Thursdays. The frequency bleeds into the SHADOW TOWER antenna. Intentionally.' },
       { floor: 4, name: 'ROOF TERRACE',    desc: 'Open air. Floor 62 is visible. Some nights it is lit. Most nights it is not. The bartender says it is random. The regulars say it is not.' },
     ],
@@ -1241,10 +1438,10 @@ export default function WorldPlay() {
         const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 15000;
         setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> GRAND MERIDIAN [ƒ15,000 FIAT] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. TIFA is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
+        setNarr('> GRAND MERIDIAN [ƒ15,000 FIAT] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. CLARA BRENNAN is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
       } else {
         sfxError();
-        setNarr('> GRAND MERIDIAN — TIFA shakes her head. "Presidential suite is ƒ15,000 FIAT. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
+        setNarr('> GRAND MERIDIAN — CLARA BRENNAN shakes her head. "Presidential suite is ƒ15,000 FIAT. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
       }
     }
     else if (bid === 'inn_mother') {
@@ -1252,55 +1449,55 @@ export default function WorldPlay() {
         g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 6000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> SWITCHBOARD INN [ƒ6,000 FIAT] — OTACON waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole army here once," OTACON says quietly. "PABLO Corp. sent one accountant. Same result."');
+        setNarr('> SWITCHBOARD INN [ƒ6,000 FIAT] — MILES ORREN waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole routing system here once," MILES says quietly. "PABLO Corp. sent one accountant. Same result."');
       } else {
         sfxError();
-        setNarr('> SWITCHBOARD INN — OTACON squints at his tablet. "Intel says you\'re short ƒ6,000. Come back when your fiat clears." A stealth generator hums in the corner. Nobody visible. Nobody answering.');
+        setNarr('> SWITCHBOARD INN — MILES ORREN squints at his tablet. "Utility records say you\'re short ƒ6,000. Come back when your fiat clears." A generator hums in the corner. Nobody visible. Nobody answering.');
       }
     }
     else if (bid === 'overlook') {
       if (g.salary >= 8000) {
         g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000;
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-        setNarr('> THE PINNACLE [ƒ8,000 FIAT] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. JACK waves from the hedge maze. The hedge animals have moved again. The hallway carpet pattern repeats forever.');
+        setNarr('> THE PINNACLE [ƒ8,000 FIAT] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. ALDRIC PENN waves from the corridor. The hallway carpet pattern repeats forever.');
       } else {
         sfxError();
-        setNarr('> THE PINNACLE — JACK is at the typewriter. He doesn\'t look up. "All work and no play makes Jack a dull boy." The sentence fills seventeen pages. "Come back with ƒ8,000 FIAT," he adds, still not looking up.');
+        setNarr('> THE PINNACLE — ALDRIC PENN is at the front desk. He doesn\'t look up. "All rooms require ƒ8,000 FIAT. Building policy." He adds nothing further. The corridor light flickers.');
       }
     }
     else if (bid === 'safe_house') {
       g.hp = g.maxHp; g.energy = 100; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40);
       setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. Full HP. Full energy. Hunger +40. Thirst +40. Progress saved. RIPLEY stands watch. "Nobody gets in unless I say," she says. "Rest. You earned it."');
+      setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. Full HP. Full energy. Hunger +40. Thirst +40. Progress saved. KAEL VOSS stands watch. "Nobody gets in unless I say," he says. "Rest. You earned it."');
     }
     else if (bid === 'prancing_pony') {
       if (g.salary >= 4000) {
         g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000;
         setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
-        setNarr('> THE RUST PORCH [ƒ4,000 FIAT] — SAMWISE has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "There\'s some good in this world," Sam says, refilling your bowl, "and it\'s worth fighting for." He sounds like he almost believes it.');
+        setNarr('> THE RUST PORCH [ƒ4,000 FIAT] — DREN MALIK has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "Timber\'s hard to come by," Dren says, refilling your bowl, "but stew is the least I can do." He sounds like he means it.');
       } else {
         sfxError();
-        setNarr('> THE RUST PORCH — SAMWISE stirs the stew. "I wish it was free, I really do, Mr. Operative. Needs to be ƒ4,000 FIAT. Supply runs don\'t come cheap in the wasteland." The stew smells extraordinary. It costs ƒ4,000.');
+        setNarr('> THE RUST PORCH — DREN MALIK stirs the stew. "I wish it was free, but supply runs cost ƒ4,000 FIAT. Come back when you have it." The stew smells extraordinary. It costs ƒ4,000.');
       }
     }
     else if (bid === 'zanarkand_inn') {
       g.hp = Math.min(g.maxHp, g.hp + 30); g.energy = Math.min(100, g.energy + 20);
       setHp(g.hp); setEnergy(g.energy); sfxHeal();
-      setNarr('> ASHFIELD HOSTEL — Cracked walls. Faded posters of a city that existed as a dream. YUNA lights a candle. You sleep. HP +30. Energy +20. No charge. "Zanarkand was beautiful," she says. "Memory always makes things beautiful. Even the things that hurt."');
+      setNarr('> ASHFIELD HOSTEL — Cracked walls. Faded posters of a city that existed as a dream. LIRA WYNNE lights a candle. You sleep. HP +30. Energy +20. No charge. "This place was rubble when Joel found it," she says. "We rebuilt it because ruins need purpose."');
     }
     else if (bid === 'terminus') {
       g.hp = Math.min(g.maxHp, g.hp + 40); g.hunger = Math.min(100, g.hunger + 35); g.thirst = Math.min(100, g.thirst + 35);
       setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> TERMINUS SHELTER — CLEM hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "When it rains," she says eventually, "we collect it. That\'s the whole water strategy. That\'s the whole strategy." She says this like it\'s enough. It is.');
+      setNarr('> TERMINUS SHELTER — ANSEL DUNN hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "I feed between thirty and sixty people a day," he says. "You\'re number forty-one." He says this like it\'s routine. It is.');
     }
     else if (bid === 'fort_dracula') {
       const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 2000;
       setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> BASTION KEEP — Stone walls. Candelabras. ALUCARD stands in the dark like a man who has stood in the dark for centuries. "Rest here. No charge." You sleep in a coffin-shaped bed. HP fully restored. Energy maxed. +ƒ2,000 FIAT (he pressed an ancient gold coin into your hand). "My father\'s gold. It should circulate." You saved.');
+      setNarr('> BASTION KEEP — Stone walls. Reinforced perimeter. PETRA VANCE stands guard like someone who has never stopped standing guard. "Rest here. No charge." You sleep on a military cot. HP fully restored. Energy maxed. +ƒ2,000 FIAT (she pressed salvage credits into your hand). "Payment for showing up. Nobody else does." You saved.');
     }
     else if (bid === 'vend')    {
       sfxHeal(); setShowVend(true);
@@ -1360,7 +1557,11 @@ export default function WorldPlay() {
     }
     else if (bid === 'print_shop') {
       const job = QUICK_JOBS.print_shop;
-      if ((g.jobCooldowns['print_shop'] ?? 0) > 0) { sfxError(); setNarr(`> PRINT SHOP — Machine busy. ${Math.ceil((g.jobCooldowns['print_shop'] ?? 0) / 60)}s until next run.`); return; }
+      if ((g.jobCooldowns['print_shop'] ?? 0) > 0) {
+        const book = LIBRARY_BOOKS[Math.floor(Math.random() * LIBRARY_BOOKS.length)];
+        setNarr(`> PRINT SHOP LIBRARY — Press busy. You browse JORY STRAND's shelves. "${book.title}" — ${book.text}`);
+        return;
+      }
       setNarr('> PRINT SHOP — Unauthorized print run. ƒ2,500 FIAT. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
@@ -1518,36 +1719,59 @@ export default function WorldPlay() {
     }
   }, [executeBuildingLogic]);
 
-  const MERCHANT_DANTE: MerchantItem[] = [
+  const MERCHANT_SENNA: MerchantItem[] = [
+    { id: 'forged_basic', name: 'FORGED CITY PASSPORT', desc: 'Basic forged transit pass. Grants checkpoint access with crossing fee.', price: 8000, effect: 'passport_basic_city' },
+    { id: 'forged_full', name: 'FORGED FULL PASSPORT', desc: 'Premium forgery with PABLO Corp. watermark. Priority access, no crossing fee.', price: 25000, effect: 'passport_full_city' },
+    { id: 'forged_waste', name: 'WASTELAND PERMIT', desc: 'Forged wasteland transit authorization. Access to outer sectors.', price: 15000, effect: 'passport_wasteland' },
+    { id: 'fake_work_permit', name: 'WORK PERMIT', desc: 'Counterfeit employment papers. +500 FIAT signing bonus.', price: 5000, effect: 'work_permit' },
+    { id: 'identity_scrub', name: 'IDENTITY SCRUB', desc: 'Erase your criminal record. Resets wanted level.', price: 20000, effect: 'identity_scrub' },
+  ];
+  const MERCHANT_ROOK: MerchantItem[] = [
     { id: 'unlock_sword', name: 'UNLOCK SWORD', desc: 'Close-range slash weapon. +6 ATK.', price: 8000, effect: 'unlock_SWORD' },
     { id: 'unlock_gun', name: 'UNLOCK GUN', desc: 'Mid-range projectile weapon. +8 ATK.', price: 15000, effect: 'unlock_GUN' },
-    { id: 'hp_up', name: 'HP UP', desc: 'Permanently increases max HP by 20.', price: 10000, effect: 'maxhp20' },
-    { id: 'speed_boost', name: 'SPEED BOOST', desc: 'Permanent +10% movement speed.', price: 12000, effect: 'speed10' },
-  ];
-  const MERCHANT_HAWK: MerchantItem[] = [
     { id: 'unlock_laser', name: 'UNLOCK LASER', desc: 'Long beam weapon. +10 ATK.', price: 25000, effect: 'unlock_LASER' },
     { id: 'unlock_bomb', name: 'UNLOCK BOMB', desc: 'Area explosion weapon. +12 ATK.', price: 30000, effect: 'unlock_BOMB' },
-    { id: 'hp_up2', name: 'HP UP II', desc: 'Permanently increases max HP by 40.', price: 20000, effect: 'maxhp40' },
+    { id: 'hp_up', name: 'HP UP', desc: 'Permanently increases max HP by 20.', price: 10000, effect: 'maxhp20' },
     { id: 'atk_boost', name: 'ATK BOOST', desc: 'Permanent +5 base attack damage.', price: 18000, effect: 'atk5' },
     { id: 'armor_plate', name: 'ARMOR PLATE', desc: 'Reduces incoming damage by 15%.', price: 22000, effect: 'armor15' },
+  ];
+  const MERCHANT_MARSH: MerchantItem[] = [
+    { id: 'unlock_sword', name: 'UNLOCK SWORD', desc: 'Close-range slash weapon. +6 ATK.', price: 8000, effect: 'unlock_SWORD' },
+    { id: 'unlock_gun', name: 'UNLOCK GUN', desc: 'Mid-range projectile weapon. +8 ATK.', price: 15000, effect: 'unlock_GUN' },
+    { id: 'unlock_laser', name: 'UNLOCK LASER', desc: 'Long beam weapon. +10 ATK.', price: 25000, effect: 'unlock_LASER' },
+    { id: 'hp_up2', name: 'HP UP II', desc: 'Permanently increases max HP by 40.', price: 20000, effect: 'maxhp40' },
+    { id: 'speed_boost', name: 'SPEED BOOST', desc: 'Permanent +10% movement speed.', price: 12000, effect: 'speed10' },
+    { id: 'armor_plate', name: 'ARMOR PLATE', desc: 'Reduces incoming damage by 15%.', price: 22000, effect: 'armor15' },
+  ];
+
+  const LIBRARY_BOOKS = [
+    { title: 'A BRIEF HISTORY OF MINX CITY', text: 'Founded in 1979. Corporate charter signed by an entity known only as PABLO. Population: classified.' },
+    { title: 'THE TOWER: AN ARCHITECTURAL STUDY', text: 'Shadow Tower rises 62 floors. Floors 40-62 are restricted. No architectural firm claims the design.' },
+    { title: 'WASTELAND SURVIVAL GUIDE', text: 'Rule 1: Water. Rule 2: Shelter. Rule 3: Never trust anyone who works for PABLO Corp.' },
+    { title: 'MUNICIPAL CODE VOL. 47', text: 'Ordinance 4,712: All rain shall be metered and billed at PABLO Corp. standard rates.' },
+    { title: 'ANDROID RIGHTS MEMORANDUM', text: 'Androids classified as "peripheral hardware" under PABLO Corp. Tax Code 9-B. Appeals: denied.' },
+    { title: 'THE COLLAPSE: ORAL HISTORIES', text: 'Thirty-seven survivors describe the same night. The tower light went on. The sirens stopped. Nobody came.' },
   ];
 
   const enterNpc = useCallback((idx: number) => {
     const n = NPCS[idx];
     sfxTalk();
-    if (n.name === 'DANTE') {
-      setShowMerchant({ name: 'DANTE', items: MERCHANT_DANTE });
+    if (n.role === 'dealer_papers') {
+      setShowMerchant({ name: n.name, items: MERCHANT_SENNA });
       frozenRef.current = true;
-      setNarr('> DANTE — "I charge by the job. Weapons, upgrades, whatever you need. FIAT only." [ESC] to close.');
+      setNarr(`> ${n.name} — "${n.whisper}" [ESC] to close.`);
       return;
     }
-    if (n.name === 'HAWK') {
-      setShowMerchant({ name: 'HAWK', items: MERCHANT_HAWK });
+    if (n.role === 'dealer_weapons') {
+      const items = n.name === 'MARSH KETTER' ? MERCHANT_MARSH : MERCHANT_ROOK;
+      setShowMerchant({ name: n.name, items });
       frozenRef.current = true;
-      setNarr('> HAWK — "I carry a sword because it\'s consistent. But I sell everything else." [ESC] to close.');
+      setNarr(`> ${n.name} — "${n.whisper}" [ESC] to close.`);
       return;
     }
-    setDialog({ lines: [`> ${n.name.toUpperCase()}`, `"${n.whisper}"`], idx: 0, bid: 'npc' });
+    const lines = [`> ${n.name.toUpperCase()} — ${n.job}`, `"${n.whisper}"`];
+    if (n.backstory) lines.push(`[${n.backstory}]`);
+    setDialog({ lines, idx: 0, bid: 'npc' });
   }, []);
 
   const tryEnter = useCallback((bid: string) => {
@@ -2030,7 +2254,7 @@ export default function WorldPlay() {
   // ── PABLO AI ──────────────────────────────────────────────────────────────
   const buildPabloContext = useCallback(() => {
     const g = gs.current;
-    const nearbyNpcs = NPCS.filter(n => Math.hypot(g.px - n.x, g.py - n.y) < 150).map(n => n.name).join(', ') || 'none';
+    const nearbyNpcs = NPCS.filter(n => { const sp = getNpcSchedulePos(n, g.worldTime ?? 0); return Math.hypot(g.px - sp.x, g.py - sp.y) < 150; }).map(n => n.name).join(', ') || 'none';
     const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
     const loanStr = g.loan ? `ACTIVE LOAN ƒ${g.loan.amount.toLocaleString()} + ƒ${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
@@ -2677,7 +2901,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         addBankTx('SAFE HOUSE RECOVERY', -emergencyFee, g.salary);
         sfxHeal();
         const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
-        setNarr(`> DEAD. You wake up at your bed in the SAFE HOUSE. RIPLEY patched you up — ƒ${emergencyFee.toLocaleString()} FIAT deducted for medical supplies. "You were gone for a minute there," she says. "Don't make it a habit."${debtNote}`);
+        setNarr(`> DEAD. You wake up at your bed in the SAFE HOUSE. LAREN VEIL patched you up — ƒ${emergencyFee.toLocaleString()} FIAT deducted for medical supplies. "You were gone for a minute there," she says. "Don't make it a habit."${debtNote}`);
       }
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
@@ -2773,7 +2997,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       // Proximity check — NPCs (only when no building nearby)
       let nn: number | null = null;
-      if (!nb) { for (let i = 0; i < NPCS.length; i++) { if (Math.hypot(g.px - NPCS[i].x, g.py - NPCS[i].y) < NPC_RANGE) { nn = i; break; } } }
+      if (!nb) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { nn = i; break; } } }
       g.nearNpc = nn;
       if (nn !== lastNearNpc) {
         lastNearNpc = nn; setNearNpc(nn);
@@ -2843,10 +3067,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const factionTag = baseGang && allyGangs.includes(baseGang) ? ' [ALLIED — safe passage]' : baseGang && enemyGangs.includes(baseGang) ? ' [HOSTILE — enemy territory!]' : '';
           const fragTag = isFrag ? ' (OUTPOST — fractured territory)' : '';
           if (baseGang === 'minx_city') setNarr(`> MINX CITY TERRITORY${factionTag}${fragTag} — The dominant faction. Their purple banners hang from every ruin. SENIOR PABLO's reach extends even here. The other gangs operate in their shadow.`);
-          else if (baseGang === 'iron_rats') setNarr(`> IRON RATS TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER's old crew. He doesn't claim them anymore.`);
+          else if (baseGang === 'iron_rats') setNarr(`> IRON RATS TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are PIKE RENNER's old crew. He doesn't claim them anymore.`);
           else if (baseGang === 'void_dogs') setNarr(`> VOID DOGS TERRITORY${factionTag}${fragTag} — They broadcast static on loop. The code in the static is an old arcade game. Nobody has decoded it. Nobody that lived, anyway.`);
-          else if (baseGang === 'static_monks') setNarr(`> STATIC MONKS TERRITORY${factionTag}${fragTag} — Silent. They move like shadows. ERDRICK says they guard something buried here from before the collapse.`);
-          else if (baseGang === 'eastern_bloc') setNarr(`> EASTERN BLOC TERRITORY${factionTag}${fragTag} — They don't speak. They don't negotiate. MOTOKO tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.`);
+          else if (baseGang === 'static_monks') setNarr(`> STATIC MONKS TERRITORY${factionTag}${fragTag} — Silent. They move like shadows. KAEL VERNE says they guard something buried here from before the collapse.`);
+          else if (baseGang === 'eastern_bloc') setNarr(`> EASTERN BLOC TERRITORY${factionTag}${fragTag} — They don't speak. They don't negotiate. NOVA PRYCE tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.`);
 
         }
       }
@@ -2982,7 +3206,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const route = POLICE_ROUTES[p.routeIdx];
         const next  = (p.wpIdx + 1) % route.length;
         const wpA   = route[p.wpIdx], wpB = route[next];
-        p.progress  += 0.003;
+        p.progress  += 0.001;
         if (p.progress >= 1) { p.progress = 0; p.wpIdx = next; }
         p.x = wpA.x + (wpB.x - wpA.x) * p.progress;
         p.y = wpA.y + (wpB.y - wpA.y) * p.progress;
@@ -3523,12 +3747,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 7); }
       }
 
-      // NPCs — pixel sprite bodies
+      // NPCs — pixel sprite bodies (schedule-aware positions)
       for (let ni = 0; ni < NPCS.length; ni++) {
         const n = NPCS[ni];
-        const nx2 = n.x + ox, ny2 = n.y + oy;
+        const sPos = getNpcSchedulePos(n, g.worldTime ?? 0);
+        const nx2 = sPos.x + ox, ny2 = sPos.y + oy;
         if (nx2 < -14 || nx2 > cw + 14 || ny2 < -14 || ny2 > ch + 14) continue;
-        const nDist = Math.hypot(g.px - n.x, g.py - n.y);
+        const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
         const isNearNpc = nDist < NPC_RANGE;
         const nCol = NPC_COL[n.type] ?? '#009922';
         ctx.shadowColor = nCol; ctx.shadowBlur = isNearNpc ? 6 : 0;
@@ -4236,8 +4461,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
 
           for (const n of NPCS) {
+            const sp = getNpcSchedulePos(n, g.worldTime ?? 0);
             mctx.fillStyle = 'rgba(255,220,30,.75)'; mctx.shadowColor = 'rgba(255,220,30,.4)'; mctx.shadowBlur = 3;
-            mctx.beginPath(); mctx.arc(toMX(n.x), toMY(n.y), 2.2, 0, Math.PI * 2); mctx.fill();
+            mctx.beginPath(); mctx.arc(toMX(sp.x), toMY(sp.y), 2.2, 0, Math.PI * 2); mctx.fill();
           }
           mctx.shadowBlur = 0;
 
@@ -5515,6 +5741,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setNarr(`> ATK BOOST — +5 base attack permanently. ƒ${item.price.toLocaleString()} spent.`);
           } else if (item.effect === 'armor15') {
             setNarr(`> ARMOR PLATE equipped. Incoming damage reduced by 15%. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'passport_basic_city') {
+            g.passport = 'basic_city'; setPassport('basic_city');
+            setNarr(`> FORGED CITY PASSPORT acquired. Checkpoint access granted (crossing fee applies). ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'passport_full_city') {
+            g.passport = 'full_city'; setPassport('full_city');
+            setNarr(`> FORGED FULL PASSPORT acquired. Priority checkpoint access — no crossing fee. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'passport_wasteland') {
+            g.passport = 'wasteland'; setPassport('wasteland');
+            setNarr(`> WASTELAND PERMIT acquired. Outer sector transit authorized. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'work_permit') {
+            g.salary += 500; setSalary(g.salary);
+            setNarr(`> WORK PERMIT filed. +500 FIAT signing bonus deposited. ƒ${item.price.toLocaleString()} spent.`);
+          } else if (item.effect === 'identity_scrub') {
+            setNarr(`> IDENTITY SCRUB complete. Criminal record erased. All faction hostility reset. ƒ${item.price.toLocaleString()} spent.`);
           } else {
             setNarr(`> ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent.`);
           }
@@ -5526,7 +5766,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
                   <div style={{ ...VTM, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.14em' }}>{showMerchant.name} — MERCHANT</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>WEAPONS · UPGRADES · FIAT ONLY</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>{showMerchant.items.some(i => i.effect.startsWith('passport_')) ? 'DOCUMENTS · FORGERIES · FIAT ONLY' : 'WEAPONS · UPGRADES · FIAT ONLY'}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
                   <div style={{ ...VTM, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
@@ -5906,7 +6146,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
               {char.name} — {char.class.toUpperCase()}<br/>
               HP: 0 · FIAT: ƒ{salary.toLocaleString()} · {zone}<br/>
-              <span style={{ color: 'rgba(255,80,80,.25)' }}>MEDIC SAYS: "Even BELMONT respawned. Get back out there."</span>
+              <span style={{ color: 'rgba(255,80,80,.25)' }}>MEDIC SAYS: "Even HARLAN CROSS respawned. Get back out there."</span>
             </div>
             <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
               <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. The medic patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
