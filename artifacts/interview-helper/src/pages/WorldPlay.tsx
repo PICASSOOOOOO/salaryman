@@ -8,7 +8,7 @@ import {
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const W = 4800, H = 4200, TILE = 32, SPD = 1.4, PSIZE = 8, RANGE = 55;
+const W = 4800, H = 4200, TILE = 32, SPD = 0.7, PSIZE = 8, RANGE = 55;
 const BORDER = 100;
 const CITY_TOP = 1425;
 const CITY_BOTTOM = 2775;
@@ -340,7 +340,7 @@ const VEND_CATALOG: VendCategory[] = [
   ]},
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
-const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.3, hover_scooter: 1.45, armored_moped: 1.7 };
+const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9 };
 const WEAPON_TIER: Record<string, number> = { combat_knife: 1, stun_baton: 2, compound_bow: 3, plasma_pistol: 4 };
 
 // Pablo Corp android guard patrol waypoints inside city
@@ -434,7 +434,7 @@ const THREAT_COL: Record<string, string> = {
 const NPC_RANGE = 60;
 const DOG_MAX_HP = 200;
 const DOG_ATK = 13;
-const DOG_SPEED = 1.65;
+const DOG_SPEED = 0.85;
 const DOG_DETECT_RANGE = 110;
 const DOG_ATTACK_COOLDOWN = 48;
 const DOG_FOLLOW_OFFSET = 40;
@@ -693,7 +693,10 @@ export default function WorldPlay() {
   const frozenRef     = useRef(false);
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
   const chatOpenRef   = useRef(false);
-  const zoomRef       = useRef(1);
+  const zoomRef       = useRef(1.6);
+  const targetZoomRef = useRef(1.6);
+  const cameraLookAheadRef = useRef({ x: 0, y: 0 });
+  const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -1006,9 +1009,8 @@ export default function WorldPlay() {
     }
   }, [toggleRadio]);
 
-  const enterBuilding = useCallback((bid: string) => {
+  const executeBuildingLogic = useCallback((bid: string) => {
     const g = gs.current;
-    sfxEnter();
 
     if (RADIO_BUILDINGS.has(bid)) {
       showRadio();
@@ -1379,6 +1381,25 @@ export default function WorldPlay() {
       setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. Everything restored. Progress saved. "Nobody from PABLO Corp has ever been here." You believe them.');
     }
   }, []);
+
+  const enterBuilding = useCallback((bid: string) => {
+    sfxEnter();
+    const b = BUILDINGS.find(bl => bl.id === bid);
+    if (b) {
+      const bCenterX = b.x + b.w / 2;
+      const bCenterY = b.y + b.h / 2;
+      buildingEntryZoomRef.current = {
+        active: true,
+        timer: 45,
+        targetX: bCenterX,
+        targetY: bCenterY,
+        callback: () => executeBuildingLogic(bid),
+      };
+      targetZoomRef.current = Math.max(targetZoomRef.current, 2.0);
+    } else {
+      executeBuildingLogic(bid);
+    }
+  }, [executeBuildingLogic]);
 
   const MERCHANT_DANTE: MerchantItem[] = [
     { id: 'unlock_sword', name: 'UNLOCK SWORD', desc: 'Close-range slash weapon. +6 ATK.', price: 8000, effect: 'unlock_SWORD' },
@@ -1862,7 +1883,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.05 : 0.05;
-      zoomRef.current = Math.max(0.5, Math.min(2, zoomRef.current + delta));
+      targetZoomRef.current = Math.max(0.8, Math.min(2.5, targetZoomRef.current + delta));
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
@@ -2430,10 +2451,61 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
+      // Cinematic camera: smooth zoom lerp toward target
+      const zoomLerp = 0.04;
+
+      // Building-entry cinematic zoom transition
+      const entryZoom = buildingEntryZoomRef.current;
+      if (entryZoom.active) {
+        entryZoom.timer--;
+        zoomRef.current += (2.2 - zoomRef.current) * 0.08;
+        if (entryZoom.timer <= 0) {
+          entryZoom.active = false;
+          targetZoomRef.current = 1.6;
+          if (entryZoom.callback) entryZoom.callback();
+          entryZoom.callback = null;
+        }
+      } else {
+        zoomRef.current += (targetZoomRef.current - zoomRef.current) * zoomLerp;
+      }
+
+      // Cinematic zoom effects: combat zoom-in, building approach zoom-in
+      if (!entryZoom.active) {
+        let cinematicZoomBoost = 0;
+        const hasHostileNearby = g.threats.some((t: Threat) => t.behavior === 'HOSTILE' && Math.hypot(g.px - t.x, g.py - t.y) < 150);
+        if (hasHostileNearby) cinematicZoomBoost = 0.15;
+        if (g.near) cinematicZoomBoost = Math.max(cinematicZoomBoost, 0.2);
+        const effectiveTargetZoom = targetZoomRef.current + cinematicZoomBoost;
+        zoomRef.current += (effectiveTargetZoom - zoomRef.current) * zoomLerp;
+      }
+
+      // Look-ahead: camera leads slightly in the movement direction
+      let dx2 = 0, dy2 = 0;
+      if (g.keys.has('arrowleft') || g.keys.has('a')) dx2 = -1;
+      if (g.keys.has('arrowright') || g.keys.has('d')) dx2 = 1;
+      if (g.keys.has('arrowup') || g.keys.has('w')) dy2 = -1;
+      if (g.keys.has('arrowdown') || g.keys.has('s')) dy2 = 1;
+      const lookAheadDist = 40;
+      const laLerp = 0.06;
+      cameraLookAheadRef.current.x += (dx2 * lookAheadDist - cameraLookAheadRef.current.x) * laLerp;
+      cameraLookAheadRef.current.y += (dy2 * lookAheadDist - cameraLookAheadRef.current.y) * laLerp;
+
       const zoom = zoomRef.current;
       const cw = canvas.width / zoom, ch = canvas.height / zoom;
-      g.cam.x = Math.max(0, Math.min(W - cw, g.px - cw / 2));
-      g.cam.y = Math.max(0, Math.min(H - ch, g.py - ch / 2));
+
+      // During building entry, pan camera toward building entrance
+      let focusX = g.px + cameraLookAheadRef.current.x;
+      let focusY = g.py + cameraLookAheadRef.current.y;
+      if (entryZoom.active) {
+        const blend = 1 - (entryZoom.timer / 45);
+        focusX += (entryZoom.targetX - focusX) * blend * 0.5;
+        focusY += (entryZoom.targetY - focusY) * blend * 0.5;
+      }
+
+      const camTargetX = focusX - cw / 2;
+      const camTargetY = focusY - ch / 2;
+      g.cam.x += (Math.max(0, Math.min(W - cw, camTargetX)) - g.cam.x) * 0.08;
+      g.cam.y += (Math.max(0, Math.min(H - ch, camTargetY)) - g.cam.y) * 0.08;
       const ox = -g.cam.x, oy = -g.cam.y;
 
       ctx.save();
@@ -2526,9 +2598,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Survival tick — every 360 frames (~6s)
+      // Survival tick — every 540 frames (~9s)
       g.survivalTick++;
-      if (g.survivalTick >= 360) {
+      if (g.survivalTick >= 540) {
         g.survivalTick = 0;
         const inWaste = g.py < CITY_TOP || g.py > CITY_BOTTOM;
         const cs2 = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
@@ -3929,23 +4001,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <canvas ref={minimapRef} width={360} height={360} style={{ width: 360, height: 360, borderRadius: '50%', marginTop: 4, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
       </div>
 
-      {/* TOP-RIGHT — Chat / Menu / Pablo AI dropdown */}
+      {/* TOP-RIGHT — Pause / Chat / Menu / Pablo AI dropdown */}
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-        <button
-          onClick={() => setShowTopMenu(v => !v)}
-          style={{
-            padding: '.45rem .8rem',
-            background: showTopMenu ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.92)',
-            border: `1px solid ${showTopMenu ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.25)'}`,
-            color: showTopMenu ? '#00ff41' : 'rgba(0,255,65,.55)',
-            cursor: 'pointer',
-            fontFamily: "'VT323',monospace",
-            fontSize: '1rem',
-            letterSpacing: '.1em',
-          }}
-        >
-          ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 7, height: 7, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
-        </button>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }}
+            style={{
+              padding: '.45rem .7rem',
+              background: 'rgba(0,5,0,.92)',
+              border: '1px solid rgba(255,200,50,.35)',
+              color: 'rgba(255,200,50,.7)',
+              cursor: 'pointer',
+              fontFamily: "'VT323',monospace",
+              fontSize: '1rem',
+              letterSpacing: '.1em',
+            }}
+          >
+            ⏸ PAUSE
+          </button>
+          <button
+            onClick={() => setShowTopMenu(v => !v)}
+            style={{
+              padding: '.45rem .8rem',
+              background: showTopMenu ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.92)',
+              border: `1px solid ${showTopMenu ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.25)'}`,
+              color: showTopMenu ? '#00ff41' : 'rgba(0,255,65,.55)',
+              cursor: 'pointer',
+              fontFamily: "'VT323',monospace",
+              fontSize: '1rem',
+              letterSpacing: '.1em',
+            }}
+          >
+            ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 7, height: 7, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
+          </button>
+        </div>
         {showTopMenu && (
           <div style={{ width: 180, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
             <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
@@ -3973,7 +4062,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                ← MAIN MENU
+                ← TERMINAL
               </button>
             </div>
             {online.length > 0 && (
@@ -4034,7 +4123,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 OPERATIVES ONLINE — Try again shortly.</div>
-          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO MENU</button>
+          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO TERMINAL</button>
         </div>
       )}
 
@@ -5303,7 +5392,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.3rem', animation: 'none' }}>GAME OVER</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>INSERT COIN TO CONTINUE</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>{char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'TAKE ME TO THE HOSPITAL'}</div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
             <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
               {char.name} — {char.class.toUpperCase()}<br/>
@@ -5315,7 +5404,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 CONTINUE
               </button>
               <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
-                TITLE SCREEN
+                TERMINAL
               </button>
             </div>
           </div>

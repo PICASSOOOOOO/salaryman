@@ -231,7 +231,7 @@ function GuideContent({ section }: { section: GuideSection }) {
           </div>
         ))}
       </div>
-      <Row label="LEVEL UP" val="MAX HP +10. ATK +5. HP partially restored. Gold LEVEL UP overlay appears. Stats persist until TITLE SCREEN." col="#ffcc00" />
+      <Row label="LEVEL UP" val="MAX HP +10. ATK +5. HP partially restored. Gold LEVEL UP overlay appears. Stats persist until TERMINAL." col="#ffcc00" />
       <Row label="EXP TABLE" val="100 → 250 → 450 → 700 → 1000 → 1400 → 1900 → 2500 → 3200 → 4000 (max)" col="#ffcc00" />
       <Divider />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '.3rem', marginTop: '.5rem' }}>
@@ -265,8 +265,8 @@ function GuideContent({ section }: { section: GuideSection }) {
         </div>
       ))}
       <Divider />
-      <Row label="TICK RATE" val="Every ~6 seconds in the game loop. Drains pause while dialogs / panels are open." />
-      <Row label="GAME OVER" val="HP → 0 triggers GAME OVER screen. CONTINUE restores all meters to 100. TITLE SCREEN returns to this menu." />
+      <Row label="TICK RATE" val="Every ~9 seconds in the game loop. Drains pause while dialogs / panels are open." />
+      <Row label="GAME OVER" val="HP → 0 triggers GAME OVER screen. CONTINUE restores all meters to 100. TERMINAL returns to this menu." />
     </div>
   );
 
