@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, ArrowRight, X, Check, Sparkles } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 
-const ONBOARDING_KEY = 'frontman_onboarding_done';
+const ONBOARDING_KEY = 'salaryman_onboarding_done';
 
 const USE_CASES = [
   { id: 'interviewer', label: 'Interviewing candidates' },
@@ -102,7 +102,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const STEPS = [
     {
-      question: `Hey${name ? `, ${name}` : ''}! I'm PABLO — I run Frontman.`,
+      question: `Hey${name ? `, ${name}` : ''}! I'm PABLO — I run Salaryman.`,
       sub: "Let me get to know you so I can actually be useful from the start.",
       content: (
         <div className="flex flex-col gap-3">
@@ -156,7 +156,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       ),
     },
     {
-      question: "What will you mainly use Frontman for?",
+      question: "What will you mainly use Salaryman for?",
       sub: "Pick everything that applies — I'll adapt to your needs.",
       content: (
         <div className="grid grid-cols-2 gap-2">

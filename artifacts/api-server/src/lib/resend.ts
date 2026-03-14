@@ -32,7 +32,7 @@ async function getCredentials() {
 
   return {
     apiKey: connectionSettings.settings.api_key as string,
-    fromEmail: (connectionSettings.settings.from_email as string) || "Frontman <onboarding@resend.dev>",
+    fromEmail: (connectionSettings.settings.from_email as string) || "Salaryman <onboarding@resend.dev>",
   };
 }
 

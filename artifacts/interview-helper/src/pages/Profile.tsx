@@ -30,7 +30,7 @@ function MobileInstallSection() {
         </div>
         <div>
           <p className="text-sm font-bold text-foreground">Get the Mobile App</p>
-          <p className="text-xs text-muted-foreground">Install Frontman on your phone — no App Store needed</p>
+          <p className="text-xs text-muted-foreground">Install Salaryman on your phone — no App Store needed</p>
         </div>
       </div>
 
@@ -51,7 +51,7 @@ function MobileInstallSection() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                  Tap <strong className="text-foreground">Add</strong> — Frontman will appear on your home screen like an app
+                  Tap <strong className="text-foreground">Add</strong> — Salaryman will appear on your home screen like an app
                 </li>
               </ol>
             </>
@@ -69,7 +69,7 @@ function MobileInstallSection() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                  Confirm — Frontman launches like a native app
+                  Confirm — Salaryman launches like a native app
                 </li>
               </ol>
             </>
@@ -82,7 +82,7 @@ function MobileInstallSection() {
             <div className="w-[100px] h-[100px] rounded-xl border border-border overflow-hidden bg-[#09090b] flex items-center justify-center">
               <img
                 src={qrUrl}
-                alt="QR code to open Frontman on your phone"
+                alt="QR code to open Salaryman on your phone"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -203,7 +203,7 @@ export default function Profile() {
     const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'frontman-my-data.json'; a.click();
+    a.href = url; a.download = 'salaryman-my-data.json'; a.click();
     URL.revokeObjectURL(url);
   };
 

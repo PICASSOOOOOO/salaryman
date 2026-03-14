@@ -403,7 +403,7 @@ function CreativeTab() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {field('companyName', 'Company / Project Name', 'e.g. Frontman by Picassoo.ai')}
+            {field('companyName', 'Company / Project Name', 'e.g. Salaryman by Picassoo.ai')}
             {field('industry', 'Industry', 'e.g. AI, SaaS, Creative Agency')}
           </div>
           {field('tagline', 'Tagline', 'One sentence that says it all')}

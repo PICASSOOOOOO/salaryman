@@ -13,7 +13,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **NPC System** — All NPCs use original names (no derivative/copyrighted names). Each NPC has `NpcDef` interface with: name, x, y, type, gender, job, home (building ID), workplace (building ID), whisper, backstory, optional role (police/guard/dealer_papers/dealer_weapons/homeless/pedestrian). NPCs follow a daily schedule: home (20:00-6:00), commute to work (6:00-8:00), at work (8:00-18:00), commute home (18:00-20:00). Schedule positions computed by `getNpcSchedulePos()` using `worldTime`. Key NPCs: CLARA BRENNAN (hotel_midgar bartender), MILES ORREN (inn_mother utility mgr), ALDRIC PENN (overlook porter), DREN MALIK (prancing_pony cook), PETRA VANCE (fort_dracula guard), LIRA WYNNE (zanarkand_inn medic), SENNA KADE (document forger dealer), ROOK TALVERA (city arms dealer), MARSH KETTER (wasteland arms dealer), FINN CORVANE (document forger). RAT threat type: HP=4, EXP=1, BOUNTY=0, passive, color=#665544, 12 spawns in city alleys. Print Shop has library feature (6 books) when press is on cooldown.
 - **PABLO** — in-world mega-corporation that manufactures all the tools (AI assistant, devices, software)
 - **Calll Home** — PABLO's CRM + dialer product, lives inside the suite (insurance industry, needs API connection)
-- **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home, formerly "Frontman")
+- **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home)
 
 ### UI Theme
 - CRT/Pip-Boy aesthetic: phosphor green (#00ff41) on black, scan lines, VT323 + Share Tech Mono fonts
