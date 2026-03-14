@@ -1,0 +1,69 @@
+What follows are **implementation updates and corrections to the current Minx City / Salaryman build**. The system already exists, so this document should be interpreted as **direct modifications and refinements to the existing application and game environment**, not as a conceptual overview. The purpose of these changes is to make the world feel more alive, to clarify the business and terminal systems, and to tighten the structure of the city so that the experience feels both functional and immersive.
+
+Minx City itself should be reorganized so that it feels like a dense metropolitan area rather than a spread-out map. The playable city area should be slightly reduced in size and consolidated so that buildings are closer together and players are not forced to walk long empty distances between points of interest. Buildings in the city must be constructed directly along the edges of roads so that streets feel like real urban corridors rather than empty pathways. Roads themselves should be widened and run in a logical grid across the city, with streetlights aligned along them at consistent intervals. Travel should be faster on roads than on sidewalks or open terrain so that the infrastructure of the city actually matters for movement. The visual feeling should resemble a tightly packed urban environment where storefronts, offices, markets, and residential buildings line the streets with little wasted space between them.
+
+The overall geography of Minx City should remain a circular coastal city built along the ocean, with the ocean forming the western edge of the map. The wastes extend outward primarily to the north, south, and east of the city. These areas should remain sparse and dangerous in contrast to the dense city core. The wastes should contain camps, scattered outposts, and abandoned buildings that players or NPCs have repurposed into makeshift stores or shelters. One of the main outpost locations in this region is Death Springs. These areas should not be filled with large numbers of buildings, as their purpose is to feel remote and improvised compared to the structured environment of the city.
+
+The world map should follow a consistent structural hierarchy consisting of sectors, districts, and hamlets. Sectors represent the largest divisions of the map, and the current version of the game should contain at least twelve sectors. Each sector should be large enough to represent a meaningful portion of the city and ideally measure roughly ten thousand square pixels or more. Districts divide sectors into functional areas such as industrial zones, residential neighborhoods, university districts, or commercial centers. Hamlets represent the smallest neighborhood level and function primarily as local identifiers within districts. For example, a location might be described as Sector 3, Industrial District, Dockside Hamlet. This hierarchy should be visible in the map interface so that players understand the organization of the city.
+
+A subway transportation system must exist beneath the city. Subway entrances should be placed across different sectors and allow players to travel between areas quickly. Entering a subway station should trigger a travel sequence that moves the player to another station. Each ride should cost five hundred fiat. The subway should primarily connect central areas of the city and act as the fastest public transportation system.
+
+Vehicles should also exist in the city and function as another form of transportation. Players should be able to purchase vehicles or steal them from the environment. Vehicles should move fastest when traveling along roads, reinforcing the importance of the road network that structures the city.
+
+North of Minx City there should be a location known as Machine Bunker. This is an underground settlement associated with replicants and should contain multiple interior floors connected by elevators and corridors. Machine Bunker should be large enough to support a population of replicant characters and should feel distinct from the surface city.
+
+The population of Minx City must be increased so that the environment feels alive. NPCs should walk through the city but they should not constantly move without purpose. Many NPCs should stop walking to sit, stand, talk with each other, or browse market stalls. Some NPCs should remain stationary in plazas, food courts, or market areas. Public gathering spaces such as bazaars, outdoor markets, and city centers should contain large groups of NPCs. The behavior of these characters should vary so that the city feels organic rather than scripted.
+
+NPCs must also react to events occurring around them. If combat breaks out nearby, some NPCs should panic and run away while others might gather to watch. Fires and disasters should also cause reactions among the population. Police and military characters should be extremely powerful compared to ordinary characters so that their presence creates a sense of authority and oppression within the city. If a player attacks a police officer or military unit, all nearby forces should respond immediately.
+
+Certain regions outside the city should contain radiation hazards. When a player enters these areas, a radiation meter should appear on the HUD and track the player’s exposure. The meter should disappear once the player leaves the radiation zone. This behavior should resemble the radiation indicator used in Fallout.
+
+Time in the world should progress so that one real hour corresponds to one full in-game day. The calendar should consist of thirteen months and four seasons. Weather should vary throughout the year and include rain, snow, sunshine, dry seasons, and wet seasons. Rare environmental disasters such as fires and earthquakes should occasionally occur. Fires should trigger the appearance of fire department units that attempt to contain the blaze.
+
+Players should begin the game by waking up in a bed located inside a room. That room belongs either to their home, a hostel, a camp, or another property they control. The same location contains the player’s primary terminal, which functions as their workplace and default spawn location. When a player returns to the game, they should spawn in that room again unless another spawn point has been designated.
+
+The system should also include idle behavior. If a player remains idle on the map for an extended period of time, the game should automatically return them to their original spawn location. This prevents inactive characters from remaining indefinitely in the open world and simulates the player returning home or to their office when inactive.
+
+If a player dies during gameplay and does not immediately respawn, the next time they return to the game they should receive a message indicating that they died during their last session. At that point they should be given the option to go to the hospital. If they choose this option, the game should load them into a hospital interior where they wake up in a bed and resume play.
+
+Characters in the game belong to several archetypes. Suits represent corporate citizens who tend to have access to advanced weapons and equipment. Replicants are synthetic humans who possess strong defensive capabilities and require less food or water than normal humans. Outlaws represent survival oriented characters who are more comfortable operating outside the structured city environment and tend to have strong defensive attributes as well.
+
+Human characters must manage hunger, thirst, and energy levels. Replicants experience these needs at a reduced rate. Animals exist within the world and can be hunted for food if necessary.
+
+Combat begins with every player receiving two starter weapons: a knife and a pistol. These weapons should eventually receive unique names rather than generic labels. The combat system must allow the player to equip one melee weapon and one ranged weapon simultaneously so that they can quickly switch between them. Combat should also include more animation and feedback so that attacks feel physical rather than static.
+
+The health system should be simplified. Instead of displaying two numbers such as “350 / 100”, the HUD should show only a single health number. That number represents the player’s current health. The color of the number should change to reflect the player’s condition. Green indicates healthy status, yellow indicates moderate injury, orange indicates severe damage, and red indicates critical condition. If the number reaches zero, the player dies. Health should slowly regenerate when the player is idle and not currently engaged in combat.
+
+Movement controls should be improved so that player motion feels smooth and predictable. The shift key should allow the player to run, and diagonal movement must function correctly. The E key should always act as the primary interaction button for doors, objects, terminals, and NPCs.
+
+The inventory system should enforce a weight limit so that players cannot carry unlimited items. Items should be movable within the inventory interface and replaceable when new equipment is obtained.
+
+Loot should appear through enemy drops, treasure chests, and hidden valuables scattered across the world. Some chests should contain treasure maps that lead players to additional rewards. Optional side quests may also appear depending on the season or time of year.
+
+When characters die, their bodies should remain visible in the world for at least one full in-game day. A body should disappear only when no real players remain nearby.
+
+The economy of the world revolves around fiat currency and several valuable resources including gold, silver, copper, diamonds, rubies, sapphires, and emeralds. The hierarchy of value should remain consistent so that one carat of any gemstone equals one gold unit and one hundred thousand fiat equals one gold. All transactions in the city should include a ten percent tax. This tax increases by 0.1 percent every in-game year.
+
+Property ownership should require gold rather than fiat currency. Players must therefore visit a gold exchange to convert fiat into gold or gemstones before purchasing property.
+
+The Minx City Business Terminal is the central interface connecting the gameplay world to the professional features of the application. The terminal should display the player’s salary, which represents the amount of money they earn per minute, as well as their total net worth, which represents the combined value of their fiat and physical assets. The terminal must also display the equivalent value of those assets in US dollars.
+
+The terminal interface should also show both the in-game time for Minx City and the real world Pacific Standard Time. Instead of labeling the map simply as “the world,” the interface should include a dropdown that allows players to select a city based on time zone. Each time zone corresponds to its own city instance.
+
+The terminal itself can exist as an in-game object or as a downloadable application for mobile devices and desktop systems. The mobile version is called the Pablo Terminal MX-75, where the M stands for mobile, X represents the tenth generation of the terminal platform, and 75 represents the current software update.
+
+The terminal is managed by an artificial intelligence known simply as Pablo. When a user first accesses the system, Pablo conducts a twenty-one question interview that gathers information about the user. The player’s name should automatically populate from this interview so that the game does not ask for the name again later. The player should not be allowed to access Minx City until the interview is completed.
+
+Some terminal features operate as subscription services. Echo-7, Optic-9, Vox-4 Larynx, Cipher-X, and the Presentation feature all have monthly pricing between four and six dollars and should each include a seven-day free trial. The interface used to activate these features should be labeled “Vending Machine” rather than “Upgrade.”
+
+A special interface setting called Boomer Mode should exist as well. When Boomer Mode is activated, the application should remove most video game terminology and replace it with professional language so that the platform feels like a business productivity tool rather than a game.
+
+Unemployed players should receive access to the MX-75 terminal for only seven days. After that time they must use physical terminals located throughout the city. Unemployed players earn zero salary and cannot access banks or purchase property. Instead they must locate job postings in the city and complete tasks to earn income.
+
+Dialogue with NPCs should occur through a zoomed conversation interface where the characters’ faces appear on screen. Players should be able to select from multiple dialogue responses, and those responses may influence future outcomes. Information about events in the city should not appear as a global news ticker across the entire map. Instead, rumors and news should appear above NPC heads when the player is nearby so that information spreads locally rather than globally.
+
+Players should be able to customize their clothing and costumes. Character sizes should vary slightly so that individuals do not appear identical.
+
+The audio environment of the game should include breathing sounds, combat effects, city ambience, and background music. Important characters should receive voice acting where possible. Music should also be playable through terminal devices.
+
+All of these changes are intended to strengthen the core concept of the project: a living digital city where the physical environment, economic systems, and professional terminal tools all operate together as part of the same simulation.

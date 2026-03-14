@@ -1,0 +1,752 @@
+Below is your **combined hyper-detailed implementation summary with the new Health System integrated**. This keeps the document **developer-focused, instructional, and complete**, so it can function as a **design blueprint for implementation**.
+
+---
+
+# Minx City / Salaryman – Full Implementation Design Document
+
+## Project Vision
+
+Minx City is a **persistent city simulation combined with a professional business terminal system**.
+
+The project blends:
+
+* urban life simulation
+* economic progression
+* survival mechanics
+* AI terminal interaction
+* RPG dialogue systems
+* social multiplayer interaction
+
+The design goal is to create a **dense, living city ecosystem** where players work, live, explore, and interact with both **the physical city and a digital professional terminal**.
+
+The environment must feel **active, populated, and reactive at all times**.
+
+---
+
+# World Layout and Map Design
+
+## Overall Map Structure
+
+The world centers around **Minx City**, a dense coastal metropolis.
+
+Design rules:
+
+* The city must feel **compact and walkable**.
+* Avoid large empty areas.
+* Buildings must be **close together**.
+* Major locations must be **relatively close in travel time**.
+
+The city must contain **at least 12 sectors**.
+
+Each sector should be approximately **10,000 square pixels or larger**.
+
+---
+
+## Geographic Hierarchy
+
+The map structure must follow:
+
+**Sector → District → Hamlet**
+
+### Sectors
+
+* Largest map regions
+* Minimum of 12 sectors
+
+### Districts
+
+* Subsections within sectors
+
+### Hamlets
+
+* Neighborhood-level locations
+
+Example address structure:
+
+**Sector 3 → Industrial District → Dockside Hamlet**
+
+---
+
+# Roads and Street Layout
+
+Roads must follow strict placement rules.
+
+Developers must:
+
+* Make roads **wide**
+* Align roads **flush against buildings**
+* Ensure buildings sit directly against the street edge
+* Place **streetlights evenly along roads**
+
+The city layout should resemble a **tight urban grid**.
+
+Roads must allow **faster travel than sidewalks**.
+
+---
+
+# Transportation Systems
+
+## Subway
+
+The city includes a **subway network**.
+
+Requirements:
+
+* Multiple subway entrances across sectors
+* Each entrance connects to sector destinations
+* Entering a subway triggers a **travel sequence**
+
+Travel cost:
+
+**500 fiat per ride**
+
+The subway should connect **major sectors and districts**.
+
+---
+
+## Vehicles
+
+Players must be able to:
+
+* purchase vehicles
+* steal vehicles
+
+Vehicles should:
+
+* travel fastest on roads
+* move slower off-road
+
+Vehicles are intended for **longer travel distances**.
+
+---
+
+# Visual Style
+
+The game uses a **2.5D isometric pixel style** similar to RimWorld.
+
+However developers must improve:
+
+* color brightness
+* environmental lighting
+* sprite animation quality
+* scene detail
+
+---
+
+## Occlusion System
+
+Buildings must become **semi-transparent** when a player moves behind them.
+
+This allows players to remain visible during:
+
+* interior navigation
+* alley movement
+* dense urban travel
+
+---
+
+# Performance Target
+
+The game must maintain:
+
+**120 FPS**
+
+Optimization must consider:
+
+* NPC population
+* lighting
+* animation systems
+* rendering
+
+---
+
+# Interior Systems
+
+Important buildings must contain **fully explorable interiors**.
+
+Required interior types:
+
+* offices
+* apartments
+* arcades
+* markets
+* subway stations
+* shops
+* terminal locations
+
+Interior elements must include:
+
+* doors
+* elevators
+* staircases
+* furniture
+* interactive objects
+
+Elevators must support **floor transitions**.
+
+Doors must support **enter / exit interactions**.
+
+---
+
+# NPC Population System
+
+The city must feel **crowded and alive**.
+
+NPC density should be **significantly higher than the current version**.
+
+NPC behavior must include:
+
+* walking
+* standing
+* sitting
+* talking
+* browsing
+* eating
+* resting
+* observing events
+
+NPCs must **not move constantly**.
+
+They should sometimes:
+
+* stop walking
+* stand idle
+* sit on benches
+* talk with nearby NPCs
+* gather in groups
+
+---
+
+# Public Gathering Areas
+
+Developers must implement **crowd gathering zones**.
+
+Examples include:
+
+* city centers
+* food courts
+* outdoor markets
+* bazaars
+* plazas
+* vendor streets
+
+NPC density must increase in these areas.
+
+NPCs should:
+
+* eat
+* talk
+* browse stalls
+* gather socially
+
+---
+
+# NPC Reaction System
+
+NPCs must react to environmental events.
+
+Trigger events:
+
+* gunfire
+* combat
+* fires
+* police activity
+
+Possible NPC reactions:
+
+* panic
+* fleeing
+* watching events
+* forming crowds
+
+Police and military NPCs must be **extremely powerful**.
+
+This creates an **oppressive social atmosphere**.
+
+---
+
+# Outer Regions
+
+Outside Minx City exist **wasteland zones**.
+
+These areas include:
+
+* camps
+* abandoned buildings
+* trading outposts
+* improvised settlements
+
+One location is:
+
+**Death Springs**
+
+---
+
+# Machine Bunker
+
+North of the city lies **Machine Bunker**, a replicant underground city.
+
+Requirements:
+
+* multi-level underground layout
+* replicant NPC presence
+* restricted areas
+
+---
+
+# Radiation Zones
+
+Certain regions contain **radiation hazards**.
+
+Radiation tracking systems should resemble those used in Fallout.
+
+Radiation may cause:
+
+* health damage
+* long-term status effects
+
+---
+
+# Time System
+
+The world calendar includes:
+
+* **13 months per year**
+* **4 seasons**
+
+Weather conditions include:
+
+* snow
+* rain
+* sun
+* dry periods
+* wet periods
+
+Time scaling:
+
+**1 real hour = 1 in-game day**
+
+This allows long seasonal cycles.
+
+---
+
+# Disaster Events
+
+Rare events include:
+
+* fires
+* earthquakes
+
+Fire events must trigger **fire department NPC response**.
+
+---
+
+# Player Spawn System
+
+Players spawn **in a bed inside a room**.
+
+The room belongs to:
+
+* their home
+* hostel
+* camp
+* owned property
+
+The same location contains the **primary terminal**.
+
+The terminal functions as:
+
+* workplace
+* spawn point
+
+---
+
+# Character Archetypes
+
+Three archetypes exist:
+
+**Suits**
+
+* access to advanced weapons
+
+**Replicants**
+
+* high defense
+* minimal food requirements
+
+**Outlaws**
+
+* strong survival abilities
+* defensive advantages
+
+---
+
+# Survival Systems
+
+Human characters must manage:
+
+* hunger
+* thirst
+* energy
+
+Replicants require **much less food and water**.
+
+Animals can be **hunted for food**.
+
+Health regenerates when:
+
+* the player is idle
+* the player is not in combat
+
+---
+
+# Health System (HUD Simplification)
+
+The current health format (example: **350 / 100**) must be removed.
+
+This two-number system is confusing.
+
+## New Health Display
+
+The HUD should display **one single health number only**.
+
+Example:
+
+**350**
+
+This number represents the **player's current health value**.
+
+Maximum health should **not appear as a second number**.
+
+---
+
+## Health Color System
+
+The health number must be **slightly larger than other HUD text**.
+
+Health status should be communicated through **color changes**.
+
+Color stages:
+
+**Green**
+
+Player health is strong.
+
+**Yellow**
+
+Player has taken moderate damage.
+
+**Orange**
+
+Player health is dangerously low.
+
+**Red**
+
+Player is critically injured.
+
+**Dead**
+
+Health reaches zero and the player dies.
+
+---
+
+## Health Regeneration Rules
+
+Health regenerates when:
+
+* the player is idle
+* the player is not in combat
+
+Food and rest can help restore health.
+
+---
+
+# Combat System
+
+Players begin with:
+
+* starter knife
+* starter pistol
+
+Players must be able to equip:
+
+* one melee weapon
+* one ranged weapon
+
+Simultaneously.
+
+Combat includes:
+
+* weapon animations
+* attack and defense calculations
+* combat sound effects
+
+---
+
+# Loot System
+
+Loot sources include:
+
+* enemy drops
+* treasure chests
+* treasure maps
+
+---
+
+# Dead Body System
+
+Dead bodies remain in the world for:
+
+**1 in-game day**
+
+Bodies disappear only when:
+
+* no real players remain nearby.
+
+---
+
+# Movement Controls
+
+Movement must support:
+
+Shift → run
+Diagonal movement
+E → interact
+
+Movement must feel **smooth and responsive**.
+
+---
+
+# Inventory System
+
+Inventory must include:
+
+* weight-based capacity
+* movable item slots
+* replaceable equipment
+
+---
+
+# Economy System
+
+The economy includes:
+
+* fiat currency
+* physical valuables
+
+Valuables include:
+
+* gold
+* silver
+* copper
+* diamonds
+* rubies
+* sapphires
+* emeralds
+
+Conversion examples:
+
+**100,000 fiat = 1 gold**
+
+**1 carat gemstone = 1 gold**
+
+---
+
+# Player Finances
+
+Players track:
+
+**Salary**
+
+Money earned per minute.
+
+**Net Worth**
+
+Total fiat plus asset value.
+
+---
+
+# Property System
+
+Property must be purchased using **gold only**.
+
+Gold is obtained through the **Gold Exchange**.
+
+Every transaction includes:
+
+**10% tax**
+
+Tax increases:
+
+**+0.1% per in-game year**
+
+---
+
+# Terminal System
+
+The professional interface is called:
+
+**Minx City Business Terminal**
+
+Displayed data includes:
+
+* salary
+* net worth
+* USD equivalents
+* Minx City time
+* real PST time
+
+Each time zone corresponds to its own **city instance**.
+
+Players choose time zones through a **dropdown menu**.
+
+---
+
+# Terminal Devices
+
+The terminal runs on:
+
+* mobile devices
+* desktop
+* physical in-game terminals
+
+Mobile device name:
+
+**Pablo Terminal MX-75**
+
+---
+
+# Employment System
+
+Unemployed players receive:
+
+**7 days of terminal access**
+
+After this they must use **public terminals**.
+
+Unemployed players:
+
+* earn no salary
+* cannot access banks
+* cannot buy property
+
+They must complete:
+
+* job postings
+* odd jobs
+
+---
+
+# Housing and Offices
+
+Employed players receive:
+
+* a home
+* an office
+
+Sometimes both exist in **the same building on different floors**.
+
+---
+
+# Pablo AI System
+
+Main interface:
+
+**PABLO AI v1.0**
+
+Pablo is the **AI assistant inside the terminal**.
+
+He performs:
+
+* onboarding interview
+* system guidance
+* language changes
+* feature explanation
+
+First login requires a **21-question interview**.
+
+Players cannot access Minx City until the interview is completed.
+
+Pablo has **only one name**.
+
+---
+
+# Dialogue System
+
+Dialogue occurs in **zoomed-in conversation scenes**.
+
+Features include:
+
+* NPC portraits
+* branching dialogue choices
+* consequences for decisions
+
+Dialogue structure resembles systems used in Fallout.
+
+---
+
+# Rumor System
+
+The game does **not use a global news ticker**.
+
+Instead:
+
+* rumors appear above NPC heads
+* only when the player is nearby
+
+This keeps information **localized and private**.
+
+---
+
+# Character Customization
+
+Players can customize:
+
+* clothing
+* costumes
+* appearance
+
+Character sizes should vary realistically.
+
+---
+
+# Additional City Features
+
+The city must also contain:
+
+* arcades with classic minigames
+* vending machines
+* furniture stores
+* markets
+* bazaars
+
+Buildings must align along **organized city streets**.
+
+---
+
+# Audio Design
+
+Audio systems must include:
+
+* breathing sounds
+* combat sounds
+* city ambience
+* environmental effects
+* background music
+* voice acting for major NPCs
+
+Music should also play through **terminals**.
+
+---
+
+# Overall Design Goal
+
+Minx City must feel like a **living city ecosystem** where:
+
+players work
+players socialize
+players explore
+players build wealth
+players interact with AI systems
+
+all within a **single unified urban simulation**.
