@@ -385,7 +385,7 @@ export function updateWeatherParticles(particles: WeatherParticle[], canvasW: nu
 export const LORE_WEAPON_NAMES: Record<string, { label: string; lore: string }> = {
   FISTS: { label: 'BARE FISTS', lore: 'No weapon needed. Street-hardened knuckles.' },
   SWORD: { label: 'ASHFANG', lore: 'Salvaged from the ruins of Old Minx. The blade remembers.' },
-  GUN: { label: 'KONAMI-9', lore: 'Standard-issue sidearm. Serial number filed off.' },
+  GUN: { label: 'VOSS-9', lore: 'Standard-issue sidearm. Serial number filed off.' },
   LASER: { label: 'PRISM LANCE', lore: 'Pre-collapse military tech. Still hums.' },
   BOMB: { label: 'SHATTER CHARGE', lore: 'Improvised explosive. Loud. Effective.' },
 };

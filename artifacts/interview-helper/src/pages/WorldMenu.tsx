@@ -45,7 +45,7 @@ const CLASS_BADGE: Record<string, string> = {
   replicant: 'REP',
 };
 
-type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'landmarks' | 'terminals' | 'controls';
+type GuideSection = 'world' | 'factions' | 'combat' | 'survival' | 'territories' | 'landmarks' | 'terminals' | 'controls';
 
 const CLASSES = [
   {
@@ -101,13 +101,13 @@ const SIZES = ['SOLO OPERATOR', 'SMALL (2-10)', 'MID (11-50)', 'CORP (51-500)', 
 const WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
   { match: /TECH|SOFTWARE|SAAS|GAMING|DATA|SYNAPSE|ZAIBATSU/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
   { match: /MEDIA|ENTERT|RADIO|STATIC|VIRAL|COMMS/i,                   bid: 'radio',       label: 'PIRATE RADIO',  slot: 'BED 2 · DESK 1 · BROADCAST TERMINAL' },
-  { match: /HEALTH|PHARMA|MAKO|MEDICAL|BIOTECH/i,                      bid: 'wily_lab',    label: 'OXIDE LABS',    slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
+  { match: /HEALTH|PHARMA|CHEM|MEDICAL|BIOTECH/i,                      bid: 'oxide_labs',    label: 'OXIDE LABS',    slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
   { match: /MARKET|PRINT|ADVERTIS|DESIGN|ARCH|EDUC/i,                  bid: 'print_shop',  label: 'PRINT SHOP',    slot: 'BED 4 · DESK 2 · PRESS TERMINAL' },
   { match: /MANUF|LOGIST|CONSTRUCT|SCRAP|RUST|PHANTOM FREIGHT/i,       bid: 'scrap',       label: 'SCRAP YARD',    slot: 'BED 6 · DESK 4 · OPS TERMINAL' },
   { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'IRON TRUST BANK', slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
   { match: /ARMS|WEAPON|EDEN|BLACK IRON|SECURITY/i,                    bid: 'armory',      label: 'ARMORY',        slot: 'BED 3 · DESK 8 · TACTICAL TERMINAL' },
   { match: /SHADOW|JADE SYND|GHOST PROTOCOL|SALVAGE/i,                 bid: 'market',      label: 'BLACK MARKET',  slot: 'BED 7 · DESK 5 · SHADOW TERMINAL' },
-  { match: /ENERGY|OMEGA|POWER|WARPGATE/i,                             bid: 'wily_lab',    label: 'OXIDE LABS',    slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
+  { match: /ENERGY|OMEGA|POWER|GRID/i,                             bid: 'oxide_labs',    label: 'OXIDE LABS',    slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
   { match: /LEGAL|LAWTECH|CONSULT|RECRUIT|INSURANC/i,                  bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 5 · DESK 6 · LEGAL TERMINAL' },
   { match: /REAL ESTATE|E-COMMERCE|RETAIL|FOOD|BEVERAGE/i,             bid: 'east_market', label: 'EAST BAZAAR',   slot: 'BED 11 · DESK 3 · TRADE TERMINAL' },
   { match: /NON-PROFIT|GOVERN|PUBLIC/i,                                bid: 'arcade',      label: 'PIXEL ARCADE',  slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
@@ -135,6 +135,7 @@ const FLAVOR = [
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
   { id: 'world',       label: 'MINX CITY',   col: '#00ff41' },
+  { id: 'factions',    label: 'FACTIONS',     col: '#ff8844' },
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
@@ -198,6 +199,35 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         Minx City. 24 regional servers. Same story. Same collapse. Same neon. All rights reserved in every timezone.
+      </div>
+    </div>
+  );
+
+  if (section === 'factions') return (
+    <div style={S}>
+      <SectionHead>FACTIONS OF MINX CITY</SectionHead>
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        Power in Minx City is not shared. It is hoarded, delegated, and enforced. Three institutions control daily life inside the wall. Outside it, the gangs carve up what remains. Understanding who holds the leash — and who wears it — is the difference between surviving and disappearing.
+      </div>
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
+      <Row label="PABLO CORP. WORKERS" val="Civilians. Office staff, technicians, accountants, maintenance crews. They wear corporate lanyards and keep their heads down. They are not armed, not trained for combat, and not loyal — just employed. Most would leave if they could afford to. They cannot." col="#ff8844" />
+      <Row label="CORPO MILITARY" val="Private military contractors on PABLO CORP. payroll. Heavily armed, body-armored, stationed at checkpoints and tower entrances. Their sole directive: protect PABLO CORP. assets and personnel. They do not respond to civilian distress. They do not patrol outside corporate zones. If you are not on the payroll, you are not their problem." col="#ff4444" />
+      <Row label="COMMAND" val="SENIOR PABLO sits at the top. Below him: division heads, project leads, and a rotating cast of executives who last an average of 14 months before reassignment or disappearance. The hierarchy is opaque by design." col="#cc44ff" />
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
+      <Row label="POLICE" val="Underfunded, overworked, and deeply corrupt. The Minx City Police Department predates the collapse but barely survived it. Officers patrol slowly, stop citizens for random ID checks, and enforce laws that change weekly. Their authority ends where PABLO CORP. property begins — corpo military handles the rest." col="#3388ff" />
+      <Row label="TACTICS" val="Random stops. ID verification. Fines for infractions you have never heard of. Officers travel in pairs. They avoid the wasteland entirely. Their radio chatter is unencrypted — anyone within earshot can hear them harassing pedestrians." col="#3388ff" />
+      <Row label="CORRUPTION" val="Bribes are standard. Fines are negotiable. Arrests are rare — paperwork costs more than looking the other way. The department answers to the city council, which answers to PABLO CORP., which answers to no one." col="#3388ff" />
+      <Divider />
+      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
+      <Row label="IRON RATS" val="Scrappers and scavengers. Pike Renner's old crew. They strip anything metal and sell it back to the city at markup. Territorial but not suicidal — they avoid PABLO CORP. convoys." col="#ff4444" />
+      <Row label="VOID DOGS" val="Signal pirates. They broadcast static on loop — allegedly containing encrypted data. Their territory is marked by interference patterns on your device. Hostile to outsiders." col="#ff8800" />
+      <Row label="STATIC MONKS" val="Silent operators. They move in formation, communicate through gesture, and guard something buried beneath their territory. Kael Verne claims it predates the collapse. Nobody has confirmed this." col="#aaff22" />
+      <Row label="EASTERN BLOC" val="No negotiation. No communication. Nova Pryce traced their signal to a server in Shadow Tower. They operate like a military unit — precise, disciplined, and utterly uninterested in diplomacy." col="#ff66ff" />
+      <Divider />
+      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        Everyone in Minx City belongs to someone. The only question is whether you know it yet.
       </div>
     </div>
   );
@@ -319,7 +349,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
         { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
         { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
-        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: GALAGA.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
+        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
         { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
         { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
         { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
