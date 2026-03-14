@@ -3,6 +3,7 @@ import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, Lay
 import { NavBar } from "@/components/NavBar";
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
+import { PABLO_PRODUCTS } from "@/lib/product-names";
 
 const FREE_ITEMS = [
   { icon: MessageSquare, label: "PABLO AI Chat — ask anything, anytime" },
@@ -11,14 +12,14 @@ const FREE_ITEMS = [
 ];
 
 const PRO_ITEMS = [
-  { icon: MessageSquare, label: "PABLO AI Pro — priority responses, full memory & business context" },
-  { icon: Mic, label: "Say This — instant verbal bullets to speak right now" },
-  { icon: Lightbulb, label: "Get Hint, Full Solution, Explain Approach, Analyze Complexity" },
-  { icon: Mic, label: "Live Listen — real-time voice coaching" },
-  { icon: Monitor, label: "Scan Screen — AI reads your screen" },
-  { icon: Presentation, label: "Presenter Mode — AI-powered slides & interviews" },
-  { icon: Users, label: "Contacts & CRM — remember everyone you meet" },
-  { icon: LayoutDashboard, label: "Workspace — projects, knowledge base, brand kit" },
+  { icon: MessageSquare, label: `${PABLO_PRODUCTS.PABLO_AI_PRO.name} — ${PABLO_PRODUCTS.PABLO_AI_PRO.desc}` },
+  { icon: Mic, label: `${PABLO_PRODUCTS.SAY_THIS.name} — ${PABLO_PRODUCTS.SAY_THIS.desc}` },
+  { icon: Lightbulb, label: `${PABLO_PRODUCTS.GET_HINT.short}, ${PABLO_PRODUCTS.FULL_SOLUTION.short}, ${PABLO_PRODUCTS.EXPLAIN_APPROACH.short}, ${PABLO_PRODUCTS.ANALYZE_COMPLEXITY.short} — Tactical analysis modules` },
+  { icon: Mic, label: `${PABLO_PRODUCTS.LIVE_LISTEN.name} — ${PABLO_PRODUCTS.LIVE_LISTEN.desc}` },
+  { icon: Monitor, label: `${PABLO_PRODUCTS.SCAN_SCREEN.name} — ${PABLO_PRODUCTS.SCAN_SCREEN.desc}` },
+  { icon: Presentation, label: `${PABLO_PRODUCTS.PRESENTER.name} — ${PABLO_PRODUCTS.PRESENTER.desc}` },
+  { icon: Users, label: `${PABLO_PRODUCTS.CONTACTS.name} — ${PABLO_PRODUCTS.CONTACTS.desc}` },
+  { icon: LayoutDashboard, label: `${PABLO_PRODUCTS.WORKSPACE.name} — ${PABLO_PRODUCTS.WORKSPACE.desc}` },
 ];
 
 export default function Upgrade() {
@@ -39,11 +40,11 @@ export default function Upgrade() {
               <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP. — SALARYMAN</span>
             </div>
             <h1 className="display-text mb-3" style={{ fontSize: '2.5rem', color: '#00ff41', textShadow: '0 0 20px rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
-              ACCESS TIERS
+              PRODUCT CATALOG
             </h1>
             <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
-              Start free with PABLO. Upgrade when you're ready to unlock the full suite.
-              No tricks. No hidden fees.
+              Browse Pablo Corp. augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
+              {PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.
             </p>
           </motion.div>
         </div>
@@ -61,7 +62,7 @@ export default function Upgrade() {
                 7-DAY FREE TRIAL ACTIVE — {trialDaysLeft > 1 ? `${trialDaysLeft} DAYS REMAINING` : `${trialHoursLeft} HOURS REMAINING`}
               </p>
               <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.5)', letterSpacing: '0.06em' }}>
-                All Pro features unlocked. No payment required during trial. Upgrade before it ends to keep access.
+                All augmentation modules active. No payment required during trial. Upgrade before it ends to maintain clearance.
               </p>
             </div>
             <div style={{ width: '120px', height: '6px', background: 'rgba(255,165,0,0.15)', flexShrink: 0, overflow: 'hidden' }}>
@@ -79,7 +80,7 @@ export default function Upgrade() {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
-                {isOwner ? "You have permanent owner access" : "You're on Pro"}
+                {isOwner ? "Permanent owner clearance granted" : `${PABLO_PRODUCTS.PRO_TIER.name} ACTIVE`}
               </p>
               <p className="text-xs text-muted-foreground">All features are unlocked for your account.</p>
             </div>
@@ -93,12 +94,12 @@ export default function Upgrade() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="bg-card border border-border rounded-2xl p-6 flex flex-col">
             <div className="mb-5">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Free</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{PABLO_PRODUCTS.FREE_TIER.name}</p>
               <div className="flex items-end gap-1 mb-1">
                 <span className="text-4xl font-bold text-foreground">$0</span>
                 <span className="text-muted-foreground text-sm mb-1">/mo</span>
               </div>
-              <p className="text-xs text-muted-foreground">Always free — no card needed</p>
+              <p className="text-xs text-muted-foreground">Basic terminal access — no card needed</p>
             </div>
 
             <ul className="space-y-3 flex-1 mb-6">
@@ -113,7 +114,7 @@ export default function Upgrade() {
             </ul>
 
             <div className="px-4 py-3 rounded-xl bg-muted/20 border border-border text-center text-sm text-muted-foreground font-medium">
-              {!loading && !isPro ? "✓ Your current plan" : "Free tier"}
+              {!loading && !isPro ? `✓ ${PABLO_PRODUCTS.FREE_TIER.name} ACTIVE` : PABLO_PRODUCTS.FREE_TIER.name}
             </div>
           </motion.div>
 
@@ -127,12 +128,12 @@ export default function Upgrade() {
             </div>
 
             <div className="mb-5">
-              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Pro</p>
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">{PABLO_PRODUCTS.PRO_TIER.name}</p>
               <div className="flex items-end gap-1 mb-1">
                 <span className="text-4xl font-bold text-foreground">$29</span>
                 <span className="text-muted-foreground text-sm mb-1">/mo</span>
               </div>
-              <p className="text-xs text-muted-foreground">Full access to all tools</p>
+              <p className="text-xs text-muted-foreground">Full augmentation suite — all modules unlocked</p>
             </div>
 
             <ul className="space-y-3 flex-1 mb-6">

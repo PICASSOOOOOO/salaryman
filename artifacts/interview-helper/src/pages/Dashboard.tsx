@@ -8,6 +8,7 @@ import {
 import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
+import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -491,7 +492,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <NavBar />
-        <ProGate feature="Workspace" />
+        <ProGate feature={PABLO_PRODUCTS.WORKSPACE.name} />
       </div>
     );
   }

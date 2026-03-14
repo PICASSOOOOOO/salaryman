@@ -5,6 +5,7 @@ import { NavBar } from '@/components/NavBar';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
+import { PABLO_PRODUCTS } from '@/lib/product-names';
 
 interface Slide {
   title: string;
@@ -190,7 +191,7 @@ export default function PresenterMode() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <NavBar />
-        <ProGate feature="Presenter Mode" />
+        <ProGate feature={PABLO_PRODUCTS.PRESENTER.name} />
       </div>
     );
   }
@@ -350,7 +351,7 @@ export default function PresenterMode() {
 
                     {showScript && (
                       <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4">
-                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Say This</p>
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">{PABLO_PRODUCTS.SAY_THIS.name}</p>
                         <p className="text-sm text-emerald-200 leading-relaxed">{slide.say_this}</p>
                       </div>
                     )}

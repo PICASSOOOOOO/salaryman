@@ -6,6 +6,7 @@ import {
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
+import { PABLO_PRODUCTS } from '../lib/product-names';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 4800, H = 4200, TILE = 32, SPD = 0.7, PSIZE = 8, RANGE = 55;
@@ -335,8 +336,8 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ƒ5,000 passive income per cycle.',                  price: 180000 },
     { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ƒ15,000 passive income per cycle.',                 price: 500000 },
   ]},
-  { id: 'pro', label: 'PRO UPGRADE', col: '#ff9900', items: [
-    { id: 'salaryman_pro', name: 'SALARYMAN PRO', desc: 'Full AI productivity suite. Unlimited AI access, priority servers, exclusive gear drops, Pro badge. $29/mo.', price: 0 },
+  { id: 'pro', label: PABLO_PRODUCTS.PRO_TIER.name, col: '#ff9900', items: [
+    { id: 'salaryman_pro', name: `${PABLO_PRODUCTS.PRO_TIER.name} PACKAGE`, desc: PABLO_PRODUCTS.PRO_TIER.desc, price: 0 },
   ]},
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
@@ -4299,10 +4300,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PRODUCTIVITY TOOLS</div>
                       <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.9 }}>
                         All tools are free on every terminal — personal or public.<br/>
-                        ▸ <span style={{ color: '#ff4444' }}>Interview Solver</span> — Real-time coding interview assistance<br/>
-                        ▸ <span style={{ color: '#ff4444' }}>Screen Scanner</span> — Capture and analyze screen content<br/>
-                        ▸ <span style={{ color: '#33aaff' }}>Voice Listener</span> — Live audio transcription<br/>
-                        ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — AI assistant (this terminal)
+                        ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.PROBLEM_DESC.name}</span> — {PABLO_PRODUCTS.PROBLEM_DESC.desc}<br/>
+                        ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.SCAN_SCREEN.name}</span> — {PABLO_PRODUCTS.SCAN_SCREEN.desc}<br/>
+                        ▸ <span style={{ color: '#33aaff' }}>{PABLO_PRODUCTS.LIVE_LISTEN.name}</span> — {PABLO_PRODUCTS.LIVE_LISTEN.desc}<br/>
+                        ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — Neural assistant (this terminal)
                       </div>
                     </div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
@@ -4373,16 +4374,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO DEVICE</div>
             <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
-              {([['FREE', ['PABLO AI chat', 'World access']], ['PRO — $29/mo', ['PABLO AI Pro', 'Live Listen', 'Scan Screen', 'Say This', 'Contacts & CRM']]] as [string, string[]][]).map(([t, f]) => (
-                <div key={t} style={{ border: t === 'FREE' ? '1px solid rgba(0,255,65,.15)' : '1px solid rgba(0,255,65,.5)', padding: '.7rem', background: t !== 'FREE' ? 'rgba(0,255,65,.05)' : 'transparent' }}>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === 'FREE' ? 'rgba(0,255,65,.45)' : '#00ff41', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
-                  {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === 'FREE' ? 'rgba(0,255,65,.32)' : 'rgba(0,255,65,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
+              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $29/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
+                <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(0,255,65,.15)' : '1px solid rgba(0,255,65,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.05)' : 'transparent' }}>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.45)' : '#00ff41', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
+                  {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.32)' : 'rgba(0,255,65,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '.55rem' }}>
-              <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>UPGRADE $29/mo</button>
-              <button onClick={() => { setShowStore(false); setNarr('> PABLO device active [FREE]. Press [P] to open it.'); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>FREE</button>
+              <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={() => { setShowStore(false); setNarr(`> PABLO device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
           </div>
         </div>
@@ -4629,12 +4630,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {cat.id === 'pro' ? (
                   /* PRO upgrade special card */
                   <div style={{ border:`1px solid rgba(255,153,0,.35)`, padding:'1.2rem', background:'rgba(255,153,0,.04)' }}>
-                    <div style={{ ...VT2, fontSize:'1.6rem', color:'#ff9900', letterSpacing:'.14em', marginBottom:'.4rem' }}>SALARYMAN PRO</div>
+                    <div style={{ ...VT2, fontSize:'1.6rem', color:'#ff9900', letterSpacing:'.14em', marginBottom:'.4rem' }}>{PABLO_PRODUCTS.PRO_TIER.name}</div>
                     <div style={{ fontSize:'.52rem', color:'rgba(255,153,0,.65)', lineHeight:1.8, marginBottom:'.8rem' }}>
-                      Full AI productivity suite. Unlimited AI access on all devices. Priority servers. Exclusive gear drops every month. Pro badge visible to all operatives in every zone. Removes all rate limits on Pablo Corp. terminals.
+                      {PABLO_PRODUCTS.PRO_TIER.desc} Exclusive gear drops every month. {PABLO_PRODUCTS.PRO_TIER.short} badge visible to all operatives in every zone. Removes all rate limits on Pablo Corp. terminals.
                     </div>
                     <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'.8rem' }}>
-                      {['UNLIMITED AI ACCESS','PRIORITY SERVERS','MONTHLY GEAR DROPS','PRO BADGE','NO RATE LIMITS'].map(f => (
+                      {[`${PABLO_PRODUCTS.PABLO_AI_PRO.short} ACCESS`,'PRIORITY BANDWIDTH','MONTHLY GEAR DROPS',`${PABLO_PRODUCTS.PRO_TIER.short} BADGE`,'NO RATE LIMITS'].map(f => (
                         <span key={f} style={{ fontSize:'.42rem', color:'rgba(255,153,0,.55)', border:'1px solid rgba(255,153,0,.25)', padding:'2px 7px' }}>{f}</span>
                       ))}
                     </div>

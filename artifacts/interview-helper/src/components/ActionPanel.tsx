@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play, Lock } from 'lucide-react';
 import type { InterviewMode } from '@/hooks/use-interview';
+import { PABLO_PRODUCTS } from '@/lib/product-names';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
@@ -11,8 +12,8 @@ interface ActionPanelProps {
 const actions = [
   {
     id: 'hint' as InterviewMode,
-    label: 'Get Hint',
-    description: 'A subtle nudge in the right direction',
+    label: PABLO_PRODUCTS.GET_HINT.name,
+    description: PABLO_PRODUCTS.GET_HINT.desc,
     icon: Lightbulb,
     color: 'text-emerald-400',
     bg: 'bg-emerald-400/10',
@@ -21,8 +22,8 @@ const actions = [
   },
   {
     id: 'solution' as InterviewMode,
-    label: 'Full Solution',
-    description: 'Optimal code with inline comments',
+    label: PABLO_PRODUCTS.FULL_SOLUTION.name,
+    description: PABLO_PRODUCTS.FULL_SOLUTION.desc,
     icon: Code2,
     color: 'text-blue-400',
     bg: 'bg-blue-400/10',
@@ -31,8 +32,8 @@ const actions = [
   },
   {
     id: 'explain' as InterviewMode,
-    label: 'Explain Approach',
-    description: 'Break down the logic step-by-step',
+    label: PABLO_PRODUCTS.EXPLAIN_APPROACH.name,
+    description: PABLO_PRODUCTS.EXPLAIN_APPROACH.desc,
     icon: MessageSquare,
     color: 'text-purple-400',
     bg: 'bg-purple-400/10',
@@ -41,8 +42,8 @@ const actions = [
   },
   {
     id: 'complexity' as InterviewMode,
-    label: 'Analyze Complexity',
-    description: 'Time and space complexity breakdown',
+    label: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.name,
+    description: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.desc,
     icon: Zap,
     color: 'text-amber-400',
     bg: 'bg-amber-400/10',
@@ -53,15 +54,15 @@ const actions = [
 
 const sayItAction = {
   id: 'say_it' as InterviewMode,
-  label: 'Say This',
-  description: '3 bullets. Plain English. Read it out loud right now.',
+  label: PABLO_PRODUCTS.SAY_THIS.name,
+  description: PABLO_PRODUCTS.SAY_THIS.desc,
   icon: Mic,
 };
 
 function ProLockBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[9px] font-bold border border-primary/30 leading-none">
-      <Lock className="w-2 h-2" /> PRO
+      <Lock className="w-2 h-2" /> {PABLO_PRODUCTS.PRO_TIER.short}
     </span>
   );
 }
@@ -167,8 +168,8 @@ export function ActionPanel({ onAction, isStreaming, isPro }: ActionPanelProps) 
           transition={{ delay: 0.4 }}
           className="text-center text-[11px] text-muted-foreground/50 mt-1"
         >
-          These tools are unlocked on{' '}
-          <a href="/upgrade" className="text-primary font-semibold hover:underline">Pro</a>.
+          These modules require{' '}
+          <a href="/upgrade" className="text-primary font-semibold hover:underline">{PABLO_PRODUCTS.PRO_TIER.name}</a>.
           {' '}PABLO chat is always free.
         </motion.p>
       )}

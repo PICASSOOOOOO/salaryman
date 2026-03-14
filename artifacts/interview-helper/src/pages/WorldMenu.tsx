@@ -330,7 +330,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         { name: 'ARCADE \'87',     col: '#00ff41', effect: '+20 Energy. One machine still running: GALAGA.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
         { name: 'VEND-O-MATIC',   col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
         { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
-        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Upgrade to Pro ($29/mo). Access AI tools.',      secret: 'Free tier is watched. PABLO notes who hasn\'t subscribed.' },
+        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($29/mo). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>

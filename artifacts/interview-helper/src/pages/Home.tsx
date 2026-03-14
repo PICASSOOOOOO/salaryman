@@ -10,6 +10,7 @@ import { NavBar } from '@/components/NavBar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
+import { PABLO_PRODUCTS } from '@/lib/product-names';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -222,7 +223,7 @@ export default function Home() {
             <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(255,165,0,0.8)' }} />
             <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.75)', letterSpacing: '0.08em', flex: 1 }}>
               <strong style={{ color: 'rgba(255,165,0,0.95)' }}>7-DAY FREE TRIAL STARTED.</strong>
-              {' '}All Pro features unlocked for {trialDaysLeft > 1 ? `${trialDaysLeft} more days` : `${trialHoursLeft} more hours`}. No card required.
+              {' '}All augmentation modules active for {trialDaysLeft > 1 ? `${trialDaysLeft} more days` : `${trialHoursLeft} more hours`}. No card required.
             </span>
             <a href="/upgrade" style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(255,165,0,0.8)', letterSpacing: '0.08em', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <Zap className="w-3 h-3" /> Upgrade early →
@@ -266,7 +267,7 @@ export default function Home() {
 
           {/* CAPTURE BUTTONS */}
           {!autoPilot && (
-            <ProGate inline feature="Live Listen & Scan Screen">
+            <ProGate inline feature={`${PABLO_PRODUCTS.LIVE_LISTEN.short} & ${PABLO_PRODUCTS.SCAN_SCREEN.short}`}>
             <div className="grid grid-cols-2 gap-3">
               {/* LIVE LISTEN */}
               <motion.button onClick={handleListen}
@@ -285,7 +286,7 @@ export default function Home() {
                       : isRecording ? <Radio className="w-4 h-4 text-red-400" />
                       : <Mic className="w-4 h-4 text-rose-400" />}
                   </div>
-                  <span className="font-bold text-xs">{isRecording ? 'LISTENING...' : isListenProcessing ? 'Thinking...' : 'LIVE LISTEN'}</span>
+                  <span className="font-bold text-xs">{isRecording ? 'INTERCEPTING...' : isListenProcessing ? 'Processing...' : PABLO_PRODUCTS.LIVE_LISTEN.name}</span>
                   {isRecording && (
                     <div className="flex gap-0.5 ml-auto">
                       {[0,1,2].map(i => (
@@ -307,7 +308,7 @@ export default function Home() {
                     {(isConnecting || isAnalyzing) && <span className="absolute inset-0 rounded-lg bg-sky-400/20 animate-ping" />}
                     {isConnecting ? <Loader2 className="w-4 h-4 animate-spin text-sky-400" /> : <ScanSearch className="w-4 h-4 text-sky-400" />}
                   </div>
-                  <span className="font-bold text-xs text-sky-300">SCAN SCREEN</span>
+                  <span className="font-bold text-xs text-sky-300">{PABLO_PRODUCTS.SCAN_SCREEN.short} SCANNER</span>
                 </div>
                 {/* Scan Once + Chat Reply */}
                 <div className="grid grid-cols-2 gap-1.5">
@@ -346,7 +347,7 @@ export default function Home() {
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden relative group transition-colors focus-within:border-primary/50">
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Code className="w-4 h-4" />Problem Description
+                <Code className="w-4 h-4" />{PABLO_PRODUCTS.PROBLEM_DESC.short} TERMINAL
               </div>
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-muted-foreground" />
@@ -399,7 +400,7 @@ export default function Home() {
                             ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40'
                             : 'bg-violet-500/10 text-violet-400 border-violet-500/30 hover:bg-violet-500/20'}`}>
                         <Keyboard className="w-3.5 h-3.5" />
-                        {typeMode ? (isTyping ? 'Stop' : 'Exit') : 'Type Mode'}
+                        {typeMode ? (isTyping ? 'Stop' : 'Exit') : PABLO_PRODUCTS.TYPE_MODE.short}
                       </button>
                     )}
                     {typeMode && !isTyping && typingDone && (

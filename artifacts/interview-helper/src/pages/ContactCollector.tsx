@@ -5,6 +5,7 @@ import { NavBar } from '@/components/NavBar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { ProGate } from '@/components/ProGate';
+import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 
 interface Contact {
@@ -171,7 +172,7 @@ export default function ContactCollector() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <NavBar />
-        <ProGate feature="Contacts" />
+        <ProGate feature={PABLO_PRODUCTS.CONTACTS.name} />
       </div>
     );
   }

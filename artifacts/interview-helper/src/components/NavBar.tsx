@@ -4,6 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useEffect, useRef, useState } from 'react';
+import { PABLO_PRODUCTS } from '../lib/product-names';
 
 function BlinkingClock() {
   const [display, setDisplay] = useState('');
@@ -37,9 +38,9 @@ export function NavBar() {
 
   const NAV = [
     { path: '/', label: config.navLabel, icon: Terminal, pro: false },
-    { path: '/presenter', label: 'PRESENTER', icon: Presentation, pro: true },
-    { path: '/contacts', label: 'CONTACTS', icon: Users, pro: true },
-    { path: '/dashboard', label: 'WORKSPACE', icon: LayoutDashboard, pro: true },
+    { path: '/presenter', label: PABLO_PRODUCTS.PRESENTER.short, icon: Presentation, pro: true },
+    { path: '/contacts', label: PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true },
+    { path: '/dashboard', label: PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true },
   ];
 
   return (
@@ -78,7 +79,7 @@ export function NavBar() {
               </span>
             ) : (
               <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.08em' }}>
-                {isPro ? 'PRO ACCESS' : 'FREE TIER'}
+                {isPro ? PABLO_PRODUCTS.PRO_TIER.name : PABLO_PRODUCTS.FREE_TIER.name}
               </span>
             )}
           </span>
@@ -190,7 +191,7 @@ export function NavBar() {
                       letterSpacing: '0.1em',
                     }}
                   >
-                    PRO
+                    {PABLO_PRODUCTS.PRO_TIER.short}
                   </span>
                 )}
               </button>

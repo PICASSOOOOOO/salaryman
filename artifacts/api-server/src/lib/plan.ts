@@ -27,11 +27,11 @@ export async function setUserTier(userId: string, tier: Tier, grantedBy: string)
 }
 
 export const PRO_FEATURES = [
-  "Live Listen",
-  "Scan Screen",
-  "Presenter Mode",
-  "Contacts & CRM",
-  "Workspace (Projects, Knowledge Base, Creative Kit)",
+  "ECHO-7 NERVE TAP — Real-time cochlear intercept",
+  "OPTIC-9 RETINAL SCANNER — Military-grade screen capture",
+  "HOLO-PROJ MK.II — Corporate briefing projector",
+  "RECALL-6 FACIAL REGISTRY — Identity database implant",
+  "COMMAND DECK v4.0 — Mobile command station",
 ];
 
 export const FREE_FEATURES = [

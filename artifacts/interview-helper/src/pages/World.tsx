@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
+import { PABLO_PRODUCTS } from '../lib/product-names';
 
 // ── World ─────────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
@@ -715,16 +716,16 @@ export default function World() {
             <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#00ff41',textShadow:'0 0 12px rgba(0,255,65,.4)',letterSpacing:'.15em',marginBottom:'.2rem' }}>PABLO DEVICE</div>
             <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginBottom:'1.25rem' }}>REGISTERED — {char.name}</div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.6rem',marginBottom:'1.25rem' }}>
-              {([['FREE',['PABLO AI chat','World access']],['PRO — $29/mo',['PABLO AI Pro','Live Listen','Scan Screen','Say This','Contacts & CRM']]] as [string,string[]][]).map(([t,f])=>(
-                <div key={t} style={{ border:t==='FREE'?'1px solid rgba(0,255,65,.18)':'1px solid rgba(0,255,65,.55)',padding:'.75rem',background:t!=='FREE'?'rgba(0,255,65,.05)':'transparent' }}>
-                  <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:t==='FREE'?'rgba(0,255,65,.45)':'#00ff41',letterSpacing:'.1em',marginBottom:'.4rem' }}>{t}</div>
-                  {f.map(ff=><div key={ff} style={{ fontSize:'.57rem',color:t==='FREE'?'rgba(0,255,65,.35)':'rgba(0,255,65,.65)',lineHeight:1.9 }}>▸ {ff}</div>)}
+              {([[PABLO_PRODUCTS.FREE_TIER.name,['PABLO AI chat','World access']],[`${PABLO_PRODUCTS.PRO_TIER.name} — $29/mo`,[PABLO_PRODUCTS.PABLO_AI_PRO.short,PABLO_PRODUCTS.LIVE_LISTEN.short,PABLO_PRODUCTS.SCAN_SCREEN.short,PABLO_PRODUCTS.SAY_THIS.short,PABLO_PRODUCTS.CONTACTS.short]]] as [string,string[]][]).map(([t,f])=>(
+                <div key={t} style={{ border:t===PABLO_PRODUCTS.FREE_TIER.name?'1px solid rgba(0,255,65,.18)':'1px solid rgba(0,255,65,.55)',padding:'.75rem',background:t!==PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.05)':'transparent' }}>
+                  <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.45)':'#00ff41',letterSpacing:'.1em',marginBottom:'.4rem' }}>{t}</div>
+                  {f.map(ff=><div key={ff} style={{ fontSize:'.57rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.35)':'rgba(0,255,65,.65)',lineHeight:1.9 }}>▸ {ff}</div>)}
                 </div>
               ))}
             </div>
             <div style={{ display:'flex',gap:'.6rem' }}>
-              <button onClick={()=>{setShowStore(false);navigate('/upgrade');}} style={{ flex:1,padding:'.6rem',background:'rgba(0,255,65,.12)',border:'1px solid rgba(0,255,65,.65)',color:'#00ff41',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>UPGRADE $29/mo</button>
-              <button onClick={()=>{setShowStore(false);setMsg(`> Device active [FREE]. Press P to open.`);}} style={{ padding:'.6rem .9rem',background:'transparent',border:'1px solid rgba(0,255,65,.18)',color:'rgba(0,255,65,.4)',fontFamily:"'VT323',monospace",fontSize:'.9rem',cursor:'pointer' }}>FREE</button>
+              <button onClick={()=>{setShowStore(false);navigate('/upgrade');}} style={{ flex:1,padding:'.6rem',background:'rgba(0,255,65,.12)',border:'1px solid rgba(0,255,65,.65)',color:'#00ff41',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={()=>{setShowStore(false);setMsg(`> Device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press P to open.`);}} style={{ padding:'.6rem .9rem',background:'transparent',border:'1px solid rgba(0,255,65,.18)',color:'rgba(0,255,65,.4)',fontFamily:"'VT323',monospace",fontSize:'.9rem',cursor:'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
           </div>
         </div>
