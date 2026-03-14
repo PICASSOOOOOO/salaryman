@@ -1332,11 +1332,6 @@ export default function WorldPlay() {
     pvpDeathBodyDropped: false,
     diedLastSession: _ss?.diedLastSession ?? false,
     lastMoveTime: Date.now(),
-    lastIdleX: 0,
-    lastIdleY: 0,
-    idleReturnTriggered: false,
-    idleFadeAlpha: 0,
-    idleFading: false,
     floaters: [] as Floater[],
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
@@ -1538,6 +1533,7 @@ export default function WorldPlay() {
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
+  const [hospitalCinematic, setHospitalCinematic] = useState<{ phase: number; lineIdx: number; fadeAlpha: number; startTime: number } | null>(null);
   const [showHospitalPrompt, setShowHospitalPrompt] = useState(() => {
     if (_ss?.diedLastSession) return true;
     try { const flag = localStorage.getItem('sm_died_last_session'); return flag === 'true'; } catch { return false; }
@@ -2383,8 +2379,14 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || showGoldExchange || showDialoguePanel || showCostume;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
+
+  useEffect(() => {
+    if (!hospitalCinematic) return;
+    const id = setInterval(() => setHospitalCinematic(prev => prev ? { ...prev } : null), 200);
+    return () => clearInterval(id);
+  }, [!!hospitalCinematic]);
 
   // ── Music init — start on first interaction ──────────────────────────────────
   useEffect(() => {
@@ -2438,9 +2440,6 @@ export default function WorldPlay() {
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
       gs.current.lastMoveTime = Date.now();
-      gs.current.idleReturnTriggered = false;
-      gs.current.idleFading = false;
-      gs.current.idleFadeAlpha = 0;
 
       // Konami Code easter egg
       const kk = e.key.toLowerCase();
@@ -2607,9 +2606,6 @@ export default function WorldPlay() {
     const canvas = canvasRef.current; if (!canvas) return;
     const handleClick = (e: MouseEvent) => {
       gs.current.lastMoveTime = Date.now();
-      gs.current.idleReturnTriggered = false;
-      gs.current.idleFading = false;
-      gs.current.idleFadeAlpha = 0;
       if (frozenRef.current) return;
       const g = gs.current;
       if (g.attackCooldown > 0) return;
@@ -3413,47 +3409,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
         }
         g.pvpDeathBodyDropped = false;
-        const emergencyFee = 5000;
-        g.hp = g.maxHp; g.hunger = 60; g.thirst = 60; g.energy = 60;
-        g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
-        g.px = 5555; g.py = 5690;
-        g.salary = Math.max(-50000, g.salary - emergencyFee);
-        g.threats = g.threats.map(t => ({ ...t }));
-        setSalary(g.salary); setHp(Math.floor(g.hp));
-        setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
-        setPoisoned(false);
-        g.floaters.push({ x: 1135, y: 662, text: `−ƒ${emergencyFee.toLocaleString()} RECOVERY`, color: '#ff6666', life: 120, maxLife: 120 });
-        addBankTx('SAFE HOUSE RECOVERY', -emergencyFee, g.salary);
-        sfxHeal();
-        const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
-        setNarr(`> DEAD. You wake up at your bed in the SAFE HOUSE. LAREN VEIL patched you up — ƒ${emergencyFee.toLocaleString()} FIAT deducted for medical supplies. "You were gone for a minute there," she says. "Don't make it a habit."${debtNote}`);
-      }
-
-      // ── Idle auto-return (~5 min of standing still) ──
-      const IDLE_TIMEOUT_MS = 300000;
-      const posMoved = Math.hypot(g.px - g.lastIdleX, g.py - g.lastIdleY) > 2;
-      if (posMoved) {
-        g.lastMoveTime = Date.now();
-        g.lastIdleX = g.px;
-        g.lastIdleY = g.py;
-        g.idleReturnTriggered = false;
-        g.idleFading = false;
-        g.idleFadeAlpha = 0;
-      }
-      const idleElapsed = Date.now() - g.lastMoveTime;
-      if (!g.idleReturnTriggered && !frozen() && idleElapsed > IDLE_TIMEOUT_MS) {
-        g.idleFading = true;
-      }
-      if (g.idleFading && !g.idleReturnTriggered) {
-        g.idleFadeAlpha = Math.min(1, g.idleFadeAlpha + 0.02);
-        if (g.idleFadeAlpha >= 1) {
-          g.idleReturnTriggered = true;
-          g.px = char.sx; g.py = char.sy;
-          g.invincible = 180;
-          g.idleFadeAlpha = 1;
-          setTimeout(() => { gs.current.idleFading = false; gs.current.idleFadeAlpha = 0; }, 1500);
-          setNarr('> IDLE — You stood too long in the open. Automated systems returned you to your spawn point.');
-        }
+        g.diedLastSession = true;
+        try { localStorage.setItem('sm_died_last_session', 'true'); } catch {}
+        setIsDead(true);
       }
 
       // ── Dead body cleanup (1 in-game day ≈ 14400 frames, remove when no real players nearby) ──
@@ -5497,22 +5455,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── Idle fade-to-black overlay ──
-      if (g.idleFadeAlpha > 0) {
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = `rgba(0,0,0,${g.idleFadeAlpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (g.idleFadeAlpha > 0.3) {
-          ctx.globalAlpha = Math.min(1, (g.idleFadeAlpha - 0.3) / 0.7);
-          ctx.fillStyle = '#00ff41';
-          ctx.font = '24px "VT323", monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText('RETURNING TO SPAWN...', canvas.width / 2, canvas.height / 2);
-          ctx.globalAlpha = 1;
-        }
-        ctx.restore();
-      }
+
 
       if (g.subwayTransit) {
         ctx.save();
@@ -7190,7 +7133,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
-      {showHospitalPrompt && (
+      {showHospitalPrompt && !hospitalCinematic && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 460, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#ff6644', letterSpacing: '.15em', marginBottom: '1rem', textShadow: '0 0 12px rgba(255,60,30,.4)' }}>YOU DIED DURING YOUR LAST SESSION.</div>
@@ -7202,69 +7145,125 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               A nurse checks your chart and nods. "You're cleared to leave."
             </div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,100,68,.15), transparent)', marginBottom: '1.5rem' }} />
-            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
-              <button
-                onClick={() => {
-                  const g = gs.current;
-                  g.hp = g.maxHp; g.hunger = 80; g.thirst = 80; g.energy = 80;
-                  g.poisoned = false; g.invincible = 180;
-                  const clinicB = BUILDINGS.find(b => b.id === 'clinic')!;
-                  g.px = clinicB.x + clinicB.w / 2;
-                  g.py = clinicB.y + clinicB.h + 20;
-                  setHp(g.maxHp); setHunger(80); setThirst(80); setEnergy(80); setPoisoned(false);
-                  g.diedLastSession = false;
-                  try { localStorage.removeItem('sm_died_last_session'); } catch {}
-                  const def = getInterior('clinic')!;
-                  g.interior = {
-                    bid: 'clinic', def,
-                    px: 40, py: 110,
-                    savedWorldX: g.px, savedWorldY: g.py,
-                  };
-                  setShowHospitalPrompt(false);
-                  setNarr('> CITY CLINIC — You wake up in a hospital bed. Monitors beep. Stats partially restored. The medic says: "Take it easy out there." Walk to the EXIT when you\'re ready.');
-                }}
-                style={{ padding: '.65rem 1.8rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
-              >
-                WAKE UP IN HOSPITAL
-              </button>
-              <button
-                onClick={() => {
-                  gs.current.diedLastSession = false;
-                  try { localStorage.removeItem('sm_died_last_session'); } catch {}
-                  setShowHospitalPrompt(false);
-                  setNarr('> You declined medical treatment. Respawning at your last known location.');
-                }}
-                style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,100,68,.2)', color: 'rgba(255,150,120,.4)', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.15em', cursor: 'pointer' }}
-              >
-                SKIP
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                setShowHospitalPrompt(false);
+                setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+              }}
+              style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+            >
+              WAKE UP IN HOSPITAL
+            </button>
           </div>
         </div>
       )}
 
-      {isDead && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.3rem', animation: 'none' }}>GAME OVER</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.18em', marginBottom: '.5rem' }}>{char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'TAKE ME TO THE HOSPITAL'}</div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '.8rem' }} />
-            <div style={{ fontSize: '.55rem', color: 'rgba(255,80,80,.4)', letterSpacing: '.1em', marginBottom: '1rem', lineHeight: 2 }}>
+      {isDead && !hospitalCinematic && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.5rem' }}>YOU ARE DEAD</div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '1rem' }} />
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(255,80,80,.5)', lineHeight: 2, marginBottom: '1.2rem', letterSpacing: '.04em' }}>
               {char.name} — {char.class.toUpperCase()}<br/>
-              HP: 0 · FIAT: ƒ{salary.toLocaleString()} · {zone}<br/>
-              <span style={{ color: 'rgba(255,80,80,.25)' }}>MEDIC SAYS: "Even HARLAN CROSS respawned. Get back out there."</span>
+              Your vitals flatlined. The street goes dark around you.<br/>
+              Emergency frequency detected. A dispatch unit is standing by.
             </div>
-            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
-              <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); g.diedLastSession = false; try { localStorage.removeItem('sm_died_last_session'); } catch {} setNarr('> Respawned. The medic patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
-                CONTINUE
-              </button>
-              <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
-                TERMINAL
-              </button>
-            </div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.15), transparent)', marginBottom: '1.5rem' }} />
+            <button
+              onClick={() => {
+                setIsDead(false);
+                setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+              }}
+              style={{ padding: '.65rem 2rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}
+            >
+              {char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'GO TO HOSPITAL'}
+            </button>
           </div>
         </div>
       )}
+
+      {hospitalCinematic && (() => {
+        const HOSPITAL_LINES = [
+          '[ EMERGENCY DISPATCH — UNIT INBOUND ]',
+          'Sirens cut through the static. You feel pavement against your back.',
+          'Hands lift you onto a stretcher. Fluorescent light blurs overhead.',
+          char.class.toLowerCase() === 'replicant'
+            ? 'ROBODOC: "Chassis integrity at 12%. Initiating full system rebuild."'
+            : 'MEDIC: "Pulse is weak. Start the IV. Move, move, move."',
+          'The hospital corridor smells like antiseptic and old wiring.',
+          char.class.toLowerCase() === 'replicant'
+            ? 'Servos whir. Diagnostic cables snake into your access ports.'
+            : 'A mask covers your face. Cold fluid enters your veins.',
+          '...',
+          char.class.toLowerCase() === 'replicant'
+            ? 'ROBODOC: "Core systems stabilized. Rebooting consciousness matrix."'
+            : 'MEDIC: "Vitals stabilizing. Blood pressure coming back up."',
+          'Time passes. You drift between static and silence.',
+          'Monitors beep steadily. The fluorescent light above your bed flickers.',
+        ];
+        const elapsed = Date.now() - hospitalCinematic.startTime;
+        const LINE_INTERVAL = 2200;
+        const currentLine = Math.min(Math.floor(elapsed / LINE_INTERVAL), HOSPITAL_LINES.length - 1);
+        const allLinesShown = currentLine >= HOSPITAL_LINES.length - 1 && elapsed >= (HOSPITAL_LINES.length - 1) * LINE_INTERVAL + 1500;
+
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.99)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
+            <div style={{ textAlign: 'center', maxWidth: 600, padding: '2rem' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(255,100,68,.6)', letterSpacing: '.2em', marginBottom: '2rem' }}>
+                {char.class.toLowerCase() === 'replicant' ? '[ ROBODOC REPAIR BAY ]' : '[ CITY HOSPITAL — EMERGENCY WARD ]'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '2rem' }}>
+                {HOSPITAL_LINES.slice(0, currentLine + 1).map((line, i) => (
+                  <div key={i} style={{
+                    fontFamily: "'Share Tech Mono',monospace",
+                    fontSize: '.65rem',
+                    color: i === currentLine ? 'rgba(255,180,150,.7)' : 'rgba(255,180,150,.3)',
+                    letterSpacing: '.04em',
+                    lineHeight: 1.8,
+                    transition: 'color 0.5s ease',
+                  }}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+              {allLinesShown && (
+                <button
+                  onClick={() => {
+                    const g = gs.current;
+                    const emergencyFee = 5000;
+                    g.hp = g.maxHp; g.hunger = 70; g.thirst = 70; g.energy = 60;
+                    g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
+                    const clinicB = BUILDINGS.find(b => b.id === 'clinic')!;
+                    g.px = clinicB.x + clinicB.w / 2;
+                    g.py = clinicB.y + clinicB.h + 20;
+                    g.salary = Math.max(-50000, g.salary - emergencyFee);
+                    g.threats = g.threats.map(t => ({ ...t }));
+                    setSalary(g.salary); setHp(g.maxHp);
+                    setHunger(70); setThirst(70); setEnergy(60);
+                    setPoisoned(false);
+                    g.diedLastSession = false;
+                    try { localStorage.removeItem('sm_died_last_session'); } catch {}
+                    addBankTx('HOSPITAL EMERGENCY RECOVERY', -emergencyFee, g.salary);
+                    const def = getInterior('clinic')!;
+                    g.interior = {
+                      bid: 'clinic', def,
+                      px: 40, py: 110,
+                      savedWorldX: g.px, savedWorldY: g.py,
+                    };
+                    setHospitalCinematic(null);
+                    const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
+                    setNarr(`> CITY CLINIC — You wake up in a hospital bed. Monitors beep. Stats partially restored. ƒ${emergencyFee.toLocaleString()} FIAT deducted.${debtNote} Walk to the EXIT when you're ready.`);
+                    sfxHeal();
+                  }}
+                  style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer', animation: 'smblink 1.5s ease-in-out infinite alternate' }}
+                >
+                  OPEN YOUR EYES
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ─────────────────────── SUBWAY FAST TRAVEL ────────────────────────── */}
       {showSubway && (() => {

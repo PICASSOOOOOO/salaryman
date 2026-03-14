@@ -793,8 +793,8 @@ export default function World() {
       {isDead&&(
         <div style={{ position:'absolute',inset:0,background:'rgba(0,0,0,.9)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:400 }}>
           <div style={{ textAlign:'center' }}>
-            <div style={{ fontFamily:"'VT323',monospace",fontSize:'3.5rem',color:'#ff2222',textShadow:'0 0 24px rgba(255,0,0,.5)',letterSpacing:'.15em',marginBottom:'.75rem' }}>YOU DIED</div>
-            <button onClick={()=>{ const g=gs.current; g.hp=100; g.px=char.sx; g.py=char.sy; g.threats=THREATS_INIT.map(t=>({...t})); g.invincible=120; setHp(100); setIsDead(false); setMsg('> Respawned.'); }} style={{ padding:'.6rem 1.75rem',background:'rgba(255,0,0,.1)',border:'1px solid rgba(255,50,50,.45)',color:'#ff4444',fontFamily:"'VT323',monospace",fontSize:'1.4rem',letterSpacing:'.2em',cursor:'pointer' }}>RESPAWN</button>
+            <div style={{ fontFamily:"'VT323',monospace",fontSize:'3.5rem',color:'#ff2222',textShadow:'0 0 24px rgba(255,0,0,.5)',letterSpacing:'.15em',marginBottom:'.75rem' }}>YOU ARE DEAD</div>
+            <button onClick={()=>{ const g=gs.current; g.hp=100; g.px=5480; g.py=5910; g.threats=THREATS_INIT.map(t=>({...t})); g.invincible=120; setHp(100); setIsDead(false); setMsg('> You wake up in the hospital. The medic patched you up.'); }} style={{ padding:'.6rem 1.75rem',background:'rgba(255,0,0,.1)',border:'1px solid rgba(255,50,50,.45)',color:'#ff4444',fontFamily:"'VT323',monospace",fontSize:'1.4rem',letterSpacing:'.2em',cursor:'pointer' }}>GO TO HOSPITAL</button>
           </div>
         </div>
       )}
