@@ -1034,6 +1034,15 @@ export default function WorldPlay() {
     attackCooldown: 0,
     attackFlash: 0,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
+    deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number }[],
+    pvpDeathBodyDropped: false,
+    diedLastSession: _ss?.diedLastSession ?? false,
+    lastMoveTime: Date.now(),
+    lastIdleX: 0,
+    lastIdleY: 0,
+    idleReturnTriggered: false,
+    idleFadeAlpha: 0,
+    idleFading: false,
     floaters: [] as Floater[],
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
@@ -1212,7 +1221,11 @@ export default function WorldPlay() {
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
-  const [showIndoorStart, setShowIndoorStart] = useState(!_ss);
+  const [showHospitalPrompt, setShowHospitalPrompt] = useState(() => {
+    if (_ss?.diedLastSession) return true;
+    try { const flag = localStorage.getItem('sm_died_last_session'); return flag === 'true'; } catch { return false; }
+  });
+  const [showIndoorStart, setShowIndoorStart] = useState(!_ss && !(() => { try { return localStorage.getItem('sm_died_last_session') === 'true'; } catch { return false; } })());
   const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<Array<{id:number;desc:string;amount:number;bal:number}>>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
@@ -1292,6 +1305,7 @@ export default function WorldPlay() {
       cargo: { ...g.cargo },
       realEstate: [...g.realEstate],
       worldTime: g.worldTime,
+      diedLastSession: g.diedLastSession,
     };
   }, [char]);
 
@@ -1866,7 +1880,12 @@ export default function WorldPlay() {
         sfxHit();
         g.floaters.push({ x: g.px, y: g.py - 20, text: `-${dmg} PVP HIT`, color: '#ff4444', life: 50, maxLife: 50 });
         setNarr(`> PVP — ${m.attackerName} hit you for ${dmg} damage!`);
-        if (g.hp <= 0) { setIsDead(true); sfxDeath(); }
+        if (g.hp <= 0) {
+          g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
+          g.pvpDeathBodyDropped = true;
+          g.diedLastSession = true;
+          setIsDead(true); sfxDeath(); try { localStorage.setItem('sm_died_last_session', 'true'); } catch {}
+        }
       } else if (m.type === 'pvp_hit_confirm') {
         g.floaters.push({ x: g.px, y: g.py - 30, text: `${m.damage} HIT ${m.targetName}`, color: '#ffaa00', life: 40, maxLife: 40 });
       } else if (m.type === 'pvp_kill') {
@@ -1893,6 +1912,12 @@ export default function WorldPlay() {
         setNarr(`> DEFEATED — ${m.attackerName} killed you. Lost ƒ${lostMoney.toLocaleString()} FIAT${m.lostItem ? ` and ${m.lostItem.name}` : ''}.`);
       } else if (m.type === 'pvp_kill_announce') {
         setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: 'PVP', text: `${m.killerName} killed ${m.victimName}` }]);
+        for (const [, peer] of g.peers) {
+          if (peer.name === m.victimName) {
+            g.deadBodies.push({ x: peer.x, y: peer.y, type: 'PLAYER', diedAtFrame: g.frame });
+            break;
+          }
+        }
       } else if (m.type === 'npc_loot') {
         if (m.item) {
           g.floaters.push({ x: g.px, y: g.py - 20, text: `LOOT: ${m.item.name}`, color: '#33ffaa', life: 65, maxLife: 65 });
@@ -1968,7 +1993,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   // ── Music init — start on first interaction ──────────────────────────────────
@@ -2022,6 +2047,10 @@ export default function WorldPlay() {
       // Prevent page scroll on arrow keys, WASD, and space
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key)) e.preventDefault();
       gs.current.keys.add(e.key.toLowerCase());
+      gs.current.lastMoveTime = Date.now();
+      gs.current.idleReturnTriggered = false;
+      gs.current.idleFading = false;
+      gs.current.idleFadeAlpha = 0;
 
       // Konami Code easter egg
       const kk = e.key.toLowerCase();
@@ -2130,6 +2159,7 @@ export default function WorldPlay() {
               g.exp = newExp; g.level = newLevel;
               setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
               return null as unknown as Threat;
             }
             sfxHit();
@@ -2171,6 +2201,10 @@ export default function WorldPlay() {
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const handleClick = (e: MouseEvent) => {
+      gs.current.lastMoveTime = Date.now();
+      gs.current.idleReturnTriggered = false;
+      gs.current.idleFading = false;
+      gs.current.idleFadeAlpha = 0;
       if (frozenRef.current) return;
       const g = gs.current;
       if (g.attackCooldown > 0) return;
@@ -2371,6 +2405,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.exp = newExp; g.level = newLevel;
               setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
               return null as unknown as Threat;
             }
             sfxHit(); return { ...t, hp: nhp };
@@ -2415,6 +2450,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) { newExp -= expToLevel(newLevel); newLevel++; g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10); sfxLevelUp(); }
                 g.exp = newExp; g.level = newLevel; setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
                 return null as unknown as Threat;
               }
               sfxHit(); return { ...t, hp: nhp };
@@ -2460,7 +2496,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       if (!frozen()) {
-        const vMult = (g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1);
+        const shiftHeld = g.keys.has('shift');
+        const sprintMult = shiftHeld ? 1.6 : 1;
+        const vMult = (g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD * vMult;
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD * vMult;
@@ -2771,6 +2809,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (nearestThreat.hp <= 0) {
               g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#00ff41', life: 90, maxLife: 90 });
               g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 1800 });
+              g.deadBodies.push({ x: nearestThreat.x, y: nearestThreat.y, type: nearestThreat.type, diedAtFrame: g.frame });
               g.threats = g.threats.filter(t => t !== nearestThreat);
               // Clear all guard hunt references to dead target
               for (const gu of g.guards) { if (gu.huntTarget !== undefined && g.threats[gu.huntTarget] === undefined) gu.huntTarget = undefined; }
@@ -2838,6 +2877,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.exp = newExp; g.level = newLevel;
                 setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
                 g.threats = g.threats.filter(th => th !== t);
                 if (dog.dialogueCooldown <= 0 && Math.random() < 0.4) {
                   const line = DOG_KILL_LINES[Math.floor(Math.random() * DOG_KILL_LINES.length)];
@@ -2887,7 +2927,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp <= 0 && !lastDead) {
         lastDead = true;
         sfxDeath();
-        // ── Auto-respawn at SAFE HOUSE ──────────────────────────────────
+        if (!g.pvpDeathBodyDropped) {
+          g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
+        }
+        g.pvpDeathBodyDropped = false;
         const emergencyFee = 5000;
         g.hp = g.maxHp; g.hunger = 60; g.thirst = 60; g.energy = 60;
         g.poisoned = false; g.poisonTick = 0; g.invincible = 240; g.flash = 0;
@@ -2902,6 +2945,55 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         sfxHeal();
         const debtNote = g.salary < 0 ? ` You're ƒ${Math.abs(g.salary).toLocaleString()} in debt.` : '';
         setNarr(`> DEAD. You wake up at your bed in the SAFE HOUSE. LAREN VEIL patched you up — ƒ${emergencyFee.toLocaleString()} FIAT deducted for medical supplies. "You were gone for a minute there," she says. "Don't make it a habit."${debtNote}`);
+      }
+
+      // ── Idle auto-return (~5 min of standing still) ──
+      const IDLE_TIMEOUT_MS = 300000;
+      const posMoved = Math.hypot(g.px - g.lastIdleX, g.py - g.lastIdleY) > 2;
+      if (posMoved) {
+        g.lastMoveTime = Date.now();
+        g.lastIdleX = g.px;
+        g.lastIdleY = g.py;
+        g.idleReturnTriggered = false;
+        g.idleFading = false;
+        g.idleFadeAlpha = 0;
+      }
+      const idleElapsed = Date.now() - g.lastMoveTime;
+      if (!g.idleReturnTriggered && !frozen() && idleElapsed > IDLE_TIMEOUT_MS) {
+        g.idleFading = true;
+      }
+      if (g.idleFading && !g.idleReturnTriggered) {
+        g.idleFadeAlpha = Math.min(1, g.idleFadeAlpha + 0.02);
+        if (g.idleFadeAlpha >= 1) {
+          g.idleReturnTriggered = true;
+          g.px = char.sx; g.py = char.sy;
+          g.invincible = 180;
+          g.idleFadeAlpha = 1;
+          setTimeout(() => { gs.current.idleFading = false; gs.current.idleFadeAlpha = 0; }, 1500);
+          setNarr('> IDLE — You stood too long in the open. Automated systems returned you to your spawn point.');
+        }
+      }
+
+      // ── Dead body cleanup (1 in-game day ≈ 14400 frames, remove when no real players nearby) ──
+      const BODY_TTL_FRAMES = 14400;
+      g.deadBodies = g.deadBodies.filter(body => {
+        if (g.frame - body.diedAtFrame < BODY_TTL_FRAMES) return true;
+        const localDist = Math.hypot(g.px - body.x, g.py - body.y);
+        if (localDist < 600) return true;
+        for (const [, peer] of g.peers) {
+          if (Math.hypot(peer.x - body.x, peer.y - body.y) < 600) return true;
+        }
+        return false;
+      });
+
+      // ── HP regen when idle (not in combat) ──
+      if (g.hp > 0 && g.hp < g.maxHp && g.frame % 180 === 0) {
+        const idleMs = Date.now() - g.lastMoveTime;
+        const hasHostileNearby = g.threats.some((t: Threat) => t.behavior === 'HOSTILE' && Math.hypot(g.px - t.x, g.py - t.y) < 200);
+        if (!hasHostileNearby && idleMs > 3000) {
+          g.hp = Math.min(g.maxHp, g.hp + 1);
+          setHp(Math.floor(g.hp));
+        }
       }
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
@@ -3224,6 +3316,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} POLICE`, color: '#4488ff', life: 40, maxLife: 40 });
               if (t.hp <= 0) {
                 g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: '#4488ff', life: 60, maxLife: 60 });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
                 g.threats.splice(ti, 1); ti--;
               }
               break;
@@ -3894,6 +3987,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText('🔥 FIRE', fbx + bld.w / 2, fby - 12);
       }
 
+      // Dead bodies — fallen enemies and players
+      for (const body of g.deadBodies) {
+        const bx = body.x + ox, by = body.y + oy;
+        if (bx < -12 || bx > cw + 12 || by < -12 || by > ch + 12) continue;
+        const isPlayer = body.type === 'PLAYER';
+        const bc = isPlayer ? '#cc8866' : (THREAT_COL[body.type] ?? '#ff4444');
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = 'rgba(0,0,0,.3)';
+        ctx.beginPath(); ctx.ellipse(bx, by + 2, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = bc;
+        if (isPlayer) {
+          ctx.fillRect(bx - 5, by - 1, 10, 4);
+          ctx.beginPath(); ctx.arc(bx - 7, by - 1, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(bx + 2, by + 3, 3, 3);
+          ctx.fillRect(bx - 3, by + 3, 3, 3);
+        } else {
+          ctx.fillRect(bx - 6, by - 1, 12, 3);
+          ctx.beginPath(); ctx.arc(bx - 7, by, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(bx + 2, by + 2, 4, 2);
+          ctx.fillRect(bx - 4, by + 2, 4, 2);
+        }
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath(); ctx.ellipse(bx + 2, by + 1, 5, 2, 0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
       // Threats — type-specific pixel shapes
       for (const t of g.threats) {
         const tx = t.x + ox, ty = t.y + oy;
@@ -4534,13 +4654,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Idle fade-to-black overlay ──
+      if (g.idleFadeAlpha > 0) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = `rgba(0,0,0,${g.idleFadeAlpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (g.idleFadeAlpha > 0.3) {
+          ctx.globalAlpha = Math.min(1, (g.idleFadeAlpha - 0.3) / 0.7);
+          ctx.fillStyle = '#00ff41';
+          ctx.font = '24px "VT323", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('RETURNING TO SPAWN...', canvas.width / 2, canvas.height / 2);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+      }
+
       animRef.current = requestAnimationFrame(loop);
     };
     animRef.current = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(animRef.current); window.removeEventListener('resize', resize); canvas.removeEventListener('wheel', onWheel); };
   }, [char, speaking]);
 
-  const hpPct = hp;
+  const hpRatio = gs.current.maxHp > 0 ? hp / gs.current.maxHp : 0;
+  const hpColor = hpRatio > 0.6 ? '#00ff41' : hpRatio > 0.3 ? '#ffcc00' : hpRatio > 0.15 ? '#ff8800' : '#ff2222';
+  const hpGlow = hpRatio > 0.6 ? 'rgba(0,255,65,.5)' : hpRatio > 0.3 ? 'rgba(255,204,0,.5)' : hpRatio > 0.15 ? 'rgba(255,136,0,.5)' : 'rgba(255,0,0,.6)';
   const nearB = near ? BUILDINGS.find(b => b.id === near) : null;
 
   return (
@@ -4574,12 +4713,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
           {/* HP */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem', minWidth: 110 }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${hpColor}55`, padding: '.3rem .6rem', minWidth: 70 }}>
             <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>HP</div>
-            <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.15)', width: '100%' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${hpPct}%`, background: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', boxShadow: `0 0 6px ${hpPct > 50 ? 'rgba(0,255,65,.5)' : 'rgba(255,0,0,.5)'}`, transition: 'width .2s, background .2s' }} />
-            </div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: hpPct > 50 ? '#00ff41' : hpPct > 25 ? '#aaff44' : '#ff4444', letterSpacing: '.06em', marginTop: '3px' }}>{Math.floor(hpPct)}/100</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.35rem', color: hpColor, letterSpacing: '.06em', textShadow: `0 0 8px ${hpGlow}`, transition: 'color .3s' }}>{Math.floor(hp)}</div>
           </div>
           {/* Salary */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem' }}>
@@ -6137,6 +6273,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {showHospitalPrompt && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 460, flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#ff6644', letterSpacing: '.15em', marginBottom: '1rem', textShadow: '0 0 12px rgba(255,60,30,.4)' }}>YOU DIED DURING YOUR LAST SESSION.</div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,100,68,.3), transparent)', marginBottom: '1.2rem' }} />
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(255,180,150,.5)', lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
+              Your vitals flatlined. Emergency services brought you in.<br/>
+              You've been unconscious in the {char.class.toLowerCase() === 'replicant' ? 'ROBODOC REPAIR BAY' : 'CITY HOSPITAL'} for an unknown amount of time.<br/>
+              The fluorescent light above your bed flickers. Monitors beep steadily.<br/>
+              A nurse checks your chart and nods. "You're cleared to leave."
+            </div>
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,100,68,.15), transparent)', marginBottom: '1.5rem' }} />
+            <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  const g = gs.current;
+                  g.hp = g.maxHp; g.hunger = 80; g.thirst = 80; g.energy = 80;
+                  g.poisoned = false; g.invincible = 180;
+                  g.px = 6200; g.py = 6100;
+                  setHp(g.maxHp); setHunger(80); setThirst(80); setEnergy(80); setPoisoned(false);
+                  g.diedLastSession = false;
+                  try { localStorage.removeItem('sm_died_last_session'); } catch {}
+                  setShowHospitalPrompt(false);
+                  setNarr('> HOSPITAL — You wake up in a hospital bed. Stats partially restored. The medic says: "Take it easy out there." You step outside into the city light.');
+                }}
+                style={{ padding: '.65rem 1.8rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              >
+                WAKE UP IN HOSPITAL
+              </button>
+              <button
+                onClick={() => {
+                  gs.current.diedLastSession = false;
+                  try { localStorage.removeItem('sm_died_last_session'); } catch {}
+                  setShowHospitalPrompt(false);
+                  setNarr('> You declined medical treatment. Respawning at your last known location.');
+                }}
+                style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,100,68,.2)', color: 'rgba(255,150,120,.4)', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.15em', cursor: 'pointer' }}
+              >
+                SKIP
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isDead && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center' }}>
@@ -6149,7 +6330,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <span style={{ color: 'rgba(255,80,80,.25)' }}>MEDIC SAYS: "Even HARLAN CROSS respawned. Get back out there."</span>
             </div>
             <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center' }}>
-              <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); setNarr('> Respawned. The medic patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
+              <button onClick={() => { const g = gs.current; g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false; g.px = char.sx; g.py = char.sy; g.threats = THREATS_INIT.map(t => ({ ...t })); g.invincible = 180; setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); setIsDead(false); g.diedLastSession = false; try { localStorage.removeItem('sm_died_last_session'); } catch {} setNarr('> Respawned. The medic patched you up for free this time. Don\'t make a habit of it.'); }} style={{ padding: '.65rem 1.8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}>
                 CONTINUE
               </button>
               <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ padding: '.65rem 1.3rem', background: 'transparent', border: '1px solid rgba(255,50,50,.2)', color: 'rgba(255,80,80,.4)', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.15em', cursor: 'pointer' }}>
