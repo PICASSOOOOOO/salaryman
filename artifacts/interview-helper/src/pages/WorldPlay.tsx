@@ -158,13 +158,84 @@ const BUILDINGS = [
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
 
 // ── Gang territories (wasteland — north + south of city) ─────────────────────
-const GANG_ZONES = [
+const GANG_ZONES_BASE = [
   { id: 'minx_city',    name: 'MINX CITY',    x: 100,  y: 150,  w: 4600, h:3950, color: 'rgba(180,0,255,.03)', border: 'rgba(180,0,255,.12)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY TERRITORY — DOMINANT FACTION ]' },
   { id: 'iron_rats',    name: 'IRON RATS',    x: 150,  y: 150,  w: 1200, h:1225, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
   { id: 'void_dogs',    name: 'VOID DOGS',    x: 1300, y: 200,  w: 1400, h:1175, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
   { id: 'static_monks', name: 'STATIC MONKS', x: 150,  y: 2825, w: 2300, h:1225, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
   { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 2400, y: 2825, w: 2300, h:1225, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
 ];
+let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
+const GANG_FACTION_ALLIES: Record<string, string[]> = {
+  outcast:    ['iron_rats', 'static_monks'],
+  replicant:  ['void_dogs', 'eastern_bloc'],
+  corporate:  ['minx_city'],
+};
+const GANG_FACTION_ENEMIES: Record<string, string[]> = {
+  outcast:    ['minx_city', 'void_dogs'],
+  replicant:  ['minx_city', 'iron_rats'],
+  corporate:  ['iron_rats', 'void_dogs', 'static_monks', 'eastern_bloc'],
+};
+const TERRITORY_SHIFT_INTERVAL = 1800;
+let lastTerritoryShift = 0;
+let territoryEpoch = 0;
+const TERRITORY_FRAGMENTS: typeof GANG_ZONES_BASE = [];
+
+function shiftTerritories(frame: number) {
+  if (frame - lastTerritoryShift < TERRITORY_SHIFT_INTERVAL) return;
+  lastTerritoryShift = frame;
+  territoryEpoch++;
+
+  const drifted = GANG_ZONES_BASE.map(gz => {
+    if (gz.id === 'minx_city') return { ...gz };
+    const drift = 60;
+    const phase = territoryEpoch * 0.15;
+    const sx = Math.sin(phase + gz.x * 0.01) * drift;
+    const sy = Math.cos(phase * 1.3 + gz.y * 0.01) * drift;
+    const sw = Math.sin(phase * 0.7 + gz.w * 0.005) * drift * 0.5;
+    const sh = Math.cos(phase * 0.85 + gz.h * 0.005) * drift * 0.5;
+    return { ...gz, x: gz.x + sx, y: gz.y + sy, w: gz.w + sw, h: gz.h + sh };
+  });
+
+  if (territoryEpoch % 5 === 0) {
+    TERRITORY_FRAGMENTS.length = 0;
+    for (const gz of drifted) {
+      if (gz.id === 'minx_city') continue;
+      const shouldFracture = Math.sin(territoryEpoch * 0.3 + gz.x * 0.002) > 0.2;
+      if (shouldFracture && gz.w > 600 && gz.h > 600) {
+        const splitDir = Math.random() > 0.5 ? 'h' : 'v';
+        const ratio = 0.35 + Math.random() * 0.3;
+        if (splitDir === 'h') {
+          const splitW = gz.w * ratio;
+          TERRITORY_FRAGMENTS.push({
+            ...gz,
+            id: gz.id + '_frag',
+            name: gz.name + ' OUTPOST',
+            label: `[ ${gz.name} OUTPOST ]`,
+            x: gz.x + gz.w + 40 + Math.sin(territoryEpoch * 0.2) * 80,
+            y: gz.y + Math.cos(territoryEpoch * 0.15) * 60,
+            w: splitW,
+            h: gz.h * 0.6,
+          });
+        } else {
+          const splitH = gz.h * ratio;
+          TERRITORY_FRAGMENTS.push({
+            ...gz,
+            id: gz.id + '_frag',
+            name: gz.name + ' OUTPOST',
+            label: `[ ${gz.name} OUTPOST ]`,
+            x: gz.x + Math.sin(territoryEpoch * 0.18) * 60,
+            y: gz.y + gz.h + 40 + Math.cos(territoryEpoch * 0.22) * 80,
+            w: gz.w * 0.6,
+            h: splitH,
+          });
+        }
+      }
+    }
+  }
+
+  GANG_ZONES = [...drifted, ...TERRITORY_FRAGMENTS];
+}
 
 const NPCS = [
   // ── City West ──
@@ -279,11 +350,22 @@ const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, S
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 500, atkBonus: 18, wasteBonus: false },
-  outcast:    { maxHp: 460, atkBonus: 15, wasteBonus: true  },
-  corporate:  { maxHp: 300, atkBonus: 4,  wasteBonus: false },
+  replicant:  { maxHp: 450, atkBonus: 22, wasteBonus: false },
+  outcast:    { maxHp: 550, atkBonus: 12, wasteBonus: true  },
+  corporate:  { maxHp: 350, atkBonus: 3,  wasteBonus: false },
   contractor: { maxHp: 340, atkBonus: 7,  wasteBonus: false },
 };
+const NPC_LOOT_TABLE = [
+  { id: 'scrap_metal', name: 'SCRAP METAL', desc: 'Salvaged components' },
+  { id: 'data_chip', name: 'DATA CHIP', desc: 'Encrypted data fragment' },
+  { id: 'med_kit_loot', name: 'MED KIT', desc: 'Emergency medical supplies' },
+  { id: 'stim_shot_loot', name: 'STIM SHOT', desc: 'Combat stimulant' },
+  { id: 'power_cell', name: 'POWER CELL', desc: 'Portable energy source' },
+  { id: 'weapon_parts', name: 'WEAPON PARTS', desc: 'Weapon repair kit' },
+  { id: 'ration_pack', name: 'RATION PACK', desc: 'Preserved food supply' },
+  { id: 'circuit_board', name: 'CIRCUIT BOARD', desc: 'Replicant-grade components' },
+];
+const NPC_LOOT_CHANCE = 0.25;
 // Govt building IDs — spies can't enter these
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
 // Quick jobs — bid → { label, pay, seconds, cooldownFrames }
@@ -627,7 +709,7 @@ interface Char {
   workstationSlot?: string | null;
   bizRegisteredAt?: number | null;
 }
-interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; }
+interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
 interface FloorPanel { bid: string; dir: BDirectory; selectedFloor: number; }
@@ -759,7 +841,7 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
-    passport: _ss?.passport ?? false,
+    passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outcast' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
     oregonTick: 0,
     worldTime: _ss?.worldTime ?? 8,
     worldTimeTick: 0,
@@ -861,6 +943,7 @@ export default function WorldPlay() {
   const [poisoned,    setPoisoned]    = useState(_ss?.poisoned ?? false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
+  const [lootPanel, setLootPanel] = useState<{ source: string; money: number; items: { name: string; desc: string }[] } | null>(null);
   // Billboard marketplace
   const [billboardsData, setBillboardsData] = useState<BillboardData[]>([]);
   const billboardsDataRef = useRef<BillboardData[]>([]);
@@ -1276,7 +1359,8 @@ export default function WorldPlay() {
     }
     else if (['checkpoint_w','checkpoint_c','checkpoint_e'].includes(bid)) {
       if (g.passport) {
-        setNarr('> CHECKPOINT — Guard scans your PASSPORT. "Document valid. PABLO CORP. Decree 17-B: report suspicious activity in the wasteland. Move along."');
+        const pType = g.passport === 'full_city' ? 'FULL CITY PASSPORT' : g.passport === 'basic_city' ? 'BASIC CITY PASSPORT' : g.passport === 'wasteland' ? 'WASTELAND PASSPORT' : 'PASSPORT';
+        setNarr(`> CHECKPOINT — Guard scans your ${pType}. "Document valid.${g.passport === 'full_city' ? ' Priority access. No crossing fee.' : ' Crossing fee applies.'} Move along."`);
       } else {
         sfxError();
         setNarr('> CHECKPOINT — Guard blocks the gate. "PASSPORT required to enter the wasteland. Obtain one at PABLO CORP. or the PRINT SHOP."');
@@ -1317,10 +1401,12 @@ export default function WorldPlay() {
       sfxEnter();
       const passportCost = 12000;
       if (!g.passport && g.salary >= passportCost) {
-        g.passport = true; g.salary -= passportCost; setSalary(g.salary); setPassport(true); sfxCoin();
-        setNarr(`> PABLO CORP. NORTH — PASSPORT issued. Official PABLO CORP. stamp. Wasteland crossing authorized. [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
+        g.passport = 'basic_city'; g.salary -= passportCost; setSalary(g.salary); setPassport('basic_city'); sfxCoin();
+        wsSend({ type: 'money_update', money: g.salary });
+        setNarr(`> PABLO CORP. NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
       } else if (g.passport) {
-        setNarr('> PABLO CORP. NORTH — "PASSPORT already registered. Wasteland access active."');
+        const pType = g.passport === 'full_city' ? 'FULL CITY' : g.passport === 'wasteland' ? 'WASTELAND' : 'BASIC CITY';
+        setNarr(`> PABLO CORP. NORTH — "${pType} PASSPORT already registered. Access active."`);
       } else {
         sfxError(); setNarr(`> PABLO CORP. NORTH — PASSPORT costs ƒ${passportCost.toLocaleString()} FIAT. Current balance insufficient.`);
       }
@@ -1517,12 +1603,66 @@ export default function WorldPlay() {
         setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName, company: m.company }); return nl; });
       } else if (m.type === 'building_unlocked') {
         g.locks.delete(m.buildingId); setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
+      } else if (m.type === 'pvp_hit') {
+        const dmg = m.damage ?? 0;
+        if (typeof m.remainingHp === 'number') g.hp = m.remainingHp;
+        else g.hp = Math.max(0, g.hp - dmg);
+        g.invincible = 15; g.flash = 8;
+        setHp(Math.floor(g.hp));
+        sfxHit();
+        g.floaters.push({ x: g.px, y: g.py - 20, text: `-${dmg} PVP HIT`, color: '#ff4444', life: 50, maxLife: 50 });
+        setNarr(`> PVP — ${m.attackerName} hit you for ${dmg} damage!`);
+        if (g.hp <= 0) { setIsDead(true); sfxDeath(); }
+      } else if (m.type === 'pvp_hit_confirm') {
+        g.floaters.push({ x: g.px, y: g.py - 30, text: `${m.damage} HIT ${m.targetName}`, color: '#ffaa00', life: 40, maxLife: 40 });
+      } else if (m.type === 'pvp_kill') {
+        sfxKill(); sfxCoin();
+        const lootMoney = m.loot?.money ?? 0;
+        const lootItem = m.loot?.item ?? null;
+        g.salary += lootMoney; setSalary(g.salary);
+        g.floaters.push({ x: g.px, y: g.py - 40, text: `KILLED ${m.targetName}`, color: '#ff4444', life: 70, maxLife: 70 });
+        if (lootMoney > 0) g.floaters.push({ x: g.px, y: g.py - 55, text: `+ƒ${lootMoney.toLocaleString()} LOOTED`, color: '#ffdd44', life: 60, maxLife: 60 });
+        if (lootItem) g.floaters.push({ x: g.px, y: g.py - 70, text: `LOOT: ${lootItem.name}`, color: '#33ffaa', life: 70, maxLife: 70 });
+        const lootItems: { name: string; desc: string }[] = [];
+        if (lootItem) lootItems.push(lootItem);
+        setLootPanel({ source: m.targetName ?? 'Enemy', money: lootMoney, items: lootItems });
+        setTimeout(() => setLootPanel(null), 4000);
+        setNarr(`> PVP KILL — You defeated ${m.targetName}! Looted ƒ${lootMoney.toLocaleString()} FIAT${lootItem ? ` and ${lootItem.name}` : ''}.`);
+      } else if (m.type === 'pvp_death') {
+        const lostMoney = m.lostMoney ?? 0;
+        if (typeof m.remainingMoney === 'number') { g.salary = m.remainingMoney; } else { g.salary = Math.max(0, g.salary - lostMoney); }
+        setSalary(g.salary);
+        const lostItems: { name: string; desc: string }[] = [];
+        if (m.lostItem) lostItems.push(m.lostItem);
+        setLootPanel({ source: `DEFEATED BY ${m.attackerName}`, money: -lostMoney, items: lostItems });
+        setTimeout(() => setLootPanel(null), 4000);
+        setNarr(`> DEFEATED — ${m.attackerName} killed you. Lost ƒ${lostMoney.toLocaleString()} FIAT${m.lostItem ? ` and ${m.lostItem.name}` : ''}.`);
+      } else if (m.type === 'pvp_kill_announce') {
+        setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: 'PVP', text: `${m.killerName} killed ${m.victimName}` }]);
+      } else if (m.type === 'npc_loot') {
+        if (m.item) {
+          g.floaters.push({ x: g.px, y: g.py - 20, text: `LOOT: ${m.item.name}`, color: '#33ffaa', life: 65, maxLife: 65 });
+          setLootPanel({ source: 'NPC KILL', money: 0, items: [m.item] });
+          setTimeout(() => setLootPanel(null), 3000);
+        }
       } else if (m.type === 'voice_offer')  handleVoiceOffer(m.from, m.sdp);
       else if (m.type === 'voice_answer')   handleVoiceAnswer(m.from, m.sdp);
       else if (m.type === 'voice_ice')      handleVoiceICE(m.from, m.candidate);
       else if (m.type === 'voice_peer_joined') initiateVoiceWith(m.id);
     };
-    const posInterval = setInterval(() => { const g = gs.current; wsSend({ type: 'move', x: g.px, y: g.py }); }, 120);
+    let lastSyncHp = 0;
+    let lastSyncMoney = 0;
+    const posInterval = setInterval(() => {
+      const g = gs.current;
+      wsSend({ type: 'move', x: g.px, y: g.py });
+      if (g.hp > lastSyncHp) wsSend({ type: 'pve_heal', hp: g.hp });
+      else wsSend({ type: 'sync_stats', hp: g.hp, weaponId: activeWeaponRef.current });
+      lastSyncHp = g.hp;
+      if (g.salary !== lastSyncMoney) {
+        wsSend({ type: 'money_update', money: g.salary });
+        lastSyncMoney = g.salary;
+      }
+    }, 120);
     return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); };
   }, [char.name]);
 
@@ -1704,6 +1844,7 @@ export default function WorldPlay() {
               g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+              wsSend({ type: 'pve_kill', exp: earned });
               let newExp = g.exp + earned; let newLevel = g.level;
               while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
                 newExp -= expToLevel(newLevel); newLevel++;
@@ -1724,7 +1865,18 @@ export default function WorldPlay() {
           }
           return t;
         }).filter(Boolean) as Threat[];
-        if (!hit) setNarr('> Miss — no enemy in melee range. Move closer or use [Click] to shoot.');
+        if (!hit) {
+          for (const [, peer] of g.peers) {
+            const pd = Math.hypot(g.px - peer.x, g.py - peer.y);
+            if (pd < meleeRange) {
+              hit = true;
+              wsSend({ type: 'pvp_attack', targetId: peer.id, weaponType: 'melee' });
+              sfxHit();
+              break;
+            }
+          }
+        }
+        if (!hit) setNarr('> Miss — no target in melee range. Move closer or use [Click] to shoot.');
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
@@ -1895,6 +2047,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
       if (g.worldTimeTick >= 60) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
+      shiftTerritories(g.frame);
 
       // ── One-time class stat initialization ──────────────────────────────
       if (!g.classInitDone) {
@@ -1936,6 +2089,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+              wsSend({ type: 'pve_kill', exp: earned });
               let newExp = g.exp + earned; let newLevel = g.level;
               while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
                 newExp -= expToLevel(newLevel); newLevel++;
@@ -1951,6 +2105,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           return t;
         }).filter(Boolean) as Threat[];
+        if (!hitAny) {
+          for (const [, peer] of g.peers) {
+            const pd = Math.hypot(p.x - peer.x, p.y - peer.y);
+            if (pd < (p.type === 'laser' ? 20 : 14)) {
+              hitAny = true;
+              wsSend({ type: 'pvp_projectile', targetId: peer.id });
+              sfxHit();
+              break;
+            }
+          }
+        }
         return !hitAny;
       });
 
@@ -1973,6 +2138,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+                wsSend({ type: 'pve_kill', exp: earned });
                 let newExp = g.exp + earned; let newLevel = g.level;
                 while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) { newExp -= expToLevel(newLevel); newLevel++; g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10); sfxLevelUp(); }
                 g.exp = newExp; g.level = newLevel; setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
@@ -2022,14 +2188,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let nx = g.px + dx, ny = g.py + dy;
         if (col(nx, g.py)) nx = g.px;
         if (col(g.px, ny)) ny = g.py;
-        // ── Checkpoint: block wasteland entry without PASSPORT (both city borders) ──
+        // ── Checkpoint: passport + entry cost system ──
         const crossingSouth = ny > CITY_BOTTOM && g.py <= CITY_BOTTOM;
         const crossingNorth = ny < CITY_TOP && g.py >= CITY_TOP;
         const crossingBorder = crossingSouth || crossingNorth;
-        if (crossingBorder && !g.passport) {
-          if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
-          else ny = CITY_TOP + PSIZE + 1;
-          if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot enter the wasteland without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ƒ12,000 FIAT]');
+        if (crossingBorder) {
+          const hasPassport = !!g.passport;
+          const CHECKPOINT_FEE = 2000;
+          if (!hasPassport) {
+            if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
+            else ny = CITY_TOP + PSIZE + 1;
+            if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot cross without a PASSPORT. Obtain one at PABLO CORP. NORTH or the PRINT SHOP. [ƒ12,000 FIAT]');
+          } else if (g.passport === 'full_city') {
+            // Corporate full passport — free crossing
+          } else if (g.salary >= CHECKPOINT_FEE) {
+            g.salary -= CHECKPOINT_FEE; setSalary(g.salary);
+            g.floaters.push({ x: g.px, y: g.py - 20, text: `-ƒ${CHECKPOINT_FEE.toLocaleString()} CROSSING FEE`, color: '#ff6644', life: 60, maxLife: 60 });
+            setNarr(`> CHECKPOINT — Guard scans your passport. "ƒ${CHECKPOINT_FEE.toLocaleString()} crossing fee deducted. Move along." [−ƒ${CHECKPOINT_FEE.toLocaleString()} FIAT]`);
+          } else {
+            if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
+            else ny = CITY_TOP + PSIZE + 1;
+            if (g.frame % 120 === 0) setNarr(`> CHECKPOINT — "Passport valid but crossing fee is ƒ${CHECKPOINT_FEE.toLocaleString()} FIAT. Current balance insufficient. Come back with funds."`);
+          }
         }
         // ── Natural border collision: mountains N/S, water W/E ──
         nx = Math.max(BORDER + PSIZE, Math.min(W - BORDER - PSIZE, nx));
@@ -2048,13 +2228,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.timer--;
         const dist = Math.hypot(g.px - t.x, g.py - t.y);
 
-        // ── Zone enforcement: major threats cannot enter MINX CITY ──────────
-        const CITY_WALL_NORTH = CITY_TOP + 40;
-        const CITY_WALL_SOUTH = CITY_BOTTOM - 40;
         const isMajorThreat = ['IRON_RATS','VOID_DOGS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
         const isSpy = t.type === 'SPY';
+        const CITY_WALL_NORTH = CITY_TOP + 40;
+        const CITY_WALL_SOUTH = CITY_BOTTOM - 40;
         const inCity = t.y > CITY_WALL_NORTH && t.y < CITY_WALL_SOUTH;
-        if (isMajorThreat && inCity) {
+        if (isMajorThreat && inCity && t.behavior !== 'HOSTILE') {
           if (t.y < (CITY_TOP + CITY_BOTTOM) / 2) {
             t.y = CITY_WALL_NORTH - 5;
             t.dy = -(Math.abs(t.dy) + 0.2);
@@ -2097,29 +2276,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.behaviorTimer = 300 + Math.floor(Math.random() * 300);
         }
 
-        // ── Conditional hostility based on player class & territory ──────────
         const pClass = char.class.toLowerCase();
         const factionMap: Record<string,string> = { IRON_RATS:'iron_rats', VOID_DOGS:'void_dogs', STATIC_MONKS:'static_monks', EASTERN_BLOC:'eastern_bloc', MINX_CITY:'minx_city' };
         const hasFaction = t.type in factionMap;
-        const threatInOwnZone = hasFaction && GANG_ZONES.some(gz => {
-          return factionMap[t.type] === gz.id && t.x >= gz.x && t.x <= gz.x + gz.w && t.y >= gz.y && t.y <= gz.y + gz.h;
-        });
+        const threatFactionId = factionMap[t.type] ?? '';
         const playerInThreatZone = hasFaction && GANG_ZONES.some(gz => {
-          return factionMap[t.type] === gz.id && g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h;
+          return (threatFactionId === gz.id || gz.id === threatFactionId + '_frag') && g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h;
         });
+
+        const isAlly = hasFaction && (GANG_FACTION_ALLIES[pClass] ?? []).includes(threatFactionId);
+        const isEnemy = hasFaction && (GANG_FACTION_ENEMIES[pClass] ?? []).includes(threatFactionId);
 
         let hostilityMult = 1.0;
         if (hasFaction) {
-          if (!threatInOwnZone) {
-            hostilityMult = 0;
-          } else if (pClass === 'corporate') {
-            hostilityMult = playerInThreatZone ? 3.0 : 0;
-          } else if (pClass === 'outcast') {
-            hostilityMult = playerInThreatZone ? 0.3 : 0;
-          } else if (pClass === 'replicant') {
-            hostilityMult = playerInThreatZone ? 0.35 : 0;
+          if (isAlly) {
+            hostilityMult = playerInThreatZone ? 0.05 : 0;
+          } else if (isEnemy) {
+            hostilityMult = playerInThreatZone ? 3.5 : 1.5;
           } else {
-            hostilityMult = playerInThreatZone ? 0.6 : 0;
+            hostilityMult = playerInThreatZone ? 1.0 : 0.3;
           }
         } else {
           if (pClass === 'corporate') hostilityMult = 1.2;
@@ -2128,14 +2303,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           else hostilityMult = 0.8;
         }
 
-        // ── Speed tuning (slower, more deliberate) ───────────────────────────
         const baseAggroRange = isSpy ? 55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 35 : 45;
         const aggroRange = baseAggroRange * hostilityMult;
         const chaseSpeed  = isSpy ? 0.55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.28 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.32 : 0.25);
         const wanderSpeed = isSpy ? 0.2 : 0.1;
-        const canAggro = g.py > CITY_BOTTOM - 200 || g.py < CITY_TOP + 200;
 
-        const shouldAggro = canAggro && dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
+        const shouldAggro = dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
 
         if (t.behavior === 'SLEEPING') {
           t.dx = 0; t.dy = 0;
@@ -2591,11 +2764,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.gangZone = newGang; setGangZone(newGang);
         if (newGang !== lastGangZ) {
           lastGangZ = newGang;
-          if (newGang === 'minx_city') setNarr('> MINX CITY TERRITORY — The dominant faction. Their purple banners hang from every ruin. SENIOR PABLO\'s reach extends even here. The other gangs operate in their shadow. "Everything south of the wall belongs to Minx City," the soldiers say. "Everything north too. They just don\'t know it yet."');
-          else if (newGang === 'iron_rats') setNarr('> IRON RATS TERRITORY — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER\'s old crew. He doesn\'t claim them anymore.');
-          else if (newGang === 'void_dogs') setNarr('> VOID DOGS TERRITORY — They broadcast static on loop. The code in the static is an old Famicom game. Nobody has decoded it. Nobody that lived, anyway.');
-          else if (newGang === 'static_monks') setNarr('> STATIC MONKS TERRITORY — Silent. They move like shadows. ERDRICK says they guard something buried here from before the collapse. Before even the games.');
-          else if (newGang === 'eastern_bloc') setNarr('> EASTERN BLOC TERRITORY — They don\'t speak. They don\'t negotiate. MOTOKO tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.');
+          const pc = char.class.toLowerCase();
+          const allyGangs = GANG_FACTION_ALLIES[pc] ?? [];
+          const enemyGangs = GANG_FACTION_ENEMIES[pc] ?? [];
+          const baseGang = newGang?.replace('_frag', '') ?? '';
+          const isFrag = newGang?.endsWith('_frag') ?? false;
+          const factionTag = baseGang && allyGangs.includes(baseGang) ? ' [ALLIED — safe passage]' : baseGang && enemyGangs.includes(baseGang) ? ' [HOSTILE — enemy territory!]' : '';
+          const fragTag = isFrag ? ' (OUTPOST — fractured territory)' : '';
+          if (baseGang === 'minx_city') setNarr(`> MINX CITY TERRITORY${factionTag}${fragTag} — The dominant faction. Their purple banners hang from every ruin. SENIOR PABLO's reach extends even here.`);
+          else if (baseGang === 'iron_rats') setNarr(`> IRON RATS TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are RIZER's old crew.`);
+          else if (baseGang === 'void_dogs') setNarr(`> VOID DOGS TERRITORY${factionTag}${fragTag} — They broadcast static on loop. The code in the static is an old Famicom game.`);
+          else if (baseGang === 'static_monks') setNarr(`> STATIC MONKS TERRITORY${factionTag}${fragTag} — Silent. They move like shadows. ERDRICK says they guard something buried here.`);
+          else if (baseGang === 'eastern_bloc') setNarr(`> EASTERN BLOC TERRITORY${factionTag}${fragTag} — They don't speak. They don't negotiate. MOTOKO tracked their signal here.`);
         }
       }
 
@@ -3223,22 +3403,50 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Online players
+      // Online players — faction-specific sprites
       for (const [, op] of g.peers) {
         const px2 = op.x + ox, py2 = op.y + oy;
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
+        const opCls = (op.class ?? '').toLowerCase();
+        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outcast' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff';
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
-        ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
-        ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+        if (opCls === 'corporate') {
+          ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
+          ctx.fillStyle = '#333333'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
+          ctx.fillStyle = '#cc0000'; ctx.fillRect(px2 - 1, py2 - 5, 2, 4);
+          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
+        } else if (opCls === 'outcast') {
+          ctx.fillStyle = '#5a4433'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
+          ctx.fillStyle = '#6b5533'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
+          ctx.fillStyle = '#8a7744'; ctx.fillRect(px2 - 7, py2 - 8, 14, 3);
+          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
+        } else if (opCls === 'replicant') {
+          ctx.fillStyle = '#224455'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
+          ctx.fillStyle = '#2a5566'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
+          ctx.fillStyle = '#33ffaa'; ctx.fillRect(px2 - 3, py2 - 3, 6, 1);
+          ctx.fillStyle = '#aacccc'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
+          ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
+        }
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         ctx.font = 'bold 13px "Share Tech Mono"'; ctx.textAlign = 'center';
         const opNm = op.name;
         const opTw = ctx.measureText(opNm).width;
         ctx.fillStyle = 'rgba(0,0,0,.55)';
         ctx.beginPath(); ctx.roundRect(px2 - opTw / 2 - 5, py2 - 24, opTw + 10, 16, 4); ctx.fill();
-        ctx.fillStyle = spk ? '#00ffcc' : 'rgba(100,180,255,.7)';
+        ctx.fillStyle = spk ? '#00ffcc' : opGlow;
         ctx.fillText(opNm, px2, py2 - 12);
+        if (op.hp !== undefined && op.maxHp && op.maxHp > 0) {
+          const barW = 22, barH = 3, barY = py2 - 28;
+          ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(px2 - barW / 2, barY, barW, barH);
+          const hpPct = Math.max(0, Math.min(1, op.hp / op.maxHp));
+          ctx.fillStyle = hpPct > 0.5 ? '#00ff41' : hpPct > 0.25 ? '#ffaa00' : '#ff3333';
+          ctx.fillRect(px2 - barW / 2, barY, barW * hpPct, barH);
+        }
       }
 
       // ── Police patrol units ────────────────────────────────────────────────
@@ -3457,42 +3665,66 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Player — full pixel body sprite
+      // Player — full pixel body sprite (faction-specific costume)
       const px = g.px + ox, py2 = g.py + oy;
       const isFlash = g.invincible % 4 < 2;
-      const pcol = isFlash ? (g.poisoned ? '#88ff44' : '#00ff41') : 'rgba(0,255,65,.2)';
+      const pCls = char.class.toLowerCase();
+      const factionGlow = pCls === 'corporate' ? '#00ff41' : pCls === 'outcast' ? '#88ff44' : pCls === 'replicant' ? '#33ffaa' : '#00ff41';
+      const pcol = isFlash ? (g.poisoned ? '#88ff44' : factionGlow) : `${factionGlow}33`;
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
-      ctx.shadowColor = g.poisoned ? '#88ff44' : '#00ff41'; ctx.shadowBlur = 12;
-      // Ground shadow
+      ctx.shadowColor = g.poisoned ? '#88ff44' : factionGlow; ctx.shadowBlur = 12;
       ctx.globalAlpha = bodyAlpha * 0.3; ctx.fillStyle = '#000';
       ctx.beginPath(); ctx.ellipse(px, py2 + 9, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = bodyAlpha;
-      // Boots + Legs (walk animation)
       const wf = g.walkFrame;
-      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3; // left leg swing
-      const rLeg = -lLeg; // right leg swings opposite
-      ctx.fillStyle = '#224422';
-      ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); // left boot
-      ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5); // right boot
-      ctx.fillStyle = '#335533';
-      ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); // left leg
-      ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6); // right leg
-      // Body / jacket
-      ctx.fillStyle = g.poisoned ? '#557722' : pcol;
-      ctx.fillRect(px - 7, py2 - 9, 14, 9);
-      // Collar accent
-      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(px - 2, py2 - 9, 4, 3);
-      // Arms
-      ctx.fillStyle = g.poisoned ? '#557722' : pcol;
-      ctx.fillRect(px - 10, py2 - 8, 3, 7); ctx.fillRect(px + 7, py2 - 8, 3, 7);
-      // Head
-      ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
-      // Hair
-      ctx.fillStyle = '#332211'; ctx.fillRect(px - 5, py2 - 21, 10, 5);
-      ctx.beginPath(); ctx.arc(px, py2 - 20, 3, 0, Math.PI * 2); ctx.fill();
-      // Eyes
-      ctx.fillStyle = '#000'; ctx.fillRect(px - 3, py2 - 16, 2, 2); ctx.fillRect(px + 1, py2 - 16, 2, 2);
+      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3;
+      const rLeg = -lLeg;
+      if (pCls === 'corporate') {
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
+        ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#333333'; ctx.fillRect(px - 7, py2 - 9, 14, 9);
+        ctx.fillStyle = '#eeeeee'; ctx.fillRect(px - 2, py2 - 9, 4, 2);
+        ctx.fillStyle = '#cc0000'; ctx.fillRect(px - 1, py2 - 7, 2, 5);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#333333'; ctx.fillRect(px - 10, py2 - 8, 3, 7); ctx.fillRect(px + 7, py2 - 8, 3, 7);
+        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px - 5, py2 - 21, 10, 4);
+        ctx.beginPath(); ctx.arc(px, py2 - 20, 3, 0, Math.PI * 2); ctx.fill();
+      } else if (pCls === 'outcast') {
+        ctx.fillStyle = '#4a3322'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
+        ctx.fillStyle = '#5a4433'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#6b5533'; ctx.fillRect(px - 7, py2 - 9, 14, 9);
+        ctx.fillStyle = '#8a7744'; ctx.fillRect(px - 8, py2 - 10, 16, 3);
+        ctx.fillStyle = '#554422'; ctx.fillRect(px - 9, py2 - 4, 2, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#6b5533'; ctx.fillRect(px - 10, py2 - 8, 3, 7); ctx.fillRect(px + 7, py2 - 8, 3, 7);
+        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#665533'; ctx.fillRect(px - 6, py2 - 22, 12, 6);
+        ctx.fillStyle = '#887744'; ctx.fillRect(px - 2, py2 - 14, 4, 2);
+      } else if (pCls === 'replicant') {
+        ctx.fillStyle = '#1a3344'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
+        ctx.fillStyle = '#224455'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#2a5566'; ctx.fillRect(px - 7, py2 - 9, 14, 9);
+        ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 5, 6, 1);
+        ctx.fillStyle = '#33ffaa44'; ctx.fillRect(px - 6, py2 - 8, 1, 6); ctx.fillRect(px + 5, py2 - 8, 1, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : '#2a5566'; ctx.fillRect(px - 10, py2 - 8, 3, 7); ctx.fillRect(px + 7, py2 - 8, 3, 7);
+        ctx.fillStyle = '#aacccc'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 4, py2 - 21, 8, 2);
+        ctx.fillStyle = '#224455'; ctx.fillRect(px - 5, py2 - 20, 10, 4);
+      } else {
+        ctx.fillStyle = '#224422'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
+        ctx.fillStyle = '#335533'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
+        ctx.fillStyle = g.poisoned ? '#557722' : pcol; ctx.fillRect(px - 7, py2 - 9, 14, 9);
+        ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(px - 2, py2 - 9, 4, 3);
+        ctx.fillStyle = g.poisoned ? '#557722' : pcol; ctx.fillRect(px - 10, py2 - 8, 3, 7); ctx.fillRect(px + 7, py2 - 8, 3, 7);
+        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#332211'; ctx.fillRect(px - 5, py2 - 21, 10, 5);
+        ctx.beginPath(); ctx.arc(px, py2 - 20, 3, 0, Math.PI * 2); ctx.fill();
+      }
+      if (pCls !== 'replicant') {
+        ctx.fillStyle = '#000'; ctx.fillRect(px - 3, py2 - 16, 2, 2); ctx.fillRect(px + 1, py2 - 16, 2, 2);
+      } else {
+        ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 16, 2, 2); ctx.fillRect(px + 1, py2 - 16, 2, 2);
+      }
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       // Attack swing arc (varies by weapon)
       if (g.attackFlash > 0) {
@@ -5041,6 +5273,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             unlockedWeaponsRef.current.add(wpnId);
             setUnlockedWeapons(new Set(unlockedWeaponsRef.current));
             setActiveWeapon(wpnId); activeWeaponRef.current = wpnId;
+            wsSend({ type: 'weapon_purchase', weaponId: wpnId, cost: item.price });
             setNarr(`> ${item.name} unlocked! Weapon equipped. ƒ${item.price.toLocaleString()} FIAT spent.`);
           } else if (item.effect === 'maxhp20') {
             g.maxHp += 20; g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp));
@@ -5111,6 +5344,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>
           <div style={{ textAlign: 'center', animation: 'smfade 3.2s ease-out forwards' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2rem,7vw,4.5rem)', color: '#ffcc00', textShadow: '0 0 40px rgba(255,200,0,.8), 0 0 80px rgba(255,200,0,.4)', letterSpacing: '.25em', whiteSpace: 'pre' }}>{levelUpText}</div>
+          </div>
+        </div>
+      )}
+
+      {lootPanel && (
+        <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 400, pointerEvents: 'auto', minWidth: 220, maxWidth: 320 }} onClick={() => setLootPanel(null)}>
+          <div style={{ background: 'rgba(0,0,0,.92)', border: `1px solid ${lootPanel.money < 0 ? '#ff2222' : '#00ff41'}`, borderRadius: 4, padding: '12px 16px', fontFamily: "'VT323',monospace" }}>
+            <div style={{ fontSize: '.7rem', letterSpacing: '.15em', color: lootPanel.money < 0 ? '#ff4444' : '#00ff41', marginBottom: 8, textAlign: 'center' }}>
+              {lootPanel.money < 0 ? '▼ LOOT LOST ▼' : '▲ LOOT ACQUIRED ▲'}
+            </div>
+            <div style={{ fontSize: '.55rem', color: '#889', textAlign: 'center', marginBottom: 6 }}>{lootPanel.source}</div>
+            {lootPanel.money !== 0 && (
+              <div style={{ fontSize: '.65rem', color: lootPanel.money < 0 ? '#ff6644' : '#ffdd44', textAlign: 'center', marginBottom: 4 }}>
+                {lootPanel.money < 0 ? `−ƒ${Math.abs(lootPanel.money).toLocaleString()}` : `+ƒ${lootPanel.money.toLocaleString()}`} FIAT
+              </div>
+            )}
+            {lootPanel.items.map((it, i) => (
+              <div key={i} style={{ fontSize: '.55rem', color: '#33ffaa', textAlign: 'center', marginTop: 2 }}>
+                + {it.name}{it.desc ? ` — ${it.desc}` : ''}
+              </div>
+            ))}
+            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', textAlign: 'center', marginTop: 8, letterSpacing: '.1em' }}>TAP TO DISMISS</div>
           </div>
         </div>
       )}
