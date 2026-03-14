@@ -74,4 +74,12 @@ export const PABLO_PRODUCTS = {
     short: "SCOPE-4",
     desc: "Time and space complexity audit module",
   },
+  SUBSCRIPTION: {
+    ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 4, trial: 7 },
+    OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 6, trial: 7 },
+    VOX_4: { name: 'VOX-4 LARYNX MODULE', price: 4, trial: 7 },
+    CIPHER_X: { name: 'CIPHER-X COMMAND TERMINAL', price: 5, trial: 7 },
+    HOLO_PROJ: { name: 'HOLO-PROJ MK.II', price: 4, trial: 7 },
+    FULL_SUITE: { name: 'OPERATOR CLEARANCE', price: 6, trial: 7, desc: 'All modules. No limits.' },
+  },
 } as const;

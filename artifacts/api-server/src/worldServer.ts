@@ -187,9 +187,37 @@ const handleMessage = (player: Player, raw: string) => {
     }
 
     case 'money_update': {
-      if (typeof msg.money === 'number' && msg.money >= 0 && msg.money < player.money) {
+      if (typeof msg.money === 'number' && msg.money >= 0) {
         player.money = msg.money;
       }
+      break;
+    }
+
+    case 'gold_exchange': {
+      if (typeof msg.goldBalance === 'number' && msg.goldBalance >= 0) {
+        // Gold balance is tracked client-side; server just validates money sync
+        if (typeof msg.money === 'number' && msg.money >= 0) {
+          player.money = msg.money;
+        }
+      }
+      break;
+    }
+
+    case 'treasure_open': {
+      if (typeof msg.chestId === 'string' && typeof msg.money === 'number') {
+        player.money = Math.max(0, msg.money);
+      }
+      break;
+    }
+
+    case 'dual_weapon_sync': {
+      if (typeof msg.primary === 'string') player.weaponId = msg.primary;
+      break;
+    }
+
+    case 'world_time_sync': {
+      // Broadcast world time to nearby players for sync
+      broadcast({ type: 'world_time', time: msg.time, calendar: msg.calendar }, player.id);
       break;
     }
 

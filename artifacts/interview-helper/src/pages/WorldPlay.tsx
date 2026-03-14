@@ -7,6 +7,17 @@ import {
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
 import { PABLO_PRODUCTS } from '../lib/product-names';
+import {
+  type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
+  initCalendar, tickCalendar, getCalendarString, getDayNightAlpha,
+  RADIATION_ZONES, getRadiationLevel,
+  FIAT_PER_GOLD, fiatToGold, getTransactionTax,
+  TREASURE_CHESTS, TREASURE_MAPS,
+  LORE_WEAPON_NAMES, COSTUMES,
+  RUMORS, STORY_DIALOGUES,
+  boomerize, TIMEZONE_CITIES, SUBSCRIPTION_PRICING,
+  createWeatherParticles, updateWeatherParticles,
+} from '../gameSystems';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 8, RANGE = 55;
@@ -94,7 +105,7 @@ const BUILDINGS = [
   { id: 'megabank',     x: 5730, y: 6020, w: 140, h: 90,  label: 'IRON TRUST BANK',  bright: false, doors: mkDoorS(5730,6020,140,90) },
   { id: 'market',       x: 6420, y: 6020, w: 130, h: 80,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(6420,6020,130,80) },
   { id: 'hotel',        x: 6380, y: 5420, w: 120, h: 140, label: 'HOTEL NEON',       bright: false, doors: mkDoorS(6380,5420,120,140), radio: true },
-  { id: 'vend',         x: 6220, y: 6120, w: 70,  h: 70,  label: 'VEND-O-MATIC',    bright: true,  doors: mkDoorS(6220,6120,70,70) },
+  { id: 'vend',         x: 6220, y: 6120, w: 70,  h: 70,  label: 'VENDING MACHINE',  bright: true,  doors: mkDoorS(6220,6120,70,70) },
   { id: 'crystal',      x: 6900, y: 6130, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   { id: 'arcade',       x: 5420, y: 6320, w: 130, h: 85,  label: 'PIXEL ARCADE',     bright: true,  doors: mkDoorE(5420,6320,130,85), radio: true },
   { id: 'bunker',       x: 5420, y: 6770, w: 150, h: 90,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(5420,6770,150,90), radio: true },
@@ -171,6 +182,8 @@ const BUILDINGS = [
   { id: 'van_west',       x: 2200, y: 2000, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_central',    x: 5500, y: 8500, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  // ── GOLD EXCHANGE ──────────────────────────────────────────────────────────
+  { id: 'gold_exchange',  x: 6100, y: 6800, w: 120, h: 80,  label: 'GOLD EXCHANGE',    bright: true,  doors: mkDoorS(6100,6800,120,80) },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -1223,6 +1236,18 @@ export default function WorldPlay() {
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
     },
+    calendar: initCalendar(),
+    radiationLevel: 0,
+    goldBalance: _ss?.goldBalance ?? 0,
+    openedChests: new Set<string>(Array.isArray(_ss?.openedChests) ? _ss.openedChests : []),
+    boomerMode: (() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } })(),
+    activeCostume: (_ss?.activeCostume ?? 'default') as string,
+    weatherParticles: [] as WeatherParticle[],
+    secondWeapon: null as string | null,
+    activeDialogue: null as DialogueTree | null,
+    activeDialogueNode: null as string | null,
+    rumorCooldown: 0,
+    treasureMapActive: null as string | null,
   });
 
   const savedDog = (() => {
@@ -1333,11 +1358,11 @@ export default function WorldPlay() {
   const unlockedWeaponsRef = useRef<Set<string>>(new Set(['FISTS']));
   const [showMerchant, setShowMerchant] = useState<{ name: string; items: MerchantItem[] } | null>(null);
   const WEAPONS: WeaponDef[] = [
-    { id: 'FISTS', label: 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#00ff41', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
-    { id: 'SWORD', label: 'SWORD', desc: 'Close-range slash. +6 ATK.', atkBonus: 6, color: '#ff6644', type: 'melee', range: 85, cooldown: 30, icon: 'sword' },
-    { id: 'GUN', label: 'GUN', desc: 'Mid-range projectile. +8 ATK.', atkBonus: 8, color: '#88aaff', type: 'ranged', range: 200, cooldown: 25, icon: 'gun' },
-    { id: 'LASER', label: 'LASER', desc: 'Long beam weapon. +10 ATK.', atkBonus: 10, color: '#ff44aa', type: 'ranged', range: 300, cooldown: 40, icon: 'laser' },
-    { id: 'BOMB', label: 'BOMB', desc: 'Area explosion with delay. +12 ATK.', atkBonus: 12, color: '#ffcc00', type: 'ranged', range: 150, cooldown: 60, icon: 'bomb' },
+    { id: 'FISTS', label: LORE_WEAPON_NAMES['FISTS']?.label ?? 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#00ff41', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
+    { id: 'SWORD', label: LORE_WEAPON_NAMES['SWORD']?.label ?? 'SWORD', desc: 'Close-range slash. +6 ATK.', atkBonus: 6, color: '#ff6644', type: 'melee', range: 85, cooldown: 30, icon: 'sword' },
+    { id: 'GUN', label: LORE_WEAPON_NAMES['GUN']?.label ?? 'GUN', desc: 'Mid-range projectile. +8 ATK.', atkBonus: 8, color: '#88aaff', type: 'ranged', range: 200, cooldown: 25, icon: 'gun' },
+    { id: 'LASER', label: LORE_WEAPON_NAMES['LASER']?.label ?? 'LASER', desc: 'Long beam weapon. +10 ATK.', atkBonus: 10, color: '#ff44aa', type: 'ranged', range: 300, cooldown: 40, icon: 'laser' },
+    { id: 'BOMB', label: LORE_WEAPON_NAMES['BOMB']?.label ?? 'BOMB', desc: 'Area explosion with delay. +12 ATK.', atkBonus: 12, color: '#ffcc00', type: 'ranged', range: 150, cooldown: 60, icon: 'bomb' },
   ];
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
@@ -1379,6 +1404,18 @@ export default function WorldPlay() {
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
+  const [showGoldExchange, setShowGoldExchange] = useState(false);
+  const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
+  const [calendarStr, setCalendarStr] = useState('');
+  const [weatherStr, setWeatherStr] = useState('');
+  const [radLevel, setRadLevel] = useState(0);
+  const [showDialoguePanel, setShowDialoguePanel] = useState(false);
+  const [dialogueNpcName, setDialogueNpcName] = useState('');
+  const [dialogueNode, setDialogueNode] = useState<DialogueNode | null>(null);
+  const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [showCostume, setShowCostume] = useState(false);
+  const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
+  const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
   const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
     setBankHistory(h => [{ id: Date.now(), desc, amount, bal }, ...h].slice(0, 30));
@@ -1542,7 +1579,11 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.pablo_tower, selectedFloor: 0 });
       setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' });
     }
-    else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> PABLO — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
+    else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
+    else if (bid === 'gold_exchange') {
+      sfxEnter(); setShowGoldExchange(true); frozenRef.current = true;
+      setNarr('> GOLD EXCHANGE — Convert FIAT to GOLD and back. Tax scales with transaction size. Property purchases require GOLD.');
+    }
     else if (bid === 'clinic')  {
       if (g.deviceBroken && g.salary >= 5000) {
         g.salary -= 5000; g.deviceBroken = false; g.deviceDurability = 100;
@@ -1921,6 +1962,20 @@ export default function WorldPlay() {
       setNarr(`> ${n.name} — "${n.whisper}" [ESC] to close.`);
       return;
     }
+    const storyDlg = Object.values(STORY_DIALOGUES).find(d => d.npcName === n.name);
+    if (storyDlg) {
+      const startNode = storyDlg.nodes[storyDlg.startId];
+      if (startNode) {
+        setDialogueNpcName(n.name);
+        setDialogueNode(startNode);
+        gs.current.activeDialogue = storyDlg;
+        gs.current.activeDialogueNode = storyDlg.startId;
+        setShowDialoguePanel(true);
+        frozenRef.current = true;
+        setNarr(`> ${n.name.toUpperCase()} — ${n.job}`);
+        return;
+      }
+    }
     const lines = [`> ${n.name.toUpperCase()} — ${n.job}`, `"${n.whisper}"`];
     if (n.backstory) lines.push(`[${n.backstory}]`);
     setDialog({ lines, idx: 0, bid: 'npc' });
@@ -2131,7 +2186,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || showGoldExchange || showDialoguePanel || showCostume;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   // ── Music init — start on first interaction ──────────────────────────────────
@@ -2232,7 +2287,18 @@ export default function WorldPlay() {
               setNarr(`> SEWER EXIT — You emerge from manhole at grid (${Math.floor(dest.x/100)},${Math.floor(dest.y/100)}). Daylight stings.`);
             }, 1500);
           }
-          else if (!g.dogCompanion.active) {
+          else {
+            const nearChest = TREASURE_CHESTS.find(tc => !g.openedChests.has(tc.id) && Math.hypot(g.px - tc.x, g.py - tc.y) < 50);
+            if (nearChest) {
+              g.openedChests.add(nearChest.id); sfxCoin();
+              const loot = nearChest.loot;
+              g.salary += loot.fiat; setSalary(g.salary);
+              const lootItemNames = loot.items.map(i => i.name).join(', ');
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${loot.fiat} FIAT`, color: '#FFD700', life: 60, maxLife: 60 });
+              setNarr(`> TREASURE — +ƒ${loot.fiat.toLocaleString()} FIAT${lootItemNames ? `, ${lootItemNames}` : ''}.`);
+            }
+          }
+          if (!g.dogCompanion.active) {
             const stray = g.threats.find(t => t.type === 'STRAY_DOG' && Math.hypot(g.px - t.x, g.py - t.y) < 60);
             if (stray) {
               dogAdoptTarget.current = stray;
@@ -2494,6 +2560,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
       if (g.worldTimeTick >= 60) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
+      tickCalendar(g.calendar, 16.67);
+      if (g.frame % 30 === 0) {
+        setCalendarStr(getCalendarString(g.calendar));
+        setWeatherStr(g.calendar.weather);
+      }
+      updateWeatherParticles(g.weatherParticles, cw, ch);
+      if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
+        g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, 8, cw, ch));
+      }
+      const radResult = getRadiationLevel(g.px, g.py);
+      const rl = radResult.intensity;
+      g.radiationLevel = rl;
+      if (g.frame % 15 === 0) setRadLevel(rl);
+      if (rl > 0 && g.frame % 60 === 0) {
+        const radDmg = Math.ceil(rl * 3);
+        g.hp = Math.max(0, g.hp - radDmg);
+        setHp(Math.floor(g.hp));
+        g.floaters.push({ x: g.px, y: g.py - 25, text: `-${radDmg} RAD`, color: '#44ff44', life: 40, maxLife: 40 });
+      }
+      if (g.rumorCooldown > 0) g.rumorCooldown--;
       shiftTerritories(g.frame);
 
       // ── One-time class stat initialization ──────────────────────────────
@@ -4194,6 +4280,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E]', nx2, ny2 - 32);
         }
+        if (nDist < 120 && nDist > 40 && g.rumorCooldown <= 0) {
+          const rumorIdx = (ni * 7 + Math.floor(g.frame / 300)) % RUMORS.length;
+          const rumor = RUMORS[rumorIdx];
+          const rumorAlpha = 0.3 + Math.sin(g.frame * 0.03 + ni) * 0.15;
+          const rumorY = ny2 - 42 + Math.sin(g.frame * 0.02 + ni * 2) * 3;
+          ctx.fillStyle = `rgba(255,220,100,${rumorAlpha})`;
+          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(`"${rumor}"`, nx2, rumorY);
+        }
       }
 
       // Online players — faction-specific sprites
@@ -4812,6 +4907,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Weather particles overlay ──────────────────────────────────────────
+      for (const wp of g.weatherParticles) {
+        if (g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN') {
+          const spd = Math.abs(wp.vy) / 6;
+          ctx.strokeStyle = g.calendar.weather === 'ACID_RAIN' ? `rgba(100,255,50,${0.3 + spd * 0.1})` : `rgba(120,160,255,${0.25 + spd * 0.08})`;
+          ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wp.x, wp.y); ctx.lineTo(wp.x - 1, wp.y - 6 * spd); ctx.stroke();
+        } else if (g.calendar.weather === 'SNOW') {
+          ctx.fillStyle = `rgba(220,230,255,${0.4})`;
+          ctx.beginPath(); ctx.arc(wp.x, wp.y, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      // ── Radiation zone overlays ───────────────────────────────────────────
+      for (const rz of RADIATION_ZONES) {
+        const rzx = rz.x + ox, rzy = rz.y + oy;
+        if (rzx + rz.w < 0 || rzx > cw || rzy + rz.h < 0 || rzy > ch) continue;
+        const rcx = rzx + rz.w / 2, rcy = rzy + rz.h / 2;
+        const rzRadius = Math.max(rz.w, rz.h) / 2;
+        const rzGrad = ctx.createRadialGradient(rcx, rcy, 0, rcx, rcy, rzRadius);
+        rzGrad.addColorStop(0, `rgba(40,255,40,${0.06 * rz.intensity})`);
+        rzGrad.addColorStop(0.7, `rgba(40,255,40,${0.03 * rz.intensity})`);
+        rzGrad.addColorStop(1, 'rgba(40,255,40,0)');
+        ctx.fillStyle = rzGrad; ctx.fillRect(rzx, rzy, rz.w, rz.h);
+        ctx.strokeStyle = `rgba(40,255,40,${0.12 * rz.intensity})`; ctx.lineWidth = 1; ctx.setLineDash([6, 8]);
+        ctx.strokeRect(rzx, rzy, rz.w, rz.h); ctx.setLineDash([]);
+        ctx.fillStyle = `rgba(40,255,40,${0.15 * rz.intensity})`; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText(`☢ ${rz.label}`, rcx, rzy + 12);
+      }
+
+      // ── Treasure chests ───────────────────────────────────────────────────
+      for (const tc of TREASURE_CHESTS) {
+        if (g.openedChests.has(tc.id)) continue;
+        const tcx = tc.x + ox, tcy = tc.y + oy;
+        if (tcx < -15 || tcx > cw + 15 || tcy < -15 || tcy > ch + 15) continue;
+        ctx.fillStyle = '#8B6914'; ctx.fillRect(tcx - 6, tcy - 4, 12, 8);
+        ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 1; ctx.strokeRect(tcx - 6, tcy - 4, 12, 8);
+        ctx.fillStyle = '#FFD700'; ctx.fillRect(tcx - 1, tcy - 1, 2, 2);
+        const tcDist = Math.hypot(g.px - tc.x, g.py - tc.y);
+        if (tcDist < 50) {
+          ctx.fillStyle = g.blink ? '#FFD700' : 'rgba(255,215,0,.4)';
+          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] OPEN', tcx, tcy - 10);
+        }
+      }
+
       // ── Sewer travel overlay ──────────────────────────────────────────────
       if (g.inSewer) {
         ctx.fillStyle = 'rgba(0,0,0,.85)';
@@ -5101,6 +5241,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           )}
         </div>
+        {/* Gold + Calendar + Radiation row */}
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.3rem .55rem', minWidth: 60 }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.1em', marginBottom: '3px' }}>GOLD</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#FFD700', letterSpacing: '.06em' }}>{goldBalance}g</div>
+          </div>
+          {calendarStr && (
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.3rem .55rem', flex: 1 }}>
+              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
+            </div>
+          )}
+          {weatherStr && weatherStr !== 'CLEAR' && (
+            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.3rem .55rem' }}>
+              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
+            </div>
+          )}
+        </div>
+        {/* Radiation meter */}
+        {radLevel > 0 && (
+          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: '1px solid rgba(40,255,40,.45)', padding: '.3rem .6rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#44ff44', letterSpacing: '.1em' }}>☢ RAD {(radLevel * 100).toFixed(0)}%</span>
+            <div style={{ flex: 1, height: 4, background: 'rgba(40,255,40,.15)' }}>
+              <div style={{ height: '100%', width: `${radLevel * 100}%`, background: radLevel > 0.6 ? '#ff4444' : '#44ff44', transition: 'width .3s' }} />
+            </div>
+          </div>
+        )}
         {/* Gang zone indicator */}
         {gangZone && (
           <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.3rem .6rem' }}>
@@ -5213,6 +5381,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
             <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: muted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {muted ? '🔇 MUTE' : '♪ SND'}
+            </button>
+            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              👤 COSTUME
+            </button>
+            <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); gs.current.boomerMode = nb; try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} setNarr(nb ? '> BOOMER MODE — ON. You call them "HP potions" now.' : '> BOOMER MODE — OFF. Back to corporate speak.'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: boomerMode ? 'rgba(255,170,0,.08)' : 'transparent', border: boomerMode ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎮 BOOMER {boomerMode ? 'ON' : 'OFF'}
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -5527,7 +5701,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO DEVICE</div>
             <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
-              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $29/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
+              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
                 <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(0,255,65,.15)' : '1px solid rgba(0,255,65,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.05)' : 'transparent' }}>
                   <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.45)' : '#00ff41', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
                   {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.32)' : 'rgba(0,255,65,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
@@ -5706,7 +5880,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
-      {/* ── VEND-O-MATIC SHOP ─────────────────────────────────────────────── */}
+      {/* ── VENDING MACHINE SHOP ─────────────────────────────────────────── */}
       {showVend && (() => {
         const g = gs.current;
         const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
@@ -5720,7 +5894,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (item.consumable) {
             if (item.id === 'pablo_device') {
               g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
-              setNarr(`> VEND-O-MATIC — ${item.name} applied. Device restored to full durability. ƒ${item.price.toLocaleString()} FIAT spent.`);
+              setNarr(`> VENDING MACHINE — ${item.name} applied. Device restored to full durability. ƒ${item.price.toLocaleString()} FIAT spent.`);
               return;
             }
             if (item.effect) {
@@ -5733,7 +5907,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
               }
             }
-            setNarr(`> VEND-O-MATIC — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
+            setNarr(`> VENDING MACHINE — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
             return;
           }
           // Non-consumable items
@@ -5749,7 +5923,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (item.id === 'salaryman_pro') { setShowVend(false); setShowStore(true); return; }
           if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
-          setNarr(`> VEND-O-MATIC — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
+          setNarr(`> VENDING MACHINE — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
         };
         const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
@@ -5760,7 +5934,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* Header */}
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
-                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#00ff41', letterSpacing:'.18em' }}>VEND-O-MATIC</div>
+                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#00ff41', letterSpacing:'.18em' }}>VENDING MACHINE</div>
                   <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>PABLO CORP. AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
@@ -5793,7 +5967,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       ))}
                     </div>
                     <div style={{ display:'flex', gap:'1rem', alignItems:'center' }}>
-                      <div style={{ ...VT2, fontSize:'1.5rem', color:'#ff9900' }}>$29 / MONTH</div>
+                      <div style={{ ...VT2, fontSize:'1.5rem', color:'#ff9900' }}>$4–6 / MONTH</div>
                       <button onClick={() => { setShowVend(false); setShowStore(true); }}
                         style={{ padding:'.5rem 1.4rem', background:'rgba(255,153,0,.15)', border:'1px solid rgba(255,153,0,.5)', color:'#ff9900', cursor:'pointer', ...VT2, fontSize:'1.1rem', letterSpacing:'.1em' }}>
                         UPGRADE NOW ▶
@@ -6733,6 +6907,143 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP. MONITORS ALL TRANSIT ACTIVITY.</span>
                 <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── GOLD EXCHANGE PANEL ────────────────────────────────────────────── */}
+      {showGoldExchange && (() => {
+        const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const rate = FIAT_PER_GOLD;
+        const doBuyGold = (amt: number) => {
+          if (amt <= 0) return;
+          const cost = Math.ceil(amt * rate * (1 + getTransactionTax(amt * rate)));
+          if (g.salary < cost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
+          g.salary -= cost; g.goldBalance += amt;
+          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
+          setNarr(`> GOLD EXCHANGE — Purchased ${amt}g GOLD for ƒ${cost.toLocaleString()} FIAT. Tax: ${(getTransactionTax(cost) * 100).toFixed(1)}%.`);
+        };
+        const doSellGold = (amt: number) => {
+          if (amt <= 0 || g.goldBalance < amt) { sfxError(); return; }
+          const gain = Math.floor(amt * rate * (1 - getTransactionTax(amt * rate)));
+          g.goldBalance -= amt; g.salary += gain;
+          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
+          setNarr(`> GOLD EXCHANGE — Sold ${amt}g GOLD for ƒ${gain.toLocaleString()} FIAT. Tax: ${(getTransactionTax(gain) * 100).toFixed(1)}%.`);
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); } }}>
+            <div style={{ width:560, border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>GOLD EXCHANGE</div>
+              <div style={{ fontSize:'.42rem', color:'rgba(255,215,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>RATE: 1g GOLD = ƒ{rate.toLocaleString()} FIAT · TAX SCALES WITH SIZE</div>
+              <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:'.5rem', color:'rgba(0,255,65,.4)', marginBottom:'.3rem' }}>FIAT BALANCE</div>
+                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
+                </div>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:'.5rem', color:'rgba(255,215,0,.4)', marginBottom:'.3rem' }}>GOLD BALANCE</div>
+                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#FFD700' }}>{goldBalance}g</div>
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:'.8rem' }}>
+                {[1, 5, 10].map(amt => (
+                  <button key={`buy${amt}`} onClick={() => doBuyGold(amt)} disabled={g.salary < amt * rate}
+                    style={{ flex:1, padding:'.5rem', background:'rgba(255,215,0,.08)', border:'1px solid rgba(255,215,0,.3)', color:'#FFD700', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                    BUY {amt}g
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:'.8rem', marginTop:'.5rem' }}>
+                {[1, 5, 10].map(amt => (
+                  <button key={`sell${amt}`} onClick={() => doSellGold(amt)} disabled={g.goldBalance < amt}
+                    style={{ flex:1, padding:'.5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.25)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                    SELL {amt}g
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowGoldExchange(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,215,0,.2)', color:'rgba(255,215,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── BRANCHING DIALOGUE PANEL ──────────────────────────────────────── */}
+      {showDialoguePanel && dialogueNode && (() => {
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const npcColor = '#33ffaa';
+        const handleChoice = (nextId: string | null) => {
+          if (!nextId || !gs.current.activeDialogue) {
+            setShowDialoguePanel(false); setDialogueNode(null);
+            gs.current.activeDialogue = null; gs.current.activeDialogueNode = null;
+            return;
+          }
+          const next = gs.current.activeDialogue.nodes[nextId];
+          if (next) {
+            setDialogueNode(next);
+            gs.current.activeDialogueNode = nextId;
+            sfxTalk();
+            const nodeEffect = (next as any).effect;
+            if (nodeEffect === 'give_gold') { gs.current.goldBalance += 5; setGoldBalance(gs.current.goldBalance); }
+            if (nodeEffect === 'give_fiat') { gs.current.salary += 2000; setSalary(gs.current.salary); }
+            if (nodeEffect === 'heal') { gs.current.hp = gs.current.maxHp; setHp(gs.current.maxHp); }
+          } else {
+            setShowDialoguePanel(false); setDialogueNode(null);
+            gs.current.activeDialogue = null; gs.current.activeDialogueNode = null;
+          }
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.95)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:370 }}>
+            <div style={{ width:640, border:'1px solid rgba(51,255,170,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+              <div style={{ display:'flex', borderBottom:'1px solid rgba(51,255,170,.15)' }}>
+                <div style={{ width:140, height:140, background:'rgba(51,255,170,.08)', display:'flex', alignItems:'center', justifyContent:'center', borderRight:'1px solid rgba(51,255,170,.15)', flexShrink:0 }}>
+                  <div style={{ width:80, height:80, borderRadius:'50%', background:`radial-gradient(circle, ${npcColor}44, ${npcColor}11)`, border:`2px solid ${npcColor}55`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <span style={{ ...VT2, fontSize:'2rem', color: npcColor }}>{dialogueNpcName[0]}</span>
+                  </div>
+                </div>
+                <div style={{ flex:1, padding:'1rem 1.2rem' }}>
+                  <div style={{ ...VT2, fontSize:'1.4rem', color: npcColor, letterSpacing:'.15em', marginBottom:'.5rem' }}>{dialogueNpcName}</div>
+                  <div style={{ fontSize:'.6rem', color:'rgba(51,255,170,.6)', lineHeight:1.8 }}>{dialogueNode.text}</div>
+                </div>
+              </div>
+              <div style={{ padding:'1rem 1.2rem', display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                {dialogueNode.choices && dialogueNode.choices.length > 0 ? dialogueNode.choices.map((c, ci) => (
+                  <button key={ci} onClick={() => handleChoice(c.nextId)}
+                    style={{ padding:'.5rem 1rem', background:'rgba(51,255,170,.05)', border:'1px solid rgba(51,255,170,.25)', color:'rgba(51,255,170,.7)', cursor:'pointer', textAlign:'left', ...VT2, fontSize:'1rem', letterSpacing:'.05em' }}>
+                    [{ci + 1}] {c.text}
+                  </button>
+                )) : (
+                  <button onClick={() => handleChoice(null)}
+                    style={{ padding:'.5rem 1rem', background:'rgba(51,255,170,.05)', border:'1px solid rgba(51,255,170,.25)', color:'rgba(51,255,170,.5)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                    [CONTINUE]
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── COSTUME / CUSTOMIZATION PANEL ─────────────────────────────────── */}
+      {showCostume && (() => {
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowCostume(false); }}>
+            <div style={{ width:500, border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.8rem' }}>CHARACTER CUSTOMIZATION</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
+                {COSTUMES.map(c => (
+                  <button key={c.id} onClick={() => { gs.current.activeCostume = c.id; setActiveCostume(c.id); setNarr(`> COSTUME — Equipped: ${c.name}. ${c.desc}`); }}
+                    style={{ display:'flex', justifyContent:'space-between', padding:'.5rem .8rem', background: activeCostume === c.id ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${activeCostume === c.id ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.12)'}`, color: activeCostume === c.id ? '#00ff41' : 'rgba(0,255,65,.5)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                    <span>{c.name}</span>
+                    {activeCostume === c.id && <span style={{ fontSize:'.8rem' }}>EQUIPPED</span>}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
             </div>
           </div>
         );

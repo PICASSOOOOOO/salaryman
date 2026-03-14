@@ -130,10 +130,10 @@ export default function Upgrade() {
             <div className="mb-5">
               <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">{PABLO_PRODUCTS.PRO_TIER.name}</p>
               <div className="flex items-end gap-1 mb-1">
-                <span className="text-4xl font-bold text-foreground">$29</span>
+                <span className="text-4xl font-bold text-foreground">$4–6</span>
                 <span className="text-muted-foreground text-sm mb-1">/mo</span>
               </div>
-              <p className="text-xs text-muted-foreground">Full augmentation suite — all modules unlocked</p>
+              <p className="text-xs text-muted-foreground">Full augmentation suite — 7-day free trial, all modules unlocked</p>
             </div>
 
             <ul className="space-y-3 flex-1 mb-6">
