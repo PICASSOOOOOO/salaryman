@@ -1,0 +1,403 @@
+Below is the same information **converted into a structured developer ticket / sprint document** so a team can implement it quickly. Tasks are broken down into **epics, tickets, and acceptance criteria**.
+
+---
+
+# Minx City – Terminal HUD & Gameplay Update
+
+### Sprint Task Breakdown
+
+## EPIC 1 — Terminal HUD Overhaul
+
+### Ticket 1.1 — Increase UI Readability
+
+**Priority:** High
+
+**Description**
+The interface text across the Terminal HUD and menus is too small and difficult to read.
+
+**Tasks**
+
+* Increase global UI font size
+* Ensure readability across all menus
+* Test readability on different resolutions
+
+**Acceptance Criteria**
+
+* All Terminal UI text is clearly readable
+* Fonts scale correctly across resolutions
+* No UI clipping occurs after resizing
+
+---
+
+### Ticket 1.2 — Add “Boomer Mode”
+
+**Priority:** Medium
+
+**Description**
+Add a mode that replaces video-game terminology with practical real-world terminology.
+
+**Tasks**
+
+* Create a toggle for **Boomer Mode**
+* Replace jargon with functional labels
+* Maintain identical functionality
+
+**Acceptance Criteria**
+
+* Feature names change when Boomer Mode is enabled
+* No gameplay systems are affected
+
+---
+
+### Ticket 1.3 — Terminal HUD Data Display
+
+**Priority:** High
+
+**Description**
+Important player information is missing from the Terminal HUD.
+
+**Add the following fields:**
+
+* Salary
+* Net Worth
+* Current Map Location
+
+**Acceptance Criteria**
+
+* Values update in real time
+* Data persists between sessions
+
+---
+
+### Ticket 1.4 — World Tab Time Zone Dropdown
+
+**Priority:** Medium
+
+**Description**
+Replace the **World** tab with a timezone dropdown system.
+
+**Requirements**
+
+* Support 24 global time zones
+* Each timezone linked to a region/city
+
+**Current Implementation**
+
+* Only display:
+
+  * **Minx City (PST)**
+
+**Acceptance Criteria**
+
+* Dropdown structure exists
+* Only Minx City appears for now
+
+---
+
+## EPIC 2 — Menu & Character Flow
+
+### Ticket 2.1 — Rename Character Creation Section
+
+**Priority:** Low
+
+**Description**
+
+The character creation interface should not be called **Terminal**.
+
+Rename section to:
+
+**Immigration**
+
+**Acceptance Criteria**
+
+* UI label updated
+* No functional changes
+
+---
+
+### Ticket 2.2 — Restore City Entry Dialogue
+
+**Priority:** High
+
+**Description**
+The pre-city entry dialogue was removed and must be restored.
+
+**Acceptance Criteria**
+
+* Dialogue appears before entering the city
+* Dialogue includes greeting:
+
+**“Welcome to Minx City.”**
+
+---
+
+### Ticket 2.3 — Player Info UI Redesign
+
+**Priority:** Medium
+
+**Description**
+
+Player info panel is currently always visible.
+
+**Required Change**
+
+* Move player info into a **dropdown panel**
+* Collapse by default
+
+**Acceptance Criteria**
+
+* Panel expands when clicked
+* Panel remains hidden otherwise
+
+---
+
+## EPIC 3 — Pablo AI System
+
+### Ticket 3.1 — Pablo Onboarding System
+
+**Priority:** High
+
+**Description**
+
+Pablo should automatically activate when the player logs in.
+
+**Pablo onboarding flow**
+
+1. Introduce himself
+2. Ask the player **three questions**
+3. Explain how the system works
+4. Guide the player through the tutorial
+
+**Acceptance Criteria**
+
+* Pablo appears when Terminal opens
+* Onboarding only runs for new users
+
+---
+
+## EPIC 4 — Gameplay & Balance
+
+### Ticket 4.1 — Player Stats Expansion
+
+**Priority:** Medium
+
+**Changes**
+
+* Add **DEF (Defense) stat**
+
+**Acceptance Criteria**
+
+* DEF visible in stat panel
+* Combat calculations updated
+
+---
+
+### Ticket 4.2 — Economy Balance
+
+**Changes**
+
+* Reduce starting money
+* Remove automatic money rewards from kills
+* Require players to **loot bodies manually**
+
+**Acceptance Criteria**
+
+* Loot must be collected manually
+* Economy progression slows appropriately
+
+---
+
+### Ticket 4.3 — Enemy Group Adjustment
+
+Enemy faction should be named:
+
+**Suits**
+
+**Changes**
+
+* Increase Suit attack stat
+* Adjust player starting stats to balance combat
+
+---
+
+## EPIC 5 — Controls & Interaction
+
+### Ticket 5.1 — Loot Interaction Fix
+
+**Issue**
+
+The **E key interaction occasionally fails**.
+
+**Changes**
+
+* Fix E interaction reliability
+* Allow **left-click to interact/loot**
+
+**Acceptance Criteria**
+
+* Loot interaction works consistently
+
+---
+
+### Ticket 5.2 — Map Movement Controls
+
+**Changes**
+
+* Allow **left-click movement on the map**
+
+**Acceptance Criteria**
+
+* Player can navigate map via click
+
+---
+
+### Ticket 5.3 — Weapons Wheel Redesign
+
+**Issue**
+Weapons wheel usability is poor.
+
+**Changes**
+
+* Improve layout
+* Improve responsiveness
+
+---
+
+## EPIC 6 — Housing & Spawn System
+
+### Ticket 6.1 — Spawn Logic
+
+Player spawn location should be based on:
+
+**Hamlet**
+
+This location becomes the player's **home**.
+
+---
+
+### Ticket 6.2 — Housing Based on Employment
+
+If player selects **Unemployed**, spawn location must be one of:
+
+* Shelter
+* Campsite
+* Bunker
+
+Players should **not spawn in standard housing**.
+
+---
+
+## EPIC 7 — Quest & Business System
+
+### Ticket 7.1 — Business Front Interface
+
+Display fictional business header:
+
+**Minx City Business**
+
+---
+
+### Ticket 7.2 — Mission / Quest System
+
+Add a **Quest / Mission section**.
+
+**Requirements**
+
+* Display player objectives
+* Mark missions on the map
+
+---
+
+### Ticket 7.3 — First Mission Logic
+
+If player is **employed**, their first mission should be:
+
+**Establish Your Business**
+
+Tasks include:
+
+* Business customization
+* Signage
+* Workspace setup
+
+Players may optionally use **Pablo to automate setup**.
+
+---
+
+## EPIC 8 — Field Guide Update
+
+### Ticket 8.1 — Content Removal
+
+Remove:
+
+* “Senior Pablo”
+* NPC information section
+* Konomi Code
+
+---
+
+### Ticket 8.2 — Content Update
+
+Field Guide should contain:
+
+* History of **Minx City**
+* Core lore
+
+---
+
+### Ticket 8.3 — Section Renaming
+
+Rename:
+
+**Locations → Landmarks**
+
+---
+
+### Ticket 8.4 — Controls Section Expansion
+
+Add:
+
+* Terminal shortcuts
+* Map navigation keys
+* Quick keys for business actions
+
+---
+
+## EPIC 9 — Mobile Terminal
+
+### Ticket 9.1 — Terminal Mobile Version
+
+Add downloadable **mobile terminal client**.
+
+Features:
+
+* Terminal access only
+* No full 3D gameplay
+
+---
+
+## EPIC 10 — Performance
+
+### Ticket 10.1 — Performance Optimization
+
+Required improvements:
+
+* Increase FPS
+* Increase rendering resolution
+
+---
+
+## EPIC 11 — Critical Bug
+
+### Ticket 11.1 — Movement Bug
+
+**Issue**
+Player cannot move forward in certain scenarios.
+
+**Action**
+
+* Investigate and fix movement lock bug.
+
+---
+
+If you'd like, I can also convert this into a **full production roadmap (Alpha → Beta → Launch milestones)** which would help organize the entire **Minx City MMO buildout** so the development team stays aligned.
