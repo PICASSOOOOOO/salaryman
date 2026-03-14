@@ -188,6 +188,156 @@ const BUILDINGS = [
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
 
+// ── Interior System ──────────────────────────────────────────────────────────
+interface InteriorObject {
+  x: number; y: number; w: number; h: number;
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant';
+  label?: string;
+  color?: string;
+}
+interface InteriorDef {
+  id: string;
+  width: number; height: number;
+  wallColor: string; floorColor: string; accentColor: string;
+  exitX: number; exitY: number; exitW: number; exitH: number;
+  objects: InteriorObject[];
+  label: string;
+  ambientText?: string;
+}
+
+const INTERIOR_DEFS: Record<string, InteriorDef> = {
+  minx_arms: {
+    id: 'minx_arms', label: 'MINX ARMS — FLOOR 4 — UNIT 408',
+    width: 280, height: 220,
+    wallColor: 'rgba(20,30,20,.95)', floorColor: 'rgba(8,14,8,.9)', accentColor: 'rgba(0,255,65,.3)',
+    exitX: 130, exitY: 205, exitW: 30, exitH: 15,
+    ambientText: 'Fluorescent light buzzes. The curtains don\'t fully close.',
+    objects: [
+      { x: 20, y: 30, w: 60, h: 35, type: 'bed', label: 'YOUR BED', color: 'rgba(60,80,60,.6)' },
+      { x: 90, y: 30, w: 25, h: 20, type: 'nightstand', label: 'NIGHTSTAND', color: 'rgba(50,60,40,.5)' },
+      { x: 220, y: 25, w: 45, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)' },
+      { x: 20, y: 100, w: 40, h: 30, type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)' },
+      { x: 20, y: 140, w: 25, h: 25, type: 'chair', color: 'rgba(40,45,35,.4)' },
+      { x: 200, y: 150, w: 50, h: 35, type: 'terminal', label: 'PABLO DEVICE', color: 'rgba(0,80,30,.4)' },
+      { x: 130, y: 30, w: 30, h: 20, type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)' },
+    ],
+  },
+  clinic: {
+    id: 'clinic', label: 'CITY CLINIC — EMERGENCY WARD',
+    width: 320, height: 240,
+    wallColor: 'rgba(20,25,30,.95)', floorColor: 'rgba(10,14,18,.9)', accentColor: 'rgba(100,200,255,.3)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Monitors beep steadily. The antiseptic smell is overwhelming.',
+    objects: [
+      { x: 20, y: 30, w: 55, h: 30, type: 'reception', label: 'RECEPTION', color: 'rgba(60,80,100,.5)' },
+      { x: 20, y: 90, w: 50, h: 25, type: 'medical_bed', label: 'BED A', color: 'rgba(80,100,120,.5)' },
+      { x: 20, y: 130, w: 50, h: 25, type: 'medical_bed', label: 'BED B', color: 'rgba(80,100,120,.5)' },
+      { x: 20, y: 170, w: 50, h: 25, type: 'medical_bed', label: 'BED C', color: 'rgba(80,100,120,.5)' },
+      { x: 240, y: 30, w: 55, h: 40, type: 'equipment', label: 'MED EQUIPMENT', color: 'rgba(50,100,80,.4)' },
+      { x: 240, y: 90, w: 55, h: 30, type: 'equipment', label: 'VITAL MONITOR', color: 'rgba(50,100,80,.4)' },
+      { x: 240, y: 140, w: 55, h: 30, type: 'locker', label: 'SUPPLY LOCKER', color: 'rgba(60,70,80,.5)' },
+      { x: 130, y: 30, w: 60, h: 25, type: 'counter', label: 'TRIAGE COUNTER', color: 'rgba(70,80,90,.5)' },
+      { x: 130, y: 170, w: 40, h: 30, type: 'terminal', label: 'MED TERMINAL', color: 'rgba(0,80,60,.4)' },
+    ],
+  },
+  east_clinic: {
+    id: 'east_clinic', label: 'EAST CLINIC — FIELD MEDICAL',
+    width: 300, height: 220,
+    wallColor: 'rgba(25,25,20,.95)', floorColor: 'rgba(12,12,8,.9)', accentColor: 'rgba(100,200,255,.25)',
+    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
+    ambientText: 'Field medic station. Rusted equipment, but functional.',
+    objects: [
+      { x: 20, y: 30, w: 50, h: 25, type: 'medical_bed', label: 'COT 1', color: 'rgba(80,90,70,.5)' },
+      { x: 20, y: 70, w: 50, h: 25, type: 'medical_bed', label: 'COT 2', color: 'rgba(80,90,70,.5)' },
+      { x: 220, y: 30, w: 55, h: 35, type: 'equipment', label: 'FIELD KIT', color: 'rgba(50,80,60,.4)' },
+      { x: 220, y: 80, w: 55, h: 30, type: 'counter', label: 'SUPPLY TABLE', color: 'rgba(60,70,50,.5)' },
+      { x: 120, y: 30, w: 50, h: 20, type: 'reception', label: 'INTAKE DESK', color: 'rgba(60,70,50,.5)' },
+      { x: 120, y: 150, w: 40, h: 30, type: 'crate', label: 'MED CRATE', color: 'rgba(55,65,45,.4)' },
+    ],
+  },
+  north_clinic: {
+    id: 'north_clinic', label: 'NORTH CLINIC — TRAUMA UNIT',
+    width: 300, height: 220,
+    wallColor: 'rgba(22,22,28,.95)', floorColor: 'rgba(10,10,14,.9)', accentColor: 'rgba(100,180,255,.25)',
+    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
+    ambientText: 'Full trauma unit. The north quarter\'s last line of defense.',
+    objects: [
+      { x: 20, y: 30, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 1', color: 'rgba(80,100,120,.5)' },
+      { x: 20, y: 70, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 2', color: 'rgba(80,100,120,.5)' },
+      { x: 20, y: 110, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 3', color: 'rgba(80,100,120,.5)' },
+      { x: 220, y: 30, w: 55, h: 40, type: 'equipment', label: 'DEFIB UNIT', color: 'rgba(50,100,80,.4)' },
+      { x: 220, y: 90, w: 55, h: 30, type: 'counter', label: 'PHARMACY', color: 'rgba(60,70,80,.5)' },
+      { x: 130, y: 30, w: 40, h: 20, type: 'reception', label: 'TRIAGE', color: 'rgba(60,70,80,.5)' },
+    ],
+  },
+  _shop: {
+    id: '_shop', label: 'SHOP INTERIOR',
+    width: 260, height: 200,
+    wallColor: 'rgba(25,30,20,.95)', floorColor: 'rgba(10,14,8,.9)', accentColor: 'rgba(255,200,60,.25)',
+    exitX: 115, exitY: 185, exitW: 30, exitH: 15,
+    ambientText: 'Goods line the walls. The register hums.',
+    objects: [
+      { x: 20, y: 25, w: 80, h: 20, type: 'counter', label: 'COUNTER', color: 'rgba(80,70,40,.5)' },
+      { x: 20, y: 60, w: 30, h: 60, type: 'shelf', label: 'SHELF A', color: 'rgba(60,55,35,.4)' },
+      { x: 60, y: 60, w: 30, h: 60, type: 'shelf', label: 'SHELF B', color: 'rgba(60,55,35,.4)' },
+      { x: 190, y: 25, w: 45, h: 30, type: 'terminal', label: 'REGISTER', color: 'rgba(0,80,30,.4)' },
+      { x: 190, y: 70, w: 45, h: 50, type: 'crate', label: 'STOCK', color: 'rgba(50,50,30,.4)' },
+      { x: 120, y: 140, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  _office: {
+    id: '_office', label: 'OFFICE INTERIOR',
+    width: 260, height: 200,
+    wallColor: 'rgba(20,22,30,.95)', floorColor: 'rgba(8,10,16,.9)', accentColor: 'rgba(0,200,255,.2)',
+    exitX: 115, exitY: 185, exitW: 30, exitH: 15,
+    ambientText: 'Terminal screens glow. The air conditioning is too cold.',
+    objects: [
+      { x: 20, y: 30, w: 50, h: 30, type: 'desk', label: 'DESK 1', color: 'rgba(50,55,70,.5)' },
+      { x: 20, y: 80, w: 50, h: 30, type: 'desk', label: 'DESK 2', color: 'rgba(50,55,70,.5)' },
+      { x: 190, y: 30, w: 45, h: 40, type: 'terminal', label: 'MAIN TERMINAL', color: 'rgba(0,60,80,.4)' },
+      { x: 190, y: 90, w: 45, h: 30, type: 'locker', label: 'FILE CABINET', color: 'rgba(50,55,65,.5)' },
+      { x: 120, y: 30, w: 40, h: 20, type: 'table', label: 'MEETING TABLE', color: 'rgba(45,50,60,.4)' },
+      { x: 120, y: 140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+};
+
+const BUILDING_INTERIOR_MAP: Record<string, string> = {
+  minx_arms: 'minx_arms',
+  clinic: 'clinic',
+  east_clinic: 'east_clinic',
+  north_clinic: 'north_clinic',
+  pablo_store: '_shop',
+  noodle_bar: '_shop',
+  pawn_shop: '_shop',
+  east_market: '_shop',
+  market: '_shop',
+  north_market: '_shop',
+  food_court: '_shop',
+  print_shop: '_office',
+  print_shop2: '_office',
+  call_home: '_office',
+  terminal_shop: '_office',
+  data_vault: '_office',
+  wily_lab: '_office',
+};
+
+const HAS_INTERIOR = (bid: string) => bid in BUILDING_INTERIOR_MAP;
+
+const getInterior = (bid: string): InteriorDef | null => {
+  const key = BUILDING_INTERIOR_MAP[bid];
+  if (!key) return null;
+  const base = INTERIOR_DEFS[key];
+  if (!base) return null;
+  const bld = BUILDINGS.find(b => b.id === bid);
+  if (key.startsWith('_') && bld) {
+    return { ...base, id: bid, label: bld.label };
+  }
+  return base;
+};
+
+const INTERIOR_TILE = 16;
+
 // ── City Sectors (12 named sectors for the city hierarchy) ──────────────────
 interface CitySector { id: string; name: string; x: number; y: number; w: number; h: number; }
 const CITY_SECTORS: CitySector[] = [
@@ -1248,6 +1398,10 @@ export default function WorldPlay() {
     activeDialogueNode: null as string | null,
     rumorCooldown: 0,
     treasureMapActive: null as string | null,
+    interior: null as null | { bid: string; def: InteriorDef; px: number; py: number; savedWorldX: number; savedWorldY: number },
+    interiorFade: 0,
+    interiorFadeDir: 0 as -1 | 0 | 1,
+    interiorFadeCallback: null as null | (() => void),
   });
 
   const savedDog = (() => {
@@ -1893,24 +2047,67 @@ export default function WorldPlay() {
     }
   }, []);
 
+  const enterInterior = useCallback((bid: string) => {
+    const g = gs.current;
+    const def = getInterior(bid);
+    if (!def) return;
+    g.interiorFade = 0;
+    g.interiorFadeDir = 1;
+    g.interiorFadeCallback = () => {
+      g.interior = {
+        bid, def,
+        px: def.exitX + def.exitW / 2,
+        py: def.exitY - 20,
+        savedWorldX: g.px,
+        savedWorldY: g.py,
+      };
+      executeBuildingLogic(bid);
+      g.interiorFadeDir = -1;
+    };
+  }, [executeBuildingLogic]);
+
+  const exitInterior = useCallback(() => {
+    const g = gs.current;
+    if (!g.interior) return;
+    g.interiorFadeDir = 1;
+    g.interiorFadeCallback = () => {
+      const saved = g.interior!;
+      g.px = saved.savedWorldX;
+      g.py = saved.savedWorldY;
+      g.interior = null;
+      setNarr(`> You step back outside.`);
+      g.interiorFadeDir = -1;
+    };
+  }, []);
+
   const enterBuilding = useCallback((bid: string) => {
     sfxEnter();
     const b = BUILDINGS.find(bl => bl.id === bid);
     if (b) {
       const bCenterX = b.x + b.w / 2;
       const bCenterY = b.y + b.h / 2;
-      buildingEntryZoomRef.current = {
-        active: true,
-        timer: 45,
-        targetX: bCenterX,
-        targetY: bCenterY,
-        callback: () => executeBuildingLogic(bid),
-      };
+      if (HAS_INTERIOR(bid)) {
+        buildingEntryZoomRef.current = {
+          active: true,
+          timer: 45,
+          targetX: bCenterX,
+          targetY: bCenterY,
+          callback: () => enterInterior(bid),
+        };
+      } else {
+        buildingEntryZoomRef.current = {
+          active: true,
+          timer: 45,
+          targetX: bCenterX,
+          targetY: bCenterY,
+          callback: () => executeBuildingLogic(bid),
+        };
+      }
       targetZoomRef.current = Math.max(targetZoomRef.current, 2.0);
     } else {
       executeBuildingLogic(bid);
     }
-  }, [executeBuildingLogic]);
+  }, [executeBuildingLogic, enterInterior]);
 
   const MERCHANT_SENNA: MerchantItem[] = [
     { id: 'forged_basic', name: 'FORGED CITY PASSPORT', desc: 'Basic forged transit pass. Grants checkpoint access with crossing fee.', price: 8000, effect: 'passport_basic_city' },
@@ -2260,6 +2457,7 @@ export default function WorldPlay() {
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
+          if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
@@ -2702,6 +2900,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); setHp(Math.floor(g.hp)); }
       }
 
+      // ── Interior fade transition ──
+      if (g.interiorFadeDir !== 0) {
+        g.interiorFade += g.interiorFadeDir * 0.04;
+        if (g.interiorFade >= 1 && g.interiorFadeDir === 1) {
+          g.interiorFade = 1;
+          if (g.interiorFadeCallback) { g.interiorFadeCallback(); g.interiorFadeCallback = null; }
+        }
+        if (g.interiorFade <= 0 && g.interiorFadeDir === -1) {
+          g.interiorFade = 0; g.interiorFadeDir = 0;
+        }
+      }
+
+      // ── Interior movement & collision ──
+      if (g.interior && !frozen()) {
+        const itr = g.interior;
+        const iDef = itr.def;
+        const iCol = (ipx: number, ipy: number) => {
+          if (ipx < PSIZE + 6 || ipx > iDef.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > iDef.height - PSIZE) return true;
+          for (const obj of iDef.objects) {
+            if (obj.type === 'window' || obj.type === 'plant') continue;
+            if (ipx + PSIZE > obj.x && ipx - PSIZE < obj.x + obj.w && ipy + PSIZE > obj.y && ipy - PSIZE < obj.y + obj.h) return true;
+          }
+          return false;
+        };
+        let dx = 0, dy = 0;
+        if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD;
+        if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
+        if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD;
+        if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD;
+        if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        let nx = itr.px + dx, ny = itr.py + dy;
+        if (iCol(nx, itr.py)) nx = itr.px;
+        if (iCol(itr.px, ny)) ny = itr.py;
+        itr.px = nx; itr.py = ny;
+        if (dx !== 0 || dy !== 0) {
+          stepFrame.current++;
+          g.walkFrame = (g.walkFrame + 1) % 28;
+          if (stepFrame.current % 14 === 0) sfxStep();
+        } else { g.walkFrame = 0; }
+        const inExitZone = itr.px + PSIZE > iDef.exitX && itr.px - PSIZE < iDef.exitX + iDef.exitW
+          && itr.py + PSIZE > iDef.exitY && itr.py - PSIZE < iDef.exitY + iDef.exitH;
+        if (inExitZone && g.interiorFadeDir === 0) {
+          g.near = '__interior_exit';
+        } else {
+          g.near = null;
+        }
+      }
+
       const col = (px: number, py: number) => BUILDINGS.some(b => {
         if (!(px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h)) return false;
         if (b.doors && b.doors.length > 0) {
@@ -2711,6 +2957,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         return true;
       });
+
+      if (!g.interior) {
 
       if (col(g.px, g.py)) {
         for (let r = 8; r <= 200; r += 8) {
@@ -2772,10 +3020,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.walkFrame = 0;
         }
       }
+      } // end !g.interior
 
       for (const t of g.threats) {
         t.timer--;
-        const dist = Math.hypot(g.px - t.x, g.py - t.y);
+        const dist = g.interior ? 99999 : Math.hypot(g.px - t.x, g.py - t.y);
 
         const isMajorThreat = ['IRON_RATS','VOID_DOGS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
         const isSpy = t.type === 'SPY';
@@ -3156,6 +3405,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp <= 0 && !lastDead) {
         lastDead = true;
         sfxDeath();
+        if (g.interior) {
+          g.px = g.interior.savedWorldX; g.py = g.interior.savedWorldY;
+          g.interior = null; g.interiorFade = 0; g.interiorFadeDir = 0; g.interiorFadeCallback = null;
+        }
         if (!g.pvpDeathBodyDropped) {
           g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
         }
@@ -3287,6 +3540,145 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       ctx.save();
       ctx.scale(zoom, zoom);
+
+      // ── Interior rendering ──────────────────────────────────────────────────
+      if (g.interior) {
+        ctx.restore();
+        ctx.save();
+        const icw = canvas.width, ich = canvas.height;
+        const itr = g.interior;
+        const iDef = itr.def;
+        const iScale = Math.min(icw / (iDef.width + 80), ich / (iDef.height + 80));
+        const iox = (icw - iDef.width * iScale) / 2;
+        const ioy = (ich - iDef.height * iScale) / 2;
+        ctx.translate(iox, ioy);
+        ctx.scale(iScale, iScale);
+        ctx.fillStyle = '#020402';
+        ctx.fillRect(-40, -40, iDef.width + 80, iDef.height + 80);
+
+        ctx.fillStyle = iDef.floorColor;
+        ctx.fillRect(0, 0, iDef.width, iDef.height);
+
+        ctx.strokeStyle = iDef.accentColor;
+        ctx.lineWidth = 0.3;
+        for (let tx = 0; tx < iDef.width; tx += INTERIOR_TILE) {
+          ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, iDef.height); ctx.stroke();
+        }
+        for (let ty = 0; ty < iDef.height; ty += INTERIOR_TILE) {
+          ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(iDef.width, ty); ctx.stroke();
+        }
+
+        ctx.fillStyle = iDef.wallColor;
+        ctx.fillRect(0, 0, iDef.width, 20);
+        ctx.fillRect(0, 0, 6, iDef.height);
+        ctx.fillRect(iDef.width - 6, 0, 6, iDef.height);
+        ctx.fillRect(0, iDef.height - 4, iDef.width, 4);
+
+        ctx.strokeStyle = iDef.accentColor;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0, 0, iDef.width, iDef.height);
+
+        for (const obj of iDef.objects) {
+          const osx = obj.x, osy = obj.y;
+          ctx.fillStyle = obj.color ?? 'rgba(0,255,65,.15)';
+          ctx.fillRect(osx, osy, obj.w, obj.h);
+          ctx.strokeStyle = iDef.accentColor;
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(osx, osy, obj.w, obj.h);
+
+          if (obj.type === 'window') {
+            const grad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            grad.addColorStop(0, 'rgba(0,30,60,.6)');
+            grad.addColorStop(0.5, 'rgba(10,50,80,.4)');
+            grad.addColorStop(1, 'rgba(0,20,40,.6)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgba(100,200,255,.3)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(osx + obj.w / 2, osy); ctx.lineTo(osx + obj.w / 2, osy + obj.h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(osx, osy + obj.h / 2); ctx.lineTo(osx + obj.w, osy + obj.h / 2); ctx.stroke();
+          }
+
+          if (obj.type === 'medical_bed') {
+            ctx.fillStyle = 'rgba(180,220,255,.12)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 6);
+            const blink = Math.sin(g.frame * 0.06 + obj.x * 0.1) > 0.5;
+            if (blink) {
+              ctx.fillStyle = 'rgba(0,200,100,.3)';
+              ctx.fillRect(osx + obj.w - 6, osy + 2, 4, 4);
+            }
+          }
+
+          if (obj.type === 'bed') {
+            ctx.fillStyle = 'rgba(80,100,60,.2)';
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+            ctx.fillStyle = 'rgba(120,140,80,.15)';
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, 8);
+          }
+
+          if (obj.type === 'terminal') {
+            const tp = Math.sin(g.frame * 0.04 + obj.y * 0.05) * 0.3 + 0.5;
+            ctx.fillStyle = `rgba(0,255,65,${tp * 0.15})`;
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+          }
+
+          if (obj.type === 'equipment') {
+            const ep = 0.3 + Math.sin(g.frame * 0.05 + obj.x * 0.03) * 0.2;
+            ctx.fillStyle = `rgba(0,200,150,${ep * 0.2})`;
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, 6);
+          }
+
+          if (obj.label) {
+            ctx.fillStyle = iDef.accentColor;
+            ctx.font = '6px "Share Tech Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText(obj.label, osx + obj.w / 2, osy + obj.h / 2 + 3);
+          }
+        }
+
+        const exX = iDef.exitX, exY = iDef.exitY;
+        const exitPulse = 0.4 + Math.sin(g.frame * 0.06) * 0.3;
+        ctx.fillStyle = `rgba(0,255,65,${exitPulse * 0.15})`;
+        ctx.fillRect(exX, exY, iDef.exitW, iDef.exitH);
+        ctx.strokeStyle = `rgba(0,255,65,${exitPulse * 0.6})`;
+        ctx.lineWidth = 1; ctx.strokeRect(exX, exY, iDef.exitW, iDef.exitH);
+        ctx.fillStyle = `rgba(0,255,65,${exitPulse * 0.8})`;
+        ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText('EXIT', exX + iDef.exitW / 2, exY + iDef.exitH / 2 + 3);
+
+        if (g.near === '__interior_exit') {
+          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.3)';
+          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] EXIT', exX + iDef.exitW / 2, exY - 6);
+        }
+
+        const ppx = itr.px, ppy = itr.py;
+        ctx.fillStyle = '#00ff41';
+        ctx.fillRect(ppx - 3, ppy - 6, 6, 10);
+        ctx.fillRect(ppx - 4, ppy - 8, 8, 3);
+        ctx.fillStyle = '#003300';
+        ctx.fillRect(ppx - 1, ppy - 6, 1, 1);
+        ctx.fillRect(ppx + 1, ppy - 6, 1, 1);
+
+        ctx.fillStyle = iDef.accentColor;
+        ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText(iDef.label, iDef.width / 2, -8);
+
+        if (iDef.ambientText) {
+          ctx.fillStyle = 'rgba(0,255,65,.2)';
+          ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(iDef.ambientText, iDef.width / 2, iDef.height + 14);
+        }
+
+        if (g.interiorFade > 0) {
+          ctx.fillStyle = `rgba(0,0,0,${g.interiorFade})`;
+          ctx.fillRect(-40, -40, iDef.width + 80, iDef.height + 80);
+        }
+
+        ctx.restore();
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
       // Proximity check — buildings
       let nb: string | null = null;
@@ -4886,6 +5278,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
       }
+      // ── Interior transition fade overlay ──
+      if (g.interiorFade > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${g.interiorFade})`;
+        ctx.fillRect(0, 0, cw * 4, ch * 4);
+      }
+
       ctx.restore();
 
       // ── Day/night cycle overlay ─────────────────────────────────────────────
@@ -6770,10 +7168,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               View of the city from your window. Unit 408. Rent: paid through PABLO CORP.
             </div>
             <button
-              onClick={() => { const g = gs.current; g.px = 5555; g.py = 5690; setShowIndoorStart(false); }}
+              onClick={() => {
+                const g = gs.current;
+                const minxB = BUILDINGS.find(b => b.id === 'minx_arms')!;
+                g.px = minxB.x + minxB.w / 2;
+                g.py = minxB.y + minxB.h + 20;
+                const def = getInterior('minx_arms')!;
+                g.interior = {
+                  bid: 'minx_arms', def,
+                  px: 50, py: 50,
+                  savedWorldX: g.px, savedWorldY: g.py,
+                };
+                setShowIndoorStart(false);
+                setNarr('> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
+              }}
               style={{ padding: '.65rem 2rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
             >
-              STEP OUTSIDE
+              WAKE UP
             </button>
           </div>
         </div>
@@ -6797,12 +7208,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const g = gs.current;
                   g.hp = g.maxHp; g.hunger = 80; g.thirst = 80; g.energy = 80;
                   g.poisoned = false; g.invincible = 180;
-                  g.px = 6200; g.py = 6100;
+                  const clinicB = BUILDINGS.find(b => b.id === 'clinic')!;
+                  g.px = clinicB.x + clinicB.w / 2;
+                  g.py = clinicB.y + clinicB.h + 20;
                   setHp(g.maxHp); setHunger(80); setThirst(80); setEnergy(80); setPoisoned(false);
                   g.diedLastSession = false;
                   try { localStorage.removeItem('sm_died_last_session'); } catch {}
+                  const def = getInterior('clinic')!;
+                  g.interior = {
+                    bid: 'clinic', def,
+                    px: 40, py: 110,
+                    savedWorldX: g.px, savedWorldY: g.py,
+                  };
                   setShowHospitalPrompt(false);
-                  setNarr('> HOSPITAL — You wake up in a hospital bed. Stats partially restored. The medic says: "Take it easy out there." You step outside into the city light.');
+                  setNarr('> CITY CLINIC — You wake up in a hospital bed. Monitors beep. Stats partially restored. The medic says: "Take it easy out there." Walk to the EXIT when you\'re ready.');
                 }}
                 style={{ padding: '.65rem 1.8rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
               >
