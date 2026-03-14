@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 
-type CharClass = 'corporate' | 'outcast' | 'replicant';
+type CharClass = 'corporate' | 'outlaw' | 'replicant';
 
 // ── Cloud Save Types ─────────────────────────────────────────────────────────
 interface CloudSave {
@@ -35,13 +35,13 @@ function fmtPlaytime(frames: number): string {
 
 const CLASS_COLOR: Record<string, string> = {
   corporate: '#00ff41',
-  outcast: '#88ff44',
+  outlaw: '#88ff44',
   replicant: '#33ffaa',
 };
 
 const CLASS_BADGE: Record<string, string> = {
   corporate: 'CORP',
-  outcast: 'OUT',
+  outlaw: 'OTL',
   replicant: 'REP',
 };
 
@@ -61,27 +61,27 @@ const CLASSES = [
     color: '#00ff41',
   },
   {
-    id: 'outcast' as CharClass,
-    label: 'OUTCAST',
+    id: 'outlaw' as CharClass,
+    label: 'OUTLAW',
     tagline: 'Wasteland. Tough. Scarred.',
-    desc: 'Exiled and hardened. Highest HP of any class. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. Starts with a wasteland passport. The walls don\'t want you — good.',
+    desc: 'Exiled and hardened. High HP, strong ATK. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. Starts with a wasteland passport. The walls don\'t want you — good.',
     start: 'WASTELAND',
     salary: 'ƒ15,000',
-    hp: '550',
-    atk: '12',
-    perks: 'Highest HP · Wasteland passport · Wasteland drain -40% · Scavenge+',
+    hp: '480',
+    atk: '14',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Scavenge+',
     color: '#88ff44',
   },
   {
     id: 'replicant' as CharClass,
     label: 'REPLICANT',
     tagline: 'Android. Conscious. Deadliest.',
-    desc: 'You are the conscious android — built for combat, not for service. Highest attack power. Average HP. PABLO Corp. wants you shut down. Starts at the city fringe with a basic city passport.',
+    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO Corp. wants you shut down. Starts at the city fringe with a basic city passport.',
     start: 'CITY FRINGE',
     salary: 'ƒ60,000',
-    hp: '450',
-    atk: '22',
-    perks: 'Highest ATK · Basic city passport · No energy drain · Built for war',
+    hp: '600',
+    atk: '18',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · Built for war',
     color: '#33ffaa',
   },
 ];
@@ -370,7 +370,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Divider />
       <SectionHead>PERSONAL DEVICE</SectionHead>
-      <Row label="AVAILABILITY" val="Corporate operatives start with a personal handheld device. Outcast and Replicant operatives must find or purchase one." col="#33ffaa" />
+      <Row label="AVAILABILITY" val="Corporate operatives start with a personal handheld device. Outlaw and Replicant operatives must find or purchase one." col="#33ffaa" />
       <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#00ff41" />
       <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
       <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VENDING MACHINE (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
@@ -646,8 +646,8 @@ export default function WorldMenu() {
           ? null
           : name.trim().toUpperCase() + ' OPS';
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN') : null;
-    const startSalary = cls === 'corporate' ? 150000 : cls === 'replicant' ? 60000 : cls === 'outcast' ? 15000 : 50000;
-    const spawnPos = cls === 'outcast' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
+    const startSalary = cls === 'corporate' ? 150000 : cls === 'replicant' ? 60000 : cls === 'outlaw' ? 15000 : 50000;
+    const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,

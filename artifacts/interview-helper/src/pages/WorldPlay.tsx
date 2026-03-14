@@ -401,12 +401,12 @@ const GANG_ZONES_BASE = [
 ];
 let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
 const GANG_FACTION_ALLIES: Record<string, string[]> = {
-  outcast:    ['iron_rats', 'static_monks'],
+  outlaw:     ['iron_rats', 'static_monks'],
   replicant:  ['void_dogs', 'eastern_bloc'],
   corporate:  ['minx_city'],
 };
 const GANG_FACTION_ENEMIES: Record<string, string[]> = {
-  outcast:    ['minx_city', 'void_dogs'],
+  outlaw:     ['minx_city', 'void_dogs'],
   replicant:  ['minx_city', 'iron_rats'],
   corporate:  ['iron_rats', 'void_dogs', 'static_monks', 'eastern_bloc'],
 };
@@ -848,11 +848,18 @@ const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATI
 const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 8000, MINX_CITY: 12000, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
-const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 450, atkBonus: 22, wasteBonus: false },
-  outcast:    { maxHp: 550, atkBonus: 12, wasteBonus: true  },
-  corporate:  { maxHp: 350, atkBonus: 3,  wasteBonus: false },
-  contractor: { maxHp: 340, atkBonus: 7,  wasteBonus: false },
+const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
+  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 10, wasteBonus: false },
+  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 6,  wasteBonus: true  },
+  corporate:  { maxHp: 350, atkBonus: 3,  defBonus: 2,  wasteBonus: false },
+  contractor: { maxHp: 340, atkBonus: 7,  defBonus: 3,  wasteBonus: false },
+};
+// MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
+const THREAT_ATK: Record<string, number> = {
+  IRON_RATS: 0.20, VOID_DOGS: 0.28, STATIC_MONKS: 0.35, MUTANT: 0.30,
+  RAIDER: 0.40, PROWLER: 0.18, BORDER_GANG: 0.22, EASTERN_BLOC: 0.32,
+  SPY: 0.15, PABLO_GUARD: 0.50, MINX_CITY: 0.90,
+  VAGRANT: 0.05, STRAY_DOG: 0.08, SCAVENGER: 0.12, RAT: 0.03,
 };
 const NPC_LOOT_TABLE = [
   { id: 'scrap_metal', name: 'SCRAP METAL', desc: 'Salvaged components' },
@@ -1327,7 +1334,7 @@ export default function WorldPlay() {
     attackCooldown: 0,
     attackFlash: 0,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
-    deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number }[],
+    deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number; bounty?: number; looted?: boolean }[],
     pvpDeathBodyDropped: false,
     diedLastSession: _ss?.diedLastSession ?? false,
     lastMoveTime: Date.now(),
@@ -1351,7 +1358,7 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
-    passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outcast' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
+    passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outlaw' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
     oregonTick: 0,
     worldTime: _ss?.worldTime ?? 8,
     worldTimeTick: 0,
@@ -2442,6 +2449,10 @@ export default function WorldPlay() {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
           if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
+          g.near = null; g.nearNpc = null; g.nearBillboard = null;
+          for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { g.near = b.id; break; } }
+          if (!g.near) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
+          if (!g.near && g.nearNpc === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
@@ -2470,14 +2481,23 @@ export default function WorldPlay() {
             }, 1500);
           }
           else {
-            const nearChest = TREASURE_CHESTS.find(tc => !g.openedChests.has(tc.id) && Math.hypot(g.px - tc.x, g.py - tc.y) < 50);
-            if (nearChest) {
-              g.openedChests.add(nearChest.id); sfxCoin();
-              const loot = nearChest.loot;
-              g.salary += loot.fiat; setSalary(g.salary);
-              const lootItemNames = loot.items.map(i => i.name).join(', ');
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${loot.fiat} FIAT`, color: '#FFD700', life: 60, maxLife: 60 });
-              setNarr(`> TREASURE — +ƒ${loot.fiat.toLocaleString()} FIAT${lootItemNames ? `, ${lootItemNames}` : ''}.`);
+            const lootBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(g.px - b.x, g.py - b.y) < 40);
+            if (lootBody) {
+              const amt = lootBody.bounty ?? 0;
+              lootBody.looted = true;
+              g.salary += amt; setSalary(g.salary); sfxCoin();
+              g.floaters.push({ x: lootBody.x, y: lootBody.y - 12, text: `+ƒ${amt.toLocaleString()} LOOTED`, color: '#ffdd44', life: 55, maxLife: 55 });
+              setNarr(`> LOOT — You search the body. +ƒ${amt.toLocaleString()} FIAT recovered.`);
+            } else {
+              const nearChest = TREASURE_CHESTS.find(tc => !g.openedChests.has(tc.id) && Math.hypot(g.px - tc.x, g.py - tc.y) < 50);
+              if (nearChest) {
+                g.openedChests.add(nearChest.id); sfxCoin();
+                const loot = nearChest.loot;
+                g.salary += loot.fiat; setSalary(g.salary);
+                const lootItemNames = loot.items.map(i => i.name).join(', ');
+                g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${loot.fiat} FIAT`, color: '#FFD700', life: 60, maxLife: 60 });
+                setNarr(`> TREASURE — +ƒ${loot.fiat.toLocaleString()} FIAT${lootItemNames ? `, ${lootItemNames}` : ''}.`);
+              }
             }
           }
           if (!g.dogCompanion.active) {
@@ -2530,8 +2550,7 @@ export default function WorldPlay() {
               const inWaste = !inCityBounds(g.px, g.py);
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-              g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
-              g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+              g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -2548,7 +2567,7 @@ export default function WorldPlay() {
               g.exp = newExp; g.level = newLevel;
               setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
-              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
+              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
             }
             sfxHit();
@@ -2590,13 +2609,36 @@ export default function WorldPlay() {
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); window.removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVisChange); };
   }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog, handleRadioToggle]);
 
-  // ── Mouse click — ranged attack ─────────────────────────────────────────
+  // ── Mouse click — ranged attack + interact/loot ─────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const handleClick = (e: MouseEvent) => {
       gs.current.lastMoveTime = Date.now();
       if (frozenRef.current) return;
       const g = gs.current;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clickWorldX = (e.clientX - rect.left) * scaleX + g.cam.x;
+      const clickWorldY = (e.clientY - rect.top) * scaleY + g.cam.y;
+      const clickedBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(clickWorldX - b.x, clickWorldY - b.y) < 30 && Math.hypot(g.px - b.x, g.py - b.y) < 50);
+      if (clickedBody) {
+        const amt = clickedBody.bounty ?? 0;
+        clickedBody.looted = true;
+        g.salary += amt; setSalary(g.salary); sfxCoin();
+        g.floaters.push({ x: clickedBody.x, y: clickedBody.y - 12, text: `+ƒ${amt.toLocaleString()} LOOTED`, color: '#ffdd44', life: 55, maxLife: 55 });
+        setNarr(`> LOOT — You search the body. +ƒ${amt.toLocaleString()} FIAT recovered.`);
+        return;
+      }
+      const clickDistToPlayer = Math.hypot(clickWorldX - g.px, clickWorldY - g.py);
+      if (clickDistToPlayer < 60) {
+        if (g.near) { tryEnter(g.near); return; }
+        if (g.nearNpc !== null) { enterNpc(g.nearNpc); return; }
+        if (g.nearBillboard) {
+          const bb = BILLBOARDS.find(b => b.locationId === g.nearBillboard);
+          if (bb) { setShowBillboard(bb); fetchBillboards(); return; }
+        }
+      }
       if (g.attackCooldown > 0) return;
       const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
       if (wpn.type !== 'ranged') {
@@ -2607,12 +2649,7 @@ export default function WorldPlay() {
         }
         return;
       }
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const clickX = (e.clientX - rect.left) * scaleX + g.cam.x;
-      const clickY = (e.clientY - rect.top) * scaleY + g.cam.y;
-      const angle = Math.atan2(clickY - g.py, clickX - g.px);
+      const angle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
       const speed = 8;
       g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
       sfxAttack();
@@ -2813,8 +2850,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const inWaste = !inCityBounds(g.px, g.py);
               let bountyAmt = BOUNTY[t.type] ?? 10;
               if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-              g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
-              g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+              g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -2827,7 +2863,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.exp = newExp; g.level = newLevel;
               setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
-              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
+              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
             }
             sfxHit(); return { ...t, hp: nhp };
@@ -2863,8 +2899,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const inWaste = !inCityBounds(g.px, g.py);
                 let bountyAmt = BOUNTY[t.type] ?? 10;
                 if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-                g.salary += bountyAmt; setSalary(g.salary); sfxCoin();
-                g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 wsSend({ type: 'pve_kill', exp: earned });
@@ -2872,7 +2907,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) { newExp -= expToLevel(newLevel); newLevel++; g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10); sfxLevelUp(); }
                 g.exp = newExp; g.level = newLevel; setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
-                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 return null as unknown as Threat;
               }
               sfxHit(); return { ...t, hp: nhp };
@@ -3093,7 +3128,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         } else {
           if (pClass === 'corporate') hostilityMult = 1.2;
-          else if (pClass === 'outcast') hostilityMult = 0.5;
+          else if (pClass === 'outlaw') hostilityMult = 0.5;
           else if (pClass === 'replicant') hostilityMult = 0.6;
           else hostilityMult = 0.8;
         }
@@ -3173,7 +3208,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         if (t.behavior === 'HOSTILE' && dist < 14 && g.invincible === 0 && !npcDialogRef.current) {
           const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
-          g.hp = Math.max(0, g.hp - 0.25 * armorMult); g.invincible = 70; g.flash = 6;
+          const baseThreatAtk = THREAT_ATK[t.type] ?? 0.25;
+          const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+          const defReduce = Math.max(0.1, 1 - cs.defBonus * 0.02);
+          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce); g.invincible = 70; g.flash = 6;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.08) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -3339,8 +3377,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (t.hp <= 0) {
                 sfxKill();
                 const bountyAmt = BOUNTY[t.type] ?? 10;
-                g.salary += bountyAmt; setSalary(g.salary);
-                g.floaters.push({ x: t.x, y: t.y, text: `+ƒ${bountyAmt.toLocaleString()}`, color: '#ffdd44', life: 55, maxLife: 55 });
+                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 let newExp = g.exp + earned; let newLevel = g.level;
@@ -3352,7 +3389,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.exp = newExp; g.level = newLevel;
                 setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
-                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 g.threats = g.threats.filter(th => th !== t);
                 if (dog.dialogueCooldown <= 0 && Math.random() < 0.4) {
                   const line = DOG_KILL_LINES[Math.floor(Math.random() * DOG_KILL_LINES.length)];
@@ -3679,10 +3716,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (nearStray) {
           setNarr('> STRAY DOG — Wary eyes. Wagging tail. Press [E] to adopt this companion.');
         } else {
-          const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
-          if (nearEnemy) {
-            const typeLabel = nearEnemy.type.replace(/_/g, ' ');
-            setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — [Space] melee · [Click] shoot. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+          const nearLoot = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(g.px - b.x, g.py - b.y) < 40);
+          if (nearLoot) {
+            setNarr(`> LOOTABLE BODY [${nearLoot.type.replace(/_/g, ' ')}] — ƒ${(nearLoot.bounty ?? 0).toLocaleString()} FIAT. Press [E] or [Click] to loot.`);
+          } else {
+            const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
+            if (nearEnemy) {
+              const typeLabel = nearEnemy.type.replace(/_/g, ' ');
+              setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — [Space] melee · [Click] shoot. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+            }
           }
         }
       }
@@ -3769,7 +3811,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const INCOME_LABEL    = cls === 'corporate' ? 'SALARY DIRECT DEPOSIT' : cls === 'replicant' ? 'GIG PAYMENT PROCESSED' : 'SCAVENGING YIELD';
         if (g.incomeTick >= INCOME_INTERVAL) {
           g.incomeTick = 0;
-          const bonus = cls === 'outcast' && inWaste ? Math.floor(Math.random() * 400) : 0;
+          const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 400) : 0;
           const total = INCOME_AMOUNT + bonus;
           g.salary += total; setSalary(g.salary);
           g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
@@ -3884,7 +3926,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0) {
               g.policeCooldowns[pi] = 25;
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
-              g.hp = Math.max(0, g.hp - 4 * armorMult); g.invincible = 40; g.flash = 6;
+              const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+              const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
+              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP); g.invincible = 40; g.flash = 6;
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
             continue;
@@ -3912,7 +3956,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} POLICE`, color: '#4488ff', life: 40, maxLife: 40 });
               if (t.hp <= 0) {
                 g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: '#4488ff', life: 60, maxLife: 60 });
-                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame });
+                const pBounty = BOUNTY[t.type] ?? 10;
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: pBounty, looted: false });
                 g.threats.splice(ti, 1); ti--;
               }
               break;
@@ -4645,7 +4690,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
         const opCls = (op.class ?? '').toLowerCase();
-        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outcast' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff';
+        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff';
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -4654,7 +4699,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#333333'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
           ctx.fillStyle = '#cc0000'; ctx.fillRect(px2 - 1, py2 - 5, 2, 4);
           ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
-        } else if (opCls === 'outcast') {
+        } else if (opCls === 'outlaw') {
           ctx.fillStyle = '#5a4433'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
           ctx.fillStyle = '#6b5533'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
           ctx.fillStyle = '#8a7744'; ctx.fillRect(px2 - 7, py2 - 8, 14, 3);
@@ -4755,6 +4800,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(bx - 7, by, 2, 0, Math.PI * 2); ctx.fill();
           ctx.fillRect(bx + 2, by + 2, 4, 2);
           ctx.fillRect(bx - 4, by + 2, 4, 2);
+        }
+        ctx.globalAlpha = 1;
+        if (!body.looted && body.type !== 'PLAYER' && (body.bounty ?? 0) > 0) {
+          const lootDist = Math.hypot(g.px - body.x, g.py - body.y);
+          const lootPulse = 0.5 + Math.sin(g.frame * 0.12) * 0.3;
+          ctx.fillStyle = `rgba(255,221,68,${lootPulse})`;
+          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(`ƒ${(body.bounty ?? 0).toLocaleString()}`, bx, by - 8);
+          if (lootDist < 50) {
+            ctx.fillStyle = `rgba(255,221,68,${lootPulse * 0.8})`;
+            ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText('[E] LOOT', bx, by - 16);
+          }
         }
         ctx.globalAlpha = 0.2;
         ctx.fillStyle = '#ff0000';
@@ -4932,7 +4990,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const px = g.px + ox, py2 = g.py + oy;
       const isFlash = g.invincible % 4 < 2;
       const pCls = char.class.toLowerCase();
-      const factionGlow = pCls === 'corporate' ? '#00ff41' : pCls === 'outcast' ? '#88ff44' : pCls === 'replicant' ? '#33ffaa' : '#00ff41';
+      const factionGlow = pCls === 'corporate' ? '#00ff41' : pCls === 'outlaw' ? '#88ff44' : pCls === 'replicant' ? '#33ffaa' : '#00ff41';
       const pcol = isFlash ? (g.poisoned ? '#88ff44' : factionGlow) : `${factionGlow}33`;
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
@@ -4953,7 +5011,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15, 5, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px - 5, py2 - 21, 10, 4);
         ctx.beginPath(); ctx.arc(px, py2 - 20, 3, 0, Math.PI * 2); ctx.fill();
-      } else if (pCls === 'outcast') {
+      } else if (pCls === 'outlaw') {
         ctx.fillStyle = '#4a3322'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
         ctx.fillStyle = '#5a4433'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
         ctx.fillStyle = g.poisoned ? '#557722' : '#6b5533'; ctx.fillRect(px - 7, py2 - 9, 14, 9);
@@ -5532,6 +5590,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.3rem .6rem' }}>
             <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>FIAT</div>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
+          </div>
+          {/* DEF */}
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,180,255,.38)', padding: '.3rem .6rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,180,255,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>DEF</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#44aaff', letterSpacing: '.06em', marginTop: '3px' }}>{(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus}</div>
           </div>
           {/* Zone */}
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.3rem .6rem' }}>
@@ -6513,7 +6576,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <button onClick={() => setShowMap(false)} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
-            <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy * 2}`} preserveAspectRatio="xMidYMid meet">
+            <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a', cursor: 'crosshair' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy * 2}`} preserveAspectRatio="xMidYMid meet"
+              onClick={(evt) => {
+                const svg = evt.currentTarget;
+                const pt = svg.createSVGPoint();
+                pt.x = evt.clientX; pt.y = evt.clientY;
+                const svgP = pt.matrixTransform(svg.getScreenCTM()!.inverse());
+                const tx = Math.max(BORDER + 10, Math.min(W - BORDER - 10, svgP.x));
+                const ty = Math.max(BORDER + 10, Math.min(H - BORDER - 10, svgP.y));
+                gs.current.px = tx; gs.current.py = ty;
+                setShowMap(false);
+                setNarr(`> MAP TRAVEL — Moved to grid (${Math.floor(tx / 100)}, ${Math.floor(ty / 100)}).`);
+              }}>
               <rect x={0} y={0} width={W} height={CITY_TOP} fill="rgba(10,5,0,.8)" />
               <rect x={0} y={CITY_TOP} width={W} height={CITY_BOTTOM - CITY_TOP} fill="rgba(0,10,3,.8)" />
               <rect x={0} y={CITY_BOTTOM} width={W} height={H - CITY_BOTTOM} fill="rgba(10,5,0,.8)" />
@@ -6558,7 +6632,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </div>
             <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
-              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} FIAT · [M] or [ESC] to close
+              PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} FIAT · Click map to travel · [M] or [ESC] to close
             </div>
           </div>
         </div>
@@ -6639,52 +6713,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── WEAPONS WHEEL — bottom-right radial ──────────────────────────── */}
+      {/* ── WEAPONS WHEEL — bottom-right compact grid ─────────────────────── */}
       <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
         <div
           onClick={() => setShowWeapons(v => !v)}
           style={{
-            width: 90, height: 90, borderRadius: '50%',
+            width: 72, height: 72, borderRadius: '50%',
             background: showWeapons ? 'rgba(0,255,65,.14)' : 'rgba(0,5,0,.92)',
-            border: `3px solid ${showWeapons ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.28)'}`,
+            border: `2px solid ${showWeapons ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.28)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 0 18px rgba(0,255,65,.15)',
+            cursor: 'pointer', boxShadow: '0 0 14px rgba(0,255,65,.15)',
+            transition: 'all .15s ease',
           }}
         >
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.06em', marginTop: 3 }}>{activeWeapon}</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em', marginTop: 2 }}>{activeWeapon}</span>
         </div>
         {showWeapons && (() => {
           const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
           const available = WEAPONS.filter(w => unlockedWeapons.has(w.id));
-          const wheelR = 140;
-          const count = available.length;
           return (
-            <div style={{ position: 'absolute', bottom: 45, right: 45, width: 0, height: 0 }}>
-              {available.map((w, i) => {
-                const angle = (-Math.PI / 2) + (i / count) * Math.PI * 2;
-                const x = Math.cos(angle) * wheelR;
-                const y = Math.sin(angle) * wheelR;
+            <div style={{
+              position: 'absolute', bottom: 80, right: 0, width: 200,
+              background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.4)',
+              boxShadow: '0 0 24px rgba(0,255,65,.12)', padding: '.35rem',
+              display: 'flex', flexDirection: 'column', gap: '3px',
+            }}>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', padding: '2px 4px', borderBottom: '1px solid rgba(0,255,65,.12)', marginBottom: '2px' }}>WEAPONS</div>
+              {available.map(w => {
                 const isActive = activeWeapon === w.id;
                 return (
                   <div
                     key={w.id}
                     onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
                     style={{
-                      position: 'absolute',
-                      left: x - 60, top: y - 32,
-                      width: 120, textAlign: 'center',
-                      padding: '.5rem .6rem',
-                      background: isActive ? 'rgba(0,255,65,.18)' : 'rgba(0,5,0,.96)',
-                      border: `2px solid ${isActive ? 'rgba(0,255,65,.7)' : 'rgba(0,255,65,.25)'}`,
-                      borderRadius: 8, cursor: 'pointer',
-                      boxShadow: isActive ? '0 0 16px rgba(0,255,65,.3)' : '0 0 6px rgba(0,0,0,.4)',
+                      display: 'flex', alignItems: 'center', gap: '.4rem',
+                      padding: '.3rem .45rem', cursor: 'pointer',
+                      background: isActive ? 'rgba(0,255,65,.14)' : 'transparent',
+                      border: `1px solid ${isActive ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.08)'}`,
+                      transition: 'all .1s ease',
                     }}
                   >
-                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: w.color, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-                      {iconMap[w.icon] ?? '?'} {isActive ? '▸ ' : ''}{w.label}
+                    <span style={{ fontSize: '1.1rem', width: 22, textAlign: 'center' }}>{iconMap[w.icon] ?? '?'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isActive ? w.color : 'rgba(0,255,65,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isActive ? '▸ ' : ''}{w.label}
+                      </div>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? 'MELEE' : 'RANGED'}</div>
                     </div>
-                    <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.45)', marginTop: 3 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? '[MELEE]' : '[RANGED]'}</div>
                   </div>
                 );
               })}
