@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock } from "lucide-react";
+import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock, Loader2 } from "lucide-react";
 import { NavBar } from "@/components/NavBar";
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -25,6 +26,36 @@ const PRO_ITEMS = [
 export default function Upgrade() {
   const { isPro, isOwner, isTrial, trialDaysLeft, trialHoursLeft, loading } = usePlan();
   const { isAuthenticated, login } = useAuth();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const checkoutResult = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("checkout")
+    : null;
+
+  async function handleUpgrade() {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCheckoutError(data.error || "Failed to start checkout");
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      setCheckoutError("Something went wrong. Please try again.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -48,6 +79,42 @@ export default function Upgrade() {
             </p>
           </motion.div>
         </div>
+
+        {checkoutResult === "success" && !loading && isPro && (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+            style={{ border: '1px solid rgba(0,255,65,0.35)', background: 'rgba(0,255,65,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(0,255,65,0.4)', background: 'rgba(0,255,65,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Check className="w-5 h-5" style={{ color: 'rgba(0,255,65,0.85)' }} />
+            </div>
+            <div className="flex-1">
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(0,255,65,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+                PAYMENT CONFIRMED — {PABLO_PRODUCTS.PRO_TIER.name} ACTIVATED
+              </p>
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.06em' }}>
+                All augmentation modules are now unlocked. Welcome to the full suite, salaryman.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {checkoutResult === "cancel" && (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+            style={{ border: '1px solid rgba(255,165,0,0.35)', background: 'rgba(255,165,0,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(255,165,0,0.4)', background: 'rgba(255,165,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Lock className="w-5 h-5" style={{ color: 'rgba(255,165,0,0.85)' }} />
+            </div>
+            <div className="flex-1">
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(255,165,0,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
+                CHECKOUT CANCELLED — NO CHANGES MADE
+              </p>
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.5)', letterSpacing: '0.06em' }}>
+                Your account remains unchanged. You can try again anytime.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Trial status banner */}
         {!loading && isTrial && (
@@ -159,16 +226,18 @@ export default function Upgrade() {
             ) : (
               <div className="space-y-2">
                 <button
-                  disabled
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold opacity-60 cursor-not-allowed">
-                  <Zap className="w-4 h-4" /> Coming soon — joining picassoo.ai
+                  onClick={handleUpgrade}
+                  disabled={checkoutLoading}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed">
+                  {checkoutLoading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+                  ) : (
+                    <><Zap className="w-4 h-4" /> Upgrade to {PABLO_PRODUCTS.PRO_TIER.name}</>
+                  )}
                 </button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Early access?{" "}
-                  <a href="mailto:hello@picassoo.ai" className="text-primary underline underline-offset-2">
-                    Contact us
-                  </a>
-                </p>
+                {checkoutError && (
+                  <p className="text-center text-xs" style={{ color: 'rgba(255,100,100,0.9)' }}>{checkoutError}</p>
+                )}
               </div>
             )}
           </motion.div>
@@ -180,7 +249,7 @@ export default function Upgrade() {
           <p className="text-sm font-bold text-foreground">Good to know</p>
           {[
             ["Will PABLO always be free?", "Yes. PABLO chat is the core of Salaryman and will always be available on the free tier."],
-            ["How do I upgrade?", "Payments are launching soon. You can request early access by emailing hello@picassoo.ai."],
+            ["How do I upgrade?", "Click the upgrade button above. You'll be taken to a secure Stripe checkout to complete your subscription."],
             ["Can I cancel anytime?", "Absolutely. No contracts, no lock-in."],
             ["I'm a startup — is there a discount?", "Yes. Reach out and we'll work something out."],
           ].map(([q, a]) => (

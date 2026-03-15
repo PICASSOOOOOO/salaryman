@@ -33,6 +33,11 @@ interface PlanData {
 const cache: { data: PlanData | null; fetchedAt: number } = { data: null, fetchedAt: 0 };
 const CACHE_TTL = 60_000;
 
+export function invalidatePlanCache() {
+  cache.data = null;
+  cache.fetchedAt = 0;
+}
+
 export function usePlan(): PlanData {
   const { isAuthenticated } = useAuth();
 
@@ -46,6 +51,16 @@ export function usePlan(): PlanData {
     trialHoursLeft: trialInit.trialHoursLeft,
     loading: true,
   });
+
+  const checkoutResult = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("checkout")
+    : null;
+
+  useEffect(() => {
+    if (checkoutResult === "success") {
+      invalidatePlanCache();
+    }
+  }, [checkoutResult]);
 
   useEffect(() => {
     const trial = getTrialInfo();
@@ -61,8 +76,10 @@ export function usePlan(): PlanData {
       });
       return;
     }
+
+    const skipCache = checkoutResult === "success";
     const now = Date.now();
-    if (cache.data && now - cache.fetchedAt < CACHE_TTL) {
+    if (!skipCache && cache.data && now - cache.fetchedAt < CACHE_TTL) {
       const cached = cache.data;
       setPlan({
         ...cached,
@@ -104,7 +121,7 @@ export function usePlan(): PlanData {
           loading: false,
         });
       });
-  }, [isAuthenticated]);
+  }, [isAuthenticated, checkoutResult]);
 
   return plan;
 }

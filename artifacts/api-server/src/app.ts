@@ -9,7 +9,13 @@ const app: Express = express();
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
-app.use(express.json({ limit: "50mb" }));
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/stripe/webhook") {
+    next();
+  } else {
+    express.json({ limit: "50mb" })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(authMiddleware);
 

@@ -30,9 +30,10 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
 - **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
 - **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email
-- **Webhook endpoint**: `POST /api/plan/activate` — protected by `WEBHOOK_SECRET` env var for Stripe/payment callbacks
+- **Webhook endpoint**: `POST /api/plan/activate` — protected by `WEBHOOK_SECRET` env var for legacy/manual callbacks
+- **Stripe payment**: Stripe Checkout integration for Pro tier subscriptions. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`. Endpoints: `POST /api/stripe/create-checkout-session` (creates Checkout session, requires auth), `POST /api/stripe/webhook` (handles `checkout.session.completed` → upgrade to pro, `customer.subscription.deleted` → downgrade to free). Raw body parsing is skipped for webhook route in `app.ts`. Upgrade page handles `?checkout=success` and `?checkout=cancel` query params. `usePlan` hook invalidates cache on `?checkout=success`.
 - **DB table**: `user_tiers` — stores tier assignments; auto-created by `ensureTables()` in `plan.ts`
-- **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
+- **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/api-server/src/routes/stripe.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
 
 ## Integrations
 - **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.
