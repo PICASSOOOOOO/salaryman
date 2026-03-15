@@ -5,13 +5,15 @@ const SPOTIFY_ALBUM_URL = 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZ
 interface RadioPlayerProps {
   playing: boolean;
   mounted: boolean;
+  muted?: boolean;
 }
 
-export function RadioPlayer({ playing, mounted }: RadioPlayerProps) {
+export function RadioPlayer({ playing, mounted, muted }: RadioPlayerProps) {
   if (!mounted) return null;
+  const active = playing && !muted;
   return (
     <iframe
-      src={playing ? SPOTIFY_ALBUM_URL : 'about:blank'}
+      src={active ? SPOTIFY_ALBUM_URL : 'about:blank'}
       width="300"
       height="80"
       style={{ position: 'fixed', left: -9999, top: -9999, border: 'none', opacity: 0, pointerEvents: 'none' }}

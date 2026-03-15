@@ -1551,6 +1551,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'signal_jammer',   name: 'SIGNAL JAMMER',     desc: 'Disables nearest guard for 30 seconds (3 uses).',  price: 12000 },
     { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all PABLO CORP. terminals.',       price: 25000 },
     { id: 'holo_map',        name: 'HOLO MAP',          desc: 'Reveals all locations on the minimap.',            price: 5000  },
+    { id: 'radio_implant',   name: 'RADIO IMPLANT',     desc: 'Neural cochlear transceiver. Picks up MINX CITY FM anywhere in the Wasteland. Permanent.',  price: 20000 },
   ]},
   { id: 'weapons_melee', label: 'MELEE', col: '#ff4444', items: [
     { id: 'combat_knife',    name: 'COMBAT KNIFE',     desc: '+15% ATK. Silent. Legal in 4 zones.',                  price: 3000  },
@@ -2166,6 +2167,7 @@ export default function WorldPlay() {
     subwayTransitDest: null as null | { x: number; y: number; label: string },
     weaponTier: _ss?.weaponTier ?? 0,
     terminalDiscount: _ss?.terminalDiscount ?? false,
+    hasRadioImplant: _ss?.hasRadioImplant ?? false,
     realEstateIncomeTick: 0,
     realEstate: Array.isArray(_ss?.realEstate) ? [..._ss.realEstate] : [] as string[],
     dogCompanion: {
@@ -2460,7 +2462,7 @@ export default function WorldPlay() {
       name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary,
       hp: g.hp, maxHp: g.maxHp, hunger: g.hunger, thirst: g.thirst, energy: g.energy,
       poisoned: g.poisoned, weaponTier: g.weaponTier, vehicle: g.vehicle,
-      terminalDiscount: g.terminalDiscount, passport: g.passport,
+      terminalDiscount: g.terminalDiscount, hasRadioImplant: g.hasRadioImplant, passport: g.passport,
       savings: g.savings, loan: g.loan,
       hasDevice: g.hasDevice, deviceBroken: g.deviceBroken, deviceDurability: g.deviceDurability,
       ownedItems: [...g.ownedItems],
@@ -3356,12 +3358,17 @@ export default function WorldPlay() {
   }, []);
 
   useEffect(() => {
-    if (radioOn) {
+    if (gs.current.hasRadioImplant) showRadio();
+  }, []);
+
+  useEffect(() => {
+    const radioActive = radioOn && !muted;
+    if (radioActive) {
       fadeOutAmbient(1.5);
     } else {
       fadeInAmbient(2.0);
     }
-  }, [radioOn]);
+  }, [radioOn, muted]);
 
   // ── Commodity price drift (Star Citizen-style supply/demand oscillation) ─────
   useEffect(() => {
@@ -4937,7 +4944,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { nb = b.id; break; } }
       g.near = nb;
       if (nb !== lastNear) {
-        if (lastNear && RADIO_BUILDINGS.has(lastNear) && (!nb || !RADIO_BUILDINGS.has(nb))) {
+        if (lastNear && RADIO_BUILDINGS.has(lastNear) && (!nb || !RADIO_BUILDINGS.has(nb)) && !g.hasRadioImplant) {
           hideRadio();
         }
         lastNear = nb; setNear(nb);
@@ -7966,7 +7973,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── RADIO HUD + HIDDEN PLAYER ── */}
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
-      <RadioPlayer playing={radioOn} mounted={playerEverMounted} />
+      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={muted} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
@@ -8062,6 +8069,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.ownedItems.add(item.id);
           setOwnedItems(new Set(g.ownedItems));
           if (item.id === 'netrunner_deck') { g.terminalDiscount = true; }
+          if (item.id === 'radio_implant') { g.hasRadioImplant = true; showRadio(); }
           if (VEHICLE_SPEED[item.id]) {
             const curSpd = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
             if ((VEHICLE_SPEED[item.id] ?? 1) > curSpd) { g.vehicle = item.id; }
