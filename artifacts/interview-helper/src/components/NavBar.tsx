@@ -1,4 +1,4 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock } from 'lucide-react';
+import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -40,6 +40,7 @@ export function NavBar() {
     { path: '/', label: config.navLabel, icon: Terminal, pro: false },
     { path: '/presenter', label: PABLO_PRODUCTS.PRESENTER.short, icon: Presentation, pro: true },
     { path: '/contacts', label: PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true },
+    { path: '/hiring', label: PABLO_PRODUCTS.HIRING.short, icon: Briefcase, pro: true },
     { path: '/dashboard', label: PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true },
   ];
 

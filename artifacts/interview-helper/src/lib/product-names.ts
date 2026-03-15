@@ -74,6 +74,11 @@ export const PABLO_PRODUCTS = {
     short: "SCOPE-4",
     desc: "Time and space complexity audit module",
   },
+  HIRING: {
+    name: "RECRUIT-8 FIELD OPS",
+    short: "RECRUIT-8",
+    desc: "Tactical personnel acquisition module. Post positions, track candidates through the pipeline, and manage your operational roster.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 4, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 6, trial: 7 },

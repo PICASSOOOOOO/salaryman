@@ -481,6 +481,43 @@ function shiftTerritories(frame: number) {
   GANG_ZONES = [...drifted, ...TERRITORY_FRAGMENTS];
 }
 
+interface EmployeeNpcDef { name: string; role: string; x: number; y: number; businessName: string; buildingId: string; }
+
+const EMPLOYEE_DIALOGUE: Record<string, string[]> = {
+  default: [
+    'Clocked in. Running diagnostics on the mainframe.',
+    'Another shift in the city. At least the pay is steady.',
+    'Boss around? I was just... calibrating the terminals.',
+    'This company runs tighter than a sealed bunker. I like it.',
+    'Need anything? I keep things moving around here.',
+  ],
+  manager: [
+    'Reports are filed. Efficiency is up 12% this quarter.',
+    'I have three meetings scheduled. All classified.',
+    'The team is performing well. No incidents to report.',
+  ],
+  engineer: [
+    'Patched the security grid this morning. Should hold.',
+    'The server rack needs new cooling units. I filed a req.',
+    'Running stress tests on the network. All green so far.',
+  ],
+  sales: [
+    'Closed two deals today. Both off the books.',
+    'The market is volatile but we are positioned well.',
+    'New clients coming in from the east district.',
+  ],
+  security: [
+    'Perimeter is secure. No unauthorized access detected.',
+    'I swept the building twice. All clear.',
+    'Eyes on all entry points. Nothing gets past me.',
+  ],
+};
+function getEmployeeDialogue(role: string): string {
+  const key = role.toLowerCase();
+  const lines = EMPLOYEE_DIALOGUE[key] ?? EMPLOYEE_DIALOGUE.default;
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker'; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
@@ -1533,6 +1570,8 @@ export default function WorldPlay() {
     interiorFade: 0,
     interiorFadeDir: 0 as -1 | 0 | 1,
     interiorFadeCallback: null as null | (() => void),
+    employeeNpcs: [] as EmployeeNpcDef[],
+    nearEmployee: null as number | null,
     quests: (_ss?.quests ?? (() => { const m = createFirstMission(char); return m ? [m] : []; })()) as Quest[],
     hamletBuildingId: (() => {
       const saved = _ss?.hamletBuildingId as string | undefined;
@@ -2506,7 +2545,41 @@ export default function WorldPlay() {
         lastSyncMoney = g.salary;
       }
     }, 120);
-    return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); };
+    const fetchEmployees = () => {
+      fetch('/api/tools/hiring/employees')
+        .then(r => r.ok ? r.json() : { employeesByOwner: {} })
+        .then(data => {
+          const emps: EmployeeNpcDef[] = [];
+          const byOwner: Record<string, { name: string; role: string; businessName: string }[]> = data.employeesByOwner ?? {};
+          const ownerBuildings: Record<string, string[]> = {};
+          gs.current.locks.forEach((lock, bid) => {
+            const owner = lock.ownerName?.toUpperCase();
+            if (owner) {
+              if (!ownerBuildings[owner]) ownerBuildings[owner] = [];
+              ownerBuildings[owner].push(bid);
+            }
+          });
+          for (const [owner, staff] of Object.entries(byOwner)) {
+            const bids = ownerBuildings[owner.toUpperCase()] ?? [];
+            if (bids.length === 0) continue;
+            staff.forEach((e, idx) => {
+              const bid = bids[idx % bids.length];
+              const bld = BUILDINGS.find(b => b.id === bid);
+              if (bld) {
+                const offsetX = (idx % 3 - 1) * 30;
+                const offsetY = bld.h + 20 + Math.floor(idx / 3) * 25;
+                emps.push({ name: e.name.toUpperCase(), role: e.role, x: bld.x + bld.w / 2 + offsetX, y: bld.y + offsetY, businessName: e.businessName ?? '', buildingId: bid });
+              }
+            });
+          }
+          gs.current.employeeNpcs = emps;
+        })
+        .catch(() => {});
+    };
+    setTimeout(fetchEmployees, 2000);
+    const empRefreshInterval = setInterval(fetchEmployees, 60000);
+
+    return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); clearInterval(empRefreshInterval); };
   }, [char.name]);
 
   // ── Voice / WebRTC ─────────────────────────────────────────────────────────
@@ -2633,10 +2706,11 @@ export default function WorldPlay() {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
           if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
-          g.near = null; g.nearNpc = null; g.nearBillboard = null;
+          g.near = null; g.nearNpc = null; g.nearBillboard = null; g.nearEmployee = null;
           for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { g.near = b.id; break; } }
           if (!g.near) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
-          if (!g.near && g.nearNpc === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
+          if (!g.near && g.nearNpc === null) { for (let ei = 0; ei < g.employeeNpcs.length; ei++) { if (Math.hypot(g.px - g.employeeNpcs[ei].x, g.py - g.employeeNpcs[ei].y) < 40) { g.nearEmployee = ei; break; } } }
+          if (!g.near && g.nearNpc === null && g.nearEmployee === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
@@ -2646,6 +2720,18 @@ export default function WorldPlay() {
             if (bb) { setShowBillboard(bb); fetchBillboards(); }
           }
           else if (nn !== null) enterNpc(nn);
+          else if (g.nearEmployee !== null) {
+            const emp = g.employeeNpcs[g.nearEmployee];
+            if (emp) {
+              setNarr([
+                `> EMPLOYEE: ${emp.name}`,
+                `> ROLE: ${emp.role}`,
+                `> ASSIGNED TO: ${emp.businessName || 'Your Enterprise'}`,
+                `> STATUS: ON DUTY`,
+                `> "${getEmployeeDialogue(emp.role)}"`,
+              ].join('\n'));
+            }
+          }
           else if (g.nearManhole !== null && !g.inSewer && g.sewerExitTimer <= 0) {
             const fromIdx = g.nearManhole;
             let toIdx = (fromIdx + 3 + Math.floor(Math.random() * (MANHOLES.length - 3))) % MANHOLES.length;
@@ -2819,6 +2905,20 @@ export default function WorldPlay() {
       if (clickDistToPlayer < 60) {
         if (g.near) { tryEnter(g.near); return; }
         if (g.nearNpc !== null) { enterNpc(g.nearNpc); return; }
+        if (g.nearEmployee !== null) {
+          const emp = g.employeeNpcs[g.nearEmployee];
+          if (emp) {
+            const lines = [
+              `> EMPLOYEE: ${emp.name}`,
+              `> ROLE: ${emp.role}`,
+              `> ASSIGNED TO: ${emp.businessName || 'Your Enterprise'}`,
+              `> STATUS: ON DUTY`,
+              `> "${getEmployeeDialogue(emp.role)}"`,
+            ];
+            setNarr(lines.join('\n'));
+          }
+          return;
+        }
         if (g.nearBillboard) {
           const bb = BILLBOARDS.find(b => b.locationId === g.nearBillboard);
           if (bb) { setShowBillboard(bb); fetchBillboards(); return; }
@@ -4985,6 +5085,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(255,220,100,${rumorAlpha})`;
           ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(`"${rumor}"`, nx2, rumorY);
+        }
+      }
+
+      g.nearEmployee = null;
+      for (let ei = 0; ei < g.employeeNpcs.length; ei++) {
+        const emp = g.employeeNpcs[ei];
+        const ex = emp.x + ox, ey = emp.y + oy;
+        if (ex < -40 || ex > cw + 40 || ey < -40 || ey > ch + 40) continue;
+        const eDist = Math.hypot(emp.x - g.px, emp.y - g.py);
+        const isNearEmp = eDist < 40;
+        if (isNearEmp) g.nearEmployee = ei;
+        ctx.save();
+        ctx.fillStyle = '#00ccff';
+        ctx.fillRect(ex - 5, ey - 14, 10, 14);
+        ctx.fillStyle = '#00ccff';
+        ctx.fillRect(ex - 3, ey - 18, 6, 4);
+        ctx.restore();
+        ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        const empLabel = `${emp.name} [${emp.role}]`;
+        const etw = ctx.measureText(empLabel).width;
+        ctx.fillStyle = 'rgba(0,0,0,.6)';
+        ctx.beginPath();
+        ctx.roundRect(ex - etw / 2 - 4, ey - 30, etw + 8, 12, 3);
+        ctx.fill();
+        ctx.fillStyle = isNearEmp ? '#00ffff' : 'rgba(0,200,255,.6)';
+        ctx.fillText(empLabel, ex, ey - 20);
+        if (isNearEmp) {
+          ctx.fillStyle = g.blink ? 'rgba(0,200,255,.85)' : 'rgba(0,200,255,.3)';
+          ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E]', ex, ey - 36);
         }
       }
 

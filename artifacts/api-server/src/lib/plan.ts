@@ -31,6 +31,7 @@ export const PRO_FEATURES = [
   "OPTIC-9 RETINAL SCANNER — Military-grade screen capture",
   "HOLO-PROJ MK.II — Corporate briefing projector",
   "RECALL-6 FACIAL REGISTRY — Identity database implant",
+  "RECRUIT-8 FIELD OPS — Tactical personnel acquisition",
   "COMMAND DECK v4.0 — Mobile command station",
 ];
 

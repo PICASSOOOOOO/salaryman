@@ -11,6 +11,7 @@ import stripeRouter from "./stripe";
 import worldRouter from "./world";
 import salarymanSavesRouter from "./salaryman-saves";
 import billboardRouter from "./billboards";
+import hiringRouter from "./hiring";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(stripeRouter);
 router.use(worldRouter);
 router.use(salarymanSavesRouter);
 router.use(billboardRouter);
+router.use(hiringRouter);
 
 export default router;
