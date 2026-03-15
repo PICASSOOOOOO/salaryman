@@ -67,9 +67,9 @@ function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
   const [tick, setTick] = useState(0);
   useEffect(()=>{ const t=setInterval(()=>setTick(n=>n+1),600); return()=>clearInterval(t); },[]);
   const CLASSES: { id:CharClass; label:string; desc:string; sx:number; sy:number; salary:number }[] = [
-    { id:'corporate', label:'CORPORATE', desc:'City dweller. Modest salary. Well connected.', sx:6800, sy:5900, salary:200 },
-    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. Broke. Hunted.',      sx:5600, sy:6200, salary:0   },
-    { id:'replicant', label:'REPLICANT', desc:'Android. Balanced. Trusted by nobody.',      sx:6800, sy:5900, salary:50  },
+    { id:'corporate', label:'CORPORATE', desc:'City dweller. Modest salary. Well connected.', sx:6800, sy:5900, salary:25000 },
+    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. Broke. Hunted.',      sx:5600, sy:6200, salary:10000 },
+    { id:'replicant', label:'REPLICANT', desc:'Android. Balanced. Trusted by nobody.',      sx:6800, sy:5900, salary:18000 },
   ];
   const sel = CLASSES.find(c=>c.id===cls)!;
   return (
@@ -135,7 +135,7 @@ export default function World() {
     cam: { x:0, y:0 },
     keys: new Set<string>(),
     frame: 0, blink: 0,
-    hp: 100, salary: 500,
+    hp: 100, salary: (() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; })(),
     hasDevice: false,
     invincible: 0, flash: 0,
     threats: THREATS_INIT.map(t=>({...t})),
@@ -155,7 +155,7 @@ export default function World() {
   const [msg,     setMsg]     = useState('PABLO CORP. v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
   const [near,    setNear]    = useState<string|null>(null);
   const [hp,      setHp]      = useState(100);
-  const [salary,  setSalary]  = useState(500);
+  const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; });
   const [isDead,  setIsDead]  = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showOffice,setShowOffice]=useState(false);

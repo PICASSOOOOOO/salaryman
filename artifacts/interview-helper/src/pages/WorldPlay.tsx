@@ -1506,16 +1506,15 @@ const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: n
   replicant:  { maxHp: 600, atkBonus: 18, defBonus: 6,  wasteBonus: false },
   outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10, wasteBonus: true  },
   corporate:  { maxHp: 420, atkBonus: 16, defBonus: 4,  wasteBonus: false },
-  contractor: { maxHp: 420, atkBonus: 13, defBonus: 9,  wasteBonus: false },
 };
 const CLASS_DISPLAY_NAME: Record<string, string> = {
-  corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS', contractor: 'CONTRACTOR',
+  corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS',
 };
 const FACTION_SALARY_PER_MIN: Record<string, number> = {
-  corporate: 500, replicant: 300, outlaw: 100, contractor: 200,
+  corporate: 500, replicant: 300, outlaw: 100,
 };
 const FACTION_STARTING_NET_WORTH: Record<string, number> = {
-  corporate: 25000, replicant: 18000, outlaw: 10000, contractor: 12000,
+  corporate: 25000, replicant: 18000, outlaw: 10000,
 };
 // MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
 const THREAT_ATK: Record<string, number> = {
