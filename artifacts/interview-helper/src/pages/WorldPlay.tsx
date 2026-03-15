@@ -196,6 +196,8 @@ const BUILDINGS = [
   { id: 'nexus_hub',        x: 5880, y: 5140, w: 140, h: 90, label: 'NEXUS HUB',          bright: true, doors: mkDoorS(5880,5140,140,90) },
   // ── POLICE HQ ─────────────────────────────────────────────────────────
   { id: 'police_hq',        x: 7720, y: 5140, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7720,5140,150,100) },
+  // ── MACHINE BUNKER (underground replicant spawn) ────────────────────
+  { id: 'machine_bunker',   x: 5620, y: 6870, w: 100, h: 60,  label: 'MACHINE BUNKER',    bright: false, doors: mkDoorN(5620,6870,100), radio: true },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -472,6 +474,23 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 140, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
     ],
   },
+  machine_bunker: {
+    id: 'machine_bunker', label: 'MACHINE BUNKER — SUB-LEVEL 1',
+    width: 300, height: 240,
+    wallColor: 'rgba(12,14,20,.95)', floorColor: 'rgba(4,6,10,.9)', accentColor: 'rgba(80,120,255,.25)',
+    exitX: 135, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Hydraulic hiss. Blue diode strips along the floor. The air smells of coolant and ozone.',
+    objects: [
+      { x: 20, y: 25, w: 60, h: 35, type: 'equipment', label: 'RECHARGE BAY', color: 'rgba(40,60,120,.5)' },
+      { x: 20, y: 80, w: 60, h: 35, type: 'equipment', label: 'DIAGNOSTIC RIG', color: 'rgba(40,60,120,.5)' },
+      { x: 20, y: 135, w: 60, h: 30, type: 'medical_bed', label: 'REPAIR SLAB', color: 'rgba(50,70,110,.5)' },
+      { x: 220, y: 25, w: 55, h: 40, type: 'terminal', label: 'CORE TERMINAL', color: 'rgba(0,50,120,.5)' },
+      { x: 220, y: 80, w: 55, h: 35, type: 'locker', label: 'PARTS LOCKER', color: 'rgba(40,50,70,.5)' },
+      { x: 220, y: 135, w: 55, h: 30, type: 'crate', label: 'COOLANT SUPPLY', color: 'rgba(30,50,80,.4)' },
+      { x: 120, y: 25, w: 50, h: 25, type: 'table', label: 'WORK BENCH', color: 'rgba(35,45,60,.4)' },
+      { x: 120, y: 170, w: 40, h: 25, type: 'crate', label: 'SALVAGE BIN', color: 'rgba(30,40,55,.4)' },
+    ],
+  },
 };
 
 const BUILDING_INTERIOR_MAP: Record<string, string> = {
@@ -505,6 +524,7 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   safe_house: '_office',
   vehicle_dealer: '_shop',
   plaza_market: '_shop',
+  machine_bunker: 'machine_bunker',
 };
 
 const HAS_INTERIOR = (bid: string) => bid in BUILDING_INTERIOR_MAP;
@@ -1483,19 +1503,19 @@ const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 350, VOID_RUNNERS: 
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 8, wasteBonus: false },
-  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10,  wasteBonus: true  },
-  corporate:  { maxHp: 350, atkBonus: 8,  defBonus: 5,  wasteBonus: false },
-  contractor: { maxHp: 340, atkBonus: 7,  defBonus: 3,  wasteBonus: false },
+  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 6,  wasteBonus: false },
+  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10, wasteBonus: true  },
+  corporate:  { maxHp: 420, atkBonus: 16, defBonus: 4,  wasteBonus: false },
+  contractor: { maxHp: 420, atkBonus: 13, defBonus: 9,  wasteBonus: false },
 };
 const CLASS_DISPLAY_NAME: Record<string, string> = {
   corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS', contractor: 'CONTRACTOR',
 };
 const FACTION_SALARY_PER_MIN: Record<string, number> = {
-  corporate: 500, replicant: 300, outlaw: 100,
+  corporate: 500, replicant: 300, outlaw: 100, contractor: 200,
 };
 const FACTION_STARTING_NET_WORTH: Record<string, number> = {
-  corporate: 25000, replicant: 18000, outlaw: 10000,
+  corporate: 25000, replicant: 18000, outlaw: 10000, contractor: 12000,
 };
 // MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
 const THREAT_ATK: Record<string, number> = {
@@ -1903,6 +1923,14 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 4, name: 'ROOF TERRACE',    desc: 'Open air. Floor 62 is visible. Some nights it is lit. Most nights it is not. The bartender says it is random. The regulars say it is not.' },
     ],
   },
+  machine_bunker: {
+    label: 'MACHINE BUNKER', history: 'Sub-surface facility predating PABLO CORP. Originally a municipal maintenance vault for the city\'s automated systems. Converted to a replicant staging bay in \'89 after the first wave of units arrived. Access is through a reinforced hatch on the surface — the bunker hill. Nobody above ground knows how deep it goes.',
+    floors: [
+      { floor: -1, name: 'ENTRY SHAFT',        desc: 'Reinforced hatch leads to a steep descent. The walls are raw concrete scored with machine tracks. Emergency lighting only. The door seals behind you.' },
+      { floor: -2, name: 'MAINTENANCE BAY',     desc: 'Recharge slabs and diagnostic rigs. Coolant lines run through the ceiling. Three units were serviced here last week. The logs have been wiped.' },
+      { floor: -3, name: 'DEEP STORAGE',        desc: 'Rows of deactivated chassis. Some are old models. Some are not. A terminal flickers with a single prompt: AWAITING DIRECTIVE. It has been awaiting for six years.' },
+    ],
+  },
   dojo: {
     label: 'IRON DOJO', history: 'Founded pre-collapse by a fighter who refused to leave when everything else closed. Now the only neutral ground between the city factions. Both sides train here. Nobody fights inside.',
     floors: [
@@ -1968,6 +1996,10 @@ const CAMPSITE_IDS = ['ashfield_hostel', 'deep_camp', 'outpost_alpha'];
 const UNEMPLOYED_SPAWN_BUILDINGS = [...SHELTER_BUILDINGS, ...CAMPSITE_IDS];
 
 function getHamletSpawn(char: Char): { x: number; y: number; buildingId: string } {
+  if (char.class?.toLowerCase() === 'replicant') {
+    const b = BUILDINGS.find(bb => bb.id === 'machine_bunker')!;
+    return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: 'machine_bunker' };
+  }
   if (char.bizType === 'unemployed' || !char.hasBusiness) {
     const bid = UNEMPLOYED_SPAWN_BUILDINGS[Math.floor(Math.random() * UNEMPLOYED_SPAWN_BUILDINGS.length)];
     const b = BUILDINGS.find(bb => bb.id === bid)!;
@@ -2760,6 +2792,12 @@ export default function WorldPlay() {
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
+    }
+    else if (bid === 'machine_bunker') {
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.machine_bunker, selectedFloor: 0 });
+      g.hp = Math.min(g.maxHp, g.hp + 40); g.energy = Math.min(100, g.energy + 25);
+      setHp(g.hp); setEnergy(g.energy); sfxHeal();
+      setNarr('> MACHINE BUNKER — A reinforced hatch in the hillside. Stairs descend into blue-lit corridors. The air hums with capacitor discharge. Recharge bays line the walls. HP +40. Energy +25.');
     }
     else if (['sub_west','sub_central','sub_east','sub_north'].includes(bid)) {
       sfxEnter();
