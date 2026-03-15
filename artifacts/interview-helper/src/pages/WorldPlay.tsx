@@ -713,7 +713,7 @@ function getEmployeeDialogue(role: string): string {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
-interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; }
+interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; schedule?: NpcScheduleDef; _idx?: number; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
   { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
@@ -1087,12 +1087,247 @@ const NPCS: NpcDef[] = [
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
-function getNpcPhase(worldTime: number): 'home' | 'commute_work' | 'work' | 'commute_home' {
-  const hour = worldTime % 24;
-  if (hour < 6 || hour >= 20) return 'home';
-  if (hour < 8) return 'commute_work';
-  if (hour < 18) return 'work';
-  return 'commute_home';
+type NpcPhase = 'home' | 'commute_work' | 'work' | 'commute_home' | 'wander';
+
+function hashNpcSeed(name: string, idx: number, gender: string): number {
+  let h = idx * 31;
+  for (let i = 0; i < name.length; i++) { h = ((h << 5) - h + name.charCodeAt(i)) | 0; }
+  h = ((h << 5) - h + gender.charCodeAt(0)) | 0;
+  return Math.abs(h);
+}
+
+const RESIDENTIAL_BUILDINGS = ['minx_arms', 'eastside_flat', 'hotel', 'overlook', 'safe_house', 'bunker', 'north_bunker'];
+const CORP_WORKPLACES = ['pablo_tower', 'megabank', 'data_vault', 'admin_bureau', 'nexus_hub'];
+const INDUSTRIAL_WORKPLACES = ['scrap', 'print_shop', 'clinic', 'depot_south', 'machine_bunker'];
+const COMMERCIAL_WORKPLACES = ['market', 'arcade', 'noodle_bar', 'pawn_shop', 'food_court', 'plaza_market', 'nightclub'];
+const MILITARY_WORKPLACES = ['pablo_tower', 'checkpoint_w', 'checkpoint_c', 'checkpoint_e', 'armory', 'police_hq'];
+const WASTELAND_HOMES = ['outpost_alpha', 'rust_porch', 'eastern_gate', 'outpost_beta', 'ashfield_hostel', 'terminus', 'bastion_keep', 'deep_bunker', 'deep_camp', 'supply_cache', 'ruins_alpha'];
+const WASTELAND_WORKPLACES = ['outpost_alpha', 'rust_porch', 'eastern_gate', 'outpost_beta', 'waste_exchange', 'bastion_keep', 'southern_hub'];
+
+function assignProceduralHomeAndWork(n: NpcDef, idx: number): void {
+  const seed = hashNpcSeed(n.name, idx, n.gender);
+  n._idx = idx;
+
+  if (n.home && n.workplace && BUILDINGS.find(b => b.id === n.home) && BUILDINGS.find(b => b.id === n.workplace)) return;
+
+  const isWasteland = n.x < 5400 || n.x > 9000 || n.y < 5100 || n.y > 7500;
+  const homePool = isWasteland ? WASTELAND_HOMES : RESIDENTIAL_BUILDINGS;
+  const workPool = n.type === 'corp' || n.role === 'corpo_worker' ? CORP_WORKPLACES
+    : n.role === 'police' || n.role === 'corpo_military' ? MILITARY_WORKPLACES
+    : n.role === 'dealer_papers' || n.role === 'dealer_weapons' ? COMMERCIAL_WORKPLACES
+    : isWasteland ? WASTELAND_WORKPLACES
+    : [...INDUSTRIAL_WORKPLACES, ...COMMERCIAL_WORKPLACES];
+
+  if (!n.home || !BUILDINGS.find(b => b.id === n.home)) {
+    n.home = homePool[seed % homePool.length];
+  }
+  if (!n.workplace || !BUILDINGS.find(b => b.id === n.workplace)) {
+    n.workplace = workPool[(seed >> 4) % workPool.length];
+  }
+}
+
+for (let i = 0; i < NPCS.length; i++) {
+  assignProceduralHomeAndWork(NPCS[i], i);
+}
+
+function initNpcSchedules(): void {
+  for (const n of NPCS) {
+    n.schedule = getNpcScheduleDef(n);
+  }
+}
+initNpcSchedules();
+
+interface NpcScheduleDef {
+  wakeHour: number;
+  workStart: number;
+  workEnd: number;
+  sleepHour: number;
+  isNocturnal: boolean;
+  isWanderer: boolean;
+  isErratic: boolean;
+}
+
+function getNpcScheduleDef(n: NpcDef): NpcScheduleDef {
+  const seed = hashNpcSeed(n.name, n._idx ?? 0, n.gender);
+  const jitter = (seed % 10) / 10;
+
+  if (n.role === 'gang_patrol') {
+    return { wakeHour: 0, workStart: 0, workEnd: 24, sleepHour: 24, isNocturnal: false, isWanderer: false, isErratic: false };
+  }
+
+  if (n.job === 'Unemployed' || n.job === 'Unemployed Drifter' || n.job === 'Vagrant' || n.role === 'homeless' || n.job === 'Gossip') {
+    return { wakeHour: 7 + jitter * 3, workStart: 0, workEnd: 0, sleepHour: 21 + jitter * 2, isNocturnal: false, isWanderer: true, isErratic: false };
+  }
+
+  if (n.role === 'dealer_papers' || n.role === 'dealer_weapons' || n.job === 'Arms Dealer') {
+    return { wakeHour: 16 + jitter * 2, workStart: 19, workEnd: 3, sleepHour: 5, isNocturnal: true, isWanderer: false, isErratic: false };
+  }
+
+  if (n.type === 'mutant') {
+    const wk = 10 + Math.floor(seed % 8);
+    return { wakeHour: wk - 2, workStart: wk, workEnd: wk + 4 + (seed % 3), sleepHour: wk + 8, isNocturnal: false, isWanderer: false, isErratic: true };
+  }
+
+  if (n.role === 'blade_runner') {
+    return { wakeHour: 14 + jitter, workStart: 16, workEnd: 2, sleepHour: 4, isNocturnal: true, isWanderer: false, isErratic: false };
+  }
+
+  if (n.role === 'police') {
+    const shift = seed % 3;
+    if (shift === 0) return { wakeHour: 5, workStart: 6, workEnd: 14, sleepHour: 16, isNocturnal: false, isWanderer: false, isErratic: false };
+    if (shift === 1) return { wakeHour: 13, workStart: 14, workEnd: 22, sleepHour: 0, isNocturnal: false, isWanderer: false, isErratic: false };
+    return { wakeHour: 21, workStart: 22, workEnd: 6, sleepHour: 8, isNocturnal: true, isWanderer: false, isErratic: false };
+  }
+
+  if (n.role === 'corpo_military') {
+    return { wakeHour: 4 + jitter, workStart: 5, workEnd: 17, sleepHour: 19, isNocturnal: false, isWanderer: false, isErratic: false };
+  }
+
+  if (n.type === 'corp' || n.role === 'corpo_worker') {
+    return { wakeHour: 7 + jitter * 0.5, workStart: 9, workEnd: 17, sleepHour: 22 + jitter * 0.5, isNocturnal: false, isWanderer: false, isErratic: false };
+  }
+
+  if (n.job === 'Night Porter' || n.job === 'Night Patrol Officer') {
+    return { wakeHour: 18, workStart: 20, workEnd: 4, sleepHour: 6, isNocturnal: true, isWanderer: false, isErratic: false };
+  }
+
+  const wakeBase = 5.5 + jitter * 2;
+  const workStartBase = wakeBase + 1.5 + jitter * 0.5;
+  const workEndBase = workStartBase + 7 + jitter * 2;
+  const sleepBase = workEndBase + 2 + jitter;
+  return { wakeHour: wakeBase, workStart: workStartBase, workEnd: Math.min(workEndBase, 22), sleepHour: Math.min(sleepBase, 23.5), isNocturnal: false, isWanderer: false, isErratic: false };
+}
+
+function getCachedSchedule(n: NpcDef): NpcScheduleDef {
+  if (n.schedule) return n.schedule;
+  n.schedule = getNpcScheduleDef(n);
+  return n.schedule;
+}
+
+function normalizeHour(h: number): number { return ((h % 24) + 24) % 24; }
+
+function hourInRange(hour: number, start: number, end: number): boolean {
+  const h = normalizeHour(hour);
+  const s = normalizeHour(start);
+  const e = normalizeHour(end);
+  if (s <= e) return h >= s && h < e;
+  return h >= s || h < e;
+}
+
+function getNpcPhaseForNpc(n: NpcDef, worldTime: number): NpcPhase {
+  const sched = getCachedSchedule(n);
+  if (sched.isWanderer) {
+    const hour = normalizeHour(worldTime);
+    if (hourInRange(hour, sched.sleepHour, sched.wakeHour)) return 'home';
+    return 'wander';
+  }
+  if (n.role === 'gang_patrol') return 'work';
+
+  const hour = normalizeHour(worldTime);
+  const commuteWorkStart = sched.wakeHour;
+  const commuteWorkEnd = sched.workStart;
+  const commuteHomeStart = sched.workEnd;
+  const commuteHomeEnd = sched.isNocturnal ? normalizeHour(sched.workEnd + 2) : Math.min(sched.sleepHour, normalizeHour(sched.workEnd + 2));
+
+  if (hourInRange(hour, commuteWorkStart, commuteWorkEnd)) return 'commute_work';
+  if (hourInRange(hour, sched.workStart, sched.workEnd)) return 'work';
+  if (hourInRange(hour, commuteHomeStart, commuteHomeEnd)) return 'commute_home';
+  return 'home';
+}
+
+const NPC_CONTEXTUAL_DIALOGUE: Record<string, { work: string[]; commute: string[]; home: string[]; wander: string[] }> = {
+  corp: {
+    work: ["Can't talk, I'm on the clock.", "Quarterly reports due. Not now.", "PABLO Corp. never sleeps and neither do I.", "Another meeting in five. Make it quick.", "The numbers don't add up. They never do."],
+    commute: ["Morning commute. Same route. Same dread.", "Running late. Move.", "Just clocking off. Long day.", "The metro was packed. As always.", "Heading in. Another day in the machine."],
+    home: ["Finally home. Door locked. World out.", "Too tired to think. Tomorrow it starts again.", "Home is the only place the cameras can't reach. Probably.", "Shoes off. Lights dim. Done for the day."],
+    wander: ["Just passing through."],
+  },
+  police: {
+    work: ["On patrol. Keep moving, citizen.", "This sector is under watch.", "Active duty. State your business.", "Eyes on the street. Always.", "Shift's not over yet. Move along."],
+    commute: ["Heading to the precinct. No trouble.", "Shift change. Watch yourself.", "Walking the beat home. Long night.", "Another shift starts. PABLO's orders."],
+    home: ["Off duty. Don't push it.", "Even cops need sleep.", "Badge is off. The paranoia isn't."],
+    wander: ["Move along."],
+  },
+  military: {
+    work: ["Restricted zone. Move along.", "Perimeter secure. For now.", "PABLO Corp. military. Stand down.", "On watch. No unauthorized personnel."],
+    commute: ["Deploying to position.", "Rotation complete. Heading back.", "En route to station."],
+    home: ["Off rotation. Do not engage.", "Resting between deployments."],
+    wander: ["Patrol sweep."],
+  },
+  dealer: {
+    work: ["You buying or browsing?", "Got the good stuff tonight.", "FIAT only. No credit.", "Keep your voice down. Business is open.", "Night shift. Best inventory."],
+    commute: ["Setting up shop.", "Packing up. Come back tonight.", "Heading to the spot."],
+    home: ["Shop's closed. Come back after dark.", "I don't do daytime. Too many cameras.", "Sleeping. Go away."],
+    wander: ["Just walking."],
+  },
+  mutant: {
+    work: ["The signal is strong today.", "I see things others cannot.", "My kind work when the frequency allows.", "The chemicals changed my clock. I work when I can."],
+    commute: ["Moving. Don't stare.", "Going where the signal pulls me.", "The frequency shifted. Time to relocate."],
+    home: ["Resting. The visions come anyway.", "Home is wherever the static is quiet.", "Leave me. The signal is fading."],
+    wander: ["Wandering. Following the signal.", "The air tastes different at this hour.", "No direction. Just movement."],
+  },
+  android: {
+    work: ["Currently processing. Query later.", "Task execution in progress.", "Assigned function: active.", "Operating parameters nominal."],
+    commute: ["In transit to designated station.", "Routing to home coordinates.", "Commute cycle active."],
+    home: ["Entering low-power mode.", "Standby cycle initiated.", "Charging. Do not interrupt."],
+    wander: ["Diagnostic walk in progress."],
+  },
+  blade_runner: {
+    work: ["Hunting. Stay out of my way.", "On assignment. Don't interfere.", "I can tell what you are by how you blink.", "Working a case. No distractions."],
+    commute: ["Heading to the hunting ground.", "Case closed. Heading back.", "Shift starts at sundown."],
+    home: ["Off the clock. Barely.", "Even hunters rest.", "Not hunting right now. Don't give me a reason."],
+    wander: ["Observing."],
+  },
+  wanderer: {
+    work: ["Nothing to do. Nowhere to go.", "Just existing. That's the whole job.", "Standing here because there's nowhere else."],
+    commute: ["Drifting.", "Walking. Not going anywhere."],
+    home: ["This counts as home, I guess.", "Roof over my head. Barely."],
+    wander: ["Wandering. Same as always.", "No purpose. No direction.", "Used to have somewhere to be.", "Just walking. Don't ask where.", "Another day. Another corner."],
+  },
+  default: {
+    work: ["Working. Come back later.", "Busy right now.", "On the job. Can't chat.", "Shift's not over."],
+    commute: ["Heading to work.", "Walking home.", "On the move."],
+    home: ["Home for the night.", "Door's closed.", "Resting up."],
+    wander: ["Just passing through."],
+  },
+};
+
+function getNpcDialogueArchetype(n: NpcDef): string {
+  if (n.role === 'blade_runner') return 'blade_runner';
+  if (n.role === 'police') return 'police';
+  if (n.role === 'corpo_military') return 'military';
+  if (n.role === 'dealer_papers' || n.role === 'dealer_weapons') return 'dealer';
+  if (n.job === 'Unemployed' || n.job === 'Unemployed Drifter' || n.job === 'Vagrant' || n.role === 'homeless' || n.job === 'Gossip') return 'wanderer';
+  if (n.type === 'mutant') return 'mutant';
+  if (n.type === 'android') return 'android';
+  if (n.type === 'corp' || n.role === 'corpo_worker') return 'corp';
+  return 'default';
+}
+
+function getNpcContextualWhisper(n: NpcDef, worldTime: number): string {
+  const phase = getNpcPhaseForNpc(n, worldTime);
+  const archetype = getNpcDialogueArchetype(n);
+  const pool = NPC_CONTEXTUAL_DIALOGUE[archetype] ?? NPC_CONTEXTUAL_DIALOGUE['default'];
+  const seed = hashNpcSeed(n.name, n._idx ?? 0, n.gender);
+  const hourSeed = Math.floor(worldTime / 2);
+
+  if (phase === 'home') {
+    const lines = [n.whisper, ...pool.home];
+    return lines[(seed + hourSeed) % lines.length];
+  }
+  if (phase === 'work') {
+    const lines = pool.work;
+    return lines[(seed + hourSeed) % lines.length];
+  }
+  if (phase === 'commute_work' || phase === 'commute_home') {
+    const lines = pool.commute;
+    return lines[(seed + hourSeed) % lines.length];
+  }
+  if (phase === 'wander') {
+    const lines = [n.whisper, ...pool.wander];
+    return lines[(seed + hourSeed) % lines.length];
+  }
+  return n.whisper;
 }
 const STREET_XS = [5500, 5700, 6200, 6700, 7200, 7700, 8200, 8700, 9000];
 const STREET_YS = [5200, 5400, 5850, 6300, 6750, 7200, 7500];
@@ -1110,7 +1345,8 @@ function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: n
   ];
 }
 function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number } {
-  const phase = getNpcPhase(worldTime);
+  const phase = getNpcPhaseForNpc(n, worldTime);
+  const sched = getCachedSchedule(n);
   const homeB = BUILDINGS.find(b => b.id === n.home);
   const workB = BUILDINGS.find(b => b.id === n.workplace);
   const hx = homeB ? homeB.x + homeB.w / 2 : n.x;
@@ -1119,8 +1355,37 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
   const wy = workB ? workB.y + workB.h / 2 : n.y;
   if (phase === 'home') return { x: hx, y: hy };
   if (phase === 'work') return { x: wx, y: wy };
-  const hour = worldTime % 24;
-  const t = phase === 'commute_work' ? (hour - 6) / 2 : (hour - 18) / 2;
+
+  if (phase === 'wander') {
+    const seed = hashNpcSeed(n.name, n._idx ?? 0, n.gender);
+    const wanderRadius = 200;
+    const timeScale = worldTime * 0.3 + seed;
+    const wx2 = hx + Math.sin(timeScale) * wanderRadius * ((seed % 7 + 3) / 10);
+    const wy2 = hy + Math.cos(timeScale * 0.7 + seed) * wanderRadius * ((seed % 5 + 3) / 8);
+    return { x: wx2, y: wy2 };
+  }
+
+  if (sched.isErratic) {
+    const seed = hashNpcSeed(n.name, n._idx ?? 0, n.gender);
+    const erraticT = worldTime * 0.5 + seed;
+    const burstActive = Math.sin(erraticT * 0.7) > 0.2;
+    if (!burstActive) return { x: hx, y: hy };
+    const midX = (hx + wx) / 2 + Math.sin(erraticT * 1.3) * 150 * ((seed % 5 + 1) / 5);
+    const midY = (hy + wy) / 2 + Math.cos(erraticT * 0.9 + seed) * 150 * ((seed % 3 + 1) / 4);
+    return { x: midX, y: midY };
+  }
+
+  const hour = normalizeHour(worldTime);
+  const commuteDuration = ((sched.workStart - sched.wakeHour) + 24) % 24 || 2;
+  const commuteHomeDuration = Math.min(2, ((sched.sleepHour - sched.workEnd) + 24) % 24 || 2);
+  let t: number;
+  if (phase === 'commute_work') {
+    const elapsed = ((hour - sched.wakeHour) + 24) % 24;
+    t = commuteDuration > 0 ? elapsed / commuteDuration : 1;
+  } else {
+    const elapsed = ((hour - sched.workEnd) + 24) % 24;
+    t = commuteHomeDuration > 0 ? elapsed / commuteHomeDuration : 1;
+  }
   const ct = Math.max(0, Math.min(1, t));
   const walkSpeedMult = n.walkSpeed ?? (n.role === 'police' ? 0.6 : 1.0);
   const adjT = Math.max(0, Math.min(1, ct * walkSpeedMult));
@@ -3012,17 +3277,18 @@ export default function WorldPlay() {
   const enterNpc = useCallback((idx: number) => {
     const n = NPCS[idx];
     sfxTalk();
+    const contextWhisper = getNpcContextualWhisper(n, gs.current.worldTime ?? 0);
     if (n.role === 'dealer_papers') {
       setShowMerchant({ name: n.name, items: MERCHANT_SENNA });
       frozenRef.current = true;
-      setNarr(`> ${n.name} — "${n.whisper}" [ESC] to close.`);
+      setNarr(`> ${n.name} — "${contextWhisper}" [ESC] to close.`);
       return;
     }
     if (n.role === 'dealer_weapons') {
       const items = n.name === 'MARSH KETTER' ? MERCHANT_MARSH : MERCHANT_ROOK;
       setShowMerchant({ name: n.name, items });
       frozenRef.current = true;
-      setNarr(`> ${n.name} — "${n.whisper}" [ESC] to close.`);
+      setNarr(`> ${n.name} — "${contextWhisper}" [ESC] to close.`);
       return;
     }
     const storyDlg = Object.values(STORY_DIALOGUES).find(d => d.npcName === n.name);
@@ -3042,7 +3308,7 @@ export default function WorldPlay() {
         return;
       }
     }
-    const lines = [`> ${n.name.toUpperCase()} — ${n.job}${n.voiceActor ? ' [Voice Actor]' : ''}`, `"${n.whisper}"`];
+    const lines = [`> ${n.name.toUpperCase()} — ${n.job}${n.voiceActor ? ' [Voice Actor]' : ''}`, `"${contextWhisper}"`];
     if (n.backstory) lines.push(`[${n.backstory}]`);
     if (n.voiceActor && n.voiceLines && n.voiceLines.length > 0) {
       const vl = n.voiceLines[Math.floor(Math.random() * n.voiceLines.length)];
@@ -6171,11 +6437,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // NPCs — pixel sprite bodies (schedule-aware positions)
+      const worldTimeFine = ((g.worldTime ?? 0) + (g.worldTimeTick / 60) * 0.1) % 24;
       for (let ni = 0; ni < NPCS.length; ni++) {
         const n = NPCS[ni];
         const isFleeing = n.reactState === 'FLEEING';
         const isSpectating = n.reactState === 'SPECTATING';
-        const sPos = (isFleeing || isSpectating) ? { x: n.x, y: n.y } : getNpcSchedulePos(n, g.worldTime ?? 0);
+        const sPos = (isFleeing || isSpectating) ? { x: n.x, y: n.y } : getNpcSchedulePos(n, worldTimeFine);
         const nx2 = sPos.x + ox, ny2 = sPos.y + oy;
         if (nx2 < -14 || nx2 > cw + 14 || ny2 < -14 || ny2 > ch + 14) continue;
         const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
@@ -6277,8 +6544,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (gossip) {
               startTypewriter(gossip, ni, g.frame);
             } else {
-              const rumorIdx = (ni * 7 + Math.floor(g.frame / 300)) % RUMORS.length;
-              startTypewriter(RUMORS[rumorIdx], ni, g.frame);
+              const ctxWhisper = getNpcContextualWhisper(n, g.worldTime ?? 0);
+              startTypewriter(ctxWhisper, ni, g.frame);
             }
           }
         }
