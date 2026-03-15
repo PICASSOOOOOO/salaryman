@@ -17,6 +17,7 @@ import { RadioPlayer, RadioHud, useRadio } from '../RadioPlayer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
 import { PABLO_PRODUCTS } from '../lib/product-names';
+import { usePlan } from '../hooks/use-plan';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
   initCalendar, tickCalendar, getCalendarString, getDayNightAlpha,
@@ -194,6 +195,13 @@ const BUILDINGS = [
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   // ── GOLD EXCHANGE ──────────────────────────────────────────────────────────
   { id: 'gold_exchange',  x: 6100, y: 6800, w: 120, h: 80,  label: 'GOLD EXCHANGE',    bright: true,  doors: mkDoorS(6100,6800,120,80) },
+  // ── ADMIN BUILDINGS (business registration) ─────────────────────────────────
+  { id: 'admin_bureau',   x: 8220, y: 6120, w: 130, h: 90,  label: 'CITY ADMIN BUREAU',  bright: true,  doors: mkDoorS(8220,6120,130,90) },
+  // ── REAL ESTATE & RECRUITMENT ───────────────────────────────────────────
+  { id: 'realestate_office', x: 7420, y: 6320, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(7420,6320,130,80) },
+  { id: 'recruit_office',   x: 5880, y: 5140, w: 130, h: 80, label: 'RECRUITMENT OFFICE', bright: true, doors: mkDoorS(5880,5140,130,80) },
+  // ── POLICE HQ ─────────────────────────────────────────────────────────
+  { id: 'police_hq',        x: 7720, y: 5140, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7720,5140,150,100) },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -201,7 +209,7 @@ const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).m
 // ── Interior System ──────────────────────────────────────────────────────────
 interface InteriorObject {
   x: number; y: number; w: number; h: number;
-  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant';
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait';
   label?: string;
   color?: string;
 }
@@ -310,6 +318,196 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 120, y: 140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
     ],
   },
+  admin_bureau: {
+    id: 'admin_bureau', label: 'CITY ADMIN BUREAU — REGISTRATION HALL',
+    width: 380, height: 280,
+    wallColor: 'rgba(18,20,28,.95)', floorColor: 'rgba(6,8,14,.9)', accentColor: 'rgba(255,200,60,.25)',
+    exitX: 175, exitY: 265, exitW: 30, exitH: 15,
+    ambientText: 'Bureaucrats shuffle papers. The queue never ends.',
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(70,65,40,.5)' },
+      { x: 20, y: 65, w: 55, h: 30, type: 'desk', label: 'CLERK STATION A', color: 'rgba(55,55,45,.5)' },
+      { x: 20, y: 110, w: 55, h: 30, type: 'desk', label: 'CLERK STATION B', color: 'rgba(55,55,45,.5)' },
+      { x: 100, y: 25, w: 50, h: 20, type: 'security_gate', label: 'SECURITY CHECK', color: 'rgba(80,60,30,.4)' },
+      { x: 290, y: 25, w: 65, h: 35, type: 'terminal', label: 'REGISTRATION KIOSK', color: 'rgba(0,80,50,.4)' },
+      { x: 290, y: 75, w: 65, h: 30, type: 'filing_cabinet', label: 'RECORDS', color: 'rgba(50,55,50,.5)' },
+      { x: 290, y: 120, w: 65, h: 30, type: 'filing_cabinet', label: 'ARCHIVES', color: 'rgba(50,55,50,.5)' },
+      { x: 170, y: 65, w: 60, h: 25, type: 'couch', label: 'WAITING AREA', color: 'rgba(50,45,30,.4)' },
+      { x: 170, y: 100, w: 40, h: 20, type: 'table', label: 'FORMS TABLE', color: 'rgba(55,50,40,.4)' },
+      { x: 20, y: 170, w: 45, h: 40, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,80,40,.4)' },
+      { x: 290, y: 170, w: 30, h: 30, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+      { x: 170, y: 220, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 110, y: 25, w: 40, h: 65, type: 'flag', label: 'CITY FLAG', color: 'rgba(80,60,20,.3)' },
+    ],
+  },
+  police_hq: {
+    id: 'police_hq', label: 'POLICE HEADQUARTERS — PRECINCT 1',
+    width: 400, height: 300,
+    wallColor: 'rgba(15,18,25,.95)', floorColor: 'rgba(5,8,14,.9)', accentColor: 'rgba(100,150,255,.25)',
+    exitX: 185, exitY: 285, exitW: 30, exitH: 15,
+    ambientText: 'Radios crackle. Wanted posters line the walls. Coffee is always old.',
+    objects: [
+      { x: 20, y: 25, w: 75, h: 28, type: 'reception', label: 'INTAKE DESK', color: 'rgba(50,55,80,.5)' },
+      { x: 20, y: 70, w: 55, h: 28, type: 'desk', label: 'OFFICER DESK 1', color: 'rgba(45,50,70,.5)' },
+      { x: 20, y: 115, w: 55, h: 28, type: 'desk', label: 'OFFICER DESK 2', color: 'rgba(45,50,70,.5)' },
+      { x: 20, y: 160, w: 55, h: 28, type: 'desk', label: 'DETECTIVE DESK', color: 'rgba(45,50,70,.5)' },
+      { x: 110, y: 25, w: 50, h: 20, type: 'security_gate', label: 'METAL DETECTOR', color: 'rgba(80,80,100,.4)' },
+      { x: 300, y: 25, w: 75, h: 35, type: 'terminal', label: 'DISPATCH TERMINAL', color: 'rgba(0,50,100,.4)' },
+      { x: 300, y: 75, w: 75, h: 30, type: 'tv_screen', label: 'SURVEILLANCE FEED', color: 'rgba(0,40,80,.4)' },
+      { x: 300, y: 120, w: 75, h: 30, type: 'locker', label: 'EVIDENCE LOCKER', color: 'rgba(50,50,65,.5)' },
+      { x: 300, y: 165, w: 75, h: 30, type: 'locker', label: 'ARMORY CAGE', color: 'rgba(60,50,50,.5)' },
+      { x: 170, y: 70, w: 60, h: 25, type: 'whiteboard', label: 'CASE BOARD', color: 'rgba(80,80,90,.4)' },
+      { x: 170, y: 110, w: 50, h: 30, type: 'table', label: 'BRIEFING TABLE', color: 'rgba(45,50,60,.4)' },
+      { x: 20, y: 220, w: 45, h: 35, type: 'vending_machine', label: 'COFFEE MACHINE', color: 'rgba(60,40,20,.4)' },
+      { x: 100, y: 220, w: 60, h: 28, type: 'couch', label: 'WAITING BENCH', color: 'rgba(40,40,55,.4)' },
+      { x: 300, y: 220, w: 30, h: 25, type: 'photocopier', label: 'COPIER', color: 'rgba(50,55,60,.4)' },
+    ],
+  },
+  realestate_office: {
+    id: 'realestate_office', label: 'MINX CITY REAL ESTATE — LISTINGS FLOOR',
+    width: 340, height: 260,
+    wallColor: 'rgba(22,18,28,.95)', floorColor: 'rgba(10,8,16,.9)', accentColor: 'rgba(200,100,255,.25)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Property maps cover every surface. A broker adjusts her collar.',
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'AGENT DESK', color: 'rgba(80,50,90,.5)' },
+      { x: 20, y: 65, w: 50, h: 30, type: 'desk', label: 'BROKER STATION', color: 'rgba(60,45,70,.5)' },
+      { x: 260, y: 25, w: 55, h: 40, type: 'terminal', label: 'LISTINGS TERMINAL', color: 'rgba(80,0,100,.4)' },
+      { x: 260, y: 80, w: 55, h: 30, type: 'filing_cabinet', label: 'DEED RECORDS', color: 'rgba(55,45,60,.5)' },
+      { x: 260, y: 125, w: 55, h: 30, type: 'filing_cabinet', label: 'CONTRACTS', color: 'rgba(55,45,60,.5)' },
+      { x: 140, y: 25, w: 70, h: 45, type: 'whiteboard', label: 'PROPERTY MAP', color: 'rgba(90,80,100,.4)' },
+      { x: 20, y: 115, w: 60, h: 25, type: 'couch', label: 'CLIENT SEATING', color: 'rgba(60,40,60,.4)' },
+      { x: 140, y: 85, w: 50, h: 20, type: 'table', label: 'SIGNING TABLE', color: 'rgba(55,50,60,.4)' },
+      { x: 20, y: 180, w: 45, h: 35, type: 'vending_machine', label: 'REFRESHMENTS', color: 'rgba(40,60,80,.4)' },
+      { x: 260, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 140, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  recruit_office: {
+    id: 'recruit_office', label: 'RECRUITMENT OFFICE — JOB BOARD',
+    width: 340, height: 260,
+    wallColor: 'rgba(20,25,18,.95)', floorColor: 'rgba(8,12,6,.9)', accentColor: 'rgba(100,255,100,.2)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Desperate resumes pile up. The air smells like cheap cologne and ambition.',
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'INTAKE COUNTER', color: 'rgba(50,70,40,.5)' },
+      { x: 20, y: 65, w: 50, h: 28, type: 'desk', label: 'RECRUITER DESK A', color: 'rgba(45,60,40,.5)' },
+      { x: 20, y: 110, w: 50, h: 28, type: 'desk', label: 'RECRUITER DESK B', color: 'rgba(45,60,40,.5)' },
+      { x: 260, y: 25, w: 55, h: 40, type: 'terminal', label: 'JOB BOARD TERMINAL', color: 'rgba(0,80,30,.4)' },
+      { x: 260, y: 80, w: 55, h: 30, type: 'whiteboard', label: 'JOB LISTINGS', color: 'rgba(60,80,40,.4)' },
+      { x: 260, y: 125, w: 55, h: 30, type: 'filing_cabinet', label: 'APPLICATIONS', color: 'rgba(50,60,40,.5)' },
+      { x: 140, y: 25, w: 60, h: 30, type: 'couch', label: 'WAITING AREA', color: 'rgba(40,50,30,.4)' },
+      { x: 140, y: 70, w: 50, h: 20, type: 'table', label: 'INTERVIEW TABLE', color: 'rgba(45,55,40,.4)' },
+      { x: 20, y: 180, w: 45, h: 35, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,70,40,.4)' },
+      { x: 140, y: 180, w: 30, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+      { x: 260, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 100, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  gold_exchange: {
+    id: 'gold_exchange', label: 'GOLD EXCHANGE — TRADING FLOOR',
+    width: 320, height: 240,
+    wallColor: 'rgba(25,22,15,.95)', floorColor: 'rgba(12,10,6,.9)', accentColor: 'rgba(255,200,60,.3)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Gold tickers flash. The vault hum is constant.',
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'TELLER WINDOW', color: 'rgba(80,70,30,.5)' },
+      { x: 20, y: 65, w: 50, h: 30, type: 'desk', label: 'EXCHANGE DESK', color: 'rgba(70,60,25,.5)' },
+      { x: 240, y: 25, w: 55, h: 35, type: 'terminal', label: 'RATE TERMINAL', color: 'rgba(100,80,0,.4)' },
+      { x: 240, y: 75, w: 55, h: 30, type: 'tv_screen', label: 'PRICE TICKER', color: 'rgba(80,60,0,.4)' },
+      { x: 240, y: 120, w: 55, h: 40, type: 'locker', label: 'VAULT DOOR', color: 'rgba(80,70,30,.5)' },
+      { x: 120, y: 25, w: 60, h: 25, type: 'security_gate', label: 'SECURITY', color: 'rgba(80,70,20,.4)' },
+      { x: 120, y: 65, w: 50, h: 25, type: 'couch', label: 'WAITING', color: 'rgba(60,50,20,.4)' },
+      { x: 20, y: 160, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  megabank: {
+    id: 'megabank', label: 'IRON TRUST BANK — MAIN FLOOR',
+    width: 340, height: 260,
+    wallColor: 'rgba(16,18,24,.95)', floorColor: 'rgba(6,8,12,.9)', accentColor: 'rgba(180,200,255,.2)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Marble floors. Armed guards. The kind of quiet only money buys.',
+    objects: [
+      { x: 20, y: 25, w: 75, h: 28, type: 'reception', label: 'TELLER ROW', color: 'rgba(60,65,80,.5)' },
+      { x: 20, y: 70, w: 55, h: 25, type: 'desk', label: 'ACCOUNTS DESK', color: 'rgba(50,55,70,.5)' },
+      { x: 20, y: 110, w: 55, h: 25, type: 'desk', label: 'LOANS DESK', color: 'rgba(50,55,70,.5)' },
+      { x: 260, y: 25, w: 55, h: 40, type: 'terminal', label: 'ATM', color: 'rgba(0,50,100,.4)' },
+      { x: 260, y: 80, w: 55, h: 40, type: 'locker', label: 'SAFE DEPOSIT', color: 'rgba(60,60,70,.5)' },
+      { x: 260, y: 135, w: 55, h: 30, type: 'security_gate', label: 'VAULT GATE', color: 'rgba(80,80,90,.4)' },
+      { x: 140, y: 25, w: 60, h: 25, type: 'couch', label: 'VIP LOUNGE', color: 'rgba(50,45,60,.4)' },
+      { x: 140, y: 65, w: 50, h: 20, type: 'table', label: 'DOCUMENTS TABLE', color: 'rgba(45,50,60,.4)' },
+      { x: 20, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 260, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  dojo: {
+    id: 'dojo', label: 'IRON DOJO — TRAINING HALL',
+    width: 340, height: 260,
+    wallColor: 'rgba(25,18,15,.95)', floorColor: 'rgba(14,8,6,.9)', accentColor: 'rgba(255,100,60,.25)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Sweat and iron. The mats are stained. Someone is always training.',
+    objects: [
+      { x: 20, y: 25, w: 50, h: 25, type: 'reception', label: 'SIGN-IN', color: 'rgba(80,50,30,.5)' },
+      { x: 260, y: 25, w: 55, h: 40, type: 'locker', label: 'GEAR LOCKERS', color: 'rgba(60,40,30,.5)' },
+      { x: 260, y: 80, w: 55, h: 30, type: 'equipment', label: 'WEIGHTS', color: 'rgba(70,50,30,.4)' },
+      { x: 260, y: 125, w: 55, h: 30, type: 'equipment', label: 'HEAVY BAG', color: 'rgba(70,50,30,.4)' },
+      { x: 20, y: 80, w: 50, h: 30, type: 'equipment', label: 'PRACTICE DUMMIES', color: 'rgba(70,50,30,.4)' },
+      { x: 20, y: 130, w: 50, h: 30, type: 'shelf', label: 'WEAPONS RACK', color: 'rgba(60,40,25,.4)' },
+      { x: 140, y: 25, w: 70, h: 25, type: 'whiteboard', label: 'TECHNIQUE CHART', color: 'rgba(80,60,40,.4)' },
+      { x: 20, y: 200, w: 30, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+      { x: 260, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  nightclub: {
+    id: 'nightclub', label: 'CLUB NEON — MAIN FLOOR',
+    width: 320, height: 240,
+    wallColor: 'rgba(15,8,25,.95)', floorColor: 'rgba(6,3,14,.9)', accentColor: 'rgba(255,0,200,.3)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Bass thumps through the floor. Neon pink washes everything.',
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'counter', label: 'BAR', color: 'rgba(100,20,80,.5)' },
+      { x: 20, y: 65, w: 40, h: 30, type: 'couch', label: 'VIP BOOTH', color: 'rgba(80,10,60,.4)' },
+      { x: 20, y: 110, w: 40, h: 30, type: 'couch', label: 'BOOTH 2', color: 'rgba(80,10,60,.4)' },
+      { x: 240, y: 25, w: 55, h: 35, type: 'terminal', label: 'DJ BOOTH', color: 'rgba(80,0,100,.4)' },
+      { x: 240, y: 75, w: 55, h: 30, type: 'tv_screen', label: 'HOLO DISPLAY', color: 'rgba(100,0,120,.4)' },
+      { x: 140, y: 25, w: 50, h: 20, type: 'table', label: 'DANCE FLOOR', color: 'rgba(60,0,80,.3)' },
+      { x: 240, y: 160, w: 30, h: 25, type: 'vending_machine', label: 'DRINK DISPENSER', color: 'rgba(80,20,60,.4)' },
+    ],
+  },
+  armory: {
+    id: 'armory', label: 'ARMORY — WEAPONS DEPOT',
+    width: 320, height: 240,
+    wallColor: 'rgba(20,18,15,.95)', floorColor: 'rgba(10,8,6,.9)', accentColor: 'rgba(255,80,40,.25)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Gun oil and cordite. Every surface is reinforced steel.',
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'counter', label: 'SALES COUNTER', color: 'rgba(80,50,30,.5)' },
+      { x: 20, y: 65, w: 50, h: 60, type: 'shelf', label: 'RIFLES', color: 'rgba(70,40,25,.4)' },
+      { x: 240, y: 25, w: 55, h: 60, type: 'shelf', label: 'PISTOLS', color: 'rgba(70,40,25,.4)' },
+      { x: 240, y: 100, w: 55, h: 40, type: 'locker', label: 'AMMO LOCKER', color: 'rgba(60,40,25,.5)' },
+      { x: 130, y: 25, w: 60, h: 30, type: 'crate', label: 'CRATE — HEAVY ORD.', color: 'rgba(55,35,20,.4)' },
+      { x: 130, y: 70, w: 60, h: 30, type: 'crate', label: 'CRATE — EXPLOSIVES', color: 'rgba(55,35,20,.4)' },
+      { x: 20, y: 160, w: 45, h: 35, type: 'terminal', label: 'INVENTORY SYSTEM', color: 'rgba(0,60,40,.4)' },
+    ],
+  },
+  hotel: {
+    id: 'hotel', label: 'HOTEL NEON — LOBBY',
+    width: 320, height: 240,
+    wallColor: 'rgba(18,15,22,.95)', floorColor: 'rgba(8,6,12,.9)', accentColor: 'rgba(255,160,60,.25)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'The lobby is warm. Elevator music plays from a broken speaker.',
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(70,55,40,.5)' },
+      { x: 20, y: 65, w: 55, h: 30, type: 'couch', label: 'LOBBY SEATING', color: 'rgba(60,45,30,.4)' },
+      { x: 20, y: 110, w: 55, h: 30, type: 'couch', label: 'READING NOOK', color: 'rgba(60,45,30,.4)' },
+      { x: 240, y: 25, w: 55, h: 35, type: 'terminal', label: 'CHECK-IN KIOSK', color: 'rgba(0,70,50,.4)' },
+      { x: 240, y: 75, w: 55, h: 30, type: 'locker', label: 'LUGGAGE HOLD', color: 'rgba(50,40,35,.5)' },
+      { x: 140, y: 25, w: 50, h: 20, type: 'table', label: 'CONCIERGE TABLE', color: 'rgba(55,45,35,.4)' },
+      { x: 240, y: 160, w: 45, h: 35, type: 'vending_machine', label: 'SNACK MACHINE', color: 'rgba(40,60,50,.4)' },
+      { x: 20, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 140, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
 };
 
 const BUILDING_INTERIOR_MAP: Record<string, string> = {
@@ -330,6 +528,26 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   terminal_shop: '_office',
   data_vault: '_office',
   oxide_labs: '_office',
+  admin_bureau: 'admin_bureau',
+  police_hq: 'police_hq',
+  realestate_office: 'realestate_office',
+  recruit_office: 'recruit_office',
+  gold_exchange: 'gold_exchange',
+  megabank: 'megabank',
+  dojo: 'dojo',
+  nightclub: 'nightclub',
+  armory: 'armory',
+  hotel: 'hotel',
+  arcade: '_shop',
+  bunker: '_office',
+  east_bunker: '_office',
+  north_bunker: '_office',
+  pablo_tower: '_office',
+  grand_meridian: 'hotel',
+  inn_mother: 'hotel',
+  safe_house: '_office',
+  vehicle_dealer: '_shop',
+  plaza_market: '_shop',
 };
 
 const HAS_INTERIOR = (bid: string) => bid in BUILDING_INTERIOR_MAP;
@@ -403,22 +621,22 @@ type NpcIdleBehavior = 'WALKING' | 'SITTING' | 'STANDING' | 'BROWSING' | 'EATING
 
 // ── Gang territories (wasteland — north + south of city) ─────────────────────
 const GANG_ZONES_BASE = [
-  { id: 'iron_rats',    name: 'IRON RATS',    x: 200,  y: 200,  w: 4800, h:4800, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ IRON RATS TERRITORY ]' },
-  { id: 'void_dogs',    name: 'VOID DOGS',    x: 5000, y: 200,  w: 4800, h:4800, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID DOGS TERRITORY ]' },
+  { id: 'rust_syndicate',    name: 'RUST SYNDICATE',    x: 200,  y: 200,  w: 4800, h:4800, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ RUST SYNDICATE TERRITORY ]' },
+  { id: 'void_runners',    name: 'VOID RUNNERS',    x: 5000, y: 200,  w: 4800, h:4800, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID RUNNERS TERRITORY ]' },
   { id: 'static_monks', name: 'STATIC MONKS', x: 200,  y: 7600, w: 7000, h:4800, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
   { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 7200, y: 7600, w: 7000, h:4800, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
   { id: 'minx_city',    name: 'MINX CITY',    x: 200,  y: 200,  w: 14000, h:12200, color: 'rgba(180,0,255,.03)', border: 'rgba(180,0,255,.12)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY TERRITORY — DOMINANT FACTION ]' },
 ];
 let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
 const GANG_FACTION_ALLIES: Record<string, string[]> = {
-  outlaw:     ['iron_rats', 'static_monks'],
-  replicant:  ['void_dogs', 'eastern_bloc'],
+  outlaw:     ['rust_syndicate', 'static_monks'],
+  replicant:  ['void_runners', 'eastern_bloc'],
   corporate:  ['minx_city'],
 };
 const GANG_FACTION_ENEMIES: Record<string, string[]> = {
-  outlaw:     ['minx_city', 'void_dogs'],
-  replicant:  ['minx_city', 'iron_rats'],
-  corporate:  ['iron_rats', 'void_dogs', 'static_monks', 'eastern_bloc'],
+  outlaw:     ['minx_city', 'void_runners'],
+  replicant:  ['minx_city', 'rust_syndicate'],
+  corporate:  ['rust_syndicate', 'void_runners', 'static_monks', 'eastern_bloc'],
 };
 const TERRITORY_SHIFT_INTERVAL = 1800;
 let lastTerritoryShift = 0;
@@ -634,7 +852,7 @@ const NPCS: NpcDef[] = [
     backstory: 'Dren Malik cuts timber from the sparse northern wasteland forests. He runs the kitchen at the Rust Porch and feeds travelers who pass through.',
     voiceLines: ['I stayed the same. Out here that is called survival.', 'I feed whoever comes through. No questions.', 'The kitchen is the one thing the wasteland has not ruined.'] },
   { name: 'PIKE STAHL', x: 4500, y: 1800, type: 'human', gender: 'm', job: 'Salvager', home: 'outpost_alpha', workplace: 'outpost_alpha', voiceActor: true,
-    whisper: 'I lost my axe three weeks ago in the void dogs sector. I\'ve been angry about it every single day since. That\'s just who I am.',
+    whisper: 'I lost my axe three weeks ago in the void runners sector. I\'ve been angry about it every single day since. That\'s just who I am.',
     backstory: 'Pike Stahl salvages equipment from the northern ruins. He has a temper that the wasteland has not improved.',
     voiceLines: ['Lost my axe three weeks ago. Still angry about it.', 'Salvage is simple. Find things. Take things. Avoid dying.', 'The wasteland has not improved my temper.'] },
   { name: 'KAEL VERNE', x: 3800, y: 2000, type: 'human', gender: 'm', job: 'Historian', home: 'outpost_alpha', workplace: 'outpost_alpha', voiceActor: true,
@@ -929,8 +1147,8 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
 interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; }
 const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
-  IRON_RATS:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
-  VOID_DOGS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
+  RUST_SYNDICATE:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
+  VOID_RUNNERS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
   STATIC_MONKS: { day: ['WORKING','SOCIALIZING','PATROLLING'], night: ['CAMPING','SLEEPING'] },
   EASTERN_BLOC: { day: ['PATROLLING','WORKING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
   MINX_CITY:    { day: ['PATROLLING','WORKING','SOCIALIZING'], night: ['PATROLLING','CAMPING','SLEEPING'] },
@@ -955,20 +1173,20 @@ interface Projectile { x: number; y: number; dx: number; dy: number; life: numbe
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
-const THREAT_HP:  Record<string, number> = { IRON_RATS: 30, VOID_DOGS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
-const THREAT_EXP: Record<string, number> = { IRON_RATS: 20, VOID_DOGS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { IRON_RATS: 1500, VOID_DOGS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 8000, MINX_CITY: 12000, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
+const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
+const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
+const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 1500, VOID_RUNNERS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 8000, MINX_CITY: 12000, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 10, wasteBonus: false },
-  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 6,  wasteBonus: true  },
-  corporate:  { maxHp: 350, atkBonus: 3,  defBonus: 2,  wasteBonus: false },
+  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 8, wasteBonus: false },
+  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10,  wasteBonus: true  },
+  corporate:  { maxHp: 350, atkBonus: 8,  defBonus: 5,  wasteBonus: false },
   contractor: { maxHp: 340, atkBonus: 7,  defBonus: 3,  wasteBonus: false },
 };
 // MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
 const THREAT_ATK: Record<string, number> = {
-  IRON_RATS: 0.20, VOID_DOGS: 0.28, STATIC_MONKS: 0.35, MUTANT: 0.30,
+  RUST_SYNDICATE: 0.20, VOID_RUNNERS: 0.28, STATIC_MONKS: 0.35, MUTANT: 0.30,
   RAIDER: 0.40, PROWLER: 0.18, BORDER_GANG: 0.22, EASTERN_BLOC: 0.32,
   SPY: 0.15, PABLO_GUARD: 0.50, MINX_CITY: 0.90,
   VAGRANT: 0.05, STRAY_DOG: 0.08, SCAVENGER: 0.12, RAT: 0.03,
@@ -982,6 +1200,13 @@ const NPC_LOOT_TABLE = [
   { id: 'weapon_parts', name: 'WEAPON PARTS', desc: 'Weapon repair kit' },
   { id: 'ration_pack', name: 'RATION PACK', desc: 'Preserved food supply' },
   { id: 'circuit_board', name: 'CIRCUIT BOARD', desc: 'Replicant-grade components' },
+];
+const ANIMAL_TYPES = new Set(['RAT','STRAY_DOG']);
+const ANIMAL_DROPS = [
+  { name: 'RAW MEAT', desc: 'Uncooked animal meat. Cook it or trade it.' },
+  { name: 'MYSTERY JERKY', desc: 'Dried meat of questionable origin.' },
+  { name: 'ANIMAL FAT', desc: 'Useful for cooking fuel or trade.' },
+  { name: 'WILD GAME', desc: 'Fresh catch from the wasteland.' },
 ];
 const NPC_LOOT_CHANCE = 0.25;
 // Govt building IDs — spies can't enter these
@@ -1031,10 +1256,10 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'security_cam',   name: 'SECURITY CAM',     desc: 'Alerts you when threats approach your location.',     price: 12000 },
     { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ƒ500 per job cycle.',         price: 18000 },
   ]},
-  { id: 'realestate', label: 'REAL ESTATE', col: '#cc44ff', items: [
-    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ƒ2,000 passive income per cycle.',                  price: 75000  },
-    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ƒ5,000 passive income per cycle.',                  price: 180000 },
-    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ƒ15,000 passive income per cycle.',                 price: 500000 },
+  { id: 'realestate', label: 'REAL ESTATE (GOLD ONLY)', col: '#cc44ff', items: [
+    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ƒ2,000 passive income per cycle. Costs 5oz GOLD.',  price: 500000, goldPrice: 5  },
+    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ƒ5,000 passive income per cycle. Costs 10oz GOLD.', price: 1000000, goldPrice: 10  },
+    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ƒ15,000 passive income per cycle. Costs 25oz GOLD.', price: 2500000, goldPrice: 25 },
   ]},
   { id: 'pro', label: PABLO_PRODUCTS.PRO_TIER.name, col: '#ff9900', items: [
     { id: 'salaryman_pro', name: `${PABLO_PRODUCTS.PRO_TIER.name} PACKAGE`, desc: PABLO_PRODUCTS.PRO_TIER.desc, price: 0 },
@@ -1075,16 +1300,16 @@ const THREATS_INIT: Threat[] = [
   mkThreat(5800, 7400, 'BORDER_GANG'), mkThreat(6200, 7420, 'BORDER_GANG'),
   mkThreat(6600, 7400, 'BORDER_GANG'), mkThreat(7000, 7430, 'BORDER_GANG'),
   mkThreat(7600, 7400, 'BORDER_GANG'), mkThreat(8400, 7420, 'BORDER_GANG'),
-  // ── North Wasteland — IRON RATS (north-west) ──
-  mkThreat(800, 800, 'IRON_RATS'), mkThreat(1500, 1200, 'IRON_RATS'),
-  mkThreat(2200, 1800, 'IRON_RATS'), mkThreat(1000, 2500, 'IRON_RATS'),
-  mkThreat(2000, 3000, 'IRON_RATS'), mkThreat(3000, 2200, 'IRON_RATS'),
-  mkThreat(1500, 3500, 'IRON_RATS'),
-  // ── North Wasteland — VOID DOGS (north-centre) ──
-  mkThreat(5500, 1200, 'VOID_DOGS'), mkThreat(6000, 1800, 'VOID_DOGS'),
-  mkThreat(5800, 2500, 'VOID_DOGS'), mkThreat(6500, 3000, 'VOID_DOGS'),
-  mkThreat(7000, 1500, 'VOID_DOGS'), mkThreat(7500, 2200, 'VOID_DOGS'),
-  mkThreat(5200, 3500, 'VOID_DOGS'),
+  // ── North Wasteland — RUST SYNDICATE (north-west) ──
+  mkThreat(800, 800, 'RUST_SYNDICATE'), mkThreat(1500, 1200, 'RUST_SYNDICATE'),
+  mkThreat(2200, 1800, 'RUST_SYNDICATE'), mkThreat(1000, 2500, 'RUST_SYNDICATE'),
+  mkThreat(2000, 3000, 'RUST_SYNDICATE'), mkThreat(3000, 2200, 'RUST_SYNDICATE'),
+  mkThreat(1500, 3500, 'RUST_SYNDICATE'),
+  // ── North Wasteland — VOID RUNNERS (north-centre) ──
+  mkThreat(5500, 1200, 'VOID_RUNNERS'), mkThreat(6000, 1800, 'VOID_RUNNERS'),
+  mkThreat(5800, 2500, 'VOID_RUNNERS'), mkThreat(6500, 3000, 'VOID_RUNNERS'),
+  mkThreat(7000, 1500, 'VOID_RUNNERS'), mkThreat(7500, 2200, 'VOID_RUNNERS'),
+  mkThreat(5200, 3500, 'VOID_RUNNERS'),
   // ── South Wasteland — STATIC MONKS (south-west) ──
   mkThreat(1500, 8000, 'STATIC_MONKS'), mkThreat(2500, 8500, 'STATIC_MONKS'),
   mkThreat(3000, 9000, 'STATIC_MONKS'), mkThreat(3500, 9500, 'STATIC_MONKS'),
@@ -1129,7 +1354,7 @@ const THREATS_INIT: Threat[] = [
 const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
 const expToLevel = (lvl: number) => EXP_TABLE[Math.min(lvl - 1, EXP_TABLE.length - 1)];
 const THREAT_COL: Record<string, string> = {
-  IRON_RATS: '#ff4444', VOID_DOGS: '#ff8800', STATIC_MONKS: '#aaff22',
+  RUST_SYNDICATE: '#ff4444', VOID_RUNNERS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
   SPY: '#ffffaa', PABLO_GUARD: '#5599ff', MINX_CITY: '#cc44ff',
@@ -1160,7 +1385,7 @@ const DOG_DIALOGUE_LINES = [
   "Someone left food near the arcade. I didn't eat it. Smelled like a trap.",
   "The moon looks different from down here. Bigger. Angrier.",
   "I dream about a field. No fences. No towers. Just grass and silence.",
-  "Other dogs joined gangs. Void Dogs. I chose you instead. Better odds.",
+  "Other strays joined gangs. Void Runners. I chose you instead. Better odds.",
   "That NPC talks too much. I can tell by the way they stand.",
   "My previous owner said 'stay.' I stayed for two years. Then I left.",
   "Rain's coming. I can feel it in my teeth. PABLO schedules the rain.",
@@ -1319,7 +1544,7 @@ const AMBIENCE_LINES = [
   '> PIRATE FREQUENCY: "…SENIOR PABLO watches from Floor 62. He has always been there. He was there before the building…"',
   '> FIRE DEPT DISPATCH: Unit 4 responding to report. All hands.',
   '> BROADCAST: Road maintenance on North Avenue overnight. Expect minor delays.',
-  '> POLICE DISPATCH: Pursuit terminated at Wasteland border. Subjects entered IRON RATS territory. Pursuit abandoned per protocol.',
+  '> POLICE DISPATCH: Pursuit terminated at Wasteland border. Subjects entered RUST SYNDICATE territory. Pursuit abandoned per protocol.',
   '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. PABLO CORP. infrastructure division responding.',
 ];
 
@@ -1443,6 +1668,7 @@ const IS_VAN = (id: string) => id.startsWith('van_');
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
+  const { isPro, isTrial, trialDaysLeft } = usePlan();
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const gameRef       = useRef<HTMLDivElement>(null);
   const wsRef         = useRef<WebSocket | null>(null);
@@ -1500,6 +1726,7 @@ export default function WorldPlay() {
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
+    moveTarget: null as null | { x: number; y: number },
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
     deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number; bounty?: number; looted?: boolean }[],
     pvpDeathBodyDropped: false,
@@ -1611,7 +1838,7 @@ export default function WorldPlay() {
       const daysLeft = char.bizRegisteredAt
         ? Math.max(0, 7 - Math.floor((Date.now() - char.bizRegisteredAt) / 86400000))
         : 7;
-      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map.`;
+      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD/click move · [E] interact · [Space] melee · Click enemy to shoot · [M] map.`;
     }
     if (char?.hasBusiness === false) {
       return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device.';
@@ -1640,7 +1867,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'city'|'chat'>('city');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -1686,17 +1913,30 @@ export default function WorldPlay() {
   const [bbAdUrl, setBbAdUrl] = useState('');
   const [nearBillboard, setNearBillboard] = useState<string | null>(null);
   const [showWeapons, setShowWeapons] = useState(false);
-  const [activeWeapon, setActiveWeapon] = useState('FISTS');
-  const activeWeaponRef = useRef('FISTS');
+  const [activeWeapon, setActiveWeapon] = useState(_ss?.activeWeapon ?? 'KNIFE');
+  const activeWeaponRef = useRef(_ss?.activeWeapon ?? 'KNIFE');
+  const [secondaryWeapon, setSecondaryWeapon] = useState(_ss?.secondaryWeapon ?? 'REVOLVER');
+  const secondaryWeaponRef = useRef(_ss?.secondaryWeapon ?? 'REVOLVER');
   const [showTopMenu, setShowTopMenu] = useState(false);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const fogGridRef = useRef<Set<string>>(new Set());
-  const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => new Set(['FISTS']));
-  const unlockedWeaponsRef = useRef<Set<string>>(new Set(['FISTS']));
+  const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => {
+    const cls = (_ss?.class ?? char.class ?? 'corporate').toLowerCase();
+    const starter = new Set(['FISTS', 'KNIFE', 'REVOLVER']);
+    if (cls === 'corporate') starter.add('PISTOL');
+    if (cls === 'outlaw') { starter.add('RIFLE'); starter.add('SWORD'); }
+    if (_ss?.unlockedWeapons && Array.isArray(_ss.unlockedWeapons)) _ss.unlockedWeapons.forEach((w: string) => starter.add(w));
+    return starter;
+  });
+  const unlockedWeaponsRef = useRef<Set<string>>(unlockedWeapons);
   const [showMerchant, setShowMerchant] = useState<{ name: string; items: MerchantItem[] } | null>(null);
   const WEAPONS: WeaponDef[] = [
     { id: 'FISTS', label: LORE_WEAPON_NAMES['FISTS']?.label ?? 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#00ff41', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
+    { id: 'KNIFE', label: LORE_WEAPON_NAMES['KNIFE']?.label ?? 'KNIFE', desc: 'Quick stab. +3 ATK. Fast cooldown.', atkBonus: 3, color: '#cccccc', type: 'melee', range: 60, cooldown: 20, icon: 'knife' },
+    { id: 'REVOLVER', label: LORE_WEAPON_NAMES['REVOLVER']?.label ?? 'REVOLVER', desc: 'Six-shot sidearm. +5 ATK.', atkBonus: 5, color: '#aabbcc', type: 'ranged', range: 160, cooldown: 35, icon: 'revolver' },
+    { id: 'PISTOL', label: LORE_WEAPON_NAMES['PISTOL']?.label ?? 'PISTOL', desc: 'Semi-auto sidearm. +7 ATK. Suits standard.', atkBonus: 7, color: '#88aaff', type: 'ranged', range: 180, cooldown: 22, icon: 'pistol' },
     { id: 'SWORD', label: LORE_WEAPON_NAMES['SWORD']?.label ?? 'SWORD', desc: 'Close-range slash. +6 ATK.', atkBonus: 6, color: '#ff6644', type: 'melee', range: 85, cooldown: 30, icon: 'sword' },
+    { id: 'RIFLE', label: LORE_WEAPON_NAMES['RIFLE']?.label ?? 'RIFLE', desc: 'Long-range firearm. +9 ATK. Outlaw standard.', atkBonus: 9, color: '#66cc88', type: 'ranged', range: 280, cooldown: 40, icon: 'rifle' },
     { id: 'GUN', label: LORE_WEAPON_NAMES['GUN']?.label ?? 'GUN', desc: 'Mid-range projectile. +8 ATK.', atkBonus: 8, color: '#88aaff', type: 'ranged', range: 200, cooldown: 25, icon: 'gun' },
     { id: 'LASER', label: LORE_WEAPON_NAMES['LASER']?.label ?? 'LASER', desc: 'Long beam weapon. +10 ATK.', atkBonus: 10, color: '#ff44aa', type: 'ranged', range: 300, cooldown: 40, icon: 'laser' },
     { id: 'BOMB', label: LORE_WEAPON_NAMES['BOMB']?.label ?? 'BOMB', desc: 'Area explosion with delay. +12 ATK.', atkBonus: 12, color: '#ffcc00', type: 'ranged', range: 150, cooldown: 60, icon: 'bomb' },
@@ -1743,11 +1983,20 @@ export default function WorldPlay() {
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
   const [showGoldExchange, setShowGoldExchange] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [showRealEstateOffice, setShowRealEstateOffice] = useState(false);
+  const [showRecruitOffice, setShowRecruitOffice] = useState(false);
+  const [recruitJobDraft, setRecruitJobDraft] = useState({ title: '', pay: '', desc: '' });
+  const [adminBizName, setAdminBizName] = useState('');
+  const [adminBizType, setAdminBizType] = useState<'real' | 'fictitious'>('fictitious');
+  const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
   const [showQuests, setShowQuests] = useState(false);
   const [quests, setQuests] = useState<Quest[]>(() => gs.current.quests);
   const [calendarStr, setCalendarStr] = useState('');
   const [weatherStr, setWeatherStr] = useState('');
+  const [seasonStr, setSeasonStr] = useState('SPRING');
+  const [tempC, setTempC] = useState(22);
   const [radLevel, setRadLevel] = useState(0);
   const [showDialoguePanel, setShowDialoguePanel] = useState(false);
   const [dialogueNpcName, setDialogueNpcName] = useState('');
@@ -1825,6 +2074,13 @@ export default function WorldPlay() {
       quests: g.quests,
       hamletBuildingId: g.hamletBuildingId,
       pabloOnboardingDone: g.pabloOnboardingDone,
+      activeWeapon: activeWeaponRef.current,
+      secondaryWeapon: secondaryWeaponRef.current,
+      unlockedWeapons: [...unlockedWeaponsRef.current],
+      hasBusiness: char.hasBusiness,
+      bizType: char.bizType,
+      company: char.company,
+      bizRegisteredAt: char.bizRegisteredAt,
     };
   }, [char]);
 
@@ -1929,6 +2185,26 @@ export default function WorldPlay() {
     else if (bid === 'gold_exchange') {
       sfxEnter(); setShowGoldExchange(true); frozenRef.current = true;
       setNarr('> GOLD EXCHANGE — Convert FIAT to GOLD and back. Tax scales with transaction size. Property purchases require GOLD.');
+    }
+    else if (bid === 'admin_bureau') {
+      sfxEnter(); setShowAdmin(true); frozenRef.current = true;
+      if (char.hasBusiness) {
+        setNarr(`> CITY ADMIN BUREAU — "${char.company}" is on file. Visit to view your business license.`);
+      } else {
+        setNarr('> CITY ADMIN BUREAU — PABLO CORP. Municipal Services. Register a business. Fictitious entity: ƒ50,000. Real enterprise: ƒ100,000.');
+      }
+    }
+    else if (bid === 'realestate_office') {
+      sfxEnter(); setShowRealEstateOffice(true); frozenRef.current = true;
+      setNarr('> REAL ESTATE OFFICE — Browse available property listings. All purchases require GOLD. Speak to an agent or use the terminal.');
+    }
+    else if (bid === 'recruit_office') {
+      sfxEnter(); setShowRecruitOffice(true); frozenRef.current = true;
+      setNarr('> RECRUITMENT OFFICE — View job listings posted by operatives. Apply or post your own listing.');
+    }
+    else if (bid === 'police_hq') {
+      sfxEnter();
+      setNarr('> POLICE HQ — Precinct 1. Wanted boards line the walls. Officers ignore your presence unless you\'re on the list.');
     }
     else if (bid === 'clinic')  {
       if (g.deviceBroken && g.salary >= 5000) {
@@ -2630,7 +2906,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   useEffect(() => {
@@ -2796,7 +3072,7 @@ export default function WorldPlay() {
         handleRadioToggle();
       }
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
-      // [Space] melee attack (also F as alias)
+      // [Space] melee attack
       if (e.key === ' ' && !frozenRef.current && !dialog) {
         const g = gs.current;
         if (g.attackCooldown > 0) return;
@@ -2819,9 +3095,15 @@ export default function WorldPlay() {
               sfxKill();
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const inWaste = !inCityBounds(g.px, g.py);
-              let bountyAmt = BOUNTY[t.type] ?? 10;
-              if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-              g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+              const isAnimal = ANIMAL_TYPES.has(t.type);
+              let bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+              if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
+              if (isAnimal) {
+                const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
+                g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+              } else {
+                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+              }
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -2867,7 +3149,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); setShowQuests(false); frozenRef.current = false; sfxUIClick(); cancelSpeech();
+        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); frozenRef.current = false; sfxUIClick(); cancelSpeech();
         doSaveRef.current(buildSaveData());
       }
     };
@@ -2880,18 +3162,21 @@ export default function WorldPlay() {
     return () => { window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up); window.removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVisChange); };
   }, [dialog, tryEnter, enterNpc, toggleVoice, advDialog, handleRadioToggle]);
 
-  // ── Mouse click — ranged attack + interact/loot ─────────────────────────
+  // ── Mouse/touch click — attack enemies or move character ────────────────
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const handleClick = (e: MouseEvent) => {
-      gs.current.lastMoveTime = Date.now();
-      if (frozenRef.current) return;
+    const resolveWorldCoords = (clientX: number, clientY: number) => {
       const g = gs.current;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      const clickWorldX = (e.clientX - rect.left) * scaleX + g.cam.x;
-      const clickWorldY = (e.clientY - rect.top) * scaleY + g.cam.y;
+      return { wx: (clientX - rect.left) * scaleX + g.cam.x, wy: (clientY - rect.top) * scaleY + g.cam.y };
+    };
+    const handleInteraction = (clientX: number, clientY: number) => {
+      gs.current.lastMoveTime = Date.now();
+      if (frozenRef.current) return;
+      const g = gs.current;
+      const { wx: clickWorldX, wy: clickWorldY } = resolveWorldCoords(clientX, clientY);
       const clickedBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(clickWorldX - b.x, clickWorldY - b.y) < 30 && Math.hypot(g.px - b.x, g.py - b.y) < 50);
       if (clickedBody) {
         const amt = clickedBody.bounty ?? 0;
@@ -2924,30 +3209,39 @@ export default function WorldPlay() {
           if (bb) { setShowBillboard(bb); fetchBillboards(); return; }
         }
       }
-      if (g.attackCooldown > 0) return;
-      const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
-      if (wpn.type !== 'ranged') {
-        if (!unlockedWeaponsRef.current.has('GUN') && !unlockedWeaponsRef.current.has('LASER') && !unlockedWeaponsRef.current.has('BOMB')) {
-          setNarr('> No ranged weapon equipped. Visit a merchant to unlock guns, lasers, or bombs.');
+      const clickedEnemy = g.threats.find(t => Math.hypot(clickWorldX - t.x, clickWorldY - t.y) < 35);
+      if (clickedEnemy) {
+        if (g.attackCooldown > 0) return;
+        const wpn = WEAPONS.find(w => w.id === secondaryWeaponRef.current) ?? WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+        if (wpn.type !== 'ranged') {
+          g.moveTarget = { x: clickedEnemy.x, y: clickedEnemy.y };
+          return;
+        }
+        const angle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
+        const speed = 8;
+        g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
+        sfxWeaponDraw(); sfxAttack();
+        const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+        const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+        if (wpn.icon === 'bomb') {
+          g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: wpn.range });
         } else {
-          setNarr('> Current weapon is melee only. Switch to a ranged weapon to shoot. [Click weapon wheel]');
+          g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
         }
         return;
       }
-      const angle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
-      const speed = 8;
-      g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
-      sfxWeaponDraw(); sfxAttack();
-      const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-      const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
-      if (wpn.icon === 'bomb') {
-        g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: wpn.range });
-      } else {
-        g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
+      g.moveTarget = { x: clickWorldX, y: clickWorldY };
+    };
+    const handleClick = (e: MouseEvent) => handleInteraction(e.clientX, e.clientY);
+    const handleTouch = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
     canvas.addEventListener('click', handleClick);
-    return () => canvas.removeEventListener('click', handleClick);
+    canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); };
   }, []);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
@@ -3006,7 +3300,7 @@ export default function WorldPlay() {
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
     return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
-WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by IRON RATS, VOID DOGS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by IRON TRUST BANK. Combat earns bounties. Economy matters.
+WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by RUST SYNDICATE, VOID RUNNERS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by IRON TRUST BANK. Combat earns bounties. Economy matters.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the secret code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
@@ -3081,6 +3375,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.frame % 30 === 0) {
         setCalendarStr(getCalendarString(g.calendar));
         setWeatherStr(g.calendar.weather);
+        setSeasonStr(g.calendar.season);
+        const baseTemp: Record<string, number> = { SPRING: 18, SUMMER: 32, AUTUMN: 14, WINTER: 2 };
+        const weatherMod: Record<string, number> = { CLEAR: 0, RAIN: -3, SNOW: -8, STORM: -5, DUST: 4, ACID_RAIN: -2, FOG: -2 };
+        setTempC(Math.round((baseTemp[g.calendar.season] ?? 18) + (weatherMod[g.calendar.weather] ?? 0) + Math.sin(g.calendar.hour * 0.26) * 5));
       }
       updateWeatherParticles(g.weatherParticles, logW, logH);
       if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
@@ -3133,9 +3431,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               sfxKill();
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const inWaste = !inCityBounds(g.px, g.py);
-              let bountyAmt = BOUNTY[t.type] ?? 10;
-              if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-              g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+              const isAnimal = ANIMAL_TYPES.has(t.type);
+              let bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+              if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
+              if (isAnimal) {
+                const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
+                g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+              } else {
+                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+              }
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -3182,9 +3486,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 sfxKill();
                 const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
                 const inWaste = !inCityBounds(g.px, g.py);
-                let bountyAmt = BOUNTY[t.type] ?? 10;
-                if (cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
-                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                const isAnimal = ANIMAL_TYPES.has(t.type);
+                let bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+                if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
+                if (isAnimal) {
+                  const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
+                  g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                } else {
+                  g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                }
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 wsSend({ type: 'pve_kill', exp: earned });
@@ -3205,9 +3515,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return true;
       });
 
-      // Threat respawn
       g.threatRespawn = g.threatRespawn.filter(r => {
-        if (g.frame >= r.at) { g.threats.push(mkThreat(r.ox, r.oy, r.type)); return false; }
+        if (g.frame >= r.at) {
+          const distToPlayer = Math.hypot(g.px - r.ox, g.py - r.oy);
+          if (distToPlayer > 400) { g.threats.push(mkThreat(r.ox, r.oy, r.type)); return false; }
+        }
         return true;
       });
 
@@ -3303,10 +3615,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
         const vMult = (g.vehicle ? (onRoad ? baseVehicleSpeed : 1 + (baseVehicleSpeed - 1) * 0.3) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
         let dx = 0, dy = 0;
-        if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD * vMult;
-        if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD * vMult;
-        if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD * vMult;
-        if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD * vMult;
+        if (g.keys.has('arrowleft')  || g.keys.has('a')) { dx -= SPD * vMult; g.moveTarget = null; }
+        if (g.keys.has('arrowright') || g.keys.has('d')) { dx += SPD * vMult; g.moveTarget = null; }
+        if (g.keys.has('arrowup')    || g.keys.has('w')) { dy -= SPD * vMult; g.moveTarget = null; }
+        if (g.keys.has('arrowdown')  || g.keys.has('s')) { dy += SPD * vMult; g.moveTarget = null; }
+        if (dx === 0 && dy === 0 && g.moveTarget) {
+          const mtDist = Math.hypot(g.moveTarget.x - g.px, g.moveTarget.y - g.py);
+          if (mtDist < 8) { g.moveTarget = null; }
+          else {
+            dx = ((g.moveTarget.x - g.px) / mtDist) * SPD * vMult;
+            dy = ((g.moveTarget.y - g.py) / mtDist) * SPD * vMult;
+          }
+        }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         let nx = g.px + dx, ny = g.py + dy;
         if (col(nx, g.py)) nx = g.px;
@@ -3352,7 +3672,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.timer--;
         const dist = g.interior ? 99999 : Math.hypot(g.px - t.x, g.py - t.y);
 
-        const isMajorThreat = ['IRON_RATS','VOID_DOGS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
+        const isMajorThreat = ['RUST_SYNDICATE','VOID_RUNNERS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
         const isSpy = t.type === 'SPY';
         const CITY_WALL_NORTH = CITY_TOP + 40;
         const CITY_WALL_SOUTH = CITY_BOTTOM - 40;
@@ -3401,7 +3721,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         const pClass = char.class.toLowerCase();
-        const factionMap: Record<string,string> = { IRON_RATS:'iron_rats', VOID_DOGS:'void_dogs', STATIC_MONKS:'static_monks', EASTERN_BLOC:'eastern_bloc', MINX_CITY:'minx_city' };
+        const factionMap: Record<string,string> = { RUST_SYNDICATE:'rust_syndicate', VOID_RUNNERS:'void_runners', STATIC_MONKS:'static_monks', EASTERN_BLOC:'eastern_bloc', MINX_CITY:'minx_city' };
         const hasFaction = t.type in factionMap;
         const threatFactionId = factionMap[t.type] ?? '';
         const playerInThreatZone = hasFaction && GANG_ZONES.some(gz => {
@@ -3681,8 +4001,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               setDogHp(Math.floor(dog.hp));
               if (t.hp <= 0) {
                 sfxKill();
-                const bountyAmt = BOUNTY[t.type] ?? 10;
-                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                const isAnimal = ANIMAL_TYPES.has(t.type);
+                const bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+                if (isAnimal) {
+                  const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
+                  g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                } else {
+                  g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                }
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 let newExp = g.exp + earned; let newLevel = g.level;
@@ -3926,6 +4252,96 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + 3, osy + 3, obj.w - 6, 6);
           }
 
+          if (obj.type === 'couch') {
+            ctx.fillStyle = 'rgba(120,80,40,.15)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 6);
+            ctx.fillStyle = 'rgba(140,100,50,.1)';
+            ctx.fillRect(osx + 3, osy + 3, 6, obj.h - 6);
+            ctx.fillRect(osx + obj.w - 9, osy + 3, 6, obj.h - 6);
+          }
+
+          if (obj.type === 'vending_machine') {
+            const vp = Math.sin(g.frame * 0.03 + obj.x * 0.07) * 0.3 + 0.5;
+            ctx.fillStyle = `rgba(0,200,100,${vp * 0.18})`;
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h * 0.4);
+            ctx.fillStyle = 'rgba(40,80,40,.2)';
+            ctx.fillRect(osx + 3, osy + obj.h * 0.5, obj.w - 6, obj.h * 0.4);
+          }
+
+          if (obj.type === 'filing_cabinet') {
+            for (let i = 0; i < 3; i++) {
+              ctx.fillStyle = 'rgba(70,70,80,.12)';
+              ctx.fillRect(osx + 3, osy + 4 + i * (obj.h / 3), obj.w - 6, obj.h / 3 - 3);
+              ctx.fillStyle = 'rgba(200,200,200,.08)';
+              ctx.fillRect(osx + obj.w / 2 - 3, osy + 6 + i * (obj.h / 3), 6, 2);
+            }
+          }
+
+          if (obj.type === 'water_cooler') {
+            const wb = Math.sin(g.frame * 0.02 + obj.y * 0.1) * 0.15 + 0.4;
+            ctx.fillStyle = `rgba(60,140,200,${wb * 0.2})`;
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h * 0.5);
+          }
+
+          if (obj.type === 'whiteboard') {
+            ctx.fillStyle = 'rgba(220,220,230,.08)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgba(255,60,60,.15)';
+            ctx.lineWidth = 0.5;
+            for (let i = 1; i < 4; i++) {
+              ctx.beginPath(); ctx.moveTo(osx + 6, osy + i * (obj.h / 4)); ctx.lineTo(osx + obj.w - 6, osy + i * (obj.h / 4)); ctx.stroke();
+            }
+          }
+
+          if (obj.type === 'tv_screen') {
+            const tp2 = Math.sin(g.frame * 0.05 + obj.x * 0.04) * 0.2 + 0.5;
+            ctx.fillStyle = `rgba(0,100,200,${tp2 * 0.2})`;
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 6);
+            const scanY = (g.frame % 60) / 60 * (obj.h - 6);
+            ctx.fillStyle = 'rgba(255,255,255,.04)';
+            ctx.fillRect(osx + 3, osy + 3 + scanY, obj.w - 6, 2);
+          }
+
+          if (obj.type === 'security_gate') {
+            ctx.strokeStyle = 'rgba(255,200,0,.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            const blink2 = g.frame % 40 < 20;
+            ctx.fillStyle = blink2 ? 'rgba(255,200,0,.2)' : 'rgba(255,0,0,.2)';
+            ctx.fillRect(osx + obj.w / 2 - 2, osy + 2, 4, 4);
+          }
+
+          if (obj.type === 'photocopier') {
+            ctx.fillStyle = 'rgba(80,80,90,.15)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 6);
+            const cl = g.frame % 80 < 10;
+            if (cl) { ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(osx + 5, osy + 5, obj.w - 10, 3); }
+          }
+
+          if (obj.type === 'bookshelf') {
+            for (let i = 0; i < 4; i++) {
+              const bh = ['rgba(120,40,30,.15)', 'rgba(30,60,120,.15)', 'rgba(40,100,40,.15)', 'rgba(100,80,30,.15)'][i];
+              ctx.fillStyle = bh;
+              ctx.fillRect(osx + 3 + i * ((obj.w - 6) / 4), osy + 3, (obj.w - 6) / 4 - 1, obj.h - 6);
+            }
+          }
+
+          if (obj.type === 'flag') {
+            ctx.fillStyle = 'rgba(120,80,20,.2)';
+            ctx.fillRect(osx + obj.w / 2 - 1, osy, 2, obj.h);
+            const wave = Math.sin(g.frame * 0.04 + obj.y * 0.1) * 3;
+            ctx.fillStyle = 'rgba(180,140,40,.15)';
+            ctx.fillRect(osx + obj.w / 2 + 1, osy + 4 + wave, obj.w / 2 - 4, obj.h * 0.4);
+          }
+
+          if (obj.type === 'portrait') {
+            ctx.fillStyle = 'rgba(80,60,40,.15)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgba(180,140,60,.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(osx + 1, osy + 1, obj.w - 2, obj.h - 2);
+          }
+
           if (obj.label) {
             ctx.fillStyle = iDef.accentColor;
             ctx.font = '6px "Share Tech Mono"';
@@ -4028,7 +4444,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const nearEnemy = g.threats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 90);
             if (nearEnemy) {
               const typeLabel = nearEnemy.type.replace(/_/g, ' ');
-              setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — [Space] melee · [Click] shoot. Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}.`);
+              const isAnimalE = ANIMAL_TYPES.has(nearEnemy.type);
+              const bountyLabel = isAnimalE ? 'Drops: FOOD ITEMS' : `Bounty: ƒ${(BOUNTY[nearEnemy.type] ?? 1000).toLocaleString()}`;
+              setNarr(`> ${typeLabel} [HP: ${Math.floor(nearEnemy.hp)}/${nearEnemy.maxHp}] — [Space] melee · [Click] shoot. ${bountyLabel}.`);
             }
           }
         }
@@ -4182,8 +4600,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const factionTag = baseGang && allyGangs.includes(baseGang) ? ' [ALLIED — safe passage]' : baseGang && enemyGangs.includes(baseGang) ? ' [HOSTILE — enemy territory!]' : '';
           const fragTag = isFrag ? ' (OUTPOST — fractured territory)' : '';
           if (baseGang === 'minx_city') setNarr(`> MINX CITY TERRITORY${factionTag}${fragTag} — The dominant faction. Their purple banners hang from every ruin. SENIOR PABLO's reach extends even here. The other gangs operate in their shadow.`);
-          else if (baseGang === 'iron_rats') setNarr(`> IRON RATS TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are PIKE RENNER's old crew. He doesn't claim them anymore.`);
-          else if (baseGang === 'void_dogs') setNarr(`> VOID DOGS TERRITORY${factionTag}${fragTag} — They broadcast static on loop. The code in the static is an old arcade game. Nobody has decoded it. Nobody that lived, anyway.`);
+          else if (baseGang === 'rust_syndicate') setNarr(`> RUST SYNDICATE TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are PIKE RENNER's old crew. He doesn't claim them anymore.`);
+          else if (baseGang === 'void_runners') setNarr(`> VOID RUNNERS TERRITORY${factionTag}${fragTag} — They broadcast static on loop. The code in the static is an old arcade game. Nobody has decoded it. Nobody that lived, anyway.`);
           else if (baseGang === 'static_monks') setNarr(`> STATIC MONKS TERRITORY${factionTag}${fragTag} — Silent. They move like shadows. KAEL VERNE says they guard something buried here from before the collapse.`);
           else if (baseGang === 'eastern_bloc') setNarr(`> EASTERN BLOC TERRITORY${factionTag}${fragTag} — They don't speak. They don't negotiate. NOVA PRYCE tracked their signal origin back to a server in SHADOW TOWER. Nobody was surprised.`);
 
@@ -4207,15 +4625,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
-        // ── ECONOMY: Periodic income by class ─────────────────────────────
+        // ── ECONOMY: Periodic income by class (~1 minute intervals) ─────
         g.incomeTick++;
         const cls = char.class.toLowerCase();
-        const INCOME_INTERVAL = cls === 'corporate' ? 5 : cls === 'replicant' ? 8 : 10;
-        const INCOME_AMOUNT   = cls === 'corporate' ? 2500 : cls === 'replicant' ? 1200 : 600;
+        const INCOME_INTERVAL = 7;
+        const INCOME_AMOUNT   = cls === 'corporate' ? 500 : cls === 'replicant' ? 300 : 200;
         const INCOME_LABEL    = cls === 'corporate' ? 'SALARY DIRECT DEPOSIT' : cls === 'replicant' ? 'GIG PAYMENT PROCESSED' : 'SCAVENGING YIELD';
         if (g.incomeTick >= INCOME_INTERVAL) {
           g.incomeTick = 0;
-          const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 400) : 0;
+          const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 150) : 0;
           const total = INCOME_AMOUNT + bonus;
           g.salary += total; setSalary(g.salary);
           g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
@@ -4676,8 +5094,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText('── SOUTH WASTELAND ──', cw / 2, cityBotY + 12);
       }
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(0,255,65,.02)'; ctx.font = '56px "VT323"'; ctx.textAlign = 'center';
-      ctx.fillText(inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND', cw / 2, ch / 2);
 
       // Gang territory zones
       for (const gz of GANG_ZONES) {
@@ -5277,27 +5693,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(tx-4, ty-6, 8, 6); // torso
           ctx.beginPath(); ctx.arc(tx, ty-9, 3, 0, Math.PI*2); ctx.fill(); // head
           ctx.fillRect(tx-4, ty, 3, 5); ctx.fillRect(tx+1, ty, 3, 5); // legs
-        } else if (t.type === 'IRON_RATS') {
-          // X shape
-          ctx.lineWidth=2.5; ctx.strokeStyle = tc;
-          ctx.beginPath(); ctx.moveTo(tx-5,ty-5); ctx.lineTo(tx+5,ty+5); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(tx+5,ty-5); ctx.lineTo(tx-5,ty+5); ctx.stroke();
-          ctx.beginPath(); ctx.arc(tx,ty,3,0,Math.PI*2); ctx.fill(); // center
-        } else if (t.type === 'VOID_DOGS') {
-          // Low dog-like shape
-          ctx.fillRect(tx-6,ty-2,12,5); // body
-          ctx.fillRect(tx-6,ty+3,2,3); ctx.fillRect(tx-2,ty+3,2,3); // front legs
-          ctx.fillRect(tx+2,ty+3,2,3); ctx.fillRect(tx+4,ty+3,2,3); // back legs
-          ctx.fillRect(tx-8,ty-4,3,4); // head
-          ctx.fillRect(tx+5,ty-3,4,2); // tail
+        } else if (t.type === 'RUST_SYNDICATE') {
+          ctx.fillStyle = '#cc3333'; ctx.fillRect(tx-4,ty-7,8,7);
+          ctx.fillStyle = '#ff5544'; ctx.beginPath(); ctx.arc(tx,ty-10,3,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#cc3333'; ctx.fillRect(tx-6,ty-6,2,5); ctx.fillRect(tx+4,ty-6,2,5);
+          ctx.fillRect(tx-3,ty,3,5); ctx.fillRect(tx+1,ty,3,5);
+          ctx.fillStyle = '#aa2222'; ctx.fillRect(tx-1,ty-5,2,3);
+        } else if (t.type === 'VOID_RUNNERS') {
+          ctx.fillStyle = '#dd7700'; ctx.fillRect(tx-4,ty-8,8,8);
+          ctx.fillStyle = '#ffaa33'; ctx.beginPath(); ctx.arc(tx,ty-11,3.5,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#dd7700'; ctx.fillRect(tx-6,ty-7,2,6); ctx.fillRect(tx+4,ty-7,2,6);
+          ctx.fillRect(tx-3,ty,3,5); ctx.fillRect(tx+1,ty,3,5);
+          ctx.fillStyle = '#bb5500'; ctx.fillRect(tx-2,ty-6,4,2);
         } else if (t.type === 'STATIC_MONKS') {
-          // Cross / plus
-          ctx.fillRect(tx-1,ty-7,3,14); ctx.fillRect(tx-6,ty-1,13,3);
-          ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.arc(tx,ty,2,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#88cc11'; ctx.fillRect(tx-4,ty-8,8,8);
+          ctx.fillStyle = '#aaee22'; ctx.beginPath(); ctx.arc(tx,ty-11,3,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#88cc11'; ctx.fillRect(tx-5,ty-7,2,5); ctx.fillRect(tx+3,ty-7,2,5);
+          ctx.fillRect(tx-3,ty,3,5); ctx.fillRect(tx+1,ty,3,5);
+          ctx.fillStyle = '#668800'; ctx.fillRect(tx-1,ty-10,2,1);
         } else if (t.type === 'EASTERN_BLOC') {
-          // Armored triangle
-          ctx.beginPath(); ctx.moveTo(tx,ty-8); ctx.lineTo(tx+7,ty+6); ctx.lineTo(tx-7,ty+6); ctx.closePath(); ctx.fill();
-          ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fillRect(tx-2,ty-3,4,7);
+          ctx.fillStyle = '#3366dd'; ctx.fillRect(tx-5,ty-8,10,8);
+          ctx.fillStyle = '#5588ff'; ctx.beginPath(); ctx.arc(tx,ty-11,3.5,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#3366dd'; ctx.fillRect(tx-7,ty-7,2,6); ctx.fillRect(tx+5,ty-7,2,6);
+          ctx.fillRect(tx-4,ty,3,5); ctx.fillRect(tx+1,ty,3,5);
+          ctx.fillStyle = '#224499'; ctx.fillRect(tx-3,ty-6,6,2);
         } else if (t.type === 'MINX_CITY') {
           // MINX CITY — dominant gang, heavy armored soldier
           ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-6,ty-9,12,10); // heavy body armor
@@ -5368,6 +5787,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(tx,ty-10,3,0,Math.PI*2); ctx.fill();
           ctx.fillRect(tx-3,ty-1,2.5,5); ctx.fillRect(tx+1,ty-1,2.5,5);
           ctx.fillRect(tx+4,ty-6,4,2);
+        } else if (t.type === 'RAT') {
+          ctx.fillStyle = '#776655';
+          ctx.fillRect(tx-3,ty,6,3);
+          ctx.beginPath(); ctx.arc(tx-4,ty,2,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#554433';
+          ctx.fillRect(tx-5,ty-1,1,1);
+          ctx.fillRect(tx+3,ty+1+Math.sin(g.frame*0.3)*1,4,1);
         } else {
           ctx.beginPath(); ctx.moveTo(tx,ty-7); ctx.lineTo(tx+5,ty); ctx.lineTo(tx,ty+7); ctx.lineTo(tx-5,ty); ctx.closePath(); ctx.fill();
           ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fillRect(tx-2,ty-3,4,6);
@@ -6026,154 +6452,89 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
-      {/* UPPER-LEFT — player identity + stats + minimap */}
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-        <div onClick={() => setHudExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', gap: '.6rem', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.45)', padding: '.5rem .8rem', cursor: 'pointer', userSelect: 'none' }}>
-          <div style={{ width: 10, height: 10, background: '#00ff41', boxShadow: '0 0 8px rgba(0,255,65,.7)' }} />
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</span>
-          <span style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.65)', letterSpacing: '.08em', borderLeft: '1px solid rgba(0,255,65,.35)', paddingLeft: '.5rem' }}>{char.class.toUpperCase()}</span>
-          {hasDevice && !deviceBroken && <span style={{ fontSize: '.8rem', color: '#00ff41', border: '1px solid rgba(0,255,65,.5)', padding: '2px 6px' }}>PABLO MX-75</span>}
-          {hasDevice && deviceBroken && <span style={{ fontSize: '.8rem', color: '#ff4444', border: '1px solid rgba(255,68,68,.5)', padding: '2px 6px' }}>DAMAGED</span>}
-          {char.hasBusiness === false && <span style={{ fontSize: '.8rem', color: 'rgba(255,100,100,.8)', border: '1px solid rgba(255,60,60,.3)', padding: '2px 6px' }}>UNSAVED</span>}
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.4)', marginLeft: '.3rem' }}>{hudExpanded ? '▲' : '▼'}</span>
-        </div>
-        {hudExpanded && (<>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {/* HP */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${hpColor}55`, padding: '.4rem .7rem', minWidth: 80 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>{boomerize('HP', boomerMode)}</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.5rem', color: hpColor, letterSpacing: '.06em', textShadow: `0 0 8px ${hpGlow}`, transition: 'color .3s' }}>{Math.floor(hp)}</div>
-          </div>
-          {/* Salary */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.4rem .7rem' }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>SALARY</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{salary.toLocaleString()}</div>
-          </div>
-          {/* DEF */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,180,255,.38)', padding: '.4rem .7rem' }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,180,255,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>DEF</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#44aaff', letterSpacing: '.06em', marginTop: '3px' }}>{(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus}</div>
-          </div>
-          {/* Net Worth */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.4rem .7rem' }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.12em', marginBottom: '4px' }}>NET WORTH</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#FFD700', letterSpacing: '.06em', marginTop: '3px', whiteSpace: 'nowrap' }}>ƒ{(salary + goldBalance * FIAT_PER_GOLD).toLocaleString()}</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {/* Zone */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.45)' : 'rgba(0,255,65,.38)'}`, padding: '.4rem .7rem' }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>ZONE</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{boomerize(zone, boomerMode)}</div>
-          </div>
-          {/* Current Map Location */}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.38)', padding: '.4rem .7rem', flex: 1 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>LOCATION</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.06em', marginTop: '3px' }}>{nearB ? nearB.label : (gangZone ? (GANG_ZONES.find(g => g.id === gangZone)?.name ?? zone) : zone)}</div>
-          </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${(() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? 'rgba(255,200,50,.45)' : 'rgba(100,120,255,.45)'; })()}`, padding: '.4rem .7rem' }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '4px' }}>TIME</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })(), letterSpacing: '.06em', marginTop: '3px' }}>
-              {String(Math.floor(gs.current.worldTime)).padStart(2,'0')}:{String(Math.floor((gs.current.worldTime % 1) * 60)).padStart(2,'0')} {gs.current.worldTime >= 6 && gs.current.worldTime < 18 ? '☀' : '☾'}
-            </div>
-          </div>
-        </div>
-        {/* Survival meters */}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          {[
-            { label: 'HUNGER', val: hunger, col: hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622' },
-            { label: 'THIRST', val: thirst, col: thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622' },
-            { label: 'ENERGY', val: energy, col: energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444' },
-          ].map(({ label, val, col }) => (
-            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', minWidth: 95 }}>
-              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize(label, boomerMode)}</div>
-              <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.14)' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${val}%`, background: col, transition: 'width .3s, background .3s' }} />
+      {/* PROXIMITY NOTIFICATION BAR — top center */}
+      {(() => {
+        const g = gs.current;
+        const proximityEvents: string[] = [];
+        if (g.calendar?.disasterActive) {
+          const dist = Math.hypot(g.px - g.calendar.disasterX, g.py - g.calendar.disasterY);
+          if (dist < 2000) proximityEvents.push(`⚠ ${g.calendar.disasterActive} nearby!`);
+        }
+        if (radLevel > 0) proximityEvents.push(`☢ RADIATION ${(radLevel * 100).toFixed(0)}%`);
+        if (gangZone) proximityEvents.push(`⚠ ${GANG_ZONES.find(gz => gz.id === gangZone)?.name ?? 'GANG'} TERRITORY`);
+        if (poisoned) proximityEvents.push('☠ POISONED');
+        if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG')) proximityEvents.push('⚔ HOSTILES NEARBY');
+        if (dogActive && dogInjured) proximityEvents.push(`🐾 ${dogName} INJURED`);
+        return proximityEvents.length > 0 ? (
+          <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '6px', pointerEvents: 'none' }}>
+            {proximityEvents.map((evt, i) => (
+              <div key={i} style={{ background: 'rgba(0,0,0,.85)', border: '1px solid rgba(255,80,80,.5)', padding: '.25rem .6rem', fontFamily: "'VT323',monospace", fontSize: '.95rem', color: '#ff6644', letterSpacing: '.08em', textShadow: '0 0 8px rgba(255,80,0,.4)', whiteSpace: 'nowrap' }}>
+                {evt}
               </div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: col, letterSpacing: '.04em', marginTop: '2px' }}>{val}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+        ) : null;
+      })()}
+
+      {/* BOTTOM-LEFT — compact HUD: minimap, hearts, gold, fiat, zone, weather, season/temp */}
+      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 320 }}>
+        {/* Minimap — small, always free */}
+        <canvas ref={minimapRef} width={360} height={360} style={{ width: 100, height: 100, borderRadius: '50%', boxShadow: '0 0 10px rgba(0,255,65,.12)', border: '1px solid rgba(0,255,65,.2)' }} />
+        {/* Hearts row — Zelda-style HP */}
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.3rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 200 }}>
+          {(() => {
+            const maxHp = gs.current.maxHp || 100;
+            const hpPerHeart = maxHp / Math.max(1, Math.ceil(maxHp / 20));
+            const totalHearts = Math.ceil(maxHp / hpPerHeart);
+            const fullHearts = Math.floor(hp / hpPerHeart);
+            const partialFill = (hp % hpPerHeart) / hpPerHeart;
+            return Array.from({ length: totalHearts }, (_, i) => {
+              const isFull = i < fullHearts;
+              const isPartial = i === fullHearts && partialFill > 0;
+              const heartColor = hpRatio > 0.6 ? '#ff2255' : hpRatio > 0.3 ? '#ff8800' : '#ff2222';
+              const emptyColor = 'rgba(255,34,85,.18)';
+              return (
+                <span key={i} style={{ fontSize: '1.1rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.3, textShadow: isFull ? `0 0 6px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
+              );
+            });
+          })()}
         </div>
-        {/* Level / EXP / Poison row */}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', minWidth: 65 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize('LVL', boomerMode)}</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#ffcc00', letterSpacing: '.06em' }}>{level}</div>
+        {/* Gold + Fiat row */}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.05rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.32)', padding: '.4rem .6rem', flex: 1 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.58)', letterSpacing: '.1em', marginBottom: '3px' }}>{boomerize('EXP', boomerMode)}</div>
-            <div style={{ position: 'relative', height: 6, background: 'rgba(0,255,65,.14)', marginBottom: '2px' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(100, (exp / expToLevel(level)) * 100)}%`, background: '#ffcc00', transition: 'width .4s' }} />
-            </div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ffcc00', letterSpacing: '.04em' }}>{exp}/{expToLevel(level)}</div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
-          {poisoned && (
-            <div style={{ background: 'rgba(0,6,0,.82)', border: '1px solid rgba(136,255,68,.4)', padding: '.4rem .6rem', animation: 'smblink 0.7s step-end infinite' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#88ff44', letterSpacing: '.1em' }}>{boomerize('PSN', boomerMode)}</div>
-            </div>
-          )}
         </div>
-        {/* Gold + Calendar + Weather row */}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.4rem .6rem', minWidth: 65 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(255,215,0,.5)', letterSpacing: '.1em', marginBottom: '3px' }}>GOLD</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#FFD700', letterSpacing: '.06em' }}>{goldBalance}g</div>
+        {/* Zone + Season/Weather row */}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.35)' : 'rgba(0,255,65,.3)'}`, padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
           </div>
-          {calendarStr && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.4rem .6rem', flex: 1 }}>
-              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
-            </div>
-          )}
-          {weatherStr && weatherStr !== 'CLEAR' && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.4rem .6rem' }}>
-              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
-            </div>
-          )}
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,150,255,.3)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+            {weatherStr && weatherStr !== 'CLEAR' && (
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</span>
+            )}
+            {weatherStr === 'CLEAR' && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(0,255,65,.5)' }}>CLEAR</span>}
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })() }}>
+              {gs.current.worldTime >= 6 && gs.current.worldTime < 18 ? '☀' : '☾'}
+            </span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(0,255,65,.45)', borderLeft: '1px solid rgba(0,255,65,.15)', paddingLeft: '.3rem' }}>
+              {seasonStr.slice(0,3)} {tempC}°C
+            </span>
+          </div>
         </div>
-        {/* Radiation meter */}
-        {radLevel > 0 && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: '1px solid rgba(40,255,40,.45)', padding: '.4rem .7rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: '#44ff44', letterSpacing: '.1em' }}>☢ RAD {(radLevel * 100).toFixed(0)}%</span>
-            <div style={{ flex: 1, height: 5, background: 'rgba(40,255,40,.15)' }}>
-              <div style={{ height: '100%', width: `${radLevel * 100}%`, background: radLevel > 0.6 ? '#ff4444' : '#44ff44', transition: 'width .3s' }} />
-            </div>
-          </div>
-        )}
-        {/* Gang zone indicator */}
-        {gangZone && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.82)', border: `1px solid ${GANG_ZONES.find(g => g.id === gangZone)?.border ?? 'rgba(255,60,60,.3)'}`, padding: '.4rem .7rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.15rem', color: GANG_ZONES.find(g => g.id === gangZone)?.threat ?? '#ff4444', letterSpacing: '.1em' }}>
-              ⚠ {GANG_ZONES.find(g => g.id === gangZone)?.name} TERRITORY
-            </div>
-          </div>
-        )}
-        {/* Dog companion HUD */}
+        {/* Dog companion — compact */}
         {dogActive && (
-          <div style={{ marginTop: '4px', background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.45)' : 'rgba(255,170,68,.45)'}`, padding: '.4rem .7rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-            <span style={{ fontSize: '1.1rem' }}>🐾</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: dogInjured ? '#ff4444' : '#ffaa44', letterSpacing: '.08em' }}>
-                {dogName} {dogInjured && '— INJURED'}
-              </div>
-              {!dogInjured && (
-                <>
-                  <div style={{ position: 'relative', height: 6, background: 'rgba(255,170,68,.15)', marginTop: '3px' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(dogHp / DOG_MAX_HP) * 100}%`, background: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : (dogHp / DOG_MAX_HP) > 0.25 ? '#ff8800' : '#ff4444', transition: 'width .2s' }} />
-                  </div>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#ffaa44', marginTop: '2px' }}>{dogHp}/{DOG_MAX_HP}</div>
-                </>
-              )}
-              {dogInjured && (
-                <div style={{ fontSize: '.85rem', color: 'rgba(255,68,68,.7)', letterSpacing: '.06em', marginTop: '2px' }}>Needs rest or clinic</div>
-              )}
-            </div>
+          <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+            <span style={{ fontSize: '.9rem' }}>🐾</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
+            {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{DOG_MAX_HP}</span>}
+            {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
           </div>
         )}
-        </>)}
-        {/* Minimap canvas */}
-        <canvas ref={minimapRef} width={360} height={360} style={{ width: 360, height: 360, borderRadius: '50%', marginTop: 5, boxShadow: '0 0 16px rgba(0,255,65,.15)' }} />
       </div>
 
       {/* TOP-RIGHT — Pause / Chat / Menu / Pablo AI dropdown */}
@@ -6213,7 +6574,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (nearTerminal || hasWorkingDevice) {
                 setShowTopMenu(v => !v);
               } else {
-                setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75 to access the menu.');
+                setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75 to access the Terminal.');
               }
             }}
             style={{
@@ -6227,27 +6588,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               letterSpacing: '.1em',
             }}
           >
-            ☰ MENU {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
+            ☰ TERMINAL {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
           </button>
         </div>
         {showTopMenu && (
-          <div style={{ width: 180, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
-            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
-              💬 CHAT [C]{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
-            </button>
+          <div style={{ width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
+            <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
             <button onClick={() => {
               const g = gs.current;
               if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => !v); setShowTopMenu(false); }
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
-            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.1)' : 'transparent', border: showPablo ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showPablo ? '#00ff41' : (hasDevice && !deviceBroken) ? 'rgba(0,255,65,.6)' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🤖 PABLO AI [P]{deviceBroken ? ' ⚠' : ''}
+            }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,255,65,.04)', border: showPablo ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.25)', color: showPablo ? '#00ff41' : (hasDevice && !deviceBroken) ? '#00ff41' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🤖 PABLO AI [P] — FREE{deviceBroken ? ' ⚠' : ''}
+            </button>
+            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
+            </div>
+            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              📊 STATS & NET WORTH
+            </button>
+            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(0,255,65,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
+            </button>
+            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              👤 COSTUME
             </button>
             <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(0,255,65,.1)' : 'transparent', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🗺 MAP [M]
             </button>
-            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              📊 STATS
+            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>SETTINGS</div>
+            </div>
+            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
+              💬 CHAT [C]{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
             <button onClick={toggleVoice} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎙 {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
@@ -6255,18 +6629,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: muted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {muted ? '🔇 MUTE' : '♪ SND'}
             </button>
-            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              👤 COSTUME
-            </button>
-            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(0,255,65,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
-            </button>
-            <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); gs.current.boomerMode = nb; try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} setNarr(nb ? '> BOOMER MODE — ON. You call them "HP potions" now.' : '> BOOMER MODE — OFF. Back to corporate speak.'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: boomerMode ? 'rgba(255,170,0,.08)' : 'transparent', border: boomerMode ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🎮 BOOMER {boomerMode ? 'ON' : 'OFF'}
-            </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                ← IMMIGRATION
+                💾 SAVE & EXIT
               </button>
               <button onClick={() => { doSaveRef.current(buildSaveData()); window.open(`${window.location.origin}${import.meta.env.BASE_URL}mobile`, '_blank'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginTop: 3, background: 'transparent', border: '1px solid rgba(0,180,255,.15)', color: 'rgba(0,180,255,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 📱 MOBILE TERMINAL
@@ -6288,20 +6653,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       </div>
 
       {/* BOTTOM-CENTER — narration bar */}
-      <div style={{ position: 'absolute', bottom: 10, left: 20, right: 200, zIndex: 100, pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.6rem .9rem' }}>
+      <div style={{ position: 'absolute', bottom: 10, left: 220, right: 20, zIndex: 100, pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .7rem' }}>
           {nearB && (
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.12em', marginBottom: '.3rem' }}>
+            <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '1.15rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.04em', lineHeight: 1.5 }}>{narration}</div>
+          <div style={{ fontSize: '1rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.03em', lineHeight: 1.4 }}>{narration}</div>
           {overheardLine && (
-            <div style={{ marginTop: '.25rem', fontSize: '.95rem', color: 'rgba(255,200,100,.75)', letterSpacing: '.03em', fontStyle: 'italic', textShadow: '0 0 6px rgba(255,200,100,.25)' }}>
+            <div style={{ marginTop: '.2rem', fontSize: '.85rem', color: 'rgba(255,200,100,.75)', letterSpacing: '.03em', fontStyle: 'italic', textShadow: '0 0 6px rgba(255,200,100,.25)' }}>
               {overheardLine}
             </div>
           )}
-          <div style={{ marginTop: '.3rem', fontSize: '.85rem', color: 'rgba(0,255,65,.42)', letterSpacing: '.08em' }}>WASD move · E enter · Space melee · Click shoot · C chat · V voice · P device · ESC close</div>
+          <div style={{ marginTop: '.2rem', fontSize: '.7rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.06em' }}>WASD · E enter · Space melee · C chat · P terminal · ESC close</div>
         </div>
       </div>
 
@@ -6399,7 +6764,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── CHAT PANEL ── */}
       {chatOpen && (
-        <div style={{ position: 'absolute', bottom: 120, left: 10, width: 280, maxHeight: '42vh', background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.3)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
+        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 340, maxHeight: '38vh', background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.3)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
           <div style={{ padding: '.35rem .55rem', borderBottom: '1px solid rgba(0,255,65,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.1em' }}>{dmTarget ? `DM → ${dmTarget.name}` : 'WORLD CHAT'}</span>
             <div style={{ display: 'flex', gap: '.3rem' }}>
@@ -6450,15 +6815,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         />
       )}
 
-      {/* ── PABLO PANEL ── */}
+      {/* ── TERMINAL HUB PANEL ── */}
       {showPablo && gs.current.pabloOnboardingDone && (() => {
         const g = gs.current;
         const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const tabS = (active: boolean): React.CSSProperties => ({
-          padding: '.3rem .75rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.12)',
+          padding: '.3rem .6rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.12)',
           background: active ? 'rgba(0,255,65,.08)' : 'transparent',
-          color: active ? '#00ff41' : 'rgba(0,255,65,.3)', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.1em',
+          color: active ? '#00ff41' : 'rgba(0,255,65,.3)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em',
         });
         const StatRow = ({ label, val, col, bar }: { label: string; val: string | number; col?: string; bar?: number }) => (
           <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '.4rem', alignItems: 'center', marginBottom: '.18rem' }}>
@@ -6474,16 +6839,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         );
         const curZone = inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND';
+        const netWorth = salary + goldBalance * FIAT_PER_GOLD;
+        const usdConversion = (netWorth * 0.012).toFixed(2);
 
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 250, paddingRight: '3%' }}
             onClick={e => { if (e.target === e.currentTarget) { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); } }}>
-            <div style={{ width: 400, maxWidth: '88vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.5)', boxShadow: '0 0 40px rgba(0,255,65,.08)' }}>
+            <div style={{ width: 440, maxWidth: '90vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.5)', boxShadow: '0 0 40px rgba(0,255,65,.08)' }}>
 
               {/* ── Header ── */}
               <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'PABLO DEVICE'}</div>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL HUB'}</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
                     {`OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
                   </div>
@@ -6495,10 +6862,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
 
               {/* ── Tabs ── */}
-              <div style={{ display: 'flex', gap: '.25rem', padding: '.35rem .7rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
-                {(['city','chat'] as const).map(t => (
+              <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
+                {(['chat','stats','city'] as const).map(t => (
                   <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'city' ? '[ CITY INFO ]' : '[ CHAT ]'}
+                    {t === 'chat' ? '🤖 PABLO AI' : t === 'stats' ? '📊 STATS' : '🏙 INFO'}
                   </button>
                 ))}
               </div>
@@ -6506,9 +6873,57 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* ── Body ── */}
               <div style={{ flex: 1, overflow: 'auto', padding: '.65rem .85rem' }}>
 
-                {/* CITY INFO TAB */}
+                {/* STATS TAB — player stats, net worth, USD conversion — always accessible */}
+                {pabloTab === 'stats' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    {isTrial && (
+                      <div style={{ border: '1px solid rgba(255,165,0,.35)', background: 'rgba(255,165,0,.06)', padding: '.3rem .5rem', fontSize: '.5rem', color: 'rgba(255,165,0,.7)', letterSpacing: '.08em', marginBottom: '.2rem' }}>
+                        ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
+                      </div>
+                    )}
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>OPERATIVE STATUS</div>
+                    <StatRow label="HP" val={`${Math.floor(hp)}/${g.maxHp}`} col={hpColor} bar={(hp / g.maxHp) * 100} />
+                    <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622'} bar={hunger} />
+                    <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622'} bar={thirst} />
+                    <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444'} bar={energy} />
+                    <StatRow label="LEVEL" val={level} col="#ffcc00" />
+                    <StatRow label="EXP" val={`${exp}/${expToLevel(level)}`} col="#ffcc00" bar={Math.min(100, (exp / expToLevel(level)) * 100)} />
+                    <StatRow label="DEF" val={(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus} col="#44aaff" />
+                    {poisoned && <StatRow label="STATUS" val="POISONED" col="#88ff44" />}
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>NET WORTH & FINANCES</div>
+                      <StatRow label="NET WORTH" val={`ƒ${netWorth.toLocaleString()}`} col="#FFD700" />
+                      <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#33ffaa" />
+                      <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col="#00ff41" />
+                      <StatRow label="GOLD" val={`${goldBalance}oz`} col="#FFD700" />
+                      <StatRow label="SALARY" val={`ƒ${salary.toLocaleString()}`} />
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
+                      <StatRow label="ZONE" val={curZone} col={curZone === 'MINX CITY' ? '#00ff41' : '#88ff44'} />
+                      {calendarStr && <StatRow label="CALENDAR" val={calendarStr} />}
+                      {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#00ff41'} />}
+                      <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#00ff41'} />
+                      <StatRow label="TEMP" val={`${tempC}°C`} col={tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : '#00ff41'} />
+                    </div>
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>SETTINGS</div>
+                      <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); gs.current.boomerMode = nb; try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} setNarr(nb ? '> BOOMER MODE — ON. All game jargon replaced with plain language.' : '> BOOMER MODE — OFF. Back to corporate speak.'); }} style={{ width: '100%', padding: '.35rem .5rem', background: boomerMode ? 'rgba(255,170,0,.08)' : 'transparent', border: boomerMode ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.65rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        🎮 BOOMER MODE {boomerMode ? '— ON' : '— OFF'}
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', marginTop: '.15rem' }}>Translates all game jargon into plain language for people who just want to work.</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* CITY INFO TAB — always accessible */}
                 {pabloTab === 'city' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                    {isTrial && (
+                      <div style={{ border: '1px solid rgba(255,165,0,.35)', background: 'rgba(255,165,0,.06)', padding: '.3rem .5rem', fontSize: '.5rem', color: 'rgba(255,165,0,.7)', letterSpacing: '.08em' }}>
+                        ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
+                      </div>
+                    )}
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>MINX CITY — NETWORK STATUS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                       <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
@@ -6534,13 +6949,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — Neural assistant (this terminal)
                       </div>
                     </div>
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PREMIUM MODULES</div>
+                      {Object.entries(SUBSCRIPTION_PRICING).map(([key, tier]) => (
+                        <div key={key} style={{ border: `1px solid ${isPro ? 'rgba(0,255,65,.2)' : 'rgba(255,200,60,.15)'}`, padding: '.4rem .5rem', marginBottom: '.3rem', background: isPro ? 'rgba(0,255,65,.04)' : 'rgba(255,200,60,.03)', opacity: isPro ? 1 : 0.5 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ ...VT, fontSize: '.8rem', color: isPro ? '#00ff41' : '#ffcc44', letterSpacing: '.06em' }}>
+                              {isPro ? '✓ ' : '🔒 '}{tier.name}
+                            </span>
+                            <span style={{ fontSize: '.5rem', color: isPro ? 'rgba(0,255,65,.4)' : 'rgba(255,200,60,.5)' }}>
+                              {isPro ? (isTrial ? 'TRIAL ACTIVE' : 'UNLOCKED') : `ƒ${tier.monthlyFiat}/mo · ${tier.trialDays}d FREE TRIAL`}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
                       PABLO CORP. — 24 towers, 24 cities, one network. All transmissions logged. All terminals monitored.
                     </div>
                   </div>
                 )}
 
-                {/* CHAT TAB */}
+                {/* PABLO AI CHAT TAB */}
                 {pabloTab === 'chat' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
@@ -6579,7 +7009,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* Footer */}
               <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
-                PABLO CORP. SURVEILLANCE UNIT v1.0 · ALL TRANSMISSIONS LOGGED · SENIOR PABLO IS WATCHING · ESC TO CLOSE
+                TERMINAL HUB v2.0 · PABLO CORP. · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE
               </div>
             </div>
           </div>
@@ -6732,12 +7162,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
       <RadioPlayer playing={radioOn} mounted={playerEverMounted} />
 
-      {/* ── CITY EVENT TICKER ── */}
-      {cityEvent && (
-        <div style={{ position: 'absolute', bottom: '3.8rem', left: '50%', transform: 'translateX(-50%)', zIndex: 180, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(100,200,255,.7)', letterSpacing: '.08em', whiteSpace: 'nowrap', pointerEvents: 'none', textShadow: '0 0 8px rgba(100,200,255,.3)' }}>
-          {cityEvent}
-        </div>
-      )}
+      {/* City event ticker removed — replaced by proximity notification bar at top */}
 
       {/* ── LEVEL UP OVERLAY ── */}
       {/* ── QUICK JOB PANEL ──────────────────────────────────────────────── */}
@@ -6792,6 +7217,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const g = gs.current;
         const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
         const doVendBuy = (item: VendItem) => {
+          const goldReq = (item as any).goldPrice as number | undefined;
+          if (goldReq && goldReq > 0) {
+            if (g.goldBalance < goldReq) { sfxError(); setNarr(`> GOLD REQUIRED — Real estate requires ${goldReq}oz GOLD. You have ${g.goldBalance}oz. Visit the GOLD EXCHANGE.`); return; }
+            if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
+            g.goldBalance -= goldReq; setGoldBalance(g.goldBalance); sfxCoin();
+            g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
+            if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
+            setNarr(`> VENDING MACHINE — ${item.name} acquired for ${goldReq}oz GOLD. Property registered.`);
+            return;
+          }
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (item.id === 'pablo_device' && !g.hasDevice) { sfxError(); setNarr('> REPAIR KIT — You don\'t have a device to repair. Find one first.'); return; }
           if (item.id === 'pablo_device' && !g.deviceBroken) { sfxError(); setNarr('> REPAIR KIT — Your device is already working fine.'); return; }
@@ -6885,7 +7320,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
                     {cat.items.map(item => {
                       const owned = g.ownedItems.has(item.id);
-                      const canAfford = g.salary >= item.price;
+                      const goldReq = (item as any).goldPrice as number | undefined;
+                      const isGoldOnly = goldReq !== undefined && goldReq > 0;
+                      const canAfford = isGoldOnly ? g.goldBalance >= goldReq : g.salary >= item.price;
                       const isReEstate = cat.id === 'realestate';
                       const alreadyHas = !item.consumable && owned;
                       return (
@@ -6895,17 +7332,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               <span style={{ ...VT2, fontSize:'1.05rem', color: alreadyHas ? '#00ff41' : cat.col, letterSpacing:'.08em' }}>{item.name}</span>
                               {alreadyHas && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.25)', padding:'1px 5px' }}>OWNED</span>}
                               {isReEstate && <span style={{ fontSize:'.38rem', color:'rgba(204,68,255,.6)', border:'1px solid rgba(204,68,255,.2)', padding:'1px 5px' }}>PASSIVE INCOME</span>}
+                              {isGoldOnly && <span style={{ fontSize:'.38rem', color:'rgba(255,215,0,.7)', border:'1px solid rgba(255,215,0,.25)', padding:'1px 5px' }}>GOLD ONLY</span>}
                               {item.consumable && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.4)', border:'1px solid rgba(0,255,65,.15)', padding:'1px 5px' }}>CONSUMABLE</span>}
                             </div>
                             <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
                           </div>
                           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
-                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ƒ{item.price.toLocaleString()}</div>
+                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? (isGoldOnly ? '#ffd700' : '#00ff41') : 'rgba(255,80,80,.6)' }}>{isGoldOnly ? `${goldReq}oz GOLD` : `ƒ${item.price.toLocaleString()}`}</div>
                             <button
                               onClick={() => doVendBuy(item)}
                               disabled={alreadyHas}
                               style={{ padding:'.25rem .7rem', background: alreadyHas ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: alreadyHas ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: alreadyHas ? 'not-allowed' : 'pointer', ...VT2, fontSize:'.95rem', letterSpacing:'.08em', ...S2 }}>
-                              {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : 'EARN FIAT'}
+                              {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : isGoldOnly ? 'NEED GOLD' : 'EARN FIAT'}
                             </button>
                           </div>
                         </div>
@@ -7225,39 +7663,43 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── WEAPONS WHEEL — bottom-right compact grid ─────────────────────── */}
+      {/* ── WEAPONS WHEEL — bottom-right dual-slot display ─────────────── */}
       <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
         <div
           onClick={() => setShowWeapons(v => !v)}
           style={{
-            width: 72, height: 72, borderRadius: '50%',
+            width: 80, height: 80, borderRadius: 8,
             background: showWeapons ? 'rgba(0,255,65,.14)' : 'rgba(0,5,0,.92)',
             border: `2px solid ${showWeapons ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.28)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', boxShadow: '0 0 14px rgba(0,255,65,.15)',
-            transition: 'all .15s ease',
+            transition: 'all .15s ease', gap: 2,
           }}
         >
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41', lineHeight: 1 }}>⚔</span>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em', marginTop: 2 }}>{activeWeapon}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41' }}>⚔</span>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.02em' }}>{activeWeapon}</span>
+          </div>
+          <div style={{ width: '70%', height: 1, background: 'rgba(0,255,65,.15)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === secondaryWeapon)?.color ?? '#00ff41' }}>🔫</span>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.02em' }}>{secondaryWeapon}</span>
+          </div>
         </div>
         {showWeapons && (() => {
-          const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣' };
+          const iconMap: Record<string, string> = { fists: '✊', sword: '⚔', gun: '🔫', laser: '⚡', bomb: '💣', knife: '🔪', revolver: '🔫', pistol: '🔫', rifle: '🎯' };
           const available = WEAPONS.filter(w => unlockedWeapons.has(w.id));
-          return (
-            <div style={{
-              position: 'absolute', bottom: 80, right: 0, width: 200,
-              background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.4)',
-              boxShadow: '0 0 24px rgba(0,255,65,.12)', padding: '.35rem',
-              display: 'flex', flexDirection: 'column', gap: '3px',
-            }}>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', padding: '2px 4px', borderBottom: '1px solid rgba(0,255,65,.12)', marginBottom: '2px' }}>WEAPONS</div>
-              {available.map(w => {
-                const isActive = activeWeapon === w.id;
+          const meleeWpns = available.filter(w => w.type === 'melee');
+          const rangedWpns = available.filter(w => w.type === 'ranged');
+          const renderSlot = (label: string, wpns: typeof WEAPONS, current: string, onSelect: (id: string) => void) => (
+            <div>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', padding: '3px 4px', borderBottom: '1px solid rgba(0,255,65,.12)', marginBottom: '2px' }}>{label}</div>
+              {wpns.map(w => {
+                const isActive = current === w.id;
                 return (
                   <div
                     key={w.id}
-                    onClick={() => { setActiveWeapon(w.id); activeWeaponRef.current = w.id; setShowWeapons(false); setNarr(`> EQUIPPED: ${w.label}. ${w.desc}`); }}
+                    onClick={() => onSelect(w.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '.4rem',
                       padding: '.3rem .45rem', cursor: 'pointer',
@@ -7271,10 +7713,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isActive ? w.color : 'rgba(0,255,65,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {isActive ? '▸ ' : ''}{w.label}
                       </div>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK · {w.type === 'melee' ? 'MELEE' : 'RANGED'}</div>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK</div>
                     </div>
                   </div>
                 );
+              })}
+              {wpns.length === 0 && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', padding: '.3rem .45rem' }}>No {label.toLowerCase()} weapons</div>}
+            </div>
+          );
+          return (
+            <div style={{
+              position: 'absolute', bottom: 88, right: 0, width: 210,
+              background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.4)',
+              boxShadow: '0 0 24px rgba(0,255,65,.12)', padding: '.35rem',
+              display: 'flex', flexDirection: 'column', gap: '3px',
+            }}>
+              {renderSlot('MELEE SLOT [SPACE]', meleeWpns, activeWeapon, (id) => {
+                setActiveWeapon(id); activeWeaponRef.current = id;
+                setNarr(`> MELEE EQUIPPED: ${WEAPONS.find(w => w.id === id)?.label}. ${WEAPONS.find(w => w.id === id)?.desc}`);
+              })}
+              <div style={{ height: 1, background: 'rgba(0,255,65,.15)', margin: '4px 0' }} />
+              {renderSlot('RANGED SLOT [F]', rangedWpns, secondaryWeapon, (id) => {
+                setSecondaryWeapon(id); secondaryWeaponRef.current = id;
+                setNarr(`> RANGED EQUIPPED: ${WEAPONS.find(w => w.id === id)?.label}. ${WEAPONS.find(w => w.id === id)?.desc}`);
               })}
             </div>
           );
@@ -7522,7 +7983,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ƒ2,500 / 30s' : char.class === 'replicant' ? 'GIG PAY: +ƒ1,200 / 48s' : 'SCAVENGING: +ƒ600+ / 60s' },
+                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ƒ500 / min' : char.class === 'replicant' ? 'GIG PAY: +ƒ300 / min' : 'SCAVENGING: +ƒ200+ / min' },
                       { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO TAX: 15% ON INTEREST' },
                     ].map(({ label, val, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
@@ -7999,21 +8460,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (g.salary < cost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
           g.salary -= cost; g.goldBalance += amt;
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          setNarr(`> GOLD EXCHANGE — Purchased ${amt}g GOLD for ƒ${cost.toLocaleString()} FIAT. Tax: ${(getTransactionTax(cost) * 100).toFixed(1)}%.`);
+          setNarr(`> GOLD EXCHANGE — Purchased ${amt}oz GOLD for ƒ${cost.toLocaleString()} FIAT. Tax: ${(getTransactionTax(cost) * 100).toFixed(1)}%.`);
         };
         const doSellGold = (amt: number) => {
           if (amt <= 0 || g.goldBalance < amt) { sfxError(); return; }
           const gain = Math.floor(amt * rate * (1 - getTransactionTax(amt * rate)));
           g.goldBalance -= amt; g.salary += gain;
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          setNarr(`> GOLD EXCHANGE — Sold ${amt}g GOLD for ƒ${gain.toLocaleString()} FIAT. Tax: ${(getTransactionTax(gain) * 100).toFixed(1)}%.`);
+          setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${gain.toLocaleString()} FIAT. Tax: ${(getTransactionTax(gain) * 100).toFixed(1)}%.`);
         };
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); } }}>
             <div style={{ width:560, border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>GOLD EXCHANGE</div>
-              <div style={{ fontSize:'.42rem', color:'rgba(255,215,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>RATE: 1g GOLD = ƒ{rate.toLocaleString()} FIAT · TAX SCALES WITH SIZE</div>
+              <div style={{ fontSize:'.42rem', color:'rgba(255,215,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>RATE: 1oz GOLD = ƒ{rate.toLocaleString()} FIAT · TAX SCALES WITH SIZE</div>
               <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:'.5rem', color:'rgba(0,255,65,.4)', marginBottom:'.3rem' }}>FIAT BALANCE</div>
@@ -8021,14 +8482,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:'.5rem', color:'rgba(255,215,0,.4)', marginBottom:'.3rem' }}>GOLD BALANCE</div>
-                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#FFD700' }}>{goldBalance}g</div>
+                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#FFD700' }}>{goldBalance}oz</div>
                 </div>
               </div>
               <div style={{ display:'flex', gap:'.8rem' }}>
                 {[1, 5, 10].map(amt => (
                   <button key={`buy${amt}`} onClick={() => doBuyGold(amt)} disabled={g.salary < amt * rate}
                     style={{ flex:1, padding:'.5rem', background:'rgba(255,215,0,.08)', border:'1px solid rgba(255,215,0,.3)', color:'#FFD700', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    BUY {amt}g
+                    BUY {amt}oz
                   </button>
                 ))}
               </div>
@@ -8036,7 +8497,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {[1, 5, 10].map(amt => (
                   <button key={`sell${amt}`} onClick={() => doSellGold(amt)} disabled={g.goldBalance < amt}
                     style={{ flex:1, padding:'.5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.25)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    SELL {amt}g
+                    SELL {amt}oz
                   </button>
                 ))}
               </div>
@@ -8120,6 +8581,130 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ))}
               </div>
               <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── ADMIN / BUSINESS REGISTRATION PANEL ──────────────────────────── */}
+      {showAdmin && (() => {
+        const g = gs.current;
+        const FICT_FEE = 50000;
+        const REAL_FEE = 100000;
+        const regFee = adminBizType === 'real' ? REAL_FEE : FICT_FEE;
+        const alreadyRegistered = !!char.hasBusiness;
+        const FICT_INDUSTRIES = [
+          'Thievery', 'Salvaging', 'Bounty Hunting', 'Shopkeeper', 'Trader',
+          'Assassin', 'Maintenance', 'Doctor', 'Architect', 'Construction',
+          'Engineering', 'Drug Dealing', 'Manufacturing', 'Advertising',
+          'Sales', 'Telemarketing', 'Clothes Making', 'Landscaping',
+          'Finance', 'Energy', 'Weapons', 'Real Estate', 'Art',
+          'Transportation', 'Security', 'Smuggling', 'Hacking', 'Forgery',
+        ];
+        const REAL_INDUSTRIES = [
+          'Software / SaaS', 'Marketing & Advertising', 'Consulting',
+          'Healthcare', 'Finance & Fintech', 'Legal',
+          'Education', 'E-Commerce / Retail', 'Real Estate',
+          'Media & Entertainment', 'Manufacturing', 'Logistics',
+          'Food & Beverage', 'Construction', 'Energy',
+          'Transportation', 'Security', 'Technology',
+        ];
+        const industries = adminBizType === 'real' ? REAL_INDUSTRIES : FICT_INDUSTRIES;
+        const doRegister = () => {
+          if (!adminBizName.trim()) { sfxError(); setNarr('> ADMIN BUREAU — Enter a business name.'); return; }
+          if (!adminBizIndustry) { sfxError(); setNarr('> ADMIN BUREAU — Select an industry.'); return; }
+          if (g.salary < regFee) { sfxError(); setNarr(`> ADMIN BUREAU — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Fictitious entity'} registration: ƒ${regFee.toLocaleString()}.`); return; }
+          g.salary -= regFee; setSalary(g.salary); sfxCoin();
+          char.hasBusiness = true;
+          char.bizType = adminBizType;
+          char.company = adminBizName.trim().toUpperCase();
+          char.bizRegisteredAt = Date.now();
+          setNarr(`> CITY ADMIN BUREAU — "${char.company}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Welcome to Minx City commerce.`);
+          setShowAdmin(false);
+          setAdminBizName(''); setAdminBizIndustry('');
+        };
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 900, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={e => { if (e.target === e.currentTarget) setShowAdmin(false); }}>
+            <div style={{ width: 440, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(0,255,65,.4)', boxShadow: '0 0 40px rgba(0,255,65,.12)', padding: '1.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>CITY ADMIN BUREAU</div>
+                <button onClick={() => setShowAdmin(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+              </div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>PABLO CORP. MUNICIPAL SERVICES — BUSINESS REGISTRATION</div>
+
+              {alreadyRegistered ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  <div style={{ border: '1px solid rgba(0,255,65,.25)', padding: '.7rem', background: 'rgba(0,255,65,.04)' }}>
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.08em' }}>{char.company}</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', marginTop: '.2rem' }}>
+                      Type: {char.bizType === 'real' ? 'REAL ENTERPRISE' : char.bizType === 'fictitious' ? 'FICTITIOUS ENTITY' : 'UNREGISTERED'}<br/>
+                      Status: ACTIVE<br/>
+                      Registered: {char.bizRegisteredAt ? new Date(char.bizRegisteredAt).toLocaleDateString() : 'ON FILE'}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
+                    Your business is on record with PABLO CORP. municipal database. All transactions logged. All permits valid until revoked.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                    Register a business in Minx City. Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
+                    <input
+                      value={adminBizName}
+                      onChange={e => setAdminBizName(e.target.value)}
+                      placeholder="Enter business name..."
+                      maxLength={40}
+                      style={{ width: '100%', padding: '.4rem .5rem', background: 'rgba(0,5,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.06em', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS TYPE</div>
+                    <div style={{ display: 'flex', gap: '.4rem' }}>
+                      {(['fictitious', 'real'] as const).map(t => (
+                        <button key={t} onClick={() => { setAdminBizType(t); setAdminBizIndustry(''); }} style={{
+                          flex: 1, padding: '.5rem', background: adminBizType === t ? 'rgba(0,255,65,.12)' : 'transparent',
+                          border: `1px solid ${adminBizType === t ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.15)'}`,
+                          color: adminBizType === t ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer',
+                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em',
+                        }}>
+                          {t === 'fictitious' ? `FICTITIOUS — ƒ${FICT_FEE.toLocaleString()}` : `REAL ENTERPRISE — ƒ${REAL_FEE.toLocaleString()}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INDUSTRY</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.25rem', maxHeight: '30vh', overflow: 'auto' }}>
+                      {industries.map(ind => (
+                        <button key={ind} onClick={() => setAdminBizIndustry(ind)} style={{
+                          padding: '.3rem .4rem', background: adminBizIndustry === ind ? 'rgba(0,255,65,.1)' : 'transparent',
+                          border: `1px solid ${adminBizIndustry === ind ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.1)'}`,
+                          color: adminBizIndustry === ind ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer',
+                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', textAlign: 'left',
+                        }}>
+                          {ind}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={doRegister} style={{
+                    width: '100%', padding: '.5rem', marginTop: '.3rem',
+                    background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.4)',
+                    color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace",
+                    fontSize: '1.1rem', letterSpacing: '.1em',
+                  }}>
+                    REGISTER — ƒ{regFee.toLocaleString()}
+                  </button>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', textAlign: 'center' }}>
+                    Your FIAT balance: ƒ{salary.toLocaleString()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

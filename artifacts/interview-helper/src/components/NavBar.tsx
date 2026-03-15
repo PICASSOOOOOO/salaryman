@@ -202,7 +202,7 @@ export function NavBar() {
           {/* ── SEPARATOR: work tools ↔ world game ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', margin: '0 0.3rem', opacity: 0.4 }}>
             <div style={{ width: 1, height: 18, background: 'rgba(0,255,65,0.25)' }} />
-            <span style={{ fontSize: '0.38rem', color: 'rgba(0,255,65,0.3)', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '0.12em', writingMode: 'horizontal-tb' }}>WORLD</span>
+            <span style={{ fontSize: '0.38rem', color: 'rgba(0,255,65,0.3)', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '0.12em', writingMode: 'horizontal-tb' }}>EXPLORE</span>
             <div style={{ width: 1, height: 18, background: 'rgba(0,255,65,0.25)' }} />
           </div>
 
@@ -231,7 +231,7 @@ export function NavBar() {
             }}
           >
             <Globe className="w-3 h-3" />
-            WORLD
+            EXPLORE
           </button>
 
           {isTrial ? (
@@ -354,7 +354,7 @@ export function NavBar() {
                 }}
               >
                 <LogIn className="w-3.5 h-3.5" />
-                CONNECT
+                LOG IN
               </button>
             )}
           </div>

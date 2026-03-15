@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useIsMobile } from '../hooks/use-mobile';
 
 type CharClass = 'corporate' | 'outlaw' | 'replicant';
 
@@ -40,7 +41,7 @@ const CLASS_COLOR: Record<string, string> = {
 };
 
 const CLASS_BADGE: Record<string, string> = {
-  corporate: 'CORP',
+  corporate: 'SUIT',
   outlaw: 'OTL',
   replicant: 'REP',
 };
@@ -50,14 +51,14 @@ type GuideSection = 'world' | 'factions' | 'combat' | 'survival' | 'territories'
 const CLASSES = [
   {
     id: 'corporate' as CharClass,
-    label: 'CORPORATE (SUITS)',
+    label: 'SUITS',
     tagline: 'City. Money. Influence.',
     desc: 'Born in the neon towers. Most starting capital. Government buildings welcome you. Full city passport included. The wasteland will eat you alive — but you can buy your way through checkpoints.',
     start: 'CORPORATE DISTRICT',
-    salary: 'ƒ150,000',
+    salary: 'ƒ50,000',
     hp: '350',
     atk: '3',
-    perks: 'Most money · Full city passport · High salary · Low combat',
+    perks: 'Most money · Full city passport · Salary every minute · Low combat',
     color: '#00ff41',
   },
   {
@@ -66,10 +67,10 @@ const CLASSES = [
     tagline: 'Wasteland. Tough. Scarred.',
     desc: 'Exiled and hardened. High HP, strong ATK. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. Starts with a wasteland passport. The walls don\'t want you — good.',
     start: 'WASTELAND',
-    salary: 'ƒ15,000',
+    salary: 'ƒ30,000',
     hp: '480',
     atk: '14',
-    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Scavenge+',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Scavenge every minute',
     color: '#88ff44',
   },
   {
@@ -78,10 +79,10 @@ const CLASSES = [
     tagline: 'Android. Conscious. Deadliest.',
     desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO Corp. wants you shut down. Starts at the city fringe with a basic city passport.',
     start: 'CITY FRINGE',
-    salary: 'ƒ60,000',
+    salary: 'ƒ10,000',
     hp: '600',
     atk: '18',
-    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · Built for war',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · Gig pay every minute',
     color: '#33ffaa',
   },
 ];
@@ -391,7 +392,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Divider />
       <SectionHead>PERSONAL DEVICE</SectionHead>
-      <Row label="AVAILABILITY" val="Corporate operatives start with a personal handheld device. Outlaw and Replicant operatives must find or purchase one." col="#33ffaa" />
+      <Row label="AVAILABILITY" val="Suits start with a personal handheld device. Outlaws and Replicants must find or purchase one." col="#33ffaa" />
       <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#00ff41" />
       <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
       <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VENDING MACHINE (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
@@ -502,6 +503,7 @@ function GuideContent({ section }: { section: GuideSection }) {
 export default function WorldMenu() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
+  const isMobile = useIsMobile();
   const [tab, setTab] = useState<'enter' | 'guide'>('enter');
   // screen: 'saves' shows the save manager (logged in), 'new' shows the character creator
   const [screen, setScreen] = useState<'saves' | 'new'>('saves');
@@ -669,7 +671,7 @@ export default function WorldMenu() {
           ? null
           : name.trim().toUpperCase() + ' OPS';
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN') : null;
-    const startSalary = cls === 'corporate' ? 150000 : cls === 'replicant' ? 60000 : cls === 'outlaw' ? 15000 : 50000;
+    const startSalary = cls === 'corporate' ? 50000 : cls === 'replicant' ? 10000 : cls === 'outlaw' ? 30000 : 8000;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const char = {
       name: name.trim().toUpperCase(),
@@ -755,7 +757,7 @@ export default function WorldMenu() {
           </select>
         </span>
         <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>
-          {players === -1 ? 'SERVER FULL — MAX 50' : players !== null ? `${players}/50 OPERATIVES ONLINE` : 'CONNECTING...'}
+          {players === -1 ? 'SERVER FULL — MAX 50' : players !== null ? `${players}/50 ONLINE` : 'CONNECTING...'}
           {tick % 2 === 0 ? ' ▮' : ' ▯'}
         </span>
       </div>
@@ -805,9 +807,10 @@ export default function WorldMenu() {
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', marginBottom: '.2rem' }}>SELECT OPERATION MODE</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
-                  {/* WAKE UP — new game */}
+                  {/* WAKE UP — new game (locked on mobile) */}
                   <button
                     onClick={() => {
+                      if (isMobile) return;
                       const seen = localStorage.getItem('sm_cinematic_seen');
                       if (seen) {
                         setScreen('new'); setStep(1);
@@ -816,16 +819,26 @@ export default function WorldMenu() {
                         setCinematicLine(0);
                       }
                     }}
+                    disabled={isMobile}
                     style={{
-                      padding: '1.2rem 1rem', background: 'rgba(0,255,65,.06)',
-                      border: '1px solid rgba(0,255,65,.5)', color: '#00ff41',
-                      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                      padding: '1.2rem 1rem',
+                      background: isMobile ? 'rgba(255,60,60,.04)' : 'rgba(0,255,65,.06)',
+                      border: `1px solid ${isMobile ? 'rgba(255,60,60,.25)' : 'rgba(0,255,65,.5)'}`,
+                      color: isMobile ? 'rgba(255,60,60,.4)' : '#00ff41',
+                      cursor: isMobile ? 'not-allowed' : 'pointer',
+                      textAlign: 'left', fontFamily: 'inherit',
                       transition: 'all .15s',
+                      position: 'relative', overflow: 'hidden',
                     }}
                   >
+                    {isMobile && (
+                      <div style={{ position: 'absolute', top: 6, right: 8, fontSize: '.42rem', color: 'rgba(255,60,60,.6)', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.1em', background: 'rgba(255,60,60,.1)', padding: '2px 6px', border: '1px solid rgba(255,60,60,.2)' }}>
+                        🖥 DESKTOP ONLY
+                      </div>
+                    )}
                     <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>WAKE UP</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
-                      New operative. Fresh deployment. Start your story from the beginning.
+                    <div style={{ fontSize: '.48rem', color: isMobile ? 'rgba(255,60,60,.3)' : 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
+                      {isMobile ? 'This mode requires a desktop browser. Use GO TO WORK on mobile.' : 'Fresh start. New story. Build your way up from nothing.'}
                     </div>
                   </button>
 
@@ -850,11 +863,25 @@ export default function WorldMenu() {
                       textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
                     }}
                   >
-                    <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>MULTI-PLAYER MODE</div>
+                    <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>{(() => {
+                      if (!isAuthenticated || cloudSaves.length === 0) return 'GO TO WORK';
+                      const latest = cloudSaves[0]?.data as Record<string, unknown> | undefined;
+                      if (!latest) return 'GO TO WORK';
+                      const bType = latest.bizType as string | undefined;
+                      if (bType === 'real') return 'COME ON IN, BIG SHOT';
+                      if (bType === 'fictitious' || latest.hasBusiness) return "YOU'RE LATE TO WORK";
+                      return 'FIND A JOB';
+                    })()}</div>
                     <div style={{ fontSize: '.48rem', color: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.45)' : !isAuthenticated ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
                       {isAuthenticated && cloudSaves.length > 0
-                        ? `Resume your story. ${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file.`
-                        : !isAuthenticated ? 'Sign in to access saved operatives.' : 'No saves found. Start a new story first.'}
+                        ? (() => {
+                          const latest = cloudSaves[0]?.data as Record<string, unknown> | undefined;
+                          const bType = latest?.bizType as string | undefined;
+                          if (bType === 'real') return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. The corner office is waiting.`;
+                          if (bType === 'fictitious' || latest?.hasBusiness) return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. Clock's ticking.`;
+                          return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. The city doesn't wait.`;
+                        })()
+                        : !isAuthenticated ? 'Sign in to access your saves.' : 'No saves found. Start a new story first.'}
                     </div>
                   </button>
 
@@ -967,7 +994,7 @@ export default function WorldMenu() {
                       textShadow: '0 0 12px rgba(0,255,65,.5)',
                     }}
                   >
-                    BEGIN — CREATE OPERATIVE {tick % 2 === 0 ? '▶' : '▷'}
+                    WHO ARE YOU {tick % 2 === 0 ? '▶' : '▷'}
                   </button>
                 )}
                 <button
@@ -1123,7 +1150,7 @@ export default function WorldMenu() {
             {screen === 'new' && step === 1 && (
               <div style={{ width: '100%', maxWidth: 820, display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SELECT OPERATIVE CLASS</div>
+                  <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SELECT CLASS</div>
                   {CLASSES.map(c => (
                     <button key={c.id} onClick={() => setCls(c.id)} style={{ padding: '.75rem .9rem', border: cls === c.id ? `1px solid ${c.color}` : '1px solid rgba(0,255,65,.15)', background: cls === c.id ? 'rgba(0,255,65,.07)' : 'rgba(0,255,65,.01)', color: cls === c.id ? c.color : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'all .12s', ...S }}>
                       <div style={{ flexShrink: 0, width: 8, height: 8, background: cls === c.id ? c.color : 'rgba(0,255,65,.2)', boxShadow: cls === c.id ? `0 0 8px ${c.color}` : 'none' }} />
@@ -1155,7 +1182,7 @@ export default function WorldMenu() {
                   </div>
 
                   <div>
-                    <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.35rem' }}>OPERATIVE NAME</div>
+                    <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.35rem' }}>YOUR NAME</div>
                     <input
                       value={name}
                       onChange={e => { setName(e.target.value); setNameError(''); }}
@@ -1305,7 +1332,7 @@ export default function WorldMenu() {
                     disabled={submitting || checkingName}
                     style={{ flex: 1, padding: '.75rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.7)', color: '#00ff41', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (submitting || checkingName) ? 'wait' : 'pointer', textShadow: '0 0 12px rgba(0,255,65,.4)' }}
                   >
-                    {submitting ? 'REGISTERING...' : checkingName ? 'VERIFYING NAME...' : `DEPLOY OPERATIVE ${tick % 2 === 0 ? '▶' : '▷'}`}
+                    {submitting ? 'REGISTERING...' : checkingName ? 'VERIFYING NAME...' : `START ${tick % 2 === 0 ? '▶' : '▷'}`}
                   </button>
                 </div>
 

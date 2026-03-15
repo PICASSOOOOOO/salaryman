@@ -384,7 +384,11 @@ export function updateWeatherParticles(particles: WeatherParticle[], canvasW: nu
 // ── Starter Weapon Lore Names ────────────────────────────────────────────────
 export const LORE_WEAPON_NAMES: Record<string, { label: string; lore: string }> = {
   FISTS: { label: 'BARE FISTS', lore: 'No weapon needed. Street-hardened knuckles.' },
+  KNIFE: { label: 'SWITCHBLADE', lore: 'Standard-issue blade. Every operative carries one.' },
+  REVOLVER: { label: 'VOSS-6', lore: 'Six-shot revolver. Reliable. Loud.' },
+  PISTOL: { label: 'VOSS-9 AUTO', lore: 'Corporate sidearm. Semi-automatic. Clean kills.' },
   SWORD: { label: 'ASHFANG', lore: 'Salvaged from the ruins of Old Minx. The blade remembers.' },
+  RIFLE: { label: 'LONGREACH MK.4', lore: 'Outlaw standard. Reaches further than trust.' },
   GUN: { label: 'VOSS-9', lore: 'Standard-issue sidearm. Serial number filed off.' },
   LASER: { label: 'PRISM LANCE', lore: 'Pre-collapse military tech. Still hums.' },
   BOMB: { label: 'SHATTER CHARGE', lore: 'Improvised explosive. Loud. Effective.' },
