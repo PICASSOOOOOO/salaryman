@@ -1,5 +1,6 @@
 // ── World Clock & Calendar ────────────────────────────────────────────────────
-// 1 real hour = 1 in-game day. 13 months × 28 days = 364 days/year, 4 seasons.
+// 1 real hour = 1 in-game day. 13 months × 28 days = 364 days/year.
+// Each season = 91 game days (3 months × 28 days + 7 bonus days). 4 seasons × 91 = 364 days/year.
 export const MONTHS = [
   'NEONVEIL','ASHMARK','DRIFTMOON','IRONBLOOM','RUSTFALL',
   'SMOKETIDE','GLASSREACH','COILWAKE','DEEPFORGE','HOLLOWEND',
@@ -8,14 +9,22 @@ export const MONTHS = [
 export const SEASONS = ['SPRING','SUMMER','AUTUMN','WINTER'] as const;
 export type Season = typeof SEASONS[number];
 export type WeatherType = 'CLEAR'|'RAIN'|'SNOW'|'OVERCAST'|'STORM'|'HEATWAVE'|'FOG'|'DUST'|'ACID_RAIN';
+export type TemperatureLevel = 'COLD' | 'MILD' | 'HOT';
 
-export const MONTH_SEASON: Record<number, Season> = {
-  0:'SPRING', 1:'SPRING', 2:'SPRING',
-  3:'SUMMER', 4:'SUMMER', 5:'SUMMER',
-  6:'AUTUMN', 7:'AUTUMN', 8:'AUTUMN',
-  9:'WINTER', 10:'WINTER', 11:'WINTER',
-  12:'WINTER',
-};
+export const DAYS_PER_SEASON = 91;
+export const DAYS_PER_YEAR = DAYS_PER_SEASON * 4;
+
+export function getSeasonFromDayOfYear(dayOfYear: number): Season {
+  const d = ((dayOfYear - 1) % DAYS_PER_YEAR + DAYS_PER_YEAR) % DAYS_PER_YEAR;
+  if (d < DAYS_PER_SEASON) return 'SPRING';
+  if (d < DAYS_PER_SEASON * 2) return 'SUMMER';
+  if (d < DAYS_PER_SEASON * 3) return 'AUTUMN';
+  return 'WINTER';
+}
+
+export function getDayOfYear(month: number, day: number): number {
+  return month * 28 + day;
+}
 
 export interface WorldCalendar {
   year: number;
@@ -53,7 +62,8 @@ export function tickCalendar(cal: WorldCalendar, dtMs: number): WorldCalendar {
   while (d > 28) { d -= 28; m++; }
   while (m >= 13) { m -= 13; y++; }
 
-  const season = MONTH_SEASON[m] ?? 'SPRING';
+  const dayOfYear = getDayOfYear(m, d);
+  const season = getSeasonFromDayOfYear(dayOfYear);
 
   let weather = cal.weather;
   let wt = cal.weatherTimer - 1;
@@ -77,6 +87,29 @@ export function tickCalendar(cal: WorldCalendar, dtMs: number): WorldCalendar {
 
   return { year: y, month: m, day: d, hour: h, season, weather, weatherTimer: wt,
     disasterActive: disaster, disasterTimer, disasterX: dx, disasterY: dy };
+}
+
+export function getTemperatureLevel(season: Season, weather: WeatherType, hour: number): TemperatureLevel {
+  const isNight = hour < 6 || hour >= 20;
+  if (season === 'WINTER') {
+    if (weather === 'HEATWAVE') return 'MILD';
+    return 'COLD';
+  }
+  if (season === 'SUMMER') {
+    if (weather === 'HEATWAVE' || weather === 'DUST') return 'HOT';
+    if (weather === 'SNOW' || weather === 'STORM') return 'MILD';
+    if (isNight) return 'MILD';
+    return 'HOT';
+  }
+  if (season === 'AUTUMN') {
+    if (weather === 'SNOW' || weather === 'STORM') return 'COLD';
+    if (weather === 'HEATWAVE') return 'HOT';
+    if (isNight && (weather === 'RAIN' || weather === 'FOG')) return 'COLD';
+    return 'MILD';
+  }
+  if (weather === 'SNOW' || (weather === 'STORM' && isNight)) return 'COLD';
+  if (weather === 'HEATWAVE') return 'HOT';
+  return 'MILD';
 }
 
 function pickWeather(season: Season): WeatherType {

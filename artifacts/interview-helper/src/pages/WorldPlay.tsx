@@ -20,7 +20,9 @@ import { PABLO_PRODUCTS } from '../lib/product-names';
 import { usePlan } from '../hooks/use-plan';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
+  type TemperatureLevel,
   initCalendar, tickCalendar, getCalendarString, getDayNightAlpha,
+  getTemperatureLevel,
   RADIATION_ZONES, getRadiationLevel,
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
   TREASURE_CHESTS, TREASURE_MAPS,
@@ -1184,6 +1186,15 @@ const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: n
   corporate:  { maxHp: 350, atkBonus: 8,  defBonus: 5,  wasteBonus: false },
   contractor: { maxHp: 340, atkBonus: 7,  defBonus: 3,  wasteBonus: false },
 };
+const CLASS_DISPLAY_NAME: Record<string, string> = {
+  corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS', contractor: 'CONTRACTOR',
+};
+const FACTION_SALARY_PER_MIN: Record<string, number> = {
+  corporate: 500, replicant: 350, outlaw: 200,
+};
+const FACTION_STARTING_NET_WORTH: Record<string, number> = {
+  corporate: 25000, replicant: 18000, outlaw: 10000,
+};
 // MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
 const THREAT_ATK: Record<string, number> = {
   RUST_SYNDICATE: 0.20, VOID_RUNNERS: 0.28, STATIC_MONKS: 0.35, MUTANT: 0.30,
@@ -1239,11 +1250,55 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all PABLO CORP. terminals.',       price: 25000 },
     { id: 'holo_map',        name: 'HOLO MAP',          desc: 'Reveals all locations on the minimap.',            price: 5000  },
   ]},
-  { id: 'weapons', label: 'WEAPONS', col: '#ff4444', items: [
-    { id: 'combat_knife',   name: 'COMBAT KNIFE',    desc: '+15% attack damage. Silent. Legal in 4 zones.',        price: 3000  },
-    { id: 'stun_baton',     name: 'STUN BATON',      desc: 'Stuns targets on hit. Non-lethal compliance tool.',    price: 8500  },
-    { id: 'compound_bow',   name: 'COMPOUND BOW',    desc: '+25% dmg. Extended range. Quiet operation.',           price: 15000 },
-    { id: 'plasma_pistol',  name: 'PLASMA PISTOL',   desc: '+40% attack damage. PABLO CORP. restricted.',          price: 22000 },
+  { id: 'weapons_melee', label: 'MELEE', col: '#ff4444', items: [
+    { id: 'combat_knife',    name: 'COMBAT KNIFE',     desc: '+15% ATK. Silent. Legal in 4 zones.',                  price: 3000  },
+    { id: 'dirk',            name: 'DIRK',             desc: '+18% ATK. Fast strikes. Concealable.',                 price: 4500  },
+    { id: 'short_sword',     name: 'SHORT SWORD',      desc: '+22% ATK. Balanced. Reliable.',                        price: 7000  },
+    { id: 'long_sword',      name: 'LONG SWORD',       desc: '+30% ATK. Wide arc. Slow.',                            price: 12000 },
+    { id: 'foil',            name: 'FOIL',             desc: '+25% ATK. Precision thrusts. Fast.',                    price: 9000  },
+    { id: 'sabre',           name: 'SABRE',            desc: '+28% ATK. Curved blade. Devastating slash.',            price: 11000 },
+    { id: 'spear',           name: 'SPEAR',            desc: '+20% ATK. Long reach. Keep distance.',                  price: 6000  },
+    { id: 'battle_axe',      name: 'BATTLE AXE',       desc: '+35% ATK. Heavy. Armor-piercing.',                     price: 14000 },
+    { id: 'mace',            name: 'MACE',             desc: '+27% ATK. Blunt force. Stun chance.',                   price: 10000 },
+    { id: 'boxing_gloves',   name: 'BOXING GLOVES',    desc: '+10% ATK. Non-lethal. Fast combo.',                     price: 2000  },
+    { id: 'stun_baton',      name: 'STUN BATON',       desc: '+20% ATK. Stuns targets. Non-lethal.',                  price: 8500  },
+    { id: 'pipe_wrench',     name: 'PIPE WRENCH',      desc: '+12% ATK. Improvised. Common.',                         price: 1500  },
+  ]},
+  { id: 'weapons_ranged', label: 'RANGED', col: '#ff6644', items: [
+    { id: 'pistol_32',       name: '.32 PISTOL',       desc: '+20% ATK. Standard sidearm. 6 rounds.',                price: 8000  },
+    { id: 'revolver_44',     name: '.44 REVOLVER',     desc: '+35% ATK. Heavy stopping power.',                      price: 15000 },
+    { id: 'revolver_357',    name: '.357 MAGNUM',      desc: '+40% ATK. Maximum revolver damage.',                    price: 20000 },
+    { id: 'rifle_22',        name: '.22 RIFLE',        desc: '+25% ATK. Accurate. Long range.',                      price: 12000 },
+    { id: 'sniper_rifle',    name: 'SNIPER RIFLE',     desc: '+50% ATK. Extreme range. Slow ROF.',                   price: 35000 },
+    { id: 'shotgun',         name: 'SHOTGUN',          desc: '+45% ATK. Devastating close range. Wide spread.',       price: 18000 },
+    { id: 'machine_gun',     name: 'MACHINE GUN',      desc: '+38% ATK. Full-auto. High ammo use.',                  price: 28000 },
+    { id: 'minigun',         name: 'MINIGUN',          desc: '+55% ATK. Overwhelming firepower. Very slow move.',     price: 50000 },
+    { id: 'compound_bow',    name: 'COMPOUND BOW',     desc: '+25% ATK. Extended range. Quiet.',                     price: 15000 },
+    { id: 'laser_pistol',    name: 'LASER PISTOL',     desc: '+42% ATK. Energy weapon. No ammo.',                    price: 30000 },
+    { id: 'laser_rifle',     name: 'LASER RIFLE',      desc: '+48% ATK. Precision energy beam.',                     price: 40000 },
+    { id: 'plasma_pistol',   name: 'PLASMA PISTOL',    desc: '+45% ATK. PABLO CORP. restricted.',                    price: 22000 },
+    { id: 'plasma_rifle',    name: 'PLASMA RIFLE',     desc: '+52% ATK. Superheated plasma bolts.',                  price: 45000 },
+  ]},
+  { id: 'consumables', label: 'GEAR', col: '#44ffaa', items: [
+    { id: 'purified_water',  name: 'PURIFIED WATER',   desc: 'Clean H2O. Thirst+50.',                                price: 600,   consumable: true, effect: 'thirst50' },
+    { id: 'mineral_water',   name: 'MINERAL WATER',    desc: 'Enhanced minerals. Thirst+70 Energy+10.',              price: 1000,  consumable: true, effect: 'thirst70 energy10' },
+    { id: 'energy_pack',     name: 'ENERGY PACK',      desc: 'Instant charge. Energy+60.',                           price: 2500,  consumable: true, effect: 'energy60' },
+    { id: 'ballistic_vest',  name: 'BALLISTIC VEST',   desc: 'Absorbs 20% damage. Stackable.',                       price: 12000 },
+    { id: 'energy_shield',   name: 'ENERGY SHIELD',    desc: 'Absorbs 35% damage. Drains on hit.',                   price: 25000 },
+    { id: 'medkit_full',     name: 'MEDKIT',           desc: 'Full trauma kit. HP+80.',                               price: 8000,  consumable: true, effect: 'hp80' },
+    { id: 'stimpack',        name: 'STIMPACK',         desc: 'Combat stimulant. HP+40 Energy+40 ATK+10% (30s).',     price: 5000,  consumable: true, effect: 'hp40 energy40' },
+    { id: 'radiation_pill',  name: 'RADIATION PILL',   desc: 'Blocks radiation for 120s.',                            price: 3000,  consumable: true, effect: 'rad_block' },
+    { id: 'antidote_gear',   name: 'ANTIDOTE',         desc: 'Clears poison instantly.',                              price: 4000,  consumable: true, effect: 'cure_poison' },
+    { id: 'lockpick_set',    name: 'LOCKPICK SET',     desc: 'Opens locked doors. 5 uses.',                           price: 6000  },
+    { id: 'hacking_tool',    name: 'HACKING TOOL',     desc: 'Bypass electronic locks. 3 uses.',                      price: 10000 },
+    { id: 'repair_kit',      name: 'REPAIR KIT',       desc: 'Fix equipment. Restores durability.',                   price: 5000,  consumable: true },
+    { id: 'signal_flare',    name: 'SIGNAL FLARE',     desc: 'Reveals map area. Scares enemies.',                     price: 1500,  consumable: true },
+    { id: 'smoke_grenade',   name: 'SMOKE GRENADE',    desc: 'Creates cover. Enemies lose track.',                    price: 3500,  consumable: true },
+    { id: 'emp_grenade',     name: 'EMP GRENADE',      desc: 'Disables electronics in radius.',                       price: 8000,  consumable: true },
+    { id: 'thermal_goggles', name: 'THERMAL GOGGLES',  desc: 'See heat signatures. Night vision.',                    price: 15000 },
+    { id: 'night_vision',    name: 'NIGHT VISION',     desc: 'See in darkness. Reduced night penalty.',               price: 12000 },
+    { id: 'grappling_hook',  name: 'GRAPPLING HOOK',   desc: 'Access elevated areas. Reusable.',                      price: 8000  },
+    { id: 'portable_shelter',name: 'PORTABLE SHELTER',  desc: 'Deploy camp anywhere. Rest bonus.',                    price: 20000 },
   ]},
   { id: 'vehicles', label: 'VEHICLES', col: '#ffcc00', items: [
     { id: 'cargo_bike',      name: 'CARGO BIKE',      desc: '+20% speed, +5 cargo slots. Single-speed chainless.', price: 28000  },
@@ -1267,7 +1322,40 @@ const VEND_CATALOG: VendCategory[] = [
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
 const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9 };
-const WEAPON_TIER: Record<string, number> = { combat_knife: 1, stun_baton: 2, compound_bow: 3, plasma_pistol: 4 };
+const WEAPON_TIER: Record<string, number> = {
+  pipe_wrench: 1, boxing_gloves: 1, combat_knife: 1,
+  dirk: 2, spear: 2, stun_baton: 2,
+  short_sword: 3, foil: 3, mace: 3, compound_bow: 3, pistol_32: 3, rifle_22: 3,
+  sabre: 4, long_sword: 4, battle_axe: 4, revolver_44: 4, shotgun: 4,
+  revolver_357: 5, sniper_rifle: 5, machine_gun: 5, laser_pistol: 5, plasma_pistol: 5,
+  minigun: 6, laser_rifle: 6, plasma_rifle: 6,
+};
+
+// ── Crafting Recipes (Outlaws only) ──────────────────────────────────────────
+interface CraftRecipe { id: string; name: string; desc: string; materials: Record<string, number>; result: { id: string; name: string; effect?: string }; }
+const CRAFT_RECIPES: CraftRecipe[] = [
+  { id: 'craft_food', name: 'WASTELAND RATION', desc: 'Scrap → food. Hunger+40 Thirst+20.', materials: { scrap_metal: 2, ration_pack: 1 }, result: { id: 'craft_ration', name: 'WASTELAND RATION', effect: 'hunger40 thirst20' } },
+  { id: 'craft_energy', name: 'JURY-RIGGED ENERGY PACK', desc: 'Components → energy. Energy+50.', materials: { power_cell: 1, circuit_board: 1 }, result: { id: 'craft_energy_pack', name: 'ENERGY PACK', effect: 'energy50' } },
+  { id: 'craft_medkit', name: 'FIELD MEDKIT', desc: 'Supplies → healing. HP+60.', materials: { med_kit_loot: 2, stim_shot_loot: 1 }, result: { id: 'craft_medkit', name: 'FIELD MEDKIT', effect: 'hp60' } },
+  { id: 'craft_antidote', name: 'CRUDE ANTIDOTE', desc: 'Cures poison from scavenged herbs.', materials: { scrap_metal: 1, med_kit_loot: 1 }, result: { id: 'craft_antidote', name: 'CRUDE ANTIDOTE', effect: 'cure_poison' } },
+  { id: 'craft_water', name: 'FILTERED WATER', desc: 'Purify scavenged water. Thirst+60.', materials: { scrap_metal: 1 }, result: { id: 'craft_water', name: 'FILTERED WATER', effect: 'thirst60' } },
+  { id: 'craft_pipe_weapon', name: 'PIPE WEAPON', desc: 'Improvised melee from scrap.', materials: { scrap_metal: 3, weapon_parts: 1 }, result: { id: 'pipe_wrench', name: 'PIPE WRENCH' } },
+];
+
+// ── Merchant/Trader NPCs ────────────────────────────────────────────────────
+interface MerchantDef { name: string; x: number; y: number; type: 'city' | 'wasteland'; inventory: string[]; }
+const MERCHANT_NPCS: MerchantDef[] = [
+  { name: 'VENDOR KAZIM', x: 6300, y: 6500, type: 'city', inventory: ['purified_water','mineral_water','energy_pack','medkit_full','stimpack','combat_knife','pistol_32','ballistic_vest'] },
+  { name: 'TRADER MOSSIK', x: 7800, y: 6100, type: 'city', inventory: ['purified_water','antidote_gear','radiation_pill','repair_kit','lockpick_set','hacking_tool','smoke_grenade','emp_grenade'] },
+  { name: 'ARMS DEALER JEX', x: 8100, y: 5700, type: 'city', inventory: ['short_sword','revolver_44','shotgun','sniper_rifle','laser_pistol','ballistic_vest','energy_shield','thermal_goggles'] },
+  { name: 'WASTELAND PEDDLER ROOK', x: 3000, y: 8500, type: 'wasteland', inventory: ['purified_water','energy_pack','medkit_full','pipe_wrench','combat_knife','spear','pistol_32','portable_shelter'] },
+  { name: 'SCAVENGER JURL', x: 8500, y: 9000, type: 'wasteland', inventory: ['stimpack','radiation_pill','antidote_gear','signal_flare','smoke_grenade','rifle_22','compound_bow','repair_kit'] },
+  { name: 'NOMAD TRADER VAEL', x: 5500, y: 2000, type: 'wasteland', inventory: ['mineral_water','energy_pack','medkit_full','mace','battle_axe','revolver_357','machine_gun','night_vision'] },
+  { name: 'DRIFTER KASH', x: 10000, y: 3000, type: 'wasteland', inventory: ['purified_water','stimpack','short_sword','foil','sabre','laser_rifle','plasma_rifle','grappling_hook'] },
+];
+
+// ── Rest location IDs (hotels/apartments/shelters) ──────────────────────────
+const REST_LOCATION_IDS = new Set(['grand_meridian','inn_mother','overlook','rust_porch','ashfield_hostel','terminus','bastion_keep','hotel','bunker','east_bunker','north_bunker','deep_bunker']);
 
 // Pablo Corp android guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
@@ -1783,6 +1871,7 @@ export default function WorldPlay() {
     },
     calendar: initCalendar(),
     radiationLevel: 0,
+    temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
     openedChests: new Set<string>(Array.isArray(_ss?.openedChests) ? _ss.openedChests : []),
     boomerMode: (() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } })(),
@@ -1991,6 +2080,10 @@ export default function WorldPlay() {
   const [adminBizType, setAdminBizType] = useState<'real' | 'fictitious'>('fictitious');
   const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
+  const [goldStandardToggle, setGoldStandardToggle] = useState(false);
+  const [temperatureDisplay, setTemperatureDisplay] = useState<TemperatureLevel>('MILD');
+  const [showCrafting, setShowCrafting] = useState(false);
+  const [showMerchantShop, setShowMerchantShop] = useState<MerchantDef | null>(null);
   const [showQuests, setShowQuests] = useState(false);
   const [quests, setQuests] = useState<Quest[]>(() => gs.current.quests);
   const [calendarStr, setCalendarStr] = useState('');
@@ -2906,7 +2999,7 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   useEffect(() => {
@@ -3008,7 +3101,16 @@ export default function WorldPlay() {
               ].join('\n'));
             }
           }
-          else if (g.nearManhole !== null && !g.inSewer && g.sewerExitTimer <= 0) {
+          else {
+            for (const merch of MERCHANT_NPCS) {
+              if (Math.hypot(g.px - merch.x, g.py - merch.y) < 60) {
+                sfxEnter(); setShowMerchantShop(merch); frozenRef.current = true;
+                setNarr(`> ${merch.name} — "${merch.type === 'city' ? 'Welcome. Browse my wares.' : 'You look like you need supplies. Take a look.'}"`);
+                break;
+              }
+            }
+          }
+          if (!showMerchantShop && g.nearManhole !== null && !g.inSewer && g.sewerExitTimer <= 0) {
             const fromIdx = g.nearManhole;
             let toIdx = (fromIdx + 3 + Math.floor(Math.random() * (MANHOLES.length - 3))) % MANHOLES.length;
             if (toIdx === fromIdx) toIdx = (fromIdx + 1) % MANHOLES.length;
@@ -4095,12 +4197,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return false;
       });
 
-      // ── HP regen when idle (not in combat) ──
+      // ── HP regen when idle (not in combat) — scaled by location ──
       if (g.hp > 0 && g.hp < g.maxHp && g.frame % 180 === 0) {
         const idleMs = Date.now() - g.lastMoveTime;
         const hasHostileNearby = g.threats.some((t: Threat) => t.behavior === 'HOSTILE' && Math.hypot(g.px - t.x, g.py - t.y) < 200);
         if (!hasHostileNearby && idleMs > 3000) {
-          g.hp = Math.min(g.maxHp, g.hp + 1);
+          const isIndoorsRegen = !!g.interior;
+          const nearBldRegen = g.interior?.bid ?? '';
+          const isRestLocRegen = REST_LOCATION_IDS.has(nearBldRegen);
+          const regenAmount = isRestLocRegen ? 4 : isIndoorsRegen ? 2 : 1;
+          g.hp = Math.min(g.maxHp, g.hp + regenAmount);
           setHp(Math.floor(g.hp));
         }
       }
@@ -4616,8 +4722,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const cs2 = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
         const wasteMultiplier = (cs2.wasteBonus && inWaste) ? 0.6 : 1.0;
         const hDrain = (inWaste ? 2.5 : 1.5) * wasteMultiplier;
-        const tDrain = (inWaste ? 3.0 : 2.0) * wasteMultiplier;
-        const eDrain = char.class.toLowerCase() === 'replicant' ? 0 : ((inWaste ? 1.5 : 1.0) * wasteMultiplier);
+        let tDrain = (inWaste ? 3.0 : 2.0) * wasteMultiplier;
+        let eDrain = char.class.toLowerCase() === 'replicant' ? 0 : ((inWaste ? 1.5 : 1.0) * wasteMultiplier);
+
+        const temp = getTemperatureLevel(g.calendar.season, g.calendar.weather, g.calendar.hour);
+        g.temperature = temp;
+        setTemperatureDisplay(temp);
+        const isIndoors = !!g.interior;
+        if (!isIndoors) {
+          if (temp === 'COLD') {
+            eDrain += 1.5;
+            g.hp = Math.max(0, g.hp - 1);
+          }
+          if (temp === 'HOT') {
+            tDrain += 2.0;
+          }
+        }
+        if (isIndoors) {
+          const idleMs = Date.now() - g.lastMoveTime;
+          if (idleMs > 2000) {
+            const nearBld = g.interior?.bid ?? '';
+            const isRestLoc = REST_LOCATION_IDS.has(nearBld);
+            const energyRecovery = isRestLoc ? 8 : 4;
+            g.energy = Math.min(100, g.energy + energyRecovery);
+          }
+        }
+
         g.hunger = Math.max(0, g.hunger - hDrain);
         g.thirst = Math.max(0, g.thirst - tDrain);
         g.energy = Math.max(0, g.energy - eDrain);
@@ -4625,12 +4755,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
-        // ── ECONOMY: Periodic income by class (~1 minute intervals) ─────
+        // ── ECONOMY: Periodic income by class (salary per minute) ────────
         g.incomeTick++;
         const cls = char.class.toLowerCase();
-        const INCOME_INTERVAL = 7;
-        const INCOME_AMOUNT   = cls === 'corporate' ? 500 : cls === 'replicant' ? 300 : 200;
-        const INCOME_LABEL    = cls === 'corporate' ? 'SALARY DIRECT DEPOSIT' : cls === 'replicant' ? 'GIG PAYMENT PROCESSED' : 'SCAVENGING YIELD';
+        const salaryPerMin = FACTION_SALARY_PER_MIN[cls] ?? 200;
+        const INCOME_INTERVAL = 6;
+        const INCOME_AMOUNT = Math.floor(salaryPerMin / 6);
+        const factionName = CLASS_DISPLAY_NAME[cls] ?? 'FACTION';
+        const INCOME_LABEL = cls === 'corporate' ? `${factionName} SALARY` : cls === 'replicant' ? `${factionName} GIG PAY` : `${factionName} SCAVENGING`;
         if (g.incomeTick >= INCOME_INTERVAL) {
           g.incomeTick = 0;
           const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 150) : 0;
@@ -5540,7 +5672,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
         const opCls = (op.class ?? '').toLowerCase();
-        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff';
+        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff'; // Suits/Outlaws/Replicants
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -6525,6 +6657,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {seasonStr.slice(0,3)} {tempC}°C
             </span>
           </div>
+          {calendarStr && (
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.4rem .6rem', flex: 1 }}>
+              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
+            </div>
+          )}
+          {weatherStr && weatherStr !== 'CLEAR' && (
+            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.4rem .6rem' }}>
+              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
+            </div>
+          )}
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${temperatureDisplay === 'COLD' ? 'rgba(100,150,255,.45)' : temperatureDisplay === 'HOT' ? 'rgba(255,100,50,.45)' : 'rgba(0,255,65,.25)'}`, padding: '.4rem .6rem', minWidth: 50 }}>
+            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>TEMP</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: temperatureDisplay === 'COLD' ? '#6699ff' : temperatureDisplay === 'HOT' ? '#ff6644' : '#aaff66' }}>{temperatureDisplay === 'COLD' ? '❄ COLD' : temperatureDisplay === 'HOT' ? '🔥 HOT' : '◎ MILD'}</div>
+          </div>
+        </div>
+        {/* Gold Standard toggle row */}
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+          <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(255,215,0,.2)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(255,215,0,.5)', padding: '.3rem .7rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em' }}>
+            {goldStandardToggle ? '⊕ GOLD STANDARD: ON' : '⊕ GOLD STANDARD: OFF'}
+          </button>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .7rem', flex: 1 }}>
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.06em' }}>
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
+            </div>
+          </div>
         </div>
         {/* Dog companion — compact */}
         {dogActive && (
@@ -6628,6 +6787,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
             <button onClick={() => { const m = toggleMute(); setMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: muted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: muted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {muted ? '🔇 MUTE' : '♪ SND'}
+            </button>
+            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              👤 COSTUME
+            </button>
+            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(0,255,65,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
+            </button>
+            {char.class.toLowerCase() === 'outlaw' && (
+              <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(136,255,68,.2)', color: '#88ff44', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                CRAFTING
+              </button>
+            )}
+            <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); gs.current.boomerMode = nb; try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} setNarr(nb ? '> BOOMER MODE — ON. You call them "HP potions" now.' : '> BOOMER MODE — OFF. Back to corporate speak.'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: boomerMode ? 'rgba(255,170,0,.08)' : 'transparent', border: boomerMode ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎮 BOOMER {boomerMode ? 'ON' : 'OFF'}
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -7983,7 +8156,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING ACCOUNT', val: salary, sub: char.class === 'corporate' ? 'SALARY: +ƒ500 / min' : char.class === 'replicant' ? 'GIG PAY: +ƒ300 / min' : 'SCAVENGING: +ƒ200+ / min' },
+                      { label: 'CHECKING ACCOUNT', val: salary, sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
                       { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO TAX: 15% ON INTEREST' },
                     ].map(({ label, val, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
@@ -8252,15 +8425,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               A nurse checks your chart and nods. "You're cleared to leave."
             </div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,100,68,.15), transparent)', marginBottom: '1.5rem' }} />
-            <button
-              onClick={() => {
-                setShowHospitalPrompt(false);
-                setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
-              }}
-              style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
-            >
-              WAKE UP IN HOSPITAL
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  setShowHospitalPrompt(false);
+                  setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+                }}
+                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              >
+                WAKE UP IN HOSPITAL
+              </button>
+              <button
+                onClick={() => {
+                  setShowHospitalPrompt(false);
+                  doSaveRef.current(buildSaveData());
+                  navigate('/world');
+                }}
+                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
+              >
+                ← RETURN TO TERMINAL
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -8276,15 +8461,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               Emergency frequency detected. A dispatch unit is standing by.
             </div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.15), transparent)', marginBottom: '1.5rem' }} />
-            <button
-              onClick={() => {
-                setIsDead(false);
-                setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
-              }}
-              style={{ padding: '.65rem 2rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}
-            >
-              {char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'GO TO HOSPITAL'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  setIsDead(false);
+                  setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+                }}
+                style={{ padding: '.65rem 2rem', width: 320, background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,50,50,.5)', color: '#ff6666', fontFamily: "'VT323',monospace", fontSize: '1.5rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              >
+                {char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'GO TO HOSPITAL'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsDead(false);
+                  doSaveRef.current(buildSaveData());
+                  navigate('/world');
+                }}
+                style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
+              >
+                ← RETURN TO TERMINAL
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -8444,6 +8641,127 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP. MONITORS ALL TRANSIT ACTIVITY.</span>
                 <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── CRAFTING PANEL (Outlaws only) ────────────────────────────────── */}
+      {showCrafting && (() => {
+        const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const isOutlaw = char.class.toLowerCase() === 'outlaw';
+        const doCraft = (recipe: CraftRecipe) => {
+          for (const [matId, qty] of Object.entries(recipe.materials)) {
+            if ((g.cargo[matId] ?? 0) < qty) {
+              sfxError(); setNarr(`> CRAFTING — Missing materials for ${recipe.name}.`); return;
+            }
+          }
+          for (const [matId, qty] of Object.entries(recipe.materials)) {
+            g.cargo[matId] = (g.cargo[matId] ?? 0) - qty;
+            if (g.cargo[matId] <= 0) delete g.cargo[matId];
+          }
+          if (recipe.result.effect) {
+            const fx = recipe.result.effect;
+            if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
+            if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
+            if (fx.includes('energy')) { const m = fx.match(/energy(\d+)/); if (m) g.energy = Math.min(100, g.energy + parseInt(m[1])); }
+            if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
+            if (fx.includes('cure_poison')) { g.poisoned = false; setPoisoned(false); }
+            setHp(Math.floor(g.hp)); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
+          } else {
+            g.ownedItems.add(recipe.result.id);
+          }
+          sfxCoin();
+          setNarr(`> CRAFTED: ${recipe.result.name}. ${recipe.desc}`);
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `CRAFTED: ${recipe.result.name}`, color: '#88ff44', life: 60, maxLife: 60 });
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowCrafting(false); frozenRef.current = false; } }}>
+            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(136,255,68,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#88ff44', letterSpacing:'.18em', marginBottom:'.6rem' }}>OUTLAW CRAFTING</div>
+              <div style={{ fontSize:'.42rem', color:'rgba(136,255,68,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>CONVERT SCAVENGED MATERIALS INTO SUPPLIES</div>
+              {!isOutlaw && <div style={{ color:'#ff4444', fontSize:'.8rem', padding:'.5rem', border:'1px solid rgba(255,68,68,.3)' }}>CRAFTING IS RESTRICTED TO THE OUTLAWS FACTION</div>}
+              {isOutlaw && CRAFT_RECIPES.map(recipe => {
+                const canCraft = Object.entries(recipe.materials).every(([matId, qty]) => (g.cargo[matId] ?? 0) >= qty);
+                return (
+                  <div key={recipe.id} style={{ border:'1px solid rgba(136,255,68,.2)', padding:'.6rem', marginBottom:'.4rem' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div>
+                        <div style={{ ...VT2, fontSize:'1.1rem', color:'#88ff44' }}>{recipe.name}</div>
+                        <div style={{ fontSize:'.5rem', color:'rgba(136,255,68,.4)', marginTop:'.15rem' }}>{recipe.desc}</div>
+                        <div style={{ fontSize:'.45rem', color:'rgba(136,255,68,.3)', marginTop:'.1rem' }}>
+                          NEEDS: {Object.entries(recipe.materials).map(([id, qty]) => `${id.replace(/_/g,' ').toUpperCase()} ×${qty} (have: ${g.cargo[id] ?? 0})`).join(' · ')}
+                        </div>
+                      </div>
+                      <button onClick={() => doCraft(recipe)} disabled={!canCraft}
+                        style={{ padding:'.4rem .8rem', background: canCraft ? 'rgba(136,255,68,.1)' : 'transparent', border:`1px solid ${canCraft ? 'rgba(136,255,68,.5)' : 'rgba(136,255,68,.15)'}`, color: canCraft ? '#88ff44' : 'rgba(136,255,68,.25)', cursor: canCraft ? 'pointer' : 'default', ...VT2, fontSize:'.9rem' }}>
+                        CRAFT
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              <button onClick={() => { setShowCrafting(false); frozenRef.current = false; }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(136,255,68,.2)', color:'rgba(136,255,68,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── MERCHANT SHOP PANEL ──────────────────────────────────────────── */}
+      {showMerchantShop && (() => {
+        const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const merchant = showMerchantShop;
+        const allItems = VEND_CATALOG.flatMap(c => c.items);
+        const shopItems = merchant.inventory.map(id => allItems.find(i => i.id === id)).filter(Boolean) as VendItem[];
+        const doBuy = (item: VendItem) => {
+          if (g.salary < item.price) { sfxError(); setNarr(`> ${merchant.name} — Not enough FIAT.`); return; }
+          if (g.ownedItems.has(item.id) && !item.consumable) { sfxError(); setNarr(`> ${merchant.name} — Already owned.`); return; }
+          g.salary -= item.price; setSalary(g.salary);
+          if (item.consumable && item.effect) {
+            const fx = item.effect;
+            if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
+            if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
+            if (fx.includes('energy')) { const m = fx.match(/energy(\d+)/); if (m) g.energy = Math.min(100, g.energy + parseInt(m[1])); }
+            if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
+            if (fx.includes('cure_poison')) { g.poisoned = false; setPoisoned(false); }
+            if (fx.includes('rad_block')) { g.radiationLevel = 0; }
+            setHp(Math.floor(g.hp)); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
+          } else {
+            g.ownedItems.add(item.id);
+            if (WEAPON_TIER[item.id]) { g.weaponTier = Math.max(g.weaponTier, WEAPON_TIER[item.id]); }
+          }
+          sfxCoin();
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `−ƒ${item.price.toLocaleString()} ${item.name}`, color: '#ffcc00', life: 60, maxLife: 60 });
+          setNarr(`> ${merchant.name} — "${item.name}. Good choice. Pleasure doing business."`);
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) { setShowMerchantShop(null); frozenRef.current = false; } }}>
+            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(255,204,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc00', letterSpacing:'.18em', marginBottom:'.3rem' }}>{merchant.name}</div>
+              <div style={{ fontSize:'.42rem', color:'rgba(255,204,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>
+                {merchant.type === 'city' ? 'LICENSED CITY MERCHANT' : 'WASTELAND TRADER'} · FIAT BALANCE: ƒ{salary.toLocaleString()}
+              </div>
+              {shopItems.map(item => {
+                const owned = g.ownedItems.has(item.id) && !item.consumable;
+                const canBuy = g.salary >= item.price && !owned;
+                return (
+                  <div key={item.id} style={{ border:'1px solid rgba(255,204,0,.2)', padding:'.5rem .6rem', marginBottom:'.3rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...VT2, fontSize:'1rem', color: owned ? 'rgba(255,204,0,.3)' : '#ffcc00' }}>{item.name} {owned ? '(OWNED)' : ''}</div>
+                      <div style={{ fontSize:'.45rem', color:'rgba(255,204,0,.35)', marginTop:'.1rem' }}>{item.desc}</div>
+                    </div>
+                    <button onClick={() => doBuy(item)} disabled={!canBuy}
+                      style={{ padding:'.3rem .7rem', background: canBuy ? 'rgba(255,204,0,.1)' : 'transparent', border:`1px solid ${canBuy ? 'rgba(255,204,0,.4)' : 'rgba(255,204,0,.12)'}`, color: canBuy ? '#ffcc00' : 'rgba(255,204,0,.2)', cursor: canBuy ? 'pointer' : 'default', ...VT2, fontSize:'.9rem', whiteSpace:'nowrap' }}>
+                      ƒ{item.price.toLocaleString()}
+                    </button>
+                  </div>
+                );
+              })}
+              <button onClick={() => { setShowMerchantShop(null); frozenRef.current = false; }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,204,0,.2)', color:'rgba(255,204,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );

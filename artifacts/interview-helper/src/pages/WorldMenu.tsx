@@ -53,36 +53,36 @@ const CLASSES = [
     id: 'corporate' as CharClass,
     label: 'SUITS',
     tagline: 'City. Money. Influence.',
-    desc: 'Born in the neon towers. Most starting capital. Government buildings welcome you. Full city passport included. The wasteland will eat you alive — but you can buy your way through checkpoints.',
+    desc: 'Born in the neon towers. Highest salary at ƒ500/min. Control military and police. Government buildings welcome you. Full city passport included. The wasteland will eat you alive — but you can buy your way through checkpoints.',
     start: 'CORPORATE DISTRICT',
-    salary: 'ƒ50,000',
+    salary: 'ƒ25,000',
     hp: '350',
     atk: '3',
-    perks: 'Most money · Full city passport · Salary every minute · Low combat',
+    perks: 'Most money · Full city passport · ƒ500/min salary · Control military & police',
     color: '#00ff41',
   },
   {
     id: 'outlaw' as CharClass,
-    label: 'OUTLAW',
+    label: 'OUTLAWS',
     tagline: 'Wasteland. Tough. Scarred.',
-    desc: 'Exiled and hardened. High HP, strong ATK. Hunger and thirst drain slower in the wastes. Better scavenging. Bonus credits for kills outside the city. Starts with a wasteland passport. The walls don\'t want you — good.',
+    desc: 'Exiled and hardened. High HP, strong ATK. Hunger and thirst drain slower in the wastes. Can craft supplies from scavenged materials. Bonus credits for kills outside the city. Starts with a wasteland passport.',
     start: 'WASTELAND',
-    salary: 'ƒ30,000',
+    salary: 'ƒ10,000',
     hp: '480',
     atk: '14',
-    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Scavenge every minute',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · ƒ200/min',
     color: '#88ff44',
   },
   {
     id: 'replicant' as CharClass,
-    label: 'REPLICANT',
+    label: 'REPLICANTS',
     tagline: 'Android. Conscious. Deadliest.',
-    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO Corp. wants you shut down. Starts at the city fringe with a basic city passport.',
+    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO Corp. wants you shut down. Operates in both city and wasteland. Starts at the city fringe with a basic city passport.',
     start: 'CITY FRINGE',
-    salary: 'ƒ10,000',
+    salary: 'ƒ18,000',
     hp: '600',
     atk: '18',
-    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · Gig pay every minute',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · ƒ350/min',
     color: '#33ffaa',
   },
 ];
@@ -671,7 +671,7 @@ export default function WorldMenu() {
           ? null
           : name.trim().toUpperCase() + ' OPS';
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN') : null;
-    const startSalary = cls === 'corporate' ? 50000 : cls === 'replicant' ? 10000 : cls === 'outlaw' ? 30000 : 8000;
+    const startSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : 15000;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const char = {
       name: name.trim().toUpperCase(),
