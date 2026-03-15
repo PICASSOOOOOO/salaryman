@@ -1,30 +1,31 @@
 modules = ["nodejs-24"]
 
-[[artifacts]]
-id = "artifacts/api-server"
+  [[artifacts]]
+  id = "artifacts/api-server"
 
-[[artifacts]]
-id = "artifacts/mockup-sandbox"
+  [[artifacts]]
+  id = "artifacts/interview-helper"
 
-[deployment]
-router = "application"
-deploymentTarget = "autoscale"
+  [deployment]
+  router = "application"
+  deploymentTarget = "vm"
 
-[deployment.postBuild]
-args = ["pnpm", "store", "prune"]
-env = { "CI" = "true" }
+  [deployment.postBuild]
+  args = ["bash", "-c", "pnpm --filter db push && pnpm store prune"]
+  env = { "CI" = "true" }
 
-[workflows]
-runButton = "Project"
+  [workflows]
+  runButton = "Project"
 
-[agent]
-stack = "PNPM_WORKSPACE"
-expertMode = true
-integrations = ["resend:1.0.0"]
+  [agent]
+  stack = "PNPM_WORKSPACE"
+  expertMode = true
+  integrations = ["resend:1.0.0"]
 
-[postMerge]
-path = "scripts/post-merge.sh"
-timeoutMs = 20000
+  [postMerge]
+  path = "scripts/post-merge.sh"
+  timeoutMs = 20000
 
-[nix]
-channel = "stable-25_05"
+  [nix]
+  channel = "stable-25_05"
+  

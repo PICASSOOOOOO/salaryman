@@ -4,45 +4,6 @@ import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
 
-// ── Ensure tables exist (idempotent) ───────────────────────────────────────
-async function ensureTables() {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS projects (
-      id SERIAL PRIMARY KEY,
-      user_id VARCHAR NOT NULL,
-      name VARCHAR NOT NULL,
-      type VARCHAR NOT NULL DEFAULT 'general',
-      description TEXT NOT NULL DEFAULT '',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS notes (
-      id SERIAL PRIMARY KEY,
-      user_id VARCHAR NOT NULL,
-      project_id INTEGER,
-      title VARCHAR NOT NULL,
-      content TEXT NOT NULL DEFAULT '',
-      category VARCHAR NOT NULL DEFAULT 'general',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS brand_kit (
-      user_id VARCHAR PRIMARY KEY,
-      company_name VARCHAR NOT NULL DEFAULT '',
-      tagline VARCHAR NOT NULL DEFAULT '',
-      mission TEXT NOT NULL DEFAULT '',
-      primary_color VARCHAR NOT NULL DEFAULT '#6366f1',
-      secondary_color VARCHAR NOT NULL DEFAULT '#8b5cf6',
-      logo_url TEXT NOT NULL DEFAULT '',
-      website VARCHAR NOT NULL DEFAULT '',
-      industry VARCHAR NOT NULL DEFAULT '',
-      target_audience TEXT NOT NULL DEFAULT '',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-}
-ensureTables().catch(console.error);
-
 // ── Auth guard helper ───────────────────────────────────────────────────────
 function requireAuth(req: any, res: any): string | null {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return null; }

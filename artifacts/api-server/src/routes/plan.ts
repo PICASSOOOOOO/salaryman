@@ -1,22 +1,7 @@
 import { Router } from "express";
 import { getUserTier, setUserTier, isOwnerEmail, PRO_FEATURES, FREE_FEATURES } from "../lib/plan";
-import { db, userTiersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 
 const router = Router();
-
-// ── Ensure table exists ────────────────────────────────────────────────────
-async function ensureTable() {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS user_tiers (
-      user_id VARCHAR PRIMARY KEY,
-      tier VARCHAR NOT NULL DEFAULT 'free',
-      granted_by VARCHAR NOT NULL DEFAULT 'default',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-}
-ensureTable().catch(console.error);
 
 // GET /api/plan — current user's tier
 router.get("/api/plan", async (req, res) => {
