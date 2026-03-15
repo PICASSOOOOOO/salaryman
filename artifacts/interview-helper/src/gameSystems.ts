@@ -185,14 +185,14 @@ export interface TreasureChest {
 }
 
 export const TREASURE_CHESTS: TreasureChest[] = [
-  { id: 'tc_nw_1', x: 1500, y: 2000, opened: false, loot: { fiat: 15000, items: [{ name: 'ANCIENT BLADE', desc: 'Pre-collapse weapon. Still sharp.' }] }, requiresMap: false },
-  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 20000, items: [{ name: 'DATA CORE', desc: 'PABLO Corp. classified data.' }] }, requiresMap: false },
-  { id: 'tc_sw_1', x: 2500, y: 10000, opened: false, loot: { fiat: 25000, items: [{ name: 'GOLD INGOT', desc: 'Pure gold. Worth 1 gold unit.' }] }, requiresMap: true },
-  { id: 'tc_se_1', x: 10000, y: 10500, opened: false, loot: { fiat: 30000, items: [{ name: 'REACTOR SHARD', desc: 'Glowing with residual energy.' }] }, requiresMap: true },
-  { id: 'tc_mid_1', x: 6000, y: 8500, opened: false, loot: { fiat: 8000, items: [{ name: 'SUPPLY CRATE', desc: 'Food and medical supplies.' }] }, requiresMap: false },
-  { id: 'tc_deep_1', x: 4000, y: 11000, opened: false, loot: { fiat: 40000, items: [{ name: 'PABLO\'S DIARY', desc: 'A page from Senior Pablo\'s journal.' }] }, requiresMap: true },
-  { id: 'tc_east_1', x: 12500, y: 5000, opened: false, loot: { fiat: 12000, items: [{ name: 'ENERGY CELL', desc: 'Military-grade power source.' }] }, requiresMap: false },
-  { id: 'tc_north_1', x: 8000, y: 1200, opened: false, loot: { fiat: 18000, items: [{ name: 'VOID DOG FANG', desc: 'Trophy from a Void Dog alpha.' }] }, requiresMap: false },
+  { id: 'tc_nw_1', x: 1500, y: 2000, opened: false, loot: { fiat: 400, items: [{ name: 'ANCIENT BLADE', desc: 'Pre-collapse weapon. Still sharp.' }] }, requiresMap: false },
+  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 500, items: [{ name: 'DATA CORE', desc: 'PABLO Corp. classified data.' }] }, requiresMap: false },
+  { id: 'tc_sw_1', x: 2500, y: 10000, opened: false, loot: { fiat: 650, items: [{ name: 'GOLD INGOT', desc: 'Pure gold. Worth 1 gold unit.' }] }, requiresMap: true },
+  { id: 'tc_se_1', x: 10000, y: 10500, opened: false, loot: { fiat: 750, items: [{ name: 'REACTOR SHARD', desc: 'Glowing with residual energy.' }] }, requiresMap: true },
+  { id: 'tc_mid_1', x: 6000, y: 8500, opened: false, loot: { fiat: 300, items: [{ name: 'SUPPLY CRATE', desc: 'Food and medical supplies.' }] }, requiresMap: false },
+  { id: 'tc_deep_1', x: 4000, y: 11000, opened: false, loot: { fiat: 900, items: [{ name: 'PABLO\'S DIARY', desc: 'A page from Senior Pablo\'s journal.' }] }, requiresMap: true },
+  { id: 'tc_east_1', x: 12500, y: 5000, opened: false, loot: { fiat: 350, items: [{ name: 'ENERGY CELL', desc: 'Military-grade power source.' }] }, requiresMap: false },
+  { id: 'tc_north_1', x: 8000, y: 1200, opened: false, loot: { fiat: 450, items: [{ name: 'VOID DOG FANG', desc: 'Trophy from a Void Dog alpha.' }] }, requiresMap: false },
 ];
 
 export const TREASURE_MAPS = [

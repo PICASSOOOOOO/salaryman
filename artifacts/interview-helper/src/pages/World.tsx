@@ -67,9 +67,9 @@ function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
   const [tick, setTick] = useState(0);
   useEffect(()=>{ const t=setInterval(()=>setTick(n=>n+1),600); return()=>clearInterval(t); },[]);
   const CLASSES: { id:CharClass; label:string; desc:string; sx:number; sy:number; salary:number }[] = [
-    { id:'corporate', label:'CORPORATE', desc:'City dweller. Modest salary. Well connected.', sx:560, sy:500, salary:200 },
-    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. Broke. Hunted.',      sx:460, sy:620, salary:0   },
-    { id:'replicant', label:'REPLICANT', desc:'Android. Balanced. Trusted by nobody.',      sx:560, sy:500, salary:50  },
+    { id:'corporate', label:'CORPORATE', desc:'City dweller. Modest salary. Well connected.', sx:6800, sy:5900, salary:200 },
+    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. Broke. Hunted.',      sx:5600, sy:6200, salary:0   },
+    { id:'replicant', label:'REPLICANT', desc:'Android. Balanced. Trusted by nobody.',      sx:6800, sy:5900, salary:50  },
   ];
   const sel = CLASSES.find(c=>c.id===cls)!;
   return (

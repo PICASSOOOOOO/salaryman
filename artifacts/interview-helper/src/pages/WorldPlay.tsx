@@ -8,7 +8,6 @@ import {
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
   startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur,
-  speakDialog, cancelSpeech,
   type ConversationEvent, type ConversationLine,
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
@@ -129,16 +128,12 @@ const BUILDINGS = [
   { id: 'dojo',         x: 6720, y: 5140, w: 140, h: 100, label: 'IRON DOJO',        bright: false, doors: mkDoorS(6720,5140,140,100) },
   { id: 'data_vault',   x: 7220, y: 5140, w: 150, h: 90,  label: 'DATA VAULT',       bright: true,  doors: mkDoorS(7220,5140,150,90) },
   { id: 'nightclub',    x: 6920, y: 5470, w: 130, h: 100, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(6920,5470,130,100), radio: true },
-  { id: 'east_market',  x: 7420, y: 5570, w: 130, h: 80,  label: 'EAST BAZAAR',      bright: false, doors: mkDoorS(7420,5570,130,80) },
-  { id: 'east_clinic',  x: 7220, y: 5870, w: 130, h: 80,  label: 'EAST CLINIC',      bright: false, doors: mkDoorS(7220,5870,130,80) },
   { id: 'armory',       x: 7920, y: 5140, w: 130, h: 90,  label: 'ARMORY',           bright: false, doors: mkDoorS(7920,5140,130,90) },
   { id: 'crystal2',     x: 8650, y: 5570, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   { id: 'print_shop',   x: 7720, y: 6320, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7720,6320,120) },
   { id: 'east_bunker',  x: 6920, y: 6770, w: 130, h: 85,  label: 'EAST BUNKER',      bright: false, doors: mkDoorN(6920,6770,130) },
   { id: 'north_gate',   x: 8520, y: 5180, w: 100, h: 70,  label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(8520,5180,100), ...mkDoorS(8520,5180,100,70)] },
   // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'grand_meridian',  x: 5420, y: 5140, w: 140, h: 100, label: 'GRAND MERIDIAN',   bright: true,  doors: mkDoorS(5420,5140,140,100), radio: true },
-  { id: 'inn_mother',    x: 5880, y: 6320, w: 120, h: 90,  label: 'SWITCHBOARD INN',  bright: false, doors: mkDoorS(5880,6320,120,90), radio: true },
   { id: 'overlook',      x: 6420, y: 6770, w: 120, h: 95,  label: 'THE PINNACLE',     bright: true,  doors: mkDoorN(6420,6770,120), radio: true },
   { id: 'safe_house',    x: 6370, y: 6320, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6370,6320,110), radio: true },
   // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
@@ -151,15 +146,12 @@ const BUILDINGS = [
   { id: 'checkpoint_c',  x: 7220, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(7220,7420,100,55), ...mkDoorE(7220,7420,100,55)] },
   { id: 'checkpoint_e',  x: 8720, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(8720,7420,100,55), ...mkDoorE(8720,7420,100,55)] },
   // ── NORTH QUARTER ───────────────────────────────────────────────────────────
-  { id: 'print_shop2',   x: 8620, y: 5470, w: 130, h: 80,  label: 'PRINT SHOP N',     bright: false, doors: mkDoorS(8620,5470,130,80) },
   { id: 'call_home',     x: 7720, y: 5870, w: 150, h: 90,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(7720,5870,150,90) },
   { id: 'noodle_bar',    x: 8220, y: 5870, w: 120, h: 80,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(8220,5870,120,80) },
   { id: 'pawn_shop',     x: 8220, y: 6320, w: 120, h: 80,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(8220,6320,120,80) },
   { id: 'crystal4',      x: 8720, y: 6870, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'north_clinic',  x: 7420, y: 6770, w: 130, h: 80,  label: 'NORTH CLINIC',     bright: false, doors: mkDoorS(7420,6770,130,80) },
   { id: 'terminal_shop', x: 7920, y: 6770, w: 150, h: 90,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(7920,6770,150,90) },
   { id: 'north_bunker',  x: 8420, y: 6770, w: 140, h: 90,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(8420,6770,140,90), radio: true },
-  { id: 'north_market',  x: 8520, y: 7120, w: 120, h: 80,  label: 'NORTH BAZAAR',     bright: false, doors: mkDoorW(8520,7120,120,80) },
   { id: 'crystal5',      x: 8720, y: 7120, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── CITY DENSITY — Additional infill buildings ──────────────────────────────
   { id: 'food_court',    x: 6020, y: 6320, w: 140, h: 90,  label: 'FOOD COURT',       bright: true,  doors: mkDoorS(6020,6320,140,90) },
@@ -185,13 +177,13 @@ const BUILDINGS = [
   { id: 'southern_hub',  x: 7200, y: 11000, w: 130, h: 90, label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(7200,11000,130), radio: true },
   { id: 'crystal7',      x: 7500, y: 11200, w: 28, h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
   // ── PUBLIC TERMINALS (street-side kiosks) ────────────────────────────────────
-  { id: 'term_west',      x: 5730, y: 5870, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_central',   x: 6430, y: 5870, w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
-  { id: 'term_east',      x: 7130, y: 5870, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_neon',      x: 7730, y: 5870, w: 18,  h: 24,  label: 'PUBLIC KIOSK',     bright: true,  doors: [] as Door[] },
-  { id: 'term_north',     x: 8430, y: 5870, w: 18,  h: 24,  label: 'PAYPHONE',         bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_a', x: 2030, y: 1530, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_b', x: 7230, y: 8030, w: 18,  h: 24,  label: 'OUTPOST TERMINAL', bright: true,  doors: [] as Door[] },
+  { id: 'term_west',      x: 5730, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_central',   x: 6430, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_east',      x: 7130, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_neon',      x: 7730, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_north',     x: 8430, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_a', x: 2030, y: 1530, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_b', x: 7230, y: 8030, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
   { id: 'van_west',       x: 2200, y: 2000, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_central',    x: 5500, y: 8500, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
@@ -199,9 +191,9 @@ const BUILDINGS = [
   { id: 'gold_exchange',  x: 6100, y: 6800, w: 120, h: 80,  label: 'GOLD EXCHANGE',    bright: true,  doors: mkDoorS(6100,6800,120,80) },
   // ── ADMIN BUILDINGS (business registration) ─────────────────────────────────
   { id: 'admin_bureau',   x: 8220, y: 6120, w: 130, h: 90,  label: 'CITY ADMIN BUREAU',  bright: true,  doors: mkDoorS(8220,6120,130,90) },
-  // ── REAL ESTATE & RECRUITMENT ───────────────────────────────────────────
+  // ── REAL ESTATE & CO-WORKING ───────────────────────────────────────────
   { id: 'realestate_office', x: 7420, y: 6320, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(7420,6320,130,80) },
-  { id: 'recruit_office',   x: 5880, y: 5140, w: 130, h: 80, label: 'RECRUITMENT OFFICE', bright: true, doors: mkDoorS(5880,5140,130,80) },
+  { id: 'nexus_hub',        x: 5880, y: 5140, w: 140, h: 90, label: 'NEXUS HUB',          bright: true, doors: mkDoorS(5880,5140,140,90) },
   // ── POLICE HQ ─────────────────────────────────────────────────────────
   { id: 'police_hq',        x: 7720, y: 5140, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7720,5140,150,100) },
 ];
@@ -258,36 +250,6 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 240, y: 140, w: 55, h: 30, type: 'locker', label: 'SUPPLY LOCKER', color: 'rgba(60,70,80,.5)' },
       { x: 130, y: 30, w: 60, h: 25, type: 'counter', label: 'TRIAGE COUNTER', color: 'rgba(70,80,90,.5)' },
       { x: 130, y: 170, w: 40, h: 30, type: 'terminal', label: 'MED TERMINAL', color: 'rgba(0,80,60,.4)' },
-    ],
-  },
-  east_clinic: {
-    id: 'east_clinic', label: 'EAST CLINIC — FIELD MEDICAL',
-    width: 300, height: 220,
-    wallColor: 'rgba(25,25,20,.95)', floorColor: 'rgba(12,12,8,.9)', accentColor: 'rgba(100,200,255,.25)',
-    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
-    ambientText: 'Field medic station. Rusted equipment, but functional.',
-    objects: [
-      { x: 20, y: 30, w: 50, h: 25, type: 'medical_bed', label: 'COT 1', color: 'rgba(80,90,70,.5)' },
-      { x: 20, y: 70, w: 50, h: 25, type: 'medical_bed', label: 'COT 2', color: 'rgba(80,90,70,.5)' },
-      { x: 220, y: 30, w: 55, h: 35, type: 'equipment', label: 'FIELD KIT', color: 'rgba(50,80,60,.4)' },
-      { x: 220, y: 80, w: 55, h: 30, type: 'counter', label: 'SUPPLY TABLE', color: 'rgba(60,70,50,.5)' },
-      { x: 120, y: 30, w: 50, h: 20, type: 'reception', label: 'INTAKE DESK', color: 'rgba(60,70,50,.5)' },
-      { x: 120, y: 150, w: 40, h: 30, type: 'crate', label: 'MED CRATE', color: 'rgba(55,65,45,.4)' },
-    ],
-  },
-  north_clinic: {
-    id: 'north_clinic', label: 'NORTH CLINIC — TRAUMA UNIT',
-    width: 300, height: 220,
-    wallColor: 'rgba(22,22,28,.95)', floorColor: 'rgba(10,10,14,.9)', accentColor: 'rgba(100,180,255,.25)',
-    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
-    ambientText: 'Full trauma unit. The north quarter\'s last line of defense.',
-    objects: [
-      { x: 20, y: 30, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 1', color: 'rgba(80,100,120,.5)' },
-      { x: 20, y: 70, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 2', color: 'rgba(80,100,120,.5)' },
-      { x: 20, y: 110, w: 55, h: 25, type: 'medical_bed', label: 'TRAUMA BED 3', color: 'rgba(80,100,120,.5)' },
-      { x: 220, y: 30, w: 55, h: 40, type: 'equipment', label: 'DEFIB UNIT', color: 'rgba(50,100,80,.4)' },
-      { x: 220, y: 90, w: 55, h: 30, type: 'counter', label: 'PHARMACY', color: 'rgba(60,70,80,.5)' },
-      { x: 130, y: 30, w: 40, h: 20, type: 'reception', label: 'TRIAGE', color: 'rgba(60,70,80,.5)' },
     ],
   },
   _shop: {
@@ -385,28 +347,28 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 140, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
     ],
   },
-  recruit_office: {
-    id: 'recruit_office', label: 'RECRUITMENT OFFICE — JOB BOARD',
-    width: 340, height: 260,
-    wallColor: 'rgba(20,25,18,.95)', floorColor: 'rgba(8,12,6,.9)', accentColor: 'rgba(100,255,100,.2)',
-    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
-    ambientText: 'Desperate resumes pile up. The air smells like cheap cologne and ambition.',
-    objects: [
-      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'INTAKE COUNTER', color: 'rgba(50,70,40,.5)' },
-      { x: 20, y: 65, w: 50, h: 28, type: 'desk', label: 'RECRUITER DESK A', color: 'rgba(45,60,40,.5)' },
-      { x: 20, y: 110, w: 50, h: 28, type: 'desk', label: 'RECRUITER DESK B', color: 'rgba(45,60,40,.5)' },
-      { x: 260, y: 25, w: 55, h: 40, type: 'terminal', label: 'JOB BOARD TERMINAL', color: 'rgba(0,80,30,.4)' },
-      { x: 260, y: 80, w: 55, h: 30, type: 'whiteboard', label: 'JOB LISTINGS', color: 'rgba(60,80,40,.4)' },
-      { x: 260, y: 125, w: 55, h: 30, type: 'filing_cabinet', label: 'APPLICATIONS', color: 'rgba(50,60,40,.5)' },
-      { x: 140, y: 25, w: 60, h: 30, type: 'couch', label: 'WAITING AREA', color: 'rgba(40,50,30,.4)' },
-      { x: 140, y: 70, w: 50, h: 20, type: 'table', label: 'INTERVIEW TABLE', color: 'rgba(45,55,40,.4)' },
-      { x: 20, y: 180, w: 45, h: 35, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,70,40,.4)' },
-      { x: 140, y: 180, w: 30, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
-      { x: 260, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
-      { x: 100, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
-    ],
-  },
-  gold_exchange: {
+  nexus_hub: {
+      id: 'nexus_hub', label: 'NEXUS HUB — CO-WORKING SPACE',
+      width: 320, height: 240,
+      wallColor: 'rgba(15,20,25,.95)', floorColor: 'rgba(8,12,18,.9)', accentColor: 'rgba(0,200,255,.25)',
+      exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+      ambientText: 'Open floor plan. Shared desks and private booths. Coffee machine hums.',
+      objects: [
+        { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(0,120,180,.4)' },
+        { x: 20, y: 65, w: 50, h: 28, type: 'desk', label: 'HOT DESK A', color: 'rgba(45,60,80,.5)' },
+        { x: 20, y: 110, w: 50, h: 28, type: 'desk', label: 'HOT DESK B', color: 'rgba(45,60,80,.5)' },
+        { x: 20, y: 155, w: 50, h: 28, type: 'desk', label: 'HOT DESK C', color: 'rgba(45,60,80,.5)' },
+        { x: 240, y: 25, w: 55, h: 40, type: 'terminal', label: 'MEETING ROOM', color: 'rgba(0,80,120,.4)' },
+        { x: 240, y: 80, w: 55, h: 35, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' },
+        { x: 240, y: 130, w: 55, h: 35, type: 'couch', label: 'LOUNGE AREA', color: 'rgba(60,50,80,.4)' },
+        { x: 130, y: 25, w: 60, h: 25, type: 'counter', label: 'COFFEE BAR', color: 'rgba(80,60,40,.5)' },
+        { x: 130, y: 65, w: 50, h: 28, type: 'desk', label: 'PRIVATE BOOTH 1', color: 'rgba(45,60,80,.5)' },
+        { x: 130, y: 110, w: 50, h: 28, type: 'desk', label: 'PRIVATE BOOTH 2', color: 'rgba(45,60,80,.5)' },
+        { x: 240, y: 180, w: 35, h: 30, type: 'vending_machine', label: 'SNACK STATION', color: 'rgba(40,60,50,.4)' },
+        { x: 20, y: 195, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      ],
+    },
+    gold_exchange: {
     id: 'gold_exchange', label: 'GOLD EXCHANGE — TRADING FLOOR',
     width: 320, height: 240,
     wallColor: 'rgba(25,22,15,.95)', floorColor: 'rgba(12,10,6,.9)', accentColor: 'rgba(255,200,60,.3)',
@@ -515,17 +477,12 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
 const BUILDING_INTERIOR_MAP: Record<string, string> = {
   minx_arms: 'minx_arms',
   clinic: 'clinic',
-  east_clinic: 'east_clinic',
-  north_clinic: 'north_clinic',
   pablo_store: '_shop',
   noodle_bar: '_shop',
   pawn_shop: '_shop',
-  east_market: '_shop',
   market: '_shop',
-  north_market: '_shop',
   food_court: '_shop',
   print_shop: '_office',
-  print_shop2: '_office',
   call_home: '_office',
   terminal_shop: '_office',
   data_vault: '_office',
@@ -533,7 +490,7 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   admin_bureau: 'admin_bureau',
   police_hq: 'police_hq',
   realestate_office: 'realestate_office',
-  recruit_office: 'recruit_office',
+  nexus_hub: 'nexus_hub',
   gold_exchange: 'gold_exchange',
   megabank: 'megabank',
   dojo: 'dojo',
@@ -545,8 +502,6 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   east_bunker: '_office',
   north_bunker: '_office',
   pablo_tower: '_office',
-  grand_meridian: 'hotel',
-  inn_mother: 'hotel',
   safe_house: '_office',
   vehicle_dealer: '_shop',
   plaza_market: '_shop',
@@ -738,7 +693,7 @@ function getEmployeeDialogue(role: string): string {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
-interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker'; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; }
+interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
   { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
@@ -769,11 +724,11 @@ const NPCS: NpcDef[] = [
     whisper: 'Everything in this city is powered by something that\'s being consumed underneath it. I know what that looks like. I\'ve seen the pipes.',
     backstory: 'Sergeant Callow Briggs commands a small militia unit at Checkpoint Central. He served in the city guard before the \'91 restructuring, when military operations were absorbed by PABLO Corp. He refused the transfer.',
     voiceLines: ['Checkpoint secure. No unauthorized personnel beyond this point.', 'I refused the PABLO Corp. transfer. Some of us still remember the old guard.', 'Everything in this city is powered by something being consumed underneath it.'] },
-  { name: 'MAEVE GARRIN', x: 5600, y: 5600, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'grand_meridian', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
+  { name: 'MAEVE GARRIN', x: 5600, y: 5600, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'hotel', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
     whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always.',
     backstory: 'Maeve Garrin directs six PABLO Corp. subsidiary companies from a desk at the megabank. Each company exists to hold assets for another company. She has never met SENIOR PABLO. She has met his signature on 400 documents.',
     voiceLines: ['Six shell companies. Each one pays rent to another. At the top: PABLO.', 'I have never met him. I have met his signature four hundred times.', 'It is not a business. It is a recursion.'] },
-  { name: 'PELL ARDEN', x: 5500, y: 5700, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'grand_meridian', workplace: 'arcade', voiceActor: true,
+  { name: 'PELL ARDEN', x: 5500, y: 5700, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'hotel', workplace: 'arcade', voiceActor: true,
     whisper: 'I have reset my life eight separate times. Each time I ended up back here. This city has a gravity I cannot escape.',
     backstory: 'Pell Arden has held eleven jobs in nine years. Dishwasher. Cable installer. Night watchman. Courier. Each one ended the same way — the employer was acquired by PABLO Corp. and the position was "restructured."',
     voiceLines: ['Eight resets. Same city. Same ending.', 'Every employer got acquired. Every position got restructured.', 'This city has a gravity I cannot escape.'] },
@@ -786,11 +741,11 @@ const NPCS: NpcDef[] = [
     whisper: 'I manage thirty-seven city systems. Every one of them routes through the tower. Someone told me recently SENIOR PABLO uses three of them as personal surveillance.',
     backstory: 'Dorian Krall holds the title of Infrastructure Manager — East District. He oversees the power grid, water routing, and signal distribution for everything east of the tower.',
     voiceLines: ['Thirty-seven systems. Every one routes through the tower.', 'Three of those systems are personal surveillance. I was not supposed to know that.', 'The grid does not serve the city. The city serves the grid.'] },
-  { name: 'NILS CARVER', x: 7700, y: 5800, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'inn_mother', workplace: 'east_clinic', voiceActor: true,
+  { name: 'NILS CARVER', x: 7700, y: 5800, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
     whisper: 'Me and Breck were supposed to fix a reactor coolant line. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.',
     backstory: 'Nils Carver is a pipe fitter who maintains the east district water system. He works with his partner Breck Halsey. They discovered in \'93 that the city water pipes run directly beneath Shadow Tower.',
     voiceLines: ['The pipes run directly beneath Shadow Tower. We measured twice.', 'The whole city is the reactor. PABLO lit the fuse.', 'Me and Breck keep the water flowing. Nobody thanks pipe fitters.'] },
-  { name: 'BRECK HALSEY', x: 7900, y: 6000, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'inn_mother', workplace: 'east_clinic', voiceActor: true,
+  { name: 'BRECK HALSEY', x: 7900, y: 6000, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
     whisper: 'Nils says this city is a pressure vessel. I think it\'s worse. Pressure vessels have relief valves. This city only has the tower.',
     backstory: 'Breck Halsey grew up in the east flats. He and Nils Carver have worked together for seven years. He keeps detailed notes on pipe diameters, flow rates, and pressure anomalies.',
     voiceLines: ['Pressure vessels have relief valves. This city only has the tower.', 'I keep detailed notes. Diameters. Flow rates. Anomalies.', 'Seven years with Nils. We know every pipe in this district.'] },
@@ -823,12 +778,12 @@ const NPCS: NpcDef[] = [
     whisper: 'I\'ve been through harder than this. This city? Just a very bad city. My partner didn\'t make it past the wall.',
     backstory: 'Pike Renner and his partner Kael Stritt entered Minx City through the western checkpoint in \'94. Kael was detained for carrying unlicensed tools. Pike has not seen Kael since.',
     voiceLines: ['My partner did not make it past the wall. Detained for unlicensed tools.', 'I have been through harder. This city is just a very bad city.', 'Kael Stritt. If you see that name anywhere, tell me.'] },
-  { name: 'ORINA FELL', x: 8800, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'east_market', voiceActor: true,
+  { name: 'ORINA FELL', x: 8800, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The signal from the tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.',
     backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the PABLO Corp. processing plant. She sees fragments of possible futures — most of them involve the tower.',
     voiceLines: ['I see fragments of futures. Most of them involve the tower.', 'The signal is changing me. Something woke up.', 'Chemical exposure gave me sight. I wish it had not.'] },
   // ── City border / near-wasteland NPCs ──
-  { name: 'OFFICER INGRID THORN', x: 5900, y: 7400, type: 'corp', gender: 'f', job: 'Detective', home: 'grand_meridian', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER INGRID THORN', x: 5900, y: 7400, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'The old district burned. I watched it. SENIOR PABLO\'s lights were on that night. Already on. Always already on.',
     backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to PABLO Corp. Every case she closes is reclassified as "administrative."',
     voiceLines: ['Every case leads to PABLO Corp. Every case gets reclassified.', 'The old district burned. His lights were already on that night.', 'I investigate property crimes. The property always belongs to PABLO.'] },
@@ -836,7 +791,7 @@ const NPCS: NpcDef[] = [
     whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One.',
     backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. PABLO Corp. acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.',
     voiceLines: ['He bought every patent. Every single one.', 'I rebuild from memory now. Memory is the one thing he cannot acquire.', 'My robots kept order for six weeks. Then PABLO took them.'] },
-  { name: 'OREN SHARPE', x: 5700, y: 7350, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'east_market', voiceActor: true,
+  { name: 'OREN SHARPE', x: 5700, y: 7350, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The power grid pulses in a pattern that matches no known engineering specification. I\'ve been mapping it for three years. It resembles a signal.',
     backstory: 'Oren Sharpe is an electrician who services the east district entertainment venues. He noticed in \'93 that the city power grid pulses in a pattern that resembles a signal.',
     voiceLines: ['The grid pulses in a pattern. Three years mapping it. It resembles a signal.', 'No known engineering specification matches. I have checked them all.', 'Someone is using the power grid to communicate. I cannot decode it.'] },
@@ -935,15 +890,15 @@ const NPCS: NpcDef[] = [
     whisper: 'My sister Orina and I were changed by the same chemical runoff. She got precognition. I got insomnia. Minx City doesn\'t have a cure.',
     backstory: 'Tomas Fell runs the Print Shop in the east district. He prints pamphlets, flyers, and unofficial newspapers. He has not slept more than two hours per night since \'91.',
     voiceLines: ['She got precognition. I got insomnia. Same chemicals.', 'Two hours of sleep per night since ninety-one.', 'I print the things nobody else will print. That is the job.'] },
-  { name: 'OFFICER RENN KOVACS', x: 6200, y: 6400, type: 'human', gender: 'm', job: 'Police Officer', home: 'eastside_flat', workplace: 'east_market', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER RENN KOVACS', x: 6200, y: 6400, type: 'human', gender: 'm', job: 'Police Officer', home: 'eastside_flat', workplace: 'market', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'My father\'s precinct was shuttered the night I joined. Minx City is the third precinct I have watched close in slow motion.',
     backstory: 'Officer Renn Kovacs patrols the bazaar and surrounding blocks. He writes more citations than any other officer. Most are for PABLO Corp. subsidiary vehicles blocking fire exits.',
     voiceLines: ['More citations than any other officer. Most for PABLO Corp. vehicles.', 'Third precinct I have watched close in slow motion.', 'My father\'s precinct was shuttered the night I joined.'] },
-  { name: 'JORY STRAND', x: 7400, y: 5900, type: 'human', gender: 'm', job: 'Librarian', home: 'inn_mother', workplace: 'print_shop', voiceActor: true,
+  { name: 'JORY STRAND', x: 7400, y: 5900, type: 'human', gender: 'm', job: 'Librarian', home: 'hotel', workplace: 'print_shop', voiceActor: true,
     whisper: 'History is written by those who survive and own the publishing rights. PABLO Corp. owns the publishing rights.',
     backstory: 'Jory Strand operates an unofficial lending library from the back room of the Print Shop. He has collected 400 books — most salvaged from demolished buildings.',
     voiceLines: ['Four hundred books. Most salvaged from demolished buildings.', 'PABLO Corp. owns the publishing rights. I own the back room.', 'History is written by those who own the publishing rights.'] },
-  { name: 'WYNN CORRIGAN', x: 7700, y: 6100, type: 'human', gender: 'm', job: 'Exterminator', home: 'inn_mother', workplace: 'nightclub', voiceActor: true,
+  { name: 'WYNN CORRIGAN', x: 7700, y: 6100, type: 'human', gender: 'm', job: 'Exterminator', home: 'hotel', workplace: 'nightclub', voiceActor: true,
     whisper: 'The rat population increases in direct proportion to PABLO Corp. construction activity. I have filed fourteen reports. None acted upon.',
     backstory: 'Wynn Corrigan is a licensed pest exterminator — one of seven in Minx City. He handles the nightclub district, which has the highest rat population in the east sector.',
     voiceLines: ['Fourteen reports filed. Zero acted upon.', 'The rats increase with construction activity. I have the data.', 'One of seven licensed exterminators. The nightclub district is mine.'] },
@@ -955,20 +910,20 @@ const NPCS: NpcDef[] = [
     whisper: 'I\'ve surveyed across three separate deep-ruin incidents. The ruin pattern is relentless but it has a logic — expansion and consumption.',
     backstory: 'Thera Voss surveys land for the east district expansion project — a project that has been "in progress" since \'89. She has surveyed the same twelve blocks fourteen times.',
     voiceLines: ['Same twelve blocks. Fourteen times. The project is still in progress.', 'The ruin pattern has a logic. Expansion and consumption.', 'I survey land that never gets developed. That is the job.'] },
-  { name: 'MILES ORREN', x: 8100, y: 5500, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'inn_mother', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
+  { name: 'MILES ORREN', x: 8100, y: 5500, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'hotel', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'My optical camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use stealth daily to avoid their collection teams.',
     backstory: 'Miles Orren manages utility routing for the east district under a PABLO Corp. contract. He designed an optical camouflage system in \'92 that was immediately classified and acquired.',
     voiceLines: ['They acquired my stealth patents. I use stealth to avoid their collection teams.', 'Optical camouflage. Classified and acquired in the same meeting.', 'The irony is not lost on me. It is the only thing I have left.'] },
   // ── Grand Meridian staff & guests ──
-  { name: 'CLARA BRENNAN', x: 5480, y: 5320, type: 'human', gender: 'f', job: 'Bartender', home: 'grand_meridian', workplace: 'grand_meridian', voiceActor: true,
+  { name: 'CLARA BRENNAN', x: 5480, y: 5320, type: 'human', gender: 'f', job: 'Bartender', home: 'hotel', workplace: 'hotel', voiceActor: true,
     whisper: 'I ran a bar in the west district. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit.',
     backstory: 'Clara Brennan owned and operated a bar called The Seventh for eleven years before PABLO Corp. demolished the building. She relocated to the Grand Meridian and set up a counter bar in the lobby.',
     voiceLines: ['Eleven years. Regular customers. A name above the door. Then the demolition permit.', 'The Seventh is gone. The counter bar is what is left.', 'PABLO Corp. demolished the building. They did not demolish me.'] },
-  { name: 'KELLAN MARSH', x: 5500, y: 5170, type: 'human', gender: 'm', job: 'Writer', home: 'grand_meridian', workplace: 'grand_meridian', voiceActor: true,
+  { name: 'KELLAN MARSH', x: 5500, y: 5170, type: 'human', gender: 'm', job: 'Writer', home: 'hotel', workplace: 'hotel', voiceActor: true,
     whisper: 'I followed an idea here the way some men follow obsessions — across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead.',
     backstory: 'Kellan Marsh is writing a book about Minx City. He has been writing it for four years. The manuscript is 800 pages and growing.',
     voiceLines: ['Eight hundred pages and growing. Four years.', 'I followed an idea expecting revelation. PABLO was at the end instead.', 'The book is about Minx City. Minx City keeps adding chapters.'] },
-  { name: 'CONRAD ALDRIC', x: 5550, y: 5250, type: 'human', gender: 'm', job: 'Teacher', home: 'grand_meridian', workplace: 'arcade', voiceActor: true,
+  { name: 'CONRAD ALDRIC', x: 5550, y: 5250, type: 'human', gender: 'm', job: 'Teacher', home: 'hotel', workplace: 'arcade', voiceActor: true,
     whisper: 'You never really understand a system until you examine it from inside. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside.',
     backstory: 'Conrad Aldric teaches reading and arithmetic to children in the west district. His classroom is the back room of the Arcade — rent-free, because the arcade owner believes education is the only legal form of resistance.',
     voiceLines: ['Education is the only legal form of resistance. The arcade owner believes that.', 'I teach reading and arithmetic. In the back room of an arcade.', 'There does not appear to be a person inside. Just the system.'] },
@@ -1020,21 +975,21 @@ const NPCS: NpcDef[] = [
     whisper: 'These prices are criminal.', backstory: 'Browsing the Black Market stalls.' },
   { name: 'SHOPPER', x: 6520, y: 6080, type: 'human', gender: 'm', job: 'Shopper', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'Looking for parts.', backstory: 'Browsing the Black Market stalls.' },
-  { name: 'SHOPPER', x: 7450, y: 5600, type: 'human', gender: 'f', job: 'Shopper', home: 'hotel', workplace: 'east_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+  { name: 'SHOPPER', x: 7450, y: 5600, type: 'human', gender: 'f', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'The bazaar has fresh produce today.', backstory: 'Browsing the East Bazaar.' },
-  { name: 'SHOPPER', x: 7480, y: 5630, type: 'human', gender: 'm', job: 'Shopper', home: 'inn_mother', workplace: 'east_market', role: 'pedestrian', idleBehavior: 'BROWSING',
+  { name: 'SHOPPER', x: 7480, y: 5630, type: 'human', gender: 'm', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'Need rations for the week.', backstory: 'Shopping at the East Bazaar.' },
   { name: 'DINER', x: 8250, y: 5900, type: 'human', gender: 'f', job: 'Diner', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'Best ramen in Sector 9.', backstory: 'Having lunch at the noodle bar.' },
   { name: 'DINER', x: 8280, y: 5920, type: 'human', gender: 'm', job: 'Diner', home: 'minx_arms', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'The broth is suspiciously good.', backstory: 'Eating noodles.' },
-  { name: 'DINER', x: 6050, y: 6350, type: 'human', gender: 'f', job: 'Diner', home: 'inn_mother', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
+  { name: 'DINER', x: 6050, y: 6350, type: 'human', gender: 'f', job: 'Diner', home: 'hotel', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'At least the food court is cheap.', backstory: 'Eating at the food court.' },
   { name: 'DINER', x: 6080, y: 6370, type: 'human', gender: 'm', job: 'Diner', home: 'bunker', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'Synthetic protein, but it fills you up.', backstory: 'Having a meal at the food court.' },
   { name: 'LOITERER', x: 5750, y: 5850, type: 'human', gender: 'm', job: 'Unemployed', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Nothing to do. Nowhere to go.', backstory: 'Standing on the corner.' },
-  { name: 'LOITERER', x: 6750, y: 5850, type: 'human', gender: 'f', job: 'Unemployed', home: 'inn_mother', workplace: 'radio', role: 'pedestrian', idleBehavior: 'STANDING',
+  { name: 'LOITERER', x: 6750, y: 5850, type: 'human', gender: 'f', job: 'Unemployed', home: 'hotel', workplace: 'radio', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Waiting for something to happen.', backstory: 'Standing on the street.' },
   { name: 'LOITERER', x: 7750, y: 5850, type: 'human', gender: 'm', job: 'Day Laborer', home: 'eastside_flat', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Shift starts in an hour.', backstory: 'Waiting for work.' },
@@ -1044,7 +999,7 @@ const NPCS: NpcDef[] = [
     whisper: 'The city changes but the benches stay.', backstory: 'Resting on a bench.' },
   { name: 'BENCH SITTER', x: 8200, y: 6300, type: 'android', gender: 'f', job: 'Off-Duty', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'SITTING',
     whisper: 'Conserving power.', backstory: 'Android in low-power mode on a bench.' },
-  { name: 'GOSSIPER', x: 5900, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'inn_mother', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
+  { name: 'GOSSIPER', x: 5900, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'hotel', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
     whisper: 'Did you hear about the fire in Sector 2?', backstory: 'Chatting with a friend on the street.' },
   { name: 'GOSSIPER', x: 5920, y: 6760, type: 'human', gender: 'm', job: 'Gossip', home: 'bunker', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
     whisper: 'They say SENIOR PABLO never sleeps.', backstory: 'Chatting with a friend on the street.' },
@@ -1060,16 +1015,12 @@ const NPCS: NpcDef[] = [
     whisper: 'Third shift this week.', backstory: 'Walking to Metro East.' },
   { name: 'WORKER', x: 5600, y: 6300, type: 'human', gender: 'm', job: 'Janitor', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Someone has to clean up after PABLO.', backstory: 'City maintenance worker.' },
-  { name: 'WORKER', x: 7600, y: 6300, type: 'human', gender: 'f', job: 'Courier', home: 'inn_mother', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'WORKER', x: 7600, y: 6300, type: 'human', gender: 'f', job: 'Courier', home: 'hotel', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Package for Sector 12.', backstory: 'Courier on delivery.' },
-  { name: 'PLAZA VENDOR', x: 7650, y: 5450, type: 'human', gender: 'm', job: 'Street Vendor', home: 'inn_mother', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
+  { name: 'PLAZA VENDOR', x: 7650, y: 5450, type: 'human', gender: 'm', job: 'Street Vendor', home: 'hotel', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Fresh synth-fruit! Cheap!', backstory: 'Vendor at Central Plaza.' },
   { name: 'PLAZA VENDOR', x: 7680, y: 5470, type: 'human', gender: 'f', job: 'Street Vendor', home: 'overlook', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Hot rations! Two for one!', backstory: 'Vendor at Central Plaza.' },
-  { name: 'NORTH BAZAAR SHOPPER', x: 8550, y: 7150, type: 'human', gender: 'f', job: 'Shopper', home: 'north_bunker', workplace: 'north_market', role: 'pedestrian', idleBehavior: 'BROWSING',
-    whisper: 'The North Bazaar has the real stuff.', backstory: 'Shopping in the north market.' },
-  { name: 'NORTH BAZAAR SHOPPER', x: 8580, y: 7170, type: 'human', gender: 'm', job: 'Shopper', home: 'north_bunker', workplace: 'north_market', role: 'pedestrian', idleBehavior: 'BROWSING',
-    whisper: 'Need scrap for repairs.', backstory: 'Shopping at the North Bazaar.' },
   { name: 'OFFICER KANE BRIGGS', x: 7300, y: 5850, type: 'corp', gender: 'm', job: 'Police Sergeant', home: 'eastside_flat', workplace: 'pablo_tower', role: 'police', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'Move along, citizen. Nothing to see here.', backstory: 'Senior police sergeant. Heavily armed. Very dangerous when provoked.',
     voiceLines: ['Move along. Nothing to see here.', 'Your papers expired last month. That is a citation.', 'I do not repeat myself. Walk.'] },
@@ -1079,6 +1030,40 @@ const NPCS: NpcDef[] = [
   { name: 'SGT. IRON HOLTZ', x: 6500, y: 7200, type: 'corp', gender: 'm', job: 'Border Guard', home: 'bunker', workplace: 'checkpoint_c', role: 'corpo_military', idleBehavior: 'STANDING', voiceActor: true, walkSpeed: 0.7, personality: 'disciplined',
     whisper: 'Papers. Now. Or you don\'t pass.', backstory: 'Checkpoint guard. Known for zero-tolerance enforcement.',
     voiceLines: ['Papers. Now.', 'Nobody passes without clearance. Nobody.', 'I have been posted here for three years. I have never let anyone through without papers.'] },
+  { name: 'AGENT KIRA VOSS', x: 7100, y: 5900, type: 'corp', gender: 'f', job: 'Blade Runner', home: 'pablo_tower', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.0, personality: 'cold_efficient',
+    whisper: 'I can tell. The way you blink. Too even.', backstory: 'PABLO Corp. replicant hunter. Certified Voigt-Kampff examiner. Has retired 47 units. Never missed.',
+    voiceLines: ['Your empathy response is 0.3 seconds too slow.', 'I have retired 47 units. You will not be 48.', 'The test does not lie. People do.'] },
+  { name: 'COLE DEKKER', x: 8200, y: 6100, type: 'human', gender: 'm', job: 'Blade Runner', home: 'bunker', workplace: 'armory', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.9, personality: 'world_weary',
+    whisper: 'Seen things you would not believe. Most of them bled.', backstory: 'Former wasteland scout turned replicant hunter. Works alone. Drinks too much. Gets results.',
+    voiceLines: ['I have seen things out there. Things that bled wrong.', 'They run. They always run.', 'Do not make me chase you. I am too old for that.'] },
+  { name: 'MIRA SATO', x: 6000, y: 6500, type: 'android', gender: 'f', job: 'Blade Runner', home: 'data_vault', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.1, personality: 'conflicted', isReplicant: true,
+    whisper: 'I hunt my own kind. Do not ask me how I sleep.', backstory: 'An android hunting androids. PABLO assigned her knowing the irony. She suspects she is being tested.',
+    voiceLines: ['I hunt what I am. The irony is not lost on me.', 'PABLO knows exactly what I am. That is the point.', 'Every unit I retire... I wonder if they dream the way I do.'] },
+  // ── GANG ZONE PATROL NPCs ──
+  { name: 'VIPER', x: 1500, y: 1800, type: 'human', gender: 'm', job: 'Rust Enforcer', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'rust_syndicate', idleBehavior: 'WALKING', walkSpeed: 0.8, personality: 'aggressive',
+    whisper: 'Cross the line and I\'ll make sure they never find you.', backstory: 'Rust Syndicate enforcer. Controls the western scrap routes.',
+    voiceLines: ['You are in Rust territory. Walk carefully.', 'Scrap belongs to us. All of it.', 'The Void Runners tried last week. They limped home.'] },
+  { name: 'SLAG', x: 2200, y: 2600, type: 'mutant', gender: 'm', job: 'Rust Scavenger', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'rust_syndicate', idleBehavior: 'WALKING', walkSpeed: 0.7, personality: 'paranoid',
+    whisper: 'I smell outsiders. Copper and fear.', backstory: 'Mutant scavenger loyal to the Rust Syndicate. Lost his left eye in a territory dispute.',
+    voiceLines: ['Outsiders stink of copper. And fear.', 'Lost my eye to a Void Runner. Took both of his.', 'The scrap piles are ours. Every bolt. Every wire.'] },
+  { name: 'NEON', x: 7200, y: 1500, type: 'android', gender: 'f', job: 'Void Scout', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'void_runners', idleBehavior: 'WALKING', walkSpeed: 1.0, personality: 'reckless',
+    whisper: 'Running is what we do. Fast in, fast out.', backstory: 'Void Runners recon scout. Fastest in the faction. Runs data and contraband.',
+    voiceLines: ['You want to run with us? Keep up or get left behind.', 'Data moves faster than bullets. I move faster than data.', 'Rust boys are slow. That is why they lose.'] },
+  { name: 'GHOST WIRE', x: 8100, y: 2200, type: 'human', gender: 'm', job: 'Void Lieutenant', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'void_runners', idleBehavior: 'WALKING', walkSpeed: 0.9, personality: 'calculating',
+    whisper: 'Every signal in this sector belongs to us.', backstory: 'Void Runners signals officer. Taps into PABLO Corp. comms. Has never been caught.',
+    voiceLines: ['I hear everything. Every signal. Every whisper.', 'PABLO thinks his comms are secure. They are not.', 'The network belongs to whoever listens hardest.'] },
+  { name: 'BROTHER STATIC', x: 1800, y: 9200, type: 'human', gender: 'm', job: 'Monk Guard', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'static_monks', idleBehavior: 'STANDING', walkSpeed: 0.5, personality: 'contemplative',
+    whisper: 'Silence is the only honest frequency left.', backstory: 'Static Monks guardian. Protects the southern meditation grounds. Speaks rarely.',
+    voiceLines: ['Silence. That is all we ask.', 'The noise of the city is a poison. We filter it here.', 'Stay if you seek quiet. Leave if you bring chaos.'] },
+  { name: 'SISTER SIGNAL', x: 2800, y: 10000, type: 'android', gender: 'f', job: 'Monk Technician', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'static_monks', idleBehavior: 'WALKING', walkSpeed: 0.6, personality: 'serene',
+    whisper: 'We tune the static until it speaks.', backstory: 'Static Monks tech priest. Maintains the jamming arrays that keep PABLO Corp. surveillance out of southern zones.',
+    voiceLines: ['The static is not noise. It is a language.', 'PABLO\'s cameras cannot see through our signal.', 'We do not hide. We simply refuse to be seen.'] },
+  { name: 'KRAKOV', x: 9500, y: 9000, type: 'human', gender: 'm', job: 'Bloc Enforcer', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'eastern_bloc', idleBehavior: 'WALKING', walkSpeed: 0.85, personality: 'stoic',
+    whisper: 'The Bloc remembers. Every debt. Every betrayal.', backstory: 'Eastern Bloc veteran enforcer. Commands a patrol unit in the southeast wastes.',
+    voiceLines: ['The Bloc does not forget. The Bloc does not forgive.', 'We held this ground before the corporations arrived.', 'You want passage? You pay. In coin or in blood.'] },
+  { name: 'YELENA FROST', x: 10200, y: 9800, type: 'human', gender: 'f', job: 'Bloc Strategist', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'eastern_bloc', idleBehavior: 'WALKING', walkSpeed: 0.75, personality: 'calculating',
+    whisper: 'Every territory shift is a move on a board. I see six moves ahead.', backstory: 'Eastern Bloc tactical commander. Plans territory expansions and defensive operations against rival factions.',
+    voiceLines: ['Territory is not taken. It is earned.', 'The Static Monks pray. We plan. We win.', 'Six moves ahead. That is how the Bloc survives.'] },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -1162,6 +1147,323 @@ const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   PABLO_GUARD:  { day: ['PATROLLING','WORKING','PATROLLING'], night: ['PATROLLING','PATROLLING','WORKING'] },
   RAT:          { day: ['CAMPING','SLEEPING','CAMPING'], night: ['PATROLLING','CAMPING','SOCIALIZING'] },
 };
+
+
+  // ── NPC Survival System ──────────────────────────────────────────────────────
+  interface NpcSurvivalState {
+    hunger: number;
+    money: number;
+    sheltered: boolean;
+    activity: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants';
+  }
+  const npcSurvivalStates = new Map<number, NpcSurvivalState>();
+  function initNpcSurvival(npcIdx: number): NpcSurvivalState {
+    const n = NPCS[npcIdx];
+    const hasJob = n.job !== 'Unemployed' && n.job !== 'Unemployed Drifter' && n.job !== 'Gossip';
+    return {
+      hunger: 80 + Math.random() * 20,
+      money: hasJob ? 5000 + Math.random() * 10000 : Math.random() * 2000,
+      sheltered: !!BUILDINGS.find(b => b.id === n.home),
+      activity: hasJob ? 'working' : 'scavenging',
+    };
+  }
+  function tickNpcSurvival(npcIdx: number, worldHour: number): void {
+    let state = npcSurvivalStates.get(npcIdx);
+    if (!state) { state = initNpcSurvival(npcIdx); npcSurvivalStates.set(npcIdx, state); }
+    const n = NPCS[npcIdx];
+    state.hunger = Math.max(0, state.hunger - 0.02);
+    if (state.activity === 'working') state.money += 0.5;
+    if (state.hunger < 30 && state.money > 500) {
+      state.hunger = Math.min(100, state.hunger + 40);
+      state.money -= 500;
+    }
+    if (state.hunger < 20) state.activity = 'scavenging';
+    else if (state.money < 200) state.activity = 'seeking_work';
+    else if (worldHour >= 22 || worldHour < 6) state.activity = 'resting';
+    else state.activity = 'working';
+    n.npcHunger = state.hunger;
+    n.npcMoney = state.money;
+    n.npcActivity = state.activity;
+    n.npcSheltered = state.sheltered;
+    if (state.activity === 'scavenging' && n.reactState !== 'FLEEING') {
+      const scavX = n.x + (Math.random() - 0.5) * 4;
+      const scavY = n.y + (Math.random() - 0.5) * 4;
+      n.x = Math.max(100, Math.min(14000, scavX));
+      n.y = Math.max(100, Math.min(14000, scavY));
+      if (state.hunger < 10) {
+        n.idleBehavior = 'SITTING';
+      }
+    } else if (state.activity === 'seeking_work') {
+      const nexus = BUILDINGS.find(b => b.id === 'nexus_hub');
+      if (nexus) {
+        const dx = (nexus.x + nexus.w / 2) - n.x;
+        const dy = (nexus.y + nexus.h / 2) - n.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 60) {
+          n.x += (dx / dist) * 0.8;
+          n.y += (dy / dist) * 0.8;
+        }
+      }
+    }
+  }
+
+  // ── Blade Runner Hunting System ──────────────────────────────────────────────
+  interface BladeRunnerHunt {
+    hunterIdx: number;
+    targetIdx: number;
+    active: boolean;
+    cooldown: number;
+  }
+  const bladeRunnerHunts: BladeRunnerHunt[] = [];
+  let bladeRunnerHuntCooldown = 0;
+  const BLADE_RUNNER_SCAN_RANGE = 300;
+  const BLADE_RUNNER_HUNT_INTERVAL = 600;
+
+  let playerSuspicionLevel = 0;
+  let playerSuspicionDecay = 0;
+
+  function tickBladeRunnerHunts(npcs: NpcDef[], playerClass: string, worldHour: number, playerX: number, playerY: number): void {
+    if (bladeRunnerHuntCooldown > 0) { bladeRunnerHuntCooldown--; return; }
+    const isPlayerReplicant = playerClass.toLowerCase() === 'replicant';
+    const hunters = npcs.map((n, i) => ({ n, i })).filter(({ n }) => n.role === 'blade_runner');
+    if (hunters.length === 0) return;
+
+    if (isPlayerReplicant) {
+      if (playerSuspicionDecay > 0) { playerSuspicionDecay--; }
+      else if (playerSuspicionLevel > 0) { playerSuspicionLevel = Math.max(0, playerSuspicionLevel - 1); playerSuspicionDecay = 600; }
+
+      for (const hunter of hunters) {
+        const dist = Math.hypot(hunter.n.x - playerX, hunter.n.y - playerY);
+        if (dist < BLADE_RUNNER_SCAN_RANGE * 0.6) {
+          if (playerSuspicionLevel < 3 && Math.random() < 0.005) {
+            playerSuspicionLevel++;
+            playerSuspicionDecay = 1200;
+            const msgs = [
+              `${hunter.n.name} eyes you coldly. "You seem... familiar."`,
+              `${hunter.n.name} scans the crowd, gaze lingering on you.`,
+              `${hunter.n.name}: "Interesting biometrics... Move along."`,
+            ];
+            addGossipEvent(msgs[Math.min(playerSuspicionLevel - 1, msgs.length - 1)], hunter.n.x, hunter.n.y, 'blade_runner', 0);
+          }
+        }
+      }
+    }
+
+    const replicantNpcs = npcs.map((n, i) => ({ n, i })).filter(({ n }) =>
+      n.type === 'android' || n.isReplicant || n.isRogue
+    );
+    for (const hunter of hunters) {
+      const existingHunt = bladeRunnerHunts.find(h => h.hunterIdx === hunter.i && h.active);
+      if (existingHunt) continue;
+      for (const target of replicantNpcs) {
+        if (target.n.role === 'corpo_military' || target.n.role === 'police') continue;
+        const dist = Math.hypot(hunter.n.x - target.n.x, hunter.n.y - target.n.y);
+        if (dist < BLADE_RUNNER_SCAN_RANGE) {
+          bladeRunnerHunts.push({ hunterIdx: hunter.i, targetIdx: target.i, active: true, cooldown: 300 });
+          bladeRunnerHuntCooldown = BLADE_RUNNER_HUNT_INTERVAL;
+          break;
+        }
+      }
+    }
+    for (const hunt of bladeRunnerHunts) {
+      if (!hunt.active) continue;
+      hunt.cooldown--;
+      if (hunt.cooldown <= 0) { hunt.active = false; continue; }
+      const hunter = npcs[hunt.hunterIdx];
+      const target = npcs[hunt.targetIdx];
+      if (hunter && target) {
+        const dx = target.x - hunter.x;
+        const dy = target.y - hunter.y;
+        const dist = Math.hypot(dx, dy);
+        const speed = hunter.walkSpeed ?? 1.0;
+        if (dist > 20) {
+          hunter.x += (dx / dist) * speed * 1.5;
+          hunter.y += (dy / dist) * speed * 1.5;
+        }
+        if (dist < 30) {
+          target.reactState = 'FLEEING';
+          target.reactTimer = 300;
+          target.suspicionLevel = (target.suspicionLevel ?? 0) + 1;
+          hunt.active = false;
+          addGossipEvent(`Blade Runner ${hunter.name} confronted ${target.name}!`, hunter.x, hunter.y, 'blade_runner', 0);
+        }
+      }
+    }
+  }
+
+  // ── Gang Raid System ─────────────────────────────────────────────────────────
+  interface GangRaid {
+    attackerFaction: string;
+    targetFaction: string;
+    x: number; y: number;
+    timer: number;
+    intensity: number;
+  }
+  const activeRaids: GangRaid[] = [];
+  let raidCooldown = 0;
+  const RAID_INTERVAL = 3600;
+  const RAID_DURATION = 300;
+
+  const FACTION_RIVALS: Record<string, string[]> = {
+    rust_syndicate: ['void_runners', 'minx_city'],
+    void_runners: ['rust_syndicate', 'eastern_bloc'],
+    static_monks: ['eastern_bloc', 'minx_city'],
+    eastern_bloc: ['static_monks', 'void_runners'],
+  };
+
+  function tickGangRaids(frame: number): GangRaid | null {
+    if (raidCooldown > 0) { raidCooldown--; }
+    for (let i = activeRaids.length - 1; i >= 0; i--) {
+      activeRaids[i].timer--;
+      if (activeRaids[i].timer <= 0) activeRaids.splice(i, 1);
+    }
+    if (raidCooldown <= 0 && activeRaids.length < 2 && Math.random() < 0.001) {
+      const factions = Object.keys(FACTION_RIVALS);
+      const attacker = factions[Math.floor(Math.random() * factions.length)];
+      const rivals = FACTION_RIVALS[attacker];
+      if (rivals && rivals.length > 0) {
+        const target = rivals[Math.floor(Math.random() * rivals.length)];
+        const targetZone = GANG_ZONES.find(gz => gz.id === target);
+        if (targetZone) {
+          const raid: GangRaid = {
+            attackerFaction: attacker,
+            targetFaction: target,
+            x: targetZone.x + Math.random() * targetZone.w,
+            y: targetZone.y + Math.random() * targetZone.h,
+            timer: RAID_DURATION,
+            intensity: 0.5 + Math.random() * 0.5,
+          };
+          activeRaids.push(raid);
+          raidCooldown = RAID_INTERVAL;
+          return raid;
+        }
+      }
+    }
+    return null;
+  }
+
+  // ── Local Gossip System ──────────────────────────────────────────────────────
+  interface GossipEvent {
+    text: string;
+    x: number;
+    y: number;
+    timestamp: number;
+    type: 'raid' | 'fire' | 'faction' | 'rumor' | 'blade_runner' | 'economy';
+  }
+  const localGossipEvents: GossipEvent[] = [];
+  const MAX_GOSSIP_EVENTS = 20;
+
+  function addGossipEvent(text: string, x: number, y: number, type: GossipEvent['type'], frame: number): void {
+    localGossipEvents.push({ text, x, y, timestamp: frame, type });
+    if (localGossipEvents.length > MAX_GOSSIP_EVENTS) localGossipEvents.shift();
+  }
+
+  function getNearbyGossip(px: number, py: number, frame: number): string | null {
+    const GOSSIP_RANGE = 800;
+    const GOSSIP_AGE = 1800;
+    const nearby = localGossipEvents.filter(g =>
+      Math.hypot(g.x - px, g.y - py) < GOSSIP_RANGE &&
+      frame - g.timestamp < GOSSIP_AGE
+    );
+    if (nearby.length === 0) return null;
+    return nearby[Math.floor(Math.random() * nearby.length)].text;
+  }
+
+  // ── Wasteland Danger System ──────────────────────────────────────────────────
+  function getWastelandDangerLevel(px: number, py: number, playerClass: string): number {
+    if (inCityBounds(px, py)) return 0;
+    const distFromCity = Math.min(
+      Math.abs(px - CITY_LEFT), Math.abs(px - CITY_RIGHT),
+      Math.abs(py - CITY_TOP), Math.abs(py - CITY_BOTTOM)
+    );
+    let danger = Math.min(1, distFromCity / 3000);
+    if (playerClass.toLowerCase() === 'outlaw') danger *= 0.4;
+    if (playerClass.toLowerCase() === 'corporate') danger *= 1.5;
+    return Math.min(1, danger);
+  }
+
+  // ── Typewriter Dialogue State ────────────────────────────────────────────────
+  interface TypewriterState {
+    fullText: string;
+    displayedChars: number;
+    npcIdx: number;
+    startFrame: number;
+    duration: number;
+  }
+  let activeTypewriters: TypewriterState[] = [];
+  const TYPEWRITER_SPEED = 3;
+  const TYPEWRITER_DISPLAY_TIME = 300;
+  const MAX_BUBBLE_CHARS = 60;
+
+  function startTypewriter(text: string, npcIdx: number, frame: number): void {
+    const existing = activeTypewriters.findIndex(t => t.npcIdx === npcIdx);
+    if (existing >= 0) activeTypewriters.splice(existing, 1);
+    const truncated = text.length > MAX_BUBBLE_CHARS ? text.substring(0, MAX_BUBBLE_CHARS) + '...' : text;
+    activeTypewriters.push({
+      fullText: truncated,
+      displayedChars: 0,
+      npcIdx,
+      startFrame: frame,
+      duration: TYPEWRITER_DISPLAY_TIME + truncated.length * 2,
+    });
+  }
+
+  function tickTypewriters(frame: number): void {
+    for (let i = activeTypewriters.length - 1; i >= 0; i--) {
+      const tw = activeTypewriters[i];
+      const elapsed = frame - tw.startFrame;
+      tw.displayedChars = Math.min(tw.fullText.length, Math.floor(elapsed / TYPEWRITER_SPEED));
+      if (elapsed > tw.duration) activeTypewriters.splice(i, 1);
+    }
+  }
+
+  function getTypewriterText(npcIdx: number): string | null {
+    const tw = activeTypewriters.find(t => t.npcIdx === npcIdx);
+    if (!tw) return null;
+    return tw.fullText.substring(0, tw.displayedChars);
+  }
+
+  // ── Power Infrastructure (strategic target) ──────────────────────────────────
+  interface PowerNode {
+    id: string;
+    x: number;
+    y: number;
+    hp: number;
+    maxHp: number;
+    label: string;
+    underAttack: boolean;
+  }
+  const POWER_NODES: PowerNode[] = [
+    { id: 'pn_central', x: 6500, y: 6500, hp: 100, maxHp: 100, label: 'CENTRAL POWER RELAY', underAttack: false },
+    { id: 'pn_east', x: 8000, y: 5800, hp: 100, maxHp: 100, label: 'EAST GRID JUNCTION', underAttack: false },
+    { id: 'pn_west', x: 5600, y: 5800, hp: 100, maxHp: 100, label: 'WEST POWER STATION', underAttack: false },
+    { id: 'pn_south', x: 7000, y: 7200, hp: 100, maxHp: 100, label: 'SOUTH TRANSFORMER', underAttack: false },
+  ];
+  let powerAttackCooldown = 0;
+
+  function tickPowerInfrastructure(frame: number, playerClass: string): void {
+    if (powerAttackCooldown > 0) { powerAttackCooldown--; return; }
+    for (const node of POWER_NODES) {
+      if (node.underAttack) {
+        node.hp = Math.max(0, node.hp - 0.1);
+        if (node.hp <= 0) {
+          node.underAttack = false;
+          node.hp = 0;
+          addGossipEvent(`Power node ${node.label} destroyed! Blackout in progress.`, node.x, node.y, 'faction', frame);
+        }
+      }
+      if (!node.underAttack && node.hp > 0 && Math.random() < 0.0001) {
+        node.underAttack = true;
+        const attackerType = Math.random() < 0.5 ? 'Replicants' : 'Outlaws';
+        addGossipEvent(`${attackerType} attacking ${node.label}!`, node.x, node.y, 'faction', frame);
+        powerAttackCooldown = 1800;
+      }
+      if (!node.underAttack && node.hp < node.maxHp) {
+        node.hp = Math.min(node.maxHp, node.hp + 0.01);
+      }
+    }
+  }
+  
 function pickBehavior(type: string, worldHour: number): BehaviorState {
   const sched = FACTION_SCHEDULES[type];
   if (!sched) return 'PATROLLING';
@@ -1177,7 +1479,7 @@ interface Floater { x: number; y: number; text: string; color: string; life: num
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
 const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 1500, VOID_RUNNERS: 2000, STATIC_MONKS: 2500, MUTANT: 1800, RAIDER: 3000, PROWLER: 1000, BORDER_GANG: 1600, EASTERN_BLOC: 2200, SPY: 5000, PABLO_GUARD: 8000, MINX_CITY: 12000, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 200, RAT: 0 };
+const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 350, VOID_RUNNERS: 450, STATIC_MONKS: 500, MUTANT: 400, RAIDER: 600, PROWLER: 250, BORDER_GANG: 380, EASTERN_BLOC: 480, SPY: 800, PABLO_GUARD: 950, MINX_CITY: 900, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 50, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
@@ -1190,7 +1492,7 @@ const CLASS_DISPLAY_NAME: Record<string, string> = {
   corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS', contractor: 'CONTRACTOR',
 };
 const FACTION_SALARY_PER_MIN: Record<string, number> = {
-  corporate: 500, replicant: 350, outlaw: 200,
+  corporate: 500, replicant: 300, outlaw: 100,
 };
 const FACTION_STARTING_NET_WORTH: Record<string, number> = {
   corporate: 25000, replicant: 18000, outlaw: 10000,
@@ -1728,18 +2030,18 @@ function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string)
 
 // ── Building cost map (FIAT costs shown on labels) ──────────────────────────
 const BUILDING_COST: Record<string, number> = {
-  clinic: 10000, east_clinic: 8000, north_clinic: 8000,
-  grand_meridian: 15000, inn_mother: 6000, overlook: 8000,
+  clinic: 10000, 
+  overlook: 8000,
   rust_porch: 4000, ashfield_hostel: 0, terminus: 0, bastion_keep: 0,
   call_home: 5000, noodle_bar: 1200,
-  terminal_shop: 12000, print_shop2: 12000,
+  terminal_shop: 12000,
 };
 const BUILDING_COST_LABEL: Record<string, string> = {
-  clinic: 'ƒ10K', east_clinic: 'ƒ8K', north_clinic: 'ƒ8K',
-  grand_meridian: 'ƒ15K', inn_mother: 'ƒ6K', overlook: 'ƒ8K',
+  clinic: 'ƒ10K',
+  overlook: 'ƒ8K',
   rust_porch: 'ƒ4K', ashfield_hostel: 'FREE', terminus: 'FREE', bastion_keep: 'FREE',
   call_home: 'ƒ5K', noodle_bar: 'ƒ1.2K',
-  terminal_shop: 'ƒ12K', print_shop2: 'ƒ12K',
+  terminal_shop: 'ƒ12K',
   crystal: 'FREE', crystal2: 'FREE', crystal3: 'FREE', crystal4: 'FREE',
   crystal5: 'FREE', crystal6: 'FREE', crystal7: 'FREE',
   arcade: 'FREE', hotel: 'FREE', vend: 'SHOP',
@@ -1791,7 +2093,7 @@ export default function WorldPlay() {
     keys: new Set<string>(),
     frame: 0, blink: 0,
     hp: _ss?.hp ?? 100, salary: _ss?.salary ?? char.salary,
-    hasDevice: _ss?.hasDevice ?? (char.class.toLowerCase() === 'corporate'),
+    hasDevice: _ss?.hasDevice ?? true,
     deviceBroken: _ss?.deviceBroken ?? false,
     deviceDurability: _ss?.deviceDurability ?? 100,
     atPublicTerminal: false,
@@ -1815,6 +2117,7 @@ export default function WorldPlay() {
     attackCooldown: 0,
     attackFlash: 0,
     moveTarget: null as null | { x: number; y: number },
+    deathReason: '' as string,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
     deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number; bounty?: number; looted?: boolean }[],
     pvpDeathBodyDropped: false,
@@ -1935,7 +2238,7 @@ export default function WorldPlay() {
     return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device. City is safe from major gangs. PABLO guards patrol. Spies lurk in disguise.';
   });
   const [online,  setOnline]  = useState<Peer[]>([]);
-  const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? (char.class.toLowerCase() === 'corporate'));
+  const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? true);
   const [deviceBroken, setDeviceBroken] = useState(_ss?.deviceBroken ?? false);
   const [atPublicTerminal, setAtPublicTerminal] = useState(false);
   const [voice,   setVoice]   = useState(false);
@@ -2291,9 +2594,9 @@ export default function WorldPlay() {
       sfxEnter(); setShowRealEstateOffice(true); frozenRef.current = true;
       setNarr('> REAL ESTATE OFFICE — Browse available property listings. All purchases require GOLD. Speak to an agent or use the terminal.');
     }
-    else if (bid === 'recruit_office') {
-      sfxEnter(); setShowRecruitOffice(true); frozenRef.current = true;
-      setNarr('> RECRUITMENT OFFICE — View job listings posted by operatives. Apply or post your own listing.');
+    else if (bid === 'nexus_hub') {
+      sfxEnter();
+      setNarr('> NEXUS HUB — Open-plan co-working space. Hot desks, private booths, meeting rooms. Coffee is free. Everything else costs fiat. Browse the job board or rent a desk.');
     }
     else if (bid === 'police_hq') {
       sfxEnter();
@@ -2340,28 +2643,6 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
       g.hp = Math.min(g.maxHp, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
       setNarr('> HOTEL NEON — The neon still works. You sleep in a room covered in old arcade posters. HP +40. Energy +30.');
-    }
-    else if (bid === 'grand_meridian') {
-      if (g.salary >= 15000) {
-        const mhp = g.maxHp; g.hp = mhp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.salary -= 15000;
-        setHp(mhp); setHunger(100); setThirst(100); setEnergy(100); setSalary(g.salary); sfxHeal();
-        doSave({ ...g, salary: g.salary });
-        setNarr('> GRAND MERIDIAN [ƒ15,000 FIAT] — Marble floors. A piano nobody plays anymore. You sleep in the presidential suite. HP fully restored. All stats maxed. Progress saved. CLARA BRENNAN is behind the counter. "Nobody deserves the presidential suite," she says. "But everyone needs it."');
-      } else {
-        sfxError();
-        setNarr('> GRAND MERIDIAN — CLARA BRENNAN shakes her head. "Presidential suite is ƒ15,000 FIAT. We don\'t do charity. We do accounting." Standard rooms: also unavailable. PABLO CORP. bought the inventory.');
-      }
-    }
-    else if (bid === 'inn_mother') {
-      if (g.salary >= 6000) {
-        g.hp = Math.min(g.maxHp, g.hp + 80); g.energy = Math.min(100, g.energy + 60); g.salary -= 6000;
-        setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
-        doSave({ ...g, salary: g.salary });
-        setNarr('> SWITCHBOARD INN [ƒ6,000 FIAT] — MILES ORREN waves you to a bunk. Equipment hums. Stealth field generator in the corner. HP +80. Energy +60. Progress saved. "We built a whole routing system here once," MILES says quietly. "PABLO Corp. sent one accountant. Same result."');
-      } else {
-        sfxError();
-        setNarr('> SWITCHBOARD INN — MILES ORREN squints at his tablet. "Utility records say you\'re short ƒ6,000. Come back when your fiat clears." A generator hums in the corner. Nobody visible. Nobody answering.');
-      }
     }
     else if (bid === 'overlook') {
       if (g.salary >= 8000) {
@@ -2448,21 +2729,7 @@ export default function WorldPlay() {
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
     else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ4,000 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP. in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
-    else if (bid === 'east_market') { sfxEnter(); setShowTrade('city'); setNarr('> EAST BAZAAR — The commodity board blinks. Every faction sends couriers through here. What you buy here you sell out there. The margin is yours to keep.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
-    else if (bid === 'east_clinic') {
-      if (g.salary >= 8000) {
-        g.hp = Math.min(g.maxHp, g.hp + 60); g.salary -= 8000; setHp(g.hp); setSalary(g.salary); sfxHeal();
-        let ecMsg = '> EAST CLINIC — Field medic patches you up. [ƒ8,000 FIAT] HP +60.';
-        if (g.dogCompanion.active && (g.dogCompanion.injured || g.dogCompanion.hp < DOG_MAX_HP)) {
-          g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
-          setDogHp(DOG_MAX_HP); setDogInjured(false);
-          ecMsg += ` ${g.dogCompanion.name} patched up too. "Dog's on the house."`;
-        }
-        setNarr(ecMsg);
-      }
-      else { sfxError(); setNarr('> EAST CLINIC — "No fiat. I treat wounds, not charity cases." Come back with ƒ8,000.'); }
-    }
     else if (bid === 'print_shop') {
       const job = QUICK_JOBS.print_shop;
       if ((g.jobCooldowns['print_shop'] ?? 0) > 0) {
@@ -2523,20 +2790,7 @@ export default function WorldPlay() {
       g.salary += bonus; setSalary(g.salary); sfxCoin();
       setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ƒ${bonus.toLocaleString()} FIAT. "Come back with more. I don\'t ask questions."`);
     }
-    else if (bid === 'north_clinic') {
-      if (g.salary >= 8000) {
-        g.hp = g.maxHp; g.salary -= 8000; setHp(g.hp); setSalary(g.salary); g.poisoned = false; setPoisoned(false); sfxHeal();
-        let ncMsg = '> NORTH CLINIC — "Trauma unit. Full restore. ƒ8,000." HP maxed. Poison cured.';
-        if (g.dogCompanion.active && (g.dogCompanion.injured || g.dogCompanion.hp < DOG_MAX_HP)) {
-          g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
-          setDogHp(DOG_MAX_HP); setDogInjured(false);
-          ncMsg += ` ${g.dogCompanion.name} healed. "The dog was easier than you."`;
-        }
-        setNarr(ncMsg);
-      }
-      else { sfxError(); setNarr('> NORTH CLINIC — "ƒ8,000 minimum. Don\'t bleed on the floor."'); }
-    }
-    else if (bid === 'terminal_shop' || bid === 'print_shop2') {
+    else if (bid === 'terminal_shop') {
       sfxEnter();
       const passportCost = 12000;
       if (!g.passport && g.salary >= passportCost) {
@@ -2555,10 +2809,6 @@ export default function WorldPlay() {
       setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       setNarr('> NORTH BUNKER — Fully stocked emergency shelter. All stats fully restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. PABLO CORP. AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
-    }
-    else if (bid === 'north_market') {
-      sfxEnter(); setShowTrade('city');
-      setNarr('> NORTH BAZAAR — Quieter than the city markets. Prices are closer to fair. Almost.');
     }
     else if (IS_PUBLIC_TERMINAL(bid)) {
       sfxEnter();
@@ -2592,11 +2842,11 @@ export default function WorldPlay() {
       setNarr('> EASTERN GATE — The last marked structure before the deep wasteland. Someone painted: "YOU WENT FAR ENOUGH." You didn\'t listen. Hunger +20. Thirst +20.');
     }
     else if (bid === 'deep_camp') {
-      g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 4000; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
-      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ4,000 FIAT into your hand. "We found it in a PABLO cache. We don\'t want their money." HP +25. +ƒ4,000 FIAT.');
+      g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 500; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
+      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ500 FIAT into your hand. "We found it in a PABLO cache. We don\'t want their money." HP +25. +ƒ500 FIAT.');
     }
     else if (bid === 'ruins_alpha') {
-      const loot = 8000 + Math.floor(Math.random() * 10000);
+      const loot = 300 + Math.floor(Math.random() * 600);
       g.salary += loot; setSalary(g.salary); sfxCoin();
       setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ƒ${loot.toLocaleString()} FIAT in old denomination tokens. Still valid.`);
     }
@@ -2746,7 +2996,7 @@ export default function WorldPlay() {
         frozenRef.current = true;
         setNarr(`> ${n.name.toUpperCase()} — ${n.job}`);
         if (n.voiceActor && startNode.text) {
-          speakDialog(startNode.text, n.name, n.gender as 'm' | 'f');
+          // voice removed — browser TTS sounds robotic
         }
         return;
       }
@@ -2755,7 +3005,7 @@ export default function WorldPlay() {
     if (n.backstory) lines.push(`[${n.backstory}]`);
     if (n.voiceActor && n.voiceLines && n.voiceLines.length > 0) {
       const vl = n.voiceLines[Math.floor(Math.random() * n.voiceLines.length)];
-      speakDialog(vl, n.name, n.gender as 'm' | 'f');
+      // voice removed — browser TTS sounds robotic
     }
     setDialog({ lines, idx: 0, bid: 'npc' });
   }, []);
@@ -2848,6 +3098,7 @@ export default function WorldPlay() {
         if (typeof m.remainingHp === 'number') g.hp = m.remainingHp;
         else g.hp = Math.max(0, g.hp - dmg);
         g.invincible = 15; g.flash = 8;
+        g.deathReason = `Killed by ${m.attackerName} in PVP combat`;
         setHp(Math.floor(g.hp));
         sfxHit();
         g.floaters.push({ x: g.px, y: g.py - 20, text: `-${dmg} PVP HIT`, color: '#ff4444', life: 50, maxLife: 50 });
@@ -3007,6 +3258,87 @@ export default function WorldPlay() {
     const id = setInterval(() => setHospitalCinematic(prev => prev ? { ...prev } : null), 200);
     return () => clearInterval(id);
   }, [!!hospitalCinematic]);
+
+  useEffect(() => {
+    const handleCinematicKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (showIndoorStart) {
+        const g = gs.current;
+        const spawnBid = g.hamletBuildingId;
+        const spawnB = BUILDINGS.find(b => b.id === spawnBid) ?? BUILDINGS.find(b => b.id === 'minx_arms')!;
+        g.px = spawnB.x + spawnB.w / 2;
+        g.py = spawnB.y + spawnB.h + 20;
+        const def = getInterior(spawnBid);
+        if (def) {
+          let spawnIx = def.exitX + def.exitW / 2;
+          let spawnIy = def.exitY - 20;
+          const spawnICol = (ipx: number, ipy: number) => {
+            if (ipx < PSIZE + 6 || ipx > def.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > def.height - PSIZE) return true;
+            for (const obj of def.objects) {
+              if (obj.type === 'window' || obj.type === 'plant') continue;
+              if (ipx + PSIZE > obj.x && ipx - PSIZE < obj.x + obj.w && ipy + PSIZE > obj.y && ipy - PSIZE < obj.y + obj.h) return true;
+            }
+            return false;
+          };
+          if (spawnICol(spawnIx, spawnIy)) {
+            for (let r = 8; r <= 200; r += 8) {
+              let escaped = false;
+              for (const [ox, oy] of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,r],[r,-r],[-r,-r]]) {
+                if (!spawnICol(spawnIx + ox, spawnIy + oy)) { spawnIx += ox; spawnIy += oy; escaped = true; break; }
+              }
+              if (escaped) break;
+            }
+          }
+          g.interior = {
+            bid: spawnBid, def,
+            px: spawnIx, py: spawnIy,
+            savedWorldX: g.px, savedWorldY: g.py,
+          };
+        }
+        setShowIndoorStart(false);
+        const isUnemployed = char.bizType === 'unemployed' || !char.hasBusiness;
+        const hamletLabel = BUILDINGS.find(b => b.id === spawnBid)?.label ?? 'SHELTER';
+        setNarr(isUnemployed
+          ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
+          : '> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
+        return;
+      }
+
+      if (showHospitalPrompt && !hospitalCinematic) {
+        setShowHospitalPrompt(false);
+        setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+        return;
+      }
+
+      if (hospitalCinematic) {
+        const elapsed = Date.now() - hospitalCinematic.startTime;
+        const LINE_INTERVAL = 2200;
+        const HOSPITAL_LINES_COUNT = 10;
+        const allLinesShown = Math.floor(elapsed / LINE_INTERVAL) >= HOSPITAL_LINES_COUNT - 1 && elapsed >= (HOSPITAL_LINES_COUNT - 1) * LINE_INTERVAL + 1500;
+        if (allLinesShown) {
+          (document.querySelector('[data-cinematic-continue]') as HTMLButtonElement)?.click();
+        }
+        return;
+      }
+
+      if (isDead && !hospitalCinematic) {
+        setIsDead(false);
+        setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+        return;
+      }
+
+      if (showDialoguePanel && dialogueNode && (!dialogueNode.choices || dialogueNode.choices.length === 0)) {
+        (document.querySelector('[data-dialogue-continue]') as HTMLButtonElement)?.click();
+        return;
+      }
+    };
+    if (showIndoorStart || showHospitalPrompt || hospitalCinematic || isDead || showDialoguePanel) {
+      window.addEventListener('keydown', handleCinematicKey);
+      return () => window.removeEventListener('keydown', handleCinematicKey);
+    }
+  }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode]);
 
   // ── Ambient soundtrack — start on first interaction ──────────────────────────
   useEffect(() => {
@@ -3251,7 +3583,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); frozenRef.current = false; sfxUIClick(); cancelSpeech();
+        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); frozenRef.current = false; sfxUIClick();
         doSaveRef.current(buildSaveData());
       }
     };
@@ -3492,12 +3824,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.frame % 15 === 0) setRadLevel(rl);
       if (rl > 0 && g.frame % 60 === 0) {
         const radDmg = Math.ceil(rl * 3);
-        g.hp = Math.max(0, g.hp - radDmg);
+        g.hp = Math.max(0, g.hp - radDmg); g.deathReason = 'Died from radiation exposure';
         setHp(Math.floor(g.hp));
         g.floaters.push({ x: g.px, y: g.py - 25, text: `-${radDmg} RAD`, color: '#44ff44', life: 40, maxLife: 40 });
       }
       if (g.rumorCooldown > 0) g.rumorCooldown--;
       shiftTerritories(g.frame);
+
+      if (g.frame % 60 === 0) {
+        for (let ni = 0; ni < NPCS.length; ni++) tickNpcSurvival(ni, g.calendar.hour);
+      }
+      tickBladeRunnerHunts(NPCS, char.class, g.calendar.hour, g.px, g.py);
+      const raidResult = tickGangRaids(g.frame);
+      if (raidResult) {
+        addGossipEvent(
+          `${raidResult.attackerFaction.replace(/_/g,' ').toUpperCase()} raiding ${raidResult.targetFaction.replace(/_/g,' ').toUpperCase()} territory!`,
+          raidResult.x, raidResult.y, 'raid', g.frame
+        );
+      }
+      tickPowerInfrastructure(g.frame, char.class);
+      tickTypewriters(g.frame);
 
       // ── One-time class stat initialization ──────────────────────────────
       if (!g.classInitDone) {
@@ -3625,10 +3971,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return true;
       });
 
+      // Wasteland danger: spawn extra hostiles when deep in wasteland
+      if (g.frame % 300 === 0) {
+        const dangerLevel = getWastelandDangerLevel(g.px, g.py, char.class);
+        if (dangerLevel > 0.3 && Math.random() < dangerLevel * 0.4 && g.threats.length < 60) {
+          const spawnDist = 250 + Math.random() * 200;
+          const angle = Math.random() * Math.PI * 2;
+          const sx = g.px + Math.cos(angle) * spawnDist;
+          const sy = g.py + Math.sin(angle) * spawnDist;
+          const wasteThreatTypes = ['PROWLER', 'MUTANT', 'RAIDER', 'BORDER_GANG'];
+          const tType = wasteThreatTypes[Math.floor(Math.random() * wasteThreatTypes.length)];
+          g.threats.push(mkThreat(sx, sy, tType));
+        }
+      }
+
+      // Gang raid: spawn temporary hostiles at raid location
+      for (const raid of activeRaids) {
+        if (raid.timer === RAID_DURATION - 1 && g.threats.length < 60) {
+          const raidThreatCount = Math.floor(2 + raid.intensity * 3);
+          for (let ri = 0; ri < raidThreatCount; ri++) {
+            const rx = raid.x + (Math.random() - 0.5) * 200;
+            const ry = raid.y + (Math.random() - 0.5) * 200;
+            g.threats.push(mkThreat(rx, ry, raid.attackerFaction.toUpperCase()));
+          }
+        }
+      }
+
       // Poison tick
       if (g.poisoned) {
         g.poisonTick++;
-        if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); setHp(Math.floor(g.hp)); }
+        if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
       }
 
       // ── Interior fade transition ──
@@ -3927,7 +4299,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const baseThreatAtk = THREAT_ATK[t.type] ?? 0.25;
           const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
           const defReduce = Math.max(0.1, 1 - cs.defBonus * 0.02);
-          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce); g.invincible = 70; g.flash = 6;
+          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce); g.invincible = 70; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.08) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -3988,15 +4360,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.guardCooldowns = new Array(g.guards.length).fill(0);
       }
 
-      // Periodic Pablo Corp cleanup sweep narrations (every ~3000 frames if threats in city)
       const cityThreats = g.threats.filter(t => !PASSIVE_THREATS.has(t.type) && t.y > CITY_TOP - 80 && t.y < CITY_BOTTOM + 80);
-      if (g.frame % 3000 === 0 && cityThreats.length > 0) {
-        const sectors = ['SECTOR 3', 'SECTOR 7', 'NORTH GRID', 'PLAZA DISTRICT', 'CORP ALLEY', 'SOUTH MESH'];
-        const sector = sectors[Math.floor(g.frame / 3000) % sectors.length];
-        setNarr(`> PABLO CORP BROADCAST: "Cleanup Unit dispatched to ${sector}. Citizens are advised to clear the area. Non-compliance will be logged."`);
+      const playerInCity = g.px >= CITY_LEFT && g.px <= CITY_RIGHT && g.py >= CITY_TOP && g.py <= CITY_BOTTOM;
+      if (g.frame % 3000 === 0 && cityThreats.length > 0 && playerInCity) {
+        const nearbyThreat = cityThreats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 600);
+        if (nearbyThreat) {
+          setNarr(`> PABLO CORP BROADCAST: "Cleanup Unit dispatched to your sector. Citizens are advised to clear the area."`);
+        }
       }
-      if (g.frame % 5400 === 600 && cityThreats.length > 3) {
-        setNarr('> PABLO CORP SECURITY: Elevated threat activity detected in MINX CITY. Strike teams deployed. Stand by.');
+      if (g.frame % 5400 === 600 && cityThreats.length > 3 && playerInCity) {
+        const nearCityThreats = cityThreats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 500);
+        if (nearCityThreats.length > 1) {
+          setNarr('> PABLO CORP SECURITY: Elevated threat activity detected near your position. Strike teams deployed.');
+        }
       }
 
       for (let gi = 0; gi < g.guards.length; gi++) {
@@ -4609,7 +4985,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (activeLine) {
               foundLine = `[${activeLine.speaker}] "${activeLine.text}"`;
               if (ev.currentLine !== prevLine) {
-                speakDialog(activeLine.text, activeLine.speaker, activeLine.gender);
+                // voice removed — browser TTS sounds robotic
               }
             }
           }
@@ -4732,7 +5108,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!isIndoors) {
           if (temp === 'COLD') {
             eDrain += 1.5;
-            g.hp = Math.max(0, g.hp - 1);
+            g.hp = Math.max(0, g.hp - 1); g.deathReason = 'Died from hypothermia — exposure to extreme cold';
           }
           if (temp === 'HOT') {
             tDrain += 2.0;
@@ -4751,7 +5127,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.hunger = Math.max(0, g.hunger - hDrain);
         g.thirst = Math.max(0, g.thirst - tDrain);
         g.energy = Math.max(0, g.energy - eDrain);
-        if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); }
+        if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); g.deathReason = g.hunger <= 0 && g.thirst <= 0 ? 'Died from starvation and dehydration' : g.hunger <= 0 ? 'Died from starvation' : 'Died from dehydration'; }
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
@@ -4828,7 +5204,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
           const wasteEvents = [
-            () => { g.hp = Math.max(1, g.hp - 25); setHp(Math.floor(g.hp)); sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
+            () => { g.hp = Math.max(1, g.hp - 25); g.deathReason = 'Died from acid rain exposure'; setHp(Math.floor(g.hp)); sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
             () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
@@ -4882,7 +5258,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
-              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP); g.invincible = 40; g.flash = 6;
+              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO Corp. police enforcement';
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
             continue;
@@ -4952,6 +5328,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               npc.y += Math.sin(watchAng) * 0.3;
             }
             if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
+          }
+        }
+      }
+
+      // ── Gang patrol territory movement ──
+      if (g.frame % 4 === 0) {
+        for (const npc of NPCS) {
+          if (npc.role !== 'gang_patrol' || npc.reactState === 'FLEEING') continue;
+          const zone = GANG_ZONES.find(gz => gz.id === npc.faction);
+          if (!zone) continue;
+          if (!npc.origX) { npc.origX = npc.x; npc.origY = npc.y; }
+          const speed = npc.walkSpeed ?? 0.7;
+          const cx = zone.x + zone.w / 2;
+          const cy = zone.y + zone.h / 2;
+          const patrolRadius = Math.min(zone.w, zone.h) * 0.35;
+          const phase = (g.frame * 0.002 + (npc.origX ?? 0) * 0.01) % (Math.PI * 2);
+          const targetX = cx + Math.cos(phase) * patrolRadius;
+          const targetY = cy + Math.sin(phase * 1.3) * patrolRadius;
+          const dx = targetX - npc.x;
+          const dy = targetY - npc.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 10) {
+            npc.x += (dx / dist) * speed;
+            npc.y += (dy / dist) * speed;
           }
         }
       }
@@ -5455,16 +5855,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText('TERMINAL', cx2, cy2 + 11);
           } else {
             ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 6 + pulse2 * 6;
-            ctx.fillStyle = `rgba(0,255,65,${0.12 + pulse2 * 0.08})`;
-            ctx.fillRect(bx, by, b.w, b.h);
+            ctx.fillStyle = `rgba(0,20,10,${0.85})`;
+            ctx.fillRect(cx2 - 7, cy2 - 8, 14, 12);
             ctx.strokeStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
-            ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, b.w, b.h);
-            ctx.fillStyle = `rgba(0,255,65,${0.6 + pulse2 * 0.3})`;
-            ctx.fillRect(cx2 - 3, by + 3, 6, 8);
+            ctx.lineWidth = 1.5; ctx.strokeRect(cx2 - 7, cy2 - 8, 14, 12);
+            const scanY = cy2 - 7 + ((g.frame * 0.5) % 10);
+            ctx.fillStyle = `rgba(0,255,65,${0.06 + pulse2 * 0.04})`;
+            ctx.fillRect(cx2 - 6, scanY, 12, 1);
+            ctx.fillStyle = `rgba(0,255,65,${0.4 + pulse2 * 0.4})`;
+            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('>', cx2, cy2);
+            ctx.fillStyle = `rgba(0,80,40,${0.6})`;
+            ctx.fillRect(cx2 - 3, cy2 + 5, 6, 3);
+            ctx.fillStyle = `rgba(0,60,30,${0.5})`;
+            ctx.fillRect(cx2 - 5, cy2 + 8, 10, 2);
             ctx.shadowBlur = 0;
             ctx.fillStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
             ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
-            ctx.fillText(b.label === 'PAYPHONE' ? '☎' : '▣', cx2, cy2 + 6);
+            ctx.fillText('TERMINAL', cx2, cy2 + 18);
           }
           if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
           ctx.shadowBlur = 0;
@@ -5542,7 +5950,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (nx2 < -14 || nx2 > cw + 14 || ny2 < -14 || ny2 > ch + 14) continue;
         const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
         const isNearNpc = nDist < NPC_RANGE;
-        const nCol = isFleeing ? '#ff4444' : isSpectating ? '#ffaa00' : n.role === 'police' ? '#4488ff' : n.role === 'corpo_military' ? '#ff6644' : (NPC_COL[n.type] ?? '#009922');
+        const gangPatrolColor = n.role === 'gang_patrol' ? (n.faction === 'rust_syndicate' ? '#ff3c3c' : n.faction === 'void_runners' ? '#ff8c00' : n.faction === 'static_monks' ? '#c8ff00' : n.faction === 'eastern_bloc' ? '#3c64ff' : '#888888') : null;
+        const nCol = isFleeing ? '#ff4444' : isSpectating ? '#ffaa00' : gangPatrolColor ?? (n.role === 'blade_runner' ? '#cc44ff' : n.role === 'police' ? '#4488ff' : n.role === 'corpo_military' ? '#ff6644' : (NPC_COL[n.type] ?? '#009922'));
         ctx.shadowColor = nCol; ctx.shadowBlur = isNearNpc ? 6 : 0;
         const isFemale = (n as { gender?: string }).gender === 'f';
         const idle = n.idleBehavior ?? 'WALKING';
@@ -5625,14 +6034,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E]', nx2, ny2 - 32);
         }
-        if (nDist < 120 && nDist > 40 && g.rumorCooldown <= 0) {
-          const rumorIdx = (ni * 7 + Math.floor(g.frame / 300)) % RUMORS.length;
-          const rumor = RUMORS[rumorIdx];
-          const rumorAlpha = 0.3 + Math.sin(g.frame * 0.03 + ni) * 0.15;
-          const rumorY = ny2 - 42 + Math.sin(g.frame * 0.02 + ni * 2) * 3;
-          ctx.fillStyle = `rgba(255,220,100,${rumorAlpha})`;
-          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(`"${rumor}"`, nx2, rumorY);
+        if (nDist < 120 && nDist > 40) {
+          const twText = getTypewriterText(ni);
+          if (twText) {
+            const rumorAlpha = 0.5 + Math.sin(g.frame * 0.03 + ni) * 0.2;
+            const rumorY = ny2 - 42 + Math.sin(g.frame * 0.02 + ni * 2) * 2;
+            ctx.fillStyle = `rgba(255,220,100,${rumorAlpha})`;
+            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(`"${twText}"`, nx2, rumorY);
+          } else if (g.rumorCooldown <= 0) {
+            const gossip = getNearbyGossip(sPos.x, sPos.y, g.frame);
+            if (gossip) {
+              startTypewriter(gossip, ni, g.frame);
+            } else {
+              const rumorIdx = (ni * 7 + Math.floor(g.frame / 300)) % RUMORS.length;
+              startTypewriter(RUMORS[rumorIdx], ni, g.frame);
+            }
+          }
         }
       }
 
@@ -6556,7 +6974,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('wheel', onWheel);
       stopCrowdMurmur(); crowdMurmurActiveRef.current = false;
-      cancelSpeech();
     };
   }, [char, speaking]);
 
@@ -6608,12 +7025,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ) : null;
       })()}
 
-      {/* BOTTOM-LEFT — compact HUD: minimap, hearts, gold, fiat, zone, weather, season/temp */}
-      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 320 }}>
-        {/* Minimap — small, always free */}
-        <canvas ref={minimapRef} width={360} height={360} style={{ width: 100, height: 100, borderRadius: '50%', boxShadow: '0 0 10px rgba(0,255,65,.12)', border: '1px solid rgba(0,255,65,.2)' }} />
+      {/* TOP-LEFT — hearts, gold, fiat, zone, character class */}
+      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 340 }}>
         {/* Hearts row — Zelda-style HP */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.3rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 200 }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.35rem .6rem', display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap', maxWidth: 240 }}>
           {(() => {
             const maxHp = gs.current.maxHp || 100;
             const hpPerHeart = maxHp / Math.max(1, Math.ceil(maxHp / 20));
@@ -6626,24 +7041,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const heartColor = hpRatio > 0.6 ? '#ff2255' : hpRatio > 0.3 ? '#ff8800' : '#ff2222';
               const emptyColor = 'rgba(255,34,85,.18)';
               return (
-                <span key={i} style={{ fontSize: '1.1rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.3, textShadow: isFull ? `0 0 6px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
+                <span key={i} style={{ fontSize: '1.25rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.3, textShadow: isFull ? `0 0 6px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
               );
             });
           })()}
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(255,255,255,.4)', marginLeft: '4px' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
         </div>
-        {/* Gold + Fiat row */}
+        {/* Gold + Fiat + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.05rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
+          </div>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
+            </span>
           </div>
         </div>
-        {/* Zone + Season/Weather row */}
+        {/* Zone + Weather compact row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone === 'WASTELAND' ? 'rgba(170,255,68,.35)' : 'rgba(0,255,65,.3)'}`, padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: zone === 'WASTELAND' ? '#88ff44' : '#00ff41', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,150,255,.3)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
             {weatherStr && weatherStr !== 'CLEAR' && (
@@ -6658,34 +7079,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </span>
           </div>
           {calendarStr && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.4rem .6rem', flex: 1 }}>
-              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>CALENDAR</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.04em' }}>{calendarStr}</div>
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.25rem .5rem' }}>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em' }}>{calendarStr}</span>
             </div>
           )}
-          {weatherStr && weatherStr !== 'CLEAR' && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${weatherStr === 'ACID_RAIN' ? 'rgba(100,255,50,.4)' : weatherStr === 'SNOW' ? 'rgba(180,200,255,.4)' : 'rgba(100,150,255,.4)'}`, padding: '.4rem .6rem' }}>
-              <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>WEATHER</div>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</div>
-            </div>
-          )}
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${temperatureDisplay === 'COLD' ? 'rgba(100,150,255,.45)' : temperatureDisplay === 'HOT' ? 'rgba(255,100,50,.45)' : 'rgba(0,255,65,.25)'}`, padding: '.4rem .6rem', minWidth: 50 }}>
-            <div style={{ fontSize: '.85rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.08em', marginBottom: '3px' }}>TEMP</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: temperatureDisplay === 'COLD' ? '#6699ff' : temperatureDisplay === 'HOT' ? '#ff6644' : '#aaff66' }}>{temperatureDisplay === 'COLD' ? '❄ COLD' : temperatureDisplay === 'HOT' ? '🔥 HOT' : '◎ MILD'}</div>
-          </div>
         </div>
-        {/* Gold Standard toggle row */}
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-          <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(255,215,0,.2)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(255,215,0,.5)', padding: '.3rem .7rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em' }}>
-            {goldStandardToggle ? '⊕ GOLD STANDARD: ON' : '⊕ GOLD STANDARD: OFF'}
-          </button>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .7rem', flex: 1 }}>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.06em' }}>
-              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
-            </div>
-          </div>
-        </div>
-        {/* Dog companion — compact */}
+        {/* Gold Standard toggle */}
+        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(255,215,0,.2)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(255,215,0,.5)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
+          {goldStandardToggle ? '⊕ GOLD: ON' : '⊕ GOLD: OFF'}
+        </button>
+      </div>
+
+      {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
+      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+        <canvas ref={minimapRef} width={360} height={360} style={{ width: 160, height: 160, borderRadius: '50%', boxShadow: '0 0 14px rgba(0,255,65,.15)', border: '2px solid rgba(0,255,65,.3)' }} />
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
@@ -6825,22 +7232,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         )}
       </div>
 
-      {/* BOTTOM-CENTER — narration bar */}
-      <div style={{ position: 'absolute', bottom: 10, left: 220, right: 20, zIndex: 100, pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.4)', padding: '.5rem .7rem' }}>
+      {/* TOP-CENTER — narration ticker (proximity events only) */}
+      <div style={{ position: 'absolute', top: 10, left: 350, right: 350, zIndex: 100, pointerEvents: 'none' }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem .7rem', overflow: 'hidden' }}>
           {nearB && (
-            <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.1em', marginBottom: '.2rem' }}>
+            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.55)', letterSpacing: '.1em', marginBottom: '.15rem' }}>
               NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
             </div>
           )}
-          <div style={{ fontSize: '1rem', color: 'rgba(0,255,65,.88)', letterSpacing: '.03em', lineHeight: 1.4 }}>{narration}</div>
+          <div style={{ fontSize: '.9rem', color: 'rgba(0,255,65,.85)', letterSpacing: '.03em', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{narration}</div>
           {overheardLine && (
-            <div style={{ marginTop: '.2rem', fontSize: '.85rem', color: 'rgba(255,200,100,.75)', letterSpacing: '.03em', fontStyle: 'italic', textShadow: '0 0 6px rgba(255,200,100,.25)' }}>
+            <div style={{ marginTop: '.15rem', fontSize: '.8rem', color: 'rgba(255,200,100,.7)', letterSpacing: '.03em', fontStyle: 'italic', textShadow: '0 0 6px rgba(255,200,100,.2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {overheardLine}
             </div>
           )}
-          <div style={{ marginTop: '.2rem', fontSize: '.7rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.06em' }}>WASD · E enter · Space melee · C chat · P terminal · ESC close</div>
         </div>
+      </div>
+      {/* BOTTOM-CENTER — controls hint (compact) */}
+      <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 90, pointerEvents: 'none' }}>
+        <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
       </div>
 
       {/* ── PROPERTY STATS PANEL ── */}
@@ -8408,6 +8818,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             >
               WAKE UP
             </button>
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.25)', letterSpacing: '.1em', marginTop: '.8rem' }}>PRESS ANY KEY TO CONTINUE</div>
           </div>
         </div>
         );
@@ -8435,6 +8846,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               >
                 WAKE UP IN HOSPITAL
               </button>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
               <button
                 onClick={() => {
                   setShowHospitalPrompt(false);
@@ -8455,6 +8867,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.5rem' }}>YOU ARE DEAD</div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '1rem' }} />
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.6rem', textShadow: '0 0 8px rgba(255,60,30,.3)' }}>
+              CAUSE OF DEATH: {gs.current.deathReason || 'Unknown — vitals flatlined'}
+            </div>
             <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(255,80,80,.5)', lineHeight: 2, marginBottom: '1.2rem', letterSpacing: '.04em' }}>
               {char.name} — {char.class.toUpperCase()}<br/>
               Your vitals flatlined. The street goes dark around you.<br/>
@@ -8471,6 +8886,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               >
                 {char.class.toLowerCase() === 'replicant' ? 'TAKE ME TO A ROBODOC' : 'GO TO HOSPITAL'}
               </button>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.3rem', marginBottom: '.3rem' }}>PRESS ANY KEY</div>
               <button
                 onClick={() => {
                   setIsDead(false);
@@ -8530,7 +8946,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 ))}
               </div>
-              {allLinesShown && (
+              {allLinesShown && (<>
                 <button
                   onClick={() => {
                     const g = gs.current;
@@ -8571,11 +8987,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       sfxHeal();
                     }
                   }}
+                  data-cinematic-continue="true"
                   style={{ padding: '.65rem 2rem', background: 'rgba(255,100,68,.08)', border: '1px solid rgba(255,100,68,.5)', color: '#ff8855', fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer', animation: 'smblink 1.5s ease-in-out infinite alternate' }}
                 >
                   OPEN YOUR EYES
                 </button>
-              )}
+                <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.1em', marginTop: '.5rem' }}>PRESS ANY KEY</div>
+              </>)}
             </div>
           </div>
         );
@@ -8870,9 +9288,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     [{ci + 1}] {c.text}
                   </button>
                 )) : (
-                  <button onClick={() => handleChoice(null)}
+                  <button data-dialogue-continue="true" onClick={() => handleChoice(null)}
                     style={{ padding:'.5rem 1rem', background:'rgba(51,255,170,.05)', border:'1px solid rgba(51,255,170,.25)', color:'rgba(51,255,170,.5)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    [CONTINUE]
+                    [CONTINUE] <span style={{ fontSize: '.6rem', color: 'rgba(51,255,170,.3)' }}>or press any key</span>
                   </button>
                 )}
               </div>

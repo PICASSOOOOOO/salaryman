@@ -58,7 +58,9 @@ const CLASSES = [
     salary: 'ƒ25,000',
     hp: '350',
     atk: '3',
-    perks: 'Most money · Full city passport · ƒ500/min salary · Control military & police',
+    def: '2',
+    networth: 'ƒ25,000',
+    perks: 'Most money · Full city passport · ƒ500/min · Control military & police',
     color: '#00ff41',
   },
   {
@@ -70,7 +72,9 @@ const CLASSES = [
     salary: 'ƒ10,000',
     hp: '480',
     atk: '14',
-    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · ƒ200/min',
+    def: '8',
+    networth: 'ƒ10,000',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · ƒ100/min',
     color: '#88ff44',
   },
   {
@@ -82,7 +86,9 @@ const CLASSES = [
     salary: 'ƒ18,000',
     hp: '600',
     atk: '18',
-    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · ƒ350/min',
+    def: '12',
+    networth: 'ƒ18,000',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · ƒ300/min',
     color: '#33ffaa',
   },
 ];
@@ -1166,17 +1172,17 @@ export default function WorldMenu() {
                   <div style={{ border: `1px solid ${selected.color}44`, background: 'rgba(0,255,65,.04)', padding: '1rem' }}>
                     <div style={{ ...VT, fontSize: '1.4rem', color: selected.color, letterSpacing: '.12em', marginBottom: '.5rem' }}>{selected.label}</div>
                     <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
-                      {[['START', selected.start], ['SALARY', selected.salary], ['HP', selected.hp], ['ATK', (selected as any).atk ?? '12']].map(([k, v]) => (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
+                      {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['SALARY', selected.salary], ['NETWORTH', selected.networth], ['START', selected.start]].map(([k, v]) => (
                         <div key={k} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.4rem .5rem' }}>
                           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
                           <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
                         </div>
                       ))}
                     </div>
-                    {(selected as any).perks && (
+                    {selected.perks && (
                       <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.07em', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.5rem' }}>
-                        ★ {(selected as any).perks}
+                        ★ {selected.perks}
                       </div>
                     )}
                   </div>
