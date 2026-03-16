@@ -1770,7 +1770,7 @@ const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
   replicant:  { maxHp: 600, atkBonus: 18, defBonus: 6,  wasteBonus: false },
   outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10, wasteBonus: true  },
-  corporate:  { maxHp: 420, atkBonus: 16, defBonus: 4,  wasteBonus: false },
+  corporate:  { maxHp: 420, atkBonus: 16, defBonus: 6,  wasteBonus: false },
 };
 const CLASS_DISPLAY_NAME: Record<string, string> = {
   corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS',

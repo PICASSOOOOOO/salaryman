@@ -58,7 +58,7 @@ const CLASSES = [
     salary: 'ƒ25,000',
     hp: '350',
     atk: '3',
-    def: '2',
+    def: '6',
     networth: 'ƒ25,000',
     perks: 'Most money · Full city passport · ƒ500/min · Control military & police',
     color: '#00ff41',
