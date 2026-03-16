@@ -1816,7 +1816,7 @@ const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; 
   oxide_labs:   { label: 'ASSEMBLE',     pay: 6000, seconds: 7, cooldownFrames: 2400 },
   market:     { label: 'STREET DEAL',  pay: 3000, seconds: 3, cooldownFrames: 900  },
 };
-type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string };
+type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string; goldPrice?: number };
 type VendCategory = { id: string; label: string; col: string; items: VendItem[] };
 const VEND_CATALOG: VendCategory[] = [
   { id: 'food', label: 'FOOD', col: '#00ff41', items: [
@@ -3566,7 +3566,7 @@ export default function WorldPlay() {
     return () => clearInterval(id);
   }, [!!hospitalCinematic]);
 
-  useEffect(() => {
+  useEffect((): void | (() => void) => {
     const handleCinematicKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -5483,7 +5483,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (isIndoors) {
           const idleMs = Date.now() - g.lastMoveTime;
           if (idleMs > 2000) {
-            const nearBld = g.interior?.bid ?? '';
+            const nearBld = (g.interior as { bid: string } | null)?.bid ?? '';
             const isRestLoc = REST_LOCATION_IDS.has(nearBld);
             const energyRecovery = isRestLoc ? 8 : 4;
             g.energy = Math.min(100, g.energy + energyRecovery);

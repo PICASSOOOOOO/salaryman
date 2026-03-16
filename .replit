@@ -10,6 +10,12 @@ modules = ["nodejs-24", "postgresql-16"]
   router = "application"
   deploymentTarget = "vm"
 
+  [deployment.build]
+  args = ["bash", "-c", "pnpm run build"]
+
+  [deployment.run]
+  args = ["node", "artifacts/api-server/dist/index.cjs"]
+
   [deployment.postBuild]
   args = ["bash", "-c", "pnpm --filter db push && pnpm store prune"]
   env = { "CI" = "true" }
@@ -28,4 +34,3 @@ expertMode = true
 
   [nix]
   channel = "stable-25_05"
-  

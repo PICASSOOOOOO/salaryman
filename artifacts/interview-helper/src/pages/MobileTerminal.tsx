@@ -355,7 +355,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL STATUS</div>
                 <StatRow label="FIAT (ƒ)" val={`ƒ${(activeSave.salary ?? 0).toLocaleString()}`} col="#ffcc00" />
                 <StatRow label="SAVINGS" val={`ƒ${(sd.savings ?? 0).toLocaleString()}`} col="#ffcc00" />
-                {sd.goldBalance > 0 && <StatRow label="GOLD" val={`${sd.goldBalance} oz`} col="#ffaa00" />}
+                {(sd.goldBalance ?? 0) > 0 && <StatRow label="GOLD" val={`${sd.goldBalance} oz`} col="#ffaa00" />}
               </div>
 
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>

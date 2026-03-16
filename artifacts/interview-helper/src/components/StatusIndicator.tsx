@@ -47,7 +47,7 @@ export function StatusIndicator({ status }: { status: SolverStatus }) {
       animate={{ opacity: 1, scale: 1 }}
       className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium ${current.bg} ${current.color} transition-colors duration-300`}
     >
-      <Icon className={`w-3.5 h-3.5 ${current.spin ? 'animate-spin' : ''}`} />
+      <Icon className={`w-3.5 h-3.5 ${'spin' in current && current.spin ? 'animate-spin' : ''}`} />
       <span>{current.text}</span>
     </motion.div>
   );

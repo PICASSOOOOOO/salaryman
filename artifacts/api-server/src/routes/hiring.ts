@@ -10,7 +10,7 @@ const VALID_APPLICANT_STAGES = ["applied", "screening", "interview", "offer", "h
 const VALID_STAFF_STATUSES = ["active", "on leave", "terminated"] as const;
 
 async function requirePro(req: Request, res: Response): Promise<boolean> {
-  if (!req.isAuthenticated()) {
+  if (!req.isAuthenticated() || !req.user) {
     res.status(401).json({ error: "Login required" });
     return false;
   }
@@ -24,7 +24,7 @@ async function requirePro(req: Request, res: Response): Promise<boolean> {
 
 router.get("/tools/hiring/stats", async (req, res) => {
   if (!(await requirePro(req, res))) return;
-  const userId = req.user.id;
+  const userId = req.user!.id;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -49,7 +49,7 @@ router.get("/tools/hiring/stats", async (req, res) => {
 router.get("/tools/hiring/jobs", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const rows = await db.select().from(jobListingsTable)
-    .where(eq(jobListingsTable.userId, req.user.id))
+    .where(eq(jobListingsTable.userId, req.user!.id))
     .orderBy(sql`${jobListingsTable.createdAt} DESC`);
   res.json({ jobs: rows });
 });
@@ -59,7 +59,7 @@ router.post("/tools/hiring/jobs", async (req, res) => {
   const body = req.body as { title?: string; description?: string; requirements?: string; salaryMin?: number; salaryMax?: number; status?: string };
   if (!body.title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
   const [record] = await db.insert(jobListingsTable).values({
-    userId: req.user.id,
+    userId: req.user!.id,
     title: body.title.trim(),
     description: body.description ?? "",
     requirements: body.requirements ?? "",
@@ -83,7 +83,7 @@ router.put("/tools/hiring/jobs/:id", async (req, res) => {
   if (body.status !== undefined && (VALID_JOB_STATUSES as readonly string[]).includes(body.status)) updates.status = body.status;
   const [updated] = await db.update(jobListingsTable)
     .set(updates)
-    .where(and(eq(jobListingsTable.id, id), eq(jobListingsTable.userId, req.user.id)))
+    .where(and(eq(jobListingsTable.id, id), eq(jobListingsTable.userId, req.user!.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ job: updated });
@@ -93,7 +93,7 @@ router.delete("/tools/hiring/jobs/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const id = Number(req.params.id);
   const deleted = await db.delete(jobListingsTable)
-    .where(and(eq(jobListingsTable.id, id), eq(jobListingsTable.userId, req.user.id)))
+    .where(and(eq(jobListingsTable.id, id), eq(jobListingsTable.userId, req.user!.id)))
     .returning();
   if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ok: true });
@@ -102,7 +102,7 @@ router.delete("/tools/hiring/jobs/:id", async (req, res) => {
 router.get("/tools/hiring/applicants", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const jobId = req.query.jobId ? Number(req.query.jobId) : undefined;
-  const conditions = [eq(applicantsTable.userId, req.user.id)];
+  const conditions = [eq(applicantsTable.userId, req.user!.id)];
   if (jobId) conditions.push(eq(applicantsTable.jobId, jobId));
   const rows = await db.select().from(applicantsTable)
     .where(and(...conditions))
@@ -115,11 +115,11 @@ router.post("/tools/hiring/applicants", async (req, res) => {
   const body = req.body as { jobId?: number; name?: string; email?: string; resumeNotes?: string; source?: string };
   if (!body.jobId || !body.name?.trim()) { res.status(400).json({ error: "jobId and name required" }); return; }
   const [job] = await db.select().from(jobListingsTable)
-    .where(and(eq(jobListingsTable.id, Number(body.jobId)), eq(jobListingsTable.userId, req.user.id)));
+    .where(and(eq(jobListingsTable.id, Number(body.jobId)), eq(jobListingsTable.userId, req.user!.id)));
   if (!job) { res.status(404).json({ error: "Job not found" }); return; }
   const [record] = await db.insert(applicantsTable).values({
     jobId: Number(body.jobId),
-    userId: req.user.id,
+    userId: req.user!.id,
     name: body.name.trim(),
     email: body.email ?? "",
     resumeNotes: body.resumeNotes ?? "",
@@ -140,7 +140,7 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
   if (body.source !== undefined) updates.source = body.source;
 
   const [current] = await db.select().from(applicantsTable)
-    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user.id)));
+    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user!.id)));
   if (!current) { res.status(404).json({ error: "Not found" }); return; }
 
   if (body.stage !== undefined && body.stage !== current.stage && (VALID_APPLICANT_STAGES as readonly string[]).includes(body.stage)) {
@@ -156,17 +156,17 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
 
   const [updated] = await db.update(applicantsTable)
     .set(updates)
-    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user.id)))
+    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user!.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
 
   if (body.stage === "hired") {
     const existing = await db.select().from(staffTable)
-      .where(and(eq(staffTable.applicantId, id), eq(staffTable.userId, req.user.id)));
+      .where(and(eq(staffTable.applicantId, id), eq(staffTable.userId, req.user!.id)));
     if (existing.length === 0) {
       const [job] = await db.select().from(jobListingsTable).where(eq(jobListingsTable.id, updated.jobId));
       await db.insert(staffTable).values({
-        userId: req.user.id,
+        userId: req.user!.id,
         applicantId: id,
         name: updated.name,
         role: job?.title ?? "",
@@ -184,7 +184,7 @@ router.delete("/tools/hiring/applicants/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const id = Number(req.params.id);
   const deleted = await db.delete(applicantsTable)
-    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user.id)))
+    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user!.id)))
     .returning();
   if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ok: true });
@@ -193,7 +193,7 @@ router.delete("/tools/hiring/applicants/:id", async (req, res) => {
 router.get("/tools/hiring/staff", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const rows = await db.select().from(staffTable)
-    .where(eq(staffTable.userId, req.user.id))
+    .where(eq(staffTable.userId, req.user!.id))
     .orderBy(sql`${staffTable.createdAt} DESC`);
   res.json({ staff: rows });
 });
@@ -208,7 +208,7 @@ router.put("/tools/hiring/staff/:id", async (req, res) => {
   if (body.salary !== undefined) updates.salary = body.salary != null ? Number(body.salary) : null;
   const [updated] = await db.update(staffTable)
     .set(updates)
-    .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user.id)))
+    .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user!.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ staff: updated });
@@ -252,7 +252,7 @@ router.get("/tools/hiring/applicants/:id/transitions", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const applicantId = Number(req.params.id);
   const [applicant] = await db.select().from(applicantsTable)
-    .where(and(eq(applicantsTable.id, applicantId), eq(applicantsTable.userId, req.user.id)));
+    .where(and(eq(applicantsTable.id, applicantId), eq(applicantsTable.userId, req.user!.id)));
   if (!applicant) { res.status(404).json({ error: "Not found" }); return; }
   const rows = await db.select().from(stageTransitionsTable)
     .where(eq(stageTransitionsTable.applicantId, applicantId))

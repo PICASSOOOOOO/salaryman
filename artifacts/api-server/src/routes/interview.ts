@@ -263,7 +263,7 @@ Rules for action tags:
 
 router.post("/interview/advisor", async (req, res) => {
   const { messages, businessMemory = "" } = req.body as {
-    messages: Array<{ role: string; content: string }>;
+    messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
     businessMemory?: string;
   };
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -304,7 +304,7 @@ router.post("/interview/advisor", async (req, res) => {
 // Silently extract and update business context from recent conversation
 router.post("/interview/extract-context", async (req, res) => {
   const { messages, existingContext = "" } = req.body as {
-    messages: Array<{ role: string; content: string }>;
+    messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
     existingContext?: string;
   };
 

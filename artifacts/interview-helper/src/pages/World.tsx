@@ -513,10 +513,10 @@ export default function World() {
       }
 
       // Online players (real)
-      for(const [,op] of g.peers){
+      for(const [opId,op] of g.peers){
         const px2=op.x+ox,py2=op.y+oy;
         if(px2<-20||px2>cw+20||py2<-20||py2>ch+20) continue;
-        const spk=g.speakingSet.has(op.id);
+        const spk=g.speakingSet.has(opId);
         if(spk){ctx.shadowColor='rgba(0,255,180,.6)';ctx.shadowBlur=12;}
         ctx.fillStyle=spk?'#00ffcc':'#44aaff';
         ctx.beginPath();ctx.moveTo(px2,py2-9);ctx.lineTo(px2+6,py2+5);ctx.lineTo(px2-6,py2+5);ctx.closePath();ctx.fill();

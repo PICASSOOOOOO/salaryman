@@ -4,7 +4,7 @@ import { usePlan } from "../hooks/use-plan";
 import { PABLO_PRODUCTS } from "../lib/product-names";
 
 interface ProGateProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   feature?: string;
   inline?: boolean;
 }

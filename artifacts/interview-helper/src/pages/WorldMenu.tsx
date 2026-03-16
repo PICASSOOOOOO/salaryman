@@ -1022,7 +1022,7 @@ export default function WorldMenu() {
                     <button onClick={() => setShowEntryButtons(true)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.5rem', letterSpacing: '.1em', padding: 0, marginBottom: '.3rem', display: 'block' }}>← BACK TO IMMIGRATION</button>
                     <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE FILES</div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
-                      {user?.name ? `OPERATIVE: ${user.name.toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
+                      {user?.firstName ? `OPERATIVE: ${(user.firstName + (user.lastName ? ` ${user.lastName}` : '')).toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
                     </div>
                   </div>
                   {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}

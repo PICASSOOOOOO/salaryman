@@ -42,7 +42,12 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
+    let base = "/";
+    try {
+      const meta: ImportMeta & { env?: { BASE_URL?: string } } = import.meta;
+      if (meta.env?.BASE_URL) base = meta.env.BASE_URL;
+    } catch { /* non-Vite context */ }
+    base = base.replace(/\/+$/, "") || "/";
     window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
   }, []);
 
