@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
+import { boomerize } from '../gameSystems';
 
 // ── World ─────────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
@@ -9,7 +10,7 @@ const BUILDINGS = [
   { id: 'pablo_store', x: 480, y: 200, w: 120, h: 80,  label: 'PABLO STORE',   bright: true  },
   { id: 'office',      x: 680, y: 180, w: 140, h: 100, label: 'OFFICE TOWER',  bright: true  },
   { id: 'clinic',      x: 260, y: 340, w: 100, h: 70,  label: 'MED CLINIC',    bright: false },
-  { id: 'megabank',    x: 460, y: 380, w: 120, h: 80,  label: 'MOGUL BANK',    bright: false },
+  { id: 'megabank',    x: 460, y: 380, w: 120, h: 80,  label: 'BANCO OMBRA',   bright: false },
   { id: 'market',      x: 680, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false },
   { id: 'hotel',       x: 880, y: 200, w: 100, h: 120, label: 'HOTEL NEON',    bright: false },
   { id: 'bunker',      x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
@@ -59,13 +60,16 @@ const OFFICE_TIERS = [
 
 // ── Character Select ──────────────────────────────────────────────────────────
 type CharClass = 'corporate'|'outlaw'|'replicant';
-interface Char { name:string; class:CharClass; sx:number; sy:number; salary:number; }
+interface Char { name:string; class:CharClass; sx:number; sy:number; salary:number; company?:string; }
 
 function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
   const [name, setName] = useState('');
   const [cls,  setCls]  = useState<CharClass>('corporate');
   const [tick, setTick] = useState(0);
+  const [bm, setBm] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [showHelp, setShowHelp] = useState(false);
   useEffect(()=>{ const t=setInterval(()=>setTick(n=>n+1),600); return()=>clearInterval(t); },[]);
+  const bmLabel = (txt: string) => bm ? boomerize(txt, true) : txt;
   const CLASSES: { id:CharClass; label:string; desc:string; sx:number; sy:number; salary:number }[] = [
     { id:'corporate', label:'CORPORATE', desc:'City dweller. ƒ100/min salary. Well connected.', sx:6800, sy:5900, salary:25000 },
     { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. ƒ25/min. Hunted.',      sx:5600, sy:6200, salary:10000 },
@@ -80,11 +84,42 @@ function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
           <div style={{ fontFamily:"'VT323',monospace", fontSize:'3.5rem', color:'#00ff41', textShadow:'0 0 18px rgba(0,255,65,.5)', letterSpacing:'.15em' }}>SALARYMAN</div>
           <div style={{ fontSize:'.6rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em', marginTop:'.3rem' }}>SELECT CLASS {tick%2===0?'_':' '}</div>
         </div>
+
+        <div style={{ display:'flex', justifyContent:'center', gap:'.6rem', marginBottom:'1rem' }}>
+          <button onClick={() => { const nb = !bm; setBm(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ padding:'.35rem .7rem', background:bm?'rgba(255,170,0,.1)':'rgba(0,255,65,.04)', border:bm?'1px solid rgba(255,170,0,.5)':'1px solid rgba(0,255,65,.2)', color:bm?'#ffaa00':'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
+            {bm ? 'PLAIN MODE ON' : 'PLAIN MODE'}
+          </button>
+          <button onClick={() => setShowHelp(v => !v)} style={{ padding:'.35rem .7rem', background:showHelp?'rgba(0,255,65,.08)':'rgba(0,255,65,.04)', border:showHelp?'1px solid rgba(0,255,65,.5)':'1px solid rgba(0,255,65,.2)', color:showHelp?'#00ff41':'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
+            WHAT IS THIS?
+          </button>
+        </div>
+
+        {showHelp && (
+          <div style={{ marginBottom:'1rem', padding:'.75rem', border:'1px solid rgba(0,255,65,.2)', background:'rgba(0,12,0,.95)', fontSize:'.6rem', color:'rgba(0,255,65,.55)', lineHeight:1.7, letterSpacing:'.04em' }}>
+            <div style={{ fontFamily:"'VT323',monospace", fontSize:'1rem', color:'#00ff41', marginBottom:'.5rem' }}>WELCOME TO SALARYMAN</div>
+            <div>This is a multiplayer cyberpunk city simulation. You play as a worker in MINX CITY, a corporate dystopia run by PABLO CORP.</div>
+            <div style={{ marginTop:'.4rem' }}><span style={{ color:'#ffaa00' }}>PLAIN MODE</span> replaces gaming terms (HP, XP, NPC, etc.) with everyday business language so everything makes sense even if you have never played a game before.</div>
+            <div style={{ marginTop:'.5rem', fontSize:'.55rem', color:'rgba(0,255,65,.35)' }}>
+              <div><b>WASD</b> = Move your character</div>
+              <div><b>E</b> = Interact with buildings and people</div>
+              <div><b>C</b> = Open chat to talk to other real players</div>
+              <div><b>V</b> = Toggle voice microphone</div>
+              <div><b>P</b> = Open your PABLO device (phone/inventory)</div>
+              <div><b>ESC</b> = Open the settings menu</div>
+            </div>
+            <div style={{ marginTop:'.5rem' }}>
+              <div><b style={{ color:'#00ff41' }}>HP</b> = Your health. Avoid threats or you lose health.</div>
+              <div><b style={{ color:'#00ff41' }}>FIAT (ƒ)</b> = Money. You earn it on salary and spend it in stores.</div>
+              <div><b style={{ color:'#00ff41' }}>XP</b> = Experience points that help you level up.</div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'.6rem', marginBottom:'1.25rem' }}>
           {CLASSES.map(c=>(
             <button key={c.id} onClick={()=>setCls(c.id)} style={{ padding:'.8rem .4rem', border:cls===c.id?'1px solid rgba(0,255,65,.75)':'1px solid rgba(0,255,65,.18)', background:cls===c.id?'rgba(0,255,65,.09)':'transparent', color:cls===c.id?'#00ff41':'rgba(0,255,65,.4)', cursor:'pointer', textAlign:'center' }}>
-              <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.2rem', letterSpacing:'.08em', marginBottom:'.25rem' }}>{c.label}</div>
-              <div style={{ fontSize:'.55rem', lineHeight:1.5 }}>{c.desc}</div>
+              <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.2rem', letterSpacing:'.08em', marginBottom:'.25rem' }}>{bmLabel(c.label)}</div>
+              <div style={{ fontSize:'.55rem', lineHeight:1.5 }}>{bmLabel(c.desc)}</div>
             </button>
           ))}
         </div>
@@ -167,7 +202,9 @@ export default function World() {
   const [chatOpen,  setChatOpen]  = useState(false);
   const [chatIn,    setChatIn]    = useState('');
   const [chatMsgs,  setChatMsgs]  = useState<ChatMsg[]>([]);
-  const [onlinePlayers, setOnlinePlayers] = useState<{id:string;name:string;x:number;y:number;speaking:boolean}[]>([]);
+  const [onlinePlayers, setOnlinePlayers] = useState<{id:string;name:string;x:number;y:number;speaking:boolean;company?:string}[]>([]);
+  const [showColleagues, setShowColleagues] = useState(false);
+  const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
   const [dmTarget,  setDmTarget]  = useState<{id:string;name:string}|null>(null);
   const [unread,    setUnread]    = useState(0);
   const [voice,     setVoice]     = useState(false);
@@ -187,7 +224,7 @@ export default function World() {
 
   const connectWS = useCallback((c:Char) => {
     const proto = location.protocol==='https:'?'wss:':'ws:';
-    const url = `${proto}//${location.host}/ws?name=${encodeURIComponent(c.name)}&class=${c.class}&x=${c.sx}&y=${c.sy}`;
+    const url = `${proto}//${location.host}/ws?name=${encodeURIComponent(c.name)}&class=${c.class}&company=${encodeURIComponent(c.company ?? '')}&x=${c.sx}&y=${c.sy}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
     ws.onopen = () => {};
@@ -303,7 +340,7 @@ export default function World() {
       if(g.salary>=100){ g.hp=100; g.salary-=100; setHp(100); setSalary(g.salary); setMsg('> MED CLINIC — [ƒ100] Health restored.'); }
       else setMsg('> MED CLINIC — "Come back with ƒ100."');
     }
-    else if (bid==='megabank') { setMsg('> MOGUL BANK — Account suspended. Try again never.'); }
+    else if (bid==='megabank') { setMsg('> BANCO OMBRA — Account suspended. Try again never.'); }
     else if (bid==='market')   { g.salary+=30; setSalary(g.salary); setMsg('> BLACK MARKET — Odd job. +ƒ30.'); }
     else if (bid==='office')   { setShowOffice(true); }
     else if (bid==='hotel')    { g.hp=Math.min(100,g.hp+40); setHp(g.hp); setMsg('> HOTEL NEON — You rest. HP +40.'); }
@@ -585,13 +622,15 @@ export default function World() {
       {/* TOP BAR */}
       <div style={{ position:'absolute',top:0,left:0,right:0,padding:'.3rem .9rem',background:'rgba(0,6,0,.92)',borderBottom:'1px solid rgba(0,255,65,.15)',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100 }}>
         <div style={{ display:'flex',alignItems:'center',gap:'1.25rem' }}>
-          <span style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 10px rgba(0,255,65,.5)',letterSpacing:'.12em' }}>SALARYMAN</span>
-          <span style={{ fontSize:'.55rem',color:'rgba(0,255,65,.4)',letterSpacing:'.07em' }}>{char.name} · {char.class.toUpperCase()}</span>
+          <span style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 10px rgba(0,255,65,.5)',letterSpacing:'.12em' }}>{boomerize('SALARYMAN', boomerMode)}</span>
+          <span style={{ fontSize:'.55rem',color:'rgba(0,255,65,.4)',letterSpacing:'.07em' }}>{char.name} · {boomerize(char.class.toUpperCase(), boomerMode)}{char.company ? ` · ${char.company}` : ''}</span>
           {gs.current.hasDevice&&<span style={{ fontSize:'.5rem',color:'rgba(0,255,65,.55)',border:'1px solid rgba(0,255,65,.25)',padding:'1px 5px' }}>PABLO ✓</span>}
           <span style={{ fontSize:'.5rem',color:'rgba(100,180,255,.5)',border:'1px solid rgba(100,180,255,.2)',padding:'1px 5px' }}>{onlinePlayers.length+1} ONLINE</span>
         </div>
-        <div style={{ display:'flex',gap:'.75rem',alignItems:'center' }}>
-          <span style={{ fontSize:'.48rem',color:'rgba(0,255,65,.2)',letterSpacing:'.06em' }}>WASD · E · C · V · P · ESC</span>
+        <div style={{ display:'flex',gap:'.5rem',alignItems:'center' }}>
+          <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ fontSize:'.48rem',color:boomerMode?'#ffaa00':'rgba(0,255,65,.28)',border:boomerMode?'1px solid rgba(255,170,0,.4)':'1px solid rgba(0,255,65,.12)',background:boomerMode?'rgba(255,170,0,.08)':'transparent',padding:'2px 7px',cursor:'pointer' }}>
+            {boomerMode ? '🎮 PLAIN MODE ON' : '🎮 PLAIN MODE'}
+          </button>
           <button onClick={()=>{localStorage.removeItem('sm_char');setChar(null);gs.current.threats=THREATS_INIT.map(t=>({...t}));setIsDead(false);}} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>NEW GAME</button>
           <button onClick={()=>navigate('/')} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>← EXIT</button>
         </div>
@@ -601,17 +640,18 @@ export default function World() {
       <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'.45rem .9rem',background:'rgba(0,6,0,.9)',borderTop:'1px solid rgba(0,255,65,.15)',display:'flex',alignItems:'center',gap:'1rem',zIndex:100 }}>
         {/* HP bar */}
         <div style={{ flexShrink:0 }}>
-          <div style={{ fontSize:'.48rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'2px' }}>HP</div>
+          <div style={{ fontSize:'.48rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'2px' }}>{boomerize('HP', boomerMode)}</div>
           <div style={{ width:80,height:6,background:'rgba(0,255,65,.1)',position:'relative' }}>
             <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${hp}%`,background:'#00ff41',boxShadow:'0 0 4px rgba(0,255,65,.6)',transition:'width .2s' }} />
           </div>
         </div>
-        {/* Salary */}
+        {/* BANCO OMBRA Balance */}
         <div style={{ flexShrink:0,borderLeft:'1px solid rgba(0,255,65,.12)',paddingLeft:'.75rem' }}>
-          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 6px rgba(0,255,65,.35)',letterSpacing:'.08em' }}>ƒ{salary}</div>
+          <div style={{ fontSize:'.35rem',color:'rgba(0,255,65,.25)',letterSpacing:'.12em',marginBottom:'1px' }}>BANCO OMBRA</div>
+          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 6px rgba(0,255,65,.35)',letterSpacing:'.08em' }}>{boomerize(`ƒ${salary.toLocaleString()}`, boomerMode)}</div>
         </div>
         {/* Narration */}
-        <div style={{ flex:1,fontSize:'.65rem',color:'rgba(0,255,65,.6)',letterSpacing:'.04em',lineHeight:1.5,borderLeft:'1px solid rgba(0,255,65,.1)',paddingLeft:'.75rem' }}>{msg}</div>
+        <div style={{ flex:1,fontSize:'.65rem',color:'rgba(0,255,65,.6)',letterSpacing:'.04em',lineHeight:1.5,borderLeft:'1px solid rgba(0,255,65,.1)',paddingLeft:'.75rem' }}>{boomerize(msg, boomerMode)}</div>
         {/* Buttons */}
         <div style={{ display:'flex',gap:'.5rem',flexShrink:0 }}>
           <button onClick={toggleVoice} title="Voice [V]" style={{ padding:'.3rem .55rem',background:voice?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:voice?`1px solid ${speaking?'rgba(0,255,180,.7)':'rgba(0,255,65,.45)'}`:'1px solid rgba(0,255,65,.12)',color:voice?(speaking?'#00ffcc':'#00ff41'):'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
@@ -622,6 +662,9 @@ export default function World() {
           </button>
           <button onClick={()=>setShowPablo(v=>!v)} title="PABLO [P]" style={{ padding:'.3rem .55rem',background:showPablo?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:showPablo?'1px solid rgba(0,255,65,.45)':'1px solid rgba(0,255,65,.12)',color:showPablo?'#00ff41':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             PABLO
+          </button>
+          <button onClick={()=>setShowColleagues(v=>!v)} title="Colleagues" style={{ padding:'.3rem .55rem',background:showColleagues?'rgba(100,180,255,.1)':'rgba(0,255,65,.03)',border:showColleagues?'1px solid rgba(100,180,255,.45)':'1px solid rgba(0,255,65,.12)',color:showColleagues?'#55bbff':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+            CRM
           </button>
         </div>
       </div>
@@ -697,6 +740,58 @@ export default function World() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* COLLEAGUES / CRM PANEL */}
+      {showColleagues&&(
+        <div style={{ position:'absolute',bottom:'3.5rem',right:'.75rem',width:320,maxHeight:'55vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(100,180,255,.35)',display:'flex',flexDirection:'column',zIndex:200 }}>
+          <div style={{ padding:'.4rem .6rem',borderBottom:'1px solid rgba(100,180,255,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+            <span style={{ fontFamily:"'VT323',monospace",fontSize:'.9rem',color:'#55bbff',letterSpacing:'.1em' }}>COLLEAGUES — {char?.company ?? 'UNAFFILIATED'}</span>
+            <button onClick={()=>setShowColleagues(false)} style={{ fontSize:'.5rem',color:'rgba(100,180,255,.35)',border:'none',background:'transparent',cursor:'pointer' }}>×</button>
+          </div>
+          <div style={{ flex:1,overflowY:'auto',padding:'.5rem' }}>
+            {(() => {
+              const myCompany = (char?.company ?? '').toUpperCase();
+              const colleagues = onlinePlayers.filter(p => (p.company ?? '').toUpperCase() === myCompany && myCompany !== '');
+              const others = onlinePlayers.filter(p => (p.company ?? '').toUpperCase() !== myCompany || myCompany === '');
+              return (<>
+                <div style={{ fontSize:'.45rem',color:'rgba(100,180,255,.3)',letterSpacing:'.12em',marginBottom:'.3rem' }}>YOUR COMPANY ({colleagues.length} ONLINE)</div>
+                {colleagues.length === 0 && (
+                  <div style={{ fontSize:'.55rem',color:'rgba(100,180,255,.2)',padding:'.5rem 0',lineHeight:1.7 }}>No colleagues online. Invite team members to join {myCompany || 'your company'}.</div>
+                )}
+                {colleagues.map(p => (
+                  <div key={p.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.3rem .4rem',marginBottom:'.2rem',border:'1px solid rgba(100,180,255,.15)',background:'rgba(100,180,255,.03)' }}>
+                    <div>
+                      <div style={{ fontSize:'.6rem',color:'rgba(100,180,255,.7)',fontFamily:"'Share Tech Mono',monospace" }}>{p.name}</div>
+                      <div style={{ fontSize:'.4rem',color:'rgba(100,180,255,.3)' }}>{p.company}</div>
+                    </div>
+                    <div style={{ display:'flex',gap:'.25rem' }}>
+                      <button onClick={()=>{setDmTarget({id:p.id,name:p.name});setChatOpen(true);}} style={{ fontSize:'.45rem',padding:'2px 6px',background:'transparent',border:'1px solid rgba(100,180,255,.25)',color:'rgba(100,180,255,.5)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>MSG</button>
+                    </div>
+                  </div>
+                ))}
+                {others.length > 0 && (<>
+                  <div style={{ fontSize:'.45rem',color:'rgba(0,255,65,.25)',letterSpacing:'.12em',marginTop:'.5rem',marginBottom:'.3rem',borderTop:'1px solid rgba(0,255,65,.08)',paddingTop:'.4rem' }}>OTHER PLAYERS ({others.length})</div>
+                  {others.map(p => (
+                    <div key={p.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.3rem .4rem',marginBottom:'.2rem',border:'1px solid rgba(0,255,65,.1)' }}>
+                      <div>
+                        <div style={{ fontSize:'.6rem',color:'rgba(0,255,65,.55)',fontFamily:"'Share Tech Mono',monospace" }}>{p.name}</div>
+                        <div style={{ fontSize:'.4rem',color:'rgba(0,255,65,.2)' }}>{p.company || 'UNAFFILIATED'}</div>
+                      </div>
+                      <button onClick={()=>{setDmTarget({id:p.id,name:p.name});setChatOpen(true);}} style={{ fontSize:'.45rem',padding:'2px 6px',background:'transparent',border:'1px solid rgba(0,255,65,.15)',color:'rgba(0,255,65,.35)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>MSG</button>
+                    </div>
+                  ))}
+                </>)}
+                {onlinePlayers.length === 0 && (
+                  <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.2)',padding:'.5rem 0',textAlign:'center' }}>No other players online.</div>
+                )}
+              </>);
+            })()}
+          </div>
+          <div style={{ padding:'.3rem .5rem',borderTop:'1px solid rgba(100,180,255,.12)',fontSize:'.42rem',color:'rgba(100,180,255,.2)',letterSpacing:'.06em' }}>
+            {onlinePlayers.length + 1} CONNECTED · MINX CITY · PST
+          </div>
         </div>
       )}
 

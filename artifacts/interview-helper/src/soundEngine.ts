@@ -2,6 +2,8 @@ let _ctx: AudioContext | null = null;
 let _musicVol = 0.35;
 let _sfxVol   = 0.55;
 let _muted    = false;
+let _musicMuted = false;
+let _sfxMuted   = false;
 
 function ctx(): AudioContext {
   if (!_ctx) _ctx = new AudioContext();
@@ -11,7 +13,7 @@ function ctx(): AudioContext {
 
 function gain(c: AudioContext, vol: number): GainNode {
   const g = c.createGain();
-  g.gain.value = _muted ? 0 : vol * _sfxVol;
+  g.gain.value = (_muted || _sfxMuted) ? 0 : vol * _sfxVol;
   g.connect(c.destination);
   return g;
 }
@@ -44,7 +46,7 @@ export function sfxAttack() {
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
   const src = c.createBufferSource(); src.buffer = buf;
-  const ng = c.createGain(); ng.gain.value = _muted ? 0 : 0.18 * _sfxVol;
+  const ng = c.createGain(); ng.gain.value = (_muted || _sfxMuted) ? 0 : 0.18 * _sfxVol;
   src.connect(ng); ng.connect(c.destination);
   src.start(t); src.stop(t + 0.04);
 }
@@ -119,7 +121,7 @@ export function sfxStep() {
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.5;
   const src = c.createBufferSource(); src.buffer = buf;
-  const g = c.createGain(); g.gain.value = _muted ? 0 : 0.06 * _sfxVol;
+  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.06 * _sfxVol;
   const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 200; flt.Q.value = 0.8;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
@@ -189,7 +191,7 @@ export function sfxDeath() {
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.6;
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 120;
-  const ng = c.createGain(); ng.gain.value = _muted ? 0 : 0.22 * _sfxVol;
+  const ng = c.createGain(); ng.gain.value = (_muted || _sfxMuted) ? 0 : 0.22 * _sfxVol;
   src.connect(flt); flt.connect(ng); ng.connect(c.destination);
   src.start(t + 0.4);
 }
@@ -278,17 +280,35 @@ export function setSfxVolume(v: number) {
 }
 
 export function getMuted(): boolean { return _muted; }
+export function getMusicMuted(): boolean { return _musicMuted; }
+export function getSfxMuted(): boolean { return _sfxMuted; }
 export function getMusicVol(): number { return _musicVol; }
 export function getSfxVol(): number { return _sfxVol; }
 
-export function toggleMute(): boolean {
+export function toggleMuteMusic(): boolean {
+  _musicMuted = !_musicMuted;
+  _applyAmbientVolume();
+  return _musicMuted;
+}
+
+export function toggleMuteAll(): boolean {
   _muted = !_muted;
   _applyAmbientVolume();
   return _muted;
 }
 
+/** Legacy alias — toggles music mute only (not SFX). Use toggleMuteAll() for full silence. */
+export function toggleMute(): boolean {
+  return toggleMuteMusic();
+}
+
 export function setMuted(m: boolean) {
   _muted = m;
+  _applyAmbientVolume();
+}
+
+export function setMusicMuted(m: boolean) {
+  _musicMuted = m;
   _applyAmbientVolume();
 }
 
@@ -324,7 +344,7 @@ const CHORD_PROG = [
 function _applyAmbientVolume() {
   if (_ambientMaster) {
     const c = ctx();
-    const target = _muted ? 0 : _musicVol;
+    const target = (_muted || _musicMuted) ? 0 : _musicVol;
     _ambientMaster.gain.cancelScheduledValues(c.currentTime);
     _ambientMaster.gain.setTargetAtTime(target, c.currentTime, 0.05);
   }
@@ -339,7 +359,7 @@ function startAmbient() {
   _ambientMaster.gain.value = 0;
   _ambientMaster.connect(c.destination);
 
-  const masterTarget = _muted ? 0 : _musicVol;
+  const masterTarget = (_muted || _musicMuted) ? 0 : _musicVol;
   _ambientMaster.gain.setTargetAtTime(masterTarget, c.currentTime, 2.0);
 
   _createSynthPads(c);
@@ -597,7 +617,7 @@ export function fadeInAmbient(duration = 2.0) {
     return;
   }
   if (!_ambientMaster) return;
-  const target = _muted ? 0 : _musicVol;
+  const target = (_muted || _musicMuted) ? 0 : _musicVol;
   _ambientMaster.gain.cancelScheduledValues(_ctx.currentTime);
   _ambientMaster.gain.setTargetAtTime(target, _ctx.currentTime, duration / 4);
 }
@@ -627,7 +647,7 @@ export function isWithinEarshot(playerX: number, playerY: number, srcX: number, 
 
 function spatialGain(c: AudioContext, vol: number, spatialFactor: number): GainNode {
   const g = c.createGain();
-  g.gain.value = _muted ? 0 : vol * _sfxVol * spatialFactor;
+  g.gain.value = (_muted || _sfxMuted) ? 0 : vol * _sfxVol * spatialFactor;
   g.connect(c.destination);
   return g;
 }
@@ -723,7 +743,7 @@ export function sfxWeatherRain(playerX: number, playerY: number) {
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.15;
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 800;
-  const g = c.createGain(); g.gain.value = _muted ? 0 : 0.04 * _sfxVol;
+  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.04 * _sfxVol;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
 }
@@ -738,7 +758,7 @@ export function sfxWeatherWind() {
   }
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 300; flt.Q.value = 0.5;
-  const g = c.createGain(); g.gain.value = _muted ? 0 : 0.035 * _sfxVol;
+  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.035 * _sfxVol;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
 }
@@ -776,7 +796,7 @@ export function startCrowdMurmur() {
 
 export function updateCrowdMurmurVolume(nearbyNpcCount: number) {
   if (!_crowdMurmurGain || !_crowdRunning) return;
-  const target = _muted ? 0 : Math.min(0.12, nearbyNpcCount * 0.012) * _sfxVol;
+  const target = (_muted || _sfxMuted) ? 0 : Math.min(0.12, nearbyNpcCount * 0.012) * _sfxVol;
   const c = ctx();
   _crowdMurmurGain.gain.cancelScheduledValues(c.currentTime);
   _crowdMurmurGain.gain.setTargetAtTime(target, c.currentTime, 0.5);

@@ -79,6 +79,11 @@ export const PABLO_PRODUCTS = {
     short: "RECRUIT-8",
     desc: "Tactical personnel acquisition module. Post positions, track candidates through the pipeline, and manage your operational roster.",
   },
+  TRANSLATOR: {
+    name: "BABEL-3 LINGUAL CORTEX",
+    short: "BABEL-3",
+    desc: "Real-time translation module. Converts any text between languages with cultural context.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 4, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 6, trial: 7 },

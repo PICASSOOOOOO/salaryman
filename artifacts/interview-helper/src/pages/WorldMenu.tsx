@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useIsMobile } from '../hooks/use-mobile';
+import { boomerize } from '../gameSystems';
+import { PABLO_PRODUCTS } from '../lib/product-names';
 
 type CharClass = 'corporate' | 'outlaw' | 'replicant';
 
@@ -111,7 +113,7 @@ const WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot
   { match: /HEALTH|PHARMA|CHEM|MEDICAL|BIOTECH/i,                      bid: 'oxide_labs',    label: 'OXIDE LABS',    slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
   { match: /MARKET|PRINT|ADVERTIS|DESIGN|ARCH|EDUC/i,                  bid: 'print_shop',  label: 'PRINT SHOP',    slot: 'BED 4 · DESK 2 · PRESS TERMINAL' },
   { match: /MANUF|LOGIST|CONSTRUCT|SCRAP|RUST|PHANTOM FREIGHT/i,       bid: 'scrap',       label: 'SCRAP YARD',    slot: 'BED 6 · DESK 4 · OPS TERMINAL' },
-  { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'IRON TRUST BANK', slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
+  { match: /FINANC|CAPITAL|NEON CAP|FINTECH/i,                         bid: 'megabank',    label: 'BANCO OMBRA', slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
   { match: /ARMS|WEAPON|EDEN|BLACK IRON|SECURITY/i,                    bid: 'armory',      label: 'ARMORY',        slot: 'BED 3 · DESK 8 · TACTICAL TERMINAL' },
   { match: /SHADOW|JADE SYND|GHOST PROTOCOL|SALVAGE/i,                 bid: 'market',      label: 'BLACK MARKET',  slot: 'BED 7 · DESK 5 · SHADOW TERMINAL' },
   { match: /ENERGY|OMEGA|POWER|GRID/i,                             bid: 'oxide_labs',    label: 'OXIDE LABS',    slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
@@ -340,13 +342,14 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Divider />
       <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
       {[
-        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'PABLO CORP. headquarters. Floors 1–39 open to registered operatives.' },
-        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. Free once per session.' },
-        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.' },
-        { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress.' },
-        { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst.' },
-        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy.' },
-        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE. Access augmentation modules.' },
+        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
+        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
+        { name: 'BANCO OMBRA', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
+        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
+        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
+        { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
+        { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
+        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
@@ -529,6 +532,8 @@ export default function WorldMenu() {
   const [showCinematic, setShowCinematic] = useState(false);
   const [cinematicLine, setCinematicLine] = useState(0);
   const [showEntryButtons, setShowEntryButtons] = useState(true);
+  const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [showHelp, setShowHelp] = useState(false);
   const [atPhysicalTerminal] = useState(() => {
     const flag = sessionStorage.getItem('sm_at_physical_terminal');
     if (flag) sessionStorage.removeItem('sm_at_physical_terminal');
@@ -761,6 +766,81 @@ export default function WorldMenu() {
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
           <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP. IMMIGRATION INTERFACE v1.0</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
+        </div>
+
+        {/* ── PLAIN MODE + HELP ── */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '.6rem', marginBottom: '1rem' }}>
+          <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ padding: '.35rem .7rem', background: boomerMode ? 'rgba(255,170,0,.1)' : 'rgba(0,255,65,.04)', border: boomerMode ? '1px solid rgba(255,170,0,.5)' : '1px solid rgba(0,255,65,.2)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
+            {boomerMode ? 'PLAIN MODE ON' : 'PLAIN MODE'}
+          </button>
+          <button onClick={() => setShowHelp(v => !v)} style={{ padding: '.35rem .7rem', background: showHelp ? 'rgba(0,255,65,.08)' : 'rgba(0,255,65,.04)', border: showHelp ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.2)', color: showHelp ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
+            WHAT IS THIS?
+          </button>
+        </div>
+
+        {showHelp && (
+          <div style={{ width: '100%', maxWidth: 720, marginBottom: '1rem', padding: '.75rem', border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,12,0,.95)', fontSize: '.6rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, letterSpacing: '.04em' }}>
+            <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', marginBottom: '.5rem' }}>WELCOME TO SALARYMAN</div>
+            <div>This is a multiplayer cyberpunk city simulation. You play as a worker in MINX CITY, a corporate dystopia run by PABLO CORP. Walk around the city, talk to characters, chat with real players, earn money, and build your career.</div>
+            <div style={{ marginTop: '.4rem' }}><span style={{ color: '#ffaa00' }}>PLAIN MODE</span> replaces all gaming jargon (HP, XP, NPC, etc.) with plain everyday language. Turn it on if you have never played a game before — everything will make more sense.</div>
+            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.35)' }}>
+              <div><b>WASD</b> = Move your character around the city</div>
+              <div><b>E</b> = Interact with buildings, shops, and people</div>
+              <div><b>C</b> = Open chat to talk to other real players</div>
+              <div><b>V</b> = Toggle your microphone for voice chat</div>
+              <div><b>P</b> = Open your PABLO device (inventory / phone)</div>
+              <div><b>ESC</b> = Open the pause menu with settings</div>
+            </div>
+            <div style={{ marginTop: '.5rem' }}>
+              <div><b style={{ color: '#00ff41' }}>HP</b> = Your health. Stay away from threats or you lose it.</div>
+              <div><b style={{ color: '#00ff41' }}>FIAT (ƒ)</b> = The in-game currency. You earn it through salary and spend it in stores.</div>
+              <div><b style={{ color: '#00ff41' }}>XP</b> = Experience points. Accumulate them to level up and unlock things.</div>
+              <div><b style={{ color: '#00ff41' }}>NPC</b> = Non-player characters. The people in the city who are not real players.</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PABLO TOOLS GRID ── */}
+        <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
+          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP. TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.5rem' }}>
+            <button onClick={() => navigate('/presenter')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
+              <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{PABLO_PRODUCTS.PRESENTER.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(180,100,255,.5)', lineHeight: 1.6 }}>{boomerMode ? 'Create slide decks and presentations with AI.' : PABLO_PRODUCTS.PRESENTER.desc}</div>
+            </button>
+            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'PABLO AI' : PABLO_PRODUCTS.PROBLEM_DESC.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Ask anything. Get answers instantly.' : 'Code analysis and problem solving.'}</div>
+            </button>
+            <button onClick={() => navigate('/contacts')} style={{ padding: '.65rem .5rem', background: 'rgba(100,180,255,.06)', border: '1px solid rgba(100,180,255,.4)', color: '#55bbff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(100,180,255,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Save contacts and meeting notes.' : PABLO_PRODUCTS.CONTACTS.desc}</div>
+            </button>
+            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(255,100,100,.06)', border: '1px solid rgba(255,100,100,.3)', color: '#ff7777', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 4, right: 6, fontSize: '.38rem', color: 'rgba(255,100,100,.4)', letterSpacing: '.08em' }}>PASSIVE</div>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(255,100,100,.3)', lineHeight: 1.6 }}>{boomerMode ? 'Listens to audio. Runs in background even when you leave.' : 'Runs in background. Just turn on.'}</div>
+            </button>
+            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(100,200,255,.06)', border: '1px solid rgba(100,200,255,.3)', color: '#66ccff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 4, right: 6, fontSize: '.38rem', color: 'rgba(100,200,255,.4)', letterSpacing: '.08em' }}>PASSIVE</div>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'SCREEN SCAN' : PABLO_PRODUCTS.SCAN_SCREEN.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(100,200,255,.3)', lineHeight: 1.6 }}>{boomerMode ? 'Reads your screen. Runs in background even when you leave.' : 'Runs in background. Just turn on.'}</div>
+            </button>
+            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(50,255,200,.06)', border: '1px solid rgba(50,255,200,.4)', color: '#33ffcc', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'TRANSLATOR' : PABLO_PRODUCTS.TRANSLATOR.short}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(50,255,200,.35)', lineHeight: 1.6 }}>{boomerMode ? 'Translate text between any languages instantly.' : PABLO_PRODUCTS.TRANSLATOR.desc}</div>
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '.5rem', marginTop: '.5rem' }}>
+            <button onClick={() => navigate('/hiring')} style={{ padding: '.5rem .5rem', background: 'rgba(255,200,50,.04)', border: '1px solid rgba(255,200,50,.2)', color: '#ffcc44', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+              <div style={{ ...VT, fontSize: '.9rem', letterSpacing: '.08em', marginBottom: '.15rem' }}>{boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short}</div>
+              <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', lineHeight: 1.5 }}>{boomerMode ? 'Post jobs and track candidates.' : 'Post positions and manage candidates.'}</div>
+            </button>
+            <button onClick={() => navigate('/dashboard')} style={{ padding: '.5rem .5rem', background: 'rgba(0,255,65,.03)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+              <div style={{ ...VT, fontSize: '.9rem', letterSpacing: '.08em', marginBottom: '.15rem' }}>{boomerMode ? 'DASHBOARD' : 'CMD DECK'}</div>
+              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.5 }}>{boomerMode ? 'Your workspace and project overview.' : 'Projects, knowledge base, brand kit.'}</div>
+            </button>
+          </div>
         </div>
 
         {/* ── TAB BAR ── */}

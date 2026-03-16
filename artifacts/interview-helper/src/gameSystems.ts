@@ -349,11 +349,12 @@ export const RUMORS: string[] = [
 ];
 
 // ── Character Customization ──────────────────────────────────────────────────
-export interface Costume {
+export interface Clothing {
   id: string; name: string; desc: string; price: number; color: string;
 }
+export type Costume = Clothing;
 
-export const COSTUMES: Costume[] = [
+export const CLOTHES: Clothing[] = [
   { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#00ff41' },
   { id: 'corpo_suit', name: 'CORPO SUIT', desc: 'Sharp. Professional. PABLO-approved.', price: 15000, color: '#3366ff' },
   { id: 'wasteland_gear', name: 'WASTELAND GEAR', desc: 'Reinforced. Dusty. Functional.', price: 12000, color: '#aa8844' },
@@ -363,6 +364,7 @@ export const COSTUMES: Costume[] = [
   { id: 'iron_rats_jacket', name: 'IRON RATS JACKET', desc: 'Gang colors. Risky in wrong territory.', price: 8000, color: '#ff4444' },
   { id: 'void_dogs_vest', name: 'VOID DOGS VEST', desc: 'Gang colors. Risky in wrong territory.', price: 8000, color: '#ff8800' },
 ];
+export const COSTUMES = CLOTHES;
 
 // ── Time Zone Cities ─────────────────────────────────────────────────────────
 export const TIMEZONE_CITIES = [

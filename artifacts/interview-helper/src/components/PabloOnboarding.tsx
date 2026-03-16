@@ -251,10 +251,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'tut_economy' && renderTutorial('BRIEFING: ECONOMY', [
             '▸ FIAT (ƒ) is the currency of Minx City. Earn it through bounties, jobs, and trade.',
-            '▸ IRON TRUST BANK holds savings accounts. Deposit to protect your FIAT from death penalties.',
+            '▸ BANCO OMBRA holds savings accounts. Deposit to protect your FIAT from death penalties.',
             '▸ Banks offer LOANS — borrow FIAT but repay on time. Overdue loans trigger debt collectors.',
             '▸ GOLD is rare and valuable. Exchange FIAT for GOLD at special terminals. Taxes apply.',
-            '▸ Visit the NOODLE BAR, CLINIC, WEAPON SHOP, and COSTUME SHOP to spend FIAT on upgrades.',
+            '▸ Visit the NOODLE BAR, CLINIC, WEAPON SHOP, and CLOTHES SHOP to spend FIAT on upgrades.',
             '▸ REAL ESTATE is available — own buildings for passive income and fast travel.',
             '▸ BILLBOARDS can be purchased for advertising. 7-day slots with custom content.',
           ])}
