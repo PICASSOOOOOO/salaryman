@@ -48,7 +48,7 @@ export function initCalendar(): WorldCalendar {
   };
 }
 
-const REAL_MS_PER_GAME_DAY = 3600000;
+const REAL_MS_PER_GAME_DAY = 7200000;
 const REAL_MS_PER_GAME_HOUR = REAL_MS_PER_GAME_DAY / 24;
 
 export function tickCalendar(cal: WorldCalendar, dtMs: number): WorldCalendar {
@@ -130,9 +130,9 @@ export function getCalendarString(cal: WorldCalendar): string {
 }
 
 export function getDayNightAlpha(hour: number): number {
-  if (hour >= 6 && hour < 18) return 0;
-  if (hour >= 18 && hour < 20) return (hour - 18) / 2 * 0.6;
-  if (hour >= 20 || hour < 4) return 0.6;
+  if (hour >= 6 && hour < 17) return 0;
+  if (hour >= 17 && hour < 19) return ((hour - 17) / 2) * 0.6;
+  if (hour >= 19 || hour < 4) return 0.6;
   if (hour >= 4 && hour < 6) return (1 - (hour - 4) / 2) * 0.6;
   return 0;
 }

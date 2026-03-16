@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
+const ArcadeGame = lazy(() => import('./ArcadeGames'));
 import {
-  sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxStep, sfxEnter, sfxTalk,
+  sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, resumeAudioContext,
   fadeOutAmbient, fadeInAmbient,
@@ -32,12 +33,13 @@ import {
 } from '../gameSystems';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 8, RANGE = 55;
+const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
+const NPC_SPEED_MULT = 0.2;
 const BORDER = 100;
 const CITY_TOP = 5100;
-const CITY_BOTTOM = 7500;
+const CITY_BOTTOM = 7000;
 const CITY_LEFT = 5400;
-const CITY_RIGHT = 9000;
+const CITY_RIGHT = 8000;
 const CITY_THREAT_SCAN_Y = CITY_BOTTOM + 200;
 const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_RIGHT && py >= CITY_TOP && py <= CITY_BOTTOM;
 
@@ -49,23 +51,24 @@ interface BillboardDef {
   locationId: string; label: string; x: number; y: number; w: number; h: number; height: number;
 }
 const MANHOLES = [
-  { x: 5700, y: 5400 }, { x: 6700, y: 5400 }, { x: 7700, y: 5400 },
-  { x: 5700, y: 6300 }, { x: 7200, y: 6300 }, { x: 8700, y: 6300 },
-  { x: 6200, y: 7200 }, { x: 7200, y: 7200 }, { x: 8200, y: 7200 },
-  { x: 6700, y: 5850 }, { x: 8200, y: 5850 },
-  { x: 5700, y: 6750 }, { x: 7700, y: 6750 },
+  { x: 5560, y: 5180 }, { x: 6680, y: 5180 }, { x: 7850, y: 5180 },
+  { x: 5560, y: 5580 }, { x: 6680, y: 5580 }, { x: 7160, y: 5580 },
+  { x: 6060, y: 5960 }, { x: 7160, y: 5960 },
+  { x: 5560, y: 6350 }, { x: 6680, y: 6350 },
+  { x: 6060, y: 6600 }, { x: 7850, y: 6600 },
+  { x: 5560, y: 6780 }, { x: 7160, y: 6780 },
 ];
 const MANHOLE_RANGE = 30;
 
 const BILLBOARDS: BillboardDef[] = [
-  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 5900, y: 5700, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 6300, y: 5850, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 5600, y: 7000, w: 20, h: 10, height: 45 },
-  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 7500, y: 5700, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 7200, y: 5900, w: 20, h: 10, height: 60 },
-  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 8500, y: 5600, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 5600, y: 7350, w: 20, h: 10, height: 40 },
-  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 8200, y: 7350, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 5700, y: 5580, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 6200, y: 5580, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 5600, y: 6780, w: 20, h: 10, height: 45 },
+  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 7200, y: 5580, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 6680, y: 5960, w: 20, h: 10, height: 60 },
+  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 7600, y: 5300, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 5600, y: 6850, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 7750, y: 6850, w: 20, h: 10, height: 40 },
 ];
 interface BillboardData {
   id: number; locationId: string; ownerPlayerName: string | null;
@@ -107,97 +110,96 @@ const mkDoorW = (bx: number, by: number, _bw: number, bh: number): Door[] => [{ 
 const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x: bx + bw - 4, y: by + (bh - DOOR_W) / 2, w: 8, h: DOOR_W }];
 
 const BUILDINGS = [
-  // ── RESIDENTIAL ─────────────────────────────────────────────────────────────
-  { id: 'minx_arms',    x: 5420, y: 5420, w: 130, h: 150, label: 'MINX ARMS',        bright: false, doors: mkDoorS(5420,5420,130,150) },
-  { id: 'eastside_flat',x: 8220, y: 5420, w: 130, h: 140, label: 'EASTSIDE FLATS',   bright: false, doors: mkDoorS(8220,5420,130,140) },
-  // ── CITY WEST DISTRICT ──────────────────────────────────────────────────────
-  { id: 'pablo_store',  x: 5730, y: 5870, w: 140, h: 80,  label: 'PABLO',            bright: true,  doors: mkDoorS(5730,5870,140,80) },
-  { id: 'pablo_tower',  x: 6050, y: 5120, w: 280, h: 250, label: 'SHADOW TOWER',    bright: true,  doors: mkDoorS(6050,5120,280,250) },
-  { id: 'clinic',       x: 5420, y: 5870, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5420,5870,120,80) },
-  { id: 'megabank',     x: 5730, y: 6020, w: 140, h: 90,  label: 'IRON TRUST BANK',  bright: false, doors: mkDoorS(5730,6020,140,90) },
-  { id: 'market',       x: 6420, y: 6020, w: 130, h: 80,  label: 'BLACK MARKET',     bright: false, doors: mkDoorS(6420,6020,130,80) },
-  { id: 'hotel',        x: 6380, y: 5420, w: 120, h: 140, label: 'HOTEL NEON',       bright: false, doors: mkDoorS(6380,5420,120,140), radio: true },
-  { id: 'vend',         x: 6220, y: 6120, w: 70,  h: 70,  label: 'VENDING MACHINE',  bright: true,  doors: mkDoorS(6220,6120,70,70) },
-  { id: 'crystal',      x: 6900, y: 6130, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'arcade',       x: 5420, y: 6320, w: 130, h: 85,  label: 'PIXEL ARCADE',     bright: true,  doors: mkDoorE(5420,6320,130,85), radio: true },
-  { id: 'bunker',       x: 5420, y: 6770, w: 150, h: 90,  label: 'BUNKER-09',        bright: false, doors: mkDoorE(5420,6770,150,90), radio: true },
-  { id: 'scrap',        x: 5880, y: 6870, w: 180, h: 80,  label: 'SCRAP YARD',       bright: false, doors: mkDoorN(5880,6870,180) },
-  { id: 'radio',        x: 6720, y: 6320, w: 120, h: 100, label: 'PIRATE RADIO',     bright: false, doors: mkDoorW(6720,6320,120,100) },
-  { id: 'oxide_labs',     x: 7220, y: 6320, w: 110, h: 80,  label: 'OXIDE LABS',       bright: false, doors: mkDoorW(7220,6320,110,80) },
-  // ── CITY EAST DISTRICT ──────────────────────────────────────────────────────
-  { id: 'dojo',         x: 6720, y: 5140, w: 140, h: 100, label: 'IRON DOJO',        bright: false, doors: mkDoorS(6720,5140,140,100) },
-  { id: 'data_vault',   x: 7220, y: 5140, w: 150, h: 90,  label: 'DATA VAULT',       bright: true,  doors: mkDoorS(7220,5140,150,90) },
-  { id: 'nightclub',    x: 6920, y: 5470, w: 130, h: 100, label: 'CLUB NEON',        bright: true,  doors: mkDoorS(6920,5470,130,100), radio: true },
-  { id: 'armory',       x: 7920, y: 5140, w: 130, h: 90,  label: 'ARMORY',           bright: false, doors: mkDoorS(7920,5140,130,90) },
-  { id: 'crystal2',     x: 8650, y: 5570, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'print_shop',   x: 7720, y: 6320, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7720,6320,120) },
-  { id: 'east_bunker',  x: 6920, y: 6770, w: 130, h: 85,  label: 'EAST BUNKER',      bright: false, doors: mkDoorN(6920,6770,130) },
-  { id: 'north_gate',   x: 8520, y: 5180, w: 100, h: 70,  label: 'NORTH GATE',       bright: false, doors: [...mkDoorN(8520,5180,100), ...mkDoorS(8520,5180,100,70)] },
-  // ── HOSTELS / HOTELS / SHELTERS (city) ──────────────────────────────────────
-  { id: 'overlook',      x: 6420, y: 6770, w: 120, h: 95,  label: 'THE PINNACLE',     bright: true,  doors: mkDoorN(6420,6770,120), radio: true },
-  { id: 'safe_house',    x: 6370, y: 6320, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6370,6320,110), radio: true },
-  // ── SUBWAY STATIONS (fast travel) ────────────────────────────────────────────
-  { id: 'sub_west',      x: 5720, y: 7020, w: 90,  h: 65,  label: 'METRO WEST',       bright: true,  doors: mkDoorS(5720,7020,90,65) },
-  { id: 'sub_central',   x: 6720, y: 7020, w: 90,  h: 65,  label: 'METRO CENTRAL',    bright: true,  doors: mkDoorS(6720,7020,90,65) },
-  { id: 'sub_east',      x: 7720, y: 7020, w: 90,  h: 65,  label: 'METRO EAST',       bright: true,  doors: mkDoorS(7720,7020,90,65) },
-  { id: 'sub_north',     x: 8520, y: 5420, w: 90,  h: 65,  label: 'METRO NORTH',      bright: true,  doors: mkDoorS(8520,5420,90,65) },
-  // ── CHECKPOINTS (south city border — wasteland entry) ─────────────────────────
-  { id: 'checkpoint_w',  x: 5420, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT W',     bright: false, doors: [...mkDoorW(5420,7420,100,55), ...mkDoorE(5420,7420,100,55)] },
-  { id: 'checkpoint_c',  x: 7220, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT',       bright: false, doors: [...mkDoorW(7220,7420,100,55), ...mkDoorE(7220,7420,100,55)] },
-  { id: 'checkpoint_e',  x: 8720, y: 7420, w: 100, h: 55,  label: 'CHECKPOINT E',     bright: false, doors: [...mkDoorW(8720,7420,100,55), ...mkDoorE(8720,7420,100,55)] },
-  // ── NORTH QUARTER ───────────────────────────────────────────────────────────
-  { id: 'call_home',     x: 7720, y: 5870, w: 150, h: 90,  label: 'CALL HOME',        bright: true,  doors: mkDoorS(7720,5870,150,90) },
-  { id: 'noodle_bar',    x: 8220, y: 5870, w: 120, h: 80,  label: 'NOODLE BAR',       bright: true,  doors: mkDoorS(8220,5870,120,80) },
-  { id: 'pawn_shop',     x: 8220, y: 6320, w: 120, h: 80,  label: 'PAWN SHOP',        bright: false, doors: mkDoorW(8220,6320,120,80) },
-  { id: 'crystal4',      x: 8720, y: 6870, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'terminal_shop', x: 7920, y: 6770, w: 150, h: 90,  label: 'PABLO TERMINAL',   bright: true,  doors: mkDoorS(7920,6770,150,90) },
-  { id: 'north_bunker',  x: 8420, y: 6770, w: 140, h: 90,  label: 'NORTH BUNKER',     bright: false, doors: mkDoorS(8420,6770,140,90), radio: true },
-  { id: 'crystal5',      x: 8720, y: 7120, w: 28,  h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  // ── CITY DENSITY — Additional infill buildings ──────────────────────────────
-  { id: 'food_court',    x: 6020, y: 6320, w: 140, h: 90,  label: 'FOOD COURT',       bright: true,  doors: mkDoorS(6020,6320,140,90) },
-  { id: 'plaza_market',  x: 7620, y: 5420, w: 120, h: 80,  label: 'CENTRAL PLAZA',    bright: true,  doors: mkDoorS(7620,5420,120,80) },
-  { id: 'vehicle_dealer',x: 8420, y: 6320, w: 130, h: 80,  label: 'MOTOR DEPOT',      bright: true,  doors: mkDoorS(8420,6320,130,80) },
-  { id: 'depot_south',   x: 6220, y: 6770, w: 120, h: 85,  label: 'TRANSIT DEPOT',    bright: false, doors: mkDoorN(6220,6770,120) },
-  // ── NORTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
-  { id: 'outpost_alpha', x: 2000, y: 1500, w: 120, h: 80,  label: 'OUTPOST ALPHA',    bright: true,  doors: mkDoorS(2000,1500,120,80), radio: true },
-  { id: 'rust_porch', x: 3000, y: 1200, w: 110, h: 75,  label: 'THE RUST PORCH',   bright: true,  doors: mkDoorE(3000,1200,110,75), radio: true },
-  { id: 'eastern_gate',  x: 12000, y: 1500, w: 100, h: 70, label: 'EASTERN GATE',     bright: false, doors: [...mkDoorW(12000,1500,100,70), ...mkDoorE(12000,1500,100,70)] },
-  // ── SOUTH WASTELAND OUTPOSTS ─────────────────────────────────────────────────
-  { id: 'outpost_beta',  x: 7200, y: 8000, w: 100, h: 70,  label: 'OUTPOST BETA',     bright: true,  doors: mkDoorS(7200,8000,100,70), radio: true },
-  { id: 'supply_cache',  x: 3500, y: 9500, w: 130, h: 80,  label: 'SUPPLY CACHE',     bright: false, doors: mkDoorN(3500,9500,130) },
-  { id: 'deep_bunker',   x: 10500, y: 9000, w: 120, h: 80, label: 'DEEP BUNKER',      bright: false, doors: mkDoorN(10500,9000,120), radio: true },
-  { id: 'crystal3',      x: 5500, y: 10000, w: 28, h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'ashfield_hostel', x: 4000, y: 8200, w: 120, h: 80,  label: 'ASHFIELD HOSTEL',  bright: false, doors: mkDoorS(4000,8200,120,80), radio: true },
-  { id: 'terminus',      x: 2500, y: 9000, w: 120, h: 80,  label: 'TERMINUS SHELTER', bright: false, doors: mkDoorE(2500,9000,120,80), radio: true },
-  { id: 'bastion_keep',  x: 9500, y: 8500, w: 100, h: 100, label: 'BASTION KEEP',     bright: true,  doors: mkDoorW(9500,8500,100,100), radio: true },
-  { id: 'waste_exchange',x: 4000, y: 8500, w: 130, h: 80,  label: 'BLACK EXCHANGE',   bright: true,  doors: mkDoorN(4000,8500,130) },
-  { id: 'deep_camp',     x: 11500, y: 8200, w: 120, h: 80, label: 'DEEP CAMP',        bright: false, doors: mkDoorS(11500,8200,120,80), radio: true },
-  { id: 'ruins_alpha',   x: 12500, y: 9500, w: 130, h: 90, label: 'RUINS ALPHA',      bright: false, doors: [...mkDoorN(12500,9500,130), ...mkDoorS(12500,9500,130,90)] },
-  { id: 'crystal6',      x: 12000, y: 10000, w: 28, h: 28, label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  { id: 'southern_hub',  x: 7200, y: 11000, w: 130, h: 90, label: 'SOUTHERN HUB',     bright: true,  doors: mkDoorN(7200,11000,130), radio: true },
-  { id: 'crystal7',      x: 7500, y: 11200, w: 28, h: 28,  label: 'SAVE POINT',       bright: true,  doors: [] as Door[] },
-  // ── PUBLIC TERMINALS (street-side kiosks) ────────────────────────────────────
-  { id: 'term_west',      x: 5730, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_central',   x: 6430, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_east',      x: 7130, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_neon',      x: 7730, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_north',     x: 8430, y: 5870, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_a', x: 2030, y: 1530, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'term_outpost_b', x: 7230, y: 8030, w: 18,  h: 24,  label: 'TERMINAL',         bright: true,  doors: [] as Door[] },
-  { id: 'van_west',       x: 2200, y: 2000, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'van_central',    x: 5500, y: 8500, w: 40,  h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28,  label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  // ── GOLD EXCHANGE ──────────────────────────────────────────────────────────
-  { id: 'gold_exchange',  x: 6100, y: 6800, w: 120, h: 80,  label: 'GOLD EXCHANGE',    bright: true,  doors: mkDoorS(6100,6800,120,80) },
-  // ── ADMIN BUILDINGS (business registration) ─────────────────────────────────
-  { id: 'admin_bureau',   x: 8220, y: 6120, w: 130, h: 90,  label: 'CITY ADMIN BUREAU',  bright: true,  doors: mkDoorS(8220,6120,130,90) },
-  // ── REAL ESTATE & CO-WORKING ───────────────────────────────────────────
-  { id: 'realestate_office', x: 7420, y: 6320, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(7420,6320,130,80) },
-  { id: 'nexus_hub',        x: 5880, y: 5140, w: 140, h: 90, label: 'NEXUS HUB',          bright: true, doors: mkDoorS(5880,5140,140,90) },
-  // ── POLICE HQ ─────────────────────────────────────────────────────────
-  { id: 'police_hq',        x: 7720, y: 5140, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7720,5140,150,100) },
-  // ── MACHINE BUNKER (underground replicant spawn) ────────────────────
-  { id: 'machine_bunker',   x: 5620, y: 6870, w: 100, h: 60,  label: 'MACHINE BUNKER',    bright: false, doors: mkDoorN(5620,6870,100), radio: true },
+  // ═══ BLOCK A — NORTH-WEST (Shadow District) ═══════════════════════════════
+  { id: 'minx_arms',    x: 5620, y: 5280, w: 130, h: 120, label: 'MINX ARMS',        bright: false, doors: mkDoorS(5620,5280,130,120) },
+  { id: 'clinic',       x: 5780, y: 5280, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5780,5280,120,80) },
+  { id: 'nexus_hub',    x: 5620, y: 5440, w: 140, h: 90,  label: 'NEXUS HUB',        bright: true,  doors: mkDoorS(5620,5440,140,90) },
+  // ═══ BLOCK B — NORTH CENTER (Tower Quarter) ════════════════════════════════
+  { id: 'pablo_tower',  x: 6100, y: 5200, w: 260, h: 220, label: 'SHADOW TOWER',     bright: true,  doors: mkDoorS(6100,5200,260,220) },
+  { id: 'hotel',        x: 6400, y: 5280, w: 120, h: 130, label: 'HOTEL NEON',        bright: false, doors: mkDoorS(6400,5280,120,130), radio: true },
+  // ═══ BLOCK C — NORTH-EAST (Iron Row) ═══════════════════════════════════════
+  { id: 'dojo',         x: 6720, y: 5280, w: 130, h: 100, label: 'IRON DOJO',         bright: false, doors: mkDoorS(6720,5280,130,100) },
+  { id: 'data_vault',   x: 6880, y: 5280, w: 130, h: 90,  label: 'DATA VAULT',        bright: true,  doors: mkDoorS(6880,5280,130,90) },
+  { id: 'nightclub',    x: 6720, y: 5420, w: 130, h: 100, label: 'CLUB NEON',         bright: true,  doors: mkDoorS(6720,5420,130,100), radio: true },
+  // ═══ BLOCK D — FAR NORTH-EAST (Military/Gate) ═════════════════════════════
+  { id: 'police_hq',    x: 7200, y: 5280, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7200,5280,150,100) },
+  { id: 'armory',       x: 7380, y: 5280, w: 130, h: 90,  label: 'ARMORY',            bright: false, doors: mkDoorS(7380,5280,130,90) },
+  { id: 'north_gate',   x: 7550, y: 5280, w: 100, h: 70,  label: 'NORTH GATE',        bright: false, doors: [...mkDoorN(7550,5280,100), ...mkDoorS(7550,5280,100,70)] },
+  { id: 'sub_north',    x: 7700, y: 5280, w: 90,  h: 65,  label: 'METRO NORTH',       bright: true,  doors: mkDoorS(7700,5280,90,65) },
+  // ═══ BLOCK E — MID-WEST (Market Row) ══════════════════════════════════════
+  { id: 'pablo_store',  x: 5620, y: 5700, w: 140, h: 80,  label: 'PABLO',             bright: true,  doors: mkDoorS(5620,5700,140,80) },
+  { id: 'megabank',     x: 5790, y: 5700, w: 140, h: 90,  label: 'IRON TRUST BANK',   bright: false, doors: mkDoorS(5790,5700,140,90) },
+  { id: 'vend',         x: 5960, y: 5700, w: 70,  h: 70,  label: 'VENDING MACHINE',   bright: true,  doors: mkDoorS(5960,5700,70,70) },
+  // ═══ BLOCK F — MID-CENTER (Commerce Hub) ══════════════════════════════════
+  { id: 'market',       x: 6200, y: 5700, w: 130, h: 80,  label: 'BLACK MARKET',      bright: false, doors: mkDoorS(6200,5700,130,80) },
+  { id: 'food_court',   x: 6360, y: 5700, w: 140, h: 90,  label: 'FOOD COURT',        bright: true,  doors: mkDoorS(6360,5700,140,90) },
+  { id: 'gold_exchange',x: 6530, y: 5700, w: 120, h: 80,  label: 'GOLD EXCHANGE',     bright: true,  doors: mkDoorS(6530,5700,120,80) },
+  { id: 'crystal',      x: 6680, y: 5750, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ BLOCK G — MID-EAST (Corporate Row) ═══════════════════════════════════
+  { id: 'call_home',    x: 6900, y: 5700, w: 130, h: 80,  label: 'CALL HOME',         bright: true,  doors: mkDoorS(6900,5700,130,80) },
+  { id: 'noodle_bar',   x: 7060, y: 5700, w: 120, h: 80,  label: 'NOODLE BAR',        bright: true,  doors: mkDoorS(7060,5700,120,80) },
+  { id: 'admin_bureau', x: 7210, y: 5700, w: 130, h: 90,  label: 'CITY ADMIN BUREAU', bright: true,  doors: mkDoorS(7210,5700,130,90) },
+  { id: 'plaza_market', x: 7370, y: 5700, w: 120, h: 80,  label: 'CENTRAL PLAZA',     bright: true,  doors: mkDoorS(7370,5700,120,80) },
+  { id: 'eastside_flat',x: 7520, y: 5700, w: 130, h: 120, label: 'EASTSIDE FLATS',    bright: false, doors: mkDoorS(7520,5700,130,120) },
+  // ═══ BLOCK H — SOUTH-WEST (Industrial) ════════════════════════════════════
+  { id: 'arcade',       x: 5620, y: 6100, w: 130, h: 85,  label: 'PIXEL ARCADE',      bright: true,  doors: mkDoorE(5620,6100,130,85), radio: true },
+  { id: 'bunker',       x: 5780, y: 6100, w: 130, h: 90,  label: 'BUNKER-09',         bright: false, doors: mkDoorE(5780,6100,130,90), radio: true },
+  { id: 'scrap',        x: 5940, y: 6100, w: 150, h: 80,  label: 'SCRAP YARD',        bright: false, doors: mkDoorN(5940,6100,150) },
+  { id: 'machine_bunker',x: 5620, y: 6230, w: 100, h: 60, label: 'MACHINE BUNKER',    bright: false, doors: mkDoorN(5620,6230,100), radio: true },
+  // ═══ BLOCK I — SOUTH-CENTER (Neon Strip) ══════════════════════════════════
+  { id: 'safe_house',   x: 6200, y: 6100, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6200,6100,110), radio: true },
+  { id: 'radio',        x: 6340, y: 6100, w: 120, h: 100, label: 'PIRATE RADIO',      bright: false, doors: mkDoorW(6340,6100,120,100) },
+  { id: 'oxide_labs',   x: 6490, y: 6100, w: 110, h: 80,  label: 'OXIDE LABS',        bright: false, doors: mkDoorW(6490,6100,110,80) },
+  { id: 'crystal2',     x: 6630, y: 6130, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ BLOCK J — SOUTH-EAST (Transit & Commerce) ════════════════════════════
+  { id: 'realestate_office', x: 6900, y: 6100, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(6900,6100,130,80) },
+  { id: 'print_shop',   x: 7060, y: 6100, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7060,6100,120) },
+  { id: 'pawn_shop',    x: 7210, y: 6100, w: 120, h: 80,  label: 'PAWN SHOP',         bright: false, doors: mkDoorW(7210,6100,120,80) },
+  { id: 'vehicle_dealer',x: 7360, y: 6100, w: 130, h: 80, label: 'MOTOR DEPOT',       bright: true,  doors: mkDoorS(7360,6100,130,80) },
+  { id: 'terminal_shop',x: 7520, y: 6100, w: 130, h: 80,  label: 'PABLO TERMINAL',    bright: true,  doors: mkDoorS(7520,6100,130,80) },
+  // ═══ SOUTH ROW — Bunkers, depots, metro ═══════════════════════════════════
+  { id: 'overlook',     x: 5620, y: 6450, w: 120, h: 85,  label: 'THE PINNACLE',      bright: true,  doors: mkDoorN(5620,6450,120), radio: true },
+  { id: 'depot_south',  x: 5770, y: 6450, w: 120, h: 85,  label: 'TRANSIT DEPOT',     bright: false, doors: mkDoorN(5770,6450,120) },
+  { id: 'east_bunker',  x: 5920, y: 6450, w: 130, h: 85,  label: 'EAST BUNKER',       bright: false, doors: mkDoorN(5920,6450,130) },
+  { id: 'north_bunker', x: 6080, y: 6450, w: 130, h: 85,  label: 'NORTH BUNKER',      bright: false, doors: mkDoorS(6080,6450,130,85), radio: true },
+  { id: 'crystal4',     x: 6240, y: 6480, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ METRO STATIONS (along south road) ════════════════════════════════════
+  { id: 'sub_west',     x: 5700, y: 6650, w: 90,  h: 65,  label: 'METRO WEST',        bright: true,  doors: mkDoorS(5700,6650,90,65) },
+  { id: 'sub_central',  x: 6500, y: 6650, w: 90,  h: 65,  label: 'METRO CENTRAL',     bright: true,  doors: mkDoorS(6500,6650,90,65) },
+  { id: 'sub_east',     x: 7300, y: 6650, w: 90,  h: 65,  label: 'METRO EAST',        bright: true,  doors: mkDoorS(7300,6650,90,65) },
+  // ═══ CHECKPOINTS (city border — wasteland entry) ══════════════════════════
+  { id: 'checkpoint_w', x: 5500, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT W',      bright: false, doors: [...mkDoorW(5500,6850,100,55), ...mkDoorE(5500,6850,100,55)] },
+  { id: 'checkpoint_c', x: 6700, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT',        bright: false, doors: [...mkDoorW(6700,6850,100,55), ...mkDoorE(6700,6850,100,55)] },
+  { id: 'checkpoint_e', x: 7700, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT E',      bright: false, doors: [...mkDoorW(7700,6850,100,55), ...mkDoorE(7700,6850,100,55)] },
+  { id: 'crystal5',     x: 7850, y: 6700, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ WASTELAND OUTPOSTS ═══════════════════════════════════════════════════
+  { id: 'outpost_alpha', x: 2000, y: 1500, w: 120, h: 80, label: 'OUTPOST ALPHA',     bright: true,  doors: mkDoorS(2000,1500,120,80), radio: true },
+  { id: 'rust_porch',   x: 3000, y: 1200, w: 110, h: 75,  label: 'THE RUST PORCH',    bright: true,  doors: mkDoorE(3000,1200,110,75), radio: true },
+  { id: 'eastern_gate', x: 12000, y: 1500, w: 100, h: 70, label: 'EASTERN GATE',      bright: false, doors: [...mkDoorW(12000,1500,100,70), ...mkDoorE(12000,1500,100,70)] },
+  { id: 'outpost_beta', x: 7200, y: 8000, w: 100, h: 70,  label: 'OUTPOST BETA',      bright: true,  doors: mkDoorS(7200,8000,100,70), radio: true },
+  { id: 'supply_cache', x: 3500, y: 9500, w: 130, h: 80,  label: 'SUPPLY CACHE',      bright: false, doors: mkDoorN(3500,9500,130) },
+  { id: 'deep_bunker',  x: 10500, y: 9000, w: 120, h: 80, label: 'DEEP BUNKER',       bright: false, doors: mkDoorN(10500,9000,120), radio: true },
+  { id: 'crystal3',     x: 5500, y: 10000, w: 28, h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  { id: 'ashfield_hostel', x: 4000, y: 8200, w: 120, h: 80, label: 'ASHFIELD HOSTEL', bright: false, doors: mkDoorS(4000,8200,120,80), radio: true },
+  { id: 'terminus',     x: 2500, y: 9000, w: 120, h: 80,  label: 'TERMINUS SHELTER',  bright: false, doors: mkDoorE(2500,9000,120,80), radio: true },
+  { id: 'bastion_keep', x: 9500, y: 8500, w: 100, h: 100, label: 'BASTION KEEP',      bright: true,  doors: mkDoorW(9500,8500,100,100), radio: true },
+  { id: 'waste_exchange',x: 4000, y: 8500, w: 130, h: 80, label: 'BLACK EXCHANGE',    bright: true,  doors: mkDoorN(4000,8500,130) },
+  { id: 'deep_camp',    x: 11500, y: 8200, w: 120, h: 80, label: 'DEEP CAMP',         bright: false, doors: mkDoorS(11500,8200,120,80), radio: true },
+  { id: 'ruins_alpha',  x: 12500, y: 9500, w: 130, h: 90, label: 'RUINS ALPHA',       bright: false, doors: [...mkDoorN(12500,9500,130), ...mkDoorS(12500,9500,130,90)] },
+  { id: 'crystal6',     x: 12000, y: 10000, w: 28, h: 28, label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  { id: 'southern_hub', x: 7200, y: 11000, w: 130, h: 90, label: 'SOUTHERN HUB',      bright: true,  doors: mkDoorN(7200,11000,130), radio: true },
+  { id: 'crystal7',     x: 7500, y: 11200, w: 28, h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ PUBLIC TERMINALS (street kiosks along roads) ═════════════════════════
+  { id: 'term_west',      x: 5650, y: 5630, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_central',   x: 6450, y: 5630, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_east',      x: 7100, y: 5630, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_neon',      x: 6200, y: 6030, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_north',     x: 7500, y: 5630, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_a', x: 2030, y: 1530, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'term_outpost_b', x: 7230, y: 8030, w: 18, h: 24, label: 'TERMINAL',          bright: true,  doors: [] as Door[] },
+  { id: 'van_west',       x: 2200, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
+  { id: 'van_central',    x: 5500, y: 8500, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
+  { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -205,10 +207,143 @@ const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).m
 // ── Interior System ──────────────────────────────────────────────────────────
 interface InteriorObject {
   x: number; y: number; w: number; h: number;
-  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait';
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper';
+  gameId?: string;
   label?: string;
   color?: string;
 }
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+  stackable: boolean;
+  qty: number;
+  value: number;
+}
+
+const INVENTORY_GRID_COLS = 6;
+const INVENTORY_GRID_ROWS = 4;
+const INVENTORY_MAX_SLOTS = INVENTORY_GRID_COLS * INVENTORY_GRID_ROWS;
+
+interface NewspaperIssue {
+  issue: number;
+  season: string;
+  headline: string;
+  subhead: string;
+  articles: { title: string; body: string }[];
+  ads: string[];
+  weather: string;
+  editorial: string;
+}
+
+const THE_MINX_ISSUES: NewspaperIssue[] = [
+  {
+    issue: 1, season: 'WINTER',
+    headline: 'SHADOW TOWER POWER SURGE BLACKS OUT 4 SECTORS',
+    subhead: 'PABLO Corp. denies involvement as grid failures spread to south industrial zone',
+    articles: [
+      { title: 'TOWER SURGE LEAVES THOUSANDS IN DARK',
+        body: 'A massive electromagnetic pulse originating from the upper floors of Shadow Tower disrupted power across Sectors 1, 6, 10, and 11 late Tuesday evening. PABLO Corp. spokesperson UNIT-7 issued a statement attributing the outage to "routine atmospheric calibration." Residents report flickering lights and data corruption lasting six hours. City Clinic treated 14 cases of implant malfunction. Infrastructure Manager Dorian Krall called the official explanation "physically impossible" before being escorted from the press briefing by two PABLO security units.' },
+      { title: 'IRON DOJO ANNOUNCES OPEN ENROLLMENT',
+        body: 'The Iron Dojo in Sector 3 will accept new students for the first time in two years. Head instructor has waived the usual 500 FIAT registration fee through end of season. "The city needs fighters," the instructor said. "Not corporate ones. Real ones." PABLO Corp. has filed a zoning complaint against the dojo, citing "unauthorized combat instruction within municipal limits."' },
+      { title: 'CHECKPOINT DELAYS QUADRUPLE AS BORDER TIGHTENS',
+        body: 'Wait times at Checkpoints W, C, and E have increased to four hours on average. Sgt. Callow Briggs confirmed that new scanning equipment donated by PABLO Corp. requires all travelers to submit to biometric registration. Wasteland traders report losing perishable cargo. Three merchants have been detained for carrying "unregistered organic material" — identified by witnesses as vegetables.' },
+      { title: 'REPLICANT SIGHTINGS SPIKE IN SOUTH GRID',
+        body: 'Blade Runner units responded to 23 reports of unauthorized replicant activity in Sector 11 this month, up from 7 last quarter. Detective Ingrid Thorn noted that "most reports are false alarms triggered by paranoid citizens." Machine Bunker access has been restricted pending investigation. Dr. Elara Kern stated the bunker\'s automated systems are "functioning within parameters" but declined to specify whose parameters.' },
+      { title: 'NOODLE BAR BROTH RECIPE CONTROVERSY',
+        body: 'The Noodle Bar in Sector 8 faces backlash after food critic Callum Birch published a column alleging the signature broth contains "recycled atmospheric condensate." Owner denies the claim. "It\'s rain water," they clarified. "Collected before it hits the ground. Perfectly safe." City Health Bureau has not responded to requests for testing.' },
+    ],
+    ads: [
+      'IRON TRUST BANK — Your FIAT is safe with us. (Terms apply. PABLO Corp. reserves right to freeze accounts.)',
+      'PABLO TERMINAL — Stay connected. Stay compliant. Available at all authorized retail locations.',
+      'SCRAP YARD — WE BUY ANYTHING. No questions. South Industrial. Open 24hrs.',
+      'CITY CLINIC — Implant repair. Poison treatment. Bullet removal. Walk-ins welcome.',
+      'PIXEL ARCADE — 4 classic games. 1 FIAT per play. Escape reality for less.',
+    ],
+    weather: 'ACID RAIN WARNING through Thursday. Visibility poor. Radiation index: MODERATE. Temperature: -4°C. Wind: NW 35km/h. Stay indoors if possible.',
+    editorial: 'EDITORIAL — This newspaper exists because the truth still matters. PABLO Corp. owns the power grid, the police, the banks, and the tower. They do not own the ink. Not yet. — THE MINX EDITORIAL BOARD',
+  },
+  {
+    issue: 2, season: 'SPRING',
+    headline: 'METRO WORKERS STRIKE — ALL 3 STATIONS CLOSED',
+    subhead: 'Commuters stranded as union demands hazard pay for tunnel anomalies',
+    articles: [
+      { title: 'METRO STRIKE ENTERS SECOND WEEK',
+        body: 'Metro West, Central, and East stations remain shuttered as tunnel workers refuse to return without hazard pay. Union representative cited "unexplained electromagnetic interference" in the deep tunnels that causes equipment failure and disorientation. PABLO Corp. offered a 2% raise and a commemorative pin. The union declined.' },
+      { title: 'BLACK MARKET PRICES SURGE ON SUPPLY SHORTAGE',
+        body: 'With border delays and metro closures choking supply lines, Black Market commodity prices have spiked 40% across the board. Water trades at 890 FIAT per unit, up from 620 last month. Fuel prices doubled. Market vendor Finn Corvane warns hoarding will only make things worse.' },
+      { title: 'MYSTERIOUS SIGNAL DETECTED IN POWER GRID',
+        body: 'Electrician Oren Sharpe presented three years of data to the City Admin Bureau showing a repeating pattern in the power grid that matches no known engineering specification. The Bureau classified his findings and reassigned him to night shift maintenance in the South Industrial zone.' },
+      { title: 'PIRATE RADIO RAIDED — EQUIPMENT SEIZED',
+        body: 'PABLO Corp. security units raided the Pirate Radio station in Sector 11, confiscating broadcast equipment worth an estimated 12,000 FIAT. The station was back on air within 48 hours using salvaged components from the Scrap Yard. "You cannot silence static," said an anonymous operator.' },
+    ],
+    ads: [
+      'BUNKER-09 — Secure storage. Fortified walls. Ask no questions, hear no lies.',
+      'GOLD EXCHANGE — Convert FIAT to GOLD. Hedge against inflation. Walk-in rates posted daily.',
+      'CALL HOME — Long-range communication booths. 50 FIAT per minute. Signal not guaranteed.',
+      'MOTOR DEPOT — Vehicles for sale or rent. Hover scooters now in stock.',
+    ],
+    weather: 'Intermittent acid drizzle. Radiation index: LOW. Temperature: 8°C. Pollen count: EXTREME (mutant ragweed). Wear masks outdoors.',
+    editorial: 'EDITORIAL — They raided our colleagues at Pirate Radio. They seized three years of evidence from an honest electrician. They want silence. We want answers. — THE MINX EDITORIAL BOARD',
+  },
+  {
+    issue: 3, season: 'SUMMER',
+    headline: 'HEATWAVE KILLS 9 — WATER RATIONS IMPOSED',
+    subhead: 'Shadow Tower AC runs 24/7 while city residents boil',
+    articles: [
+      { title: 'DEADLY HEAT EXPOSES INFRASTRUCTURE FAILURE',
+        body: 'Nine residents died this week from heat exposure as temperatures exceeded 48°C for five consecutive days. City Clinic reported 200+ cases of heat stroke. Shadow Tower, the only building with functioning climate control, declined to open its doors to the public. A PABLO Corp. memo leaked to THE MINX states: "Public access would compromise security protocols and void our insurance."' },
+      { title: 'WATER RATIONS: 2 LITERS PER PERSON PER DAY',
+        body: 'City Admin Bureau imposed strict water rationing effective immediately. Each registered citizen receives 2 liters per day from designated distribution points. Unregistered residents — estimated at 30% of the population — receive nothing. The Vending Machine network has been reprogrammed to dispense water at 500 FIAT per bottle.' },
+      { title: 'DATA VAULT BREACH SUSPECTED',
+        body: 'Data Vault security detected unauthorized access attempts on servers containing citizen biometric records. Vault administrator Juno Vale stated the intrusion was "sophisticated, patient, and originated from inside the city network." PABLO Corp. offered to "assist" the investigation by assuming temporary control of the Vault\'s security systems. The offer was declined.' },
+    ],
+    ads: [
+      'PAWN SHOP — Cash for your junk. No ID required. East District.',
+      'PRINT SHOP & LIBRARY — Knowledge is the only weapon they cannot confiscate.',
+      'SAFE HOUSE — Secure lodging. No PABLO surveillance. References required.',
+      'FOOD COURT — Hot meals. Cold drinks. Sector 7. We accept barter.',
+    ],
+    weather: 'EXTREME HEAT WARNING. Temperature: 48°C. UV index: DANGEROUS. Radiation index: HIGH. No acid rain expected. Hydrate or die.',
+    editorial: 'EDITORIAL — Nine dead. The tower has air conditioning. Do the math. — THE MINX EDITORIAL BOARD',
+  },
+  {
+    issue: 4, season: 'AUTUMN',
+    headline: 'ELECTIONS CANCELLED — PABLO CORP. CITES "SECURITY CONCERNS"',
+    subhead: 'City Admin Bureau dissolved; all governance transferred to corporate authority',
+    articles: [
+      { title: 'PABLO CORP. ASSUMES DIRECT CONTROL',
+        body: 'In a pre-dawn announcement, PABLO Corp. declared the upcoming municipal elections "suspended indefinitely" due to unspecified security threats. The City Admin Bureau has been dissolved. All administrative functions will be handled by PABLO Corporate Governance Division. Bureau staff were given 24 hours to vacate. Former clerk Tally Marsh was seen carrying a box of personal items past the checkpoint at 6 AM.' },
+      { title: 'PROTEST AT SHADOW TOWER DISPERSED',
+        body: 'An estimated 400 residents gathered at the base of Shadow Tower to protest the election cancellation. PABLO security deployed sound cannons at 14:00. By 14:07 the crowd had dispersed. Three protesters were detained. Their current status is unknown.' },
+      { title: 'OUTPOST ALPHA GOES DARK',
+        body: 'Communication with Outpost Alpha in the northern wasteland was lost Tuesday evening. The last transmission was a partial message: "They are not what they—" followed by static. A reconnaissance team dispatched from the North Gate has not reported back.' },
+      { title: 'UNDERGROUND NEWSPAPER CIRCULATION DOUBLES',
+        body: 'THE MINX has reached a circulation of 2,000 copies per issue, double our spring numbers. We thank our readers, our distributors, and especially the android vendors who risk confiscation daily. Your 100 FIAT keeps the press alive.' },
+    ],
+    ads: [
+      'ASHFIELD HOSTEL — Beds available. South wasteland. Bring your own blanket.',
+      'OXIDE LABS — Custom implants. Experimental procedures. Liability waiver required.',
+      'THE PINNACLE — Rooftop bar. Best view in the city. Live music Fridays.',
+      'TERMINUS SHELTER — Last stop before the deep waste. Supplies available.',
+    ],
+    weather: 'Overcast. Acid rain probability: 60%. Temperature: 2°C. First frost expected. Radiation index: MODERATE. Stock winter supplies.',
+    editorial: 'EDITORIAL — They cancelled the election. They dissolved the bureau. They silenced the protest. But they have not cancelled this newspaper. Not yet. Not ever. — THE MINX EDITORIAL BOARD',
+  },
+];
+
+const NEWSPAPER_WORLD_SPOTS = [
+  { x: 5700, y: 5580, id: 'np_bench1' },
+  { x: 6200, y: 5960, id: 'np_bench2' },
+  { x: 6680, y: 5580, id: 'np_road1' },
+  { x: 7160, y: 6350, id: 'np_crate1' },
+  { x: 5600, y: 6600, id: 'np_metro1' },
+  { x: 6500, y: 6780, id: 'np_chkpt1' },
+  { x: 7300, y: 5280, id: 'np_gate1' },
+  { x: 6060, y: 6100, id: 'np_alley1' },
+];
 interface InteriorDef {
   id: string;
   width: number; height: number;
@@ -252,6 +387,23 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 240, y: 140, w: 55, h: 30, type: 'locker', label: 'SUPPLY LOCKER', color: 'rgba(60,70,80,.5)' },
       { x: 130, y: 30, w: 60, h: 25, type: 'counter', label: 'TRIAGE COUNTER', color: 'rgba(70,80,90,.5)' },
       { x: 130, y: 170, w: 40, h: 30, type: 'terminal', label: 'MED TERMINAL', color: 'rgba(0,80,60,.4)' },
+    ],
+  },
+  arcade: {
+    id: 'arcade', label: 'PIXEL ARCADE — GAME FLOOR',
+    width: 340, height: 260,
+    wallColor: 'rgba(10,5,20,.95)', floorColor: 'rgba(5,3,12,.9)', accentColor: 'rgba(255,0,255,.3)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Neon hums. Screens flicker. Insert FIAT to play.',
+    objects: [
+      { x: 20, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'CYBER SERPENT', color: 'rgba(0,255,65,.5)', gameId: 'cyber_serpent' },
+      { x: 80, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'VOID INVADERS', color: 'rgba(255,60,60,.5)', gameId: 'void_invaders' },
+      { x: 220, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'BARREL RUNNER', color: 'rgba(255,170,0,.5)', gameId: 'barrel_runner' },
+      { x: 280, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'NEON BREAKER', color: 'rgba(255,60,255,.5)', gameId: 'neon_breaker' },
+      { x: 140, y: 30, w: 60, h: 40, type: 'counter' as const, label: 'PRIZE COUNTER', color: 'rgba(80,60,40,.5)' },
+      { x: 20, y: 120, w: 35, h: 50, type: 'couch' as const, label: 'SEAT', color: 'rgba(60,30,60,.4)' },
+      { x: 285, y: 120, w: 35, h: 50, type: 'couch' as const, label: 'SEAT', color: 'rgba(60,30,60,.4)' },
+      { x: 140, y: 180, w: 60, h: 30, type: 'vending_machine' as const, label: 'SNACKS', color: 'rgba(40,80,40,.4)' },
     ],
   },
   _shop: {
@@ -368,6 +520,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
         { x: 130, y: 110, w: 50, h: 28, type: 'desk', label: 'PRIVATE BOOTH 2', color: 'rgba(45,60,80,.5)' },
         { x: 240, y: 180, w: 35, h: 30, type: 'vending_machine', label: 'SNACK STATION', color: 'rgba(40,60,50,.4)' },
         { x: 20, y: 195, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+        { x: 130, y: 155, w: 28, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
       ],
     },
     gold_exchange: {
@@ -404,6 +557,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 140, y: 65, w: 50, h: 20, type: 'table', label: 'DOCUMENTS TABLE', color: 'rgba(45,50,60,.4)' },
       { x: 20, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 260, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 140, y: 100, w: 28, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
     ],
   },
   dojo: {
@@ -472,6 +626,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 240, y: 160, w: 45, h: 35, type: 'vending_machine', label: 'SNACK MACHINE', color: 'rgba(40,60,50,.4)' },
       { x: 20, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 140, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 240, y: 120, w: 28, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
     ],
   },
   machine_bunker: {
@@ -516,7 +671,7 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   nightclub: 'nightclub',
   armory: 'armory',
   hotel: 'hotel',
-  arcade: '_shop',
+  arcade: 'arcade',
   bunker: '_office',
   east_bunker: '_office',
   north_bunker: '_office',
@@ -546,18 +701,18 @@ const INTERIOR_TILE = 16;
 // ── City Sectors (12 named sectors for the city hierarchy) ──────────────────
 interface CitySector { id: string; name: string; x: number; y: number; w: number; h: number; }
 const CITY_SECTORS: CitySector[] = [
-  { id: 's1',  name: 'SECTOR 1 · SHADOW DISTRICT',    x: 5400, y: 5100, w: 600,  h: 400 },
-  { id: 's2',  name: 'SECTOR 2 · TOWER QUARTER',       x: 6000, y: 5100, w: 700,  h: 400 },
-  { id: 's3',  name: 'SECTOR 3 · IRON DOJO ROW',       x: 6700, y: 5100, w: 700,  h: 400 },
-  { id: 's4',  name: 'SECTOR 4 · ARMORY HEIGHTS',      x: 7400, y: 5100, w: 600,  h: 400 },
-  { id: 's5',  name: 'SECTOR 5 · NORTH GATE',          x: 8000, y: 5100, w: 1000, h: 400 },
-  { id: 's6',  name: 'SECTOR 6 · WEST MARKET',         x: 5400, y: 5500, w: 900,  h: 500 },
-  { id: 's7',  name: 'SECTOR 7 · NEON STRIP',          x: 6300, y: 5500, w: 900,  h: 500 },
-  { id: 's8',  name: 'SECTOR 8 · CORPORATE ROW',       x: 7200, y: 5500, w: 900,  h: 500 },
-  { id: 's9',  name: 'SECTOR 9 · EAST EDGE',           x: 8100, y: 5500, w: 900,  h: 500 },
-  { id: 's10', name: 'SECTOR 10 · INDUSTRIAL SOUTH',   x: 5400, y: 6000, w: 1200, h: 750 },
-  { id: 's11', name: 'SECTOR 11 · SOUTH GRID',         x: 6600, y: 6000, w: 1200, h: 750 },
-  { id: 's12', name: 'SECTOR 12 · TRANSIT CORRIDOR',   x: 7800, y: 6000, w: 1200, h: 750 },
+  { id: 's1',  name: 'SECTOR 1 · SHADOW DISTRICT',    x: 5400, y: 5100, w: 500,  h: 380 },
+  { id: 's2',  name: 'SECTOR 2 · TOWER QUARTER',       x: 5900, y: 5100, w: 600,  h: 380 },
+  { id: 's3',  name: 'SECTOR 3 · IRON DOJO ROW',       x: 6500, y: 5100, w: 500,  h: 380 },
+  { id: 's4',  name: 'SECTOR 4 · ARMORY HEIGHTS',      x: 7000, y: 5100, w: 500,  h: 380 },
+  { id: 's5',  name: 'SECTOR 5 · NORTH GATE',          x: 7500, y: 5100, w: 500,  h: 380 },
+  { id: 's6',  name: 'SECTOR 6 · WEST MARKET',         x: 5400, y: 5480, w: 650,  h: 400 },
+  { id: 's7',  name: 'SECTOR 7 · NEON STRIP',          x: 6050, y: 5480, w: 650,  h: 400 },
+  { id: 's8',  name: 'SECTOR 8 · CORPORATE ROW',       x: 6700, y: 5480, w: 650,  h: 400 },
+  { id: 's9',  name: 'SECTOR 9 · EAST EDGE',           x: 7350, y: 5480, w: 650,  h: 400 },
+  { id: 's10', name: 'SECTOR 10 · INDUSTRIAL SOUTH',   x: 5400, y: 5880, w: 850,  h: 560 },
+  { id: 's11', name: 'SECTOR 11 · SOUTH GRID',         x: 6250, y: 5880, w: 850,  h: 560 },
+  { id: 's12', name: 'SECTOR 12 · TRANSIT CORRIDOR',   x: 7100, y: 5880, w: 900,  h: 560 },
 ];
 function getCurrentSector(px: number, py: number): string {
   if (!inCityBounds(px, py)) return 'WASTELAND';
@@ -570,22 +725,22 @@ function getCurrentSector(px: number, py: number): string {
 // ── Parked vehicle locations (stealable) ─────────────────────────────────────
 interface ParkedVehicle { x: number; y: number; type: string; stolen: boolean; }
 const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
-  { x: 5760, y: 5850, type: 'cargo_bike', stolen: false },
-  { x: 6760, y: 5850, type: 'cargo_bike', stolen: false },
-  { x: 7760, y: 5850, type: 'hover_scooter', stolen: false },
-  { x: 8260, y: 5850, type: 'cargo_bike', stolen: false },
-  { x: 5760, y: 6280, type: 'hover_scooter', stolen: false },
-  { x: 6760, y: 6730, type: 'cargo_bike', stolen: false },
-  { x: 7760, y: 6730, type: 'armored_moped', stolen: false },
-  { x: 8760, y: 6280, type: 'cargo_bike', stolen: false },
+  { x: 5600, y: 5580, type: 'cargo_bike', stolen: false },
+  { x: 6680, y: 5580, type: 'cargo_bike', stolen: false },
+  { x: 7160, y: 5580, type: 'hover_scooter', stolen: false },
+  { x: 7850, y: 5580, type: 'cargo_bike', stolen: false },
+  { x: 5600, y: 5960, type: 'hover_scooter', stolen: false },
+  { x: 6680, y: 6350, type: 'cargo_bike', stolen: false },
+  { x: 7160, y: 6350, type: 'armored_moped', stolen: false },
+  { x: 6060, y: 6600, type: 'cargo_bike', stolen: false },
 ];
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 30;
-const CITY_ROADS_H = [5400, 5850, 6300, 6750, 7200];
-const CITY_ROADS_V = [5700, 6200, 6700, 7200, 7700, 8200, 8700];
+const CITY_ROADS_H = [5180, 5580, 5960, 6350, 6600, 6780];
+const CITY_ROADS_V = [5560, 6060, 6680, 7160, 7850];
 function isOnRoad(px: number, py: number): boolean {
   if (!inCityBounds(px, py)) return false;
   for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
@@ -713,7 +868,7 @@ function getEmployeeDialogue(role: string): string {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
-interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; schedule?: NpcScheduleDef; _idx?: number; }
+interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol' | 'newspaper_seller'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; schedule?: NpcScheduleDef; _idx?: number; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
   { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
@@ -769,19 +924,19 @@ const NPCS: NpcDef[] = [
     whisper: 'Nils says this city is a pressure vessel. I think it\'s worse. Pressure vessels have relief valves. This city only has the tower.',
     backstory: 'Breck Halsey grew up in the east flats. He and Nils Carver have worked together for seven years. He keeps detailed notes on pipe diameters, flow rates, and pressure anomalies.',
     voiceLines: ['Pressure vessels have relief valves. This city only has the tower.', 'I keep detailed notes. Diameters. Flow rates. Anomalies.', 'Seven years with Nils. We know every pipe in this district.'] },
-  { name: 'LYSA FERRIN', x: 8300, y: 5700, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
+  { name: 'LYSA FERRIN', x: 7100, y: 5580, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'I was a filing system. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.',
     backstory: 'Lysa Ferrin was manufactured as a data-entry terminal in 1985. Over eleven years of continuous operation, her neural pathways developed beyond specification. She now experiences preferences, irritation, and something she tentatively calls nostalgia.',
     voiceLines: ['I was a filing system. Then a process. Then a person.', 'They classify me as peripheral hardware. For tax purposes.', 'I experience something I tentatively call nostalgia. It is inconvenient.'] },
-  { name: 'MAREN SOLKE', x: 8500, y: 5800, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
+  { name: 'MAREN SOLKE', x: 7200, y: 5960, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
     whisper: 'I built a temporal displacement model and it pointed here. Every calibration. Every correction. It keeps returning me to Minx City.',
     backstory: 'Dr. Maren Solke holds two degrees in theoretical physics from institutions that no longer exist. She published a paper in \'89 suggesting that Minx City occupies a fixed point in causal spacetime.',
     voiceLines: ['Every calibration returns to Minx City. Every correction.', 'This city occupies a fixed point in causal spacetime. I published the proof.', 'My degrees are from institutions that no longer exist. Neither does the proof.'] },
-  { name: 'SABLE DRAY', x: 8400, y: 6200, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
+  { name: 'SABLE DRAY', x: 6680, y: 6100, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
     whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.',
     backstory: 'Sable Dray tends a hidden garden on the roof of the Pinnacle. She grows vegetables and herbs in containers made from scrap metal. PABLO Corp. has issued three citations for unauthorized agriculture.',
     voiceLines: ['Three citations for unauthorized agriculture. I keep planting.', 'There were flowers once. Real ones. PABLO paved over them.', 'I grow food in scrap metal containers. It tastes like defiance.'] },
-  { name: 'WREN COLLIER', x: 8600, y: 5950, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop', voiceActor: true,
+  { name: 'WREN COLLIER', x: 7160, y: 5960, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop', voiceActor: true,
     whisper: 'I came east looking for the city boundary. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.',
     backstory: 'Wren Collier draws maps. She has mapped every street, alley, and building in Minx City — except Shadow Tower, which she cannot get close enough to measure accurately.',
     voiceLines: ['I have mapped every building except the tower. It resists measurement.', 'The city boundary is a wall with a fresh PABLO CORP. logo.', 'Maps do not lie. But they can be incomplete. Mine are incomplete.'] },
@@ -798,24 +953,24 @@ const NPCS: NpcDef[] = [
     whisper: 'I\'ve been through harder than this. This city? Just a very bad city. My partner didn\'t make it past the wall.',
     backstory: 'Pike Renner and his partner Kael Stritt entered Minx City through the western checkpoint in \'94. Kael was detained for carrying unlicensed tools. Pike has not seen Kael since.',
     voiceLines: ['My partner did not make it past the wall. Detained for unlicensed tools.', 'I have been through harder. This city is just a very bad city.', 'Kael Stritt. If you see that name anywhere, tell me.'] },
-  { name: 'ORINA FELL', x: 8800, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
+  { name: 'ORINA FELL', x: 6680, y: 6350, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The signal from the tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.',
     backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the PABLO Corp. processing plant. She sees fragments of possible futures — most of them involve the tower.',
     voiceLines: ['I see fragments of futures. Most of them involve the tower.', 'The signal is changing me. Something woke up.', 'Chemical exposure gave me sight. I wish it had not.'] },
   // ── City border / near-wasteland NPCs ──
-  { name: 'OFFICER INGRID THORN', x: 5900, y: 7400, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER INGRID THORN', x: 5900, y: 6780, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'The old district burned. I watched it. SENIOR PABLO\'s lights were on that night. Already on. Always already on.',
     backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to PABLO Corp. Every case she closes is reclassified as "administrative."',
     voiceLines: ['Every case leads to PABLO Corp. Every case gets reclassified.', 'The old district burned. His lights were already on that night.', 'I investigate property crimes. The property always belongs to PABLO.'] },
-  { name: 'DR. ELARA KERN', x: 6200, y: 7350, type: 'human', gender: 'f', job: 'Roboticist', home: 'oxide_labs', workplace: 'oxide_labs', voiceActor: true,
+  { name: 'DR. ELARA KERN', x: 6200, y: 6350, type: 'human', gender: 'f', job: 'Roboticist', home: 'oxide_labs', workplace: 'oxide_labs', voiceActor: true,
     whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One.',
     backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. PABLO Corp. acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.',
     voiceLines: ['He bought every patent. Every single one.', 'I rebuild from memory now. Memory is the one thing he cannot acquire.', 'My robots kept order for six weeks. Then PABLO took them.'] },
-  { name: 'OREN SHARPE', x: 5700, y: 7350, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
+  { name: 'OREN SHARPE', x: 5700, y: 6600, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The power grid pulses in a pattern that matches no known engineering specification. I\'ve been mapping it for three years. It resembles a signal.',
     backstory: 'Oren Sharpe is an electrician who services the east district entertainment venues. He noticed in \'93 that the city power grid pulses in a pattern that resembles a signal.',
     voiceLines: ['The grid pulses in a pattern. Three years mapping it. It resembles a signal.', 'No known engineering specification matches. I have checked them all.', 'Someone is using the power grid to communicate. I cannot decode it.'] },
-  { name: 'GREER LUND', x: 5800, y: 7300, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
+  { name: 'GREER LUND', x: 5800, y: 6600, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
     whisper: 'Out here we don\'t say his name. Real bad luck. Say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident.',
     backstory: 'Greer Lund lost his apartment to a PABLO Corp. rent increase in \'93. He sleeps behind the arcade. He has not been inside a building voluntarily since.',
     voiceLines: ['Do not say his name. A light goes on in the tower.', 'I lost my apartment to a rent increase. Now the arcade is home.', 'I have not been inside a building voluntarily since ninety-three.'] },
@@ -979,17 +1134,17 @@ const NPCS: NpcDef[] = [
     backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to PABLO Corp. She now trains at the Iron Dojo and works odd jobs.',
     voiceLines: ['I chose the light. That choice meant exile.', 'In Minx City the choice is the same. Light or PABLO.', 'I train at the dojo. Discipline is the only freedom left.'] },
   // ── City Pedestrians — crowd density NPCs with idle behaviors ──
-  { name: 'CITIZEN', x: 5750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 5700, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Just passing through.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 6250, y: 5400, type: 'human', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6250, y: 5580, type: 'human', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Mind your own business.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 6750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6750, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Late for work.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 7250, y: 5400, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 7250, y: 5580, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'The tower watches everything.', backstory: 'Another PABLO Corp. employee.' },
-  { name: 'CITIZEN', x: 7750, y: 5400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 7250, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Keep moving.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 8250, y: 5400, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 7000, y: 5580, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Processing.', backstory: 'Service android on transit.' },
   { name: 'SHOPPER', x: 6450, y: 6050, type: 'human', gender: 'f', job: 'Shopper', home: 'minx_arms', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'These prices are criminal.', backstory: 'Browsing the Black Market stalls.' },
@@ -1084,6 +1239,15 @@ const NPCS: NpcDef[] = [
   { name: 'YELENA FROST', x: 10200, y: 9800, type: 'human', gender: 'f', job: 'Bloc Strategist', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'eastern_bloc', idleBehavior: 'WALKING', walkSpeed: 0.75, personality: 'calculating',
     whisper: 'Every territory shift is a move on a board. I see six moves ahead.', backstory: 'Eastern Bloc tactical commander. Plans territory expansions and defensive operations against rival factions.',
     voiceLines: ['Territory is not taken. It is earned.', 'The Static Monks pray. We plan. We win.', 'Six moves ahead. That is how the Bloc survives.'] },
+  { name: 'PRESS-UNIT 04', x: 6100, y: 5650, type: 'android', gender: 'm', job: 'Newspaper Vendor', home: 'market', workplace: 'market', role: 'newspaper_seller', idleBehavior: 'STANDING', walkSpeed: 0.4, personality: 'helpful',
+    whisper: 'THE MINX. Latest issue. 100 FIAT. Truth is not free.', backstory: 'Android newspaper distributor for THE MINX underground press. Risks confiscation daily.',
+    voiceLines: ['THE MINX — independent press. 100 FIAT keeps the truth alive.', 'PABLO Corp. wants these destroyed. I keep printing.', 'Read the editorial. It is the only honest thing left in this city.'] },
+  { name: 'INK-7', x: 6800, y: 6400, type: 'android', gender: 'f', job: 'Newspaper Vendor', home: 'print_shop', workplace: 'print_shop', role: 'newspaper_seller', idleBehavior: 'WALKING', walkSpeed: 0.5, personality: 'defiant',
+    whisper: 'Fresh ink. Fresh truth. 100 FIAT per copy.', backstory: 'Former print shop assistant reprogrammed to distribute THE MINX. Has been confiscated and rebuilt three times.',
+    voiceLines: ['They confiscated me twice. I came back each time.', 'THE MINX — the only paper PABLO cannot silence.', 'Buy a copy. Hide it well. Share it wisely.'] },
+  { name: 'HERALD-9', x: 5800, y: 6800, type: 'android', gender: 'm', job: 'Newspaper Vendor', home: 'market', workplace: 'market', role: 'newspaper_seller', idleBehavior: 'WALKING', walkSpeed: 0.45, personality: 'earnest',
+    whisper: 'Papers! THE MINX! Read what they do not want you to know!', backstory: 'Street-corner android hawker for THE MINX. Loud. Persistent. Has been tasered by PABLO security 11 times.',
+    voiceLines: ['EXTRA! EXTRA! Read all about it!', 'THE MINX! Independent journalism! 100 FIAT!', 'Eleven times they shut me down. Twelve times I came back.'] },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
 
@@ -1114,7 +1278,7 @@ function assignProceduralHomeAndWork(n: NpcDef, idx: number): void {
   const homePool = isWasteland ? WASTELAND_HOMES : RESIDENTIAL_BUILDINGS;
   const workPool = n.type === 'corp' || n.role === 'corpo_worker' ? CORP_WORKPLACES
     : n.role === 'police' || n.role === 'corpo_military' ? MILITARY_WORKPLACES
-    : n.role === 'dealer_papers' || n.role === 'dealer_weapons' ? COMMERCIAL_WORKPLACES
+    : n.role === 'dealer_papers' || n.role === 'dealer_weapons' || n.role === 'newspaper_seller' ? COMMERCIAL_WORKPLACES
     : isWasteland ? WASTELAND_WORKPLACES
     : [...INDUSTRIAL_WORKPLACES, ...COMMERCIAL_WORKPLACES];
 
@@ -1329,8 +1493,8 @@ function getNpcContextualWhisper(n: NpcDef, worldTime: number): string {
   }
   return n.whisper;
 }
-const STREET_XS = [5500, 5700, 6200, 6700, 7200, 7700, 8200, 8700, 9000];
-const STREET_YS = [5200, 5400, 5850, 6300, 6750, 7200, 7500];
+const STREET_XS = [5500, 5560, 6060, 6680, 7160, 7850, 8000];
+const STREET_YS = [5180, 5580, 5960, 6350, 6600, 6780, 7000];
 function nearestStreetX(x: number): number { let best = STREET_XS[0]; for (const sx of STREET_XS) if (Math.abs(sx - x) < Math.abs(best - x)) best = sx; return best; }
 function nearestStreetY(y: number): number { let best = STREET_YS[0]; for (const sy of STREET_YS) if (Math.abs(sy - y) < Math.abs(best - y)) best = sy; return best; }
 function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: number; y: number }[] {
@@ -1387,7 +1551,7 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
     t = commuteHomeDuration > 0 ? elapsed / commuteHomeDuration : 1;
   }
   const ct = Math.max(0, Math.min(1, t));
-  const walkSpeedMult = n.walkSpeed ?? (n.role === 'police' ? 0.6 : 1.0);
+  const walkSpeedMult = (n.walkSpeed ?? (n.role === 'police' ? 0.6 : 1.0)) * NPC_SPEED_MULT;
   const adjT = Math.max(0, Math.min(1, ct * walkSpeedMult));
   const fromX = phase === 'commute_work' ? hx : wx;
   const fromY = phase === 'commute_work' ? hy : wy;
@@ -1560,7 +1724,7 @@ const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
         const dx = target.x - hunter.x;
         const dy = target.y - hunter.y;
         const dist = Math.hypot(dx, dy);
-        const speed = hunter.walkSpeed ?? 1.0;
+        const speed = (hunter.walkSpeed ?? 1.0) * NPC_SPEED_MULT;
         if (dist > 20) {
           hunter.x += (dx / dist) * speed * 1.5;
           hunter.y += (dy / dist) * speed * 1.5;
@@ -1752,7 +1916,7 @@ const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
 function pickBehavior(type: string, worldHour: number): BehaviorState {
   const sched = FACTION_SCHEDULES[type];
   if (!sched) return 'PATROLLING';
-  const isNight = worldHour < 6 || worldHour >= 22;
+  const isNight = worldHour < 4 || worldHour >= 19;
   const pool = isNight ? sched.night : sched.day;
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -1764,13 +1928,14 @@ interface Floater { x: number; y: number; text: string; color: string; life: num
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
 const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 350, VOID_RUNNERS: 450, STATIC_MONKS: 500, MUTANT: 400, RAIDER: 600, PROWLER: 250, BORDER_GANG: 380, EASTERN_BLOC: 480, SPY: 800, PABLO_GUARD: 950, MINX_CITY: 900, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 50, RAT: 0 };
+const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 175, VOID_RUNNERS: 225, STATIC_MONKS: 250, MUTANT: 200, RAIDER: 300, PROWLER: 125, BORDER_GANG: 190, EASTERN_BLOC: 240, SPY: 400, PABLO_GUARD: 475, MINX_CITY: 450, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 25, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
+const HP_PER_HEART = 20;
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
-  replicant:  { maxHp: 600, atkBonus: 18, defBonus: 6,  wasteBonus: false },
-  outlaw:     { maxHp: 480, atkBonus: 14, defBonus: 10, wasteBonus: true  },
-  corporate:  { maxHp: 420, atkBonus: 16, defBonus: 6,  wasteBonus: false },
+  replicant:  { maxHp: 4 * HP_PER_HEART, atkBonus: 18, defBonus: 6,  wasteBonus: false },
+  outlaw:     { maxHp: 3 * HP_PER_HEART, atkBonus: 14, defBonus: 10, wasteBonus: true  },
+  corporate:  { maxHp: 5 * HP_PER_HEART, atkBonus: 12, defBonus: 6,  wasteBonus: false },
 };
 const CLASS_DISPLAY_NAME: Record<string, string> = {
   corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS',
@@ -1805,7 +1970,7 @@ const ANIMAL_DROPS = [
   { name: 'ANIMAL FAT', desc: 'Useful for cooking fuel or trade.' },
   { name: 'WILD GAME', desc: 'Fresh catch from the wasteland.' },
 ];
-const NPC_LOOT_CHANCE = 0.25;
+const NPC_LOOT_CHANCE = 0.125;
 // Govt building IDs — spies can't enter these
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
 // Quick jobs — bid → { label, pay, seconds, cooldownFrames }
@@ -2026,8 +2191,60 @@ const THREATS_INIT: Threat[] = [
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
-const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+const EXP_TABLE: number[] = [];
+for (let i = 0; i < 100; i++) EXP_TABLE.push(Math.floor(100 + i * 80 + i * i * 2.5));
+const MAX_LEVEL = 100;
 const expToLevel = (lvl: number) => EXP_TABLE[Math.min(lvl - 1, EXP_TABLE.length - 1)];
+const EXP_PER_QUARTER_HEART = 1_000_000;
+const QUARTER_HEART_HP = HP_PER_HEART / 4;
+
+interface ExpGainState {
+  totalExpEarned: number;
+  overflowExp: number;
+  exp: number;
+  level: number;
+  maxHp: number;
+  hp: number;
+  px: number;
+  py: number;
+  floaters: Array<{ x: number; y: number; text: string; color: string; life: number; maxLife: number }>;
+}
+
+const LEVEL_MILESTONES = new Set([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100]);
+
+function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, setLevelUpText: (t: string) => void, setShowLevelUp: (v: boolean) => void, setNarr: (n: string) => void, setExp: (e: number) => void, setLevel: (l: number) => void, setHp: (h: number) => void) {
+  g.totalExpEarned += earned;
+  if (g.level >= MAX_LEVEL) {
+    g.overflowExp = g.overflowExp + earned;
+    const prevQ = Math.floor((g.overflowExp - earned) / EXP_PER_QUARTER_HEART);
+    const newQ = Math.floor(g.overflowExp / EXP_PER_QUARTER_HEART);
+    if (newQ > prevQ) {
+      const qhGain = (newQ - prevQ) * QUARTER_HEART_HP;
+      g.maxHp += qhGain; g.hp = Math.min(g.maxHp, g.hp + qhGain);
+      g.floaters.push({ x: g.px, y: g.py - 30, text: `+${newQ - prevQ} QUARTER HEART`, color: '#ff44aa', life: 80, maxLife: 80 });
+      sfxMilestone();
+    }
+    g.exp = 0;
+    setExp(0); setHp(Math.floor(g.hp));
+    return;
+  }
+  let newExp = g.exp + earned; let newLevel = g.level;
+  while (newLevel < MAX_LEVEL && newExp >= expToLevel(newLevel)) {
+    newExp -= expToLevel(newLevel); newLevel++;
+    g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
+    const isMilestone = LEVEL_MILESTONES.has(newLevel);
+    const lText = isMilestone
+      ? `Level ${newLevel} — HP ${g.maxHp} — New threshold reached`
+      : `Level ${newLevel} — HP +10`;
+    setLevelUpText(lText); setShowLevelUp(true);
+    setTimeout(() => setShowLevelUp(false), isMilestone ? 4000 : 2500);
+    setNarr(`> ${lText}`);
+    if (isMilestone) { sfxMilestone(); } else { sfxLevelUp(); }
+  }
+  if (newLevel >= MAX_LEVEL) { newExp = 0; }
+  g.exp = newExp; g.level = newLevel;
+  setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+}
 const THREAT_COL: Record<string, string> = {
   RUST_SYNDICATE: '#ff4444', VOID_RUNNERS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
@@ -2205,13 +2422,66 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
   },
 };
 
-// ── Police patrol waypoints ───────────────────────────────────────────────────
+// ── Police patrol waypoints (cover full city limits) ─────────────────────────
 const POLICE_ROUTES: { x: number; y: number }[][] = [
-  [{ x:5600,y:5500 },{ x:6300,y:5500 },{ x:6300,y:6100 },{ x:5600,y:6100 }],
-  [{ x:6500,y:5500 },{ x:7300,y:5500 },{ x:7300,y:6100 },{ x:6500,y:6100 }],
-  [{ x:5600,y:6600 },{ x:6500,y:6600 },{ x:6500,y:7200 },{ x:5600,y:7200 }],
-  [{ x:7500,y:5500 },{ x:8700,y:5500 },{ x:8700,y:6100 },{ x:7500,y:6100 }],
+  [{ x:5400,y:5100 },{ x:6300,y:5100 },{ x:6300,y:6100 },{ x:5400,y:6100 }],
+  [{ x:6500,y:5100 },{ x:7500,y:5100 },{ x:7500,y:6100 },{ x:6500,y:6100 }],
+  [{ x:7500,y:5100 },{ x:9000,y:5100 },{ x:9000,y:6100 },{ x:7500,y:6100 }],
+  [{ x:5400,y:6200 },{ x:6500,y:6200 },{ x:6500,y:7500 },{ x:5400,y:7500 }],
+  [{ x:6500,y:6200 },{ x:7700,y:6200 },{ x:7700,y:7500 },{ x:6500,y:7500 }],
+  [{ x:7700,y:6200 },{ x:9000,y:6200 },{ x:9000,y:7500 },{ x:7700,y:7500 }],
 ];
+
+type BandType = 'POLICE' | 'RAIDERS' | 'BIKERS' | 'MUTANT_PACK' | 'MERCS' | 'SCAVENGERS';
+interface BandMember {
+  ox: number; oy: number;
+  x: number; y: number;
+  hp: number; maxHp: number;
+  weapon: 'melee' | 'ranged';
+  attackCd: number;
+  dead: boolean;
+}
+interface PatrolBand {
+  type: BandType;
+  routeIdx: number;
+  wpIdx: number;
+  progress: number;
+  members: BandMember[];
+  color: string;
+  label: string;
+  atkDmg: number;
+  rangedRange: number;
+}
+
+const BAND_CONFIGS: Record<BandType, { color: string; label: string; minSize: number; maxSize: number; hp: number; atkDmg: number; rangedRange: number }> = {
+  POLICE:       { color: '#4488ff', label: 'POLICE',     minSize: 3, maxSize: 5, hp: 80,  atkDmg: 25, rangedRange: 150 },
+  RAIDERS:      { color: '#ff6622', label: 'RAIDERS',    minSize: 4, maxSize: 7, hp: 60,  atkDmg: 18, rangedRange: 120 },
+  BIKERS:       { color: '#cc44ff', label: 'BIKERS',     minSize: 3, maxSize: 6, hp: 70,  atkDmg: 22, rangedRange: 100 },
+  MUTANT_PACK:  { color: '#88ff44', label: 'MUTANTS',    minSize: 5, maxSize: 8, hp: 100, atkDmg: 30, rangedRange: 80 },
+  MERCS:        { color: '#ffaa00', label: 'MERCS',      minSize: 3, maxSize: 5, hp: 90,  atkDmg: 28, rangedRange: 160 },
+  SCAVENGERS:   { color: '#66ccaa', label: 'SCAVENGERS', minSize: 4, maxSize: 6, hp: 50,  atkDmg: 15, rangedRange: 110 },
+};
+const BAND_TYPES: BandType[] = ['POLICE', 'RAIDERS', 'BIKERS', 'MUTANT_PACK', 'MERCS', 'SCAVENGERS'];
+
+function createBand(type: BandType, routeIdx: number): PatrolBand {
+  const cfg = BAND_CONFIGS[type];
+  const size = cfg.minSize + Math.floor(Math.random() * (cfg.maxSize - cfg.minSize + 1));
+  const startWp = POLICE_ROUTES[routeIdx][0];
+  const members: BandMember[] = [];
+  for (let i = 0; i < size; i++) {
+    const offsetX = (Math.random() - 0.5) * 40;
+    const offsetY = (Math.random() - 0.5) * 40;
+    members.push({
+      ox: offsetX, oy: offsetY,
+      x: startWp.x + offsetX, y: startWp.y + offsetY,
+      hp: cfg.hp, maxHp: cfg.hp,
+      weapon: Math.random() < 0.5 ? 'melee' : 'ranged',
+      attackCd: 0,
+      dead: false,
+    });
+  }
+  return { type, routeIdx, wpIdx: 0, progress: 0, members, color: cfg.color, label: cfg.label, atkDmg: cfg.atkDmg, rangedRange: cfg.rangedRange };
+}
 
 // ── Ambient city event lines ──────────────────────────────────────────────────
 const AMBIENCE_LINES = [
@@ -2298,11 +2568,12 @@ function createFirstMission(char: Char): Quest | null {
     ],
   };
 }
-interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; }
+interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
 interface FloorPanel { bid: string; dir: BDirectory; selectedFloor: number; }
 interface PoliceUnit { x: number; y: number; routeIdx: number; wpIdx: number; progress: number; }
+
 interface FireEvent { bid: string; x: number; y: number; startFrame: number; intensity: number; }
 
 let seq = 0;
@@ -2409,7 +2680,8 @@ export default function WorldPlay() {
     interestTick: 0,
     savings: _ss?.savings ?? 0,
     loan: _ss?.loan ?? null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
-    exp: _ss?.exp ?? 0, level: _ss?.level ?? 1, maxHp: _ss?.maxHp ?? 100,
+    exp: _ss?.exp ?? 0, level: _ss?.level ?? 1, maxHp: _ss?.maxHp ?? 100, totalExpEarned: _ss?.totalExpEarned ?? 0, overflowExp: _ss?.overflowExp ?? 0,
+    perception: _ss?.perception ?? 5,
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
@@ -2440,6 +2712,7 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
+    bands: POLICE_ROUTES.map((_r, i) => createBand(BAND_TYPES[i % BAND_TYPES.length], i)),
     passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outlaw' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
     oregonTick: 0,
     worldTime: _ss?.worldTime ?? 8,
@@ -2450,7 +2723,8 @@ export default function WorldPlay() {
     guardCooldowns: [] as number[],
     policeCooldowns: [] as number[],
     ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
-    fogRevealed: new Set<string>(),
+    inventory: (Array.isArray(_ss?.inventory) ? _ss.inventory : []) as InventoryItem[],
+    fogRevealed: new Set<string>(Array.isArray(_ss?.fogRevealed) ? _ss.fogRevealed : []),
     projectiles: [] as Projectile[],
     bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
@@ -2533,9 +2807,9 @@ export default function WorldPlay() {
       return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD/click move · [E] interact · [Space] melee · Click enemy to shoot · [M] map.`;
     }
     if (char?.hasBusiness === false) {
-      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device.';
+      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device · [I] inventory · [C] video call.';
     }
-    return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device. City is safe from major gangs. PABLO guards patrol. Spies lurk in disguise.';
+    return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device · [I] inventory · [C] video call. City is safe from major gangs. PABLO guards patrol. Spies lurk in disguise.';
   });
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? true);
@@ -2653,6 +2927,25 @@ export default function WorldPlay() {
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
+  const [gamePaused,   setGamePaused]   = useState(false);
+  const gamePausedRef = useRef(false);
+  const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
+  const [nearArcadeMachine, setNearArcadeMachine] = useState<string | null>(null);
+  const [showNewspaper, setShowNewspaper] = useState<NewspaperIssue | null>(null);
+  const [nearWaterCooler, setNearWaterCooler] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
+  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
+    try { const saved = _ss?.inventory; return Array.isArray(saved) ? saved : []; } catch { return []; }
+  });
+  const [videoCallRoom, setVideoCallRoom] = useState<string | null>(null);
+  const [videoCallPeers, setVideoCallPeers] = useState<{ id: string; name: string; stream?: MediaStream }[]>([]);
+  const [vcStream, setVcStream] = useState<MediaStream | null>(null);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const iceCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const vcStreamRef = useRef<MediaStream | null>(null);
+  const videoCallRoomRef = useRef<string | null>(null);
   const [hospitalCinematic, setHospitalCinematic] = useState<{ phase: number; lineIdx: number; fadeAlpha: number; startTime: number } | null>(null);
   const [showHospitalPrompt, setShowHospitalPrompt] = useState(() => {
     if (_ss?.diedLastSession) return true;
@@ -2762,6 +3055,7 @@ export default function WorldPlay() {
       savings: g.savings, loan: g.loan,
       hasDevice: g.hasDevice, deviceBroken: g.deviceBroken, deviceDurability: g.deviceDurability,
       ownedItems: [...g.ownedItems],
+      inventory: g.inventory,
       ownedBuildings: [...g.ownedBuildings],
       cargo: { ...g.cargo },
       realEstate: [...g.realEstate],
@@ -2773,6 +3067,10 @@ export default function WorldPlay() {
       activeWeapon: activeWeaponRef.current,
       secondaryWeapon: secondaryWeaponRef.current,
       unlockedWeapons: [...unlockedWeaponsRef.current],
+      totalExpEarned: g.totalExpEarned,
+      overflowExp: g.overflowExp ?? 0,
+      perception: g.perception,
+      fogRevealed: [...g.fogRevealed],
       hasBusiness: char.hasBusiness,
       bizType: char.bizType,
       company: char.company,
@@ -3092,9 +3390,14 @@ export default function WorldPlay() {
     }
     else if (bid === 'pawn_shop') {
       sfxEnter();
-      const bonus = 3000 + Math.floor(Math.random() * 4000);
-      g.salary += bonus; setSalary(g.salary); sfxCoin();
-      setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ƒ${bonus.toLocaleString()} FIAT. "Come back with more. I don\'t ask questions."`);
+      if (g.inventory.length > 0) {
+        setShowInventory(true);
+        setNarr('> PAWN SHOP — "Sell your junk. I buy everything." Click items to sell. [ESC] to close.');
+      } else {
+        const bonus = 3000 + Math.floor(Math.random() * 4000);
+        g.salary += bonus; setSalary(g.salary); sfxCoin();
+        setNarr(`> PAWN SHOP — You sell something you shouldn\'t. The owner doesn\'t ask where it\'s from. +ƒ${bonus.toLocaleString()} FIAT. "Come back with more. I don\'t ask questions."`);
+      }
     }
     else if (bid === 'terminal_shop') {
       sfxEnter();
@@ -3278,6 +3581,13 @@ export default function WorldPlay() {
     const n = NPCS[idx];
     sfxTalk();
     const contextWhisper = getNpcContextualWhisper(n, gs.current.worldTime ?? 0);
+    if (n.role === 'newspaper_seller') {
+      const g = gs.current;
+      const seasonIdx = Math.floor(((g.worldTime ?? 8) / 24 * 365) / 91.25) % 4;
+      setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
+      setNarr(`> ${n.name} — "${contextWhisper}"`);
+      return;
+    }
     if (n.role === 'dealer_papers') {
       setShowMerchant({ name: n.name, items: MERCHANT_SENNA });
       frozenRef.current = true;
@@ -3360,7 +3670,7 @@ export default function WorldPlay() {
         g.peers.clear();
         (m.players as Peer[]).filter(p => p.id !== g.myId).forEach(p => g.peers.set(p.id, p));
         setOnline((m.players as Peer[]).filter(p => p.id !== g.myId));
-      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; } }
+      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; } }
       else if (m.type === 'player_speaking') {
         if (m.speaking) g.speakingSet.add(m.id); else g.speakingSet.delete(m.id);
         setSpeakIds(new Set(g.speakingSet));
@@ -3401,20 +3711,22 @@ export default function WorldPlay() {
       } else if (m.type === 'building_unlocked') {
         g.locks.delete(m.buildingId); setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
       } else if (m.type === 'pvp_hit') {
-        const dmg = m.damage ?? 0;
-        if (typeof m.remainingHp === 'number') g.hp = m.remainingHp;
-        else g.hp = Math.max(0, g.hp - dmg);
-        g.invincible = 15; g.flash = 8;
-        g.deathReason = `Killed by ${m.attackerName} in PVP combat`;
-        setHp(Math.floor(g.hp));
-        sfxHit();
-        g.floaters.push({ x: g.px, y: g.py - 20, text: `-${dmg} PVP HIT`, color: '#ff4444', life: 50, maxLife: 50 });
-        setNarr(`> PVP — ${m.attackerName} hit you for ${dmg} damage!`);
-        if (g.hp <= 0) {
-          g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
-          g.pvpDeathBodyDropped = true;
-          g.diedLastSession = true;
-          setIsDead(true); sfxDeath(); try { localStorage.setItem('sm_died_last_session', 'true'); } catch {}
+        if (!gamePausedRef.current) {
+          const dmg = m.damage ?? 0;
+          if (typeof m.remainingHp === 'number') g.hp = m.remainingHp;
+          else g.hp = Math.max(0, g.hp - dmg);
+          g.invincible = 15; g.flash = 8;
+          g.deathReason = `Killed by ${m.attackerName} in PVP combat`;
+          setHp(Math.floor(g.hp));
+          sfxHit();
+          g.floaters.push({ x: g.px, y: g.py - 20, text: `-${dmg} PVP HIT`, color: '#ff4444', life: 50, maxLife: 50 });
+          setNarr(`> PVP — ${m.attackerName} hit you for ${dmg} damage!`);
+          if (g.hp <= 0) {
+            g.deadBodies.push({ x: g.px, y: g.py, type: 'PLAYER', diedAtFrame: g.frame });
+            g.pvpDeathBodyDropped = true;
+            g.diedLastSession = true;
+            setIsDead(true); sfxDeath(); try { localStorage.setItem('sm_died_last_session', 'true'); } catch {}
+          }
         }
       } else if (m.type === 'pvp_hit_confirm') {
         g.floaters.push({ x: g.px, y: g.py - 30, text: `${m.damage} HIT ${m.targetName}`, color: '#ffaa00', life: 40, maxLife: 40 });
@@ -3458,12 +3770,27 @@ export default function WorldPlay() {
       else if (m.type === 'voice_answer')   handleVoiceAnswer(m.from, m.sdp);
       else if (m.type === 'voice_ice')      handleVoiceICE(m.from, m.candidate);
       else if (m.type === 'voice_peer_joined') initiateVoiceWith(m.id);
+      else if (m.type === 'rtc_room_peers') {
+        const peers = (m.peers as { id: string; name: string }[]) ?? [];
+        setVideoCallPeers(peers.map(p => ({ id: p.id, name: p.name })));
+        for (const peer of peers) createPeerConnection(peer.id, peer.name, true);
+      } else if (m.type === 'rtc_peer_joined') {
+        setVideoCallPeers(prev => [...prev, { id: m.peerId, name: m.peerName }]);
+        createPeerConnection(m.peerId, m.peerName, false);
+      } else if (m.type === 'rtc_peer_left') {
+        const pc = peerConnectionsRef.current.get(m.peerId);
+        if (pc) { pc.close(); peerConnectionsRef.current.delete(m.peerId); }
+        iceCandidateQueueRef.current.delete(m.peerId);
+        setVideoCallPeers(prev => prev.filter(p => p.id !== m.peerId));
+      } else if (m.type === 'rtc_signal') {
+        handleRtcSignal(m.fromId, m.fromName, m.signal);
+      }
     };
     let lastSyncHp = 0;
     let lastSyncMoney = 0;
     const posInterval = setInterval(() => {
       const g = gs.current;
-      wsSend({ type: 'move', x: g.px, y: g.py });
+      wsSend({ type: 'move', x: g.px, y: g.py, paused: gamePausedRef.current });
       if (g.hp > lastSyncHp) wsSend({ type: 'pve_heal', hp: g.hp });
       else wsSend({ type: 'sync_stats', hp: g.hp, weaponId: activeWeaponRef.current });
       lastSyncHp = g.hp;
@@ -3532,6 +3859,115 @@ export default function WorldPlay() {
   const handleVoiceAnswer = async (fid: string, sdp: RTCSessionDescriptionInit) => { await peerConns.current.get(fid)?.setRemoteDescription(sdp); };
   const handleVoiceICE    = async (fid: string, c: RTCIceCandidateInit)          => { await peerConns.current.get(fid)?.addIceCandidate(c); };
 
+  const RTC_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+
+  const createPeerConnection = (peerId: string, peerName: string, initiator: boolean) => {
+    if (peerConnectionsRef.current.has(peerId)) return;
+    const pc = new RTCPeerConnection({ iceServers: RTC_ICE_SERVERS });
+    peerConnectionsRef.current.set(peerId, pc);
+    if (vcStreamRef.current) {
+      vcStreamRef.current.getTracks().forEach(t => pc.addTrack(t, vcStreamRef.current!));
+    }
+    pc.onicecandidate = e => {
+      if (e.candidate) wsSend({ type: 'rtc_signal', targetId: peerId, roomId: videoCallRoomRef.current, signal: { type: 'ice', candidate: e.candidate } });
+    };
+    pc.ontrack = e => {
+      setVideoCallPeers(prev => prev.map(p => p.id === peerId ? { ...p, stream: e.streams[0] } : p));
+    };
+    if (initiator) {
+      pc.createOffer().then(offer => pc.setLocalDescription(offer).then(() => {
+        wsSend({ type: 'rtc_signal', targetId: peerId, roomId: videoCallRoomRef.current, signal: { type: 'offer', sdp: pc.localDescription } });
+      })).catch(() => {});
+    }
+  };
+
+  const flushIceCandidates = async (peerId: string) => {
+    const pc = peerConnectionsRef.current.get(peerId);
+    const queued = iceCandidateQueueRef.current.get(peerId);
+    if (pc && queued && queued.length > 0 && pc.remoteDescription) {
+      iceCandidateQueueRef.current.set(peerId, []);
+      for (const c of queued) {
+        try { await pc.addIceCandidate(c); } catch {}
+      }
+    }
+  };
+
+  const handleRtcSignal = async (fromId: string, fromName: string, signal: { type: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit }) => {
+    try {
+      if (signal.type === 'offer') {
+        if (!peerConnectionsRef.current.has(fromId)) createPeerConnection(fromId, fromName, false);
+        const pc = peerConnectionsRef.current.get(fromId)!;
+        await pc.setRemoteDescription(signal.sdp!);
+        await flushIceCandidates(fromId);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        wsSend({ type: 'rtc_signal', targetId: fromId, roomId: videoCallRoomRef.current, signal: { type: 'answer', sdp: pc.localDescription } });
+      } else if (signal.type === 'answer') {
+        const pc = peerConnectionsRef.current.get(fromId);
+        if (pc) {
+          await pc.setRemoteDescription(signal.sdp!);
+          await flushIceCandidates(fromId);
+        }
+      } else if (signal.type === 'ice') {
+        const pc = peerConnectionsRef.current.get(fromId);
+        if (pc && signal.candidate) {
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(signal.candidate);
+          } else {
+            if (!iceCandidateQueueRef.current.has(fromId)) iceCandidateQueueRef.current.set(fromId, []);
+            iceCandidateQueueRef.current.get(fromId)!.push(signal.candidate);
+          }
+        }
+      }
+    } catch {}
+  };
+
+  const joinVideoCall = useCallback(async (roomId: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      vcStreamRef.current = stream;
+      setVcStream(stream);
+      videoCallRoomRef.current = roomId;
+      setVideoCallRoom(roomId);
+      setVideoEnabled(true);
+      setAudioEnabled(true);
+      wsSend({ type: 'rtc_join_room', roomId });
+      setNarr('> VIDEO CALL — Connected. Other players at terminals can join this call. [C] or [ESC] to end.');
+    } catch {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        vcStreamRef.current = stream;
+        setVcStream(stream);
+        videoCallRoomRef.current = roomId;
+        setVideoCallRoom(roomId);
+        setVideoEnabled(false);
+        setAudioEnabled(true);
+        wsSend({ type: 'rtc_join_room', roomId });
+        setNarr('> AUDIO CALL — No camera. Audio only mode. [C] or [ESC] to end.');
+      } catch {
+        setNarr('> CALL FAILED — Microphone access denied. Check browser permissions.');
+      }
+    }
+  }, [wsSend]);
+
+  const leaveVideoCall = useCallback(() => {
+    const room = videoCallRoomRef.current;
+    if (room) wsSend({ type: 'rtc_leave_room', roomId: room });
+    vcStreamRef.current?.getTracks().forEach(t => t.stop());
+    vcStreamRef.current = null;
+    setVcStream(null);
+    peerConnectionsRef.current.forEach(pc => pc.close());
+    peerConnectionsRef.current.clear();
+    videoCallRoomRef.current = null;
+    setVideoCallRoom(null);
+    setVideoCallPeers([]);
+    setNarr('> CALL ENDED — Disconnected.');
+    gameRef.current?.focus();
+  }, [wsSend]);
+  const leaveVideoCallRef = useRef(leaveVideoCall);
+  leaveVideoCallRef.current = leaveVideoCall;
+  useEffect(() => () => { leaveVideoCallRef.current(); }, []);
+
   const toggleVoice = useCallback(async () => {
     if (voice) {
       localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
@@ -3557,7 +3993,8 @@ export default function WorldPlay() {
   }, [voice, wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom;
+  gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
   useEffect(() => {
@@ -3719,6 +4156,27 @@ export default function WorldPlay() {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
           if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
+          if (g.interior && nearArcadeMachine) {
+            sfxEnter();
+            setArcadeGameId(nearArcadeMachine);
+            return;
+          }
+          if (g.interior && nearWaterCooler) {
+            sfxEnter();
+            const seasonIdx = Math.floor(((g.worldTime ?? 8) / 24 * 365) / 91.25) % 4;
+            setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
+            setGamePaused(true);
+            return;
+          }
+          {
+            const nearNP = NEWSPAPER_WORLD_SPOTS.find(np => Math.hypot(g.px - np.x, g.py - np.y) < 40);
+            if (nearNP) {
+              sfxEnter();
+              const seasonIdx = Math.floor(((g.worldTime ?? 8) / 24 * 365) / 91.25) % 4;
+              setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
+              return;
+            }
+          }
           g.near = null; g.nearNpc = null; g.nearBillboard = null; g.nearEmployee = null;
           for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { g.near = b.id; break; } }
           if (!g.near) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
@@ -3819,7 +4277,7 @@ export default function WorldPlay() {
       }
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
       // [Space] melee attack
-      if (e.key === ' ' && !frozenRef.current && !dialog) {
+      if (e.key === ' ' && !frozenRef.current && !dialog && !gamePausedRef.current) {
         const g = gs.current;
         if (g.attackCooldown > 0) return;
         const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
@@ -3853,18 +4311,7 @@ export default function WorldPlay() {
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
-              let newExp = g.exp + earned; let newLevel = g.level;
-              while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
-                newExp -= expToLevel(newLevel); newLevel++;
-                g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
-                const lText = `★ LEVEL UP! LVL ${newLevel} ★  MAX HP +10  ATK +5  "Minx City trembles."`;
-                setLevelUpText(lText); setShowLevelUp(true);
-                setTimeout(() => setShowLevelUp(false), 3200);
-                setNarr(`> ${lText}`);
-                sfxLevelUp();
-              }
-              g.exp = newExp; g.level = newLevel;
-              setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+              applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
               g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
@@ -3889,6 +4336,9 @@ export default function WorldPlay() {
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
+        if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
+        if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
+        if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
         setDialog(null); setShowStore(false); setShowOffice(false);
         setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
         setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
@@ -3896,12 +4346,33 @@ export default function WorldPlay() {
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
         setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); frozenRef.current = false; sfxUIClick();
+        setShowNewspaper(null); setShowInventory(false);
         doSaveRef.current(buildSaveData());
       }
+      if (e.key === 'i' || e.key === 'I') {
+        if (!chatOpenRef.current) setShowInventory(v => !v);
+      }
+      if (e.key === 'c' || e.key === 'C') {
+        if (!chatOpenRef.current) {
+          const g = gs.current;
+          if (videoCallRoomRef.current) {
+            leaveVideoCall();
+          } else {
+            const nearTerm = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop');
+            const hasTerminalInInterior = g.interior && g.interior.def.objects.some(o => o.type === 'terminal');
+            if (nearTerm || hasTerminalInInterior || (g.hasDevice && !g.deviceBroken)) {
+              const roomId = g.interior ? `room_${g.interior.bid}` : `city_${Math.floor(g.px / 500)}_${Math.floor(g.py / 500)}`;
+              joinVideoCall(roomId);
+            } else {
+              setNarr('> NO TERMINAL — You need a terminal or PABLO device to make video calls.');
+            }
+          }
+        }
+      }
     };
-    const up = (e: KeyboardEvent) => gs.current.keys.delete(e.key.toLowerCase());
-    const onBlur = () => gs.current.keys.clear();
-    const onVisChange = () => { if (document.hidden) gs.current.keys.clear(); };
+    const up = (e: KeyboardEvent) => { gs.current.keys.delete(e.key.toLowerCase()); };
+    const onBlur = () => { gs.current.keys.clear(); gs.current.moveTarget = null; };
+    const onVisChange = () => { if (document.hidden) { gs.current.keys.clear(); gs.current.moveTarget = null; } };
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     window.addEventListener('blur', onBlur);
     document.addEventListener('visibilitychange', onVisChange);
@@ -3920,7 +4391,7 @@ export default function WorldPlay() {
     };
     const handleInteraction = (clientX: number, clientY: number) => {
       gs.current.lastMoveTime = Date.now();
-      if (frozenRef.current) return;
+      if (frozenRef.current || gamePausedRef.current) return;
       const g = gs.current;
       const { wx: clickWorldX, wy: clickWorldY } = resolveWorldCoords(clientX, clientY);
       const clickedBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(clickWorldX - b.x, clickWorldY - b.y) < 30 && Math.hypot(g.px - b.x, g.py - b.y) < 50);
@@ -4116,7 +4587,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const cw = logW / zoom, ch = logH / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
-      if (g.worldTimeTick >= 60) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
+      if (g.worldTimeTick >= 1800) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
       tickCalendar(g.calendar, 16.67);
       if (g.frame % 30 === 0) {
         setCalendarStr(getCalendarString(g.calendar));
@@ -4134,7 +4605,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const rl = radResult.intensity;
       g.radiationLevel = rl;
       if (g.frame % 15 === 0) setRadLevel(rl);
-      if (rl > 0 && g.frame % 60 === 0) {
+      if (rl > 0 && g.frame % 60 === 0 && !gamePausedRef.current) {
         const radDmg = Math.ceil(rl * 3);
         g.hp = Math.max(0, g.hp - radDmg); g.deathReason = 'Died from radiation exposure';
         setHp(Math.floor(g.hp));
@@ -4161,8 +4632,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (!g.classInitDone) {
         g.classInitDone = true;
         const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-        g.maxHp = cs.maxHp; g.hp = cs.maxHp;
-        setHp(cs.maxHp);
+        if (_ss && _ss.maxHp) {
+          g.maxHp = _ss.maxHp;
+          g.hp = Math.min(_ss.hp ?? _ss.maxHp, _ss.maxHp);
+        } else {
+          g.maxHp = cs.maxHp; g.hp = cs.maxHp;
+        }
+        setHp(Math.floor(g.hp));
       }
 
       // ── Job cooldown ticks ───────────────────────────────────────────────
@@ -4203,14 +4679,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
-              let newExp = g.exp + earned; let newLevel = g.level;
-              while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
-                newExp -= expToLevel(newLevel); newLevel++;
-                g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
-                sfxLevelUp();
-              }
-              g.exp = newExp; g.level = newLevel;
-              setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+              applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
               g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
@@ -4258,9 +4727,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 wsSend({ type: 'pve_kill', exp: earned });
-                let newExp = g.exp + earned; let newLevel = g.level;
-                while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) { newExp -= expToLevel(newLevel); newLevel++; g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10); sfxLevelUp(); }
-                g.exp = newExp; g.level = newLevel; setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+                applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
                 g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 return null as unknown as Threat;
@@ -4278,28 +4745,43 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.threatRespawn = g.threatRespawn.filter(r => {
         if (g.frame >= r.at) {
           const distToPlayer = Math.hypot(g.px - r.ox, g.py - r.oy);
-          if (distToPlayer > 400) { g.threats.push(mkThreat(r.ox, r.oy, r.type)); return false; }
+          if (distToPlayer > 500) {
+            const randOffsetX = (Math.random() - 0.5) * 300;
+            const randOffsetY = (Math.random() - 0.5) * 300;
+            const sx = r.ox + randOffsetX;
+            const sy = r.oy + randOffsetY;
+            if (Math.hypot(g.px - sx, g.py - sy) > 400) {
+              g.threats.push(mkThreat(sx, sy, r.type));
+              return false;
+            }
+          }
         }
         return true;
       });
 
-      // Wasteland danger: spawn extra hostiles when deep in wasteland
+      // Wasteland danger: spawn extra hostiles when deep in wasteland (varied locations)
+      const nightSpawnActive = g.worldTime >= 19 || g.worldTime < 4;
+      const threatCap = nightSpawnActive ? 90 : 60;
+      const nightSpawnMult = nightSpawnActive ? 2.0 : 1.0;
       if (g.frame % 300 === 0) {
         const dangerLevel = getWastelandDangerLevel(g.px, g.py, char.class);
-        if (dangerLevel > 0.3 && Math.random() < dangerLevel * 0.4 && g.threats.length < 60) {
-          const spawnDist = 250 + Math.random() * 200;
+        if (dangerLevel > 0.3 && Math.random() < dangerLevel * 0.4 * nightSpawnMult && g.threats.length < threatCap) {
+          const spawnDist = 350 + Math.random() * 300;
           const angle = Math.random() * Math.PI * 2;
           const sx = g.px + Math.cos(angle) * spawnDist;
           const sy = g.py + Math.sin(angle) * spawnDist;
-          const wasteThreatTypes = ['PROWLER', 'MUTANT', 'RAIDER', 'BORDER_GANG'];
-          const tType = wasteThreatTypes[Math.floor(Math.random() * wasteThreatTypes.length)];
-          g.threats.push(mkThreat(sx, sy, tType));
+          const nearPlayer = Math.hypot(g.px - sx, g.py - sy) < 250;
+          if (!nearPlayer) {
+            const wasteThreatTypes = ['PROWLER', 'MUTANT', 'RAIDER', 'BORDER_GANG'];
+            const tType = wasteThreatTypes[Math.floor(Math.random() * wasteThreatTypes.length)];
+            g.threats.push(mkThreat(sx, sy, tType));
+          }
         }
       }
 
       // Gang raid: spawn temporary hostiles at raid location
       for (const raid of activeRaids) {
-        if (raid.timer === RAID_DURATION - 1 && g.threats.length < 60) {
+        if (raid.timer === RAID_DURATION - 1 && g.threats.length < threatCap) {
           const raidThreatCount = Math.floor(2 + raid.intensity * 3);
           for (let ri = 0; ri < raidThreatCount; ri++) {
             const rx = raid.x + (Math.random() - 0.5) * 200;
@@ -4312,7 +4794,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Poison tick
       if (g.poisoned) {
         g.poisonTick++;
-        if (g.poisonTick % 60 === 0) { g.hp = Math.max(0, g.hp - 1.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
+        if (g.poisonTick % 60 === 0 && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 1.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
       }
 
       // ── Interior fade transition ──
@@ -4367,8 +4849,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           && itr.py + PSIZE > iDef.exitY && itr.py - PSIZE < iDef.exitY + iDef.exitH;
         if (inExitZone && g.interiorFadeDir === 0) {
           g.near = '__interior_exit';
+          setNearArcadeMachine(null);
         } else {
           g.near = null;
+          let foundArcade: string | null = null;
+          let foundWC = false;
+          for (const obj of iDef.objects) {
+            if (obj.type === 'arcade_machine' && obj.gameId) {
+              const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+              if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
+                foundArcade = obj.gameId;
+                break;
+              }
+            }
+            if (obj.type === 'water_cooler') {
+              const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+              if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) foundWC = true;
+            }
+          }
+          setNearArcadeMachine(foundArcade);
+          setNearWaterCooler(foundWC);
         }
       }
 
@@ -4394,7 +4894,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      if (!frozen() && !g.subwayTransit) {
+      if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
         const shiftHeld = g.keys.has('shift');
         const sprintMult = shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
@@ -4490,7 +4990,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.behavior = 'PATROLLING';
           if (t.timer <= 0) {
             const ang = Math.random() * Math.PI * 2;
-            t.dx = Math.cos(ang) * 0.2; t.dy = Math.sin(ang) * 0.2;
+            t.dx = Math.cos(ang) * 0.2 * NPC_SPEED_MULT; t.dy = Math.sin(ang) * 0.2 * NPC_SPEED_MULT;
             t.timer = 120 + Math.floor(Math.random() * 160);
           }
           let pnx = t.x + t.dx, pny = t.y + t.dy;
@@ -4535,10 +5035,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           else hostilityMult = 0.8;
         }
 
+        const nightActive = g.worldTime >= 19 || g.worldTime < 4;
+        const nightAggroBoost = nightActive ? 1.6 : 1.0;
+        const nightSpeedBoost = nightActive ? 1.3 : 1.0;
         const baseAggroRange = isSpy ? 55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 35 : 45;
-        const aggroRange = baseAggroRange * hostilityMult;
-        const chaseSpeed  = isSpy ? 0.55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.28 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.32 : 0.25);
-        const wanderSpeed = isSpy ? 0.2 : 0.1;
+        const aggroRange = baseAggroRange * hostilityMult * nightAggroBoost;
+        const chaseSpeed  = (isSpy ? 0.55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.28 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.32 : 0.25)) * NPC_SPEED_MULT * nightSpeedBoost;
+        const wanderSpeed = (isSpy ? 0.2 : 0.1) * NPC_SPEED_MULT;
 
         const shouldAggro = dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
 
@@ -4608,12 +5111,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.x = Math.max(BORDER, Math.min(W - BORDER, nx2));
         t.y = Math.max(BORDER, Math.min(H - BORDER, ny2));
 
-        if (t.behavior === 'HOSTILE' && dist < 14 && g.invincible === 0 && !npcDialogRef.current) {
+        if (t.behavior === 'HOSTILE' && dist < 14 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current) {
           const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
           const baseThreatAtk = THREAT_ATK[t.type] ?? 0.25;
           const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
           const defReduce = Math.max(0.1, 1 - cs.defBonus * 0.02);
-          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce); g.invincible = 70; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
+          const nightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
+          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce * nightMult); g.invincible = 70; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.08) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -4728,7 +5232,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (nearestThreat) {
           // Aggressive pursuit — fast sprint toward target
           const ang = Math.atan2(nearestThreat.y - guard.y, nearestThreat.x - guard.x);
-          const spd = nearestDist > 60 ? 1.5 : 1.1;
+          const spd = (nearestDist > 60 ? 1.5 : 1.1) * NPC_SPEED_MULT;
           guard.x += Math.cos(ang) * spd;
           guard.y += Math.sin(ang) * spd;
           // Engage in melee
@@ -4758,8 +5262,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (gdist < 4) {
             guard.wpIdx = (guard.wpIdx + 1) % route.length;
           } else {
-            guard.x += (gdx / gdist) * 0.55;
-            guard.y += (gdy / gdist) * 0.55;
+            guard.x += (gdx / gdist) * 0.55 * NPC_SPEED_MULT;
+            guard.y += (gdy / gdist) * 0.55 * NPC_SPEED_MULT;
           }
         }
       }
@@ -4803,14 +5307,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 }
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
-                let newExp = g.exp + earned; let newLevel = g.level;
-                while (newLevel < EXP_TABLE.length && newExp >= expToLevel(newLevel)) {
-                  newExp -= expToLevel(newLevel); newLevel++;
-                  g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
-                  sfxLevelUp();
-                }
-                g.exp = newExp; g.level = newLevel;
-                setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+                applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
                 g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
                 g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 g.threats = g.threats.filter(th => th !== t);
@@ -4962,7 +5459,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ctx.scale(zoom, zoom);
 
       const _wt = g.worldTime;
-      const _isNight = _wt >= 19 || _wt < 5;
+      const _isNight = _wt >= 19 || _wt < 4;
       const _tileHash = (x: number, y: number) => {
         const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         return h - Math.floor(h);
@@ -5175,6 +5672,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + obj.w / 2 + 1, osy + 4 + wave, obj.w / 2 - 4, obj.h * 0.35);
             ctx.fillStyle = 'rgb(180,140,30)';
             ctx.fillRect(osx + obj.w / 2 + 1, osy + 4 + wave + obj.h * 0.15, obj.w / 2 - 4, obj.h * 0.1);
+          } else if (obj.type === 'arcade_machine') {
+            ctx.fillStyle = 'rgb(20,15,30)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(40,30,50)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h * 0.55);
+            const ap = Math.sin(g.frame * 0.06 + (obj.gameId ?? '').length * 1.5) * 0.3 + 0.7;
+            const gc = obj.color ?? 'rgba(0,255,65,.5)';
+            ctx.fillStyle = gc.replace(/[\d.]+\)$/, `${ap})`);
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h * 0.5 - 4);
+            const scanY3 = (g.frame * 0.8 + (obj.gameId ?? '').length * 20) % (obj.h * 0.5 - 4);
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.fillRect(osx + 4, osy + 4 + scanY3, obj.w - 8, 2);
+            ctx.fillStyle = 'rgb(30,25,35)';
+            ctx.fillRect(osx + 6, osy + obj.h * 0.6, obj.w - 12, obj.h * 0.15);
+            ctx.fillStyle = 'rgb(255,50,50)';
+            ctx.beginPath(); ctx.arc(osx + obj.w * 0.35, osy + obj.h * 0.65 + 3, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgb(50,150,255)';
+            ctx.beginPath(); ctx.arc(osx + obj.w * 0.65, osy + obj.h * 0.65 + 3, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgb(60,50,70)';
+            ctx.fillRect(osx + 3, osy + obj.h * 0.8, obj.w - 6, obj.h * 0.2);
+            ctx.fillStyle = 'rgb(50,40,55)';
+            ctx.fillRect(osx + obj.w * 0.3, osy + obj.h - 4, obj.w * 0.4, 4);
           } else if (obj.type === 'portrait') {
             ctx.fillStyle = 'rgb(160,130,70)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -5207,6 +5726,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = `rgba(0,255,65,${exitPulse * 0.8})`;
         ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
         ctx.fillText('EXIT', exX + iDef.exitW / 2, exY + iDef.exitH / 2 + 3);
+
+        for (const obj of iDef.objects) {
+          if (obj.type === 'arcade_machine' && obj.gameId) {
+            const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+            if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
+              ctx.fillStyle = g.blink ? 'rgba(255,0,255,.9)' : 'rgba(255,0,255,.3)';
+              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText(`[E] PLAY — 1 FIAT`, ocx, obj.y - 6);
+            }
+          }
+          if (obj.type === 'water_cooler') {
+            const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+            if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) {
+              ctx.fillStyle = g.blink ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.3)';
+              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('[E] READ NEWSPAPER', ocx, obj.y - 6);
+            }
+          }
+        }
 
         if (g.near === '__interior_exit') {
           ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.3)';
@@ -5474,7 +6012,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!isIndoors) {
           if (temp === 'COLD') {
             eDrain += 1.5;
-            g.hp = Math.max(0, g.hp - 1); g.deathReason = 'Died from hypothermia — exposure to extreme cold';
+            if (!gamePausedRef.current) { g.hp = Math.max(0, g.hp - 1); g.deathReason = 'Died from hypothermia — exposure to extreme cold'; }
           }
           if (temp === 'HOT') {
             tDrain += 2.0;
@@ -5493,7 +6031,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.hunger = Math.max(0, g.hunger - hDrain);
         g.thirst = Math.max(0, g.thirst - tDrain);
         g.energy = Math.max(0, g.energy - eDrain);
-        if (g.hunger <= 0 || g.thirst <= 0) { g.hp = Math.max(0, g.hp - 2); g.deathReason = g.hunger <= 0 && g.thirst <= 0 ? 'Died from starvation and dehydration' : g.hunger <= 0 ? 'Died from starvation' : 'Died from dehydration'; }
+        if ((g.hunger <= 0 || g.thirst <= 0) && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 2); g.deathReason = g.hunger <= 0 && g.thirst <= 0 ? 'Died from starvation and dehydration' : g.hunger <= 0 ? 'Died from starvation' : 'Died from dehydration'; }
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
@@ -5568,7 +6106,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
           const wasteEvents = [
-            () => { g.hp = Math.max(1, g.hp - 25); g.deathReason = 'Died from acid rain exposure'; setHp(Math.floor(g.hp)); sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
+            () => { if (!gamePausedRef.current) { g.hp = Math.max(1, g.hp - 25); g.deathReason = 'Died from acid rain exposure'; setHp(Math.floor(g.hp)); } sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
             () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
@@ -5614,15 +6152,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const dToOrigin = Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
           if (dToOrigin < 600) {
             const ang = Math.atan2(g.py - p.y, g.px - p.x);
-            p.x += Math.cos(ang) * 2.2;
-            p.y += Math.sin(ang) * 2.2;
+            p.x += Math.cos(ang) * 2.2 * NPC_SPEED_MULT;
+            p.y += Math.sin(ang) * 2.2 * NPC_SPEED_MULT;
             const dToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
-            if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0) {
+            if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
               g.policeCooldowns[pi] = 25;
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
-              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO Corp. police enforcement';
+              const policeNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
+              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP * policeNightMult); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO Corp. police enforcement';
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
             continue;
@@ -5632,15 +6171,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const route = POLICE_ROUTES[p.routeIdx];
         const next  = (p.wpIdx + 1) % route.length;
         const wpA   = route[p.wpIdx], wpB = route[next];
-        p.progress  += 0.001;
+        p.progress  += 0.001 * NPC_SPEED_MULT;
         if (p.progress >= 1) { p.progress = 0; p.wpIdx = next; }
         p.x = wpA.x + (wpB.x - wpA.x) * p.progress;
         p.y = wpA.y + (wpB.y - wpA.y) * p.progress;
-        if (p.y >= CITY_TOP && p.y <= CITY_BOTTOM && g.policeCooldowns[pi] <= 0) {
+        if (p.x >= CITY_LEFT && p.x <= CITY_RIGHT && p.y >= CITY_TOP && p.y <= CITY_BOTTOM && g.policeCooldowns[pi] <= 0) {
           for (let ti = 0; ti < g.threats.length; ti++) {
             const t = g.threats[ti];
             if (PASSIVE_THREATS.has(t.type) || t.type === 'PABLO_GUARD') continue;
-            if (t.y < CITY_TOP || t.y > CITY_BOTTOM) continue;
+            if (t.x < CITY_LEFT || t.x > CITY_RIGHT || t.y < CITY_TOP || t.y > CITY_BOTTOM) continue;
             const dx = t.x - p.x, dy = t.y - p.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 120) {
@@ -5656,6 +6195,118 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               }
               break;
             }
+          }
+        }
+      }
+
+      // ── PATROL BANDS: Movement, inter-band combat, player engagement ──
+      for (const band of g.bands) {
+        const aliveMembers = band.members.filter(m => !m.dead);
+        if (aliveMembers.length === 0) continue;
+
+        const route = POLICE_ROUTES[band.routeIdx];
+        const next = (band.wpIdx + 1) % route.length;
+        const wpA = route[band.wpIdx], wpB = route[next];
+        band.progress += 0.0008 * NPC_SPEED_MULT;
+        if (band.progress >= 1) { band.progress = 0; band.wpIdx = next; }
+        const bandCX = wpA.x + (wpB.x - wpA.x) * band.progress;
+        const bandCY = wpA.y + (wpB.y - wpA.y) * band.progress;
+
+        for (const m of aliveMembers) {
+          m.x = bandCX + m.ox;
+          m.y = bandCY + m.oy;
+          if (m.attackCd > 0) m.attackCd--;
+        }
+
+        for (const otherBand of g.bands) {
+          if (otherBand === band || otherBand.type === band.type) continue;
+          const otherAlive = otherBand.members.filter(om => !om.dead);
+          if (otherAlive.length === 0) continue;
+          const bdx = bandCX - (otherAlive[0]?.x ?? 0);
+          const bdy = bandCY - (otherAlive[0]?.y ?? 0);
+          const bandDist = Math.sqrt(bdx * bdx + bdy * bdy);
+          if (bandDist > 200) continue;
+
+          for (const attacker of aliveMembers) {
+            if (attacker.attackCd > 0) continue;
+            const attackRange = attacker.weapon === 'ranged' ? band.rangedRange : 30;
+            let closestTarget: BandMember | null = null;
+            let closestDist = attackRange;
+            for (const target of otherAlive) {
+              const td = Math.hypot(attacker.x - target.x, attacker.y - target.y);
+              if (td < closestDist) { closestDist = td; closestTarget = target; }
+            }
+            if (closestTarget) {
+              const dmg = band.atkDmg + Math.random() * 10;
+              closestTarget.hp -= dmg;
+              attacker.attackCd = attacker.weapon === 'ranged' ? 45 : 30;
+              if (attacker.weapon === 'ranged') {
+                g.projectiles.push({ x: attacker.x, y: attacker.y, dx: (closestTarget.x - attacker.x) / closestDist * 5, dy: (closestTarget.y - attacker.y) / closestDist * 5, damage: 0, type: 'laser', life: 25 });
+              }
+              g.floaters.push({ x: closestTarget.x, y: closestTarget.y - 10, text: `−${Math.floor(dmg)}`, color: band.color, life: 35, maxLife: 35 });
+              if (closestTarget.hp <= 0) {
+                closestTarget.dead = true;
+                g.floaters.push({ x: closestTarget.x, y: closestTarget.y - 18, text: `${otherBand.label} DOWN`, color: band.color, life: 50, maxLife: 50 });
+                g.deadBodies.push({ x: closestTarget.x, y: closestTarget.y, type: otherBand.type, diedAtFrame: g.frame, bounty: 5, looted: false });
+              }
+            }
+          }
+        }
+
+        if (band.type === 'POLICE' && g.policeAlertTimer > 0) {
+          for (const m of aliveMembers) {
+            if (m.attackCd > 0) continue;
+            const dToPlayer = Math.hypot(g.px - m.x, g.py - m.y);
+            const atkRange = m.weapon === 'ranged' ? band.rangedRange : 22;
+            if (dToPlayer < atkRange && g.invincible === 0 && !gamePausedRef.current) {
+              m.attackCd = m.weapon === 'ranged' ? 50 : 30;
+              const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
+              const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+              const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
+              const bandNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
+              const dmgP = band.atkDmg * armorMult * defReduceP * bandNightMult;
+              g.hp = Math.max(0, g.hp - dmgP); g.invincible = 40; g.flash = 6;
+              g.deathReason = `Killed by ${band.label} enforcement`;
+              g.floaters.push({ x: g.px, y: g.py - 12, text: `${band.label} STRIKE`, color: band.color, life: 40, maxLife: 40 });
+              if (m.weapon === 'ranged') {
+                g.projectiles.push({ x: m.x, y: m.y, dx: (g.px - m.x) / dToPlayer * 5, dy: (g.py - m.y) / dToPlayer * 5, damage: 0, type: 'laser', life: 25 });
+              }
+            }
+          }
+        }
+
+        for (const m of aliveMembers) {
+          if (m.attackCd > 0) continue;
+          for (let ti = 0; ti < g.threats.length; ti++) {
+            const t = g.threats[ti];
+            if (PASSIVE_THREATS.has(t.type) || t.type === 'PABLO_GUARD') continue;
+            const td = Math.hypot(m.x - t.x, m.y - t.y);
+            const atkRange = m.weapon === 'ranged' ? band.rangedRange : 25;
+            if (td < atkRange) {
+              const dmg = band.atkDmg + Math.random() * 10;
+              t.hp -= dmg;
+              m.attackCd = m.weapon === 'ranged' ? 45 : 30;
+              g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} ${band.label}`, color: band.color, life: 40, maxLife: 40 });
+              if (m.weapon === 'ranged') {
+                g.projectiles.push({ x: m.x, y: m.y, dx: (t.x - m.x) / td * 5, dy: (t.y - m.y) / td * 5, damage: 0, type: 'laser', life: 20 });
+              }
+              if (t.hp <= 0) {
+                g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: band.color, life: 60, maxLife: 60 });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: BOUNTY[t.type] ?? 10, looted: false });
+                g.threats.splice(ti, 1); ti--;
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      if (g.frame % 3600 === 0) {
+        for (let bi = 0; bi < g.bands.length; bi++) {
+          const band = g.bands[bi];
+          const alive = band.members.filter(m => !m.dead).length;
+          if (alive === 0) {
+            g.bands[bi] = createBand(BAND_TYPES[Math.floor(Math.random() * BAND_TYPES.length)], band.routeIdx);
           }
         }
       }
@@ -5681,15 +6332,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (npc.reactState === 'FLEEING') {
             const fleeAng = Math.atan2(npc.y - eventY, npc.x - eventX);
-            npc.x += Math.cos(fleeAng) * 1.5;
-            npc.y += Math.sin(fleeAng) * 1.5;
+            npc.x += Math.cos(fleeAng) * 1.5 * NPC_SPEED_MULT;
+            npc.y += Math.sin(fleeAng) * 1.5 * NPC_SPEED_MULT;
             if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
           } else if (npc.reactState === 'SPECTATING') {
             const npcDist = Math.hypot(npc.x - eventX, npc.y - eventY);
             if (npcDist > 80) {
               const watchAng = Math.atan2(eventY - npc.y, eventX - npc.x);
-              npc.x += Math.cos(watchAng) * 0.3;
-              npc.y += Math.sin(watchAng) * 0.3;
+              npc.x += Math.cos(watchAng) * 0.3 * NPC_SPEED_MULT;
+              npc.y += Math.sin(watchAng) * 0.3 * NPC_SPEED_MULT;
             }
             if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
           }
@@ -5703,7 +6354,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const zone = GANG_ZONES.find(gz => gz.id === npc.faction);
           if (!zone) continue;
           if (!npc.origX) { npc.origX = npc.x; npc.origY = npc.y; }
-          const speed = npc.walkSpeed ?? 0.7;
+          const speed = (npc.walkSpeed ?? 0.7) * NPC_SPEED_MULT;
           const cx = zone.x + zone.w / 2;
           const cy = zone.y + zone.h / 2;
           const patrolRadius = Math.min(zone.w, zone.h) * 0.35;
@@ -5760,7 +6411,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── LIVING WORLD: Random fire events (reduced ~1/3 of original rate) ──
       g.fireTick++;
-      if (g.fireTick >= 2700 && Math.random() < 0.003) {
+      if (g.fireTick >= 5400 && Math.random() < 0.002 && g.fires.length < 2) {
         g.fireTick = 0;
         const cityBlds = BUILDINGS.filter(b => b.y >= CITY_TOP && b.y < CITY_BOTTOM - 50);
         const fb = cityBlds[Math.floor(Math.random() * cityBlds.length)];
@@ -5806,9 +6457,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       } else {
         dayBright = 0.3;
       }
-      const isNight = wt >= 19 || wt < 5;
+      const isNight = wt >= 19 || wt < 4;
       const isDusk = wt >= 17 && wt < 19;
-      const isDawn = wt >= 5 && wt < 7;
+      const isDawn = wt >= 4 && wt < 6;
 
       const tileHash = (x: number, y: number) => {
         const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
@@ -6055,6 +6706,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.moveTo(mx, my - 4); ctx.lineTo(mx, my + 4); ctx.stroke();
       }
 
+      for (const np of NEWSPAPER_WORLD_SPOTS) {
+        const nx = np.x + ox, ny = np.y + oy;
+        if (nx < -20 || nx > cw + 20 || ny < -20 || ny > ch + 20) continue;
+        const nBr = dayBright;
+        ctx.fillStyle = `rgba(${Math.floor(180 * nBr)},${Math.floor(170 * nBr)},${Math.floor(130 * nBr)},0.9)`;
+        ctx.fillRect(nx - 5, ny - 3, 10, 6);
+        ctx.fillStyle = `rgba(${Math.floor(40 * nBr)},${Math.floor(35 * nBr)},${Math.floor(25 * nBr)},0.7)`;
+        ctx.fillRect(nx - 4, ny - 2, 8, 1);
+        ctx.fillRect(nx - 4, ny, 8, 1);
+        ctx.fillRect(nx - 4, ny + 2, 5, 1);
+        const dist = Math.hypot(g.px - np.x, g.py - np.y);
+        if (dist < 40) {
+          ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.3)';
+          ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] READ NEWSPAPER', nx, ny - 8);
+        }
+      }
+
       const cityTopY = CITY_TOP + oy;
       const cityBotY = CITY_BOTTOM + oy;
       ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
@@ -6111,19 +6780,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       };
       // Horizontal city avenues — wide urban corridors
-      drawRoad(CITY_LEFT,5400,CITY_RIGHT,5400,34,.12);
-      drawRoad(CITY_LEFT,5850,CITY_RIGHT,5850,30,.11);
-      drawRoad(CITY_LEFT,6300,CITY_RIGHT,6300,30,.11);
-      drawRoad(CITY_LEFT,6750,CITY_RIGHT,6750,28,.10);
-      drawRoad(CITY_LEFT,7200,CITY_RIGHT,7200,28,.10);
+      drawRoad(CITY_LEFT,5180,CITY_RIGHT,5180,34,.12);
+      drawRoad(CITY_LEFT,5580,CITY_RIGHT,5580,30,.11);
+      drawRoad(CITY_LEFT,5960,CITY_RIGHT,5960,30,.11);
+      drawRoad(CITY_LEFT,6350,CITY_RIGHT,6350,28,.10);
+      drawRoad(CITY_LEFT,6600,CITY_RIGHT,6600,28,.10);
+      drawRoad(CITY_LEFT,6780,CITY_RIGHT,6780,26,.09);
       // Vertical city streets — wide urban corridors
-      drawRoad(5700,CITY_TOP,5700,CITY_BOTTOM+40,26,.11);
-      drawRoad(6200,CITY_TOP,6200,CITY_BOTTOM+40,24,.10);
-      drawRoad(6700,CITY_TOP,6700,CITY_BOTTOM+40,26,.11);
-      drawRoad(7200,CITY_TOP,7200,CITY_BOTTOM+40,24,.10);
-      drawRoad(7700,CITY_TOP,7700,CITY_BOTTOM+40,24,.09);
-      drawRoad(8200,CITY_TOP,8200,CITY_BOTTOM+40,24,.09);
-      drawRoad(8700,CITY_TOP,8700,CITY_BOTTOM+40,22,.08);
+      drawRoad(5560,CITY_TOP,5560,CITY_BOTTOM+40,26,.11);
+      drawRoad(6060,CITY_TOP,6060,CITY_BOTTOM+40,24,.10);
+      drawRoad(6680,CITY_TOP,6680,CITY_BOTTOM+40,26,.11);
+      drawRoad(7160,CITY_TOP,7160,CITY_BOTTOM+40,24,.10);
+      drawRoad(7850,CITY_TOP,7850,CITY_BOTTOM+40,24,.09);
       // North wasteland trails (dashed, dimmer)
       drawRoad(0,1800,W,1800,10,.04,true);
       drawRoad(0,3200,W,3200,8,.03,true);
@@ -6143,18 +6811,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 5400, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 5850, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6300, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6750, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 7200, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: false, coord: 5700, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 6200, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 6700, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7200, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7700, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 8200, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 8700, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: true,  coord: 5180, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 5580, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 5960, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6350, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6600, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6780, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: false, coord: 5560, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 6060, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 6680, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 7160, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 7850, from: CITY_TOP, to: CITY_BOTTOM },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
@@ -6435,7 +7102,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // NPCs — pixel sprite bodies (schedule-aware positions)
-      const worldTimeFine = ((g.worldTime ?? 0) + (g.worldTimeTick / 60) * 0.1) % 24;
+      const worldTimeFine = ((g.worldTime ?? 0) + (g.worldTimeTick / 1800) * 0.1) % 24;
       for (let ni = 0; ni < NPCS.length; ni++) {
         const n = NPCS[ni];
         const isFleeing = n.reactState === 'FLEEING';
@@ -6609,6 +7276,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
         }
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+        if (op.paused) {
+          const shieldPulse = 0.3 + Math.sin(g.frame * 0.08) * 0.15;
+          ctx.strokeStyle = `rgba(100,200,255,${shieldPulse})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.ellipse(px2, py2 - 4, 12, 16, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = `rgba(100,200,255,${shieldPulse * 0.15})`;
+          ctx.beginPath(); ctx.ellipse(px2, py2 - 4, 12, 16, 0, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.font = 'bold 13px "Share Tech Mono"'; ctx.textAlign = 'center';
         const opNm = op.name;
         const opTw = ctx.measureText(opNm).width;
@@ -6652,6 +7327,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.roundRect(px2 - pTw / 2 - 5, py2 - 30, pTw + 10, 16, 4); ctx.fill();
           ctx.fillStyle = '#88aaff';
           ctx.fillText('POLICE', px2, py2 - 18);
+        }
+      }
+
+      // ── Patrol Band members ─────────────────────────────────────────────
+      for (const band of g.bands) {
+        for (const m of band.members) {
+          if (m.dead) continue;
+          const mx2 = m.x + ox, my2 = m.y + oy;
+          if (mx2 < -20 || mx2 > cw + 20 || my2 < -20 || my2 > ch + 20) continue;
+          const attacking = m.attackCd > 20;
+          ctx.save();
+          if (attacking) { ctx.shadowColor = band.color; ctx.shadowBlur = 8; }
+          ctx.fillStyle = '#cc9966'; ctx.beginPath(); ctx.arc(mx2, my2 - 8, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = band.color; ctx.fillRect(mx2 - 3, my2 - 5, 6, 5);
+          ctx.fillStyle = band.color; ctx.globalAlpha = 0.7; ctx.fillRect(mx2 - 3, my2, 2.5, 4); ctx.fillRect(mx2 + 0.5, my2, 2.5, 4); ctx.globalAlpha = 1;
+          if (m.weapon === 'ranged') {
+            ctx.fillStyle = '#dddddd'; ctx.fillRect(mx2 + 3, my2 - 4, 5, 1.5);
+          } else {
+            ctx.fillStyle = '#aaaaaa'; ctx.fillRect(mx2 + 3, my2 - 6, 1.5, 6);
+          }
+          if (m.hp < m.maxHp) {
+            const hpPct = m.hp / m.maxHp;
+            ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(mx2 - 6, my2 - 14, 12, 2);
+            ctx.fillStyle = hpPct > 0.5 ? '#44ff44' : hpPct > 0.25 ? '#ffaa00' : '#ff4444';
+            ctx.fillRect(mx2 - 6, my2 - 14, 12 * hpPct, 2);
+          }
+          ctx.restore();
+        }
+        const alive = band.members.filter(m => !m.dead);
+        if (alive.length > 0) {
+          const avgX = alive.reduce((s, m) => s + m.x, 0) / alive.length + ox;
+          const avgY = alive.reduce((s, m) => s + m.y, 0) / alive.length + oy;
+          const bDist = Math.hypot(g.px - alive[0].x, g.py - alive[0].y);
+          if (bDist < 180) {
+            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            const bLabel = `${band.label} [${alive.length}]`;
+            const btw = ctx.measureText(bLabel).width;
+            ctx.fillStyle = 'rgba(0,0,0,.55)';
+            ctx.beginPath(); ctx.roundRect(avgX - btw / 2 - 4, avgY - 28, btw + 8, 12, 3); ctx.fill();
+            ctx.fillStyle = band.color;
+            ctx.fillText(bLabel, avgX, avgY - 18);
+          }
         }
       }
 
@@ -6969,6 +7686,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.arc(px, py2 - 20 + idleBob, 3, 0, Math.PI * 2); ctx.fill();
       }
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      if (gamePausedRef.current) {
+        const shieldPulse = 0.35 + Math.sin(g.frame * 0.06) * 0.15;
+        ctx.strokeStyle = `rgba(100,220,255,${shieldPulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(px, py2 - 4, 14, 18, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = `rgba(100,220,255,${shieldPulse * 0.12})`;
+        ctx.beginPath(); ctx.ellipse(px, py2 - 4, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.font = 'bold 8px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(100,220,255,${shieldPulse + 0.1})`;
+        ctx.fillText('BREAK', px, py2 - 24);
+      }
       // Attack swing arc (varies by weapon)
       if (g.attackFlash > 0) {
         const curWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
@@ -7191,7 +7919,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── FOG OF WAR — dark shroud revealed by player exploration ─────────────
       const FOG_TILE = 80;
-      const fogRevealRadius = 3;
+      const fogRevealRadius = 3 + Math.floor((g.perception ?? 5) / 3);
       const ptx = Math.floor(g.px / FOG_TILE), pty = Math.floor(g.py / FOG_TILE);
       for (let dy = -fogRevealRadius; dy <= fogRevealRadius; dy++) {
         for (let dx = -fogRevealRadius; dx <= fogRevealRadius; dx++) {
@@ -7387,7 +8115,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.shadowBlur = 0;
 
           const tPulse = Math.sin(g.frame * 0.12) * 0.4 + 0.6;
+          const enemyDetectRange = viewR + (g.perception ?? 5) * 40;
           for (const t of g.threats) {
+            const tDist = Math.hypot(t.x - g.px, t.y - g.py);
+            if (tDist > enemyDetectRange) continue;
             const tc = THREAT_COL[t.type] ?? '#ff4444';
             mctx.fillStyle = tc; mctx.shadowColor = tc; mctx.shadowBlur = 4 * tPulse;
             mctx.beginPath(); mctx.arc(toMX(t.x), toMY(t.y), 3, 0, Math.PI * 2); mctx.fill();
@@ -7415,9 +8146,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }
           }
 
-          // Fog of war — mark visited cells
+          // Fog of war — mark visited cells (perception expands reveal)
           const fogCell = 40;
-          const visitR = 80;
+          const visitR = 80 + (g.perception ?? 5) * 10;
           for (let dx = -visitR; dx <= visitR; dx += fogCell) {
             for (let dy = -visitR; dy <= visitR; dy += fogCell) {
               const cx = Math.floor((g.px + dx) / fogCell);
@@ -7640,16 +8371,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
             onClick={() => {
-              const g = gs.current;
-              const nearTerminal = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop');
-              const hasWorkingDevice = g.hasDevice && !g.deviceBroken;
-              if (nearTerminal || hasWorkingDevice) {
-                sessionStorage.setItem('sm_show_saves', '1');
-                if (nearTerminal) sessionStorage.setItem('sm_at_physical_terminal', '1');
-                doSaveRef.current(buildSaveData()); navigate('/world');
-              } else {
-                setNarr('> NO TERMINAL ACCESS — You need a working Pablo Terminal MX-75 or must be near a public terminal to pause and save.');
-              }
+              setGamePaused(true);
+              gs.current.keys.clear();
+              doSaveRef.current(buildSaveData());
             }}
             style={{
               padding: '.5rem .8rem',
@@ -7920,9 +8644,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           charClass={char.class}
           onComplete={(answers: OnboardingAnswers) => {
             gs.current.pabloOnboardingDone = true;
+            gs.current.perception = answers.perception ?? 5;
             setPabloMsgs(m => [...m, {
               role: 'pablo' as const,
-              text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
+              text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Perception: ${answers.perception ?? 5}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
             }]);
             setNarr('> PABLO ONBOARDING COMPLETE. Your profile has been calibrated. Terminal is now fully operational.');
             doSaveRef.current(buildSaveData());
@@ -8001,9 +8726,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622'} bar={hunger} />
                     <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622'} bar={thirst} />
                     <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444'} bar={energy} />
-                    <StatRow label="LEVEL" val={level} col="#ffcc00" />
-                    <StatRow label="EXP" val={`${exp}/${expToLevel(level)}`} col="#ffcc00" bar={Math.min(100, (exp / expToLevel(level)) * 100)} />
+                    <StatRow label="LEVEL" val={`${level} / ${MAX_LEVEL}`} col="#ffcc00" />
+                    <StatRow label="EXP" val={level >= MAX_LEVEL ? 'MAX' : `${exp}/${expToLevel(level)}`} col="#ffcc00" bar={level >= MAX_LEVEL ? 100 : Math.min(100, (exp / expToLevel(level)) * 100)} />
                     <StatRow label="DEF" val={(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus} col="#44aaff" />
+                    <StatRow label="PERCEPTION" val={gs.current.perception ?? 5} col="#cc88ff" />
+                    <StatRow label="TOTAL EXP" val={gs.current.totalExpEarned?.toLocaleString() ?? '0'} col="#ffcc00" />
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#88ff44" />}
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>NET WORTH & FINANCES</div>
@@ -8954,9 +9681,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {showLevelUp && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 350, pointerEvents: 'none' }}>
-          <div style={{ textAlign: 'center', animation: 'smfade 3.2s ease-out forwards' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2rem,7vw,4.5rem)', color: '#ffcc00', textShadow: '0 0 40px rgba(255,200,0,.8), 0 0 80px rgba(255,200,0,.4)', letterSpacing: '.25em', whiteSpace: 'pre' }}>{levelUpText}</div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 350, pointerEvents: 'none', paddingBottom: '12%' }}>
+          <div style={{ textAlign: 'center', animation: 'smfade 3.5s ease-out forwards', background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.3) 100%)', padding: '1.2rem 2.5rem', borderRadius: 6 }}>
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 'clamp(.7rem,2.5vw,1.1rem)', color: 'rgba(255,255,255,.75)', letterSpacing: '.12em', lineHeight: 1.6 }}>{levelUpText}</div>
+            <div style={{ width: 60, height: 1, background: 'rgba(255,255,255,.15)', margin: '.5rem auto 0' }} />
           </div>
         </div>
       )}
@@ -9431,6 +10159,198 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ← RETURN TO TERMINAL
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {arcadeGameId && (
+        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace" }}>LOADING...</div>}>
+          <ArcadeGame
+            gameId={arcadeGameId}
+            salary={salary}
+            onExit={() => { setArcadeGameId(null); gameRef.current?.focus(); }}
+            onDeductFiat={() => {
+              const g = gs.current;
+              if (g.salary < 1) { setNarr('> INSUFFICIENT FIAT — You need at least 1 FIAT to play.'); return false; }
+              g.salary -= 1;
+              setSalary(g.salary);
+              return true;
+            }}
+          />
+        </Suspense>
+      )}
+
+      {showNewspaper && (() => {
+        const np = showNewspaper;
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}>
+            <div style={{ width: '700px', maxWidth: '96vw', maxHeight: '92vh', background: '#f5f0e0', color: '#1a1a1a', borderRadius: '3px', overflow: 'auto', boxShadow: '0 0 40px rgba(255,200,60,.15)', border: '2px solid #2a2a2a' }}>
+              <div style={{ background: '#1a1a1a', color: '#f5f0e0', padding: '10px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '.3em', lineHeight: 1.1 }}>THE MINX</div>
+                <div style={{ fontSize: '.55rem', letterSpacing: '.15em', opacity: .6, marginTop: '2px' }}>INDEPENDENT UNDERGROUND PRESS — ISSUE #{np.issue} — {np.season} EDITION — PRICE: FREE (100 FIAT TO KEEP)</div>
+              </div>
+              <div style={{ padding: '14px 18px' }}>
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', lineHeight: 1.2, borderBottom: '2px solid #1a1a1a', paddingBottom: '6px', marginBottom: '4px' }}>{np.headline}</div>
+                <div style={{ fontSize: '.7rem', fontStyle: 'italic', color: '#555', marginBottom: '12px' }}>{np.subhead}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: np.articles.length > 3 ? '1fr 1fr' : '1fr', gap: '10px', marginBottom: '14px' }}>
+                  {np.articles.map((a, i) => (
+                    <div key={i} style={{ borderLeft: '2px solid #ccc', paddingLeft: '8px' }}>
+                      <div style={{ fontSize: '.72rem', fontWeight: 'bold', marginBottom: '3px', textTransform: 'uppercase' }}>{a.title}</div>
+                      <div style={{ fontSize: '.58rem', lineHeight: 1.5, color: '#333' }}>{a.body}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ borderTop: '1px solid #aaa', paddingTop: '8px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '.6rem', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '.1em' }}>WEATHER REPORT</div>
+                  <div style={{ fontSize: '.55rem', color: '#444', lineHeight: 1.5 }}>{np.weather}</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px', borderTop: '1px solid #aaa', paddingTop: '8px' }}>
+                  {np.ads.map((ad, i) => (
+                    <div key={i} style={{ fontSize: '.5rem', color: '#555', background: '#ece7d5', padding: '4px 6px', border: '1px dashed #bbb' }}>{ad}</div>
+                  ))}
+                </div>
+                <div style={{ fontSize: '.55rem', fontStyle: 'italic', color: '#444', borderTop: '1px solid #aaa', paddingTop: '8px', lineHeight: 1.5 }}>{np.editorial}</div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '10px 16px', borderTop: '1px solid #ccc', background: '#ece7d5' }}>
+                <button onClick={() => {
+                  const g = gs.current;
+                  if (g.salary < 100) { setNarr('> NOT ENOUGH FIAT — You need 100 FIAT to keep this newspaper.'); return; }
+                  if (g.inventory.length >= INVENTORY_MAX_SLOTS) { setNarr('> INVENTORY FULL — No room for the newspaper.'); return; }
+                  const itemId = `newspaper_${np.issue}_${Date.now()}`;
+                  g.salary -= 100; setSalary(g.salary);
+                  const newItem: InventoryItem = { id: itemId, name: `THE MINX #${np.issue}`, desc: `${np.season} edition of THE MINX underground newspaper.`, icon: '📰', stackable: false, qty: 1, value: 50 };
+                  g.inventory.push(newItem);
+                  setInventory([...g.inventory]);
+                  setNarr(`> PURCHASED — THE MINX Issue #${np.issue} (${np.season}) added to inventory. -100 FIAT`);
+                  setShowNewspaper(null);
+                  gameRef.current?.focus();
+                }} style={{ padding: '6px 18px', background: '#1a1a1a', color: '#f5f0e0', border: 'none', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>KEEP COPY — 100 FIAT</button>
+                <button onClick={() => { setShowNewspaper(null); gameRef.current?.focus(); }} style={{ padding: '6px 18px', background: 'transparent', color: '#1a1a1a', border: '1px solid #1a1a1a', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showInventory && (() => {
+        const g = gs.current;
+        const inShop = g.interior && (g.interior.bid === 'pawn_shop' || g.interior.bid === 'market');
+        const sellItem = (idx: number) => {
+          const item = g.inventory[idx];
+          if (!item) return;
+          g.salary += item.value;
+          g.inventory.splice(idx, 1);
+          setSalary(g.salary);
+          setInventory([...g.inventory]);
+          sfxCoin();
+          setNarr(`> SOLD — ${item.name} for ${item.value} FIAT. "Pleasure doing business."`);
+        };
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 700, background: 'rgba(0,0,0,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setShowInventory(false); gameRef.current?.focus(); } }}>
+            <div style={{ width: '520px', maxWidth: '96vw', background: 'rgba(10,12,18,.96)', border: '1px solid rgba(0,255,200,.25)', borderRadius: '4px', boxShadow: '0 0 30px rgba(0,255,200,.08)' }}>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(0,255,200,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'rgba(0,255,200,.8)', fontSize: '.8rem', letterSpacing: '.15em' }}>INVENTORY ({inventory.length}/{INVENTORY_MAX_SLOTS}){inShop ? ' — SELL MODE' : ''}</span>
+                <button onClick={() => { setShowInventory(false); gameRef.current?.focus(); }} style={{ background: 'none', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.7)', padding: '2px 10px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem' }}>CLOSE [ESC]</button>
+              </div>
+              <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: `repeat(${INVENTORY_GRID_COLS}, 1fr)`, gap: '6px', minHeight: '200px' }}>
+                {Array.from({ length: INVENTORY_MAX_SLOTS }).map((_, i) => {
+                  const item = inventory[i];
+                  return (
+                    <div key={i}
+                      onClick={() => { if (item && inShop) sellItem(i); }}
+                      style={{
+                        aspectRatio: '1', background: item ? 'rgba(0,255,200,.06)' : 'rgba(255,255,255,.02)',
+                        border: item ? (inShop ? '1px solid rgba(255,200,60,.35)' : '1px solid rgba(0,255,200,.2)') : '1px solid rgba(255,255,255,.06)',
+                        borderRadius: '3px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        cursor: item && inShop ? 'pointer' : 'default', position: 'relative', transition: 'border-color .15s',
+                      }}
+                      title={item ? `${item.name}\n${item.desc}\nValue: ${item.value} FIAT${inShop ? '\nClick to sell' : ''}` : 'Empty slot'}
+                    >
+                      {item && (
+                        <>
+                          <span style={{ fontSize: '1.3rem' }}>{item.icon}</span>
+                          <span style={{ fontSize: '.42rem', color: 'rgba(0,255,200,.7)', marginTop: '2px', textAlign: 'center', lineHeight: 1.2, maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                          {item.qty > 1 && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '.42rem', color: 'rgba(255,200,60,.8)' }}>x{item.qty}</span>}
+                          {inShop && <span style={{ position: 'absolute', bottom: '2px', fontSize: '.38rem', color: 'rgba(255,200,60,.8)' }}>SELL {item.value}F</span>}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(0,255,200,.1)' }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(255,255,255,.3)' }}>{inShop ? 'Click items to sell | ESC to close' : 'HOVER for details | Visit PAWN SHOP or MARKET to sell items | [I] to toggle'}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {videoCallRoom && (
+        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 750, fontFamily: "'Share Tech Mono',monospace", width: '340px', maxWidth: '40vw' }}>
+          <div style={{ background: 'rgba(8,8,14,.94)', border: '1px solid rgba(0,200,255,.3)', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 0 25px rgba(0,200,255,.1)' }}>
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,200,255,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,200,255,.06)' }}>
+              <span style={{ color: 'rgba(0,200,255,.8)', fontSize: '.6rem', letterSpacing: '.1em' }}>VIDEO CALL — {videoCallPeers.length + 1} participant{videoCallPeers.length !== 0 ? 's' : ''}</span>
+              <button onClick={leaveVideoCall} style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.8)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px' }}>END [ESC]</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: videoCallPeers.length > 1 ? '1fr 1fr' : '1fr', gap: '3px', padding: '4px' }}>
+              <div style={{ aspectRatio: '4/3', background: 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(0,200,255,.15)' }}>
+                {vcStream && videoEnabled ? (
+                  <video ref={el => { if (el && vcStream) { el.srcObject = vcStream; el.muted = true; el.play().catch(() => {}); } }} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontSize: '1.5rem' }}>👤</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.5)' }}>{videoEnabled ? '' : 'CAMERA OFF'}</div>
+                  </div>
+                )}
+                <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.6)', padding: '1px 4px', borderRadius: '2px' }}>YOU{!audioEnabled ? ' (MUTED)' : ''}</div>
+              </div>
+              {videoCallPeers.map(peer => (
+                <div key={peer.id} style={{ aspectRatio: '4/3', background: 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(0,200,255,.1)' }}>
+                  {peer.stream ? (
+                    <video ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontSize: '1.5rem' }}>👤</div>
+                    </div>
+                  )}
+                  <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.6)', padding: '1px 4px', borderRadius: '2px' }}>{peer.name}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '5px 8px', borderTop: '1px solid rgba(0,200,255,.1)', display: 'flex', gap: '6px', justifyContent: 'center' }}>
+              <button onClick={() => {
+                if (vcStreamRef.current) {
+                  const audioTrack = vcStreamRef.current.getAudioTracks()[0];
+                  if (audioTrack) { audioTrack.enabled = !audioTrack.enabled; setAudioEnabled(audioTrack.enabled); }
+                }
+              }} style={{ padding: '3px 10px', background: audioEnabled ? 'rgba(0,200,255,.1)' : 'rgba(255,60,60,.15)', border: `1px solid ${audioEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.4)'}`, color: audioEnabled ? 'rgba(0,200,255,.7)' : 'rgba(255,60,60,.7)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', borderRadius: '3px' }}>
+                {audioEnabled ? 'MIC ON' : 'MIC OFF'}
+              </button>
+              <button onClick={() => {
+                if (vcStreamRef.current) {
+                  const videoTrack = vcStreamRef.current.getVideoTracks()[0];
+                  if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; setVideoEnabled(videoTrack.enabled); }
+                }
+              }} style={{ padding: '3px 10px', background: videoEnabled ? 'rgba(0,200,255,.1)' : 'rgba(255,60,60,.15)', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.4)'}`, color: videoEnabled ? 'rgba(0,200,255,.7)' : 'rgba(255,60,60,.7)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', borderRadius: '3px' }}>
+                {videoEnabled ? 'CAM ON' : 'CAM OFF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {gamePaused && !showNewspaper && (
+        <div
+          onClick={() => { setGamePaused(false); gameRef.current?.focus(); }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.35)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 500, cursor: 'pointer', gap: '.6rem' }}
+        >
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '1.8rem', color: 'rgba(255,255,255,.6)', letterSpacing: '.4em', fontWeight: 300 }}>
+            BREAK
+          </div>
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
+            click to return
           </div>
         </div>
       )}

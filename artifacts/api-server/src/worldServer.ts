@@ -32,6 +32,7 @@ interface Player {
   pveRewardWindow: number;
   lastPveHeal: number;
   ownedWeapons: Set<string>;
+  paused: boolean;
 }
 
 interface BuildingLock {
@@ -46,6 +47,7 @@ interface BuildingLock {
 // ── State ─────────────────────────────────────────────────────────────────────
 const players = new Map<string, Player>();
 const buildingLocks = new Map<string, BuildingLock>();
+const videoRooms = new Map<string, Set<string>>();
 
 let idCounter = 0;
 const makeId = () => `p${++idCounter}_${Date.now().toString(36)}`;
@@ -86,7 +88,7 @@ const broadcast = (msg: object, exclude?: string) => {
 const broadcastPlayerList = () => {
   const list = Array.from(players.values()).map(p => ({
     id: p.id, name: p.name, class: p.class, company: p.company,
-    x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp,
+    x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
   }));
   broadcast({ type: 'player_list', players: list });
 };
@@ -128,7 +130,8 @@ const handleMessage = (player: Player, raw: string) => {
     case 'move':
       player.x = msg.x ?? player.x;
       player.y = msg.y ?? player.y;
-      broadcast({ type: 'player_move', id: player.id, x: player.x, y: player.y }, player.id);
+      if (typeof msg.paused === 'boolean') player.paused = msg.paused;
+      broadcast({ type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused }, player.id);
       break;
 
     case 'sync_stats': {
@@ -453,6 +456,41 @@ const handleMessage = (player: Player, raw: string) => {
     case 'request_ownership_stats':
       sendTo(player.id, { type: 'ownership_update', stats: getOwnershipStats() });
       break;
+
+    case 'rtc_join_room': {
+      const roomId = String(msg.roomId ?? '').slice(0, 64);
+      if (!roomId) break;
+      if (!videoRooms.has(roomId)) videoRooms.set(roomId, new Set());
+      const room = videoRooms.get(roomId)!;
+      const existingPeers = Array.from(room).filter(pid => players.has(pid) && pid !== player.id);
+      room.add(player.id);
+      sendTo(player.id, { type: 'rtc_room_peers', roomId, peers: existingPeers.map(pid => ({ id: pid, name: players.get(pid)!.name })) });
+      for (const pid of existingPeers) {
+        sendTo(pid, { type: 'rtc_peer_joined', roomId, peerId: player.id, peerName: player.name });
+      }
+      break;
+    }
+
+    case 'rtc_leave_room': {
+      const roomId = String(msg.roomId ?? '').slice(0, 64);
+      const room = videoRooms.get(roomId);
+      if (!room) break;
+      room.delete(player.id);
+      if (room.size === 0) videoRooms.delete(roomId);
+      for (const pid of room) {
+        sendTo(pid, { type: 'rtc_peer_left', roomId, peerId: player.id });
+      }
+      break;
+    }
+
+    case 'rtc_signal': {
+      const { targetId, signal, roomId } = msg;
+      if (!targetId || !signal || !roomId) break;
+      const sigRoom = videoRooms.get(roomId);
+      if (!sigRoom || !sigRoom.has(player.id) || !sigRoom.has(targetId)) break;
+      sendTo(targetId, { type: 'rtc_signal', fromId: player.id, fromName: player.name, signal, roomId });
+      break;
+    }
   }
 };
 
@@ -479,7 +517,7 @@ export const attachWorldServer = (httpServer: Server) => {
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, name, class: cls, company, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']) };
+    const player: Player = { id, name, class: cls, company, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false };
     players.set(id, player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
@@ -499,6 +537,13 @@ export const attachWorldServer = (httpServer: Server) => {
     ws.on('message', (data: Buffer) => handleMessage(player, data.toString()));
 
     ws.on('close', () => {
+      for (const [roomId, room] of videoRooms) {
+        if (room.has(id)) {
+          room.delete(id);
+          for (const pid of room) sendTo(pid, { type: 'rtc_peer_left', roomId, peerId: id });
+          if (room.size === 0) videoRooms.delete(roomId);
+        }
+      }
       players.delete(id);
       console.log(`[World] ${name} left, total: ${players.size}`);
       broadcast({ type: 'player_left', id, name });

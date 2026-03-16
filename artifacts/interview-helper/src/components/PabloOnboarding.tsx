@@ -4,6 +4,7 @@ export interface OnboardingAnswers {
   combatStyle: string;
   playstyle: string;
   goal: string;
+  perception: number;
 }
 
 interface PabloOnboardingProps {
@@ -33,9 +34,16 @@ const GOAL_OPTIONS = [
   { id: 'wealth', label: 'GET RICH', desc: 'FIAT is king. Gold is better. Stack it all.' },
 ];
 
-type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'tut_combat' | 'tut_economy' | 'tut_survival' | 'done';
+const PERCEPTION_OPTIONS = [
+  { id: '3', label: 'LOW (3)', desc: 'Minimal awareness. You rely on instinct, not senses.' },
+  { id: '5', label: 'AVERAGE (5)', desc: 'Standard awareness. You notice what matters.' },
+  { id: '7', label: 'HIGH (7)', desc: 'Sharp senses. Enemies show up on your radar earlier.' },
+  { id: '10', label: 'ELITE (10)', desc: 'Nothing escapes you. Maximum detection and map reveal.' },
+];
 
-const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'tut_combat', 'tut_economy', 'tut_survival', 'done'];
+type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'perception' | 'tut_combat' | 'tut_economy' | 'tut_survival' | 'done';
+
+const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'perception', 'tut_combat', 'tut_economy', 'tut_survival', 'done'];
 
 const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
@@ -45,6 +53,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [combatStyle, setCombatStyle] = useState('');
   const [playstyle, setPlaystyle] = useState('');
   const [goal, setGoal] = useState('');
+  const [perception, setPerception] = useState('');
 
   const stepIdx = STEP_ORDER.indexOf(step);
   const totalSteps = STEP_ORDER.length;
@@ -60,12 +69,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     if (step === 'combat') return combatStyle !== '';
     if (step === 'playstyle') return playstyle !== '';
     if (step === 'goal') return goal !== '';
+    if (step === 'perception') return perception !== '';
     return true;
   };
 
   const handleComplete = useCallback(() => {
-    onComplete({ combatStyle, playstyle, goal });
-  }, [combatStyle, playstyle, goal, onComplete]);
+    onComplete({ combatStyle, playstyle, goal, perception: parseInt(perception) || 5 });
+  }, [combatStyle, playstyle, goal, perception, onComplete]);
 
   const renderOptionGrid = (
     options: { id: string; label: string; desc: string }[],
@@ -214,6 +224,18 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 What keeps you awake at night, {charName}?
               </div>
               {renderOptionGrid(GOAL_OPTIONS, goal, setGoal)}
+            </div>
+          )}
+
+          {step === 'perception' && (
+            <div>
+              <div style={{ ...VT, fontSize: '.95rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.15rem' }}>
+                QUESTION 4 — PERCEPTION
+              </div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>
+                How sharp are your senses, {charName}? Perception affects enemy detection range and how much of the map you reveal as you explore.
+              </div>
+              {renderOptionGrid(PERCEPTION_OPTIONS, perception, setPerception)}
             </div>
           )}
 

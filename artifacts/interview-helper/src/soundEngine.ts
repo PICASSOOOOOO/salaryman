@@ -75,24 +75,42 @@ export function sfxKill() {
 
 export function sfxLevelUp() {
   const c = ctx(); const t = c.currentTime;
-  const melody = [262, 330, 392, 524, 660, 784, 1047];
-  melody.forEach((f, i) => {
-    const g = gain(c, 0.3);
-    const o = osc(c, 'square', f, g);
-    const st = t + i * 0.08;
-    g.gain.setValueAtTime(0.3 * _sfxVol, st);
-    g.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
-    play(o, st, st + 0.1);
+  const notes = [392, 494, 587];
+  notes.forEach((f, i) => {
+    const g = gain(c, 0.15);
+    const o = osc(c, 'sine', f, g);
+    const st = t + i * 0.12;
+    g.gain.setValueAtTime(0.15 * _sfxVol, st);
+    g.gain.linearRampToValueAtTime(0.08 * _sfxVol, st + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.4);
+    play(o, st, st + 0.45);
   });
-  // Final chord
-  [524, 660, 784].forEach(f => {
-    const g = gain(c, 0.2);
-    const o = osc(c, 'triangle', f, g);
-    const st = t + 0.65;
-    g.gain.setValueAtTime(0.2 * _sfxVol, st);
-    g.gain.exponentialRampToValueAtTime(0.001, st + 0.6);
-    play(o, st, st + 0.65);
+  const shimmer = gain(c, 0.06);
+  const shim = osc(c, 'sine', 1175, shimmer);
+  const st2 = t + 0.36;
+  shimmer.gain.setValueAtTime(0, st2);
+  shimmer.gain.linearRampToValueAtTime(0.06 * _sfxVol, st2 + 0.1);
+  shimmer.gain.exponentialRampToValueAtTime(0.001, st2 + 0.8);
+  play(shim, st2, st2 + 0.85);
+}
+
+export function sfxMilestone() {
+  const c = ctx(); const t = c.currentTime;
+  const chord = [523, 659, 784];
+  chord.forEach(f => {
+    const g = gain(c, 0.1);
+    const o = osc(c, 'sine', f, g);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.1 * _sfxVol, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    play(o, t, t + 1.3);
   });
+  const sub = gain(c, 0.08);
+  const so = osc(c, 'sine', 196, sub);
+  sub.gain.setValueAtTime(0, t);
+  sub.gain.linearRampToValueAtTime(0.08 * _sfxVol, t + 0.1);
+  sub.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  play(so, t, t + 0.65);
 }
 
 export function sfxStep() {
