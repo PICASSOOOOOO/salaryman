@@ -1,25 +1,41 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 
-const SPOTIFY_ALBUM_URL = 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0';
+export interface RadioStation {
+  id: string;
+  name: string;
+  freq: string;
+  embedUrl: string;
+  genre: string;
+}
+
+export const RADIO_STATIONS: RadioStation[] = [
+  { id: 'minx_fm', name: 'MINX CITY FM', freq: '107.3', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'OFFICIAL OST' },
+  { id: 'wasteland_radio', name: 'WASTELAND RADIO', freq: '92.1', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'AMBIENT' },
+  { id: 'neon_beats', name: 'NEON BEATS', freq: '104.7', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'ELECTRONIC' },
+  { id: 'iron_station', name: 'IRON STATION', freq: '88.5', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'ROCK' },
+  { id: 'shadow_lounge', name: 'SHADOW LOUNGE', freq: '99.9', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'LO-FI' },
+];
 
 interface RadioPlayerProps {
   playing: boolean;
   mounted: boolean;
   muted?: boolean;
+  stationId?: string;
 }
 
-export function RadioPlayer({ playing, mounted, muted }: RadioPlayerProps) {
+export function RadioPlayer({ playing, mounted, muted, stationId }: RadioPlayerProps) {
   if (!mounted) return null;
+  const station = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
   const active = playing && !muted;
   return (
     <iframe
-      src={active ? SPOTIFY_ALBUM_URL : 'about:blank'}
+      src={active ? station.embedUrl : 'about:blank'}
       width="300"
       height="80"
       style={{ position: 'fixed', left: -9999, top: -9999, border: 'none', opacity: 0, pointerEvents: 'none' }}
       allow="autoplay; encrypted-media"
       loading="lazy"
-      title="MINX CITY FM"
+      title={station.name}
     />
   );
 }
@@ -30,24 +46,33 @@ interface RadioHudProps {
   fading: boolean;
   topOffset: string;
   onToggle: () => void;
+  stationId: string;
+  onNextStation: () => void;
+  onPrevStation: () => void;
+  musicMuted: boolean;
+  scoreMuted: boolean;
+  onToggleMusicMute: () => void;
+  onToggleScoreMute: () => void;
 }
 
-export function RadioHud({ visible, on, fading, topOffset, onToggle }: RadioHudProps) {
+export function RadioHud({ visible, on, fading, topOffset, onToggle, stationId, onNextStation, onPrevStation, musicMuted, scoreMuted, onToggleMusicMute, onToggleScoreMute }: RadioHudProps) {
   if (!visible) return null;
+  const station = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
   return (
     <div style={{
       position: 'absolute', top: topOffset, right: '.8rem', zIndex: 210,
       fontFamily: "'VT323',monospace", background: 'rgba(0,6,2,.92)',
       border: `1px solid ${on ? 'rgba(0,255,65,.55)' : 'rgba(0,255,65,.2)'}`,
-      padding: '.4rem .7rem', minWidth: 180, cursor: 'pointer',
+      padding: '.4rem .7rem', minWidth: 200,
       boxShadow: on ? '0 0 12px rgba(0,255,65,.15)' : 'none',
       transition: 'border-color .3s, box-shadow .3s, opacity .5s',
       opacity: fading ? 0 : 1,
-    }} onClick={onToggle}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', cursor: 'pointer' }} onClick={onToggle}>
         <div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>RADIO 107.3</div>
-          <div style={{ fontSize: '1rem', color: on ? '#00ff41' : 'rgba(0,255,65,.35)', letterSpacing: '.12em', lineHeight: 1 }}>MINX CITY FM</div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>RADIO {station.freq}</div>
+          <div style={{ fontSize: '1rem', color: on ? '#00ff41' : 'rgba(0,255,65,.35)', letterSpacing: '.12em', lineHeight: 1 }}>{station.name}</div>
+          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginTop: '2px' }}>{station.genre}</div>
         </div>
         <div style={{
           width: 28, height: 14, borderRadius: 7,
@@ -64,8 +89,22 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle }: RadioHudP
           }} />
         </div>
       </div>
-      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginTop: '3px' }}>[R] TOGGLE · {on ? 'ON AIR' : 'OFF'}</div>
-      {on && <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', marginTop: '2px' }}>VOL: SYSTEM AUDIO</div>}
+      {on && (
+        <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem', alignItems: 'center' }}>
+          <button onClick={e => { e.stopPropagation(); onPrevStation(); }} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>◀</button>
+          <div style={{ flex: 1, fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em', textAlign: 'center' }}>STATION {RADIO_STATIONS.findIndex(s => s.id === stationId) + 1}/{RADIO_STATIONS.length}</div>
+          <button onClick={e => { e.stopPropagation(); onNextStation(); }} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>▶</button>
+        </div>
+      )}
+      <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem' }}>
+        <button onClick={e => { e.stopPropagation(); onToggleMusicMute(); }} style={{ flex: 1, background: musicMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${musicMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,255,65,.12)'}`, color: musicMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,255,65,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+          {musicMuted ? '🔇 MUSIC' : '🔊 MUSIC'}
+        </button>
+        <button onClick={e => { e.stopPropagation(); onToggleScoreMute(); }} style={{ flex: 1, background: scoreMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${scoreMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,255,65,.12)'}`, color: scoreMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,255,65,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+          {scoreMuted ? '🔇 SCORE' : '🔊 SCORE'}
+        </button>
+      </div>
+      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', marginTop: '3px' }}>[R] TOGGLE · [&lt;/&gt;] STATION · {on ? 'ON AIR' : 'OFF'}</div>
     </div>
   );
 }
@@ -74,6 +113,7 @@ export function useRadio() {
   const [radioOn, setRadioOn] = useState(false);
   const [radioVisible, setRadioVisible] = useState(false);
   const [radioFading, setRadioFading] = useState(false);
+  const [stationId, setStationId] = useState(RADIO_STATIONS[0].id);
   const radioVisibleRef = useRef(false);
   const radioSessionPref = useRef(false);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,6 +128,20 @@ export function useRadio() {
     setRadioOn(newState);
     if (newState) setPlayerEverMounted(true);
     return { on: newState };
+  }, []);
+
+  const nextStation = useCallback(() => {
+    setStationId(prev => {
+      const idx = RADIO_STATIONS.findIndex(s => s.id === prev);
+      return RADIO_STATIONS[(idx + 1) % RADIO_STATIONS.length].id;
+    });
+  }, []);
+
+  const prevStation = useCallback(() => {
+    setStationId(prev => {
+      const idx = RADIO_STATIONS.findIndex(s => s.id === prev);
+      return RADIO_STATIONS[(idx - 1 + RADIO_STATIONS.length) % RADIO_STATIONS.length].id;
+    });
   }, []);
 
   const show = useCallback(() => {
@@ -119,7 +173,7 @@ export function useRadio() {
 
   return {
     radioOn, radioVisible, radioFading, radioVisibleRef,
-    playerEverMounted,
-    play, pause, toggle, show, hide,
+    playerEverMounted, stationId,
+    play, pause, toggle, show, hide, nextStation, prevStation,
   };
 }

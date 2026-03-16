@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 
 export type AppMode = 'branded' | 'discreet';
 
+const buildVersion = typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev';
+
 export const BRANDED_CONFIG = {
-  name: 'SALARYMAN',
-  sub: 'PABLO CORP. DEVICE v1.0',
-  navLabel: 'PABLO',
-  emailSender: 'Salaryman',
-  description: 'PABLO AI — Executive Field Unit',
-} as const;
+  name: 'SALARYMAN' as const,
+  sub: `PABLO TERMINAL MX-75 · ${buildVersion}`,
+  navLabel: 'PABLO' as const,
+  emailSender: 'Salaryman' as const,
+  description: 'PABLO AI — Executive Field Unit' as const,
+};
 
 export const DISCREET_CONFIG = {
   name: 'DEVDOCS',

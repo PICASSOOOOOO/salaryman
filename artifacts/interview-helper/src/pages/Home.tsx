@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight, Clock, X, Zap } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight, Clock, X, Zap, Globe } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
@@ -11,6 +11,7 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -38,9 +39,56 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan'>('solve');
   const [typeMode, setTypeMode] = useState(false);
-  const [rightTab, setRightTab] = useState<'output' | 'chat'>('output');
+  const [rightTab, setRightTab] = useState<'output' | 'chat'>('chat');
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [serverOnline, setServerOnline] = useState<number | null>(null);
+  const [serverMax, setServerMax] = useState(50);
+  const [gameSave, setGameSave] = useState<{ salary: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number } | null>(null);
+  const [translatorText, setTranslatorText] = useState('');
+  const [translatorFrom, setTranslatorFrom] = useState('vi');
+  const [translatorTo, setTranslatorTo] = useState('en');
+  const [translatorResult, setTranslatorResult] = useState('');
+  const [translatorListening, setTranslatorListening] = useState(false);
+  const translatorRecRef = useRef<{ stop: () => void } | null>(null);
+
+  useEffect(() => {
+    const fetchStatus = () => {
+      fetch(`${import.meta.env.BASE_URL}api/world/server-status`).then(r => r.json()).then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); }).catch(() => {});
+    };
+    fetchStatus();
+    const iv = setInterval(fetchStatus, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    const parseFields = (s: Record<string, unknown>) => ({
+      salary: Number(s.salary ?? 0),
+      goldBalance: Number(s.goldBalance ?? 0),
+      level: Number(s.level ?? 1),
+      hp: Number(s.hp ?? 0),
+      maxHp: Number(s.maxHp ?? 350),
+      savings: Number(s.savings ?? 0),
+    });
+    let localLevel = 0;
+    try {
+      const raw = localStorage.getItem('sm_save');
+      if (raw) { const p = parseFields(JSON.parse(raw)); localLevel = p.level; setGameSave(p); }
+    } catch {}
+    fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (!res?.saves?.length) return;
+        const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
+          new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
+        if (newest?.data) {
+          const cloud = parseFields(newest.data as Record<string, unknown>);
+          if (cloud.level >= localLevel) setGameSave(cloud);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
@@ -177,7 +225,7 @@ export default function Home() {
       {/* City Info Section */}
       <div className="relative z-20 px-4 py-3"
         style={{ background: 'linear-gradient(135deg, rgba(0,255,65,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(0,255,65,0.12)' }}>
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <Terminal className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)' }} />
             <div>
@@ -185,18 +233,30 @@ export default function Home() {
               <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}</div>
             </div>
           </div>
-          <div className="flex-1 grid grid-cols-3 gap-3" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>2.4M REGISTERED</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>FACTION CONTROL</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(180,0,255,0.7)' }}>PABLO CORP.</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ECONOMY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,204,0,0.7)' }}>ƒ FIAT STANDARD</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${(gameSave.salary + gameSave.goldBalance * 100000).toLocaleString()}` : '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(255,204,0,0.25)', letterSpacing: '0.1em' }}>GOLD</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,204,0,0.7)' }}>{gameSave ? `${gameSave.goldBalance} oz` : '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(255,100,100,0.25)', letterSpacing: '0.1em' }}>♥ HEARTS</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,100,100,0.7)' }}>{gameSave ? `LV.${gameSave.level} · ${gameSave.hp}/${gameSave.maxHp}` : '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(100,200,255,0.25)', letterSpacing: '0.1em' }}>AVAILABLE</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(100,200,255,0.7)' }}>{gameSave ? `$${(gameSave.savings * 0.012).toFixed(2)}` : '—'}</div>
             </div>
           </div>
         </div>
@@ -207,8 +267,8 @@ export default function Home() {
         style={{ background: 'rgba(0,255,65,0.03)', borderBottom: '1px solid rgba(0,255,65,0.08)' }}>
         <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(0,255,65,0.35)' }} />
         <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)', letterSpacing: '0.08em', flex: 1 }}>
-          <strong style={{ color: 'rgba(0,255,65,0.6)' }}>FREE TERMINAL</strong>
-          {' '}— Interview Solver, Screen Scanner, Voice Listener &amp; PABLO AI included free on all terminals. No device purchase needed.
+          <strong style={{ color: 'rgba(0,255,65,0.6)' }}>{boomerMode ? 'FREE TOOLS' : 'FREE TERMINAL'}</strong>
+          {' '}— {boomerMode ? 'PABLO AI chat & Translator included free. Upgrade for Interview Solver, Screen Scanner, Voice Listener & more.' : 'PABLO AI & BABEL-3 LINGUAL CORTEX included free on all terminals. Upgrade device for full augmentation suite.'}
         </span>
       </div>
 
@@ -239,6 +299,110 @@ export default function Home() {
 
         {/* LEFT PANEL */}
         <section className="flex flex-col h-full space-y-3">
+
+          {/* ── TRANSLATOR TOOL — free ── */}
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-cyan-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR — FREE' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
+            </div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
+                className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </select>
+              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }}
+                className="px-1.5 py-1 text-[10px] font-bold rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors shrink-0"
+                title="Swap languages">
+                ⇄
+              </button>
+              <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)}
+                className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </select>
+              <button onClick={() => {
+                if (translatorListening) {
+                  try { translatorRecRef.current?.stop(); } catch {}
+                  translatorRecRef.current = null;
+                  setTranslatorListening(false);
+                  return;
+                }
+                const W = window as unknown as Record<string, unknown>;
+                const SRCtor = (W.SpeechRecognition ?? W.webkitSpeechRecognition) as (new () => { continuous: boolean; interimResults: boolean; lang: string; onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void }) | undefined;
+                if (!SRCtor) {
+                  setTranslatorResult('Speech recognition not supported in this browser.');
+                  return;
+                }
+                setTranslatorListening(true);
+                const rec = new SRCtor();
+                translatorRecRef.current = rec;
+                rec.continuous = false; rec.interimResults = true; rec.lang = translatorFrom;
+                rec.onresult = (ev) => {
+                  const transcript = Array.from(ev.results).map(r => r[0].transcript).join('');
+                  setTranslatorText(transcript);
+                };
+                rec.onend = () => { setTranslatorListening(false); translatorRecRef.current = null; };
+                rec.onerror = () => { setTranslatorListening(false); translatorRecRef.current = null; };
+                rec.start();
+              }}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md border transition-colors shrink-0
+                  ${translatorListening ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20'}`}>
+                <Mic className="w-3 h-3" />
+                {translatorListening ? 'Stop' : 'Speak'}
+              </button>
+            </div>
+            <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)}
+              placeholder="Type or speak text to translate..."
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none resize-none mb-2"
+              style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 48 }} />
+            <button onClick={async () => {
+              if (!translatorText.trim()) return;
+              setTranslatorResult('Translating...');
+              try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(translatorText)}&langpair=${translatorFrom}|${translatorTo}`);
+                const data = await res.json();
+                setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
+              } catch {
+                setTranslatorResult('Translation service unavailable. Try again.');
+              }
+            }}
+              className={`w-full flex items-center justify-center gap-2 px-3 ${boomerMode ? 'py-2.5 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors mb-2`}
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <ArrowRight className="w-3 h-3" /> TRANSLATE
+            </button>
+            {translatorResult && translatorResult !== 'Translating...' && (
+              <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 flex items-start gap-2">
+                <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-cyan-300 flex-1`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+                <button onClick={() => {
+                  const u = new SpeechSynthesisUtterance(translatorResult);
+                  const langMap: Record<string,string> = { en:'en-US',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-BR',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',vi:'vi-VN',th:'th-TH',tl:'fil-PH',id:'id-ID',ms:'ms-MY',ar:'ar-SA',ru:'ru-RU',hi:'hi-IN',it:'it-IT',nl:'nl-NL',sv:'sv-SE',pl:'pl-PL',tr:'tr-TR' };
+                  u.lang = langMap[translatorTo] ?? translatorTo;
+                  u.rate = 0.9;
+                  window.speechSynthesis.cancel();
+                  window.speechSynthesis.speak(u);
+                }}
+                  className="shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                  title="Hear translation">
+                  🔊 {boomerMode ? 'HEAR IT' : 'PLAY'}
+                </button>
+              </div>
+            )}
+            {translatorResult === 'Translating...' && (
+              <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 px-3 py-2">
+                <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-cyan-300`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+              </div>
+            )}
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════
+              PAID FEATURES BELOW — requires subscription
+              ═══════════════════════════════════════════════════════ */}
 
           {/* AUTOPILOT BANNER */}
           <AnimatePresence>
@@ -286,7 +450,7 @@ export default function Home() {
                       : isRecording ? <Radio className="w-4 h-4 text-red-400" />
                       : <Mic className="w-4 h-4 text-rose-400" />}
                   </div>
-                  <span className="font-bold text-xs">{isRecording ? 'INTERCEPTING...' : isListenProcessing ? 'Processing...' : PABLO_PRODUCTS.LIVE_LISTEN.name}</span>
+                  <span className={`font-bold ${boomerMode ? 'text-sm' : 'text-xs'}`}>{isRecording ? 'INTERCEPTING...' : isListenProcessing ? 'Processing...' : boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.name}</span>
                   {isRecording && (
                     <div className="flex gap-0.5 ml-auto">
                       {[0,1,2].map(i => (
@@ -297,7 +461,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                <p className="text-[10px] opacity-60">{isRecording ? 'Click to stop' : 'Click · Speak · Get bullets'}</p>
+                <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} opacity-60`}>{isRecording ? 'Click to stop' : boomerMode ? 'Click to listen, get notes' : 'Click · Speak · Get bullets'}</p>
               </motion.button>
 
               {/* SCAN SCREEN */}
@@ -308,24 +472,24 @@ export default function Home() {
                     {(isConnecting || isAnalyzing) && <span className="absolute inset-0 rounded-lg bg-sky-400/20 animate-ping" />}
                     {isConnecting ? <Loader2 className="w-4 h-4 animate-spin text-sky-400" /> : <ScanSearch className="w-4 h-4 text-sky-400" />}
                   </div>
-                  <span className="font-bold text-xs text-sky-300">{PABLO_PRODUCTS.SCAN_SCREEN.short} SCANNER</span>
+                  <span className={`font-bold ${boomerMode ? 'text-sm' : 'text-xs'} text-sky-300`}>{boomerMode ? 'SCREEN SCANNER' : `${PABLO_PRODUCTS.SCAN_SCREEN.short} SCANNER`}</span>
                 </div>
                 {/* Scan Once + Chat Reply */}
                 <div className="grid grid-cols-2 gap-1.5">
                   <button onClick={handleScanOnce} disabled={isAnyBusy}
-                    className="py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[10px] font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                    Once
+                    className={`py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}>
+                    {boomerMode ? 'Scan Once' : 'Once'}
                   </button>
                   <button onClick={handleChatScan} disabled={isAnyBusy}
-                    className="py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold hover:bg-amber-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
-                    💬 Chat Reply
+                    className={`py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-amber-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
+                    💬 {boomerMode ? 'Chat Reply' : 'Chat Reply'}
                   </button>
                 </div>
                 {/* Auto + speed */}
                 <div className="flex items-center gap-1.5">
                   <button onClick={handleAutoPilot} disabled={isAnyBusy}
-                    className="flex-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[10px] font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
-                    <Bot className="w-3 h-3" /> Auto
+                    className={`flex-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
+                    <Bot className="w-3 h-3" /> {boomerMode ? 'Auto Scan' : 'Auto'}
                   </button>
                   <span className="text-[9px] text-muted-foreground/40">every</span>
                   {[5, 10, 15].map(s => (
@@ -344,10 +508,11 @@ export default function Home() {
           )}
 
           {/* PROBLEM DESCRIPTION */}
+          <ProGate inline feature={boomerMode ? 'Problem Input' : PABLO_PRODUCTS.PROBLEM_DESC.short}>
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden relative group transition-colors focus-within:border-primary/50">
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Code className="w-4 h-4" />{PABLO_PRODUCTS.PROBLEM_DESC.short} TERMINAL
+                <Code className="w-4 h-4" />{boomerMode ? 'PROBLEM INPUT' : `${PABLO_PRODUCTS.PROBLEM_DESC.short} TERMINAL`}
               </div>
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-muted-foreground" />
@@ -365,27 +530,54 @@ export default function Home() {
               <div className="absolute bottom-4 right-4 text-xs font-mono text-muted-foreground/30 pointer-events-none select-none">INPUT_BUFFER</div>
             </div>
           </div>
+          </ProGate>
 
-          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} isPro={isPro} />
+          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} isPro={isPro} boomerMode={boomerMode} />
+
+          {/* ── PRINTER TOOLS — quick access ── */}
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Keyboard className="w-3.5 h-3.5 text-violet-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-violet-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'PRINTER TOOLS' : PABLO_PRODUCTS.PRINTER.name}</span>
+              </div>
+              {canTypeMode && !isStreaming && (
+                <button onClick={handleToggleTypeMode}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold rounded-md border transition-colors
+                    ${typeMode
+                      ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 hover:bg-red-500/20 hover:text-red-300'
+                      : 'bg-violet-500/10 text-violet-400 border-violet-500/30 hover:bg-violet-500/20'}`}>
+                  <Keyboard className="w-3 h-3" />
+                  {typeMode ? (isTyping ? 'Stop Typing' : 'Exit') : boomerMode ? 'Start Type Mode' : `${PABLO_PRODUCTS.TYPE_MODE.short} — GO`}
+                </button>
+              )}
+            </div>
+            <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {typeMode
+                ? (isTyping ? 'Typing in progress — mirror this output in your editor.' : typingDone ? 'Typing complete.' : 'Type mode active.')
+                : boomerMode ? 'Solve a question first, then have the answer typed out automatically.'
+                : PABLO_PRODUCTS.PRINTER.desc}
+            </p>
+          </div>
         </section>
 
         {/* RIGHT PANEL */}
-        <section className="flex flex-col h-full max-h-[calc(100vh-120px)]">
+        <section className="flex flex-col h-full max-h-[60vh] lg:max-h-[calc(100vh-120px)]">
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
 
             {/* Panel header */}
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
               {/* Tabs */}
               <div className="flex items-center gap-1">
+                <button onClick={() => setRightTab('chat')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
+                    ${rightTab === 'chat' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
+                  <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO AI' : 'PABLO'}
+                </button>
                 <button onClick={() => setRightTab('output')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
                     ${rightTab === 'output' ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
                   <Terminal className="w-3.5 h-3.5" /> Output
-                </button>
-                <button onClick={() => setRightTab('chat')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-colors
-                    ${rightTab === 'chat' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}>
-                  <Bot className="w-3.5 h-3.5" /> PABLO
                 </button>
               </div>
 
@@ -448,7 +640,7 @@ export default function Home() {
                     <motion.div key="typemode" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
                       <div className="flex items-center gap-2 mb-3">
                         <Keyboard className="w-3.5 h-3.5 text-violet-400" />
-                        <span className="text-xs text-violet-400 font-mono font-bold">TYPE MODE</span>
+                        <span className={`${boomerMode ? 'text-sm' : 'text-xs'} text-violet-400 font-mono font-bold`}>{boomerMode ? 'TYPE MODE' : `${PABLO_PRODUCTS.TYPE_MODE.short}`}</span>
                         {isTyping && <span className="text-xs text-muted-foreground font-mono">— mirror this in your editor</span>}
                         {typingDone && <span className="text-xs text-green-400 font-mono">— complete ✓</span>}
                       </div>
@@ -575,7 +767,7 @@ export default function Home() {
                       rows={1}
                       disabled={chatStreaming}
                       className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 disabled:opacity-50 max-h-32 overflow-y-auto"
-                      style={{ fieldSizing: 'content' } as any}
+                      style={{ fieldSizing: 'content' } as React.CSSProperties}
                     />
                     <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming}
                       className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">

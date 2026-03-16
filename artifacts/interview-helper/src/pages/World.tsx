@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { boomerize } from '../gameSystems';
+import { getDefaultBoomerMode } from '../hooks/use-mobile';
 
 // ── World ─────────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
@@ -43,7 +44,7 @@ const CITY_BOTTOM = 793;
 
 // PABLO store lines
 const STORE_LINES = [
-  '> PABLO CORP. DEVICE',
+  '> SUITS DEVICE',
   '> The city is burning. The wasteland is worse.',
   '> A PABLO device is the only edge you have.',
   '> Register one and stay connected.',
@@ -62,13 +63,19 @@ const OFFICE_TIERS = [
 type CharClass = 'corporate'|'outlaw'|'replicant';
 interface Char { name:string; class:CharClass; sx:number; sy:number; salary:number; company?:string; }
 
-function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
+function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>void }) {
   const [name, setName] = useState('');
   const [cls,  setCls]  = useState<CharClass>('corporate');
   const [tick, setTick] = useState(0);
-  const [bm, setBm] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [bm, setBm] = useState(() => getDefaultBoomerMode());
   const [showHelp, setShowHelp] = useState(false);
   useEffect(()=>{ const t=setInterval(()=>setTick(n=>n+1),600); return()=>clearInterval(t); },[]);
+  useEffect(() => {
+    const sync = () => { try { setBm(localStorage.getItem('sm_boomer') === '1'); } catch {} };
+    const t = setInterval(sync, 2000);
+    window.addEventListener('storage', sync);
+    return () => { clearInterval(t); window.removeEventListener('storage', sync); };
+  }, []);
   const bmLabel = (txt: string) => bm ? boomerize(txt, true) : txt;
   const CLASSES: { id:CharClass; label:string; desc:string; sx:number; sy:number; salary:number }[] = [
     { id:'corporate', label:'CORPORATE', desc:'City dweller. ƒ100/min salary. Well connected.', sx:6800, sy:5900, salary:25000 },
@@ -86,8 +93,8 @@ function CharSelect({ onStart }:{ onStart:(c:Char)=>void }) {
         </div>
 
         <div style={{ display:'flex', justifyContent:'center', gap:'.6rem', marginBottom:'1rem' }}>
-          <button onClick={() => { const nb = !bm; setBm(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ padding:'.35rem .7rem', background:bm?'rgba(255,170,0,.1)':'rgba(0,255,65,.04)', border:bm?'1px solid rgba(255,170,0,.5)':'1px solid rgba(0,255,65,.2)', color:bm?'#ffaa00':'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
-            {bm ? 'PLAIN MODE ON' : 'PLAIN MODE'}
+          <button onClick={onBack} style={{ padding:'.35rem .7rem', background:'rgba(0,255,65,.04)', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
+            ← BACK
           </button>
           <button onClick={() => setShowHelp(v => !v)} style={{ padding:'.35rem .7rem', background:showHelp?'rgba(0,255,65,.08)':'rgba(0,255,65,.04)', border:showHelp?'1px solid rgba(0,255,65,.5)':'1px solid rgba(0,255,65,.2)', color:showHelp?'#00ff41':'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
             WHAT IS THIS?
@@ -187,7 +194,7 @@ export default function World() {
 
   // UI
   const [dialog,  setDialog]  = useState<{lines:string[];idx:number;bid:string}|null>(null);
-  const [msg,     setMsg]     = useState('PABLO CORP. v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
+  const [msg,     setMsg]     = useState('SUITS v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
   const [near,    setNear]    = useState<string|null>(null);
   const [hp,      setHp]      = useState(100);
   const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; });
@@ -204,7 +211,13 @@ export default function World() {
   const [chatMsgs,  setChatMsgs]  = useState<ChatMsg[]>([]);
   const [onlinePlayers, setOnlinePlayers] = useState<{id:string;name:string;x:number;y:number;speaking:boolean;company?:string}[]>([]);
   const [showColleagues, setShowColleagues] = useState(false);
-  const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const sync = () => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} };
+    const t = setInterval(sync, 2000);
+    window.addEventListener('storage', sync);
+    return () => { clearInterval(t); window.removeEventListener('storage', sync); };
+  }, []);
   const [dmTarget,  setDmTarget]  = useState<{id:string;name:string}|null>(null);
   const [unread,    setUnread]    = useState(0);
   const [voice,     setVoice]     = useState(false);
@@ -611,7 +624,7 @@ export default function World() {
     return()=>{ cancelAnimationFrame(animRef.current); window.removeEventListener('resize',resize); };
   },[char,dialog,showStore,showOffice,showPablo,pwPrompt,isDead,speaking]);
 
-  if(!char) return <CharSelect onStart={handleStart} />;
+  if(!char) return <CharSelect onStart={handleStart} onBack={() => navigate('/')} />;
 
   return (
     <div style={{ width:'100vw',height:'100vh',overflow:'hidden',background:'#030803',position:'relative',fontFamily:"'Share Tech Mono',monospace" }}>
@@ -798,7 +811,7 @@ export default function World() {
       {/* DIALOG */}
       {dialog&&(
         <div style={{ position:'absolute',bottom:'4rem',left:'50%',transform:'translateX(-50%)',width:520,maxWidth:'90vw',background:'rgba(0,8,0,.97)',border:'1px solid rgba(0,255,65,.5)',padding:'1rem',zIndex:200,cursor:'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>PABLO CORP.</div>
+          <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>SUITS</div>
           <div style={{ fontSize:'.8rem',color:'#00ff41',lineHeight:1.7,letterSpacing:'.03em',minHeight:'2rem' }}>{dialog.lines[dialog.idx]}</div>
           <div style={{ marginTop:'.5rem',textAlign:'right',fontSize:'.5rem',color:'rgba(0,255,65,.3)',letterSpacing:'.1em' }}>[{dialog.idx+1}/{dialog.lines.length}] SPACE ▶</div>
         </div>
@@ -833,7 +846,7 @@ export default function World() {
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.25rem' }}>
               <div>
                 <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#00ff41',letterSpacing:'.14em' }}>OFFICE TOWER</div>
-                <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>PABLO CORP. MANAGED — SHARED COMMERCIAL SPACE</div>
+                <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>SUITS MANAGED — SHARED COMMERCIAL SPACE</div>
               </div>
               <div style={{ display:'flex',gap:'.4rem',alignItems:'center' }}>
                 {rentedOffice&&(

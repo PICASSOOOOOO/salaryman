@@ -186,7 +186,7 @@ export interface TreasureChest {
 
 export const TREASURE_CHESTS: TreasureChest[] = [
   { id: 'tc_nw_1', x: 1500, y: 2000, opened: false, loot: { fiat: 400, items: [{ name: 'ANCIENT BLADE', desc: 'Pre-collapse weapon. Still sharp.' }] }, requiresMap: false },
-  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 500, items: [{ name: 'DATA CORE', desc: 'PABLO Corp. classified data.' }] }, requiresMap: false },
+  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 500, items: [{ name: 'DATA CORE', desc: 'SUITS classified data.' }] }, requiresMap: false },
   { id: 'tc_sw_1', x: 2500, y: 10000, opened: false, loot: { fiat: 650, items: [{ name: 'GOLD INGOT', desc: 'Pure gold. Worth 1 gold unit.' }] }, requiresMap: true },
   { id: 'tc_se_1', x: 10000, y: 10500, opened: false, loot: { fiat: 750, items: [{ name: 'REACTOR SHARD', desc: 'Glowing with residual energy.' }] }, requiresMap: true },
   { id: 'tc_mid_1', x: 6000, y: 8500, opened: false, loot: { fiat: 300, items: [{ name: 'SUPPLY CRATE', desc: 'Food and medical supplies.' }] }, requiresMap: false },
@@ -287,7 +287,7 @@ export const STORY_DIALOGUES: Record<string, DialogueTree> = {
         { text: 'What do you know about Senior Pablo?', nextId: 'pablo_info' },
         { text: 'Nothing. Goodbye.', nextId: null },
       ]},
-      bank_info: { id: 'bank_info', speaker: 'MARCUS VELL', portrait: 'npc', text: 'Iron Trust Bank. EST. 1989. Every fiat in this city passes through these doors. PABLO Corp. takes 12% of everything above 5,000. That\'s not banking. That\'s tribute.', choices: [
+      bank_info: { id: 'bank_info', speaker: 'MARCUS VELL', portrait: 'npc', text: 'Iron Trust Bank. EST. 1989. Every fiat in this city passes through these doors. SUITS takes 12% of everything above 5,000. That\'s not banking. That\'s tribute.', choices: [
         { text: 'That seems unfair.', nextId: 'unfair' },
         { text: 'Thanks for the info.', nextId: null },
       ]},
@@ -330,7 +330,7 @@ export const STORY_DIALOGUES: Record<string, DialogueTree> = {
 export const RUMORS: string[] = [
   'Someone saw lights on Floor 62 last night...',
   'The Iron Rats are planning a push into Void Dogs territory.',
-  'PABLO Corp. raised water prices again. Third time this month.',
+  'SUITS raised water prices again. Third time this month.',
   'A courier disappeared near the eastern ruins. Nobody\'s talking.',
   'The clinic is running low on med kits. Stock up.',
   'Someone found a pre-collapse bunker under the scrap yard.',
@@ -338,7 +338,7 @@ export const RUMORS: string[] = [
   'Static Monks are recruiting. Something big is coming.',
   'A trader at the black market is selling fake passports.',
   'The subway tunnels connect to something deeper...',
-  'PABLO Corp. is hiring contractors. Nobody knows for what.',
+  'SUITS is hiring contractors. Nobody knows for what.',
   'An android in the east district developed emotions. They\'re hiding.',
   'The Noodle Bar has the best ramen in Minx City. Fight me.',
   'Eastern Bloc found old military tech. Weapon parts everywhere.',

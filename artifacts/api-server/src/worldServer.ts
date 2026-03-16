@@ -588,6 +588,11 @@ const handleMessage = (player: Player, raw: string) => {
 };
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
+export const getServerStatus = () => ({
+  online: players.size,
+  max: MAX_PLAYERS,
+});
+
 export const attachWorldServer = (httpServer: Server) => {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   console.log('[World] WebSocket server attached at /ws');

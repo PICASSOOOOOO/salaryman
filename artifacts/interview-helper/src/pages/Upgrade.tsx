@@ -68,13 +68,13 @@ export default function Upgrade() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 crt-border" style={{ background: 'rgba(0,255,65,0.06)' }}>
               <Star className="w-3 h-3" style={{ color: '#00ff41' }} />
-              <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP. — SALARYMAN</span>
+              <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP — SALARYMAN</span>
             </div>
             <h1 className="display-text mb-3" style={{ fontSize: '2.5rem', color: '#00ff41', textShadow: '0 0 20px rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
               PRODUCT CATALOG
             </h1>
             <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
-              Browse Pablo Corp. augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
+              Browse Suits Corp augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
               {PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.
             </p>
           </motion.div>
@@ -197,7 +197,7 @@ export default function Upgrade() {
             <div className="mb-5">
               <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">{PABLO_PRODUCTS.PRO_TIER.name}</p>
               <div className="flex items-end gap-1 mb-1">
-                <span className="text-4xl font-bold text-foreground">$4–6</span>
+                <span className="text-4xl font-bold text-foreground">$25</span>
                 <span className="text-muted-foreground text-sm mb-1">/mo</span>
               </div>
               <p className="text-xs text-muted-foreground">Full augmentation suite — 7-day free trial, all modules unlocked</p>

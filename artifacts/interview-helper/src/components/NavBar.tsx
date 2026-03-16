@@ -5,6 +5,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useEffect, useRef, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
+import { getDefaultBoomerMode } from '../hooks/use-mobile';
 
 function BlinkingClock() {
   const [display, setDisplay] = useState('');
@@ -35,13 +36,21 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   const NAV = [
-    { path: '/', label: config.navLabel, icon: Terminal, pro: false },
-    { path: '/presenter', label: PABLO_PRODUCTS.PRESENTER.short, icon: Presentation, pro: true },
-    { path: '/contacts', label: PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true },
-    { path: '/hiring', label: PABLO_PRODUCTS.HIRING.short, icon: Briefcase, pro: true },
-    { path: '/dashboard', label: PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true },
+    { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, pro: false, mobileShow: true },
+    { path: '/presenter', label: boomerMode ? 'SLIDES' : PABLO_PRODUCTS.PRESENTER.short, icon: Presentation, pro: true, mobileShow: false },
+    { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true, mobileShow: false },
+    { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, pro: true, mobileShow: false },
+    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true, mobileShow: false },
   ];
 
   return (
@@ -55,7 +64,7 @@ export function NavBar() {
     >
       {/* Top strip — device info bar */}
       <div
-        className="flex items-center justify-between px-4 py-0.5"
+        className="hidden sm:flex items-center justify-between px-4 py-0.5"
         style={{
           borderBottom: '1px solid rgba(0,255,65,0.1)',
           background: 'rgba(0,255,65,0.02)',
@@ -63,11 +72,11 @@ export function NavBar() {
       >
         <div className="flex items-center gap-3">
           <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.12em' }}>
-            PABLO CORP.
+            {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
           </span>
           <span style={{ color: 'rgba(0,255,65,0.15)', fontSize: '0.65rem' }}>◆</span>
           <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>
-            FIELD UNIT v1.0
+            {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -80,16 +89,37 @@ export function NavBar() {
               </span>
             ) : (
               <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.08em' }}>
-                {isPro ? PABLO_PRODUCTS.PRO_TIER.name : PABLO_PRODUCTS.FREE_TIER.name}
+                {isPro ? (boomerMode ? 'PRO PLAN' : PABLO_PRODUCTS.PRO_TIER.name) : (boomerMode ? 'FREE PLAN' : PABLO_PRODUCTS.FREE_TIER.name)}
               </span>
             )}
           </span>
+          {!location.startsWith('/world') && (
+            <button
+              onClick={() => {
+                const nb = !boomerMode;
+                setBoomerMode(nb);
+                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
+              }}
+              className="display-text text-xs transition-all"
+              style={{
+                letterSpacing: '0.08em',
+                color: boomerMode ? 'rgba(255,170,0,0.75)' : 'rgba(0,255,65,0.25)',
+                cursor: 'pointer',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+              }}
+              title={boomerMode ? 'Boomer Mode ON — plain labels & bigger fonts' : 'Turn on Boomer Mode for plain labels & bigger fonts'}
+            >
+              {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
+            </button>
+          )}
           <BlinkingClock />
         </div>
       </div>
 
       {/* Main nav row */}
-      <div className="flex items-center justify-between px-4 h-11">
+      <div className="flex items-center justify-between px-4 h-11 overflow-x-auto scrollbar-hide">
 
         {/* Brand / Logo */}
         <div
@@ -108,7 +138,7 @@ export function NavBar() {
           >
             <Radio className="w-3.5 h-3.5" style={{ color: '#00ff41' }} />
           </div>
-          <div>
+          <div className="hidden sm:block">
             <h1
               className="display-text leading-none"
               style={{
@@ -131,7 +161,7 @@ export function NavBar() {
           <button
             onClick={e => { e.stopPropagation(); toggleMode(); }}
             title={isDiscreet ? 'Show real name' : 'Discreet mode'}
-            className="p-1 transition-all opacity-0 group-hover/logo:opacity-100"
+            className="p-1 transition-all opacity-0 group-hover/logo:opacity-100 hidden sm:block"
             style={{ color: 'rgba(0,255,65,0.3)' }}
           >
             {isDiscreet
@@ -142,15 +172,15 @@ export function NavBar() {
         </div>
 
         {/* Nav Items */}
-        <nav className="flex items-center gap-0.5">
-          {NAV.map(({ path, label, icon: Icon, pro }) => {
+        <nav className="flex items-center gap-0.5 shrink-0">
+          {NAV.map(({ path, label, icon: Icon, pro, mobileShow }) => {
             const active = location === path || (path !== '/' && location.startsWith(path));
             const locked = pro && !isPro;
             return (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className="flex items-center gap-1.5 px-3 py-2 transition-all"
+                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-3 py-2 transition-all`}
                 style={{
                   fontFamily: "'Share Tech Mono', monospace",
                   fontSize: '0.65rem',
@@ -192,23 +222,38 @@ export function NavBar() {
                       letterSpacing: '0.1em',
                     }}
                   >
-                    {PABLO_PRODUCTS.PRO_TIER.short}
+                    {boomerMode ? 'PRO' : PABLO_PRODUCTS.PRO_TIER.short}
                   </span>
                 )}
               </button>
             );
           })}
 
-          {/* ── SEPARATOR: work tools ↔ world game ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', margin: '0 0.3rem', opacity: 0.4 }}>
-            <div style={{ width: 1, height: 18, background: 'rgba(0,255,65,0.25)' }} />
-            <span style={{ fontSize: '0.38rem', color: 'rgba(0,255,65,0.3)', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '0.12em', writingMode: 'horizontal-tb' }}>EXPLORE</span>
-            <div style={{ width: 1, height: 18, background: 'rgba(0,255,65,0.25)' }} />
-          </div>
+          {/* Mobile boomer mode toggle */}
+          {!location.startsWith('/world') && (
+            <button
+              onClick={() => {
+                const nb = !boomerMode;
+                setBoomerMode(nb);
+                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
+              }}
+              className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 transition-all"
+              style={{
+                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: '0.6rem',
+                letterSpacing: '0.08em',
+                color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,0.35)',
+                border: boomerMode ? '1px solid rgba(255,170,0,0.5)' : '1px solid rgba(0,255,65,0.2)',
+                background: boomerMode ? 'rgba(255,170,0,0.1)' : 'transparent',
+              }}
+            >
+              {boomerMode ? '✓ PLAIN' : 'PLAIN'}
+            </button>
+          )}
 
           <button
             onClick={() => navigate('/world')}
-            className="flex items-center gap-1.5 px-3 py-2 transition-all"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 transition-all"
             style={{
               fontFamily: "'Share Tech Mono', monospace",
               fontSize: '0.65rem',
@@ -217,7 +262,6 @@ export function NavBar() {
               color: 'rgba(0,255,65,0.7)',
               border: '1px solid rgba(0,255,65,0.35)',
               background: 'rgba(0,255,65,0.06)',
-              marginRight: '0.25rem',
             }}
             onMouseEnter={e => {
               (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.12)';
@@ -237,7 +281,7 @@ export function NavBar() {
           {isTrial ? (
             <button
               onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-3 py-2 ml-1 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 ml-3 transition-all"
               style={{
                 fontFamily: "'Share Tech Mono', monospace",
                 fontSize: '0.6rem',
@@ -256,7 +300,7 @@ export function NavBar() {
           ) : !isPro && (
             <button
               onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-3 py-2 ml-1 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 ml-3 transition-all"
               style={{
                 fontFamily: "'Share Tech Mono', monospace",
                 fontSize: '0.65rem',

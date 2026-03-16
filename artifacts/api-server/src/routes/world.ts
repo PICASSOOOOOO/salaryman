@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, worldBusinessesTable } from "@workspace/db";
+import { getServerStatus } from "../worldServer";
 
 const router = Router();
 
@@ -68,6 +69,10 @@ router.post("/world/register", async (req, res) => {
     console.error("[World] register error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+router.get("/world/server-status", (_req, res) => {
+  res.json(getServerStatus());
 });
 
 export default router;

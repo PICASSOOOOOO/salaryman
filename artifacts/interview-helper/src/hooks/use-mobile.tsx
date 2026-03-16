@@ -17,3 +17,18 @@ export function useIsMobile() {
 
   return !!isMobile
 }
+
+export function getDefaultBoomerMode(): boolean {
+  try {
+    const stored = localStorage.getItem('sm_boomer');
+    if (stored !== null) return stored === '1';
+    const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+    if (mobile) {
+      localStorage.setItem('sm_boomer', '1');
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}

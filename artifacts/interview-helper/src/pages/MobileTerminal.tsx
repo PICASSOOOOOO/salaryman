@@ -217,7 +217,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
       <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...ST }}>
         <div style={{ ...VT, fontSize: '2rem', color: '#ff4444', letterSpacing: '.2em', marginBottom: '.5rem', textShadow: '0 0 20px rgba(255,68,68,.3)' }}>SIGNAL LOST</div>
         <div style={{ fontSize: '.65rem', color: 'rgba(255,68,68,.4)', letterSpacing: '.1em', marginBottom: '1.2rem', textAlign: 'center' }}>
-          Failed to connect to PABLO CORP. servers. Check your network connection and try again.
+          Failed to connect to PABLO CORP servers. Check your network connection and try again.
         </div>
         <button
           onClick={() => { setLoadError(false); setLoading(true); window.location.reload(); }}
@@ -501,7 +501,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
                 <StatRow label="SERVER" val="MINX CITY · PST" col="#00ff41" />
-                <StatRow label="FACTION" val="PABLO CORP." col="#b400ff" />
+                <StatRow label="FACTION" val="SUITS" col="#b400ff" />
                 <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
               </div>
 

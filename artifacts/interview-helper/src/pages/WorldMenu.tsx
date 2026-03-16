@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
-import { useIsMobile } from '../hooks/use-mobile';
+import { useIsMobile, getDefaultBoomerMode } from '../hooks/use-mobile';
 import { boomerize } from '../gameSystems';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 
@@ -48,7 +48,7 @@ const CLASS_BADGE: Record<string, string> = {
   replicant: 'REP',
 };
 
-type GuideSection = 'world' | 'factions' | 'combat' | 'survival' | 'territories' | 'landmarks' | 'terminals' | 'controls';
+type GuideSection = 'world' | 'combat' | 'survival' | 'territories' | 'landmarks' | 'terminals' | 'controls';
 
 const CLASSES = [
   {
@@ -83,7 +83,7 @@ const CLASSES = [
     id: 'replicant' as CharClass,
     label: 'REPLICANTS',
     tagline: 'Android. Conscious. Deadliest.',
-    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO Corp. wants you shut down. Operates in both city and wasteland. Starts at the city fringe with a basic city passport.',
+    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. SUITS wants you shut down. Operates in both city and wasteland. Starts at the city fringe with a basic city passport.',
     start: 'CITY FRINGE',
     salary: 'ƒ50/min',
     hp: '600',
@@ -128,23 +128,22 @@ function getWorkstation(bType: 'fictitious'|'real', ind: string, fictInd: string
 
 const FLAVOR = [
   'The collapse happened three years ago. Minx City never recovered.',
-  'PABLO CORP. controls every credit in Minx City.',
+  'SUITS controls every credit in Minx City.',
   'The wasteland is everything south of the wall. The corp owns that too.',
   'Your PABLO device is your only edge.',
   'Credits don\'t grow on ruins — but the corp always finds a way.',
   'Every building in Minx City has a price. The corp set them all.',
-  'Villain of the poor. Hero of the rich. That\'s PABLO CORP.',
+  'Villain of the poor. Hero of the rich. That\'s SUITS',
   'Gang territory starts where the lights end.',
   'Server: MINX CITY · PST — 24 regional servers worldwide.',
   'A helicopter left the tower at 3 AM. Nobody knows which city it came from. Nobody asks.',
   'They say there are towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
-  'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP. network never sleeps.',
+  'Neon Lagos. Sector Berlin. Old Shanghai. The SUITS network never sleeps.',
   'The helipad on Floor 62 runs day and night. Someone is always arriving. Someone is always leaving.',
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
   { id: 'world',       label: 'MINX CITY',   col: '#00ff41' },
-  { id: 'factions',    label: 'FACTIONS',     col: '#ff8844' },
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
@@ -170,7 +169,7 @@ function getVisitedFactions(): Set<string> {
   return new Set();
 }
 
-const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
+const EXP_TABLE = [250, 456, 674, 906, 1150, 1406, 1674, 1956, 2250, 2556];
 
 const TIMEZONE_OPTIONS = [
   { id: 'pst', label: 'Minx City (PST)', enabled: true },
@@ -219,52 +218,16 @@ function GuideContent({ section }: { section: GuideSection }) {
         The corp doesn't talk about the wasteland. The wasteland doesn't talk about the corp. Both are lying. There is a frequency buried in the static — a signal older than the collapse. Someone is broadcasting. Nobody knows who. Nobody knows why. But everyone hears it eventually.
       </div>
       <Divider />
+      <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
+      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by SUITS. A cut is taken from everything." col="#ffcc00" />
+      <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
+      <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         Twenty-four cities. Twenty-four towers. The same story told in every timezone. You are in one of them now. The only question that matters: what will you do before the lights go out again?
       </div>
     </div>
   );
-
-  if (section === 'factions') {
-    const gangFactions: { id: string; label: string; val: string; col: string }[] = [
-      { id: 'rust_syndicate', label: 'RUST SYNDICATE', val: "Scrappers and scavengers. Pike Renner's old crew. They strip anything metal and sell it back to the city at markup. Territorial but not suicidal — they avoid PABLO CORP. convoys.", col: '#ff4444' },
-      { id: 'void_runners', label: 'VOID RUNNERS', val: "Signal pirates. They broadcast static on loop — allegedly containing encrypted data. Their territory is marked by interference patterns on your device. Hostile to outsiders.", col: '#ff8800' },
-      { id: 'static_monks', label: 'STATIC MONKS', val: "Silent operators. They move in formation, communicate through gesture, and guard something buried beneath their territory. Kael Verne claims it predates the collapse. Nobody has confirmed this.", col: '#aaff22' },
-      { id: 'eastern_bloc', label: 'EASTERN BLOC', val: "No negotiation. No communication. Nova Pryce traced their signal to a server in Shadow Tower. They operate like a military unit — precise, disciplined, and utterly uninterested in diplomacy.", col: '#ff66ff' },
-    ];
-    return (
-      <div style={S}>
-        <SectionHead>FACTIONS OF MINX CITY</SectionHead>
-        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-          Power in Minx City is not shared. It is hoarded, delegated, and enforced. Three institutions control daily life inside the wall. Outside it, the gangs carve up what remains. Understanding who holds the leash — and who wears it — is the difference between surviving and disappearing.
-        </div>
-        <Divider />
-        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
-        <Row label="PABLO CORP. WORKERS" val="Civilians. Office staff, technicians, accountants, maintenance crews. They wear corporate lanyards and keep their heads down. They are not armed, not trained for combat, and not loyal — just employed. Most would leave if they could afford to. They cannot." col="#ff8844" />
-        <Row label="CORPO MILITARY" val="Private military contractors on PABLO CORP. payroll. Heavily armed, body-armored, stationed at checkpoints and tower entrances. Their sole directive: protect PABLO CORP. assets and personnel. They do not respond to civilian distress. They do not patrol outside corporate zones. If you are not on the payroll, you are not their problem." col="#ff4444" />
-        <Row label="COMMAND" val="SENIOR PABLO sits at the top. Below him: division heads, project leads, and a rotating cast of executives who last an average of 14 months before reassignment or disappearance. The hierarchy is opaque by design." col="#cc44ff" />
-        <Divider />
-        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
-        <Row label="POLICE" val="Underfunded, overworked, and deeply corrupt. The Minx City Police Department predates the collapse but barely survived it. Officers patrol slowly, stop citizens for random ID checks, and enforce laws that change weekly. Their authority ends where PABLO CORP. property begins — corpo military handles the rest." col="#3388ff" />
-        <Row label="TACTICS" val="Random stops. ID verification. Fines for infractions you have never heard of. Officers travel in pairs. They avoid the wasteland entirely. Their radio chatter is unencrypted — anyone within earshot can hear them harassing pedestrians." col="#3388ff" />
-        <Row label="CORRUPTION" val="Bribes are standard. Fines are negotiable. Arrests are rare — paperwork costs more than looking the other way. The department answers to the city council, which answers to PABLO CORP., which answers to no one." col="#3388ff" />
-        <Divider />
-        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
-        {gangFactions.map(g => {
-          const discovered = visitedFactions.has(g.id);
-          return discovered ? (
-            <Row key={g.id} label={g.label} val={g.val} col={g.col} />
-          ) : (
-            <Row key={g.id} label="???" val="[ UNCHARTED — Enter this faction's territory to reveal intel. ]" col="rgba(0,255,65,.15)" />
-          );
-        })}
-        <Divider />
-        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-          Everyone in Minx City belongs to someone. The only question is whether you know it yet.
-        </div>
-      </div>
-    );
-  }
 
   if (section === 'combat') return (
     <div style={S}>
@@ -288,7 +251,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         ))}
       </div>
       <Row label="LEVEL UP" val="MAX HP +10. ATK +5. HP partially restored. Gold LEVEL UP overlay appears. Stats persist until TERMINAL." col="#ffcc00" />
-      <Row label="EXP TABLE" val="100 → 250 → 450 → 700 → 1000 → 1400 → 1900 → 2500 → 3200 → 4000 (max)" col="#ffcc00" />
+      <Row label="EXP TABLE" val="250 → 456 → 674 → 906 → 1150 → 1406 → 1674 → 1956 → 2250 → 2556 ..." col="#ffcc00" />
       <Divider />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '.3rem', marginTop: '.5rem' }}>
         {[['IRON_RATS','#ff4444','30','20'],['VOID_DOGS','#ff8800','40','28'],['MUTANT','#88ff44','35','30'],['STATIC_MONKS','#aaff22','50','35'],['RAIDER','#ff66ff','45','40']].map(([n,c,hp,exp]) => (
@@ -329,16 +292,16 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'territories') {
     const territories = [
       {
-        fid: 'rust_syndicate', id: 'RUST SYNDICATE', col: '#ff4444', zone: 'Western wasteland',
-        entry: '"RUST SYNDICATE territory. You\'re the meal."',
-        enemies: 'RUST_SYNDICATE — HP 30 · EXP 20 · fast, swarming',
-        lore: 'Former construction workers. Turned feral after PABLO CORP. seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
+        fid: 'rust_syndicate', id: 'IRON RATS', col: '#ff4444', zone: 'Western wasteland',
+        entry: '"IRON RATS territory. You\'re the meal."',
+        enemies: 'IRON_RATS — HP 30 · EXP 20 · fast, swarming',
+        lore: 'Former construction workers. Turned feral after SUITS seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
       },
       {
-        fid: 'void_runners', id: 'VOID RUNNERS', col: '#ff8800', zone: 'Central wasteland',
-        entry: '"VOID RUNNERS don\'t negotiate."',
-        enemies: 'VOID_RUNNERS — HP 40 · EXP 28 · balanced, patrol-heavy',
-        lore: 'Ex-security contractors cut loose when PABLO CORP. automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
+        fid: 'void_runners', id: 'VOID DOGS', col: '#ff8800', zone: 'Central wasteland',
+        entry: '"VOID DOGS don\'t negotiate."',
+        enemies: 'VOID_DOGS — HP 40 · EXP 28 · balanced, patrol-heavy',
+        lore: 'Ex-security contractors cut loose when SUITS automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
       },
       {
         fid: 'static_monks', id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
@@ -395,7 +358,7 @@ function GuideContent({ section }: { section: GuideSection }) {
     const cityLandmarks = [
       { bid: 'pablo_tower', name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
       { bid: 'clinic',      name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
-      { bid: 'megabank',    name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
+      { bid: 'megabank',    name: 'BANCO OMBRA', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
       { bid: 'hotel',       name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
       { bid: 'arcade',      name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
       { bid: 'vend',        name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
@@ -447,8 +410,8 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'terminals') return (
     <div style={S}>
       <SectionHead>TERMINALS & DEVICES</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        PABLO AI is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP. network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        PABLO AI is free on every terminal — no purchase required. Terminals are your link to the SUITS network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
       </div>
       <Divider />
       <SectionHead>PERSONAL DEVICE</SectionHead>
@@ -484,8 +447,8 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="CENTRAL VAN" val="Deep wasteland, near Terminus Shelter." col="#88ff44" />
       <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#88ff44" />
       <Divider />
-      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
+      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        PABLO AI is a service of SUITS. All transmissions are logged. All terminals are monitored.
       </div>
     </div>
   );
@@ -599,7 +562,13 @@ export default function WorldMenu() {
   const [showCinematic, setShowCinematic] = useState(false);
   const [cinematicLine, setCinematicLine] = useState(0);
   const [showEntryButtons, setShowEntryButtons] = useState(true);
-  const [boomerMode, setBoomerMode] = useState(() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } });
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const sync = () => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} };
+    const t = setInterval(sync, 2000);
+    window.addEventListener('storage', sync);
+    return () => { clearInterval(t); window.removeEventListener('storage', sync); };
+  }, []);
   const [showHelp, setShowHelp] = useState(false);
   const [atPhysicalTerminal] = useState(() => {
     const flag = sessionStorage.getItem('sm_at_physical_terminal');
@@ -693,7 +662,7 @@ export default function WorldMenu() {
     const n = name.trim().toUpperCase();
     if (!n) return;
     if (n === 'SENIOR PABLO' || n === 'SENIORPABLO' || n.replace(/\s+/g,'') === 'SENIORPABLO') {
-      setNameError('RESERVED — That name is restricted by PABLO CORP. Choose another.');
+      setNameError('RESERVED — That name is restricted by SUITS Choose another.');
       return;
     }
     setNameError('');
@@ -805,7 +774,9 @@ export default function WorldMenu() {
       {/* Top bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderBottom: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-          PABLO CORP. / SALARYMAN OS v1.0 &nbsp;·&nbsp;
+          <button onClick={() => navigate('/')} style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.5)', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>← BACK</button>
+          &nbsp;·&nbsp;
+          SALARYMAN OS v1.0 &nbsp;·&nbsp;
           <select
             value={selectedTimezone}
             onChange={e => setSelectedTimezone(e.target.value)}
@@ -829,17 +800,14 @@ export default function WorldMenu() {
         {/* Title */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSOO.AI — PABLO CORP. WORLD</div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSOO.AI — SUITS WORLD</div>
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
-          <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP. IMMIGRATION INTERFACE v1.0</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ SUITS IMMIGRATION INTERFACE v1.0</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
         </div>
 
-        {/* ── PLAIN MODE + HELP ── */}
+        {/* ── HELP ── */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '.6rem', marginBottom: '1rem' }}>
-          <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ padding: '.35rem .7rem', background: boomerMode ? 'rgba(255,170,0,.1)' : 'rgba(0,255,65,.04)', border: boomerMode ? '1px solid rgba(255,170,0,.5)' : '1px solid rgba(0,255,65,.2)', color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
-            {boomerMode ? 'PLAIN MODE ON' : 'PLAIN MODE'}
-          </button>
           <button onClick={() => setShowHelp(v => !v)} style={{ padding: '.35rem .7rem', background: showHelp ? 'rgba(0,255,65,.08)' : 'rgba(0,255,65,.04)', border: showHelp ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.2)', color: showHelp ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
             WHAT IS THIS?
           </button>
@@ -848,8 +816,8 @@ export default function WorldMenu() {
         {showHelp && (
           <div style={{ width: '100%', maxWidth: 720, marginBottom: '1rem', padding: '.75rem', border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,12,0,.95)', fontSize: '.6rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, letterSpacing: '.04em' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', marginBottom: '.5rem' }}>WELCOME TO SALARYMAN</div>
-            <div>This is a multiplayer cyberpunk city simulation. You play as a worker in MINX CITY, a corporate dystopia run by PABLO CORP. Walk around the city, talk to characters, chat with real players, earn money, and build your career.</div>
-            <div style={{ marginTop: '.4rem' }}><span style={{ color: '#ffaa00' }}>PLAIN MODE</span> replaces all gaming jargon (HP, XP, NPC, etc.) with plain everyday language. Turn it on if you have never played a game before — everything will make more sense.</div>
+            <div>This is a multiplayer cyberpunk city simulation. You play as a worker in MINX CITY, a corporate dystopia run by SUITS Walk around the city, talk to characters, chat with real players, earn money, and build your career.</div>
+            <div style={{ marginTop: '.4rem' }}>Walk around the city, talk to characters, earn money, level up, and explore every district of MINX CITY.</div>
             <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.35)' }}>
               <div><b>WASD</b> = Move your character around the city</div>
               <div><b>E</b> = Interact with buildings, shops, and people</div>
@@ -869,7 +837,7 @@ export default function WorldMenu() {
 
         {/* ── PABLO TOOLS GRID ── */}
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP. TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
+          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>SUITS TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.5rem' }}>
             <button onClick={() => navigate('/presenter')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
               <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{PABLO_PRODUCTS.PRESENTER.short}</div>
@@ -975,11 +943,12 @@ export default function WorldMenu() {
                     )}
                     <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>WAKE UP</div>
                     <div style={{ fontSize: '.48rem', color: isMobile ? 'rgba(255,60,60,.3)' : 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
-                      {isMobile ? 'This mode requires a desktop browser. Use GO TO WORK on mobile.' : 'Fresh start. New story. Build your way up from nothing.'}
+                      {isMobile ? 'This mode requires a desktop browser.' : 'Fresh start. New story. Build your way up from nothing.'}
                     </div>
                   </button>
 
-                  {/* MULTI-PLAYER MODE — returning player with save */}
+                  {/* MULTI-PLAYER MODE — returning player with save (desktop only) */}
+                  {!isMobile && (
                   <button
                     onClick={() => {
                       if (isAuthenticated && cloudSaves.length > 0) {
@@ -1020,7 +989,16 @@ export default function WorldMenu() {
                         })()
                         : !isAuthenticated ? 'Sign in to access your saves.' : 'No saves found. Start a new story first.'}
                     </div>
+                    {isAuthenticated && cloudSaves.length > 0 && (() => {
+                      const s = cloudSaves[0];
+                      return (
+                        <div style={{ marginTop: '.5rem', padding: '.4rem .6rem', background: 'rgba(0,180,255,.06)', border: '1px solid rgba(0,180,255,.2)', fontSize: '.45rem', color: 'rgba(0,180,255,.6)', lineHeight: 1.8, letterSpacing: '.04em' }}>
+                          <span style={{ color: 'rgba(0,180,255,.35)', letterSpacing: '.1em' }}>LATEST SAVE ▸</span> {s.charName} · LVL {s.level} · ƒ{s.salary.toLocaleString()} · {s.lastZone} · {fmtTime(s.lastSavedAt)}
+                        </div>
+                      );
+                    })()}
                   </button>
+                  )}
 
                   {/* RESURRECT — died last session */}
                   {(() => {
@@ -1095,11 +1073,11 @@ export default function WorldMenu() {
                     '> "WAKE UP — YOU\'RE LATE FOR WORK."',
                     '> You open your eyes. Neon bleeds through the blinds.',
                     '> Minx City is already running. It never stopped.',
-                    '> PABLO CORP. notification: "Your shift started 3 hours ago."',
+                    '> SUITS notification: "Your shift started 3 hours ago."',
                     '> "CLOCK IN OR GET WRITTEN UP."',
                     '> You pull yourself together. The city waits for no one.',
                     '> ...',
-                    '> PABLO CORP. TERMINAL ACCESS GRANTED.',
+                    '> SUITS TERMINAL ACCESS GRANTED.',
                   ].slice(0, cinematicLine + 1).map((line, i) => (
                     <div key={i} style={{
                       ...VT, fontSize: '1.1rem',
@@ -1385,7 +1363,7 @@ export default function WorldMenu() {
                   <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — NAME YOUR FRONT CORPORATION</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
-                      Invent a company name. Your operative will be listed under this corporate shell. PABLO Corp. cannot trace it. Rival operatives will see this name above your head.
+                      Invent a company name. Your operative will be listed under this corporate shell. SUITS cannot trace it. Rival operatives will see this name above your head.
                     </div>
                     <input
                       value={fictitiousCompany}
@@ -1404,7 +1382,7 @@ export default function WorldMenu() {
                   <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
-                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever the corp has planned. Your progress and FIAT balance will not be saved between sessions. PABLO CORP. has no record of you — which is either very good or very bad.
+                      You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever the corp has planned. Your progress and FIAT balance will not be saved between sessions. SUITS has no record of you — which is either very good or very bad.
                     </div>
                     <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
                       You can register a business later at PABLO TOWER. Walk in and use the terminal.
@@ -1545,7 +1523,7 @@ export default function WorldMenu() {
       {/* Bottom bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>
-          {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 TOWERS · 24 CITIES · PABLO CORP. INTERNATIONAL
+          {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 TOWERS · 24 CITIES · SUITS INTERNATIONAL
         </span>
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
@@ -1558,7 +1536,7 @@ export default function WorldMenu() {
           <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
             <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.5)', letterSpacing: '.15em' }}>Welcome to Minx City.</div>
             <div style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 500, ...S }}>
-              The gates are open. Your record has been filed.<br />PABLO CORP. is watching. Stay sharp, operative.
+              The gates are open. Your record has been filed.<br />SUITS is watching. Stay sharp, operative.
             </div>
             <button
               onClick={() => navigate('/world/play')}

@@ -47,7 +47,7 @@ export const PABLO_PRODUCTS = {
   PRO_TIER: {
     name: "OPERATOR CLEARANCE",
     short: "OPERATOR",
-    desc: "Full augmentation package. All Pablo Corp. implants and modules unlocked. No rate limits. Priority neural bandwidth.",
+    desc: "Full augmentation package. All Suits Corp implants and modules unlocked. No rate limits. Priority neural bandwidth.",
   },
   FREE_TIER: {
     name: "CIVILIAN ACCESS",
@@ -84,12 +84,17 @@ export const PABLO_PRODUCTS = {
     short: "BABEL-3",
     desc: "Real-time translation module. Converts any text between languages with cultural context.",
   },
+  PRINTER: {
+    name: "INK-6 PHANTOM PRINTER",
+    short: "INK-6",
+    desc: "Stealth document fabrication unit. Outputs formatted intel at any connected terminal.",
+  },
   SUBSCRIPTION: {
-    ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 4, trial: 7 },
-    OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 6, trial: 7 },
-    VOX_4: { name: 'VOX-4 LARYNX MODULE', price: 4, trial: 7 },
+    ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
+    OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },
+    VOX_4: { name: 'VOX-4 LARYNX MODULE', price: 5, trial: 7 },
     CIPHER_X: { name: 'CIPHER-X COMMAND TERMINAL', price: 5, trial: 7 },
-    HOLO_PROJ: { name: 'HOLO-PROJ MK.II', price: 4, trial: 7 },
-    FULL_SUITE: { name: 'OPERATOR CLEARANCE', price: 6, trial: 7, desc: 'All modules. No limits.' },
+    HOLO_PROJ: { name: 'HOLO-PROJ MK.II', price: 5, trial: 7 },
+    FULL_SUITE: { name: 'OPERATOR CLEARANCE', price: 25, trial: 7, desc: 'All modules. No limits.' },
   },
 } as const;

@@ -90,6 +90,9 @@ body::after {
   ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 0; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.5); }
 
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+
   /* ─── Selection ─── */
   ::selection { background: rgba(0,255,65,0.3); color: #00ff41; }
 

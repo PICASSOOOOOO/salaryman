@@ -3,15 +3,26 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { execSync } from "child_process";
+import { readFileSync, writeFileSync } from "fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+const BUILD_NUMBER_FILE = path.resolve(__dirname, "BUILD_NUMBER");
+
+function getBuildNumber(bump: boolean): number {
+  let num = 1;
+  try { num = parseInt(readFileSync(BUILD_NUMBER_FILE, "utf-8").trim(), 10) || 1; } catch {}
+  if (bump) { num++; try { writeFileSync(BUILD_NUMBER_FILE, String(num), "utf-8"); } catch {} }
+  return num;
+}
+
 function getVersionStamp(): string {
+  const isBuildCmd = process.argv.includes("build");
+  const buildNum = getBuildNumber(isBuildCmd);
   let gitHash = "unknown";
   try {
     gitHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
   } catch {}
-  const buildTime = new Date().toISOString().replace("T", " ").slice(0, 16);
-  return `${gitHash} · ${buildTime}`;
+  return `v${buildNum} · ${gitHash}`;
 }
 
 const isBuild = process.argv.includes("build");
