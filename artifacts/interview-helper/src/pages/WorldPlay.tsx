@@ -776,6 +776,61 @@ function getCurrentSector(px: number, py: number): string {
 
 // ── Parked vehicle locations (stealable) ─────────────────────────────────────
 interface ParkedVehicle { x: number; y: number; type: string; stolen: boolean; }
+
+interface TrafficVehicle {
+  x: number; y: number; dx: number; dy: number;
+  type: 'car' | 'truck' | 'van';
+  color: string; speed: number;
+  routeIdx: number; wpIdx: number;
+}
+const TRAFFIC_ROUTES: { x: number; y: number }[][] = [
+  [{ x: 5500, y: 5400 }, { x: 8800, y: 5400 }, { x: 8800, y: 5450 }, { x: 5500, y: 5450 }],
+  [{ x: 5500, y: 5850 }, { x: 8800, y: 5850 }, { x: 8800, y: 5900 }, { x: 5500, y: 5900 }],
+  [{ x: 5500, y: 6300 }, { x: 8800, y: 6300 }, { x: 8800, y: 6350 }, { x: 5500, y: 6350 }],
+  [{ x: 5500, y: 6750 }, { x: 8800, y: 6750 }, { x: 8800, y: 6800 }, { x: 5500, y: 6800 }],
+  [{ x: 5700, y: 5200 }, { x: 5700, y: 7400 }, { x: 5750, y: 7400 }, { x: 5750, y: 5200 }],
+  [{ x: 6700, y: 5200 }, { x: 6700, y: 7400 }, { x: 6750, y: 7400 }, { x: 6750, y: 5200 }],
+  [{ x: 7700, y: 5200 }, { x: 7700, y: 7400 }, { x: 7750, y: 7400 }, { x: 7750, y: 5200 }],
+  [{ x: 8700, y: 5200 }, { x: 8700, y: 7400 }, { x: 8750, y: 7400 }, { x: 8750, y: 5200 }],
+];
+const TRAFFIC_COLORS = ['#445566', '#554433', '#334455', '#665544', '#443355', '#335544', '#553344', '#444455'];
+function initTrafficVehicles(): TrafficVehicle[] {
+  const vehicles: TrafficVehicle[] = [];
+  for (let i = 0; i < TRAFFIC_ROUTES.length; i++) {
+    const route = TRAFFIC_ROUTES[i];
+    const startWp = Math.floor(Math.random() * route.length);
+    const wp = route[startWp];
+    const types: ('car' | 'truck' | 'van')[] = ['car', 'car', 'car', 'truck', 'van'];
+    vehicles.push({
+      x: wp.x + Math.random() * 100 - 50,
+      y: wp.y + Math.random() * 50 - 25,
+      dx: 0, dy: 0,
+      type: types[Math.floor(Math.random() * types.length)],
+      color: TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)],
+      speed: 0.8 + Math.random() * 0.6,
+      routeIdx: i,
+      wpIdx: startWp,
+    });
+  }
+  for (let i = 0; i < 6; i++) {
+    const ri = Math.floor(Math.random() * TRAFFIC_ROUTES.length);
+    const route = TRAFFIC_ROUTES[ri];
+    const startWp = Math.floor(Math.random() * route.length);
+    const wp = route[startWp];
+    const types: ('car' | 'truck' | 'van')[] = ['car', 'car', 'truck', 'van'];
+    vehicles.push({
+      x: wp.x + Math.random() * 200 - 100,
+      y: wp.y + Math.random() * 100 - 50,
+      dx: 0, dy: 0,
+      type: types[Math.floor(Math.random() * types.length)],
+      color: TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)],
+      speed: 0.6 + Math.random() * 0.8,
+      routeIdx: ri,
+      wpIdx: startWp,
+    });
+  }
+  return vehicles;
+}
 const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
   { x: 5600, y: 5580, type: 'cargo_bike', stolen: false },
   { x: 6680, y: 5580, type: 'cargo_bike', stolen: false },
@@ -785,6 +840,7 @@ const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
   { x: 6680, y: 6350, type: 'cargo_bike', stolen: false },
   { x: 7160, y: 6350, type: 'armored_moped', stolen: false },
   { x: 6060, y: 6600, type: 'cargo_bike', stolen: false },
+  { x: 8450, y: 6430, type: 'motorcycle', stolen: false },
 ];
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
@@ -1253,6 +1309,52 @@ const NPCS: NpcDef[] = [
     whisper: 'Fresh synth-fruit! Cheap!', backstory: 'Vendor at Central Plaza.' },
   { name: 'PLAZA VENDOR', x: 7680, y: 5470, type: 'human', gender: 'f', job: 'Street Vendor', home: 'overlook', workplace: 'plaza_market', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Hot rations! Two for one!', backstory: 'Vendor at Central Plaza.' },
+  { name: 'CITIZEN', x: 5900, y: 5420, type: 'human', gender: 'f', job: 'Pedestrian', home: 'minx_arms', workplace: 'clinic', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Clinic wait times are unbearable.', backstory: 'Walking to City Clinic for a routine check.' },
+  { name: 'CITIZEN', x: 6400, y: 5420, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Training starts at dawn.', backstory: 'Heading to the Iron Dojo.' },
+  { name: 'CITIZEN', x: 7800, y: 5420, type: 'android', gender: 'm', job: 'Pedestrian', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Data processing never stops.', backstory: 'Android worker heading to the Data Vault.' },
+  { name: 'CITIZEN', x: 6100, y: 5850, type: 'human', gender: 'f', job: 'Office Worker', home: 'minx_arms', workplace: 'nexus_hub', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Another 12-hour shift.', backstory: 'Tech worker heading to Nexus Hub.' },
+  { name: 'CITIZEN', x: 6600, y: 5850, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'nightclub', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Club opens in an hour.', backstory: 'Club Neon regular.' },
+  { name: 'CITIZEN', x: 7400, y: 5850, type: 'corp', gender: 'f', job: 'Analyst', home: 'eastside_flat', workplace: 'pablo_tower', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'The quarterly report is due tomorrow.', backstory: 'Corporate analyst heading to Shadow Tower.' },
+  { name: 'CITIZEN', x: 8100, y: 5850, type: 'human', gender: 'm', job: 'Cook', home: 'bunker', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Prep starts in twenty.', backstory: 'Cook walking to the Noodle Bar.' },
+  { name: 'CITIZEN', x: 5600, y: 6300, type: 'human', gender: 'f', job: 'Pedestrian', home: 'minx_arms', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Lunch break, finally.', backstory: 'Office worker on lunch break.' },
+  { name: 'CITIZEN', x: 6300, y: 6300, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'radio', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'The signal has been weird lately.', backstory: 'Radio enthusiast.' },
+  { name: 'CITIZEN', x: 7000, y: 6300, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'oxide_labs', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Lab results came back strange.', backstory: 'Lab technician heading to Oxide Labs.' },
+  { name: 'CITIZEN', x: 7600, y: 6300, type: 'human', gender: 'm', job: 'Pedestrian', home: 'overlook', workplace: 'realestate_office', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Property values keep climbing.', backstory: 'Real estate client.' },
+  { name: 'CITIZEN', x: 8300, y: 6300, type: 'human', gender: 'f', job: 'Mechanic', home: 'bunker', workplace: 'vehicle_dealer', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'New shipment of parts came in.', backstory: 'Mechanic at the Motor Depot.' },
+  { name: 'CITIZEN', x: 5800, y: 6750, type: 'human', gender: 'm', job: 'Pedestrian', home: 'bunker', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Scrap prices are up.', backstory: 'Scrap yard worker.' },
+  { name: 'CITIZEN', x: 6500, y: 6750, type: 'human', gender: 'f', job: 'Pedestrian', home: 'overlook', workplace: 'gold_exchange', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Gold rates are volatile today.', backstory: 'Gold Exchange regular.' },
+  { name: 'CITIZEN', x: 7100, y: 6750, type: 'corp', gender: 'm', job: 'Guard', home: 'eastside_flat', workplace: 'east_bunker', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Shift change in ten.', backstory: 'Off-duty guard.' },
+  { name: 'CITIZEN', x: 7800, y: 6750, type: 'human', gender: 'f', job: 'Pedestrian', home: 'north_bunker', workplace: 'terminal_shop', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Need to renew my ID.', backstory: 'Heading to the terminal shop.' },
+  { name: 'CITIZEN', x: 8400, y: 6750, type: 'human', gender: 'm', job: 'Pedestrian', home: 'eastside_flat', workplace: 'north_bunker', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'North quarter is quiet today.', backstory: 'North quarter resident.' },
+  { name: 'JOGGER', x: 6000, y: 5580, type: 'human', gender: 'f', job: 'Jogger', home: 'minx_arms', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING', walkSpeed: 1.2,
+    whisper: 'Five more laps.', backstory: 'Morning jogger.' },
+  { name: 'JOGGER', x: 7500, y: 5580, type: 'human', gender: 'm', job: 'Jogger', home: 'eastside_flat', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING', walkSpeed: 1.2,
+    whisper: 'Keep moving.', backstory: 'Evening jogger.' },
+  { name: 'DELIVERY RUNNER', x: 6200, y: 6750, type: 'human', gender: 'm', job: 'Courier', home: 'bunker', workplace: 'depot_south', role: 'pedestrian', idleBehavior: 'WALKING', walkSpeed: 0.9,
+    whisper: 'Three more drops today.', backstory: 'Transit Depot courier.' },
+  { name: 'DELIVERY RUNNER', x: 7400, y: 6750, type: 'human', gender: 'f', job: 'Courier', home: 'hotel', workplace: 'depot_south', role: 'pedestrian', idleBehavior: 'WALKING', walkSpeed: 0.9,
+    whisper: 'Package for the east side.', backstory: 'Transit Depot courier.' },
+  { name: 'STREET SWEEPER', x: 5500, y: 5580, type: 'human', gender: 'm', job: 'Sweeper', home: 'bunker', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Streets don\'t clean themselves.', backstory: 'City maintenance crew.' },
+  { name: 'STREET SWEEPER', x: 8000, y: 5580, type: 'human', gender: 'f', job: 'Sweeper', home: 'eastside_flat', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'PABLO doesn\'t pay overtime.', backstory: 'City maintenance crew.' },
   { name: 'OFFICER KANE BRIGGS', x: 7300, y: 5850, type: 'corp', gender: 'm', job: 'Police Sergeant', home: 'eastside_flat', workplace: 'pablo_tower', role: 'police', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'Move along, citizen. Nothing to see here.', backstory: 'Senior police sergeant. Heavily armed. Very dangerous when provoked.',
     voiceLines: ['Move along. Nothing to see here.', 'Your papers expired last month. That is a citation.', 'I do not repeat myself. Walk.'] },
@@ -2113,6 +2215,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'cargo_bike',      name: 'CARGO BIKE',      desc: '+20% speed, +5 cargo slots. Single-speed chainless.', price: 28000  },
     { id: 'hover_scooter',   name: 'HOVER SCOOTER',   desc: '+30% movement speed. Mag-lev. No fuel.',              price: 45000  },
     { id: 'armored_moped',   name: 'ARMORED MOPED',   desc: '+50% speed, 15% damage resistance.',                  price: 120000 },
+    { id: 'motorcycle',      name: 'MOTORCYCLE',      desc: '+124% speed. Premium vehicle. 40% faster than sprint. Costs 10oz GOLD.', price: 1000000, goldPrice: 10 },
   ]},
   { id: 'furniture', label: 'FURNITURE', col: '#88ff44', items: [
     { id: 'futon',          name: 'FUTON',            desc: 'Save & rest from any owned property.',                price: 5000  },
@@ -2130,7 +2233,7 @@ const VEND_CATALOG: VendCategory[] = [
   ]},
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
-const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9 };
+const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9, motorcycle: 2.24 };
 const WEAPON_TIER: Record<string, number> = {
   pipe_wrench: 1, boxing_gloves: 1, combat_knife: 1,
   dirk: 2, spear: 2, stun_baton: 2,
@@ -2391,8 +2494,38 @@ const OFFICE_TIERS = [
 ];
 
 // ── Building floor directories ────────────────────────────────────────────────
-interface BFloor { floor: number; name: string; desc: string; }
+interface BFloor { floor: number; name: string; desc: string; restricted?: boolean; }
 interface BDirectory { label: string; history: string; floors: BFloor[]; }
+function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string): InteriorDef {
+  const w = 300, h = 260;
+  const seed = bid.length * 137 + fl.floor * 53;
+  const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
+  const objCount = 3 + Math.floor(hash(seed + 1) * 4);
+  const objects: InteriorObject[] = [];
+  const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = [
+    { type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
+    { type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
+    { type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)', w: 30, h: 20 },
+    { type: 'chair', label: 'CHAIR', color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
+    { type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
+    { type: 'crate', label: 'CRATE', color: 'rgba(55,45,30,.5)', w: 25, h: 25 },
+  ];
+  for (let i = 0; i < objCount; i++) {
+    const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
+    const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - 80));
+    const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - 100));
+    objects.push({ x: ox, y: oy, w: ft.w, h: ft.h, type: ft.type, label: ft.label, color: ft.color });
+  }
+  return {
+    id: `${bid}_fl${fl.floor}`,
+    label: `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`,
+    width: w, height: h,
+    wallColor: 'rgba(18,28,22,.95)', floorColor: 'rgba(6,12,8,.9)', accentColor: 'rgba(0,255,65,.25)',
+    exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
+    ambientText: fl.desc,
+    objects,
+  };
+}
 const BUILDING_FLOORS: Record<string, BDirectory> = {
   minx_arms: {
     label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. PABLO CORP. acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
@@ -2436,9 +2569,9 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 12, name: 'DATA PROCESSING',   desc: 'Server rows. The hum is constant. Visitors report hearing their own name in the static. The IT staff deny this.' },
       { floor: 20, name: 'EXECUTIVE SUITES',  desc: 'Full glass. City views. Each suite has a panic button. None have ever been pressed.' },
       { floor: 39, name: 'LAST PUBLIC FLOOR', desc: 'A whiteboard reads: "PHASE THREE IS AUTHORIZED." Nobody has erased it. Nobody has added to it. It has been there for eleven years.' },
-      { floor: 40, name: '── RESTRICTED ──',  desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7.' },
-      { floor: 50, name: '── RESTRICTED ──',  desc: 'Unknown. Floor plans don\'t exist. The windows are opaque from outside. The glass is black on all sides.' },
-      { floor: 62, name: 'PENTHOUSE — PABLO', desc: 'Nobody has been here and returned to describe it. The silhouette in the window has been there for a very long time.' },
+      { floor: 40, name: '── RESTRICTED ──',  desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7.', restricted: true },
+      { floor: 50, name: '── RESTRICTED ──',  desc: 'Unknown. Floor plans don\'t exist. The windows are opaque from outside. The glass is black on all sides.', restricted: true },
+      { floor: 62, name: 'PENTHOUSE — PABLO', desc: 'Nobody has been here and returned to describe it. The silhouette in the window has been there for a very long time.', restricted: true },
     ],
   },
   data_vault: {
@@ -2447,7 +2580,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 1, name: 'PUBLIC TERMINALS',   desc: 'Property records. Most transferred to PABLO CORP. The transfer dates are all the same: a Tuesday in \'91.' },
       { floor: 2, name: 'ARCHIVE-A COLD',     desc: 'Financial records from the pre-collapse era. Some redacted. Some redacted poorly — the names show through the black bar.' },
       { floor: 3, name: 'ACTIVE SERVERS',     desc: 'Real-time feeds. City traffic. Power grid. Population movement. All of it. The cameras cover every road.' },
-      { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. HARLAN CROSS tried once. The lock said no. He said it felt smug about it.' },
+      { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. HARLAN CROSS tried once. The lock said no. He said it felt smug about it.', restricted: true },
       { floor: 5, name: 'NETWORK HUB',        desc: 'Every signal in Minx City passes through here. The routing logs go back thirty years. Every packet. Every call.' },
       { floor: 6, name: 'PENTHOUSE SERVER',   desc: 'One server. Running since 1984. Power draw is enormous. Nobody knows what it runs. Nobody has been asked.' },
     ],
@@ -2830,6 +2963,7 @@ export default function WorldPlay() {
     bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
     parkedVehicles: PARKED_VEHICLES_INIT.map(v => ({ ...v })),
+    trafficVehicles: initTrafficVehicles(),
     policeAlertTimer: 0,
     policeAlertX: 0,
     policeAlertY: 0,
@@ -6522,6 +6656,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Ambient traffic vehicle movement ──
+      for (const tv of g.trafficVehicles) {
+        const route = TRAFFIC_ROUTES[tv.routeIdx];
+        if (!route || route.length < 2) continue;
+        const target = route[tv.wpIdx];
+        const tdx = target.x - tv.x;
+        const tdy = target.y - tv.y;
+        const tdist = Math.hypot(tdx, tdy);
+        if (tdist < 15) {
+          tv.wpIdx = (tv.wpIdx + 1) % route.length;
+        } else {
+          tv.dx = (tdx / tdist) * tv.speed;
+          tv.dy = (tdy / tdist) * tv.speed;
+          tv.x += tv.dx;
+          tv.y += tv.dy;
+        }
+      }
+
       // ── Subway transit animation ──
       if (g.subwayTransit) {
         g.subwayTransitTimer--;
@@ -7162,19 +7314,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
         ctx.fillRect(bx - 2, by - 3, b.w + 4, 5);
+        const bldgWallH = Math.max(16, Math.min(50, Math.floor(Math.max(b.w, b.h) * 0.3)));
         ctx.fillStyle = `rgb(${Math.floor((wallR * 0.7) * bBr)},${Math.floor((wallG * 0.7) * bBr)},${Math.floor((wallB * 0.7) * bBr)})`;
-        ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bd * 0.5);
-        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bldgWallH);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bldgWallH); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
         ctx.fillStyle = `rgb(${Math.floor((wallR * 0.6) * bBr)},${Math.floor((wallG * 0.6) * bBr)},${Math.floor((wallB * 0.6) * bBr)})`;
         ctx.beginPath(); ctx.moveTo(bx + b.w, by); ctx.lineTo(bx + b.w + bd * 0.5, by + bd * 0.5);
-        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bd * 0.5); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
-        const winW = 6, winH = 8, winGap = 4;
-        const winCols = Math.floor((b.w - 10) / (winW + winGap));
-        const winRows = Math.floor((b.h - 10) / (winH + winGap));
-        for (let wr = 0; wr < winRows; wr++) {
-          for (let wc = 0; wc < winCols; wc++) {
-            const wx = bx + 5 + wc * (winW + winGap);
-            const wy = by + 5 + wr * (winH + winGap);
+        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bldgWallH); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
+        const winW = 5, winH = 6, winGap = 3;
+        const sWinCols = Math.floor((b.w - 8) / (winW + winGap));
+        const sWinRows = Math.max(1, Math.floor((bldgWallH - 6) / (winH + winGap)));
+        const sWallSkewPerRow = (bd * 0.5) / bldgWallH;
+        for (let wr = 0; wr < sWinRows; wr++) {
+          for (let wc = 0; wc < sWinCols; wc++) {
+            const rowY = by + b.h + 3 + wr * (winH + winGap);
+            const rowSkew = (rowY - (by + b.h)) * sWallSkewPerRow;
+            const wx = bx + 4 + rowSkew + wc * (winW + winGap);
+            const wy = rowY;
             const winLit = isNight && tileHash(b.x + wc * 13, b.y + wr * 7) > 0.4;
             if (winLit) {
               ctx.fillStyle = `rgb(${Math.floor(255 * 0.8)},${Math.floor(220 * 0.7)},${Math.floor(100 * 0.6)})`;
@@ -7188,6 +7344,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(wx + winW, wy, 1, winH);
             ctx.fillRect(wx - 1, wy + winH, winW + 2, 1);
           }
+        }
+        const eWinRows2 = Math.max(1, Math.floor((b.h - 8) / (winH + winGap)));
+        const eWallXBase = bx + b.w;
+        for (let wr = 0; wr < eWinRows2; wr++) {
+          const wy = by + 4 + wr * (winH + winGap);
+          const frac = (wy - by) / b.h;
+          const wx = eWallXBase + frac * bd * 0.5 + 2;
+          const winLit = isNight && tileHash(b.x + 99, b.y + wr * 11) > 0.45;
+          if (winLit) {
+            ctx.fillStyle = `rgb(${Math.floor(255 * 0.8)},${Math.floor(220 * 0.7)},${Math.floor(100 * 0.6)})`;
+          } else {
+            ctx.fillStyle = isNight ? `rgb(${Math.floor(30 * bBr)},${Math.floor(40 * bBr)},${Math.floor(55 * bBr)})` : `rgb(${Math.floor(140 * bBr)},${Math.floor(170 * bBr)},${Math.floor(200 * bBr)})`;
+          }
+          ctx.fillRect(wx, wy, winW - 1, winH);
         }
         const doorW = 8, doorH = 12;
         const doorX = bx + b.w / 2 - doorW / 2, doorY = by + b.h - doorH;
@@ -7236,11 +7406,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = pvNear ? 8 : 2;
         ctx.fillStyle = 'rgba(0,0,0,.2)';
         ctx.beginPath(); ctx.ellipse(pvx, pvy + 6, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
-        const vCol = pv.type === 'cargo_bike' ? '#886622' : pv.type === 'hover_scooter' ? '#2266aa' : '#553344';
-        ctx.fillStyle = vCol; ctx.fillRect(pvx - 8, pvy - 4, 16, 8);
-        ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 9, pvy - 2, 2, 2); ctx.fillRect(pvx + 7, pvy - 2, 2, 2);
-        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx - 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(pvx + 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+        const vCol = pv.type === 'cargo_bike' ? '#886622' : pv.type === 'hover_scooter' ? '#2266aa' : pv.type === 'motorcycle' ? '#cc2222' : '#553344';
+        if (pv.type === 'motorcycle') {
+          ctx.fillStyle = vCol; ctx.fillRect(pvx - 5, pvy - 6, 10, 10);
+          ctx.fillStyle = '#881111'; ctx.fillRect(pvx - 3, pvy - 8, 6, 3);
+          ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 2, pvy - 9, 4, 2);
+          ctx.fillStyle = '#ff4444'; ctx.fillRect(pvx - 2, pvy + 4, 4, 2);
+          ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx, pvy + 7, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(pvx, pvy - 5, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#444'; ctx.fillRect(pvx - 6, pvy - 2, 2, 4); ctx.fillRect(pvx + 4, pvy - 2, 2, 4);
+        } else {
+          ctx.fillStyle = vCol; ctx.fillRect(pvx - 8, pvy - 4, 16, 8);
+          ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 9, pvy - 2, 2, 2); ctx.fillRect(pvx + 7, pvy - 2, 2, 2);
+          ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx - 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(pvx + 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.shadowBlur = 0;
         if (pvNear && !g.vehicle) {
           ctx.fillStyle = g.blink ? 'rgba(255,204,0,.85)' : 'rgba(255,204,0,.3)';
@@ -7248,6 +7428,56 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('[E] STEAL', pvx, pvy - 14);
           ctx.fillStyle = 'rgba(255,204,0,.6)';
           ctx.fillText(pv.type.replace('_', ' ').toUpperCase(), pvx, pvy - 26);
+        }
+      }
+
+      // ── Ambient traffic vehicles ──
+      for (const tv of g.trafficVehicles) {
+        const tvx = tv.x + ox, tvy = tv.y + oy;
+        if (tvx < -20 || tvx > cw + 20 || tvy < -20 || tvy > ch + 20) continue;
+        ctx.fillStyle = 'rgba(0,0,0,.15)';
+        ctx.beginPath(); ctx.ellipse(tvx, tvy + 5, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        const isHoriz = Math.abs(tv.dx) > Math.abs(tv.dy);
+        if (tv.type === 'truck') {
+          if (isHoriz) {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 12, tvy - 5, 24, 10);
+            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 14, tvy - 4, 4, 8);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 11, tvy - 2, 3, 2); ctx.fillRect(tvx + 11, tvy, 3, 2);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(tvx - 14, tvy - 2, 2, 4);
+          } else {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 5, tvy - 12, 10, 24);
+            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 4, tvy - 14, 8, 4);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 11, 2, 3); ctx.fillRect(tvx, tvy + 11, 2, 3);
+          }
+        } else if (tv.type === 'van') {
+          if (isHoriz) {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 10, tvy - 5, 20, 10);
+            ctx.fillStyle = '#333'; ctx.fillRect(tvx - 10, tvy - 4, 5, 8);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 9, tvy - 2, 2, 4);
+          } else {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 5, tvy - 10, 10, 20);
+            ctx.fillStyle = '#333'; ctx.fillRect(tvx - 4, tvy - 10, 8, 5);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 9, 4, 2);
+          }
+        } else {
+          if (isHoriz) {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 8, tvy - 4, 16, 8);
+            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 6, tvy - 3, 5, 6);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 7, tvy - 2, 2, 2); ctx.fillRect(tvx + 7, tvy, 2, 2);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(tvx - 8, tvy - 2, 2, 4);
+          } else {
+            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 4, tvy - 8, 8, 16);
+            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 3, tvy - 6, 6, 5);
+            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 7, 2, 2); ctx.fillRect(tvx, tvy + 7, 2, 2);
+          }
+        }
+        ctx.fillStyle = '#111';
+        if (isHoriz) {
+          ctx.beginPath(); ctx.arc(tvx - 5, tvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(tvx + 5, tvy + 5, 2, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.beginPath(); ctx.arc(tvx - 4, tvy - 4, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(tvx - 4, tvy + 4, 2, 0, Math.PI * 2); ctx.fill();
         }
       }
 
@@ -7767,13 +7997,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ctx.globalAlpha = bodyAlpha;
       ctx.shadowColor = g.poisoned ? '#88ff44' : factionGlow; ctx.shadowBlur = 6;
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath(); ctx.ellipse(px, py2 + 9, 7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px, py2 + 9, g.vehicle ? 10 : 7, g.vehicle ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      const facingDir = g.facing;
+      if (g.vehicle) {
+        const vIsHoriz = facingDir === 'left' || facingDir === 'right';
+        if (g.vehicle === 'motorcycle') {
+          if (vIsHoriz) {
+            ctx.fillStyle = '#cc2222'; ctx.fillRect(px - 9, py2 + 1, 18, 7);
+            ctx.fillStyle = '#881111'; ctx.fillRect(px - 7, py2 - 1, 14, 3);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(px + (facingDir === 'right' ? 8 : -10), py2 + 2, 3, 2);
+            ctx.fillStyle = '#ff4444'; ctx.fillRect(px + (facingDir === 'right' ? -10 : 8), py2 + 3, 2, 2);
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px - 7, py2 + 9, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + 7, py2 + 9, 3, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillStyle = '#cc2222'; ctx.fillRect(px - 5, py2 - 2, 10, 16);
+            ctx.fillStyle = '#881111'; ctx.fillRect(px - 3, py2 - 4, 6, 4);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(px - 2, py2 - 5, 4, 2);
+            ctx.fillStyle = '#ff4444'; ctx.fillRect(px - 2, py2 + 13, 4, 2);
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px, py2 + 12, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px, py2 - 1, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          if (vIsHoriz) {
+            const vc = g.vehicle === 'cargo_bike' ? '#886622' : g.vehicle === 'hover_scooter' ? '#2266aa' : '#553344';
+            ctx.fillStyle = vc; ctx.fillRect(px - 10, py2 + 1, 20, 8);
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px - 6, py2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px + 6, py2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
+          } else {
+            const vc = g.vehicle === 'cargo_bike' ? '#886622' : g.vehicle === 'hover_scooter' ? '#2266aa' : '#553344';
+            ctx.fillStyle = vc; ctx.fillRect(px - 5, py2, 10, 16);
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px, py2 + 14, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px, py2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
       ctx.globalAlpha = bodyAlpha;
       const wf = g.walkFrame;
       const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3;
       const rLeg = -lLeg;
       const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : 0;
-      const facingDir = g.facing;
       const facingRight = facingDir === 'right';
       const facingLeft = facingDir === 'left';
       const facingUp = facingDir === 'up';
@@ -9151,8 +9413,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <span style={{ color: floorPanel.selectedFloor === fi ? '#00ff41' : 'rgba(0,255,65,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
                 </div>
                 {floorPanel.selectedFloor === fi && (
-                  <div style={{ fontSize: '.43rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7, marginTop: '.2rem', paddingTop: '.3rem', borderTop: '1px solid rgba(0,255,65,.12)' }}>
-                    {fl.desc}
+                  <div>
+                    <div style={{ fontSize: '.43rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7, marginTop: '.2rem', paddingTop: '.3rem', borderTop: '1px solid rgba(0,255,65,.12)' }}>
+                      {fl.desc}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (fl.restricted) {
+                          setNarr(`> ACCESS DENIED — Floor ${fl.floor} requires clearance you do not have.`);
+                          return;
+                        }
+                        const g = gs.current;
+                        const def = generateFloorInterior(floorPanel.bid, fl, floorPanel.dir.label);
+                        g.interiorFade = 0;
+                        g.interiorFadeDir = 1;
+                        g.interiorFadeCallback = () => {
+                          g.interior = {
+                            bid: def.id,
+                            def,
+                            px: def.exitX + def.exitW / 2,
+                            py: def.exitY - 20,
+                            savedWorldX: g.px,
+                            savedWorldY: g.py,
+                          };
+                          g.interiorFadeDir = -1;
+                        };
+                        setFloorPanel(null);
+                        setNarr(`> ELEVATOR — Floor ${fl.floor}: ${fl.name}. ${fl.desc}`);
+                      }}
+                      style={{
+                        marginTop: '.4rem', width: '100%', padding: '.4rem', cursor: fl.restricted ? 'not-allowed' : 'pointer',
+                        background: fl.restricted ? 'rgba(255,60,60,.08)' : 'rgba(0,255,65,.08)',
+                        border: `1px solid ${fl.restricted ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.4)'}`,
+                        color: fl.restricted ? '#ff4444' : '#00ff41',
+                        fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.12em',
+                      }}
+                    >
+                      {fl.restricted ? '🔒 RESTRICTED' : `▸ VISIT FLOOR ${fl.floor}`}
+                    </button>
                   </div>
                 )}
               </div>
