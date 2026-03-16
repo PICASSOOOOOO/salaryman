@@ -5,6 +5,13 @@ import { isOwnerEmail } from "../lib/plan";
 
 const router = Router();
 
+let tableAvailable: boolean | null = null;
+
+function isMissingTableError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('relation "billboards" does not exist') || msg.includes('relation "public.billboards" does not exist');
+}
+
 const BILLBOARD_LOCATIONS = [
   { locationId: "bb_west_main",    label: "WEST MAIN ST",       x: 460,  y: 270, price: 15000 },
   { locationId: "bb_west_market",  label: "MARKET DISTRICT",    x: 730,  y: 300, price: 12000 },
@@ -45,6 +52,7 @@ function getPlayerName(req: Express.Request): string | null {
 
 router.get("/billboards", async (_req, res) => {
   try {
+    if (tableAvailable === false) { res.json([]); return; }
     if (!initialized) { await ensureBillboards(); initialized = true; }
     const rows = await db.select().from(billboardsTable);
     const result = rows.map(r => {
@@ -57,8 +65,15 @@ router.get("/billboards", async (_req, res) => {
         expired: r.rentedUntil ? new Date(r.rentedUntil) < new Date() : false,
       };
     });
+    tableAvailable = true;
     res.json(result);
   } catch (err: any) {
+    if (isMissingTableError(err)) {
+      if (tableAvailable === null) console.warn("[Billboards] table does not exist — feature disabled");
+      tableAvailable = false;
+      res.json([]);
+      return;
+    }
     console.error("[Billboards] list error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -66,6 +81,7 @@ router.get("/billboards", async (_req, res) => {
 
 router.get("/billboards/:id", async (req, res) => {
   try {
+    if (tableAvailable === false) { res.status(404).json({ error: "Billboard not found" }); return; }
     const id = Number(req.params.id);
     const [row] = await db.select().from(billboardsTable).where(eq(billboardsTable.id, id));
     if (!row) { res.status(404).json({ error: "Billboard not found" }); return; }
@@ -78,6 +94,7 @@ router.get("/billboards/:id", async (req, res) => {
       expired: row.rentedUntil ? new Date(row.rentedUntil) < new Date() : false,
     });
   } catch (err: any) {
+    if (isMissingTableError(err)) { tableAvailable = false; res.status(404).json({ error: "Billboard not found" }); return; }
     console.error("[Billboards] get error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -85,6 +102,7 @@ router.get("/billboards/:id", async (req, res) => {
 
 router.post("/billboards/:id/purchase", async (req, res) => {
   try {
+    if (tableAvailable === false) { res.status(503).json({ error: "Billboards unavailable" }); return; }
     if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
     const id = Number(req.params.id);
     const { durationDays, currentBalance } = req.body;
@@ -119,6 +137,7 @@ router.post("/billboards/:id/purchase", async (req, res) => {
 
     res.json({ ok: true, billboard: updated, cost, newBalance: typeof currentBalance === 'number' ? currentBalance - cost : null });
   } catch (err: any) {
+    if (isMissingTableError(err)) { tableAvailable = false; res.status(503).json({ error: "Billboards unavailable" }); return; }
     console.error("[Billboards] purchase error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -126,6 +145,7 @@ router.post("/billboards/:id/purchase", async (req, res) => {
 
 router.post("/billboards/:id/update-content", async (req, res) => {
   try {
+    if (tableAvailable === false) { res.status(503).json({ error: "Billboards unavailable" }); return; }
     if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
     const id = Number(req.params.id);
     const { adText, adImageUrl } = req.body;
@@ -154,6 +174,7 @@ router.post("/billboards/:id/update-content", async (req, res) => {
 
     res.json({ ok: true, billboard: updated });
   } catch (err: any) {
+    if (isMissingTableError(err)) { tableAvailable = false; res.status(503).json({ error: "Billboards unavailable" }); return; }
     console.error("[Billboards] update-content error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -161,6 +182,7 @@ router.post("/billboards/:id/update-content", async (req, res) => {
 
 router.post("/billboards/:id/set-price", async (req, res) => {
   try {
+    if (tableAvailable === false) { res.status(503).json({ error: "Billboards unavailable" }); return; }
     if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
     if (!isAdmin(req)) { res.status(403).json({ error: "Admin access required" }); return; }
 
@@ -178,6 +200,7 @@ router.post("/billboards/:id/set-price", async (req, res) => {
 
     res.json({ ok: true, billboard: updated });
   } catch (err: any) {
+    if (isMissingTableError(err)) { tableAvailable = false; res.status(503).json({ error: "Billboards unavailable" }); return; }
     console.error("[Billboards] set-price error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -185,6 +208,7 @@ router.post("/billboards/:id/set-price", async (req, res) => {
 
 router.post("/billboards/:id/release", async (req, res) => {
   try {
+    if (tableAvailable === false) { res.status(503).json({ error: "Billboards unavailable" }); return; }
     if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
     if (!isAdmin(req)) { res.status(403).json({ error: "Admin access required" }); return; }
 
@@ -209,6 +233,7 @@ router.post("/billboards/:id/release", async (req, res) => {
 
     res.json({ ok: true, billboard: updated });
   } catch (err: any) {
+    if (isMissingTableError(err)) { tableAvailable = false; res.status(503).json({ error: "Billboards unavailable" }); return; }
     console.error("[Billboards] release error:", err.message);
     res.status(500).json({ error: "Server error" });
   }

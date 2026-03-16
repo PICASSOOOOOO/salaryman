@@ -2,7 +2,17 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { execSync } from "child_process";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+function getVersionStamp(): string {
+  let gitHash = "unknown";
+  try {
+    gitHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  } catch {}
+  const buildTime = new Date().toISOString().replace("T", " ").slice(0, 16);
+  return `${gitHash} · ${buildTime}`;
+}
 
 const isBuild = process.argv.includes("build");
 const rawPort = process.env.PORT;
@@ -49,6 +59,9 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
+  define: {
+    "__BUILD_VERSION__": JSON.stringify(getVersionStamp()),
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

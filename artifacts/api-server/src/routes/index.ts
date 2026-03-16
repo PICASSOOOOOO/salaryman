@@ -12,10 +12,12 @@ import worldRouter from "./world";
 import salarymanSavesRouter from "./salaryman-saves";
 import billboardRouter from "./billboards";
 import hiringRouter from "./hiring";
+import versionRouter from "./version";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(versionRouter);
 router.use(authRouter);
 router.use(openaiRouter);
 router.use(interviewRouter);
