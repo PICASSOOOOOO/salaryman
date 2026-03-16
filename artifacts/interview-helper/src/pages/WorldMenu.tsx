@@ -159,21 +159,21 @@ const TIMEZONE_OPTIONS = [
 
 function Row({ label, val, col }: { label: string; val: string; col?: string }) {
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.07)', padding: '.3rem 0', gap: '1rem', alignItems: 'flex-start' }}>
-      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', minWidth: 100, paddingTop: '.12rem', flexShrink: 0 }}>{label}</div>
-      <div style={{ fontSize: '.57rem', color: col ?? 'rgba(0,255,65,.7)', letterSpacing: '.05em', lineHeight: 1.7 }}>{val}</div>
+    <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.07)', padding: '.4rem 0', gap: '1rem', alignItems: 'flex-start' }}>
+      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', minWidth: 110, paddingTop: '.12rem', flexShrink: 0 }}>{label}</div>
+      <div style={{ fontSize: '.78rem', color: col ?? 'rgba(0,255,65,.7)', letterSpacing: '.04em', lineHeight: 1.75 }}>{val}</div>
     </div>
   );
 }
 
 function SectionHead({ children }: { children: string }) {
   return (
-    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.5rem', marginTop: '.2rem', textShadow: '0 0 12px rgba(0,255,65,.3)' }}>{children}</div>
+    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.6rem', marginTop: '.3rem', textShadow: '0 0 14px rgba(0,255,65,.35)' }}>{children}</div>
   );
 }
 
 function Divider() {
-  return <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.18), transparent)', margin: '.5rem 0' }} />;
+  return <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.22), transparent)', margin: '.65rem 0' }} />;
 }
 
 function GuideContent({ section }: { section: GuideSection }) {
@@ -183,29 +183,27 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'world') return (
     <div style={S}>
       <SectionHead>MINX CITY</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        The collapse came without warning. Three years ago PABLO CORP. cut the power grid for 48 hours. When it came back on, the corp owned everything. Minx City runs on PABLO credits now. There is no alternative. 24 regional servers mirror the same story across every timezone — the collapse is global.
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        The collapse came without warning. Three years ago the power grid went dark for 48 hours. When the lights came back on, everything had a new owner. Minx City runs on PABLO credits now. There is no alternative. 24 regional servers mirror the same story across every timezone.
       </div>
-      <Row label="SERVER" val="MINX CITY · PST — Your regional instance. 24 servers worldwide, each tied to a timezone. The lore is the same everywhere. PABLO CORP. is everywhere." col="#cc44ff" />
+      <Row label="SERVER" val="MINX CITY · PST — Your regional instance. 24 servers worldwide, each tied to a timezone." col="#cc44ff" />
       <Divider />
-      <Row label="MINX CITY" val="The neon side. Corporate towers. Clinics. Banks. Streets patrolled by automated sentries no one admits to deploying. High salary potential. Wasteland keeps creeping north." col="#00ff41" />
-      <Row label="WASTELAND" val="Everything south of the wall. Three gang territories carve it up. Survival meters drain 1.5× faster here. Your salary bleeds if your energy collapses. High risk, high EXP." col="#88ff44" />
-      <Row label="THE BORDER" val="The invisible line between city and wasteland. No wall, no sign. Just the moment the sky changes from neon to smoke. Most corps never cross it." col="#aaff22" />
+      <Row label="MINX CITY" val="The neon side. Corporate towers. Clinics. Banks. High salary potential." col="#00ff41" />
+      <Row label="WASTELAND" val="Everything south of the wall. Gang territories. Survival meters drain 1.5× faster here. High risk, high EXP." col="#88ff44" />
+      <Row label="THE BORDER" val="The invisible line between city and wasteland. No wall, no sign. Just the moment the sky changes from neon to smoke." col="#aaff22" />
       <Divider />
-      <SectionHead>HISTORY OF MINX CITY</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Before the collapse, Minx City was a mid-tier coastal hub — shipping, tech startups, and a bloated public sector. The power grid failure three years ago wiped the old order overnight. Martial law lasted six weeks. When it lifted, PABLO CORP. had already bought the utilities, the hospitals, and both newspapers. The transition was silent. Nobody voted. Nobody protested. The lights came back on — and everything had a new owner.
+      <SectionHead>HISTORY</SectionHead>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        Nobody remembers exactly how it started. The grid failed. Martial law came and went. When it lifted, the old order was already gone — replaced by something quieter, something with a corporate letterhead. The city split in two. North of the wall: neon and silence. South: smoke and whatever is left of everyone else. Ask around. Everyone has a different version.
       </div>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        The city split into two halves. North of the wall: corporate towers, automated patrols, neon storefronts, and a population that learned to stop asking questions. South of the wall: the wasteland — three gang territories, radiation pockets, and everyone who couldn't afford to stay. The border has no sign. Just the moment the sky changes from neon to smoke.
-      </div>
-      <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
-      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
-      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything." col="#ffcc00" />
-      <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
+      <Row label="SHADOW TOWER" val="62 floors. City center. The tallest structure in Minx City. Visible from every point in the wasteland. What happens above floor 39 is not public knowledge." col="#cc44ff" />
       <Divider />
-      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        Minx City. 24 regional servers. Same story. Same collapse. Same neon. All rights reserved in every timezone.
+      <Row label="TERMINALS" val="Press [P] for personal device, or [E] at any public terminal. PABLO AI is free on all terminals." col="#33ffaa" />
+      <Row label="FIAT (ƒ)" val="The only currency. ƒ1 FIAT = 1 BTC in purchasing power." col="#ffcc00" />
+      <Row label="METRO SYSTEM" val="Four subway stations: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel for a fee." col="#33aaff" />
+      <Divider />
+      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        Minx City. 24 servers. Same collapse. Same neon.
       </div>
     </div>
   );
@@ -213,28 +211,26 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'factions') return (
     <div style={S}>
       <SectionHead>FACTIONS OF MINX CITY</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Power in Minx City is not shared. It is hoarded, delegated, and enforced. Three institutions control daily life inside the wall. Outside it, the gangs carve up what remains. Understanding who holds the leash — and who wears it — is the difference between surviving and disappearing.
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        Several factions operate inside and outside the city wall. Their motives, methods, and leadership are yours to discover.
       </div>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
-      <Row label="PABLO CORP. WORKERS" val="Civilians. Office staff, technicians, accountants, maintenance crews. They wear corporate lanyards and keep their heads down. They are not armed, not trained for combat, and not loyal — just employed. Most would leave if they could afford to. They cannot." col="#ff8844" />
-      <Row label="CORPO MILITARY" val="Private military contractors on PABLO CORP. payroll. Heavily armed, body-armored, stationed at checkpoints and tower entrances. Their sole directive: protect PABLO CORP. assets and personnel. They do not respond to civilian distress. They do not patrol outside corporate zones. If you are not on the payroll, you are not their problem." col="#ff4444" />
-      <Row label="COMMAND" val="SENIOR PABLO sits at the top. Below him: division heads, project leads, and a rotating cast of executives who last an average of 14 months before reassignment or disappearance. The hierarchy is opaque by design." col="#cc44ff" />
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
+      <Row label="PABLO CORP. WORKERS" val="Civilians on the corporate payroll. Not armed. Not combatants." col="#ff8844" />
+      <Row label="CORPO MILITARY" val="Private military. Heavily armed. Stationed at checkpoints and tower entrances." col="#ff4444" />
+      <Row label="COMMAND" val="Corporate leadership. The hierarchy is opaque by design." col="#cc44ff" />
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
-      <Row label="POLICE" val="Underfunded, overworked, and deeply corrupt. The Minx City Police Department predates the collapse but barely survived it. Officers patrol slowly, stop citizens for random ID checks, and enforce laws that change weekly. Their authority ends where PABLO CORP. property begins — corpo military handles the rest." col="#3388ff" />
-      <Row label="TACTICS" val="Random stops. ID verification. Fines for infractions you have never heard of. Officers travel in pairs. They avoid the wasteland entirely. Their radio chatter is unencrypted — anyone within earshot can hear them harassing pedestrians." col="#3388ff" />
-      <Row label="CORRUPTION" val="Bribes are standard. Fines are negotiable. Arrests are rare — paperwork costs more than looking the other way. The department answers to the city council, which answers to PABLO CORP., which answers to no one." col="#3388ff" />
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
+      <Row label="POLICE" val="City law enforcement. Officers patrol in pairs. Their authority ends where PABLO CORP. property begins." col="#3388ff" />
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
-      <Row label="IRON RATS" val="Scrappers and scavengers. Pike Renner's old crew. They strip anything metal and sell it back to the city at markup. Territorial but not suicidal — they avoid PABLO CORP. convoys." col="#ff4444" />
-      <Row label="VOID DOGS" val="Signal pirates. They broadcast static on loop — allegedly containing encrypted data. Their territory is marked by interference patterns on your device. Hostile to outsiders." col="#ff8800" />
-      <Row label="STATIC MONKS" val="Silent operators. They move in formation, communicate through gesture, and guard something buried beneath their territory. Kael Verne claims it predates the collapse. Nobody has confirmed this." col="#aaff22" />
-      <Row label="EASTERN BLOC" val="No negotiation. No communication. Nova Pryce traced their signal to a server in Shadow Tower. They operate like a military unit — precise, disciplined, and utterly uninterested in diplomacy." col="#ff66ff" />
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
+      <Row label="IRON RATS" val="Western wasteland. Hostile." col="#ff4444" />
+      <Row label="VOID DOGS" val="Central wasteland. Hostile." col="#ff8800" />
+      <Row label="STATIC MONKS" val="Eastern wasteland. Hostile. Can poison." col="#aaff22" />
+      <Row label="EASTERN BLOC" val="Location unknown. Hostile." col="#ff66ff" />
       <Divider />
-      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        Everyone in Minx City belongs to someone. The only question is whether you know it yet.
+      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        Talk to people. The rest you figure out yourself.
       </div>
     </div>
   );
@@ -242,7 +238,7 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'combat') return (
     <div style={S}>
       <SectionHead>COMBAT SYSTEM</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Enemies patrol their territories. When you enter range they chase. Stand your ground or run — your call. Press [F] to attack. Anything inside 72px takes damage.
       </div>
       <Divider />
@@ -255,7 +251,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '.3rem', margin: '.5rem 0' }}>
         {EXP_TABLE.slice(0, 10).map((n, i) => (
           <div key={i} style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.35rem .4rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginBottom: '.1rem' }}>LVL {i+1}→{i+2}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', marginBottom: '.1rem' }}>LVL {i+1}→{i+2}</div>
             <div style={{ ...VT, fontSize: '.85rem', color: '#ffcc00' }}>{n}</div>
           </div>
         ))}
@@ -267,7 +263,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         {[['IRON_RATS','#ff4444','30','20'],['VOID_DOGS','#ff8800','40','28'],['MUTANT','#88ff44','35','30'],['STATIC_MONKS','#aaff22','50','35'],['RAIDER','#ff66ff','45','40']].map(([n,c,hp,exp]) => (
           <div key={n} style={{ border: `1px solid ${c}33`, padding: '.4rem .45rem', background: `${c}09` }}>
             <div style={{ ...VT, fontSize: '.85rem', color: c as string, letterSpacing: '.06em' }}>{n}</div>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.3)', marginTop: '.2rem' }}>HP {hp} · EXP {exp}</div>
+            <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.3)', marginTop: '.2rem' }}>HP {hp} · EXP {exp}</div>
           </div>
         ))}
       </div>
@@ -277,7 +273,7 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'survival') return (
     <div style={S}>
       <SectionHead>SURVIVAL METERS</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Three meters govern your operational status. Let any one drop to zero and you start taking consequences. The wasteland accelerates the drain on all three.
       </div>
       <Divider />
@@ -302,39 +298,31 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'territories') return (
     <div style={S}>
       <SectionHead>GANG TERRITORIES</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Three gangs carved up the wasteland after the collapse. They don't care who you are. Step into their zone and the HUD lights up. Each zone has its own threat profile and entry narration.
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        The wasteland is divided into gang zones. Step inside and the HUD lights up.
       </div>
       <Divider />
       {[
         {
           id: 'IRON RATS', col: '#ff4444', zone: 'Western wasteland',
-          entry: '"IRON RATS territory. You\'re the meal."',
           enemies: 'IRON_RATS — HP 30 · EXP 20 · fast, swarming',
-          lore: 'Former construction workers. Turned feral after PABLO CORP. seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
         },
         {
           id: 'VOID DOGS', col: '#ff8800', zone: 'Central wasteland',
-          entry: '"VOID DOGS don\'t negotiate."',
           enemies: 'VOID_DOGS — HP 40 · EXP 28 · balanced, patrol-heavy',
-          lore: 'Ex-security contractors cut loose when PABLO CORP. automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
         },
         {
           id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
-          entry: '"STATIC MONKS zone. Your signal is their noise."',
           enemies: 'STATIC_MONKS — HP 50 · EXP 35 · slow, tough, can POISON',
-          lore: 'Former telecom engineers. They worship dead frequencies. They believe the collapse was a signal. They jam everything. They can poison you — something in the static.',
         },
       ].map(g => (
         <div key={g.id} style={{ border: `1px solid ${g.col}33`, background: `${g.col}07`, padding: '.7rem .8rem', marginBottom: '.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '.5rem' }}>
             <div style={{ width: 10, height: 10, background: g.col, boxShadow: `0 0 8px ${g.col}` }} />
             <div style={{ ...VT, fontSize: '1.3rem', color: g.col, letterSpacing: '.1em' }}>{g.id}</div>
-            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
+            <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
           </div>
-          <Row label="ENTRY" val={g.entry} col={g.col} />
           <Row label="ENEMIES" val={g.enemies} col="rgba(0,255,65,.6)" />
-          <Row label="LORE" val={g.lore} />
         </div>
       ))}
       <Divider />
@@ -346,42 +334,38 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'landmarks') return (
     <div style={S}>
       <SectionHead>LANDMARKS</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other operatives.
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        Essential buildings across the city and wasteland. Approach within range and press [E] to enter.
       </div>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
       {[
-        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
-        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
-        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
-        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
-        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
-        { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
-        { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
-        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
+        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'PABLO CORP. headquarters. Floors 1–39 open to registered operatives.' },
+        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. Free once per session.' },
+        { name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.' },
+        { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress.' },
+        { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst.' },
+        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy.' },
+        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE. Access augmentation modules.' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.7 }}>{b.effect}</div>
-            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.75 }}>{b.effect}</div>
           </div>
         </div>
       ))}
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND ──</div>
       {[
-        { name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
-        { name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
-        { name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
-        { name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
+        { name: 'PIRATE RADIO',   col: '#88ff44', effect: 'Broadcast station. Wasteland territory. Pays FIAT for signal jobs.' },
+        { name: 'SCRAP YARD',     col: '#88ff44', effect: 'Salvage site. Salary bonus on entry.' },
+        { name: 'OXIDE LABS',     col: '#88ff44', effect: 'Abandoned laboratory. Salary bonus on entry.' },
       ].map(b => (
         <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
           <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.7 }}>{b.effect}</div>
-            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.75 }}>{b.effect}</div>
           </div>
         </div>
       ))}
@@ -393,7 +377,7 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'terminals') return (
     <div style={S}>
       <SectionHead>TERMINALS & DEVICES</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         PABLO AI is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP. network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
       </div>
       <Divider />
@@ -404,10 +388,10 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VENDING MACHINE (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
       <Divider />
       <SectionHead>PUBLIC TERMINALS</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Public terminals are physical objects in the game world. Walk up and press [E] to access. PABLO AI is free on all of them. Use these when your personal device is broken, missing, or if you never had one.
       </div>
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
       {[
         { name: 'WEST PAYPHONE',    loc: 'Western Minx City, near Metro West',       col: '#33ffaa' },
         { name: 'CENTRAL KIOSK',    loc: 'Central city, near Hotel Famicom',          col: '#33ffaa' },
@@ -418,19 +402,19 @@ function GuideContent({ section }: { section: GuideSection }) {
         <Row key={t.name} label={t.name} val={t.loc} col={t.col} />
       ))}
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
       <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
       <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
+      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
         Armored vans parked in the wasteland. Each contains a working terminal and a cot for rest. Energy +15 on entry.
       </div>
       <Row label="WEST VAN" val="Western wasteland, south of Iron Rats territory." col="#88ff44" />
       <Row label="CENTRAL VAN" val="Deep wasteland, near Terminus Shelter." col="#88ff44" />
       <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#88ff44" />
       <Divider />
-      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
       </div>
     </div>
@@ -440,7 +424,7 @@ function GuideContent({ section }: { section: GuideSection }) {
     <div style={S}>
       <SectionHead>CONTROLS</SectionHead>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['WASD / ARROWS', 'Move operative'],
@@ -451,12 +435,12 @@ function GuideContent({ section }: { section: GuideSection }) {
         ].map(([key, desc]) => (
           <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL & DEVICE ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL & DEVICE ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['P', 'Open PABLO device (personal terminal)'],
@@ -466,12 +450,12 @@ function GuideContent({ section }: { section: GuideSection }) {
         ].map(([key, desc]) => (
           <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MAP & NAVIGATION ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MAP & NAVIGATION ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['M', 'Toggle world map overlay'],
@@ -480,12 +464,12 @@ function GuideContent({ section }: { section: GuideSection }) {
         ].map(([key, desc]) => (
           <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── SOCIAL & BUSINESS ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── SOCIAL & BUSINESS ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['C', 'Open world chat'],
@@ -496,7 +480,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         ].map(([key, desc]) => (
           <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
@@ -1359,7 +1343,7 @@ export default function WorldMenu() {
 
             {/* Left sub-nav */}
             <div style={{ flexShrink: 0, width: 130, display: 'flex', flexDirection: 'column', gap: '.3rem', position: 'sticky', top: 0 }}>
-              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', marginBottom: '.35rem' }}>SECTIONS</div>
+              <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.35rem' }}>SECTIONS</div>
               {GUIDE_SECTIONS.map(gs => (
                 <button
                   key={gs.id}
@@ -1382,8 +1366,8 @@ export default function WorldMenu() {
                 </button>
               ))}
               <div style={{ marginTop: '.6rem', border: '1px solid rgba(0,255,65,.1)', padding: '.5rem .6rem' }}>
-                <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.3rem' }}>QUICK START</div>
-                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.8 }}>
+                <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>QUICK START</div>
+                <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.8 }}>
                   1. Pick a class<br />
                   2. Name your operative<br />
                   3. Register enterprise<br />
