@@ -66,6 +66,7 @@ export function NavBar() {
       <div
         className="flex items-center justify-between px-2 sm:px-4 py-0.5 gap-2 flex-wrap"
         style={{
+          display: 'flex',
           borderBottom: '1px solid rgba(0,255,65,0.1)',
           background: 'rgba(0,255,65,0.02)',
         }}
@@ -124,6 +125,7 @@ export function NavBar() {
         {/* Brand / Logo */}
         <div
           className="flex items-center gap-2 group/logo cursor-pointer"
+          style={{ display: 'flex' }}
           onClick={() => navigate('/')}
         >
           <div
@@ -138,7 +140,7 @@ export function NavBar() {
           >
             <Radio className="w-3.5 h-3.5" style={{ color: '#00ff41' }} />
           </div>
-          <div>
+          <div style={{ display: 'block' }}>
             <h1
               className="display-text leading-none"
               style={{
@@ -161,8 +163,8 @@ export function NavBar() {
           <button
             onClick={e => { e.stopPropagation(); toggleMode(); }}
             title={isDiscreet ? 'Show real name' : 'Discreet mode'}
-            className="p-1 transition-all sm:opacity-0 sm:group-hover/logo:opacity-100"
-            style={{ color: 'rgba(0,255,65,0.3)' }}
+            className="p-1 transition-all"
+            style={{ color: 'rgba(0,255,65,0.3)', display: 'inline-flex' }}
           >
             {isDiscreet
               ? <Eye className="w-3 h-3" />

@@ -468,6 +468,22 @@ export default function Home() {
                   )}
                 </div>
                 <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} opacity-60`}>{isRecording ? 'Click to stop' : boomerMode ? 'Click to listen, get notes' : 'Click · Speak · Get bullets'}</p>
+                {isTrial && (
+                  <div
+                    className="absolute top-0 right-0 flex items-center gap-1 px-2 py-0.5 z-10 pointer-events-none"
+                    style={{
+                      background: 'rgba(255,165,0,0.12)',
+                      border: '1px solid rgba(255,165,0,0.25)',
+                      fontSize: '0.55rem',
+                      fontFamily: "'Share Tech Mono', monospace",
+                      color: 'rgba(255,165,0,0.7)',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    <Clock className="w-2.5 h-2.5" />
+                    TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft}d` : `${trialHoursLeft}h`} LEFT
+                  </div>
+                )}
               </motion.button>
 
               {/* SCAN SCREEN */}
