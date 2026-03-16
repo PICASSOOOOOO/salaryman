@@ -48,6 +48,8 @@ interface BuildingLock {
 const players = new Map<string, Player>();
 const buildingLocks = new Map<string, BuildingLock>();
 const videoRooms = new Map<string, Set<string>>();
+const pendingCalls = new Map<string, { callerId: string; targetId: string; ts: number }>();
+const activeCalls = new Map<string, string>();
 
 let idCounter = 0;
 const makeId = () => `p${++idCounter}_${Date.now().toString(36)}`;
@@ -228,6 +230,97 @@ const handleMessage = (player: Player, raw: string) => {
       player.speaking = !!msg.speaking;
       broadcast({ type: 'player_speaking', id: player.id, speaking: player.speaking }, player.id);
       break;
+
+    case 'voice_join': {
+      const nearbyPeers = Array.from(players.values()).filter(p =>
+        p.id !== player.id &&
+        Math.hypot(p.x - player.x, p.y - player.y) < 100
+      );
+      for (const peer of nearbyPeers) {
+        sendTo(peer.id, { type: 'voice_peer_joined', id: player.id, name: player.name });
+      }
+      break;
+    }
+
+    case 'voice_offer': {
+      const { to, sdp } = msg;
+      if (!to || !sdp || !players.has(to)) break;
+      const dist = Math.hypot(player.x - players.get(to)!.x, player.y - players.get(to)!.y);
+      const inCall = activeCalls.get(player.id) === to || activeCalls.get(to) === player.id;
+      if (dist > 150 && !inCall) break;
+      sendTo(to, { type: 'voice_offer', from: player.id, sdp });
+      break;
+    }
+
+    case 'voice_answer': {
+      const { to, sdp } = msg;
+      if (!to || !sdp || !players.has(to)) break;
+      sendTo(to, { type: 'voice_answer', from: player.id, sdp });
+      break;
+    }
+
+    case 'voice_ice': {
+      const { to, candidate } = msg;
+      if (!to || !candidate || !players.has(to)) break;
+      sendTo(to, { type: 'voice_ice', from: player.id, candidate });
+      break;
+    }
+
+    case 'phone_call_invite': {
+      const { targetId } = msg;
+      if (!targetId) break;
+      const target = players.get(targetId);
+      if (!target) { sendTo(player.id, { type: 'phone_call_error', error: 'Player not found or offline.' }); break; }
+      if (activeCalls.has(player.id)) { sendTo(player.id, { type: 'phone_call_error', error: 'You are already in a call.' }); break; }
+      if (activeCalls.has(targetId)) { sendTo(player.id, { type: 'phone_call_error', error: 'Player is already in a call.' }); break; }
+      const callKey = `${player.id}_${targetId}`;
+      pendingCalls.set(callKey, { callerId: player.id, targetId, ts: Date.now() });
+      sendTo(targetId, { type: 'phone_call_incoming', callerId: player.id, callerName: player.name });
+      sendTo(player.id, { type: 'phone_call_ringing', targetId, targetName: target.name });
+      setTimeout(() => pendingCalls.delete(callKey), 30000);
+      break;
+    }
+
+    case 'phone_call_accept': {
+      const { callerId } = msg;
+      if (!callerId) break;
+      const callKey = `${callerId}_${player.id}`;
+      const pending = pendingCalls.get(callKey);
+      if (!pending || pending.callerId !== callerId || pending.targetId !== player.id) {
+        sendTo(player.id, { type: 'phone_call_error', error: 'No pending call from this player.' });
+        break;
+      }
+      const caller = players.get(callerId);
+      if (!caller) break;
+      pendingCalls.delete(callKey);
+      activeCalls.set(player.id, callerId);
+      activeCalls.set(callerId, player.id);
+      const callRoomId = `call_${callerId}_${player.id}_${Date.now()}`;
+      sendTo(callerId, { type: 'phone_call_accepted', peerId: player.id, peerName: player.name, roomId: callRoomId });
+      sendTo(player.id, { type: 'phone_call_connected', peerId: callerId, peerName: caller.name, roomId: callRoomId });
+      break;
+    }
+
+    case 'phone_call_decline': {
+      const { callerId } = msg;
+      if (!callerId) break;
+      const callKey = `${callerId}_${player.id}`;
+      if (!pendingCalls.has(callKey)) break;
+      pendingCalls.delete(callKey);
+      sendTo(callerId, { type: 'phone_call_declined', peerId: player.id, peerName: player.name });
+      break;
+    }
+
+    case 'phone_call_end': {
+      const { peerId } = msg;
+      if (!peerId) break;
+      const partner = activeCalls.get(player.id);
+      if (partner !== peerId) break;
+      activeCalls.delete(player.id);
+      activeCalls.delete(peerId);
+      sendTo(peerId, { type: 'phone_call_ended', peerId: player.id, peerName: player.name });
+      break;
+    }
 
     case 'chat': {
       if (!msg.text || typeof msg.text !== 'string') break;
@@ -543,6 +636,15 @@ export const attachWorldServer = (httpServer: Server) => {
           for (const pid of room) sendTo(pid, { type: 'rtc_peer_left', roomId, peerId: id });
           if (room.size === 0) videoRooms.delete(roomId);
         }
+      }
+      const callPartner = activeCalls.get(id);
+      if (callPartner) {
+        activeCalls.delete(id);
+        activeCalls.delete(callPartner);
+        sendTo(callPartner, { type: 'phone_call_ended', peerId: id, peerName: name });
+      }
+      for (const [key] of pendingCalls) {
+        if (key.startsWith(id + '_') || key.endsWith('_' + id)) pendingCalls.delete(key);
       }
       players.delete(id);
       console.log(`[World] ${name} left, total: ${players.size}`);

@@ -2805,6 +2805,24 @@ function createStarterMissions(): Quest[] {
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
+interface CrmContact {
+  id: string;
+  name: string;
+  playerClass: string;
+  source: 'in_game' | 'external';
+  tags: string[];
+  notes: string;
+  category: string;
+  firstMet: number;
+  lastSeen: number;
+  interactionCount: number;
+}
+interface PhoneCallState {
+  status: 'idle' | 'ringing' | 'incoming' | 'connected';
+  peerId: string | null;
+  peerName: string | null;
+  roomId: string | null;
+}
 interface FloorPanel { bid: string; dir: BDirectory; selectedFloor: number; }
 interface PoliceUnit { x: number; y: number; routeIdx: number; wpIdx: number; progress: number; }
 
@@ -3059,8 +3077,20 @@ export default function WorldPlay() {
   const [atPublicTerminal, setAtPublicTerminal] = useState(false);
   const [voice,   setVoice]   = useState(false);
   const [speaking,setSpeaking]= useState(false);
+  const [micMuted, setMicMuted] = useState(false);
   const stepFrame = useRef(0);
   const [speakIds,setSpeakIds]= useState<Set<string>>(new Set());
+  const peerAudioGains = useRef<Map<string, { gain: GainNode; audio: HTMLAudioElement }>>(new Map());
+  const [phoneCall, setPhoneCall] = useState<PhoneCallState>({ status: 'idle', peerId: null, peerName: null, roomId: null });
+  const phoneCallRef = useRef<PhoneCallState>({ status: 'idle', peerId: null, peerName: null, roomId: null });
+  const [crmContacts, setCrmContacts] = useState<CrmContact[]>(() => {
+    try { const s = localStorage.getItem('sm_crm_contacts'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [crmEditId, setCrmEditId] = useState<string | null>(null);
+  const [crmTagInput, setCrmTagInput] = useState('');
+  const [crmNoteInput, setCrmNoteInput] = useState('');
+  const [crmCatInput, setCrmCatInput] = useState('');
+  const [showDmPicker, setShowDmPicker] = useState(false);
 
   // Chat
   const [chatOpen,  setChatOpen]  = useState(false);
@@ -3074,7 +3104,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'>('chat');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -4036,6 +4066,36 @@ export default function WorldPlay() {
         setVideoCallPeers(prev => prev.filter(p => p.id !== m.peerId));
       } else if (m.type === 'rtc_signal') {
         handleRtcSignal(m.fromId, m.fromName, m.signal);
+      } else if (m.type === 'phone_call_incoming') {
+        const cs: PhoneCallState = { status: 'incoming', peerId: m.callerId, peerName: m.callerName, roomId: null };
+        setPhoneCall(cs); phoneCallRef.current = cs;
+        setNarr(`> INCOMING CALL from ${m.callerName}. Open Terminal to accept or decline.`);
+      } else if (m.type === 'phone_call_ringing') {
+        const cs: PhoneCallState = { status: 'ringing', peerId: m.targetId, peerName: m.targetName, roomId: null };
+        setPhoneCall(cs); phoneCallRef.current = cs;
+      } else if (m.type === 'phone_call_accepted') {
+        const cs: PhoneCallState = { status: 'connected', peerId: m.peerId, peerName: m.peerName, roomId: m.roomId };
+        setPhoneCall(cs); phoneCallRef.current = cs;
+        joinVideoCall(m.roomId);
+        setNarr(`> CALL CONNECTED with ${m.peerName}.`);
+      } else if (m.type === 'phone_call_connected') {
+        const cs: PhoneCallState = { status: 'connected', peerId: m.peerId, peerName: m.peerName, roomId: m.roomId };
+        setPhoneCall(cs); phoneCallRef.current = cs;
+        joinVideoCall(m.roomId);
+        setNarr(`> CALL CONNECTED with ${m.peerName}.`);
+      } else if (m.type === 'phone_call_declined') {
+        setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+        phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+        setNarr(`> CALL DECLINED by ${m.peerName}.`);
+      } else if (m.type === 'phone_call_ended') {
+        leaveVideoCall();
+        setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+        phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+        setNarr(`> CALL ENDED — ${m.peerName} disconnected.`);
+      } else if (m.type === 'phone_call_error') {
+        setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+        phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+        setNarr(`> CALL FAILED — ${m.error}`);
       }
     };
     let lastSyncHp = 0;
@@ -4094,7 +4154,21 @@ export default function WorldPlay() {
     peerConns.current.set(pid, pc);
     localStream.current?.getTracks().forEach(t => pc.addTrack(t, localStream.current!));
     pc.onicecandidate = e => { if (e.candidate) wsSend({ type: 'voice_ice', to: pid, candidate: e.candidate }); };
-    pc.ontrack = e => { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {}); };
+    pc.ontrack = e => {
+      const ctx = audioCtx.current;
+      if (ctx) {
+        const a = new Audio(); a.srcObject = e.streams[0];
+        const source = ctx.createMediaElementSource(a);
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0;
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        a.play().catch(() => {});
+        peerAudioGains.current.set(pid, { gain: gainNode, audio: a });
+      } else {
+        const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {});
+      }
+    };
     return pc;
   };
   const initiateVoiceWith = async (pid: string) => {
@@ -4224,8 +4298,10 @@ export default function WorldPlay() {
     if (voice) {
       localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
       peerConns.current.forEach(pc => pc.close()); peerConns.current.clear();
+      peerAudioGains.current.forEach(({ audio }) => { audio.pause(); audio.srcObject = null; });
+      peerAudioGains.current.clear();
       audioCtx.current?.close(); audioCtx.current = null;
-      setVoice(false); setSpeaking(false); wsSend({ type: 'speaking', speaking: false });
+      setVoice(false); setSpeaking(false); setMicMuted(false); wsSend({ type: 'speaking', speaking: false });
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -4236,13 +4312,101 @@ export default function WorldPlay() {
         const tick = () => {
           if (!localStream.current) return;
           an.getByteFrequencyData(data);
-          const spk = data.reduce((a, b) => a + b, 0) / data.length > 12;
+          const avg = data.reduce((a, b) => a + b, 0) / data.length;
+          const spk = avg > 12;
           setSpeaking(spk); wsSend({ type: 'speaking', speaking: spk }); requestAnimationFrame(tick);
         };
         tick();
       } catch { setNarr('> VOICE — Mic access denied. Check browser permissions.'); }
     }
   }, [voice, wsSend]);
+
+  const toggleMicMute = useCallback(() => {
+    if (!localStream.current) return;
+    const newMuted = !micMuted;
+    localStream.current.getAudioTracks().forEach(t => { t.enabled = !newMuted; });
+    setMicMuted(newMuted);
+    if (newMuted) { setSpeaking(false); wsSend({ type: 'speaking', speaking: false }); }
+  }, [micMuted, wsSend]);
+
+  useEffect(() => {
+    if (!voice || !localStream.current) return;
+    const PROX_RANGE = 100;
+    const interval = setInterval(() => {
+      const g = gs.current;
+      const myX = g.px, myY = g.py;
+      const ctx = audioCtx.current;
+      if (!ctx) return;
+      for (const peer of Array.from(g.peers.values())) {
+        const dist = Math.hypot(peer.x - myX, peer.y - myY);
+        const entry = peerAudioGains.current.get(peer.id);
+        if (dist <= PROX_RANGE) {
+          const vol = phoneCallRef.current.status === 'connected' ? 0.1 : Math.max(0, 1 - dist / PROX_RANGE);
+          if (entry) {
+            entry.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
+          } else if (!peerConns.current.has(peer.id)) {
+            initiateVoiceWith(peer.id);
+          }
+        } else {
+          if (entry) {
+            entry.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
+          }
+        }
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [voice]);
+
+  useEffect(() => {
+    try { localStorage.setItem('sm_crm_contacts', JSON.stringify(crmContacts)); } catch {}
+  }, [crmContacts]);
+
+  const upsertCrmContact = useCallback((peer: Peer) => {
+    setCrmContacts(prev => {
+      const existing = prev.find(c => c.name === peer.name);
+      if (existing) {
+        return prev.map(c => c.name === peer.name ? { ...c, lastSeen: Date.now(), interactionCount: c.interactionCount + 1 } : c);
+      }
+      return [...prev, {
+        id: `crm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: peer.name,
+        playerClass: peer.class,
+        source: 'in_game' as const,
+        tags: [],
+        notes: '',
+        category: 'general',
+        firstMet: Date.now(),
+        lastSeen: Date.now(),
+        interactionCount: 1,
+      }];
+    });
+  }, []);
+
+  const handlePhoneCallInvite = useCallback((targetId: string) => {
+    wsSend({ type: 'phone_call_invite', targetId });
+  }, [wsSend]);
+
+  const handlePhoneCallAccept = useCallback((callerId: string) => {
+    wsSend({ type: 'phone_call_accept', callerId });
+  }, [wsSend]);
+
+  const handlePhoneCallDecline = useCallback((callerId: string) => {
+    wsSend({ type: 'phone_call_decline', callerId });
+    setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+    phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+  }, [wsSend]);
+
+  const handlePhoneCallEnd = useCallback(() => {
+    const pc = phoneCallRef.current;
+    if (pc.peerId) wsSend({ type: 'phone_call_end', peerId: pc.peerId });
+    if (pc.roomId) {
+      wsSend({ type: 'rtc_leave_room', roomId: pc.roomId });
+      peerConnectionsRef.current.forEach(p => p.close());
+      peerConnectionsRef.current.clear();
+    }
+    setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+    phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+  }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
   frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom;
@@ -8879,9 +9043,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO</div>
             </div>
-            <button onClick={toggleVoice} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🎙 {voice ? (speaking ? '● MIC' : '○ MIC') : 'MIC [V]'}
+            <button onClick={toggleVoice} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
             </button>
+            {voice && (
+              <button onClick={toggleMicMute} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
+              </button>
+            )}
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
@@ -9034,37 +9203,65 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── CHAT PANEL ── */}
       {chatOpen && (
-        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 340, maxHeight: '38vh', background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.3)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
-          <div style={{ padding: '.35rem .55rem', borderBottom: '1px solid rgba(0,255,65,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: '#00ff41', letterSpacing: '.1em' }}>{dmTarget ? `DM → ${dmTarget.name}` : 'WORLD CHAT'}</span>
-            <div style={{ display: 'flex', gap: '.3rem' }}>
+        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 360, maxHeight: '42vh', background: 'rgba(0,5,0,.97)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.4)' : 'rgba(0,255,65,.3)'}`, display: 'flex', flexDirection: 'column', zIndex: 200 }}>
+          <div style={{ padding: '.35rem .55rem', borderBottom: `1px solid ${dmTarget ? 'rgba(100,200,255,.2)' : 'rgba(0,255,65,.15)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#00ff41', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
+            <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
+              <button onClick={() => setShowDmPicker(!showDmPicker)} style={{ fontSize: '.44rem', color: 'rgba(100,200,255,.6)', border: '1px solid rgba(100,200,255,.25)', background: showDmPicker ? 'rgba(100,200,255,.1)' : 'transparent', cursor: 'pointer', padding: '2px 6px', letterSpacing: '.05em' }}>PRIVATE MSG</button>
               {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
-              <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; }} style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; setShowDmPicker(false); }} style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
             </div>
           </div>
-          {online.length > 0 && (
-            <div style={{ padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.1)', display: 'flex', gap: '.3rem', flexWrap: 'wrap' }}>
-              {online.map(p => (
-                <button key={p.id} onClick={() => setDmTarget(dmTarget?.id === p.id ? null : p)} style={{ fontSize: '.5rem', padding: '1px 5px', background: dmTarget?.id === p.id ? 'rgba(0,255,65,.1)' : 'transparent', border: dmTarget?.id === p.id ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: dmTarget?.id === p.id ? '#00ff41' : 'rgba(0,255,65,.38)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
-                  {p.name}
-                </button>
-              ))}
+          {showDmPicker && online.length > 0 && (
+            <div style={{ padding: '.3rem .45rem', borderBottom: '1px solid rgba(100,200,255,.15)', background: 'rgba(100,200,255,.03)' }}>
+              <div style={{ fontSize: '.42rem', color: 'rgba(100,200,255,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>SELECT PLAYER FOR PRIVATE MESSAGE</div>
+              <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
+                {online.map(p => (
+                  <button key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setShowDmPicker(false); upsertCrmContact(p); }} style={{ fontSize: '.5rem', padding: '2px 7px', background: dmTarget?.id === p.id ? 'rgba(100,200,255,.12)' : 'transparent', border: dmTarget?.id === p.id ? '1px solid rgba(100,200,255,.5)' : '1px solid rgba(100,200,255,.2)', color: dmTarget?.id === p.id ? '#66ccff' : 'rgba(100,200,255,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
+          {showDmPicker && online.length === 0 && (
+            <div style={{ padding: '.3rem .45rem', borderBottom: '1px solid rgba(100,200,255,.1)', fontSize: '.48rem', color: 'rgba(100,200,255,.3)', textAlign: 'center' }}>No other players online</div>
           )}
           <div style={{ flex: 1, overflowY: 'auto', padding: '.45rem', display: 'flex', flexDirection: 'column', gap: '.22rem', minHeight: 60 }}>
             {chatMsgs.length === 0
               ? <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.18)' }}>No messages yet.</div>
               : chatMsgs.slice(-40).map(m => (
-                <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(0,255,65,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(0,255,65,.65)' }}>
-                  <span style={{ color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.72rem' }}>{m.dm ? '[DM]' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
+                <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(0,255,65,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(0,255,65,.65)', paddingLeft: m.dm ? '.3rem' : 0, borderLeft: m.dm ? '2px solid rgba(100,200,255,.25)' : 'none' }}>
+                  <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
                 </div>
               ))
             }
           </div>
-          <div style={{ padding: '.32rem', borderTop: '1px solid rgba(0,255,65,.12)', display: 'flex', gap: '.32rem' }}>
-            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => e.key === 'Enter' && (() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); else wsSend({ type: 'chat', room: 'world', text: t }); })()} placeholder={dmTarget ? `DM ${dmTarget.name}...` : 'World...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.18)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: '#00ff41' }} />
-            <button onClick={() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); else wsSend({ type: 'chat', room: 'world', text: t }); }} style={{ background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.28)', color: '#00ff41', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
+          <div style={{ padding: '.32rem', borderTop: `1px solid ${dmTarget ? 'rgba(100,200,255,.15)' : 'rgba(0,255,65,.12)'}`, display: 'flex', gap: '.32rem' }}>
+            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }}} placeholder={dmTarget ? `Private msg to ${dmTarget.name}...` : 'World chat...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.25)' : 'rgba(0,255,65,.18)'}`, color: dmTarget ? '#66ccff' : '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: dmTarget ? '#66ccff' : '#00ff41' }} />
+            <button onClick={() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }} style={{ background: dmTarget ? 'rgba(100,200,255,.08)' : 'rgba(0,255,65,.08)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.3)' : 'rgba(0,255,65,.28)'}`, color: dmTarget ? '#66ccff' : '#00ff41', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
           </div>
+        </div>
+      )}
+
+      {/* ── INCOMING CALL NOTIFICATION ── */}
+      {phoneCall.status === 'incoming' && !showPablo && (
+        <div style={{ position: 'absolute', top: 80, right: 16, width: 220, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(255,100,100,.5)', padding: '.5rem .6rem', zIndex: 250, boxShadow: '0 0 20px rgba(255,50,50,.15)' }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.3rem' }}>INCOMING CALL</div>
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(255,100,100,.7)', marginBottom: '.35rem' }}>From: {phoneCall.peerName}</div>
+          <div style={{ display: 'flex', gap: '.3rem' }}>
+            <button onClick={() => { phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>ACCEPT</button>
+            <button onClick={() => { phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>DECLINE</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ACTIVE CALL HUD ── */}
+      {phoneCall.status === 'connected' && !showPablo && (
+        <div style={{ position: 'absolute', top: 80, right: 16, width: 180, background: 'rgba(0,5,0,.95)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem .5rem', zIndex: 250 }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#00ff41', letterSpacing: '.08em' }}>IN CALL</div>
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.5)' }}>{phoneCall.peerName}</div>
+          <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.3rem', width: '100%', padding: '.2rem', background: 'rgba(255,50,50,.08)', border: '1px solid rgba(255,50,50,.3)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.6rem' }}>END CALL</button>
         </div>
       )}
 
@@ -9134,9 +9331,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['chat','stats','city'] as const).map(t => (
+                {(['chat','stats','call','crm','city'] as const).map(t => (
                   <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'chat' ? '🤖 PABLO AI' : t === 'stats' ? '📊 STATS' : '🏙 INFO'}
+                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : '🏙 INFO'}
                   </button>
                 ))}
               </div>
@@ -9178,6 +9375,124 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#00ff41'} />}
                       <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#00ff41'} />
                       <StatRow label="TEMP" val={`${tempC}°C`} col={tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : '#00ff41'} />
+                    </div>
+                  </div>
+                )}
+
+                {/* PHONE CALL TAB */}
+                {pabloTab === 'call' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>PHONE SYSTEM</div>
+                    {phoneCall.status === 'incoming' && (
+                      <div style={{ border: '1px solid rgba(255,100,100,.5)', background: 'rgba(255,50,50,.08)', padding: '.5rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
+                        <div style={{ ...VT, fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em' }}>INCOMING CALL</div>
+                        <div style={{ fontSize: '.6rem', color: 'rgba(255,100,100,.8)' }}>From: {phoneCall.peerName}</div>
+                        <div style={{ display: 'flex', gap: '.4rem' }}>
+                          <button onClick={() => phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId)} style={{ flex: 1, padding: '.35rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>ACCEPT</button>
+                          <button onClick={() => phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId)} style={{ flex: 1, padding: '.35rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>DECLINE</button>
+                        </div>
+                      </div>
+                    )}
+                    {phoneCall.status === 'ringing' && (
+                      <div style={{ border: '1px solid rgba(255,200,60,.4)', background: 'rgba(255,200,60,.06)', padding: '.5rem', textAlign: 'center' }}>
+                        <div style={{ ...VT, fontSize: '1rem', color: '#ffcc44', letterSpacing: '.1em' }}>CALLING {phoneCall.peerName}...</div>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.5)', marginTop: '.3rem' }}>Waiting for answer...</div>
+                        <button onClick={handlePhoneCallEnd} style={{ marginTop: '.4rem', padding: '.25rem .6rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', ...VT, fontSize: '.75rem' }}>CANCEL</button>
+                      </div>
+                    )}
+                    {phoneCall.status === 'connected' && (
+                      <div style={{ border: '1px solid rgba(0,255,65,.4)', background: 'rgba(0,255,65,.06)', padding: '.5rem', textAlign: 'center' }}>
+                        <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>CONNECTED</div>
+                        <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.7)', marginTop: '.2rem' }}>In call with {phoneCall.peerName}</div>
+                        <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.4rem', padding: '.3rem .8rem', background: 'rgba(255,50,50,.12)', border: '1px solid rgba(255,50,50,.5)', color: '#ff4444', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>END CALL</button>
+                      </div>
+                    )}
+                    {phoneCall.status === 'idle' && (
+                      <>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginBottom: '.2rem' }}>Select a player to call. Both parties must be at a terminal or have a terminal device.</div>
+                        {online.length === 0 ? (
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.18)', padding: '.5rem', textAlign: 'center' }}>No other players online.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                            {online.map(p => (
+                              <button key={p.id} onClick={() => { handlePhoneCallInvite(p.id); upsertCrmContact(p); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.35rem .5rem', background: 'rgba(0,255,65,.03)', border: '1px solid rgba(0,255,65,.15)', color: '#00ff41', cursor: 'pointer', ...ST, fontSize: '.58rem' }}>
+                                <span>{p.name}</span>
+                                <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.48rem' }}>CALL →</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
+                      PHONE SYSTEM v1.0 · In-game voice calls only · Real telephony integration coming soon
+                    </div>
+                  </div>
+                )}
+
+                {/* IN-GAME CRM TAB */}
+                {pabloTab === 'crm' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em' }}>CONTACTS</div>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(100,200,255,.5)', border: '1px solid rgba(100,200,255,.25)', padding: '1px 6px', letterSpacing: '.1em' }}>IN GAME</div>
+                    </div>
+                    {crmContacts.length === 0 ? (
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.18)', padding: '1rem', textAlign: 'center', lineHeight: 1.8 }}>
+                        No contacts yet. Interact with other players to add them to your CRM.<br/>
+                        <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.12)' }}>Contacts are added automatically when you chat, call, or trade with players.</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', maxHeight: 300, overflowY: 'auto' }}>
+                        {crmContacts.map(contact => (
+                          <div key={contact.id} style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.4rem .5rem', background: crmEditId === contact.id ? 'rgba(0,255,65,.05)' : 'transparent' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
+                              <div>
+                                <span style={{ ...VT, fontSize: '.8rem', color: '#00ff41' }}>{contact.name}</span>
+                                <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginLeft: '.4rem' }}>{contact.playerClass.toUpperCase()}</span>
+                              </div>
+                              <button onClick={() => { setCrmEditId(crmEditId === contact.id ? null : contact.id); if (crmEditId !== contact.id) { setCrmNoteInput(contact.notes); setCrmCatInput(contact.category); } }} style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '1px 5px', cursor: 'pointer' }}>
+                                {crmEditId === contact.id ? 'CLOSE' : 'EDIT'}
+                              </button>
+                            </div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', display: 'flex', gap: '.5rem' }}>
+                              <span>Met: {new Date(contact.firstMet).toLocaleDateString()}</span>
+                              <span>Seen: {new Date(contact.lastSeen).toLocaleDateString()}</span>
+                              <span>×{contact.interactionCount}</span>
+                            </div>
+                            {contact.tags.length > 0 && (
+                              <div style={{ display: 'flex', gap: '.2rem', marginTop: '.2rem', flexWrap: 'wrap' }}>
+                                {contact.tags.map((tag, ti) => (
+                                  <span key={ti} style={{ fontSize: '.38rem', padding: '1px 4px', background: 'rgba(100,200,255,.08)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.6)' }}>
+                                    {tag}
+                                    {crmEditId === contact.id && <span onClick={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: c.tags.filter((_, i) => i !== ti) } : c))} style={{ marginLeft: 3, cursor: 'pointer', color: '#ff4444' }}>×</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {contact.category !== 'general' && (
+                              <div style={{ fontSize: '.4rem', color: 'rgba(255,200,60,.4)', marginTop: '.15rem' }}>Category: {contact.category}</div>
+                            )}
+                            {contact.notes && !crmEditId && (
+                              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginTop: '.15rem', fontStyle: 'italic' }}>"{contact.notes}"</div>
+                            )}
+                            {crmEditId === contact.id && (
+                              <div style={{ marginTop: '.3rem', display: 'flex', flexDirection: 'column', gap: '.25rem', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
+                                <div style={{ display: 'flex', gap: '.2rem' }}>
+                                  <input value={crmTagInput} onChange={e => setCrmTagInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} placeholder="Add tag..." style={{ flex: 1, background: 'rgba(0,8,0,.9)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.7)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
+                                  <button onClick={() => { if (crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} style={{ fontSize: '.38rem', background: 'rgba(100,200,255,.08)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.5)', cursor: 'pointer', padding: '1px 5px' }}>+TAG</button>
+                                </div>
+                                <input value={crmCatInput} onChange={e => setCrmCatInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, category: crmCatInput.trim() || 'general' } : c)); }} placeholder="Category..." style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(255,200,60,.15)', color: 'rgba(255,200,60,.6)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
+                                <textarea value={crmNoteInput} onChange={e => setCrmNoteInput(e.target.value)} onKeyDown={e => e.stopPropagation()} onBlur={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, notes: crmNoteInput } : c))} placeholder="Notes..." rows={2} style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontSize: '.42rem', padding: '3px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace", resize: 'none' }} />
+                                <button onClick={() => { if (confirm('Remove this contact?')) setCrmContacts(prev => prev.filter(c => c.id !== contact.id)); setCrmEditId(null); }} style={{ fontSize: '.38rem', color: '#ff4444', background: 'rgba(255,50,50,.06)', border: '1px solid rgba(255,50,50,.2)', padding: '2px 5px', cursor: 'pointer', alignSelf: 'flex-start' }}>REMOVE CONTACT</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.1rem', fontSize: '.42rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.6 }}>
+                      IN-GAME CRM v1.0 · Contacts are stored locally · External CRM sync coming soon
                     </div>
                   </div>
                 )}
