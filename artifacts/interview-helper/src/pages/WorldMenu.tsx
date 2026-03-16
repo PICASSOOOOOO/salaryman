@@ -153,6 +153,23 @@ const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
   { id: 'controls',    label: 'CONTROLS',     col: '#cc88ff' },
 ];
 
+
+function getVisitedLocations(): Set<string> {
+  try {
+    const raw = localStorage.getItem('sm_visited_locations');
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function getVisitedFactions(): Set<string> {
+  try {
+    const raw = localStorage.getItem('sm_visited_factions');
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
 const EXP_TABLE = [100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000];
 
 const TIMEZONE_OPTIONS = [
@@ -178,64 +195,76 @@ function Divider() {
   return <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.22), transparent)', margin: '.65rem 0' }} />;
 }
 
+
 function GuideContent({ section }: { section: GuideSection }) {
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
   const S: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const visitedLocations = getVisitedLocations();
+  const visitedFactions = getVisitedFactions();
+
 
   if (section === 'world') return (
     <div style={S}>
       <SectionHead>MINX CITY</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        The collapse came without warning. Three years ago the power grid went dark for 48 hours. When the lights came back on, everything had a new owner. Minx City runs on PABLO credits now. There is no alternative. 24 regional servers mirror the same story across every timezone.
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        You feel it before you see it. A hum in the air — low, constant, electric. Neon crawls up every surface like a rash that won't heal. The buildings are too tall. The streets are too clean in some places and not clean enough in others. Somewhere above you, always above you, a tower watches. Sixty-two floors of glass and silence.
       </div>
-      <Row label="SERVER" val="MINX CITY · PST — Your regional instance. 24 servers worldwide, each tied to a timezone." col="#cc44ff" />
-      <Divider />
-      <Row label="MINX CITY" val="The neon side. Corporate towers. Clinics. Banks. High salary potential." col="#00ff41" />
-      <Row label="WASTELAND" val="Everything south of the wall. Gang territories. Survival meters drain 1.5× faster here. High risk, high EXP." col="#88ff44" />
-      <Row label="THE BORDER" val="The invisible line between city and wasteland. No wall, no sign. Just the moment the sky changes from neon to smoke." col="#aaff22" />
-      <Divider />
-      <SectionHead>HISTORY</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Nobody remembers exactly how it started. The grid failed. Martial law came and went. When it lifted, the old order was already gone — replaced by something quieter, something with a corporate letterhead. The city split in two. North of the wall: neon and silence. South: smoke and whatever is left of everyone else. Ask around. Everyone has a different version.
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        This is Minx City. One of twenty-four. Each server carries a different name — Neon Lagos, Sector Berlin, Old Shanghai, the Havana Grid — but the architecture of control is identical. Same tower. Same corp. Same currency that replaced whatever came before. The collapse was not an accident. It was a transition. And the transition is complete.
       </div>
-      <Row label="SHADOW TOWER" val="62 floors. City center. The tallest structure in Minx City. Visible from every point in the wasteland. What happens above floor 39 is not public knowledge." col="#cc44ff" />
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        South of the glow, the city ends. Not with a wall — with an absence. The light stops. The pavement cracks. The sky shifts from neon to smoke. Out there, people still live. Some of them remember what came before. Most of them just remember what they lost.
+      </div>
+      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        The corp doesn't talk about the wasteland. The wasteland doesn't talk about the corp. Both are lying. There is a frequency buried in the static — a signal older than the collapse. Someone is broadcasting. Nobody knows who. Nobody knows why. But everyone hears it eventually.
+      </div>
       <Divider />
-      <Row label="TERMINALS" val="Press [P] for personal device, or [E] at any public terminal. PABLO AI is free on all terminals." col="#33ffaa" />
-      <Row label="FIAT (ƒ)" val="The only currency. ƒ1 FIAT = 1 BTC in purchasing power." col="#ffcc00" />
-      <Row label="METRO SYSTEM" val="Four subway stations: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel for a fee." col="#33aaff" />
-      <Divider />
-      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        Minx City. 24 servers. Same collapse. Same neon.
+      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+        Twenty-four cities. Twenty-four towers. The same story told in every timezone. You are in one of them now. The only question that matters: what will you do before the lights go out again?
       </div>
     </div>
   );
 
-  if (section === 'factions') return (
-    <div style={S}>
-      <SectionHead>FACTIONS OF MINX CITY</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Several factions operate inside and outside the city wall. Their motives, methods, and leadership are yours to discover.
+  if (section === 'factions') {
+    const gangFactions: { id: string; label: string; val: string; col: string }[] = [
+      { id: 'rust_syndicate', label: 'RUST SYNDICATE', val: "Scrappers and scavengers. Pike Renner's old crew. They strip anything metal and sell it back to the city at markup. Territorial but not suicidal — they avoid PABLO CORP. convoys.", col: '#ff4444' },
+      { id: 'void_runners', label: 'VOID RUNNERS', val: "Signal pirates. They broadcast static on loop — allegedly containing encrypted data. Their territory is marked by interference patterns on your device. Hostile to outsiders.", col: '#ff8800' },
+      { id: 'static_monks', label: 'STATIC MONKS', val: "Silent operators. They move in formation, communicate through gesture, and guard something buried beneath their territory. Kael Verne claims it predates the collapse. Nobody has confirmed this.", col: '#aaff22' },
+      { id: 'eastern_bloc', label: 'EASTERN BLOC', val: "No negotiation. No communication. Nova Pryce traced their signal to a server in Shadow Tower. They operate like a military unit — precise, disciplined, and utterly uninterested in diplomacy.", col: '#ff66ff' },
+    ];
+    return (
+      <div style={S}>
+        <SectionHead>FACTIONS OF MINX CITY</SectionHead>
+        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+          Power in Minx City is not shared. It is hoarded, delegated, and enforced. Three institutions control daily life inside the wall. Outside it, the gangs carve up what remains. Understanding who holds the leash — and who wears it — is the difference between surviving and disappearing.
+        </div>
+        <Divider />
+        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
+        <Row label="PABLO CORP. WORKERS" val="Civilians. Office staff, technicians, accountants, maintenance crews. They wear corporate lanyards and keep their heads down. They are not armed, not trained for combat, and not loyal — just employed. Most would leave if they could afford to. They cannot." col="#ff8844" />
+        <Row label="CORPO MILITARY" val="Private military contractors on PABLO CORP. payroll. Heavily armed, body-armored, stationed at checkpoints and tower entrances. Their sole directive: protect PABLO CORP. assets and personnel. They do not respond to civilian distress. They do not patrol outside corporate zones. If you are not on the payroll, you are not their problem." col="#ff4444" />
+        <Row label="COMMAND" val="SENIOR PABLO sits at the top. Below him: division heads, project leads, and a rotating cast of executives who last an average of 14 months before reassignment or disappearance. The hierarchy is opaque by design." col="#cc44ff" />
+        <Divider />
+        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
+        <Row label="POLICE" val="Underfunded, overworked, and deeply corrupt. The Minx City Police Department predates the collapse but barely survived it. Officers patrol slowly, stop citizens for random ID checks, and enforce laws that change weekly. Their authority ends where PABLO CORP. property begins — corpo military handles the rest." col="#3388ff" />
+        <Row label="TACTICS" val="Random stops. ID verification. Fines for infractions you have never heard of. Officers travel in pairs. They avoid the wasteland entirely. Their radio chatter is unencrypted — anyone within earshot can hear them harassing pedestrians." col="#3388ff" />
+        <Row label="CORRUPTION" val="Bribes are standard. Fines are negotiable. Arrests are rare — paperwork costs more than looking the other way. The department answers to the city council, which answers to PABLO CORP., which answers to no one." col="#3388ff" />
+        <Divider />
+        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
+        {gangFactions.map(g => {
+          const discovered = visitedFactions.has(g.id);
+          return discovered ? (
+            <Row key={g.id} label={g.label} val={g.val} col={g.col} />
+          ) : (
+            <Row key={g.id} label="???" val="[ UNCHARTED — Enter this faction's territory to reveal intel. ]" col="rgba(0,255,65,.15)" />
+          );
+        })}
+        <Divider />
+        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+          Everyone in Minx City belongs to someone. The only question is whether you know it yet.
+        </div>
       </div>
-      <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── PABLO CORP. ──</div>
-      <Row label="PABLO CORP. WORKERS" val="Civilians on the corporate payroll. Not armed. Not combatants." col="#ff8844" />
-      <Row label="CORPO MILITARY" val="Private military. Heavily armed. Stationed at checkpoints and tower entrances." col="#ff4444" />
-      <Row label="COMMAND" val="Corporate leadership. The hierarchy is opaque by design." col="#cc44ff" />
-      <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY POLICE ──</div>
-      <Row label="POLICE" val="City law enforcement. Officers patrol in pairs. Their authority ends where PABLO CORP. property begins." col="#3388ff" />
-      <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND GANGS ──</div>
-      <Row label="IRON RATS" val="Western wasteland. Hostile." col="#ff4444" />
-      <Row label="VOID DOGS" val="Central wasteland. Hostile." col="#ff8800" />
-      <Row label="STATIC MONKS" val="Eastern wasteland. Hostile. Can poison." col="#aaff22" />
-      <Row label="EASTERN BLOC" val="Location unknown. Hostile." col="#ff66ff" />
-      <Divider />
-      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.06em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        Talk to people. The rest you figure out yourself.
-      </div>
-    </div>
-  );
+    );
+  }
 
   if (section === 'combat') return (
     <div style={S}>
@@ -297,85 +326,123 @@ function GuideContent({ section }: { section: GuideSection }) {
     </div>
   );
 
-  if (section === 'territories') return (
-    <div style={S}>
-      <SectionHead>GANG TERRITORIES</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        The wasteland is divided into gang zones. Step inside and the HUD lights up.
-      </div>
-      <Divider />
-      {[
-        {
-          id: 'IRON RATS', col: '#ff4444', zone: 'Western wasteland',
-          enemies: 'IRON_RATS — HP 30 · EXP 20 · fast, swarming',
-        },
-        {
-          id: 'VOID DOGS', col: '#ff8800', zone: 'Central wasteland',
-          enemies: 'VOID_DOGS — HP 40 · EXP 28 · balanced, patrol-heavy',
-        },
-        {
-          id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
-          enemies: 'STATIC_MONKS — HP 50 · EXP 35 · slow, tough, can POISON',
-        },
-      ].map(g => (
-        <div key={g.id} style={{ border: `1px solid ${g.col}33`, background: `${g.col}07`, padding: '.7rem .8rem', marginBottom: '.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '.5rem' }}>
-            <div style={{ width: 10, height: 10, background: g.col, boxShadow: `0 0 8px ${g.col}` }} />
-            <div style={{ ...VT, fontSize: '1.3rem', color: g.col, letterSpacing: '.1em' }}>{g.id}</div>
-            <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
-          </div>
-          <Row label="ENEMIES" val={g.enemies} col="rgba(0,255,65,.6)" />
+  if (section === 'territories') {
+    const territories = [
+      {
+        fid: 'rust_syndicate', id: 'RUST SYNDICATE', col: '#ff4444', zone: 'Western wasteland',
+        entry: '"RUST SYNDICATE territory. You\'re the meal."',
+        enemies: 'RUST_SYNDICATE — HP 30 · EXP 20 · fast, swarming',
+        lore: 'Former construction workers. Turned feral after PABLO CORP. seized their housing blocks. They wear red. They hit in groups. Don\'t stop moving.',
+      },
+      {
+        fid: 'void_runners', id: 'VOID RUNNERS', col: '#ff8800', zone: 'Central wasteland',
+        entry: '"VOID RUNNERS don\'t negotiate."',
+        enemies: 'VOID_RUNNERS — HP 40 · EXP 28 · balanced, patrol-heavy',
+        lore: 'Ex-security contractors cut loose when PABLO CORP. automated the checkpoints. Organized. Orange armbands. They remember how to be soldiers.',
+      },
+      {
+        fid: 'static_monks', id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
+        entry: '"STATIC MONKS zone. Your signal is their noise."',
+        enemies: 'STATIC_MONKS — HP 50 · EXP 35 · slow, tough, can POISON',
+        lore: 'Former telecom engineers. They worship dead frequencies. They believe the collapse was a signal. They jam everything. They can poison you — something in the static.',
+      },
+      {
+        fid: 'eastern_bloc', id: 'EASTERN BLOC', col: '#ff66ff', zone: 'Southern wasteland',
+        entry: '"EASTERN BLOC — trespassers are eliminated."',
+        enemies: 'EASTERN_BLOC — HP 45 · EXP 30 · precise, military-grade',
+        lore: 'No negotiation. No communication. They operate like a military unit — precise, disciplined. Nova Pryce traced their signal to a server in Shadow Tower.',
+      },
+    ];
+    return (
+      <div style={S}>
+        <SectionHead>GANG TERRITORIES</SectionHead>
+        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+          Gangs carved up the wasteland after the collapse. They don't care who you are. Step into their zone and the HUD lights up. Each zone has its own threat profile and entry narration.
         </div>
-      ))}
-      <Divider />
-      <Row label="HUD INDICATOR" val="Zone name + warning appear in the bottom-left panel when you cross into gang territory." col="#ff8800" />
-      <Row label="WASTELAND RULE" val="All survival meters drain faster across the entire wasteland, not just in gang zones." col="#88ff44" />
-    </div>
-  );
+        <Divider />
+        {territories.map(g => {
+          const discovered = visitedFactions.has(g.fid);
+          if (!discovered) return (
+            <div key={g.fid} style={{ border: '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.02)', padding: '.7rem .8rem', marginBottom: '.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
+                <div style={{ width: 10, height: 10, background: 'rgba(0,255,65,.15)' }} />
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>??? TERRITORY</div>
+              </div>
+              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.12)', marginTop: '.3rem' }}>[ ENTER THIS ZONE TO REVEAL INTEL ]</div>
+            </div>
+          );
+          return (
+            <div key={g.fid} style={{ border: `1px solid ${g.col}33`, background: `${g.col}07`, padding: '.7rem .8rem', marginBottom: '.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '.5rem' }}>
+                <div style={{ width: 10, height: 10, background: g.col, boxShadow: `0 0 8px ${g.col}` }} />
+                <div style={{ ...VT, fontSize: '1.3rem', color: g.col, letterSpacing: '.1em' }}>{g.id}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
+              </div>
+              <Row label="ENTRY" val={g.entry} col={g.col} />
+              <Row label="ENEMIES" val={g.enemies} col="rgba(0,255,65,.6)" />
+              <Row label="LORE" val={g.lore} />
+            </div>
+          );
+        })}
+        <Divider />
+        <Row label="HUD INDICATOR" val="Zone name + warning appear in the bottom-left panel when you cross into gang territory." col="#ff8800" />
+        <Row label="WASTELAND RULE" val="All survival meters drain faster across the entire wasteland, not just in gang zones." col="#88ff44" />
+      </div>
+    );
+  }
 
-  if (section === 'landmarks') return (
-    <div style={S}>
-      <SectionHead>LANDMARKS</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Essential buildings across the city and wasteland. Approach within range and press [E] to enter.
+  if (section === 'landmarks') {
+    const cityLandmarks = [
+      { bid: 'pablo_tower', name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
+      { bid: 'clinic',      name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
+      { bid: 'megabank',    name: 'IRON TRUST BANK', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
+      { bid: 'hotel',       name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
+      { bid: 'arcade',      name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
+      { bid: 'vend',        name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
+      { bid: 'crystal',     name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
+      { bid: 'pablo_store', name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
+    ];
+    const wasteLandmarks = [
+      { bid: 'bunker',     name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
+      { bid: 'scrap',      name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
+      { bid: 'radio',      name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
+      { bid: 'oxide_labs', name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
+    ];
+    const renderLandmark = (b: { bid: string; name: string; col: string; effect: string; secret: string }) => {
+      const discovered = visitedLocations.has(b.bid);
+      return (
+        <div key={b.bid} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
+          <div style={{ ...VT, fontSize: '.9rem', color: discovered ? b.col : 'rgba(0,255,65,.15)', minWidth: 120, flexShrink: 0 }}>{discovered ? b.name : '???'}</div>
+          <div style={{ flex: 1 }}>
+            {discovered ? (
+              <>
+                <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.7 }}>{b.effect}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
+              </>
+            ) : (
+              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.7 }}>[ VISIT TO REVEAL ]</div>
+            )}
+          </div>
+        </div>
+      );
+    };
+    return (
+      <div style={S}>
+        <SectionHead>LANDMARKS</SectionHead>
+        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+          Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other operatives.
+        </div>
+        <Divider />
+        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
+        {cityLandmarks.map(renderLandmark)}
+        <Divider />
+        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
+        {wasteLandmarks.map(renderLandmark)}
+        <Divider />
+        <Row label="BUILDING LOCKS" val="Any operative can lock a building with a passcode. Locked buildings show 🔒 and display owner name + company. Only the password holder can enter." col="#ff8800" />
       </div>
-      <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
-      {[
-        { name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
-        { name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
-        { name: 'BANCO OMBRA', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
-        { name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
-        { name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
-        { name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
-        { name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
-        { name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
-      ].map(b => (
-        <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
-          <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.75 }}>{b.effect}</div>
-          </div>
-        </div>
-      ))}
-      <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── WASTELAND ──</div>
-      {[
-        { name: 'PIRATE RADIO',   col: '#88ff44', effect: 'Broadcast station. Wasteland territory. Pays FIAT for signal jobs.' },
-        { name: 'SCRAP YARD',     col: '#88ff44', effect: 'Salvage site. Salary bonus on entry.' },
-        { name: 'OXIDE LABS',     col: '#88ff44', effect: 'Abandoned laboratory. Salary bonus on entry.' },
-      ].map(b => (
-        <div key={b.name} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
-          <div style={{ ...VT, fontSize: '.9rem', color: b.col, minWidth: 120, flexShrink: 0 }}>{b.name}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.75 }}>{b.effect}</div>
-          </div>
-        </div>
-      ))}
-      <Divider />
-      <Row label="BUILDING LOCKS" val="Any operative can lock a building with a passcode. Locked buildings show 🔒 and show owner name + company. Only the password holder can enter." col="#ff8800" />
-    </div>
-  );
+    );
+  }
 
   if (section === 'terminals') return (
     <div style={S}>

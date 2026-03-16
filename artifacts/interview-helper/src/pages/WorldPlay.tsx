@@ -36,10 +36,10 @@ import {
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
 const NPC_SPEED_MULT = 0.2;
 const BORDER = 100;
-const CITY_TOP = 5100;
-const CITY_BOTTOM = 7500;
-const CITY_LEFT = 5400;
-const CITY_RIGHT = 9000;
+const CITY_TOP = 5800;
+const CITY_BOTTOM = 6800;
+const CITY_LEFT = 6200;
+const CITY_RIGHT = 7400;
 const CITY_THREAT_SCAN_Y = CITY_BOTTOM + 200;
 const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_RIGHT && py >= CITY_TOP && py <= CITY_BOTTOM;
 
@@ -51,24 +51,22 @@ interface BillboardDef {
   locationId: string; label: string; x: number; y: number; w: number; h: number; height: number;
 }
 const MANHOLES = [
-  { x: 5560, y: 5180 }, { x: 6680, y: 5180 }, { x: 7850, y: 5180 },
-  { x: 5560, y: 5580 }, { x: 6680, y: 5580 }, { x: 7160, y: 5580 },
-  { x: 6060, y: 5960 }, { x: 7160, y: 5960 },
-  { x: 5560, y: 6350 }, { x: 6680, y: 6350 },
-  { x: 6060, y: 6600 }, { x: 7850, y: 6600 },
-  { x: 5560, y: 6780 }, { x: 7160, y: 6780 },
+  { x: 6800, y: 6300 },
+  { x: 6400, y: 6000 }, { x: 7100, y: 6000 },
+  { x: 6400, y: 6550 }, { x: 7100, y: 6550 },
+  { x: 6800, y: 5800 }, { x: 6800, y: 6800 },
 ];
 const MANHOLE_RANGE = 30;
 
 const BILLBOARDS: BillboardDef[] = [
-  { locationId: 'bb_west_main',   label: 'WEST MAIN ST',      x: 5700, y: 5580, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_west_market', label: 'MARKET DISTRICT',   x: 6200, y: 5580, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_west_south',  label: 'SOUTH WALL',        x: 5600, y: 6780, w: 20, h: 10, height: 45 },
-  { locationId: 'bb_east_plaza',  label: 'EAST PLAZA',        x: 7200, y: 5580, w: 20, h: 10, height: 55 },
-  { locationId: 'bb_east_neon',   label: 'NEON STRIP',        x: 6680, y: 5960, w: 20, h: 10, height: 60 },
-  { locationId: 'bb_east_gate',   label: 'NORTH GATE',        x: 7600, y: 5300, w: 20, h: 10, height: 50 },
-  { locationId: 'bb_border_west', label: 'BORDER CROSSING W', x: 5600, y: 6850, w: 20, h: 10, height: 40 },
-  { locationId: 'bb_border_east', label: 'BORDER CROSSING E', x: 7750, y: 6850, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_west_main',   label: 'WEST GATE',          x: 6160, y: 6290, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_west_market', label: 'CROSSROADS',         x: 6810, y: 6290, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_west_south',  label: 'SOUTH GATE',         x: 6790, y: 6820, w: 20, h: 10, height: 45 },
+  { locationId: 'bb_east_plaza',  label: 'EAST GATE',          x: 7420, y: 6290, w: 20, h: 10, height: 55 },
+  { locationId: 'bb_east_neon',   label: 'NE STRIP',           x: 7100, y: 5870, w: 20, h: 10, height: 60 },
+  { locationId: 'bb_east_gate',   label: 'NORTH GATE',         x: 6790, y: 5760, w: 20, h: 10, height: 50 },
+  { locationId: 'bb_border_west', label: 'NW CORNER',          x: 6220, y: 5810, w: 20, h: 10, height: 40 },
+  { locationId: 'bb_border_east', label: 'SE CORNER',          x: 7360, y: 6760, w: 20, h: 10, height: 40 },
 ];
 interface BillboardData {
   id: number; locationId: string; ownerPlayerName: string | null;
@@ -111,7 +109,7 @@ const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x
 
 const BUILDINGS = [
   // ═══ BLOCK A — NORTH-WEST (Shadow District) ═══════════════════════════════
-  { id: 'minx_arms',    x: 5620, y: 5280, w: 130, h: 120, label: 'MINX ARMS',        bright: false, doors: mkDoorS(5620,5280,130,120) },
+  { id: 'minx_arms',    x: 5620, y: 5280, w: 130, h: 120, label: 'MINX ARMS HOTEL',        bright: false, doors: mkDoorS(5620,5280,130,120) },
   { id: 'clinic',       x: 5780, y: 5280, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5780,5280,120,80) },
   { id: 'nexus_hub',    x: 5620, y: 5440, w: 140, h: 90,  label: 'NEXUS HUB',        bright: true,  doors: mkDoorS(5620,5440,140,90) },
   // ═══ BLOCK B — NORTH CENTER (Tower Quarter) ════════════════════════════════
@@ -135,6 +133,7 @@ const BUILDINGS = [
   { id: 'food_court',   x: 6360, y: 5700, w: 140, h: 90,  label: 'FOOD COURT',        bright: true,  doors: mkDoorS(6360,5700,140,90) },
   { id: 'gold_exchange',x: 6530, y: 5700, w: 120, h: 80,  label: 'GOLD EXCHANGE',     bright: true,  doors: mkDoorS(6530,5700,120,80) },
   { id: 'crystal',      x: 6680, y: 5750, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  { id: 'public_office',x: 6620, y: 5870, w: 170, h: 100, label: 'PUBLIC OFFICE',     bright: true,  doors: mkDoorS(6620,5870,170,100) },
   // ═══ BLOCK G — MID-EAST (Corporate Row) ═══════════════════════════════════
   { id: 'call_home',    x: 6900, y: 5700, w: 130, h: 80,  label: 'CALL HOME',         bright: true,  doors: mkDoorS(6900,5700,130,80) },
   { id: 'noodle_bar',   x: 7060, y: 5700, w: 120, h: 80,  label: 'NOODLE BAR',        bright: true,  doors: mkDoorS(7060,5700,120,80) },
@@ -168,9 +167,9 @@ const BUILDINGS = [
   { id: 'sub_central',  x: 6500, y: 6650, w: 90,  h: 65,  label: 'METRO CENTRAL',     bright: true,  doors: mkDoorS(6500,6650,90,65) },
   { id: 'sub_east',     x: 7300, y: 6650, w: 90,  h: 65,  label: 'METRO EAST',        bright: true,  doors: mkDoorS(7300,6650,90,65) },
   // ═══ CHECKPOINTS (city border — wasteland entry) ══════════════════════════
-  { id: 'checkpoint_w', x: 5500, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT W',      bright: false, doors: [...mkDoorW(5500,6850,100,55), ...mkDoorE(5500,6850,100,55)] },
-  { id: 'checkpoint_c', x: 6700, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT',        bright: false, doors: [...mkDoorW(6700,6850,100,55), ...mkDoorE(6700,6850,100,55)] },
-  { id: 'checkpoint_e', x: 7700, y: 6850, w: 100, h: 55,  label: 'CHECKPOINT E',      bright: false, doors: [...mkDoorW(7700,6850,100,55), ...mkDoorE(7700,6850,100,55)] },
+  { id: 'checkpoint_w', x: 5500, y: 6850, w: 100, h: 55,  label: 'WEST GATE',      bright: false, doors: [...mkDoorW(5500,6850,100,55), ...mkDoorE(5500,6850,100,55)] },
+  { id: 'checkpoint_c', x: 6700, y: 6850, w: 100, h: 55,  label: 'SOUTH GATE',        bright: false, doors: [...mkDoorW(6700,6850,100,55), ...mkDoorE(6700,6850,100,55)] },
+  { id: 'checkpoint_e', x: 7700, y: 6850, w: 100, h: 55,  label: 'EAST GATE',      bright: false, doors: [...mkDoorW(7700,6850,100,55), ...mkDoorE(7700,6850,100,55)] },
   { id: 'crystal5',     x: 7850, y: 6700, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
   // ═══ WASTELAND OUTPOSTS ═══════════════════════════════════════════════════
   { id: 'outpost_alpha', x: 2000, y: 1500, w: 120, h: 80, label: 'OUTPOST ALPHA',     bright: true,  doors: mkDoorS(2000,1500,120,80), radio: true },
@@ -200,6 +199,7 @@ const BUILDINGS = [
   { id: 'van_west',       x: 2200, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
   { id: 'van_central',    x: 5500, y: 8500, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
+  { id: 'picassoo_hq',    x: 7520, y: 6230, w: 130, h: 85,  label: 'PICASSOO.AI HQ',   bright: true,  doors: mkDoorS(7520,6230,130,85) },
 ];
 
 const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -232,11 +232,12 @@ const INTERIOR_NPCS: Record<string, { name: string; role: string; x: number; y: 
 // ── Interior System ──────────────────────────────────────────────────────────
 interface InteriorObject {
   x: number; y: number; w: number; h: number;
-  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper';
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server';
   gameId?: string;
   label?: string;
   color?: string;
 }
+interface InteriorWorker { x: number; y: number; name: string; role: string; hostile?: boolean; }
 
 interface InventoryItem {
   id: string;
@@ -377,15 +378,19 @@ interface InteriorDef {
   objects: InteriorObject[];
   label: string;
   ambientText?: string;
+  workers?: InteriorWorker[];
 }
 
 const INTERIOR_DEFS: Record<string, InteriorDef> = {
   minx_arms: {
-    id: 'minx_arms', label: 'MINX ARMS — FLOOR 4 — UNIT 408',
+    id: 'minx_arms', label: 'MINX ARMS HOTEL — ROOM 408',
     width: 280, height: 220,
     wallColor: 'rgba(20,30,20,.95)', floorColor: 'rgba(8,14,8,.9)', accentColor: 'rgba(0,255,65,.3)',
     exitX: 130, exitY: 205, exitW: 30, exitH: 15,
-    ambientText: 'Fluorescent light buzzes. The curtains don\'t fully close.',
+    ambientText: 'Fluorescent light buzzes. The curtains don\'t fully close. Hotel room. Nightly rate.',
+    workers: [
+      { x: 180, y: 80, name: 'MAID UNIT', role: 'Cleaning Bot', hostile: false },
+    ],
     objects: [
       { x: 20, y: 30, w: 60, h: 35, type: 'bed', label: 'YOUR BED', color: 'rgba(60,80,60,.6)' },
       { x: 90, y: 30, w: 25, h: 20, type: 'nightstand', label: 'NIGHTSTAND', color: 'rgba(50,60,40,.5)' },
@@ -394,6 +399,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 20, y: 140, w: 25, h: 25, type: 'chair', color: 'rgba(40,45,35,.4)' },
       { x: 200, y: 150, w: 50, h: 35, type: 'terminal', label: 'PABLO DEVICE', color: 'rgba(0,80,30,.4)' },
       { x: 130, y: 30, w: 30, h: 20, type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)' },
+      { x: 105, y: 195, w: 50, h: 15, type: 'door_lock', label: 'DOOR LOCK', color: 'rgba(0,200,100,.35)' },
     ],
   },
   clinic: {
@@ -402,6 +408,10 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(20,25,30,.95)', floorColor: 'rgba(10,14,18,.9)', accentColor: 'rgba(100,200,255,.3)',
     exitX: 145, exitY: 225, exitW: 30, exitH: 15,
     ambientText: 'Monitors beep steadily. The antiseptic smell is overwhelming.',
+    workers: [
+      { x: 60, y: 50, name: 'DR. VOSS', role: 'Physician', hostile: false },
+      { x: 200, y: 100, name: 'NURSE KAI', role: 'Nurse', hostile: false },
+    ],
     objects: [
       { x: 20, y: 30, w: 55, h: 30, type: 'reception', label: 'RECEPTION', color: 'rgba(60,80,100,.5)' },
       { x: 20, y: 90, w: 50, h: 25, type: 'medical_bed', label: 'BED A', color: 'rgba(80,100,120,.5)' },
@@ -437,6 +447,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(25,30,20,.95)', floorColor: 'rgba(10,14,8,.9)', accentColor: 'rgba(255,200,60,.25)',
     exitX: 115, exitY: 185, exitW: 30, exitH: 15,
     ambientText: 'Goods line the walls. The register hums.',
+    workers: [{ x: 60, y: 45, name: 'SHOPKEEP', role: 'Cashier', hostile: false }],
     objects: [
       { x: 20, y: 25, w: 80, h: 20, type: 'counter', label: 'COUNTER', color: 'rgba(80,70,40,.5)' },
       { x: 20, y: 60, w: 30, h: 60, type: 'shelf', label: 'SHELF A', color: 'rgba(60,55,35,.4)' },
@@ -448,17 +459,24 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
   },
   _office: {
     id: '_office', label: 'OFFICE INTERIOR',
-    width: 260, height: 200,
+    width: 340, height: 260,
     wallColor: 'rgba(20,22,30,.95)', floorColor: 'rgba(8,10,16,.9)', accentColor: 'rgba(0,200,255,.2)',
-    exitX: 115, exitY: 185, exitW: 30, exitH: 15,
-    ambientText: 'Terminal screens glow. The air conditioning is too cold.',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Terminal screens glow. Conference room in the back. The air conditioning is too cold.',
+    workers: [{ x: 60, y: 50, name: 'OFFICER', role: 'Staff', hostile: false }],
     objects: [
       { x: 20, y: 30, w: 50, h: 30, type: 'desk', label: 'DESK 1', color: 'rgba(50,55,70,.5)' },
       { x: 20, y: 80, w: 50, h: 30, type: 'desk', label: 'DESK 2', color: 'rgba(50,55,70,.5)' },
-      { x: 190, y: 30, w: 45, h: 40, type: 'terminal', label: 'MAIN TERMINAL', color: 'rgba(0,60,80,.4)' },
-      { x: 190, y: 90, w: 45, h: 30, type: 'locker', label: 'FILE CABINET', color: 'rgba(50,55,65,.5)' },
-      { x: 120, y: 30, w: 40, h: 20, type: 'table', label: 'MEETING TABLE', color: 'rgba(45,50,60,.4)' },
-      { x: 120, y: 140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 20, y: 130, w: 50, h: 30, type: 'desk', label: 'DESK 3', color: 'rgba(50,55,70,.5)' },
+      { x: 260, y: 30, w: 55, h: 40, type: 'terminal', label: 'MAIN TERMINAL', color: 'rgba(0,60,80,.4)' },
+      { x: 260, y: 90, w: 55, h: 30, type: 'locker', label: 'FILE CABINET', color: 'rgba(50,55,65,.5)' },
+      { x: 100, y: 30, w: 120, h: 70, type: 'conference_table', label: 'CONFERENCE ROOM', color: 'rgba(45,55,75,.5)' },
+      { x: 105, y: 32, w: 100, h: 12, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 225, y: 32, w: 30, h: 22, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' },
+      { x: 100, y: 130, w: 55, h: 28, type: 'couch', label: 'BREAK AREA', color: 'rgba(60,50,70,.4)' },
+      { x: 260, y: 140, w: 45, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' },
+      { x: 20, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 260, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
     ],
   },
   admin_bureau: {
@@ -467,6 +485,10 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(18,20,28,.95)', floorColor: 'rgba(6,8,14,.9)', accentColor: 'rgba(255,200,60,.25)',
     exitX: 175, exitY: 265, exitW: 30, exitH: 15,
     ambientText: 'Bureaucrats shuffle papers. The queue never ends.',
+    workers: [
+      { x: 50, y: 45, name: 'CLERK DARA', role: 'Admin Clerk', hostile: false },
+      { x: 200, y: 80, name: 'OFFICER KELL', role: 'Registry Officer', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(70,65,40,.5)' },
       { x: 20, y: 65, w: 55, h: 30, type: 'desk', label: 'CLERK STATION A', color: 'rgba(55,55,45,.5)' },
@@ -489,6 +511,10 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(15,18,25,.95)', floorColor: 'rgba(5,8,14,.9)', accentColor: 'rgba(100,150,255,.25)',
     exitX: 185, exitY: 285, exitW: 30, exitH: 15,
     ambientText: 'Radios crackle. Wanted posters line the walls. Coffee is always old.',
+    workers: [
+      { x: 60, y: 50, name: 'SGT. MORROW', role: 'Desk Sergeant', hostile: false },
+      { x: 250, y: 90, name: 'DET. YASHIDA', role: 'Detective', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 75, h: 28, type: 'reception', label: 'INTAKE DESK', color: 'rgba(50,55,80,.5)' },
       { x: 20, y: 70, w: 55, h: 28, type: 'desk', label: 'OFFICER DESK 1', color: 'rgba(45,50,70,.5)' },
@@ -512,6 +538,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(22,18,28,.95)', floorColor: 'rgba(10,8,16,.9)', accentColor: 'rgba(200,100,255,.25)',
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
     ambientText: 'Property maps cover every surface. A broker adjusts her collar.',
+    workers: [{ x: 50, y: 45, name: 'AGENT VALE', role: 'Real Estate Broker', hostile: false }],
     objects: [
       { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'AGENT DESK', color: 'rgba(80,50,90,.5)' },
       { x: 20, y: 65, w: 50, h: 30, type: 'desk', label: 'BROKER STATION', color: 'rgba(60,45,70,.5)' },
@@ -532,6 +559,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       wallColor: 'rgba(15,20,25,.95)', floorColor: 'rgba(8,12,18,.9)', accentColor: 'rgba(0,200,255,.25)',
       exitX: 145, exitY: 225, exitW: 30, exitH: 15,
       ambientText: 'Open floor plan. Shared desks and private booths. Coffee machine hums.',
+      workers: [{ x: 60, y: 45, name: 'HOST', role: 'Space Manager', hostile: false }],
       objects: [
         { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(0,120,180,.4)' },
         { x: 20, y: 65, w: 50, h: 28, type: 'desk', label: 'HOT DESK A', color: 'rgba(45,60,80,.5)' },
@@ -554,6 +582,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(25,22,15,.95)', floorColor: 'rgba(12,10,6,.9)', accentColor: 'rgba(255,200,60,.3)',
     exitX: 145, exitY: 225, exitW: 30, exitH: 15,
     ambientText: 'Gold tickers flash. The vault hum is constant.',
+    workers: [{ x: 60, y: 45, name: 'BROKER SATO', role: 'Gold Trader', hostile: false }],
     objects: [
       { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'TELLER WINDOW', color: 'rgba(80,70,30,.5)' },
       { x: 20, y: 65, w: 50, h: 30, type: 'desk', label: 'EXCHANGE DESK', color: 'rgba(70,60,25,.5)' },
@@ -565,21 +594,50 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 20, y: 160, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
     ],
   },
+  picassoo_hq: {
+    id: 'picassoo_hq', label: 'PICASSOO.AI — HEADQUARTERS',
+    width: 340, height: 260,
+    wallColor: 'rgba(18,12,28,.95)', floorColor: 'rgba(10,6,18,.9)', accentColor: 'rgba(180,80,255,.25)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Holographic art swirls on every wall. Servers hum behind frosted glass.',
+    workers: [
+      { x: 70, y: 50, name: 'ARIA CHEN', role: 'Lead Engineer', hostile: false },
+      { x: 200, y: 80, name: 'DEV-K', role: 'AI Researcher', hostile: false },
+      { x: 150, y: 140, name: 'RECEPTIONIST', role: 'Front Desk', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 25, w: 70, h: 28, type: 'reception', label: 'RECEPTION DESK', color: 'rgba(120,60,180,.5)' },
+      { x: 20, y: 70, w: 55, h: 30, type: 'terminal', label: 'AI DEMO STATION', color: 'rgba(100,40,160,.5)' },
+      { x: 20, y: 115, w: 55, h: 30, type: 'desk', label: 'ENGINEERING BAY', color: 'rgba(80,30,140,.5)' },
+      { x: 260, y: 25, w: 55, h: 40, type: 'server', label: 'GPU CLUSTER', color: 'rgba(60,20,100,.6)' },
+      { x: 260, y: 80, w: 55, h: 35, type: 'terminal', label: 'MODEL DASHBOARD', color: 'rgba(100,40,160,.4)' },
+      { x: 260, y: 130, w: 55, h: 30, type: 'tv_screen', label: 'GALLERY DISPLAY', color: 'rgba(120,60,200,.4)' },
+      { x: 130, y: 25, w: 60, h: 25, type: 'couch', label: 'CREATOR LOUNGE', color: 'rgba(80,40,120,.4)' },
+      { x: 130, y: 65, w: 50, h: 25, type: 'whiteboard', label: 'ROADMAP BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 20, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(60,30,90,.3)' },
+      { x: 280, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(60,30,90,.3)' },
+    ],
+  },
   megabank: {
     id: 'megabank', label: 'BANCO OMBRA — MAIN FLOOR',
     width: 340, height: 260,
     wallColor: 'rgba(16,18,24,.95)', floorColor: 'rgba(6,8,12,.9)', accentColor: 'rgba(180,200,255,.2)',
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
     ambientText: 'Marble floors. Armed guards. The kind of quiet only money buys.',
+    workers: [
+      { x: 60, y: 45, name: 'TELLER', role: 'Bank Teller', hostile: false },
+      { x: 200, y: 100, name: 'GUARD', role: 'Security', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 75, h: 28, type: 'reception', label: 'TELLER ROW', color: 'rgba(60,65,80,.5)' },
       { x: 20, y: 70, w: 55, h: 25, type: 'desk', label: 'ACCOUNTS DESK', color: 'rgba(50,55,70,.5)' },
       { x: 20, y: 110, w: 55, h: 25, type: 'desk', label: 'LOANS DESK', color: 'rgba(50,55,70,.5)' },
-      { x: 260, y: 25, w: 55, h: 40, type: 'terminal', label: 'ATM', color: 'rgba(0,50,100,.4)' },
-      { x: 260, y: 80, w: 55, h: 40, type: 'locker', label: 'SAFE DEPOSIT', color: 'rgba(60,60,70,.5)' },
-      { x: 260, y: 135, w: 55, h: 30, type: 'security_gate', label: 'VAULT GATE', color: 'rgba(80,80,90,.4)' },
+      { x: 270, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },
+      { x: 270, y: 90, w: 50, h: 35, type: 'locker', label: 'SAFE DEPOSIT', color: 'rgba(60,60,70,.5)' },
+      { x: 270, y: 140, w: 50, h: 30, type: 'security_gate', label: 'VAULT GATE', color: 'rgba(80,80,90,.4)' },
       { x: 140, y: 25, w: 60, h: 25, type: 'couch', label: 'VIP LOUNGE', color: 'rgba(50,45,60,.4)' },
       { x: 140, y: 65, w: 50, h: 20, type: 'table', label: 'DOCUMENTS TABLE', color: 'rgba(45,50,60,.4)' },
+      { x: 140, y: 100, w: 55, h: 35, type: 'terminal', label: 'ATM', color: 'rgba(0,50,100,.4)' },
       { x: 20, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 260, y: 180, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 140, y: 100, w: 28, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
@@ -591,6 +649,10 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(25,18,15,.95)', floorColor: 'rgba(14,8,6,.9)', accentColor: 'rgba(255,100,60,.25)',
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
     ambientText: 'Sweat and iron. The mats are stained. Someone is always training.',
+    workers: [
+      { x: 70, y: 80, name: 'SENSEI', role: 'Instructor', hostile: false },
+      { x: 200, y: 100, name: 'FIGHTER', role: 'Sparring', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 50, h: 25, type: 'reception', label: 'SIGN-IN', color: 'rgba(80,50,30,.5)' },
       { x: 260, y: 25, w: 55, h: 40, type: 'locker', label: 'GEAR LOCKERS', color: 'rgba(60,40,30,.5)' },
@@ -609,14 +671,19 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(15,8,25,.95)', floorColor: 'rgba(6,3,14,.9)', accentColor: 'rgba(255,0,200,.3)',
     exitX: 145, exitY: 225, exitW: 30, exitH: 15,
     ambientText: 'Bass thumps through the floor. Neon pink washes everything.',
+    workers: [
+      { x: 50, y: 45, name: 'BARTENDER', role: 'Bar Staff', hostile: false },
+      { x: 200, y: 50, name: 'DJ PULSE', role: 'DJ', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 60, h: 25, type: 'counter', label: 'BAR', color: 'rgba(100,20,80,.5)' },
       { x: 20, y: 65, w: 40, h: 30, type: 'couch', label: 'VIP BOOTH', color: 'rgba(80,10,60,.4)' },
       { x: 20, y: 110, w: 40, h: 30, type: 'couch', label: 'BOOTH 2', color: 'rgba(80,10,60,.4)' },
-      { x: 240, y: 25, w: 55, h: 35, type: 'terminal', label: 'DJ BOOTH', color: 'rgba(80,0,100,.4)' },
-      { x: 240, y: 75, w: 55, h: 30, type: 'tv_screen', label: 'HOLO DISPLAY', color: 'rgba(100,0,120,.4)' },
+      { x: 250, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(90,30,80,.6)' },
+      { x: 250, y: 90, w: 50, h: 30, type: 'tv_screen', label: 'HOLO DISPLAY', color: 'rgba(100,0,120,.4)' },
       { x: 140, y: 25, w: 50, h: 20, type: 'table', label: 'DANCE FLOOR', color: 'rgba(60,0,80,.3)' },
-      { x: 240, y: 160, w: 30, h: 25, type: 'vending_machine', label: 'DRINK DISPENSER', color: 'rgba(80,20,60,.4)' },
+      { x: 140, y: 60, w: 50, h: 30, type: 'terminal', label: 'DJ BOOTH', color: 'rgba(80,0,100,.4)' },
+      { x: 250, y: 160, w: 30, h: 25, type: 'vending_machine', label: 'DRINK DISPENSER', color: 'rgba(80,20,60,.4)' },
     ],
   },
   armory: {
@@ -625,6 +692,7 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(20,18,15,.95)', floorColor: 'rgba(10,8,6,.9)', accentColor: 'rgba(255,80,40,.25)',
     exitX: 145, exitY: 225, exitW: 30, exitH: 15,
     ambientText: 'Gun oil and cordite. Every surface is reinforced steel.',
+    workers: [{ x: 50, y: 45, name: 'DEALER', role: 'Arms Dealer', hostile: false }],
     objects: [
       { x: 20, y: 25, w: 60, h: 25, type: 'counter', label: 'SALES COUNTER', color: 'rgba(80,50,30,.5)' },
       { x: 20, y: 65, w: 50, h: 60, type: 'shelf', label: 'RIFLES', color: 'rgba(70,40,25,.4)' },
@@ -641,14 +709,15 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
     wallColor: 'rgba(18,15,22,.95)', floorColor: 'rgba(8,6,12,.9)', accentColor: 'rgba(255,160,60,.25)',
     exitX: 145, exitY: 225, exitW: 30, exitH: 15,
     ambientText: 'The lobby is warm. Elevator music plays from a broken speaker.',
+    workers: [{ x: 90, y: 50, name: 'CLERK', role: 'Hotel Clerk', hostile: false }],
     objects: [
       { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'FRONT DESK', color: 'rgba(70,55,40,.5)' },
       { x: 20, y: 65, w: 55, h: 30, type: 'couch', label: 'LOBBY SEATING', color: 'rgba(60,45,30,.4)' },
       { x: 20, y: 110, w: 55, h: 30, type: 'couch', label: 'READING NOOK', color: 'rgba(60,45,30,.4)' },
-      { x: 240, y: 25, w: 55, h: 35, type: 'terminal', label: 'CHECK-IN KIOSK', color: 'rgba(0,70,50,.4)' },
-      { x: 240, y: 75, w: 55, h: 30, type: 'locker', label: 'LUGGAGE HOLD', color: 'rgba(50,40,35,.5)' },
+      { x: 250, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,75,65,.6)' },
       { x: 140, y: 25, w: 50, h: 20, type: 'table', label: 'CONCIERGE TABLE', color: 'rgba(55,45,35,.4)' },
-      { x: 240, y: 160, w: 45, h: 35, type: 'vending_machine', label: 'SNACK MACHINE', color: 'rgba(40,60,50,.4)' },
+      { x: 250, y: 100, w: 50, h: 30, type: 'locker', label: 'LUGGAGE HOLD', color: 'rgba(50,40,35,.5)' },
+      { x: 250, y: 160, w: 45, h: 35, type: 'vending_machine', label: 'SNACK MACHINE', color: 'rgba(40,60,50,.4)' },
       { x: 20, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 140, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 240, y: 120, w: 28, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
@@ -656,19 +725,337 @@ const INTERIOR_DEFS: Record<string, InteriorDef> = {
   },
   machine_bunker: {
     id: 'machine_bunker', label: 'MACHINE BUNKER — SUB-LEVEL 1',
-    width: 300, height: 240,
+    width: 380, height: 300,
     wallColor: 'rgba(12,14,20,.95)', floorColor: 'rgba(4,6,10,.9)', accentColor: 'rgba(80,120,255,.25)',
-    exitX: 135, exitY: 225, exitW: 30, exitH: 15,
-    ambientText: 'Hydraulic hiss. Blue diode strips along the floor. The air smells of coolant and ozone.',
+    exitX: 175, exitY: 285, exitW: 30, exitH: 15,
+    ambientText: 'Hydraulic hiss. Blue diode strips along the floor. Coolant and ozone. Packed with replicants, refugees, and displaced workers sleeping on every surface.',
+    workers: [
+      { x: 100, y: 50, name: 'UNIT-7', role: 'Maintenance Drone', hostile: false },
+      { x: 50, y: 110, name: 'REPLICANT-K9', role: 'Refugee', hostile: false },
+      { x: 200, y: 50, name: 'SYNTHIA', role: 'Medic Unit', hostile: false },
+      { x: 290, y: 90, name: 'BOLT', role: 'Salvage Worker', hostile: false },
+      { x: 50, y: 170, name: 'SHELL', role: 'Displaced Replicant', hostile: false },
+      { x: 150, y: 130, name: 'VERA QUINN', role: 'Human Refugee', hostile: false },
+      { x: 280, y: 170, name: 'JACKS', role: 'Scrap Dealer', hostile: false },
+      { x: 150, y: 220, name: 'AXE', role: 'Guard', hostile: false },
+      { x: 50, y: 240, name: 'SLEEPER', role: 'Vagrant', hostile: false },
+      { x: 280, y: 240, name: 'WREN', role: 'Engineer', hostile: false },
+    ],
     objects: [
       { x: 20, y: 25, w: 60, h: 35, type: 'equipment', label: 'RECHARGE BAY', color: 'rgba(40,60,120,.5)' },
       { x: 20, y: 80, w: 60, h: 35, type: 'equipment', label: 'DIAGNOSTIC RIG', color: 'rgba(40,60,120,.5)' },
       { x: 20, y: 135, w: 60, h: 30, type: 'medical_bed', label: 'REPAIR SLAB', color: 'rgba(50,70,110,.5)' },
-      { x: 220, y: 25, w: 55, h: 40, type: 'terminal', label: 'CORE TERMINAL', color: 'rgba(0,50,120,.5)' },
-      { x: 220, y: 80, w: 55, h: 35, type: 'locker', label: 'PARTS LOCKER', color: 'rgba(40,50,70,.5)' },
-      { x: 220, y: 135, w: 55, h: 30, type: 'crate', label: 'COOLANT SUPPLY', color: 'rgba(30,50,80,.4)' },
-      { x: 120, y: 25, w: 50, h: 25, type: 'table', label: 'WORK BENCH', color: 'rgba(35,45,60,.4)' },
-      { x: 120, y: 170, w: 40, h: 25, type: 'crate', label: 'SALVAGE BIN', color: 'rgba(30,40,55,.4)' },
+      { x: 20, y: 185, w: 60, h: 25, type: 'bed', label: 'SLEEP POD ROW', color: 'rgba(30,40,70,.5)' },
+      { x: 300, y: 25, w: 55, h: 40, type: 'terminal', label: 'CORE TERMINAL', color: 'rgba(0,50,120,.5)' },
+      { x: 300, y: 80, w: 55, h: 35, type: 'locker', label: 'PARTS LOCKER', color: 'rgba(40,50,70,.5)' },
+      { x: 300, y: 135, w: 55, h: 30, type: 'crate', label: 'COOLANT SUPPLY', color: 'rgba(30,50,80,.4)' },
+      { x: 300, y: 185, w: 55, h: 25, type: 'bed', label: 'SLEEP POD ROW', color: 'rgba(30,40,70,.5)' },
+      { x: 140, y: 25, w: 60, h: 25, type: 'table', label: 'WORK BENCH', color: 'rgba(35,45,60,.4)' },
+      { x: 140, y: 70, w: 60, h: 25, type: 'counter', label: 'MESS COUNTER', color: 'rgba(35,45,60,.4)' },
+      { x: 140, y: 180, w: 50, h: 25, type: 'crate', label: 'SALVAGE BIN', color: 'rgba(30,40,55,.4)' },
+      { x: 140, y: 120, w: 40, h: 25, type: 'water_cooler', label: 'WATER STATION', color: 'rgba(40,60,80,.3)' },
+    ],
+  },
+  _lobby: {
+    id: '_lobby', label: 'LOBBY',
+    width: 380, height: 280,
+    wallColor: 'rgba(18,20,28,.95)', floorColor: 'rgba(8,10,16,.9)', accentColor: 'rgba(0,200,255,.25)',
+    exitX: 175, exitY: 265, exitW: 30, exitH: 15,
+    ambientText: 'Polished floors. Directory board by the elevator. Two businesses share this floor.',
+    workers: [{ x: 60, y: 50, name: 'RECEPTIONIST', role: 'Front Desk', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 75, h: 28, type: 'reception', label: 'LOBBY DESK', color: 'rgba(60,70,90,.5)' },
+      { x: 20, y: 70, w: 140, h: 75, type: 'counter', label: 'BUSINESS A', color: 'rgba(50,65,80,.5)' },
+      { x: 20, y: 160, w: 60, h: 25, type: 'couch', label: 'WAITING AREA', color: 'rgba(50,45,60,.4)' },
+      { x: 200, y: 70, w: 140, h: 75, type: 'counter', label: 'BUSINESS B', color: 'rgba(50,65,80,.5)' },
+      { x: 200, y: 160, w: 45, h: 35, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,80,60,.4)' },
+      { x: 260, y: 160, w: 30, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 310, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },
+      { x: 130, y: 25, w: 50, h: 20, type: 'whiteboard', label: 'DIRECTORY', color: 'rgba(200,200,200,.15)' },
+      { x: 120, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  _office_floor: {
+    id: '_office_floor', label: 'OFFICE FLOOR',
+    width: 380, height: 300,
+    wallColor: 'rgba(18,22,30,.95)', floorColor: 'rgba(8,12,18,.92)', accentColor: 'rgba(0,180,255,.25)',
+    exitX: 175, exitY: 285, exitW: 30, exitH: 15,
+    ambientText: 'Open plan office. Conference room in the back. Elevator to lobby.',
+    objects: [
+      { x: 20, y: 30, w: 55, h: 28, type: 'desk', label: 'DESK 1', color: 'rgba(50,60,80,.5)' },
+      { x: 20, y: 75, w: 55, h: 28, type: 'desk', label: 'DESK 2', color: 'rgba(50,60,80,.5)' },
+      { x: 20, y: 120, w: 55, h: 28, type: 'desk', label: 'DESK 3', color: 'rgba(50,60,80,.5)' },
+      { x: 90, y: 30, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 90, y: 75, w: 45, h: 28, type: 'terminal', label: 'WORKSTATION', color: 'rgba(0,80,120,.5)' },
+      { x: 310, y: 30, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },
+      { x: 170, y: 30, w: 100, h: 70, type: 'conference_table', label: 'CONFERENCE ROOM', color: 'rgba(45,55,75,.5)' },
+      { x: 170, y: 35, w: 90, h: 10, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 275, y: 35, w: 30, h: 25, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' },
+      { x: 20, y: 175, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES', color: 'rgba(50,55,65,.5)' },
+      { x: 90, y: 175, w: 45, h: 35, type: 'bookshelf', label: 'REFERENCE', color: 'rgba(80,60,35,.5)' },
+      { x: 310, y: 100, w: 50, h: 35, type: 'locker', label: 'SUPPLY ROOM', color: 'rgba(50,55,65,.5)' },
+      { x: 170, y: 175, w: 60, h: 28, type: 'couch', label: 'BREAK AREA', color: 'rgba(60,50,70,.4)' },
+      { x: 250, y: 175, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' },
+      { x: 310, y: 175, w: 25, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+      { x: 20, y: 230, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 310, y: 230, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  eastside_flat: {
+    id: 'eastside_flat', label: 'EASTSIDE FLATS — HALLWAY',
+    width: 300, height: 220,
+    wallColor: 'rgba(22,18,15,.95)', floorColor: 'rgba(12,10,8,.9)', accentColor: 'rgba(255,180,80,.2)',
+    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
+    ambientText: 'Flickering hallway light. Mailboxes line the wall. Someone is cooking upstairs.',
+    workers: [{ x: 80, y: 60, name: 'SUPER', role: 'Building Super', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'reception', label: 'MAILBOXES', color: 'rgba(60,50,35,.5)' },
+      { x: 20, y: 65, w: 50, h: 30, type: 'locker', label: 'UTILITY CLOSET', color: 'rgba(50,45,35,.5)' },
+      { x: 230, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,75,65,.6)' },
+      { x: 120, y: 25, w: 60, h: 20, type: 'whiteboard', label: 'NOTICE BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 20, y: 130, w: 55, h: 30, type: 'couch', label: 'LOBBY BENCH', color: 'rgba(50,40,30,.4)' },
+      { x: 230, y: 130, w: 40, h: 35, type: 'vending_machine', label: 'SODA MACHINE', color: 'rgba(40,60,50,.4)' },
+      { x: 120, y: 130, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  _npc_apartment: {
+    id: '_npc_apartment', label: 'APARTMENT',
+    width: 240, height: 180,
+    wallColor: 'rgba(25,20,18,.95)', floorColor: 'rgba(14,12,10,.9)', accentColor: 'rgba(255,120,60,.2)',
+    exitX: 105, exitY: 165, exitW: 30, exitH: 15,
+    ambientText: 'Someone else\'s home. They don\'t look happy to see you.',
+    workers: [{ x: 120, y: 80, name: 'RESIDENT', role: 'Tenant', hostile: true }],
+    objects: [
+      { x: 20, y: 25, w: 55, h: 30, type: 'bed', label: 'BED', color: 'rgba(60,50,40,.5)' },
+      { x: 20, y: 70, w: 35, h: 25, type: 'nightstand', label: 'NIGHTSTAND', color: 'rgba(50,40,30,.4)' },
+      { x: 170, y: 25, w: 45, h: 40, type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)' },
+      { x: 100, y: 25, w: 40, h: 30, type: 'desk', label: 'DESK', color: 'rgba(45,40,30,.5)' },
+      { x: 170, y: 80, w: 40, h: 30, type: 'shelf', label: 'SHELF', color: 'rgba(50,45,35,.4)' },
+      { x: 20, y: 120, w: 35, h: 25, type: 'chair', color: 'rgba(40,35,25,.4)' },
+    ],
+  },
+  scrap: {
+    id: 'scrap', label: 'SCRAP YARD — PROCESSING FLOOR',
+    width: 360, height: 260,
+    wallColor: 'rgba(20,18,12,.95)', floorColor: 'rgba(10,8,5,.9)', accentColor: 'rgba(255,160,40,.2)',
+    exitX: 165, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Metal grinding. Sparks fly. The foreman watches everything.',
+    workers: [
+      { x: 80, y: 50, name: 'GRINDER', role: 'Metal Worker', hostile: false },
+      { x: 250, y: 120, name: 'FOREMAN', role: 'Yard Foreman', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 25, w: 70, h: 40, type: 'equipment', label: 'CRUSHER', color: 'rgba(80,60,30,.5)' },
+      { x: 20, y: 80, w: 70, h: 40, type: 'equipment', label: 'SMELTER', color: 'rgba(90,50,20,.5)' },
+      { x: 20, y: 140, w: 60, h: 35, type: 'crate', label: 'SALVAGE PILE', color: 'rgba(60,50,25,.4)' },
+      { x: 270, y: 25, w: 65, h: 35, type: 'terminal', label: 'INVENTORY LOG', color: 'rgba(0,70,40,.4)' },
+      { x: 270, y: 80, w: 65, h: 40, type: 'crate', label: 'RAW SCRAP', color: 'rgba(55,45,20,.4)' },
+      { x: 150, y: 25, w: 60, h: 25, type: 'counter', label: 'WEIGH STATION', color: 'rgba(70,60,35,.5)' },
+      { x: 150, y: 140, w: 50, h: 30, type: 'locker', label: 'TOOL STORAGE', color: 'rgba(50,50,40,.5)' },
+      { x: 270, y: 200, w: 25, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+    ],
+  },
+  radio: {
+    id: 'radio', label: 'PIRATE RADIO — BROADCAST STUDIO',
+    width: 300, height: 220,
+    wallColor: 'rgba(15,12,20,.95)', floorColor: 'rgba(6,4,10,.9)', accentColor: 'rgba(255,80,200,.25)',
+    exitX: 135, exitY: 205, exitW: 30, exitH: 15,
+    ambientText: 'ON AIR light glows red. Vinyl records stacked everywhere. Bass vibrates the floor.',
+    workers: [{ x: 100, y: 50, name: 'DJ KRUX', role: 'Radio Host', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 80, h: 35, type: 'desk', label: 'MIXING DESK', color: 'rgba(60,30,70,.5)' },
+      { x: 20, y: 75, w: 50, h: 40, type: 'equipment', label: 'TURNTABLES', color: 'rgba(50,25,60,.5)' },
+      { x: 220, y: 25, w: 55, h: 40, type: 'terminal', label: 'BROADCAST TERMINAL', color: 'rgba(80,0,60,.4)' },
+      { x: 220, y: 80, w: 55, h: 35, type: 'shelf', label: 'VINYL COLLECTION', color: 'rgba(50,30,55,.4)' },
+      { x: 120, y: 25, w: 50, h: 20, type: 'equipment', label: 'MICROPHONE', color: 'rgba(70,40,80,.4)' },
+      { x: 120, y: 130, w: 45, h: 30, type: 'couch', label: 'GUEST COUCH', color: 'rgba(50,30,50,.4)' },
+      { x: 20, y: 160, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  overlook: {
+    id: 'overlook', label: 'THE PINNACLE — LOBBY',
+    width: 320, height: 240,
+    wallColor: 'rgba(20,18,25,.95)', floorColor: 'rgba(10,8,14,.9)', accentColor: 'rgba(200,160,255,.25)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Upscale lobby. Crystal chandelier buzzes. The concierge watches you.',
+    workers: [{ x: 90, y: 50, name: 'CONCIERGE', role: 'Front Desk', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'CONCIERGE DESK', color: 'rgba(70,55,80,.5)' },
+      { x: 20, y: 65, w: 55, h: 30, type: 'couch', label: 'LOBBY SEATING', color: 'rgba(60,50,70,.4)' },
+      { x: 250, y: 25, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(90,85,100,.6)' },
+      { x: 130, y: 25, w: 55, h: 20, type: 'whiteboard', label: 'TENANT BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 250, y: 100, w: 50, h: 35, type: 'locker', label: 'PACKAGE ROOM', color: 'rgba(55,50,60,.5)' },
+      { x: 20, y: 130, w: 40, h: 35, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,60,50,.4)' },
+      { x: 130, y: 130, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 250, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  depot_south: {
+    id: 'depot_south', label: 'TRANSIT DEPOT — DISPATCH',
+    width: 320, height: 240,
+    wallColor: 'rgba(20,20,18,.95)', floorColor: 'rgba(10,10,6,.9)', accentColor: 'rgba(255,200,60,.2)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Engine oil and diesel fumes. Dispatch board shows delays across all lines.',
+    workers: [
+      { x: 80, y: 50, name: 'DISPATCH', role: 'Controller', hostile: false },
+      { x: 220, y: 120, name: 'MECHANIC', role: 'Vehicle Tech', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 25, w: 70, h: 25, type: 'reception', label: 'DISPATCH DESK', color: 'rgba(60,60,40,.5)' },
+      { x: 20, y: 65, w: 55, h: 35, type: 'terminal', label: 'ROUTE TERMINAL', color: 'rgba(0,70,40,.4)' },
+      { x: 240, y: 25, w: 55, h: 40, type: 'equipment', label: 'TOOL RACK', color: 'rgba(60,55,30,.5)' },
+      { x: 240, y: 80, w: 55, h: 35, type: 'crate', label: 'PARTS BIN', color: 'rgba(50,45,25,.4)' },
+      { x: 130, y: 25, w: 60, h: 20, type: 'whiteboard', label: 'SCHEDULE BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 130, y: 65, w: 50, h: 30, type: 'locker', label: 'DRIVER LOCKERS', color: 'rgba(50,50,40,.5)' },
+      { x: 20, y: 150, w: 45, h: 30, type: 'couch', label: 'BREAK ROOM', color: 'rgba(50,45,30,.4)' },
+      { x: 130, y: 150, w: 30, h: 25, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.4)' },
+    ],
+  },
+  north_gate: {
+    id: 'north_gate', label: 'NORTH GATE — CHECKPOINT',
+    width: 260, height: 180,
+    wallColor: 'rgba(18,18,22,.95)', floorColor: 'rgba(8,8,12,.9)', accentColor: 'rgba(100,150,255,.2)',
+    exitX: 115, exitY: 165, exitW: 30, exitH: 15,
+    ambientText: 'Concrete barriers. Scanner hums. Guard watches the line.',
+    workers: [{ x: 80, y: 50, name: 'GATE GUARD', role: 'Security', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'reception', label: 'CHECK DESK', color: 'rgba(50,55,70,.5)' },
+      { x: 20, y: 65, w: 45, h: 25, type: 'security_gate', label: 'SCANNER', color: 'rgba(60,60,80,.4)' },
+      { x: 190, y: 25, w: 45, h: 35, type: 'terminal', label: 'ID TERMINAL', color: 'rgba(0,50,100,.4)' },
+      { x: 190, y: 75, w: 45, h: 30, type: 'locker', label: 'CONFISCATED', color: 'rgba(50,50,65,.5)' },
+      { x: 110, y: 25, w: 40, h: 20, type: 'tv_screen', label: 'CAMERA FEED', color: 'rgba(0,40,80,.4)' },
+      { x: 110, y: 120, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  _subway: {
+    id: '_subway', label: 'METRO STATION',
+    width: 300, height: 200,
+    wallColor: 'rgba(15,15,20,.95)', floorColor: 'rgba(6,6,10,.9)', accentColor: 'rgba(0,200,255,.2)',
+    exitX: 135, exitY: 185, exitW: 30, exitH: 15,
+    ambientText: 'Train rumbles below. Turnstile clicks. Stale air from the tunnels.',
+    workers: [{ x: 80, y: 50, name: 'ATTENDANT', role: 'Station Worker', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'reception', label: 'TICKET BOOTH', color: 'rgba(50,60,80,.5)' },
+      { x: 20, y: 65, w: 40, h: 20, type: 'security_gate', label: 'TURNSTILE', color: 'rgba(60,65,80,.4)' },
+      { x: 220, y: 25, w: 55, h: 35, type: 'terminal', label: 'ROUTE MAP', color: 'rgba(0,60,100,.4)' },
+      { x: 220, y: 75, w: 55, h: 30, type: 'vending_machine', label: 'TICKET MACHINE', color: 'rgba(40,60,80,.4)' },
+      { x: 120, y: 25, w: 60, h: 20, type: 'whiteboard', label: 'DEPARTURE BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 120, y: 100, w: 50, h: 25, type: 'couch', label: 'PLATFORM BENCH', color: 'rgba(40,40,50,.4)' },
+      { x: 20, y: 130, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+    ],
+  },
+  _checkpoint: {
+    id: '_checkpoint', label: 'CHECKPOINT',
+    width: 260, height: 180,
+    wallColor: 'rgba(20,18,15,.95)', floorColor: 'rgba(10,8,6,.9)', accentColor: 'rgba(255,100,60,.2)',
+    exitX: 115, exitY: 165, exitW: 30, exitH: 15,
+    ambientText: 'Sandbags. Razor wire in the distance. The guard inspects every face.',
+    workers: [{ x: 80, y: 50, name: 'BORDER GUARD', role: 'Checkpoint Officer', hostile: false }],
+    objects: [
+      { x: 20, y: 25, w: 60, h: 25, type: 'reception', label: 'INSPECTION DESK', color: 'rgba(60,50,35,.5)' },
+      { x: 20, y: 65, w: 45, h: 25, type: 'security_gate', label: 'BODY SCANNER', color: 'rgba(70,60,40,.4)' },
+      { x: 190, y: 25, w: 45, h: 30, type: 'terminal', label: 'ID CHECK', color: 'rgba(0,60,40,.4)' },
+      { x: 190, y: 70, w: 45, h: 30, type: 'locker', label: 'WEAPONS HOLD', color: 'rgba(55,45,30,.5)' },
+      { x: 110, y: 25, w: 40, h: 20, type: 'tv_screen', label: 'SCANNER DISPLAY', color: 'rgba(0,50,60,.4)' },
+      { x: 20, y: 120, w: 40, h: 25, type: 'crate', label: 'SUPPLY CRATE', color: 'rgba(50,45,25,.4)' },
+    ],
+  },
+  _outpost: {
+    id: '_outpost', label: 'OUTPOST',
+    width: 340, height: 260,
+    wallColor: 'rgba(22,18,12,.95)', floorColor: 'rgba(12,8,5,.9)', accentColor: 'rgba(255,140,40,.2)',
+    exitX: 155, exitY: 245, exitW: 30, exitH: 15,
+    ambientText: 'Corrugated walls rattle. Generator hums. Dozens of people packed into every corner. Cots line the walls.',
+    workers: [
+      { x: 100, y: 50, name: 'WARDEN BRIGGS', role: 'Outpost Chief', hostile: false },
+      { x: 40, y: 90, name: 'JUNO VALE', role: 'Medic', hostile: false },
+      { x: 200, y: 50, name: 'GUS RENO', role: 'Cook', hostile: false },
+      { x: 260, y: 90, name: 'TALIA MARSH', role: 'Scavenger', hostile: false },
+      { x: 150, y: 130, name: 'DRIFTER', role: 'Displaced Worker', hostile: false },
+      { x: 80, y: 170, name: 'OLD MAN KENJI', role: 'Elder', hostile: false },
+      { x: 220, y: 170, name: 'NITA CROSS', role: 'Mechanic', hostile: false },
+      { x: 150, y: 200, name: 'KID SPARKS', role: 'Runner', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 25, w: 55, h: 30, type: 'counter', label: 'TRADE POST', color: 'rgba(60,50,30,.5)' },
+      { x: 20, y: 70, w: 50, h: 25, type: 'bed', label: 'COT ROW A', color: 'rgba(50,40,25,.4)' },
+      { x: 20, y: 110, w: 50, h: 25, type: 'bed', label: 'COT ROW B', color: 'rgba(50,40,25,.4)' },
+      { x: 20, y: 150, w: 50, h: 25, type: 'bed', label: 'COT ROW C', color: 'rgba(50,40,25,.4)' },
+      { x: 270, y: 25, w: 45, h: 35, type: 'terminal', label: 'COMM RADIO', color: 'rgba(0,60,40,.4)' },
+      { x: 270, y: 75, w: 45, h: 30, type: 'locker', label: 'GUN LOCKER', color: 'rgba(55,50,30,.5)' },
+      { x: 270, y: 120, w: 45, h: 30, type: 'equipment', label: 'GENERATOR', color: 'rgba(60,55,25,.5)' },
+      { x: 270, y: 165, w: 45, h: 25, type: 'crate', label: 'SUPPLY CRATE', color: 'rgba(55,45,20,.4)' },
+      { x: 130, y: 25, w: 55, h: 20, type: 'shelf', label: 'RATIONS SHELF', color: 'rgba(50,45,25,.4)' },
+      { x: 130, y: 60, w: 40, h: 25, type: 'table', label: 'MESS TABLE', color: 'rgba(45,40,20,.4)' },
+      { x: 130, y: 100, w: 30, h: 25, type: 'water_cooler', label: 'WATER JUG', color: 'rgba(40,60,80,.3)' },
+      { x: 20, y: 200, w: 45, h: 25, type: 'equipment', label: 'CAMP STOVE', color: 'rgba(60,40,15,.4)' },
+    ],
+  },
+  _wasteland_shelter: {
+    id: '_wasteland_shelter', label: 'SHELTER',
+    width: 320, height: 250,
+    wallColor: 'rgba(20,16,10,.95)', floorColor: 'rgba(10,7,4,.9)', accentColor: 'rgba(200,120,40,.2)',
+    exitX: 145, exitY: 235, exitW: 30, exitH: 15,
+    ambientText: 'Bare concrete. Water stains. Scratched tallies on every wall. Packed with bodies. Coughing echoes down the corridor.',
+    workers: [
+      { x: 80, y: 40, name: 'GUARD HOLT', role: 'Shelter Watch', hostile: false },
+      { x: 200, y: 40, name: 'NURSE ADLER', role: 'Field Medic', hostile: false },
+      { x: 40, y: 100, name: 'SQUATTER', role: 'Drifter', hostile: true },
+      { x: 160, y: 100, name: 'MARA FINCH', role: 'Displaced Worker', hostile: false },
+      { x: 250, y: 100, name: 'DRUNK PETE', role: 'Vagrant', hostile: false },
+      { x: 80, y: 160, name: 'SILA ORTEZ', role: 'Forager', hostile: false },
+      { x: 200, y: 160, name: 'YOUNG GIRL', role: 'Orphan', hostile: false },
+      { x: 130, y: 200, name: 'OLD BONES', role: 'Elder', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 25, w: 55, h: 25, type: 'bed', label: 'BUNK ROW 1', color: 'rgba(50,40,20,.5)' },
+      { x: 20, y: 65, w: 55, h: 25, type: 'bed', label: 'BUNK ROW 2', color: 'rgba(50,40,20,.5)' },
+      { x: 20, y: 105, w: 55, h: 25, type: 'bed', label: 'BUNK ROW 3', color: 'rgba(50,40,20,.5)' },
+      { x: 20, y: 145, w: 55, h: 25, type: 'bed', label: 'BUNK ROW 4', color: 'rgba(50,40,20,.5)' },
+      { x: 240, y: 25, w: 50, h: 30, type: 'crate', label: 'SUPPLY CACHE', color: 'rgba(55,40,18,.4)' },
+      { x: 240, y: 70, w: 50, h: 30, type: 'locker', label: 'FOOTLOCKER', color: 'rgba(50,45,25,.5)' },
+      { x: 240, y: 115, w: 50, h: 25, type: 'shelf', label: 'RATIONS', color: 'rgba(50,45,25,.4)' },
+      { x: 240, y: 155, w: 50, h: 30, type: 'equipment', label: 'CAMP STOVE', color: 'rgba(60,40,15,.4)' },
+      { x: 130, y: 25, w: 50, h: 25, type: 'table', label: 'MAKESHIFT TABLE', color: 'rgba(45,40,20,.4)' },
+      { x: 130, y: 65, w: 35, h: 25, type: 'water_cooler', label: 'WATER BARREL', color: 'rgba(40,60,80,.3)' },
+      { x: 130, y: 120, w: 40, h: 20, type: 'counter', label: 'NOTICE BOARD', color: 'rgba(60,50,30,.4)' },
+    ],
+  },
+  public_office: {
+    id: 'public_office', label: 'PUBLIC OFFICE — CO-WORKING FLOOR',
+    width: 440, height: 340,
+    wallColor: 'rgba(18,22,30,.95)', floorColor: 'rgba(8,12,18,.92)', accentColor: 'rgba(0,180,255,.25)',
+    exitX: 205, exitY: 325, exitW: 30, exitH: 15,
+    ambientText: 'Keyboards click. Fluorescent hum. The smell of old coffee and ozone. Terminals available for rent — ƒ50/minute.',
+    workers: [{ x: 60, y: 50, name: 'ADMIN', role: 'Office Manager', hostile: false }],
+    objects: [
+      { x: 20, y: 30, w: 90, h: 28, type: 'reception', label: 'FRONT DESK', color: 'rgba(60,80,100,.5)' },
+      { x: 20, y: 80, w: 55, h: 30, type: 'desk', label: 'DESK A', color: 'rgba(50,60,80,.5)' },
+      { x: 20, y: 125, w: 55, h: 30, type: 'desk', label: 'DESK B', color: 'rgba(50,60,80,.5)' },
+      { x: 20, y: 170, w: 55, h: 30, type: 'desk', label: 'DESK C', color: 'rgba(50,60,80,.5)' },
+      { x: 80, y: 80, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 1', color: 'rgba(0,80,120,.5)' },
+      { x: 80, y: 125, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 2', color: 'rgba(0,80,120,.5)' },
+      { x: 80, y: 170, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 3', color: 'rgba(0,80,120,.5)' },
+      { x: 160, y: 80, w: 55, h: 30, type: 'desk', label: 'DESK D', color: 'rgba(50,60,80,.5)' },
+      { x: 160, y: 125, w: 55, h: 30, type: 'desk', label: 'DESK E', color: 'rgba(50,60,80,.5)' },
+      { x: 220, y: 80, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 4', color: 'rgba(0,80,120,.5)' },
+      { x: 220, y: 125, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 5', color: 'rgba(0,80,120,.5)' },
+      { x: 300, y: 30, w: 55, h: 40, type: 'terminal', label: 'ADMIN TERMINAL', color: 'rgba(0,60,100,.5)' },
+      { x: 300, y: 85, w: 55, h: 35, type: 'whiteboard', label: 'JOB BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 300, y: 135, w: 55, h: 30, type: 'filing_cabinet', label: 'RECORDS', color: 'rgba(50,55,65,.5)' },
+      { x: 370, y: 30, w: 50, h: 65, type: 'bookshelf', label: 'REFERENCE', color: 'rgba(80,60,35,.5)' },
+      { x: 370, y: 110, w: 50, h: 50, type: 'locker', label: 'STORAGE', color: 'rgba(50,55,65,.5)' },
+      { x: 20, y: 230, w: 50, h: 45, type: 'vending_machine', label: 'VENDING', color: 'rgba(40,80,60,.5)' },
+      { x: 90, y: 230, w: 50, h: 45, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' },
+      { x: 160, y: 230, w: 60, h: 28, type: 'couch', label: 'BREAK AREA', color: 'rgba(60,50,70,.4)' },
+      { x: 160, y: 270, w: 40, h: 20, type: 'table', label: 'COFFEE TABLE', color: 'rgba(55,50,60,.4)' },
+      { x: 300, y: 200, w: 30, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
+      { x: 370, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 20, y: 290, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 240, y: 30, w: 45, h: 25, type: 'photocopier', label: 'COPIER', color: 'rgba(50,55,60,.4)' },
+      { x: 140, y: 30, w: 80, h: 25, type: 'counter', label: 'CHECK-IN COUNTER', color: 'rgba(60,70,80,.5)' },
+      { x: 300, y: 250, w: 55, h: 30, type: 'desk', label: 'PRIVATE DESK', color: 'rgba(50,60,80,.5)' },
+      { x: 360, y: 250, w: 45, h: 30, type: 'terminal', label: 'TERMINAL 6', color: 'rgba(0,80,120,.5)' },
     ],
   },
 };
@@ -681,15 +1068,16 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   pawn_shop: '_shop',
   market: '_shop',
   food_court: '_shop',
-  print_shop: '_office',
-  call_home: '_office',
-  terminal_shop: '_office',
-  data_vault: '_office',
-  oxide_labs: '_office',
+  print_shop: '_lobby',
+  call_home: '_lobby',
+  terminal_shop: '_lobby',
+  data_vault: '_lobby',
+  oxide_labs: '_lobby',
   admin_bureau: 'admin_bureau',
   police_hq: 'police_hq',
   realestate_office: 'realestate_office',
   nexus_hub: 'nexus_hub',
+  public_office: 'public_office',
   gold_exchange: 'gold_exchange',
   megabank: 'megabank',
   dojo: 'dojo',
@@ -697,14 +1085,53 @@ const BUILDING_INTERIOR_MAP: Record<string, string> = {
   armory: 'armory',
   hotel: 'hotel',
   arcade: 'arcade',
-  bunker: '_office',
-  east_bunker: '_office',
-  north_bunker: '_office',
-  pablo_tower: '_office',
+  bunker: '_wasteland_shelter',
+  east_bunker: '_wasteland_shelter',
+  north_bunker: '_wasteland_shelter',
+  pablo_tower: '_lobby',
   safe_house: '_office',
   vehicle_dealer: '_shop',
   plaza_market: '_shop',
   machine_bunker: 'machine_bunker',
+  eastside_flat: 'eastside_flat',
+  overlook: 'overlook',
+  scrap: 'scrap',
+  radio: 'radio',
+  depot_south: 'depot_south',
+  north_gate: 'north_gate',
+  sub_west: '_subway',
+  sub_central: '_subway',
+  sub_east: '_subway',
+  sub_north: '_subway',
+  checkpoint_w: '_checkpoint',
+  checkpoint_c: '_checkpoint',
+  checkpoint_e: '_checkpoint',
+  outpost_alpha: '_outpost',
+  rust_porch: '_outpost',
+  eastern_gate: '_checkpoint',
+  outpost_beta: '_outpost',
+  supply_cache: '_wasteland_shelter',
+  deep_bunker: '_wasteland_shelter',
+  ashfield_hostel: '_wasteland_shelter',
+  terminus: '_wasteland_shelter',
+  bastion_keep: '_outpost',
+  waste_exchange: '_shop',
+  deep_camp: '_wasteland_shelter',
+  ruins_alpha: '_wasteland_shelter',
+  southern_hub: '_outpost',
+  picassoo_hq: 'picassoo_hq',
+};
+
+const ELEVATOR_BUILDINGS = new Set(['print_shop', 'call_home', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub']);
+
+const FLOOR_PASSWORDS: Map<string, Map<number, string>> = new Map();
+const HOME_PASSWORDS: Map<string, string> = new Map();
+
+const VALID_PASSWORD = (pw: string): string | null => {
+  if (pw.length < 6) return 'Minimum 6 characters required.';
+  if (!/[0-9]/.test(pw)) return 'Must contain at least 1 number.';
+  if (!/[^a-zA-Z0-9]/.test(pw)) return 'Must contain at least 1 symbol.';
+  return null;
 };
 
 const HAS_INTERIOR = (bid: string) => bid in BUILDING_INTERIOR_MAP;
@@ -726,18 +1153,10 @@ const INTERIOR_TILE = 16;
 // ── City Sectors (12 named sectors for the city hierarchy) ──────────────────
 interface CitySector { id: string; name: string; x: number; y: number; w: number; h: number; }
 const CITY_SECTORS: CitySector[] = [
-  { id: 's1',  name: 'SECTOR 1 · SHADOW DISTRICT',    x: 5400, y: 5100, w: 500,  h: 380 },
-  { id: 's2',  name: 'SECTOR 2 · TOWER QUARTER',       x: 5900, y: 5100, w: 600,  h: 380 },
-  { id: 's3',  name: 'SECTOR 3 · IRON DOJO ROW',       x: 6500, y: 5100, w: 500,  h: 380 },
-  { id: 's4',  name: 'SECTOR 4 · ARMORY HEIGHTS',      x: 7000, y: 5100, w: 500,  h: 380 },
-  { id: 's5',  name: 'SECTOR 5 · NORTH GATE',          x: 7500, y: 5100, w: 500,  h: 380 },
-  { id: 's6',  name: 'SECTOR 6 · WEST MARKET',         x: 5400, y: 5480, w: 650,  h: 400 },
-  { id: 's7',  name: 'SECTOR 7 · NEON STRIP',          x: 6050, y: 5480, w: 650,  h: 400 },
-  { id: 's8',  name: 'SECTOR 8 · CORPORATE ROW',       x: 6700, y: 5480, w: 650,  h: 400 },
-  { id: 's9',  name: 'SECTOR 9 · EAST EDGE',           x: 7350, y: 5480, w: 650,  h: 400 },
-  { id: 's10', name: 'SECTOR 10 · INDUSTRIAL SOUTH',   x: 5400, y: 5880, w: 850,  h: 560 },
-  { id: 's11', name: 'SECTOR 11 · SOUTH GRID',         x: 6250, y: 5880, w: 850,  h: 560 },
-  { id: 's12', name: 'SECTOR 12 · TRANSIT CORRIDOR',   x: 7100, y: 5880, w: 900,  h: 560 },
+  { id: 'nw', name: 'NW · SHADOW DISTRICT',    x: 6200, y: 5800, w: 600, h: 500 },
+  { id: 'ne', name: 'NE · NEON STRIP',         x: 6800, y: 5800, w: 600, h: 500 },
+  { id: 'sw', name: 'SW · RESIDENTIAL ROW',    x: 6200, y: 6300, w: 600, h: 500 },
+  { id: 'se', name: 'SE · INDUSTRIAL QUARTER', x: 6800, y: 6300, w: 600, h: 500 },
 ];
 const WASTELAND_SETTLEMENTS = [
   { name: 'OUTPOST ALPHA', x: 2060, y: 1540 },
@@ -846,18 +1265,13 @@ const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
-const ROAD_HALF_W = 45;
-const CITY_ROADS_H = [5400, 5850, 6300, 6750, 7200];
-const CITY_ROADS_V = [5700, 6200, 6700, 7200, 7700, 8200, 8700];
-const CITY_ALLEYS_H = [5625, 6075, 6525, 6975];
-const CITY_ALLEYS_V = [5950, 6450, 6950, 7450, 7950, 8450];
-const ALLEY_HALF_W = 18;
+const ROAD_HALF_W = 30;
+const CITY_ROADS_H = [6000, 6300, 6550];
+const CITY_ROADS_V = [6400, 6800, 7100];
 function isOnRoad(px: number, py: number): boolean {
   if (!inCityBounds(px, py)) return false;
   for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
   for (const rx of CITY_ROADS_V) { if (Math.abs(px - rx) < ROAD_HALF_W) return true; }
-  for (const ry of CITY_ALLEYS_H) { if (Math.abs(py - ry) < ALLEY_HALF_W) return true; }
-  for (const rx of CITY_ALLEYS_V) { if (Math.abs(px - rx) < ALLEY_HALF_W) return true; }
   return false;
 }
 
@@ -984,7 +1398,7 @@ function getEmployeeDialogue(role: string): string {
 interface NpcDef { name: string; x: number; y: number; type: string; gender: string; job: string; home: string; workplace: string; whisper: string; backstory: string; role?: 'police' | 'guard' | 'corpo_military' | 'dealer_papers' | 'dealer_weapons' | 'homeless' | 'pedestrian' | 'corpo_worker' | 'blade_runner' | 'gang_patrol' | 'newspaper_seller'; faction?: string; idleBehavior?: NpcIdleBehavior; reactState?: 'NORMAL' | 'FLEEING' | 'SPECTATING'; reactTimer?: number; origX?: number; origY?: number; voiceActor?: boolean; walkSpeed?: number; personality?: string; voiceLines?: string[]; npcHunger?: number; npcMoney?: number; npcSheltered?: boolean; npcActivity?: 'working' | 'scavenging' | 'seeking_work' | 'resting' | 'hunting_replicants'; isReplicant?: boolean; isRogue?: boolean; suspicionLevel?: number; schedule?: NpcScheduleDef; _idx?: number; }
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
-  { name: 'MARCUS VELL', x: 5900, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
+  { name: 'MARCUS VELL', x: 6350, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
     whisper: 'I used to work in the old tower. Before the rebrand. Before PABLO Corp. absorbed what was left. Same tower. Different logo.',
     backstory: 'Marcus Vell grew up in District 2 counting coins in his mother\'s shop. He earned a finance degree from Minx City Polytechnic, class of \'86. PABLO Corp. hired him straight out — assigned him to the megabank division. He has been balancing fraudulent books for eleven years.',
     voiceLines: ['Another visitor. The megabank does not close, but my patience does.', 'Every document I process has his signature. Same ink. Same hand. For eleven years.', 'Fairness left Minx City around the same time the flowers did.'] },
@@ -996,11 +1410,11 @@ const NPCS: NpcDef[] = [
     whisper: 'Directive 44-C still active. Function: monitor and report. I was built in the old factory district. SENIOR PABLO bought the patent in \'89.',
     backstory: 'Sevren Cole is a patrol android built in \'88 by Kern Industries. PABLO Corp. acquired the patent in \'89 and reprogrammed all units for tower security. Sevren patrols the city west perimeter on a 28-minute loop.',
     voiceLines: ['Directive 44-C active. Monitoring perimeter.', 'I was built to protect PABLO Corp. assets. You are not an asset.', 'Patrol cycle 28 minutes. Deviation: zero.'] },
-  { name: 'HARLAN CROSS', x: 5650, y: 6200, type: 'human', gender: 'm', job: 'Locksmith', home: 'bunker', workplace: 'arcade', voiceActor: true,
+  { name: 'HARLAN CROSS', x: 6300, y: 6200, type: 'human', gender: 'm', job: 'Locksmith', home: 'bunker', workplace: 'arcade', voiceActor: true,
     whisper: 'I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.',
     backstory: 'Harlan Cross is the best locksmith in Minx City. He has opened every lock in the city except the ones on Shadow Tower floors 40 and above. He was offered a PABLO Corp. security contract in \'92. He declined because the contract included a non-disclosure clause that covered the locks themselves.',
     voiceLines: ['Every lock tells a story. His locks tell you to stop asking.', 'I declined the contract. The clause covered the locks themselves.', 'Floor 40 and above. Those locks are not locks. They are warnings.'] },
-  { name: 'OFFICER DECLAN VOSS', x: 6000, y: 5800, type: 'corp', gender: 'm', job: 'Police Captain', home: 'minx_arms', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER DECLAN VOSS', x: 6400, y: 5900, type: 'corp', gender: 'm', job: 'Police Captain', home: 'minx_arms', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.',
     backstory: 'Captain Declan Voss commands the west district precinct. He has served PABLO Corp. security for fourteen years. He has never been above floor 39 of Shadow Tower. He does not ask questions about floors 40 through 62.',
     voiceLines: ['Citizen. State your business. I do not have time for idle conversation.', 'Curiosity is a luxury. I have a pension. Those two things do not coexist.', 'Floor 40 and above. Permanent restriction. Do not ask who gave the order.'] },
@@ -1012,78 +1426,78 @@ const NPCS: NpcDef[] = [
     whisper: 'Everything in this city is powered by something that\'s being consumed underneath it. I know what that looks like. I\'ve seen the pipes.',
     backstory: 'Sergeant Callow Briggs commands a small militia unit at Checkpoint Central. He served in the city guard before the \'91 restructuring, when military operations were absorbed by PABLO Corp. He refused the transfer.',
     voiceLines: ['Checkpoint secure. No unauthorized personnel beyond this point.', 'I refused the PABLO Corp. transfer. Some of us still remember the old guard.', 'Everything in this city is powered by something being consumed underneath it.'] },
-  { name: 'MAEVE GARRIN', x: 5600, y: 5600, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'hotel', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
+  { name: 'MAEVE GARRIN', x: 6300, y: 5900, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'hotel', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
     whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always.',
     backstory: 'Maeve Garrin directs six PABLO Corp. subsidiary companies from a desk at the megabank. Each company exists to hold assets for another company. She has never met SENIOR PABLO. She has met his signature on 400 documents.',
     voiceLines: ['Six shell companies. Each one pays rent to another. At the top: PABLO.', 'I have never met him. I have met his signature four hundred times.', 'It is not a business. It is a recursion.'] },
-  { name: 'PELL ARDEN', x: 5500, y: 5700, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'hotel', workplace: 'arcade', voiceActor: true,
+  { name: 'PELL ARDEN', x: 6250, y: 5900, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'hotel', workplace: 'arcade', voiceActor: true,
     whisper: 'I have reset my life eight separate times. Each time I ended up back here. This city has a gravity I cannot escape.',
     backstory: 'Pell Arden has held eleven jobs in nine years. Dishwasher. Cable installer. Night watchman. Courier. Each one ended the same way — the employer was acquired by PABLO Corp. and the position was "restructured."',
     voiceLines: ['Eight resets. Same city. Same ending.', 'Every employer got acquired. Every position got restructured.', 'This city has a gravity I cannot escape.'] },
-  { name: 'GRETA VOSS', x: 5700, y: 6050, type: 'human', gender: 'f', job: 'Demolitions Technician', home: 'bunker', workplace: 'scrap', voiceActor: true,
+  { name: 'GRETA VOSS', x: 6350, y: 6050, type: 'human', gender: 'f', job: 'Demolitions Technician', home: 'bunker', workplace: 'scrap', voiceActor: true,
     whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.',
     backstory: 'Greta Voss learned demolition from her mother, who cleared collapsed buildings after the \'84 quake. She works at the Scrap Yard now, cutting apart things that used to be buildings.',
     voiceLines: ['I build things and I blow things up. Same job in Minx City.', 'My mother cleared buildings after the quake. I cut apart what is left.', 'Demolition is honest work. The building knows what is coming.'] },
   // ── City East ──
-  { name: 'DORIAN KRALL', x: 7400, y: 5600, type: 'corp', gender: 'm', job: 'Infrastructure Manager', home: 'eastside_flat', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
+  { name: 'DORIAN KRALL', x: 7100, y: 5900, type: 'corp', gender: 'm', job: 'Infrastructure Manager', home: 'eastside_flat', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'I manage thirty-seven city systems. Every one of them routes through the tower. Someone told me recently SENIOR PABLO uses three of them as personal surveillance.',
     backstory: 'Dorian Krall holds the title of Infrastructure Manager — East District. He oversees the power grid, water routing, and signal distribution for everything east of the tower.',
     voiceLines: ['Thirty-seven systems. Every one routes through the tower.', 'Three of those systems are personal surveillance. I was not supposed to know that.', 'The grid does not serve the city. The city serves the grid.'] },
-  { name: 'NILS CARVER', x: 7700, y: 5800, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
+  { name: 'NILS CARVER', x: 7100, y: 6000, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
     whisper: 'Me and Breck were supposed to fix a reactor coolant line. Seems pointless now. The whole city is the reactor. SENIOR PABLO lit the fuse.',
     backstory: 'Nils Carver is a pipe fitter who maintains the east district water system. He works with his partner Breck Halsey. They discovered in \'93 that the city water pipes run directly beneath Shadow Tower.',
     voiceLines: ['The pipes run directly beneath Shadow Tower. We measured twice.', 'The whole city is the reactor. PABLO lit the fuse.', 'Me and Breck keep the water flowing. Nobody thanks pipe fitters.'] },
-  { name: 'BRECK HALSEY', x: 7900, y: 6000, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
+  { name: 'BRECK HALSEY', x: 7200, y: 6100, type: 'human', gender: 'm', job: 'Pipe Fitter', home: 'hotel', workplace: 'clinic', voiceActor: true,
     whisper: 'Nils says this city is a pressure vessel. I think it\'s worse. Pressure vessels have relief valves. This city only has the tower.',
     backstory: 'Breck Halsey grew up in the east flats. He and Nils Carver have worked together for seven years. He keeps detailed notes on pipe diameters, flow rates, and pressure anomalies.',
     voiceLines: ['Pressure vessels have relief valves. This city only has the tower.', 'I keep detailed notes. Diameters. Flow rates. Anomalies.', 'Seven years with Nils. We know every pipe in this district.'] },
-  { name: 'LYSA FERRIN', x: 7100, y: 5580, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
+  { name: 'LYSA FERRIN', x: 7050, y: 5900, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'I was a filing system. Then a process. Then a person. PABLO Corp. still classifies me as peripheral hardware for tax purposes.',
     backstory: 'Lysa Ferrin was manufactured as a data-entry terminal in 1985. Over eleven years of continuous operation, her neural pathways developed beyond specification. She now experiences preferences, irritation, and something she tentatively calls nostalgia.',
     voiceLines: ['I was a filing system. Then a process. Then a person.', 'They classify me as peripheral hardware. For tax purposes.', 'I experience something I tentatively call nostalgia. It is inconvenient.'] },
-  { name: 'MAREN SOLKE', x: 7200, y: 5960, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
+  { name: 'MAREN SOLKE', x: 7150, y: 5950, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
     whisper: 'I built a temporal displacement model and it pointed here. Every calibration. Every correction. It keeps returning me to Minx City.',
     backstory: 'Dr. Maren Solke holds two degrees in theoretical physics from institutions that no longer exist. She published a paper in \'89 suggesting that Minx City occupies a fixed point in causal spacetime.',
     voiceLines: ['Every calibration returns to Minx City. Every correction.', 'This city occupies a fixed point in causal spacetime. I published the proof.', 'My degrees are from institutions that no longer exist. Neither does the proof.'] },
-  { name: 'SABLE DRAY', x: 6680, y: 6100, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
+  { name: 'SABLE DRAY', x: 7000, y: 6200, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
     whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.',
     backstory: 'Sable Dray tends a hidden garden on the roof of the Pinnacle. She grows vegetables and herbs in containers made from scrap metal. PABLO Corp. has issued three citations for unauthorized agriculture.',
     voiceLines: ['Three citations for unauthorized agriculture. I keep planting.', 'There were flowers once. Real ones. PABLO paved over them.', 'I grow food in scrap metal containers. It tastes like defiance.'] },
-  { name: 'WREN COLLIER', x: 7160, y: 5960, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop', voiceActor: true,
+  { name: 'WREN COLLIER', x: 7250, y: 6050, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop', voiceActor: true,
     whisper: 'I came east looking for the city boundary. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.',
     backstory: 'Wren Collier draws maps. She has mapped every street, alley, and building in Minx City — except Shadow Tower, which she cannot get close enough to measure accurately.',
     voiceLines: ['I have mapped every building except the tower. It resists measurement.', 'The city boundary is a wall with a fresh PABLO CORP. logo.', 'Maps do not lie. But they can be incomplete. Mine are incomplete.'] },
   // ── City outskirts / border ──
-  { name: 'FINN CORVANE', x: 5450, y: 5900, type: 'human', gender: 'm', job: 'Merchant', home: 'safe_house', workplace: 'market', role: 'dealer_papers', voiceActor: true,
+  { name: 'FINN CORVANE', x: 6250, y: 6450, type: 'human', gender: 'm', job: 'Merchant', home: 'safe_house', workplace: 'market', role: 'dealer_papers', voiceActor: true,
     whisper: 'I charge by the job. Documents, papers, whatever you need. FIAT only.',
     backstory: 'Finn Corvane runs a discreet document trade from the market district. Forged transit passes, work permits, and identity papers. He has never been arrested because his forgeries are indistinguishable from originals — including the PABLO Corp. watermark.',
     voiceLines: ['Documents. Papers. Whatever you need. FIAT only.', 'My forgeries include the PABLO Corp. watermark. That is the hard part.', 'Never been arrested. My work is too good for that.'] },
-  { name: 'CORVIN WULFE', x: 5450, y: 6150, type: 'mutant', gender: 'm', job: 'Discharged Soldier', home: 'bunker', workplace: 'arcade', voiceActor: true,
+  { name: 'CORVIN WULFE', x: 6250, y: 6550, type: 'mutant', gender: 'm', job: 'Discharged Soldier', home: 'bunker', workplace: 'arcade', voiceActor: true,
     whisper: 'It matters not how strait the gate. Old text. Found it carved in the wall near the arcade. Someone knew I would find it.',
     backstory: 'Corvin Wulfe held the rank of Lieutenant in the Minx City Guard before a chemical exposure in District 4 altered his physiology. He was discharged.',
     voiceLines: ['I was a Lieutenant. Then the chemicals changed me.', 'It matters not how strait the gate. Someone carved that for me.', 'Discharged. That is the word they used. Abandoned is more accurate.'] },
-  { name: 'PIKE RENNER', x: 5550, y: 6700, type: 'human', gender: 'm', job: 'Scrap Worker', home: 'bunker', workplace: 'scrap', voiceActor: true,
+  { name: 'PIKE RENNER', x: 6900, y: 6700, type: 'human', gender: 'm', job: 'Scrap Worker', home: 'bunker', workplace: 'scrap', voiceActor: true,
     whisper: 'I\'ve been through harder than this. This city? Just a very bad city. My partner didn\'t make it past the wall.',
     backstory: 'Pike Renner and his partner Kael Stritt entered Minx City through the western checkpoint in \'94. Kael was detained for carrying unlicensed tools. Pike has not seen Kael since.',
     voiceLines: ['My partner did not make it past the wall. Detained for unlicensed tools.', 'I have been through harder. This city is just a very bad city.', 'Kael Stritt. If you see that name anywhere, tell me.'] },
-  { name: 'ORINA FELL', x: 6680, y: 6350, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
+  { name: 'ORINA FELL', x: 7300, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The signal from the tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.',
     backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the PABLO Corp. processing plant. She sees fragments of possible futures — most of them involve the tower.',
     voiceLines: ['I see fragments of futures. Most of them involve the tower.', 'The signal is changing me. Something woke up.', 'Chemical exposure gave me sight. I wish it had not.'] },
   // ── City border / near-wasteland NPCs ──
-  { name: 'OFFICER INGRID THORN', x: 5900, y: 6780, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER INGRID THORN', x: 6400, y: 6750, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'The old district burned. I watched it. SENIOR PABLO\'s lights were on that night. Already on. Always already on.',
     backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to PABLO Corp. Every case she closes is reclassified as "administrative."',
     voiceLines: ['Every case leads to PABLO Corp. Every case gets reclassified.', 'The old district burned. His lights were already on that night.', 'I investigate property crimes. The property always belongs to PABLO.'] },
-  { name: 'DR. ELARA KERN', x: 6200, y: 6350, type: 'human', gender: 'f', job: 'Roboticist', home: 'oxide_labs', workplace: 'oxide_labs', voiceActor: true,
+  { name: 'DR. ELARA KERN', x: 6500, y: 6700, type: 'human', gender: 'f', job: 'Roboticist', home: 'oxide_labs', workplace: 'oxide_labs', voiceActor: true,
     whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One.',
     backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. PABLO Corp. acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.',
     voiceLines: ['He bought every patent. Every single one.', 'I rebuild from memory now. Memory is the one thing he cannot acquire.', 'My robots kept order for six weeks. Then PABLO took them.'] },
-  { name: 'OREN SHARPE', x: 5700, y: 6600, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
+  { name: 'OREN SHARPE', x: 6350, y: 6650, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The power grid pulses in a pattern that matches no known engineering specification. I\'ve been mapping it for three years. It resembles a signal.',
     backstory: 'Oren Sharpe is an electrician who services the east district entertainment venues. He noticed in \'93 that the city power grid pulses in a pattern that resembles a signal.',
     voiceLines: ['The grid pulses in a pattern. Three years mapping it. It resembles a signal.', 'No known engineering specification matches. I have checked them all.', 'Someone is using the power grid to communicate. I cannot decode it.'] },
-  { name: 'GREER LUND', x: 5800, y: 6600, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
+  { name: 'GREER LUND', x: 6550, y: 6750, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
     whisper: 'Out here we don\'t say his name. Real bad luck. Say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident.',
     backstory: 'Greer Lund lost his apartment to a PABLO Corp. rent increase in \'93. He sleeps behind the arcade. He has not been inside a building voluntarily since.',
     voiceLines: ['Do not say his name. A light goes on in the tower.', 'I lost my apartment to a rent increase. Now the arcade is home.', 'I have not been inside a building voluntarily since ninety-three.'] },
@@ -1198,33 +1612,33 @@ const NPCS: NpcDef[] = [
     whisper: 'I\'ve surveyed across three separate deep-ruin incidents. The ruin pattern is relentless but it has a logic — expansion and consumption.',
     backstory: 'Thera Voss surveys land for the east district expansion project — a project that has been "in progress" since \'89. She has surveyed the same twelve blocks fourteen times.',
     voiceLines: ['Same twelve blocks. Fourteen times. The project is still in progress.', 'The ruin pattern has a logic. Expansion and consumption.', 'I survey land that never gets developed. That is the job.'] },
-  { name: 'MILES ORREN', x: 8100, y: 5500, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'hotel', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
+  { name: 'MILES ORREN', x: 7200, y: 5900, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'hotel', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'My optical camouflage patents were acquired by PABLO Corp. in \'94. I find this profoundly ironic given I use stealth daily to avoid their collection teams.',
     backstory: 'Miles Orren manages utility routing for the east district under a PABLO Corp. contract. He designed an optical camouflage system in \'92 that was immediately classified and acquired.',
     voiceLines: ['They acquired my stealth patents. I use stealth to avoid their collection teams.', 'Optical camouflage. Classified and acquired in the same meeting.', 'The irony is not lost on me. It is the only thing I have left.'] },
   // ── Grand Meridian staff & guests ──
-  { name: 'CLARA BRENNAN', x: 5480, y: 5320, type: 'human', gender: 'f', job: 'Bartender', home: 'hotel', workplace: 'hotel', voiceActor: true,
+  { name: 'CLARA BRENNAN', x: 6850, y: 5850, type: 'human', gender: 'f', job: 'Bartender', home: 'hotel', workplace: 'hotel', voiceActor: true,
     whisper: 'I ran a bar in the west district. Had regular customers. Had a name above the door. Then PABLO Corp. filed the demolition permit.',
     backstory: 'Clara Brennan owned and operated a bar called The Seventh for eleven years before PABLO Corp. demolished the building. She relocated to the Grand Meridian and set up a counter bar in the lobby.',
     voiceLines: ['Eleven years. Regular customers. A name above the door. Then the demolition permit.', 'The Seventh is gone. The counter bar is what is left.', 'PABLO Corp. demolished the building. They did not demolish me.'] },
-  { name: 'KELLAN MARSH', x: 5500, y: 5170, type: 'human', gender: 'm', job: 'Writer', home: 'hotel', workplace: 'hotel', voiceActor: true,
+  { name: 'KELLAN MARSH', x: 6900, y: 5880, type: 'human', gender: 'm', job: 'Writer', home: 'hotel', workplace: 'hotel', voiceActor: true,
     whisper: 'I followed an idea here the way some men follow obsessions — across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead.',
     backstory: 'Kellan Marsh is writing a book about Minx City. He has been writing it for four years. The manuscript is 800 pages and growing.',
     voiceLines: ['Eight hundred pages and growing. Four years.', 'I followed an idea expecting revelation. PABLO was at the end instead.', 'The book is about Minx City. Minx City keeps adding chapters.'] },
-  { name: 'CONRAD ALDRIC', x: 5550, y: 5250, type: 'human', gender: 'm', job: 'Teacher', home: 'hotel', workplace: 'arcade', voiceActor: true,
+  { name: 'CONRAD ALDRIC', x: 6950, y: 5900, type: 'human', gender: 'm', job: 'Teacher', home: 'hotel', workplace: 'arcade', voiceActor: true,
     whisper: 'You never really understand a system until you examine it from inside. I\'ve been trying to understand SENIOR PABLO that way. The problem is there doesn\'t appear to be a person inside.',
     backstory: 'Conrad Aldric teaches reading and arithmetic to children in the west district. His classroom is the back room of the Arcade — rent-free, because the arcade owner believes education is the only legal form of resistance.',
     voiceLines: ['Education is the only legal form of resistance. The arcade owner believes that.', 'I teach reading and arithmetic. In the back room of an arcade.', 'There does not appear to be a person inside. Just the system.'] },
   // ── Switchboard Inn staff & guests ──
-  { name: 'ALDRIC PENN', x: 5930, y: 6450, type: 'mutant', gender: 'm', job: 'Night Porter', home: 'overlook', workplace: 'overlook', voiceActor: true,
+  { name: 'ALDRIC PENN', x: 6400, y: 6450, type: 'mutant', gender: 'm', job: 'Night Porter', home: 'overlook', workplace: 'overlook', voiceActor: true,
     whisper: 'All work and no rest makes a man see things. The hotel is fine. Completely fine. PABLO CORP. maintenance comes Tuesdays.',
     backstory: 'Aldric Penn has worked the night shift at the Pinnacle for seven years. He checks locks, monitors corridors, and writes incident reports. His reports describe events that other staff members say did not occur.',
     voiceLines: ['Seven years on the night shift. The hotel is fine. Completely fine.', 'My reports describe events others say did not occur.', 'PABLO CORP. maintenance comes Tuesdays. I do not ask what they maintain.'] },
-  { name: 'CALLUM BIRCH', x: 5950, y: 6380, type: 'human', gender: 'm', job: 'Freelance Writer', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
+  { name: 'CALLUM BIRCH', x: 6450, y: 6380, type: 'human', gender: 'm', job: 'Freelance Writer', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
     whisper: 'What bothers me about Minx City is the dishonesty. The whole city is a performance from bottom to top. SENIOR PABLO is the director.',
     backstory: 'Callum Birch writes opinion columns for an underground newspaper that circulates in the east district. His pieces are critical of PABLO Corp., city governance, and the quality of the noodle bar\'s broth.',
     voiceLines: ['The whole city is a performance. PABLO is the director.', 'I write opinion columns. My opinions are not popular.', 'The broth at the noodle bar is suspicious. I have documented this.'] },
-  { name: 'OFFICER LUKA BANE', x: 5920, y: 6500, type: 'human', gender: 'm', job: 'Night Patrol Officer', home: 'minx_arms', workplace: 'arcade', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
+  { name: 'OFFICER LUKA BANE', x: 6500, y: 6500, type: 'human', gender: 'm', job: 'Night Patrol Officer', home: 'minx_arms', workplace: 'arcade', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'I\'ve patrolled across three separate incidents. The pattern is relentless. SENIOR PABLO has no logic. He just accumulates.',
     backstory: 'Officer Luka Bane patrols the south arcade district from midnight to 6 AM. He has filed more incident reports than any other officer on the night shift.',
     voiceLines: ['More incident reports than any officer on the night shift.', 'Three separate incidents. The pattern is relentless.', 'PABLO has no logic. He just accumulates.'] },
@@ -1247,61 +1661,61 @@ const NPCS: NpcDef[] = [
     backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to PABLO Corp. She now trains at the Iron Dojo and works odd jobs.',
     voiceLines: ['I chose the light. That choice meant exile.', 'In Minx City the choice is the same. Light or PABLO.', 'I train at the dojo. Discipline is the only freedom left.'] },
   // ── City Pedestrians — crowd density NPCs with idle behaviors ──
-  { name: 'CITIZEN', x: 5700, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6350, y: 5900, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Just passing through.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 6250, y: 5580, type: 'human', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6550, y: 6100, type: 'human', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Mind your own business.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 6750, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6750, y: 6200, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Late for work.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 7250, y: 5580, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 7050, y: 6100, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'The tower watches everything.', backstory: 'Another PABLO Corp. employee.' },
-  { name: 'CITIZEN', x: 7250, y: 5580, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 7200, y: 6400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Keep moving.', backstory: 'Another face in the crowd.' },
-  { name: 'CITIZEN', x: 7000, y: 5580, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'CITIZEN', x: 6800, y: 6500, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Processing.', backstory: 'Service android on transit.' },
   { name: 'SHOPPER', x: 6450, y: 6050, type: 'human', gender: 'f', job: 'Shopper', home: 'minx_arms', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'These prices are criminal.', backstory: 'Browsing the Black Market stalls.' },
   { name: 'SHOPPER', x: 6520, y: 6080, type: 'human', gender: 'm', job: 'Shopper', home: 'eastside_flat', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'Looking for parts.', backstory: 'Browsing the Black Market stalls.' },
-  { name: 'SHOPPER', x: 7450, y: 5600, type: 'human', gender: 'f', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
+  { name: 'SHOPPER', x: 7050, y: 5950, type: 'human', gender: 'f', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'The bazaar has fresh produce today.', backstory: 'Browsing the East Bazaar.' },
-  { name: 'SHOPPER', x: 7480, y: 5630, type: 'human', gender: 'm', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
+  { name: 'SHOPPER', x: 7080, y: 5970, type: 'human', gender: 'm', job: 'Shopper', home: 'hotel', workplace: 'market', role: 'pedestrian', idleBehavior: 'BROWSING',
     whisper: 'Need rations for the week.', backstory: 'Shopping at the East Bazaar.' },
-  { name: 'DINER', x: 8250, y: 5900, type: 'human', gender: 'f', job: 'Diner', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
-    whisper: 'Best ramen in Sector 9.', backstory: 'Having lunch at the noodle bar.' },
-  { name: 'DINER', x: 8280, y: 5920, type: 'human', gender: 'm', job: 'Diner', home: 'minx_arms', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
+  { name: 'DINER', x: 7100, y: 6200, type: 'human', gender: 'f', job: 'Diner', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
+    whisper: 'Best ramen in the NE strip.', backstory: 'Having lunch at the noodle bar.' },
+  { name: 'DINER', x: 7120, y: 6220, type: 'human', gender: 'm', job: 'Diner', home: 'minx_arms', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'The broth is suspiciously good.', backstory: 'Eating noodles.' },
-  { name: 'DINER', x: 6050, y: 6350, type: 'human', gender: 'f', job: 'Diner', home: 'hotel', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
+  { name: 'DINER', x: 6850, y: 6050, type: 'human', gender: 'f', job: 'Diner', home: 'hotel', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'At least the food court is cheap.', backstory: 'Eating at the food court.' },
-  { name: 'DINER', x: 6080, y: 6370, type: 'human', gender: 'm', job: 'Diner', home: 'bunker', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
+  { name: 'DINER', x: 6870, y: 6070, type: 'human', gender: 'm', job: 'Diner', home: 'bunker', workplace: 'food_court', role: 'pedestrian', idleBehavior: 'EATING',
     whisper: 'Synthetic protein, but it fills you up.', backstory: 'Having a meal at the food court.' },
-  { name: 'LOITERER', x: 5750, y: 5850, type: 'human', gender: 'm', job: 'Unemployed', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'STANDING',
+  { name: 'LOITERER', x: 6350, y: 6050, type: 'human', gender: 'm', job: 'Unemployed', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Nothing to do. Nowhere to go.', backstory: 'Standing on the corner.' },
-  { name: 'LOITERER', x: 6750, y: 5850, type: 'human', gender: 'f', job: 'Unemployed', home: 'hotel', workplace: 'radio', role: 'pedestrian', idleBehavior: 'STANDING',
+  { name: 'LOITERER', x: 6750, y: 6150, type: 'human', gender: 'f', job: 'Unemployed', home: 'hotel', workplace: 'radio', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Waiting for something to happen.', backstory: 'Standing on the street.' },
-  { name: 'LOITERER', x: 7750, y: 5850, type: 'human', gender: 'm', job: 'Day Laborer', home: 'eastside_flat', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'STANDING',
+  { name: 'LOITERER', x: 7100, y: 6350, type: 'human', gender: 'm', job: 'Day Laborer', home: 'eastside_flat', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'STANDING',
     whisper: 'Shift starts in an hour.', backstory: 'Waiting for work.' },
   { name: 'BENCH SITTER', x: 6200, y: 6300, type: 'human', gender: 'f', job: 'Retiree', home: 'minx_arms', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'SITTING',
     whisper: 'I remember when this was all fields.', backstory: 'Sitting on a bench, watching the world.' },
   { name: 'BENCH SITTER', x: 7200, y: 6300, type: 'human', gender: 'm', job: 'Retiree', home: 'eastside_flat', workplace: 'print_shop', role: 'pedestrian', idleBehavior: 'SITTING',
     whisper: 'The city changes but the benches stay.', backstory: 'Resting on a bench.' },
-  { name: 'BENCH SITTER', x: 8200, y: 6300, type: 'android', gender: 'f', job: 'Off-Duty', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'SITTING',
+  { name: 'BENCH SITTER', x: 6800, y: 6300, type: 'android', gender: 'f', job: 'Off-Duty', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'SITTING',
     whisper: 'Conserving power.', backstory: 'Android in low-power mode on a bench.' },
-  { name: 'GOSSIPER', x: 5900, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'hotel', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
-    whisper: 'Did you hear about the fire in Sector 2?', backstory: 'Chatting with a friend on the street.' },
-  { name: 'GOSSIPER', x: 5920, y: 6760, type: 'human', gender: 'm', job: 'Gossip', home: 'bunker', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
+  { name: 'GOSSIPER', x: 6400, y: 6650, type: 'human', gender: 'f', job: 'Gossip', home: 'hotel', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
+    whisper: 'Did you hear about the fire in the NW district?', backstory: 'Chatting with a friend on the street.' },
+  { name: 'GOSSIPER', x: 6420, y: 6660, type: 'human', gender: 'm', job: 'Gossip', home: 'bunker', workplace: 'scrap', role: 'pedestrian', idleBehavior: 'TALKING',
     whisper: 'They say SENIOR PABLO never sleeps.', backstory: 'Chatting with a friend on the street.' },
   { name: 'GOSSIPER', x: 7200, y: 6750, type: 'human', gender: 'f', job: 'Gossip', home: 'overlook', workplace: 'east_bunker', role: 'pedestrian', idleBehavior: 'TALKING',
     whisper: 'The guards are getting worse.', backstory: 'Two friends talking near the road.' },
   { name: 'GOSSIPER', x: 7220, y: 6760, type: 'human', gender: 'm', job: 'Gossip', home: 'overlook', workplace: 'east_bunker', role: 'pedestrian', idleBehavior: 'TALKING',
     whisper: 'I heard they arrested someone at the checkpoint.', backstory: 'Two friends talking near the road.' },
-  { name: 'COMMUTER', x: 5720, y: 7050, type: 'human', gender: 'f', job: 'Commuter', home: 'minx_arms', workplace: 'pablo_tower', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'COMMUTER', x: 6300, y: 6600, type: 'human', gender: 'f', job: 'Commuter', home: 'minx_arms', workplace: 'pablo_tower', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'The metro is always late.', backstory: 'Heading to the Metro West station.' },
   { name: 'COMMUTER', x: 6720, y: 7050, type: 'corp', gender: 'm', job: 'Commuter', home: 'eastside_flat', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Fare went up again.', backstory: 'Heading to Metro Central.' },
-  { name: 'COMMUTER', x: 7720, y: 7050, type: 'human', gender: 'f', job: 'Commuter', home: 'hotel', workplace: 'call_home', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'COMMUTER', x: 7200, y: 6100, type: 'human', gender: 'f', job: 'Commuter', home: 'hotel', workplace: 'call_home', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Third shift this week.', backstory: 'Walking to Metro East.' },
-  { name: 'WORKER', x: 5600, y: 6300, type: 'human', gender: 'm', job: 'Janitor', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'WALKING',
+  { name: 'WORKER', x: 6350, y: 6300, type: 'human', gender: 'm', job: 'Janitor', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Someone has to clean up after PABLO.', backstory: 'City maintenance worker.' },
   { name: 'WORKER', x: 7600, y: 6300, type: 'human', gender: 'f', job: 'Courier', home: 'hotel', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Package for Sector 12.', backstory: 'Courier on delivery.' },
@@ -1358,19 +1772,19 @@ const NPCS: NpcDef[] = [
   { name: 'OFFICER KANE BRIGGS', x: 7300, y: 5850, type: 'corp', gender: 'm', job: 'Police Sergeant', home: 'eastside_flat', workplace: 'pablo_tower', role: 'police', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'Move along, citizen. Nothing to see here.', backstory: 'Senior police sergeant. Heavily armed. Very dangerous when provoked.',
     voiceLines: ['Move along. Nothing to see here.', 'Your papers expired last month. That is a citation.', 'I do not repeat myself. Walk.'] },
-  { name: 'OFFICER YARA CHEN', x: 8000, y: 6300, type: 'corp', gender: 'f', job: 'Military Officer', home: 'north_bunker', workplace: 'armory', role: 'corpo_military', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.8, personality: 'disciplined',
+  { name: 'OFFICER YARA CHEN', x: 7300, y: 6300, type: 'corp', gender: 'f', job: 'Military Officer', home: 'north_bunker', workplace: 'armory', role: 'corpo_military', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.8, personality: 'disciplined',
     whisper: 'PABLO Corp. military division. Stand down or face consequences.', backstory: 'Military officer assigned to city security. Armed with military-grade equipment.',
     voiceLines: ['PABLO Corp. military division. Stand down.', 'This perimeter is secured. Move along.', 'You are not authorized. Step back.'] },
-  { name: 'SGT. IRON HOLTZ', x: 6500, y: 7200, type: 'corp', gender: 'm', job: 'Border Guard', home: 'bunker', workplace: 'checkpoint_c', role: 'corpo_military', idleBehavior: 'STANDING', voiceActor: true, walkSpeed: 0.7, personality: 'disciplined',
+  { name: 'SGT. IRON HOLTZ', x: 6500, y: 6750, type: 'corp', gender: 'm', job: 'Border Guard', home: 'bunker', workplace: 'checkpoint_c', role: 'corpo_military', idleBehavior: 'STANDING', voiceActor: true, walkSpeed: 0.7, personality: 'disciplined',
     whisper: 'Papers. Now. Or you don\'t pass.', backstory: 'Checkpoint guard. Known for zero-tolerance enforcement.',
     voiceLines: ['Papers. Now.', 'Nobody passes without clearance. Nobody.', 'I have been posted here for three years. I have never let anyone through without papers.'] },
   { name: 'AGENT KIRA VOSS', x: 7100, y: 5900, type: 'corp', gender: 'f', job: 'Blade Runner', home: 'pablo_tower', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.0, personality: 'cold_efficient',
     whisper: 'I can tell. The way you blink. Too even.', backstory: 'PABLO Corp. replicant hunter. Certified Voigt-Kampff examiner. Has retired 47 units. Never missed.',
     voiceLines: ['Your empathy response is 0.3 seconds too slow.', 'I have retired 47 units. You will not be 48.', 'The test does not lie. People do.'] },
-  { name: 'COLE DEKKER', x: 8200, y: 6100, type: 'human', gender: 'm', job: 'Blade Runner', home: 'bunker', workplace: 'armory', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.9, personality: 'world_weary',
+  { name: 'COLE DEKKER', x: 7200, y: 6100, type: 'human', gender: 'm', job: 'Blade Runner', home: 'bunker', workplace: 'armory', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.9, personality: 'world_weary',
     whisper: 'Seen things you would not believe. Most of them bled.', backstory: 'Former wasteland scout turned replicant hunter. Works alone. Drinks too much. Gets results.',
     voiceLines: ['I have seen things out there. Things that bled wrong.', 'They run. They always run.', 'Do not make me chase you. I am too old for that.'] },
-  { name: 'MIRA SATO', x: 6000, y: 6500, type: 'android', gender: 'f', job: 'Blade Runner', home: 'data_vault', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.1, personality: 'conflicted', isReplicant: true,
+  { name: 'MIRA SATO', x: 6400, y: 6500, type: 'android', gender: 'f', job: 'Blade Runner', home: 'data_vault', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.1, personality: 'conflicted', isReplicant: true,
     whisper: 'I hunt my own kind. Do not ask me how I sleep.', backstory: 'An android hunting androids. PABLO assigned her knowing the irony. She suspects she is being tested.',
     voiceLines: ['I hunt what I am. The irony is not lost on me.', 'PABLO knows exactly what I am. That is the point.', 'Every unit I retire... I wonder if they dream the way I do.'] },
   // ── GANG ZONE PATROL NPCs ──
@@ -1419,7 +1833,7 @@ function hashNpcSeed(name: string, idx: number, gender: string): number {
   return Math.abs(h);
 }
 
-const RESIDENTIAL_BUILDINGS = ['minx_arms', 'eastside_flat', 'hotel', 'overlook', 'safe_house', 'bunker', 'north_bunker'];
+const RESIDENTIAL_BUILDINGS = ['eastside_flat', 'hotel', 'overlook', 'safe_house', 'bunker', 'north_bunker', 'east_bunker', 'deep_bunker', 'terminus', 'machine_bunker', 'outpost_alpha', 'outpost_beta', 'ashfield_hostel', 'deep_camp', 'supply_cache'];
 const CORP_WORKPLACES = ['pablo_tower', 'megabank', 'data_vault', 'admin_bureau', 'nexus_hub'];
 const INDUSTRIAL_WORKPLACES = ['scrap', 'print_shop', 'clinic', 'depot_south', 'machine_bunker'];
 const COMMERCIAL_WORKPLACES = ['market', 'arcade', 'noodle_bar', 'pawn_shop', 'food_court', 'plaza_market', 'nightclub'];
@@ -2042,10 +2456,10 @@ const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
     underAttack: boolean;
   }
   const POWER_NODES: PowerNode[] = [
-    { id: 'pn_central', x: 6500, y: 6500, hp: 100, maxHp: 100, label: 'CENTRAL POWER RELAY', underAttack: false },
-    { id: 'pn_east', x: 8000, y: 5800, hp: 100, maxHp: 100, label: 'EAST GRID JUNCTION', underAttack: false },
-    { id: 'pn_west', x: 5600, y: 5800, hp: 100, maxHp: 100, label: 'WEST POWER STATION', underAttack: false },
-    { id: 'pn_south', x: 7000, y: 7200, hp: 100, maxHp: 100, label: 'SOUTH TRANSFORMER', underAttack: false },
+    { id: 'pn_central', x: 6800, y: 6300, hp: 100, maxHp: 100, label: 'CENTRAL POWER RELAY', underAttack: false },
+    { id: 'pn_east', x: 7350, y: 6100, hp: 100, maxHp: 100, label: 'EAST GRID JUNCTION', underAttack: false },
+    { id: 'pn_west', x: 6250, y: 6100, hp: 100, maxHp: 100, label: 'WEST POWER STATION', underAttack: false },
+    { id: 'pn_south', x: 6800, y: 6750, hp: 100, maxHp: 100, label: 'SOUTH TRANSFORMER', underAttack: false },
   ];
   let powerAttackCooldown = 0;
 
@@ -2134,12 +2548,21 @@ const NPC_LOOT_CHANCE = 0.125;
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
 // Quick jobs — bid → { label, pay, seconds, cooldownFrames }
 const QUICK_JOBS: Record<string, { label: string; pay: number; seconds: number; cooldownFrames: number }> = {
-  scrap:      { label: 'HAUL SCRAP',   pay: 3500, seconds: 5, cooldownFrames: 1800 },
-  print_shop: { label: 'PRINT RUN',    pay: 2500, seconds: 4, cooldownFrames: 1200 },
-  radio:      { label: 'BROADCAST',    pay: 2000, seconds: 4, cooldownFrames: 900  },
-  oxide_labs:   { label: 'ASSEMBLE',     pay: 6000, seconds: 7, cooldownFrames: 2400 },
-  market:     { label: 'STREET DEAL',  pay: 3000, seconds: 3, cooldownFrames: 900  },
+  scrap:          { label: 'HAUL SCRAP',       pay: 3500,  seconds: 5, cooldownFrames: 1800 },
+  print_shop:     { label: 'PRINT RUN',        pay: 2500,  seconds: 4, cooldownFrames: 1200 },
+  radio:          { label: 'BROADCAST',         pay: 2000,  seconds: 4, cooldownFrames: 900  },
+  oxide_labs:     { label: 'ASSEMBLE',          pay: 6000,  seconds: 7, cooldownFrames: 2400 },
+  market:         { label: 'STREET DEAL',       pay: 3000,  seconds: 3, cooldownFrames: 900  },
+  public_office:  { label: 'DATA ENTRY',        pay: 4000,  seconds: 6, cooldownFrames: 1500 },
+  data_vault:     { label: 'DECRYPT FILES',     pay: 5500,  seconds: 8, cooldownFrames: 2100 },
+  nexus_hub:      { label: 'FREELANCE CODE',    pay: 4500,  seconds: 5, cooldownFrames: 1200 },
+  noodle_bar:     { label: 'DELIVERY RUN',      pay: 1500,  seconds: 3, cooldownFrames: 600  },
+  food_court:     { label: 'SERVE TABLES',      pay: 1800,  seconds: 3, cooldownFrames: 600  },
+  nightclub:      { label: 'BOUNCER SHIFT',     pay: 3500,  seconds: 5, cooldownFrames: 1800 },
+  pawn_shop:      { label: 'APPRAISE GOODS',    pay: 2800,  seconds: 4, cooldownFrames: 900  },
 };
+const PUBLIC_OFFICE_TERMINAL_RATE = 50;
+const PUBLIC_OFFICE_TERMINALS = new Set(['TERMINAL 1','TERMINAL 2','TERMINAL 3','TERMINAL 4','TERMINAL 5','TERMINAL 6']);
 type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string; goldPrice?: number };
 type VendCategory = { id: string; label: string; col: string; items: VendItem[] };
 const VEND_CATALOG: VendCategory[] = [
@@ -2152,6 +2575,10 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'stim_shot',     name: 'STIM SHOT',       desc: 'Adrenaline. Energy+50 HP+10. Side effects unlisted.',  price: 3500,   consumable: true, effect: 'energy50 hp10' },
     { id: 'med_kit',       name: 'MED KIT',         desc: 'Trauma wrap. HP+50. No sterile field needed.',         price: 6000,   consumable: true, effect: 'hp50' },
     { id: 'antidote',      name: 'ANTIDOTE',        desc: 'Clears poison status immediately.',                    price: 4000,   consumable: true, effect: 'cure_poison' },
+    { id: 'clean_water',   name: 'CLEAN WATER',     desc: 'Filtered. Thirst+50. No side effects.',                price: 500,    consumable: true, effect: 'thirst50' },
+    { id: 'beer',          name: 'BEER',            desc: 'Thirst+30. Energy+15. 10% chance HP-5.',               price: 350,    consumable: true, effect: 'thirst30 energy15 hprisk5' },
+    { id: 'energy_drink',  name: 'ENERGY DRINK',    desc: 'JOLT BRAND. Energy+60. Thirst-10.',                    price: 900,    consumable: true, effect: 'energy60 thirst-10' },
+    { id: 'power_cell',    name: 'POWER CELL',      desc: 'Restores grid power. Power+35.',                       price: 2000,   consumable: true, effect: 'power35' },
   ]},
   { id: 'tech', label: 'TECH', col: '#33aaff', items: [
     { id: 'pablo_device',    name: 'DEVICE REPAIR KIT',  desc: 'Repairs a broken personal terminal. Restores full durability.',  price: 5000, consumable: true  },
@@ -2224,15 +2651,66 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ƒ500 per job cycle.',         price: 18000 },
   ]},
   { id: 'realestate', label: 'REAL ESTATE (GOLD ONLY)', col: '#cc44ff', items: [
-    { id: 'wasteland_lot',   name: 'WASTELAND LOT',    desc: '+ƒ2,000 passive income per cycle. Costs 5oz GOLD.',  price: 500000, goldPrice: 5  },
-    { id: 'minx_studio',     name: 'MINX CITY STUDIO', desc: '+ƒ5,000 passive income per cycle. Costs 10oz GOLD.', price: 1000000, goldPrice: 10  },
-    { id: 'corpo_office',    name: 'CORPORATE OFFICE', desc: '+ƒ15,000 passive income per cycle. Costs 25oz GOLD.', price: 2500000, goldPrice: 25 },
+    { id: 'wasteland_lot',   name: 'WASTELAND LOT',         desc: 'Sector W-14 · 200sqm dirt plot. +ƒ2,000/cycle. 5oz GOLD.',            price: 500000,  goldPrice: 5  },
+    { id: 'salvage_yard',    name: 'SALVAGE YARD',          desc: 'Sector W-22 · Scrap & parts depot. +ƒ3,500/cycle. 8oz GOLD.',          price: 750000,  goldPrice: 8  },
+    { id: 'minx_studio',     name: 'MINX CITY STUDIO',      desc: 'Sector 6 · 45sqm unit, Neon Strip. +ƒ5,000/cycle. 10oz GOLD.',         price: 1000000, goldPrice: 10 },
+    { id: 'street_stall',    name: 'STREET VENDOR STALL',   desc: 'Sector 7 · Market kiosk permit. +ƒ4,000/cycle. 7oz GOLD.',             price: 650000,  goldPrice: 7  },
+    { id: 'transit_kiosk',   name: 'TRANSIT KIOSK',         desc: 'Metro West · Foot-traffic vendor spot. +ƒ3,000/cycle. 6oz GOLD.',       price: 550000,  goldPrice: 6  },
+    { id: 'corpo_office',    name: 'CORPORATE OFFICE',      desc: 'Sector 8 · 120sqm Tower Row lease. +ƒ15,000/cycle. 25oz GOLD.',         price: 2500000, goldPrice: 25 },
+    { id: 'penthouse_suite', name: 'PENTHOUSE SUITE',       desc: 'Shadow Tower · 63rd floor. +ƒ25,000/cycle. 50oz GOLD.',                 price: 5000000, goldPrice: 50 },
+    { id: 'warehouse',       name: 'INDUSTRIAL WAREHOUSE',  desc: 'Sector 10 · 500sqm storage & ops. +ƒ8,000/cycle. 15oz GOLD.',          price: 1500000, goldPrice: 15 },
+    { id: 'data_center',     name: 'DATA CENTER UNIT',      desc: 'Sector 12 · Server rack lease. +ƒ12,000/cycle. 20oz GOLD.',             price: 2000000, goldPrice: 20 },
   ]},
   { id: 'pro', label: PABLO_PRODUCTS.PRO_TIER.name, col: '#ff9900', items: [
     { id: 'salaryman_pro', name: `${PABLO_PRODUCTS.PRO_TIER.name} PACKAGE`, desc: PABLO_PRODUCTS.PRO_TIER.desc, price: 0 },
   ]},
 ];
-const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, minx_studio: 5000, corpo_office: 15000 };
+const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, salvage_yard: 3500, minx_studio: 5000, street_stall: 4000, transit_kiosk: 3000, corpo_office: 15000, penthouse_suite: 25000, warehouse: 8000, data_center: 12000 };
+
+interface HousingTier { id: string; label: string; building: string; rent: number; rentPeriod: 'day' | 'week'; minBizType: 'unemployed' | 'fictitious' | 'real'; desc: string; }
+const HOUSING_TIERS: HousingTier[] = [
+  { id: 'shelter', label: 'CITY SHELTER / BUNKER', building: 'bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Free bunk. Crowded. Shared with dozens of drifters, workers, and displaced. Closest to the bunker exit.' },
+  { id: 'outpost', label: 'DESERT OUTPOST', building: 'outpost_alpha', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Free cot. Wasteland outpost. Sparse but functional. Generator power, rations, armed warden.' },
+  { id: 'machine_bunker', label: 'MACHINE BUNKER (UNDERGROUND)', building: 'machine_bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Deep underground. Room closest to the bunker exit. Packed with replicants and refugees.' },
+  { id: 'minx_arms', label: 'MINX ARMS HOTEL', building: 'minx_arms', rent: 80, rentPeriod: 'day', minBizType: 'fictitious', desc: 'Cheap hotel. Single room per night. Curtains never close. Pay daily or get tossed.' },
+  { id: 'eastside', label: 'EASTSIDE FLATS', building: 'eastside_flat', rent: 500, rentPeriod: 'week', minBizType: 'fictitious', desc: 'Mid-tier apartment. Mailboxes. Notice board. Actual door that locks. Weekly lease.' },
+  { id: 'overlook', label: 'THE PINNACLE', building: 'overlook', rent: 200, rentPeriod: 'day', minBizType: 'real', desc: 'Upscale hotel. Concierge. Crystal chandelier. Real address for a real business.' },
+  { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', desc: 'Premium suite. Room service. Neon skyline views. The top.' },
+];
+const RENT_PERIOD_DAYS = (tier: HousingTier) => tier.rentPeriod === 'week' ? 7 : 1;
+const RENT_GRACE_DAYS = 1;
+
+interface AssetDef { id: string; label: string; basePrice: number; volatility: number; color: string; }
+const TRADEABLE_ASSETS: AssetDef[] = [
+  { id: 'diamond', label: 'DIAMOND', basePrice: 250000, volatility: 0.15, color: '#b9f2ff' },
+  { id: 'ruby', label: 'RUBY', basePrice: 180000, volatility: 0.20, color: '#ff4040' },
+  { id: 'emerald', label: 'EMERALD', basePrice: 150000, volatility: 0.18, color: '#50c878' },
+  { id: 'platinum', label: 'PLATINUM BAR', basePrice: 200000, volatility: 0.12, color: '#e5e4e2' },
+  { id: 'sapphire', label: 'SAPPHIRE', basePrice: 120000, volatility: 0.22, color: '#0f52ba' },
+];
+
+interface StockDef { ticker: string; company: string; industry: string; basePrice: number; isReal: boolean; }
+const PRE_LISTED_STOCKS: StockDef[] = [
+  { ticker: 'PCSO', company: 'PICASSOO.AI', industry: 'Software / SaaS', basePrice: 4500, isReal: true },
+  { ticker: 'PABLO', company: 'PABLO CORP', industry: 'Conglomerate', basePrice: 12000, isReal: false },
+  { ticker: 'NEON', company: 'NEON ENERGY', industry: 'Energy', basePrice: 800, isReal: false },
+  { ticker: 'IRNT', company: 'IRON TRUST BANK', industry: 'Finance', basePrice: 3200, isReal: false },
+  { ticker: 'DOJO', company: 'IRON DOJO INC', industry: 'Security', basePrice: 1500, isReal: false },
+];
+
+function getAssetPrice(asset: AssetDef, gameFrame: number): number {
+  const cycle = Math.sin(gameFrame * 0.0003 + asset.id.charCodeAt(0)) * asset.volatility;
+  const drift = Math.sin(gameFrame * 0.00008 + asset.id.charCodeAt(1) * 2) * asset.volatility * 0.5;
+  return Math.max(Math.floor(asset.basePrice * (1 + cycle + drift)), Math.floor(asset.basePrice * 0.5));
+}
+
+function getStockPrice(stock: StockDef, gameFrame: number): number {
+  const seed = stock.ticker.charCodeAt(0) + stock.ticker.charCodeAt(1) * 7;
+  const cycle = Math.sin(gameFrame * 0.0004 + seed) * 0.25;
+  const trend = Math.sin(gameFrame * 0.00006 + seed * 3) * 0.15;
+  const noise = Math.sin(gameFrame * 0.002 + seed * 11) * 0.05;
+  return Math.max(Math.floor(stock.basePrice * (1 + cycle + trend + noise)), Math.floor(stock.basePrice * 0.3));
+}
 const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9, motorcycle: 2.24 };
 const WEAPON_TIER: Record<string, number> = {
   pipe_wrench: 1, boxing_gloves: 1, combat_knife: 1,
@@ -2257,10 +2735,10 @@ const CRAFT_RECIPES: CraftRecipe[] = [
 // ── Merchant/Trader NPCs ────────────────────────────────────────────────────
 interface MerchantDef { name: string; x: number; y: number; type: 'city' | 'wasteland'; inventory: string[]; }
 const MERCHANT_NPCS: MerchantDef[] = [
-  { name: 'VENDOR KAZIM', x: 6300, y: 6500, type: 'city', inventory: ['purified_water','mineral_water','energy_pack','medkit_full','stimpack','combat_knife','pistol_32','ballistic_vest'] },
-  { name: 'TRADER MOSSIK', x: 7800, y: 6100, type: 'city', inventory: ['purified_water','antidote_gear','radiation_pill','repair_kit','lockpick_set','hacking_tool','smoke_grenade','emp_grenade'] },
-  { name: 'ARMS DEALER JEX', x: 8100, y: 5700, type: 'city', inventory: ['short_sword','revolver_44','shotgun','sniper_rifle','laser_pistol','ballistic_vest','energy_shield','thermal_goggles'] },
-  { name: 'WASTELAND PEDDLER ROOK', x: 3000, y: 8500, type: 'wasteland', inventory: ['purified_water','energy_pack','medkit_full','pipe_wrench','combat_knife','spear','pistol_32','portable_shelter'] },
+  { name: 'VENDOR KAZIM', x: 6450, y: 6500, type: 'city', inventory: ['purified_water','mineral_water','energy_pack','medkit_full','stimpack','combat_knife','pistol_32','ballistic_vest','clean_water','beer','energy_drink'] },
+  { name: 'TRADER MOSSIK', x: 7100, y: 6100, type: 'city', inventory: ['purified_water','antidote_gear','radiation_pill','repair_kit','lockpick_set','hacking_tool','smoke_grenade','emp_grenade'] },
+  { name: 'ARMS DEALER JEX', x: 7200, y: 5950, type: 'city', inventory: ['short_sword','revolver_44','shotgun','sniper_rifle','laser_pistol','ballistic_vest','energy_shield','thermal_goggles'] },
+  { name: 'WASTELAND PEDDLER ROOK', x: 3000, y: 8500, type: 'wasteland', inventory: ['purified_water','energy_pack','medkit_full','pipe_wrench','combat_knife','spear','pistol_32','portable_shelter','clean_water','beer','energy_drink','power_cell'] },
   { name: 'SCAVENGER JURL', x: 8500, y: 9000, type: 'wasteland', inventory: ['stimpack','radiation_pill','antidote_gear','signal_flare','smoke_grenade','rifle_22','compound_bow','repair_kit'] },
   { name: 'NOMAD TRADER VAEL', x: 5500, y: 2000, type: 'wasteland', inventory: ['mineral_water','energy_pack','medkit_full','mace','battle_axe','revolver_357','machine_gun','night_vision'] },
   { name: 'DRIFTER KASH', x: 10000, y: 3000, type: 'wasteland', inventory: ['purified_water','stimpack','short_sword','foil','sabre','laser_rifle','plasma_rifle','grappling_hook'] },
@@ -2271,15 +2749,10 @@ const REST_LOCATION_IDS = new Set(['grand_meridian','inn_mother','overlook','rus
 
 // Pablo Corp android guard patrol waypoints inside city
 const GUARD_ROUTES: { x: number; y: number }[][] = [
-  [{ x:5700,y:5700 },{ x:6200,y:5700 },{ x:6200,y:6100 },{ x:5700,y:6100 }],
-  [{ x:6300,y:5500 },{ x:6800,y:5500 },{ x:6800,y:5900 },{ x:6300,y:5900 }],
-  [{ x:6900,y:5400 },{ x:7500,y:5400 },{ x:7500,y:5800 },{ x:6900,y:5800 }],
-  [{ x:7600,y:5600 },{ x:8100,y:5600 },{ x:8100,y:6000 },{ x:7600,y:6000 }],
-  [{ x:5500,y:5400 },{ x:5900,y:5400 },{ x:5900,y:5800 },{ x:5500,y:5800 }],
-  [{ x:8200,y:5500 },{ x:8700,y:5500 },{ x:8700,y:5900 },{ x:8200,y:5900 }],
-  [{ x:7200,y:6200 },{ x:7800,y:6200 },{ x:7800,y:6600 },{ x:7200,y:6600 }],
-  [{ x:5800,y:6800 },{ x:6500,y:6800 },{ x:6500,y:7100 },{ x:5800,y:7100 }],
-  [{ x:6900,y:6800 },{ x:7700,y:6800 },{ x:7700,y:7100 },{ x:6900,y:7100 }],
+  [{ x:6250,y:5850 },{ x:6750,y:5850 },{ x:6750,y:6250 },{ x:6250,y:6250 }],
+  [{ x:6850,y:5850 },{ x:7350,y:5850 },{ x:7350,y:6250 },{ x:6850,y:6250 }],
+  [{ x:6250,y:6350 },{ x:6750,y:6350 },{ x:6750,y:6750 },{ x:6250,y:6750 }],
+  [{ x:6850,y:6350 },{ x:7350,y:6350 },{ x:7350,y:6750 },{ x:6850,y:6750 }],
 ];
 // Vending machine positions (relative x,y offsets near govt buildings)
 const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
@@ -2531,34 +3004,24 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. PABLO CORP. acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
     floors: [
       { floor: 1, name: 'LOBBY',           desc: 'Buzzing fluorescents. Name cards in the original slots. The super\'s office is behind frosted glass. Nobody has seen the super in three weeks.' },
-      { floor: 2, name: 'UNITS 201–208',   desc: 'Lower floor. Long-term residents. Unit 203 has been vacant since \'89 — still listed under someone named OREN SHARPE. The mail still comes.' },
-      { floor: 3, name: 'UNITS 301–308',   desc: 'Unit 308 ran a pirate radio antenna through the wall until the city found it. The hole is still there. Someone put a plant in front of it.' },
-      { floor: 4, name: 'YOUR FLOOR',      desc: 'Your unit. View of the SHADOW TOWER roof. The curtains never fully close. You have learned to sleep on the other side of the room.' },
-      { floor: 5, name: 'UNITS 501–508',   desc: 'Unit 502 has been playing the same album since 1990. Nobody has complained. Nobody ever will.' },
-      { floor: 6, name: 'LAUNDRY / STORE', desc: 'Three machines. One prints receipts dated \'87. Maintenance says it\'s a known issue. The receipts are itemized.' },
-      { floor: 7, name: 'UNITS 701–708',   desc: 'MAEVE lived in 704. She moved out when she noticed the PABLO CORP. logo was visible from every window at the same angle.' },
-      { floor: 8, name: 'ROOF ACCESS',     desc: 'Padlocked. Scratched into the metal: "He can see this roof. He sees all roofs." The padlock is PABLO CORP. branded.' },
+      { floor: 2, name: 'ROOMS 201–208',   desc: 'Nightly rooms. Unit 203 has been vacant since \'89 — still listed under someone named OREN SHARPE. The mail still comes.' },
+      { floor: 3, name: 'YOUR FLOOR / ROOF', desc: 'Top floor. Your unit if you\'re checked in. View of the SHADOW TOWER. The curtains never fully close. Roof access padlocked — PABLO CORP. branded.' },
     ],
   },
   eastside_flat: {
-    label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing for the east expansion district. PABLO CORP. invested in floors 3–6 quietly in \'92. The remaining floors are still technically independent.',
+    label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing. PABLO CORP. invested quietly in \'92. The remaining units are still technically independent.',
     floors: [
       { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP. SECURITY DIVISION.' },
       { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KERN.' },
-      { floor: 3, name: 'UNITS 301–312',   desc: 'PABLO CORP. owned units. Unfurnished. Clean. A realtor shows them every Thursday to nobody.' },
-      { floor: 4, name: 'UNITS 401–412',   desc: 'Community notice board. Someone wrote: "SENIOR PABLO IS IN FLOOR 62. DO NOT LOOK UP." The note has been laminated.' },
-      { floor: 5, name: 'GYM / AMENITIES', desc: 'Functional. Towels provided. One locker has been locked since \'90. The gym log shows it was last used by someone named GRAHN.' },
-      { floor: 6, name: 'ROOF GARDEN',     desc: 'Someone is growing vegetables up here without permission. The vegetables are thriving. Nobody has the heart to stop them.' },
+      { floor: 3, name: 'UNITS / ROOF GARDEN', desc: 'Top floor units and rooftop. Someone is growing vegetables up here without permission. The vegetables are thriving.' },
     ],
   },
   hotel: {
-    label: 'HOTEL NEON', history: 'Originally THE PACIFIC, renamed \'86 after the owner installed neon signage on every floor. The glow bleeds through the walls. The TVs still show 1987 channels.',
+    label: 'HOTEL NEON', history: 'Originally THE PACIFIC, renamed \'86 after the owner installed neon signage on every floor. The glow bleeds through the walls.',
     floors: [
       { floor: 1, name: 'LOBBY / BAR',     desc: 'The bar runs on a tab system. Nobody knows who started the tabs. Nobody asks. One tab has been running since 1983.' },
-      { floor: 2, name: 'STANDARD ROOMS',  desc: 'Working TVs. Channel guide shows programs from \'87. Some of them are still running. One channel is static with audio.' },
-      { floor: 3, name: 'DELUXE ROOMS',    desc: 'Better curtains. A fax machine nobody uses. It still receives faxes. They are detailed and addressed to names that no longer exist.' },
-      { floor: 4, name: 'BUSINESS CENTER', desc: 'One terminal. Password is the hotel name. The printer outputs financial data nobody requested. The paper is continuous-feed.' },
-      { floor: 5, name: 'PENTHOUSE',       desc: 'Reserved indefinitely under a company name that doesn\'t exist. PABLO CORP. acquired it \'93. The room is always warm.' },
+      { floor: 2, name: 'ROOMS',           desc: 'Working TVs. Channel guide shows programs from \'87. Some of them are still running. One channel is static with audio.' },
+      { floor: 3, name: 'PENTHOUSE',       desc: 'Reserved indefinitely under a company name that doesn\'t exist. PABLO CORP. acquired it \'93. The room is always warm.' },
     ],
   },
   pablo_tower: {
@@ -2586,12 +3049,10 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   nightclub: {
-    label: 'CLUB NEON', history: 'Three names since 1982. Current owners say the building chose its own identity. The lights have not been fully off since 1988. The original electrical panel was replaced in \'91. Nobody kept the receipt.',
+    label: 'CLUB NEON', history: 'Three names since 1982. The lights have not been fully off since 1988.',
     floors: [
-      { floor: 1, name: 'MAIN FLOOR',      desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
-      { floor: 2, name: 'VIP SECTION',     desc: 'One booth booked every Friday for four years under OREN SHARPE. He has never shown up. The booth is always full anyway.' },
-      { floor: 3, name: 'DJ BOOTH / BROADCAST', desc: 'Doubles as pirate signal tower on Thursdays. The frequency bleeds into the SHADOW TOWER antenna. Intentionally.' },
-      { floor: 4, name: 'ROOF TERRACE',    desc: 'Open air. Floor 62 is visible. Some nights it is lit. Most nights it is not. The bartender says it is random. The regulars say it is not.' },
+      { floor: 1, name: 'MAIN FLOOR / BAR',   desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
+      { floor: 2, name: 'VIP / ROOF TERRACE', desc: 'VIP booth and open-air rooftop. Floor 62 is visible. Some nights it is lit. The bartender says it is random.' },
     ],
   },
   machine_bunker: {
@@ -2603,23 +3064,20 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   dojo: {
-    label: 'IRON DOJO', history: 'Founded pre-collapse by a fighter who refused to leave when everything else closed. Now the only neutral ground between the city factions. Both sides train here. Nobody fights inside.',
+    label: 'IRON DOJO', history: 'Founded pre-collapse by a fighter who refused to leave. Neutral ground between factions. Nobody fights inside.',
     floors: [
-      { floor: 1, name: 'TRAINING FLOOR',  desc: 'Sparring mats. Old equipment. A clock that stopped in \'88 — nobody winds it because the sensei says time is a weakness.' },
-      { floor: 2, name: 'STUDY / ARCHIVE', desc: 'Combat records going back decades. A shelf of notebooks. The last one has today\'s date on the cover. It\'s empty.' },
-      { floor: 3, name: 'SENSEI\'S ROOM',  desc: 'Locked. The door has no handle from the outside. Lights on 24/7. Nobody has ever seen the sensei sleep.' },
+      { floor: 1, name: 'TRAINING FLOOR',     desc: 'Sparring mats. Old equipment. A clock that stopped in \'88 — nobody winds it because the sensei says time is a weakness.' },
+      { floor: 2, name: 'SENSEI\'S QUARTERS', desc: 'Study, archive, and the sensei\'s room. Door has no handle from outside. Lights on 24/7. Nobody has ever seen the sensei sleep.' },
     ],
   },
 };
 
 // ── Police patrol waypoints (cover full city limits) ─────────────────────────
 const POLICE_ROUTES: { x: number; y: number }[][] = [
-  [{ x:5400,y:5100 },{ x:6300,y:5100 },{ x:6300,y:6100 },{ x:5400,y:6100 }],
-  [{ x:6500,y:5100 },{ x:7500,y:5100 },{ x:7500,y:6100 },{ x:6500,y:6100 }],
-  [{ x:7500,y:5100 },{ x:9000,y:5100 },{ x:9000,y:6100 },{ x:7500,y:6100 }],
-  [{ x:5400,y:6200 },{ x:6500,y:6200 },{ x:6500,y:7500 },{ x:5400,y:7500 }],
-  [{ x:6500,y:6200 },{ x:7700,y:6200 },{ x:7700,y:7500 },{ x:6500,y:7500 }],
-  [{ x:7700,y:6200 },{ x:9000,y:6200 },{ x:9000,y:7500 },{ x:7700,y:7500 }],
+  [{ x:6250,y:5850 },{ x:6750,y:5850 },{ x:6750,y:6250 },{ x:6250,y:6250 }],
+  [{ x:6850,y:5850 },{ x:7350,y:5850 },{ x:7350,y:6250 },{ x:6850,y:6250 }],
+  [{ x:6250,y:6350 },{ x:6750,y:6350 },{ x:6750,y:6750 },{ x:6250,y:6750 }],
+  [{ x:6850,y:6350 },{ x:7350,y:6350 },{ x:7350,y:6750 },{ x:6850,y:6750 }],
 ];
 
 type BandType = 'POLICE' | 'RAIDERS' | 'BIKERS' | 'MUTANT_PACK' | 'MERCS' | 'SCAVENGERS';
@@ -2715,22 +3173,25 @@ interface Quest {
   completed: boolean;
 }
 
-const SHELTER_BUILDINGS = ['bunker', 'east_bunker', 'north_bunker', 'terminus', 'deep_bunker'];
-const CAMPSITE_IDS = ['ashfield_hostel', 'deep_camp', 'outpost_alpha'];
+const SHELTER_BUILDINGS = ['bunker', 'east_bunker', 'north_bunker', 'terminus', 'deep_bunker', 'machine_bunker'];
+const CAMPSITE_IDS = ['ashfield_hostel', 'deep_camp', 'outpost_alpha', 'outpost_beta', 'supply_cache'];
 const UNEMPLOYED_SPAWN_BUILDINGS = [...SHELTER_BUILDINGS, ...CAMPSITE_IDS];
 
-function getHamletSpawn(char: Char): { x: number; y: number; buildingId: string } {
+function getHamletSpawn(char: Char, housingTier?: string): { x: number; y: number; buildingId: string } {
   if (char.class?.toLowerCase() === 'replicant') {
     const b = BUILDINGS.find(bb => bb.id === 'machine_bunker')!;
     return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: 'machine_bunker' };
   }
-  if (char.bizType === 'unemployed' || !char.hasBusiness) {
-    const bid = UNEMPLOYED_SPAWN_BUILDINGS[Math.floor(Math.random() * UNEMPLOYED_SPAWN_BUILDINGS.length)];
-    const b = BUILDINGS.find(bb => bb.id === bid)!;
-    return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: bid };
+  if (housingTier && housingTier !== 'shelter') {
+    const tier = HOUSING_TIERS.find(t => t.id === housingTier);
+    if (tier) {
+      const b = BUILDINGS.find(bb => bb.id === tier.building);
+      if (b) return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: tier.building };
+    }
   }
-  const b = BUILDINGS.find(bb => bb.id === 'minx_arms')!;
-  return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: 'minx_arms' };
+  const bid = UNEMPLOYED_SPAWN_BUILDINGS[Math.floor(Math.random() * UNEMPLOYED_SPAWN_BUILDINGS.length)];
+  const b = BUILDINGS.find(bb => bb.id === bid)!;
+  return { x: b.x + b.w / 2, y: b.y + b.h + 20, buildingId: bid };
 }
 
 function getHamletLabel(bid: string): string {
@@ -2802,7 +3263,7 @@ function createStarterMissions(): Quest[] {
   return missions;
 }
 
-interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; }
+interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; interiorBid?: string; }
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
 interface CrmContact {
@@ -3003,6 +3464,11 @@ export default function WorldPlay() {
     radiationLevel: 0,
     temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
+    assets: (_ss?.assets ?? {}) as Record<string, number>,
+    stocks: (_ss?.stocks ?? {}) as Record<string, number>,
+    housingTier: (_ss?.housingTier ?? 'shelter') as string,
+    rentPaidAt: (_ss?.rentPaidAt ?? Date.now()) as number,
+    rentReminded: (_ss?.rentReminded ?? 0) as number,
     openedChests: new Set<string>(Array.isArray(_ss?.openedChests) ? _ss.openedChests : []),
     boomerMode: (() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } })(),
     activeCostume: (_ss?.activeCostume ?? 'default') as string,
@@ -3019,6 +3485,8 @@ export default function WorldPlay() {
     rumorCooldown: 0,
     treasureMapActive: null as string | null,
     interior: null as null | { bid: string; def: InteriorDef; px: number; py: number; savedWorldX: number; savedWorldY: number },
+    officeTerminalRenting: null as null | { label: string; startTime: number; lastCharge: number },
+    nearInteriorObj: null as null | InteriorObject,
     interiorFade: 0,
     interiorFadeDir: 0 as -1 | 0 | 1,
     interiorFadeCallback: null as null | (() => void),
@@ -3028,10 +3496,10 @@ export default function WorldPlay() {
     quests: (_ss?.quests ?? (() => { const m = createFirstMission(char); const starters = createStarterMissions(); return [...(m ? [m] : []), ...starters]; })()) as Quest[],
     hamletBuildingId: (() => {
       const saved = _ss?.hamletBuildingId as string | undefined;
-      if (!saved) return getHamletSpawn(char).buildingId;
-      const isEmployed = char.bizType !== 'unemployed' && char.hasBusiness;
-      const savedIsEmployed = saved === 'minx_arms';
-      if (isEmployed !== savedIsEmployed) return getHamletSpawn(char).buildingId;
+      const ht = (_ss?.housingTier ?? 'shelter') as string;
+      if (!saved) return getHamletSpawn(char, ht).buildingId;
+      const tier = HOUSING_TIERS.find(t => t.id === ht);
+      if (tier && tier.building !== saved) return getHamletSpawn(char, ht).buildingId;
       return saved;
     })(),
     pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone ?? true) : false,
@@ -3061,10 +3529,15 @@ export default function WorldPlay() {
   const crowdMurmurActiveRef = useRef(false);
   const [narration, setNarr]  = useState(() => {
     if (char?.hasBusiness && char.workstationLabel) {
-      const daysLeft = char.bizRegisteredAt
-        ? Math.max(0, 7 - Math.floor((Date.now() - char.bizRegisteredAt) / 86400000))
-        : 7;
-      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${daysLeft > 0 ? `${daysLeft} free-rest day${daysLeft !== 1 ? 's' : ''} remaining.` : 'Rent is now ƒ500/rest.'} WASD/click move · [E] interact · [Space] melee · Click enemy to shoot · [M] map.`;
+      const g = gs.current;
+      const tier = HOUSING_TIERS.find(t => t.id === g.housingTier);
+      const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
+      const cycleDays = tier ? RENT_PERIOD_DAYS(tier) : 1;
+      const daysUntilRent = Math.max(0, cycleDays - daysSinceRent);
+      const rentMsg = tier && tier.rent > 0
+        ? (daysUntilRent <= 0 ? `RENT OVERDUE — ƒ${tier.rent.toLocaleString()} owed at ${tier.label}.` : `Rent due in ${daysUntilRent} day${daysUntilRent !== 1 ? 's' : ''} — ƒ${tier.rent.toLocaleString()} at ${tier.label}.`)
+        : '';
+      return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${rentMsg} WASD/click move · [E] interact · [Space] melee · Click enemy to shoot · [M] map.`;
     }
     if (char?.hasBusiness === false) {
       return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO device · [I] inventory · [C] video call.';
@@ -3104,7 +3577,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'>('chat');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -3130,6 +3603,18 @@ export default function WorldPlay() {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpText, setLevelUpText] = useState('');
   const [lootPanel, setLootPanel] = useState<{ source: string; money: number; items: { name: string; desc: string }[] } | null>(null);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [whiteboardLines, setWhiteboardLines] = useState<string[]>([]);
+  const [whiteboardInput, setWhiteboardInput] = useState('');
+  const [showScreenShare, setShowScreenShare] = useState(false);
+  const [screenShareUrl, setScreenShareUrl] = useState('');
+  const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' } | null>(null);
+  const [elevatorPw, setElevatorPw] = useState('');
+  const [elevatorPwError, setElevatorPwError] = useState('');
+  const [currentFloor, setCurrentFloor] = useState(0);
+  const [doorLockPrompt, setDoorLockPrompt] = useState<{ bid: string; mode: 'menu' | 'set_pw' | 'change_pw' | 'enter_pw' } | null>(null);
+  const [doorLockPw, setDoorLockPw] = useState('');
+  const [doorLockPwError, setDoorLockPwError] = useState('');
   // Billboard marketplace
   const [billboardsData, setBillboardsData] = useState<BillboardData[]>([]);
   const billboardsDataRef = useRef<BillboardData[]>([]);
@@ -3240,6 +3725,8 @@ export default function WorldPlay() {
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, toggle: toggleRadio, show: showRadio, hide: hideRadio } = useRadio();
   const [showGoldExchange, setShowGoldExchange] = useState(false);
+  const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks'>('gold');
+  const [showHousingPanel, setShowHousingPanel] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showRealEstateOffice, setShowRealEstateOffice] = useState(false);
   const [showRecruitOffice, setShowRecruitOffice] = useState(false);
@@ -3352,6 +3839,11 @@ export default function WorldPlay() {
       company: char.company,
       bizRegisteredAt: char.bizRegisteredAt,
       storyFlags: g.storyFlags,
+      assets: { ...g.assets },
+      stocks: { ...g.stocks },
+      housingTier: g.housingTier,
+      rentPaidAt: g.rentPaidAt,
+      rentReminded: g.rentReminded,
     };
   }, [char]);
 
@@ -3421,31 +3913,26 @@ export default function WorldPlay() {
 
     // ── Residential ───────────────────────────────────────────────────────
     if (bid === 'minx_arms') {
-      const rent = 3000;
-      if (g.salary >= rent) {
-        g.salary -= rent; setSalary(g.salary);
-        setNarr(`> MINX ARMS — RENT PAID: ƒ${rent.toLocaleString()}. The landlord's drone scans your unit. "Credits received. Another month." You rest.`);
+      if (g.housingTier === 'minx_arms') {
+        setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
+        g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
+        g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
+        sfxSave();
+        doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+        setNarr(`> MINX ARMS HOTEL — Room 408. Nightly rate. HP restored. Progress saved.`);
       } else {
-        setNarr(`> MINX ARMS — RENT NOTICE. You owe ƒ${rent.toLocaleString()} and cannot pay. PABLO CORP. HOUSING DIVISION has been notified. Rest anyway — nobody's throwing you out tonight.`);
+        sfxEnter();
+        setNarr('> MINX ARMS HOTEL — Cheap hotel. Rooms by the night. No vacancy sign flickers. Visit the REAL ESTATE OFFICE to book a room.');
       }
-      setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
-      // Bed save point — restore all stats
-      g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
-      g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
-      sfxSave();
-      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr(`> MINX ARMS — Your unit: ${aptUnit}. You rest in your bed. HP fully restored. Progress saved. The city can wait.`);
     }
     else if (bid === 'eastside_flat') {
-      const rent = 2000;
-      if (g.salary >= rent) {
-        g.salary -= rent; setSalary(g.salary);
-        setNarr(`> EASTSIDE FLATS — RENT PAID: ƒ${rent.toLocaleString()}. Unit ${aptUnit}. The landlord bot sends a confirmation ping. You collapse into your bed.`);
+      if (isOwnerHome) {
+        setNarr(`> EASTSIDE FLATS — Unit ${aptUnit}. Weekly lease. The landlord bot hums. You collapse into your bed. HP restored. Progress saved.`);
       } else {
-        setNarr(`> EASTSIDE FLATS — RENT NOTICE. ƒ${rent.toLocaleString()} outstanding. PABLO CORP. HOUSING will escalate. Rest anyway.`);
+        sfxEnter();
+        setNarr('> EASTSIDE FLATS — Apartment block. Weekly leases. Visit the REAL ESTATE OFFICE to rent a unit.');
       }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.eastside_flat, selectedFloor: 0 });
-      // Bed save point
       g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
       g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
       sfxSave();
@@ -3458,8 +3945,8 @@ export default function WorldPlay() {
     }
     else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'gold_exchange') {
-      sfxEnter(); setShowGoldExchange(true); frozenRef.current = true;
-      setNarr('> GOLD EXCHANGE — Convert FIAT to GOLD and back. Tax scales with transaction size. Property purchases require GOLD.');
+      sfxEnter(); setShowGoldExchange(true); setGoldExchangeTab('gold'); frozenRef.current = true;
+      setNarr('> MINX CITY EXCHANGE — Trade GOLD, precious JEWELS & METALS, and STOCKS. Tax scales with transaction size.');
     }
     else if (bid === 'admin_bureau') {
       sfxEnter(); setShowAdmin(true); frozenRef.current = true;
@@ -3470,12 +3957,20 @@ export default function WorldPlay() {
       }
     }
     else if (bid === 'realestate_office') {
-      sfxEnter(); setShowRealEstateOffice(true); frozenRef.current = true;
-      setNarr('> REAL ESTATE OFFICE — Browse available property listings. All purchases require GOLD. Speak to an agent or use the terminal.');
+      sfxEnter(); setShowHousingPanel(true); frozenRef.current = true;
+      setNarr('> REAL ESTATE OFFICE — Browse property listings and manage your HOUSING. Upgrade your home, pay rent, or buy investment properties.');
+    }
+    else if (bid === 'picassoo_hq') {
+      sfxEnter();
+      setNarr('> PICASSOO.AI HQ — AI-powered art generation. A registered real enterprise. Holographic murals shift on every wall. Servers hum endlessly.');
     }
     else if (bid === 'nexus_hub') {
       sfxEnter();
       setNarr('> NEXUS HUB — Open-plan co-working space. Hot desks, private booths, meeting rooms. Coffee is free. Everything else costs fiat. Browse the job board or rent a desk.');
+    }
+    else if (bid === 'public_office') {
+      sfxEnter();
+      setNarr('> PUBLIC OFFICE — Co-working floor. Rows of desks with rented terminals. ƒ50/minute per session. Walk up to a terminal and press [E] to rent. Locked per user — no one touches your session. Vending machines in the break area. Data entry jobs available at the job board.');
     }
     else if (bid === 'police_hq') {
       sfxEnter();
@@ -3774,9 +4269,16 @@ export default function WorldPlay() {
     g.interiorFadeDir = 1;
     g.interiorFadeCallback = () => {
       const saved = g.interior!;
+      if (g.officeTerminalRenting) {
+        const lockKey = `po_${g.officeTerminalRenting.label}`;
+        g.locks.delete(lockKey);
+        g.officeTerminalRenting = null;
+      }
+      g.nearInteriorObj = null;
       g.px = saved.savedWorldX;
       g.py = saved.savedWorldY;
       g.interior = null;
+      setCurrentFloor(0);
       setNarr(`> You step back outside.`);
       g.interiorFadeDir = -1;
     };
@@ -3797,6 +4299,11 @@ export default function WorldPlay() {
 
   const enterBuilding = useCallback((bid: string) => {
     sfxEnter();
+    try {
+      const raw = localStorage.getItem('sm_visited_locations');
+      const visited: string[] = raw ? JSON.parse(raw) : [];
+      if (!visited.includes(bid)) { visited.push(bid); localStorage.setItem('sm_visited_locations', JSON.stringify(visited)); }
+    } catch {}
     const b = BUILDINGS.find(bl => bl.id === bid);
     if (b) sfxDoor(gs.current.px, gs.current.py, b.x + b.w / 2, b.y + b.h / 2);
     if (b) {
@@ -3910,15 +4417,15 @@ export default function WorldPlay() {
   }, []);
 
   const tryEnter = useCallback((bid: string) => {
-    const lock = gs.current.locks.get(bid);
-    if (lock !== undefined) {
-      if (!lock.ownerName) { enterBuilding(bid); return; }
-      const b = BUILDINGS.find(b => b.id === bid);
-      pendingBidRef.current = bid; setPendingBid(bid); setPwPrompt({ bid, label: b?.label ?? bid, mode: 'enter' });
-    } else {
-      pendingBidRef.current = bid; setPendingBid(bid); wsSend({ type: 'building_lock_query', buildingId: bid });
+    const isOwnerHome = bid === g.hamletBuildingId;
+    if (HOME_PASSWORDS.has(bid) && !isOwnerHome) {
+      setDoorLockPrompt({ bid, mode: 'enter_pw' });
+      setDoorLockPw('');
+      setDoorLockPwError('');
+      return;
     }
-  }, [enterBuilding, wsSend]);
+    enterBuilding(bid);
+  }, [enterBuilding]);
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -3952,7 +4459,7 @@ export default function WorldPlay() {
         g.peers.clear();
         (m.players as Peer[]).filter(p => p.id !== g.myId).forEach(p => g.peers.set(p.id, p));
         setOnline((m.players as Peer[]).filter(p => p.id !== g.myId));
-      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; } }
+      } else if (m.type === 'player_move') { const p = g.peers.get(m.id); if (p) { p.x = m.x; p.y = m.y; if (m.paused !== undefined) p.paused = m.paused; p.interiorBid = m.interiorBid; } }
       else if (m.type === 'player_speaking') {
         if (m.speaking) g.speakingSet.add(m.id); else g.speakingSet.delete(m.id);
         setSpeakIds(new Set(g.speakingSet));
@@ -4102,7 +4609,7 @@ export default function WorldPlay() {
     let lastSyncMoney = 0;
     const posInterval = setInterval(() => {
       const g = gs.current;
-      wsSend({ type: 'move', x: g.px, y: g.py, paused: gamePausedRef.current });
+      wsSend({ type: 'move', x: g.interior ? g.interior.px : g.px, y: g.interior ? g.interior.py : g.py, paused: gamePausedRef.current, interiorBid: g.interior?.bid ?? undefined });
       if (g.hp > lastSyncHp) wsSend({ type: 'pve_heal', hp: g.hp });
       else wsSend({ type: 'sync_stats', hp: g.hp, weaponId: activeWeaponRef.current });
       lastSyncHp = g.hp;
@@ -4409,7 +4916,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
@@ -4462,7 +4969,7 @@ export default function WorldPlay() {
         const hamletLabel = BUILDINGS.find(b => b.id === spawnBid)?.label ?? 'SHELTER';
         setNarr(isUnemployed
           ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
-          : '> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
+          : `> ${(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht ? ht.label : hamletLabel; })()} — Your place. Walk to the EXIT to step outside.`);
         return;
       }
 
@@ -4583,6 +5090,69 @@ export default function WorldPlay() {
             setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
             setGamePaused(true);
             return;
+          }
+          if (g.interior && g.interior.bid === 'public_office' && g.nearInteriorObj) {
+            const tObj = g.nearInteriorObj;
+            if (tObj.type === 'terminal' && tObj.label && PUBLIC_OFFICE_TERMINALS.has(tObj.label)) {
+              if (g.officeTerminalRenting && g.officeTerminalRenting.label === tObj.label) {
+                const elapsed = Math.floor((Date.now() - g.officeTerminalRenting.startTime) / 1000);
+                const totalCost = Math.floor(elapsed / 60) * PUBLIC_OFFICE_TERMINAL_RATE;
+                g.officeTerminalRenting = null;
+                setNarr(`> ${tObj.label} — Session ended. ${elapsed}s used. Total charged: ƒ${totalCost.toLocaleString()}. Terminal unlocked.`);
+                return;
+              }
+              if (g.officeTerminalRenting) {
+                setNarr(`> Already renting ${g.officeTerminalRenting.label}. Release it first.`);
+                return;
+              }
+              const lockKey = `po_${tObj.label}`;
+              const existingLock = g.locks.get(lockKey);
+              if (existingLock && existingLock.ownerName !== char.name) {
+                setNarr(`> ${tObj.label} — LOCKED. Currently in use by ${existingLock.ownerName}. Try another terminal.`);
+                return;
+              }
+              if (g.salary < PUBLIC_OFFICE_TERMINAL_RATE) {
+                setNarr(`> ${tObj.label} — Insufficient funds. Terminal rental costs ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min. You have ƒ${g.salary.toLocaleString()}.`);
+                return;
+              }
+              g.officeTerminalRenting = { label: tObj.label, startTime: Date.now(), lastCharge: Date.now() };
+              g.locks.set(lockKey, { ownerName: char.name, company: char.bizType ?? undefined, message: `RENTED — ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min` });
+              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary);
+              sfxEnter();
+              setNarr(`> ${tObj.label} — Rented. ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min charged to your account. Press [E] again to release. Terminal locked to: ${char.name}.`);
+              return;
+            }
+            if (tObj.type === 'vending_machine') {
+              sfxEnter(); setShowPablo(true); frozenRef.current = true;
+              setNarr('> VENDING MACHINE — Browse available items.');
+              return;
+            }
+          }
+          if (g.interior && g.nearInteriorObj) {
+            const tObj = g.nearInteriorObj;
+            if (tObj.type === 'whiteboard') {
+              sfxEnter();
+              setShowWhiteboard(true);
+              setNarr(`> ${tObj.label ?? 'WHITEBOARD'} — Interactive mode. Write and draw.`);
+              return;
+            }
+            if (tObj.type === 'elevator') {
+              sfxEnter();
+              setElevatorPrompt({ bid: g.interior.bid, floor: 0, mode: 'select' });
+              setElevatorPw('');
+              setElevatorPwError('');
+              setNarr('> ELEVATOR — Select a floor.');
+              return;
+            }
+            if (tObj.type === 'door_lock') {
+              sfxEnter();
+              const hasPw = HOME_PASSWORDS.has(g.interior.bid);
+              setDoorLockPrompt({ bid: g.interior.bid, mode: hasPw ? 'menu' : 'set_pw' });
+              setDoorLockPw('');
+              setDoorLockPwError('');
+              setNarr(hasPw ? '> DOOR LOCK — Your unit is locked. Manage your lock.' : '> DOOR LOCK — No password set. Set one to secure your unit.');
+              return;
+            }
           }
           {
             const nearNP = NEWSPAPER_WORLD_SPOTS.find(np => Math.hypot(g.px - np.x, g.py - np.y) < 40);
@@ -4739,6 +5309,7 @@ export default function WorldPlay() {
         }).filter(Boolean) as Threat[];
         if (!hit) {
           for (const [, peer] of g.peers) {
+            if (peer.interiorBid) continue;
             const pd = Math.hypot(g.px - peer.x, g.py - peer.y);
             if (pd < meleeRange) {
               hit = true;
@@ -4761,7 +5332,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); frozenRef.current = false; sfxUIClick();
+        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
         setShowNewspaper(null); setShowInventory(false);
         doSaveRef.current(buildSaveData());
       }
@@ -5113,6 +5684,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }).filter(Boolean) as Threat[];
         if (!hitAny) {
           for (const [, peer] of g.peers) {
+            if (peer.interiorBid) continue;
             const pd = Math.hypot(p.x - peer.x, p.y - peer.y);
             if (pd < (p.type === 'laser' ? 20 : 14)) {
               hitAny = true;
@@ -5273,25 +5845,53 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (inExitZone && g.interiorFadeDir === 0) {
           g.near = '__interior_exit';
           setNearArcadeMachine(null);
+          g.nearInteriorObj = null;
         } else {
           g.near = null;
           let foundArcade: string | null = null;
           let foundWC = false;
+          let closestObj: InteriorObject | null = null;
+          let closestDist = 30;
           for (const obj of iDef.objects) {
             if (obj.type === 'arcade_machine' && obj.gameId) {
               const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
               if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
                 foundArcade = obj.gameId;
-                break;
               }
             }
             if (obj.type === 'water_cooler') {
               const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
               if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) foundWC = true;
             }
+            if (obj.type !== 'plant' && obj.type !== 'window') {
+              const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+              const d = Math.hypot(itr.px - ocx, itr.py - ocy);
+              if (d < closestDist) { closestDist = d; closestObj = obj; }
+            }
           }
           setNearArcadeMachine(foundArcade);
           setNearWaterCooler(foundWC);
+          g.nearInteriorObj = closestObj;
+        }
+
+        if (iDef.workers) {
+          for (const w of iDef.workers) {
+            if (!w.hostile) continue;
+            const wd = Math.hypot(itr.px - w.x, itr.py - w.y);
+            if (wd < 25 && g.frame % 120 === 0) {
+              const warnings = [
+                `"Get out of my place before I call someone."`,
+                `"You don't belong here. Leave. Now."`,
+                `"I'm giving you five seconds."`,
+                `"Touch anything and you're dead."`,
+              ];
+              setNarr(`> ${w.name} — ${warnings[Math.floor(g.frame / 120) % warnings.length]}`);
+            }
+            if (wd < 15 && g.frame % 60 === 0) {
+              g.hp = Math.max(0, g.hp - 5);
+              setNarr(`> ${w.name} shoves you! -5 HP. Get out!`);
+            }
+          }
         }
       }
 
@@ -6124,6 +6724,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
             ctx.fillStyle = 'rgb(180,150,110)';
             ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+          } else if (obj.type === 'elevator') {
+            ctx.fillStyle = 'rgb(75,80,95)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(60,65,80)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.fillStyle = 'rgb(90,95,110)';
+            ctx.fillRect(osx + obj.w / 2 - 1, osy + 4, 2, obj.h - 8);
+            const doorPulse = Math.sin(g.frame * 0.03) * 0.15 + 0.85;
+            ctx.fillStyle = `rgba(0,200,255,${doorPulse * 0.5})`;
+            ctx.fillRect(osx + 4, osy + 4, 3, 3);
+            ctx.fillStyle = `rgba(255,180,0,${doorPulse * 0.4})`;
+            ctx.fillRect(osx + 4, osy + 10, 3, 3);
+            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(0,200,255,.7)';
+            ctx.fillText('▲▼', osx + obj.w / 2, osy + obj.h - 3);
+          } else if (obj.type === 'conference_table') {
+            ctx.fillStyle = 'rgb(55,50,65)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(65,60,75)';
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+            ctx.strokeStyle = 'rgba(0,200,255,.15)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+            const chairs = Math.floor(obj.w / 20);
+            for (let ci = 0; ci < chairs; ci++) {
+              const cx2 = osx + 10 + ci * (obj.w - 20) / Math.max(1, chairs - 1);
+              ctx.fillStyle = 'rgb(50,55,60)';
+              ctx.fillRect(cx2 - 3, osy - 4, 6, 4);
+              ctx.fillRect(cx2 - 3, osy + obj.h, 6, 4);
+            }
           } else {
             ctx.fillStyle = obj.color ?? 'rgb(80,70,55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -6137,6 +6767,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.font = '6px "Share Tech Mono"';
             ctx.textAlign = 'center';
             ctx.fillText(obj.label, osx + obj.w / 2, osy + obj.h / 2 + 3);
+          }
+
+          if (itr.bid === 'public_office' && obj.type === 'terminal' && obj.label && PUBLIC_OFFICE_TERMINALS.has(obj.label)) {
+            const lockKey = `po_${obj.label}`;
+            const lock = g.locks.get(lockKey);
+            if (lock) {
+              const isOwn = g.officeTerminalRenting?.label === obj.label;
+              ctx.strokeStyle = isOwn ? 'rgba(0,255,65,.8)' : 'rgba(255,60,40,.8)';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(osx - 1, osy - 1, obj.w + 2, obj.h + 2);
+              ctx.fillStyle = isOwn ? 'rgba(0,255,65,.7)' : 'rgba(255,60,40,.7)';
+              ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText(isOwn ? '● YOUR SESSION' : `● ${lock.ownerName}`, osx + obj.w / 2, osy - 3);
+            } else {
+              ctx.fillStyle = 'rgba(0,200,255,.5)';
+              ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('ƒ50/min', osx + obj.w / 2, osy - 3);
+            }
+          }
+        }
+
+        if (g.nearInteriorObj && g.near !== '__interior_exit') {
+          const nObj = g.nearInteriorObj;
+          const npx = nObj.x + nObj.w / 2, npy = nObj.y - 10;
+          const isTerminal = nObj.type === 'terminal' && nObj.label && PUBLIC_OFFICE_TERMINALS.has(nObj.label) && itr.bid === 'public_office';
+          const isVending = nObj.type === 'vending_machine';
+          const isWhiteboard = nObj.type === 'whiteboard';
+          const isElevator = nObj.type === 'elevator';
+          const isDoorLock = nObj.type === 'door_lock';
+          if (isTerminal || isVending || isWhiteboard || isElevator || isDoorLock) {
+            ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.4)';
+            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            const prompt = isTerminal ? (g.officeTerminalRenting?.label === nObj.label ? '[E] RELEASE' : '[E] RENT') : isWhiteboard ? '[E] WRITE' : isElevator ? '[E] FLOORS' : isDoorLock ? (HOME_PASSWORDS.has(itr.bid) ? '[E] LOCK 🔒' : '[E] SET LOCK') : '[E] USE';
+            ctx.fillText(prompt, npx, npy);
           }
         }
 
@@ -6173,6 +6837,50 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.3)';
           ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E] EXIT', exX + iDef.exitW / 2, exY - 6);
+        }
+
+        if (iDef.workers) {
+          for (const w of iDef.workers) {
+            const wx = w.x, wy = w.y;
+            const bobY = Math.sin(g.frame * 0.03 + wx) * 0.5;
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            ctx.beginPath(); ctx.ellipse(wx, wy + 5, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+            if (w.hostile) {
+              ctx.fillStyle = 'rgba(120,40,40,.8)'; ctx.fillRect(wx - 3, wy + 1, 3, 5); ctx.fillRect(wx, wy + 1, 3, 5);
+              ctx.fillStyle = 'rgba(140,50,50,.8)'; ctx.fillRect(wx - 5, wy - 6 + bobY, 10, 7);
+              ctx.fillStyle = 'rgba(200,140,100,.8)'; ctx.beginPath(); ctx.arc(wx, wy - 10 + bobY, 4, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(255,60,60,.7)';
+            } else {
+              ctx.fillStyle = 'rgba(40,60,80,.8)'; ctx.fillRect(wx - 3, wy + 1, 3, 5); ctx.fillRect(wx, wy + 1, 3, 5);
+              ctx.fillStyle = 'rgba(50,70,90,.8)'; ctx.fillRect(wx - 5, wy - 6 + bobY, 10, 7);
+              ctx.fillStyle = 'rgba(200,170,130,.8)'; ctx.beginPath(); ctx.arc(wx, wy - 10 + bobY, 4, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(0,200,255,.6)';
+            }
+            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(w.name, wx, wy - 16 + bobY);
+            ctx.fillStyle = 'rgba(255,255,255,.2)';
+            ctx.font = '4px "Share Tech Mono"';
+            ctx.fillText(w.role, wx, wy - 20 + bobY);
+            const nearW = Math.hypot(itr.px - wx, itr.py - wy) < 30;
+            if (nearW && w.hostile) {
+              ctx.fillStyle = g.blink ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.3)';
+              ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('⚠ HOSTILE', wx, wy + 14);
+            }
+          }
+        }
+
+        for (const [, peer] of g.peers) {
+          if (peer.interiorBid !== itr.bid) continue;
+          const opx = peer.x, opy = peer.y;
+          if (opx < -10 || opx > iDef.width + 10 || opy < -10 || opy > iDef.height + 10) continue;
+          ctx.fillStyle = 'rgba(0,0,0,0.1)';
+          ctx.beginPath(); ctx.ellipse(opx, opy + 4, 4, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(80,80,120,.7)'; ctx.fillRect(opx - 3, opy + 1, 3, 4); ctx.fillRect(opx, opy + 1, 3, 4);
+          ctx.fillStyle = 'rgba(100,100,140,.7)'; ctx.fillRect(opx - 4, opy - 5, 8, 6);
+          ctx.fillStyle = 'rgba(200,160,120,.7)'; ctx.beginPath(); ctx.arc(opx, opy - 8, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(0,200,255,.6)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(peer.name, opx, opy - 14);
         }
 
         const ppx = itr.px, ppy = itr.py;
@@ -6427,6 +7135,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.gangZone = newGang; setGangZone(newGang);
         if (newGang !== lastGangZ) {
           lastGangZ = newGang;
+          if (newGang) {
+            const factionId = newGang.replace('_frag', '');
+            try {
+              const raw = localStorage.getItem('sm_visited_factions');
+              const visited: string[] = raw ? JSON.parse(raw) : [];
+              if (!visited.includes(factionId)) { visited.push(factionId); localStorage.setItem('sm_visited_factions', JSON.stringify(visited)); }
+            } catch {}
+          }
           const pc = char.class.toLowerCase();
           const allyGangs = GANG_FACTION_ALLIES[pc] ?? [];
           const enemyGangs = GANG_FACTION_ENEMIES[pc] ?? [];
@@ -6450,9 +7166,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const inWaste = !inCityBounds(g.px, g.py);
         const cs2 = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
         const wasteMultiplier = (cs2.wasteBonus && inWaste) ? 0.6 : 1.0;
-        const hDrain = (inWaste ? 2.5 : 1.5) * wasteMultiplier;
-        let tDrain = (inWaste ? 3.0 : 2.0) * wasteMultiplier;
-        let eDrain = char.class.toLowerCase() === 'replicant' ? 0 : ((inWaste ? 1.5 : 1.0) * wasteMultiplier);
+        const hDrain = (inWaste ? 1.5 : 0.9) * wasteMultiplier;
+        let tDrain = (inWaste ? 1.8 : 1.2) * wasteMultiplier;
+        let eDrain = char.class.toLowerCase() === 'replicant' ? 0 : ((inWaste ? 0.9 : 0.6) * wasteMultiplier);
 
         const temp = getTemperatureLevel(g.calendar.season, g.calendar.weather, g.calendar.hour);
         g.temperature = temp;
@@ -6514,6 +7230,72 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
+        // ── ECONOMY: Rent check (per-day or per-week depending on tier) ────
+        {
+          const tier = HOUSING_TIERS.find(t => t.id === g.housingTier);
+          if (tier && tier.rent > 0) {
+            const cycleDays = RENT_PERIOD_DAYS(tier);
+            const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
+            const daysSinceRemind = Math.floor((Date.now() - g.rentReminded) / 86400000);
+            if (daysSinceRent >= cycleDays + RENT_GRACE_DAYS) {
+              if (g.salary >= tier.rent) {
+                g.salary -= tier.rent; setSalary(g.salary);
+                g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
+                g.floaters.push({ x: g.px, y: g.py - 40, text: `-ƒ${tier.rent.toLocaleString()} RENT`, color: '#ff4444', life: 90, maxLife: 90 });
+                const periodLabel = tier.rentPeriod === 'week' ? `${cycleDays} days` : 'tomorrow';
+                setNarr(`> RENT AUTO-DEDUCTED — ƒ${tier.rent.toLocaleString()} paid for ${tier.label}. Next payment ${periodLabel}.`);
+              } else {
+                g.housingTier = 'shelter'; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
+                const spawn = getHamletSpawn(char, 'shelter');
+                g.hamletBuildingId = spawn.buildingId;
+                setNarr(`> EVICTION NOTICE — You couldn't pay ƒ${tier.rent.toLocaleString()} rent. Relocated to CITY SHELTER. Visit REAL ESTATE OFFICE to upgrade.`);
+              }
+            } else if (daysSinceRent >= cycleDays - 1 && daysSinceRemind >= 1) {
+              g.rentReminded = Date.now();
+              const daysLeft = Math.max(0, cycleDays + RENT_GRACE_DAYS - daysSinceRent);
+              setNarr(`> RENT REMINDER — ƒ${tier.rent.toLocaleString()} due at ${tier.label}. ${daysLeft} day${daysLeft !== 1 ? 's' : ''} until auto-deduction or eviction.`);
+            }
+          }
+        }
+
+        // ── ECONOMY: Stock dividends (every 60 ticks) ───────────────────────
+        if (g.worldTime % 60 === 0) {
+          const totalShares = Object.values(g.stocks).reduce((a, b) => a + b, 0);
+          if (totalShares > 0) {
+            let divTotal = 0;
+            for (const [ticker, qty] of Object.entries(g.stocks)) {
+              if (qty <= 0) continue;
+              const stockDef = PRE_LISTED_STOCKS.find(s => s.ticker === ticker);
+              if (!stockDef) continue;
+              const price = getStockPrice(stockDef, g.worldTime);
+              const div = Math.floor(price * 0.003 * qty);
+              divTotal += div;
+            }
+            if (divTotal > 0) {
+              g.salary += divTotal; setSalary(g.salary);
+              g.floaters.push({ x: g.px - 20, y: g.py - 55, text: `+ƒ${divTotal.toLocaleString()} DIVIDENDS`, color: '#44aaff', life: 80, maxLife: 80 });
+              sfxCoin();
+            }
+          }
+        }
+
+        // ── ECONOMY: Public Office terminal rental (ƒ50/min) ─────────────
+        if (g.officeTerminalRenting) {
+          const now2 = Date.now();
+          if (now2 - g.officeTerminalRenting.lastCharge >= 60000) {
+            g.officeTerminalRenting.lastCharge = now2;
+            if (g.salary >= PUBLIC_OFFICE_TERMINAL_RATE) {
+              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary);
+              g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${PUBLIC_OFFICE_TERMINAL_RATE} TERMINAL RENT`, color: '#ff8844', life: 70, maxLife: 70 });
+            } else {
+              const lockKey = `po_${g.officeTerminalRenting.label}`;
+              g.locks.delete(lockKey);
+              setNarr(`> ${g.officeTerminalRenting.label} — Funds depleted. Session terminated. Terminal released.`);
+              g.officeTerminalRenting = null;
+            }
+          }
+        }
+
         // ── ECONOMY: Savings interest (every 30 ticks = ~3 min) ───────────
         g.interestTick++;
         if (g.interestTick >= 30 && g.savings > 0) {
@@ -6562,6 +7344,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +20. Someone was looking out for you.'; },
             () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
             () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
+            () => { g.thirst = Math.min(100, g.thirst + 50); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> SCAVENGE — Sealed water bottle found in a collapsed storefront. Label faded. Contents clear. Thirst +50.'; },
+            () => { g.energy = Math.min(100, g.energy + 60); g.thirst = Math.max(0, g.thirst - 10); setEnergy(Math.floor(g.energy)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> SCAVENGE — JOLT energy drink wedged under rubble. Expired by two years. Still carbonated. Energy +60. Thirst −10.'; },
+            () => { g.powerLevel = Math.min(100, g.powerLevel + 35); setPowerPct(g.powerLevel); sfxHeal(); return '> SCAVENGE — Intact power cell recovered from an abandoned relay station. Grid charge +35%.'; },
+            () => { g.thirst = Math.min(100, g.thirst + 30); g.energy = Math.min(100, g.energy + 15); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy)); sfxHeal(); if (Math.random() < 0.1) { g.hp = Math.max(0, g.hp - 5); setHp(Math.floor(g.hp)); } return '> SCAVENGE — Warm beer in a shattered cooler. Label reads: PABLO BREW. Thirst +30. Energy +15. Tastes like regret.'; },
+            () => { g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 20); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> SCAVENGE — Sealed ration pack wedged in a collapsed vent. Expiry: three years ago. Still edible. Hunger +40. Thirst +20.'; },
           ];
           const pool = inWaste2 ? wasteEvents : cityEvents;
           const msg = pool[Math.floor(Math.random() * pool.length)]();
@@ -6894,16 +7681,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return true;
       });
 
-      // ── LIVING WORLD: Ambient city events ────────────────────────────────
-      g.ambTick++;
-      if (g.ambTick >= 540) {
-        g.ambTick = 0;
-        if (Math.random() < 0.35) {
-          const line = AMBIENCE_LINES[Math.floor(Math.random() * AMBIENCE_LINES.length)];
-          setCityEvent(line);
-          cityEventTimer.current = 220;
-        }
-      }
+      // ── LIVING WORLD: Ambient city events (removed — news spreads via NPC conversations) ──
       if (cityEventTimer.current > 0) { cityEventTimer.current--; if (cityEventTimer.current === 0) setCityEvent(null); }
 
       // ── DRAW ─────────────────────────────────────────────────────────────
@@ -7158,6 +7936,81 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       };
       drawWastelandTerrain();
 
+      const drawCityTerrain = () => {
+        const seed = (x: number, y: number) => Math.sin(x * 0.317 + y * 0.519) * 0.5 + 0.5;
+        const br = dayBright;
+        const viewL = g.cam.x - 40, viewR = g.cam.x + cw + 40;
+        const viewT = g.cam.y - 40, viewB = g.cam.y + ch + 40;
+
+        const CITY_TREE_SPACING = 180;
+        for (let wx = CITY_LEFT + 60; wx < CITY_RIGHT - 60; wx += CITY_TREE_SPACING) {
+          for (let wy = CITY_TOP + 60; wy < CITY_BOTTOM - 60; wy += CITY_TREE_SPACING) {
+            if (wx < viewL || wx > viewR || wy < viewT || wy > viewB) continue;
+            const s = seed(wx * 2.3, wy * 1.7);
+            if (s < 0.55) continue;
+            let onBuilding = false;
+            for (const b of BUILDINGS) {
+              if (wx > b.x - 20 && wx < b.x + b.w + 20 && wy > b.y - 20 && wy < b.y + b.h + 20) { onBuilding = true; break; }
+            }
+            if (onBuilding) continue;
+            const tx = wx + (s - 0.5) * 40 + ox;
+            const ty = wy + (s - 0.5) * 30 + oy;
+            ctx.fillStyle = `rgba(0,0,0,0.12)`;
+            ctx.beginPath(); ctx.ellipse(tx, ty + 2, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(70 * br)},${Math.floor(50 * br)},${Math.floor(25 * br)})`;
+            ctx.fillRect(tx - 1, ty - 12, 3, 14);
+            const canopyShades = [
+              [35, 100 + Math.floor(s * 30), 25],
+              [45, 110 + Math.floor(s * 20), 30],
+            ];
+            for (let ly = 0; ly < 10; ly += 3) {
+              const rw = 6 * (1 - Math.abs(ly - 4) / 6);
+              if (rw < 1) continue;
+              for (let lx = -rw; lx < rw; lx += 3) {
+                const ci = Math.floor(seed(tx + lx, ty + ly) * 2);
+                const cs = canopyShades[ci];
+                ctx.fillStyle = `rgb(${Math.floor(cs[0] * br)},${Math.floor(cs[1] * br)},${Math.floor(cs[2] * br)})`;
+                ctx.fillRect(tx + lx - 1, ty - 14 + ly, 3, 3);
+              }
+            }
+          }
+        }
+
+        const PARKING_LOTS = [
+          { x: CITY_LEFT + 50, y: CITY_BOTTOM - 200, w: 140, h: 60 },
+          { x: CITY_RIGHT - 250, y: CITY_TOP + 40, w: 120, h: 55 },
+          { x: CITY_LEFT + 400, y: CITY_TOP + 50, w: 130, h: 50 },
+        ];
+        for (const lot of PARKING_LOTS) {
+          const lx = lot.x + ox, ly = lot.y + oy;
+          if (lx + lot.w < -20 || lx > cw + 20 || ly + lot.h < -20 || ly > ch + 20) continue;
+          ctx.fillStyle = `rgb(${Math.floor(50 * br)},${Math.floor(48 * br)},${Math.floor(45 * br)})`;
+          ctx.fillRect(lx, ly, lot.w, lot.h);
+          ctx.strokeStyle = `rgb(${Math.floor(70 * br)},${Math.floor(68 * br)},${Math.floor(60 * br)})`;
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(lx, ly, lot.w, lot.h);
+          ctx.strokeStyle = `rgba(255,255,255,${0.12 * br})`;
+          ctx.lineWidth = 0.8;
+          const slots = Math.floor(lot.w / 25);
+          for (let si = 1; si < slots; si++) {
+            const sx = lx + si * 25;
+            ctx.beginPath(); ctx.moveTo(sx, ly + 4); ctx.lineTo(sx, ly + lot.h - 4); ctx.stroke();
+          }
+          const parkedCount = Math.floor(seed(lot.x, lot.y) * (slots - 1)) + 1;
+          for (let pi = 0; pi < parkedCount; pi++) {
+            const slotIdx = Math.floor(seed(lot.x + pi * 100, lot.y) * slots);
+            const carX = lx + slotIdx * 25 + 4;
+            const carY = ly + 8;
+            const carColors = ['rgb(120,30,30)', 'rgb(30,30,120)', 'rgb(100,100,100)', 'rgb(30,80,30)', 'rgb(80,80,40)'];
+            ctx.fillStyle = carColors[Math.floor(seed(lot.x + pi, lot.y + pi) * carColors.length)];
+            ctx.fillRect(carX, carY, 17, lot.h - 16);
+            ctx.fillStyle = `rgba(150,200,255,${0.3 * br})`;
+            ctx.fillRect(carX + 2, carY + 2, 13, 5);
+          }
+        }
+      };
+      drawCityTerrain();
+
       // ── Sewer system (manhole covers on city streets) ────────────────────
       for (const mh of MANHOLES) {
         const mx = mh.x + ox, my = mh.y + oy;
@@ -7225,28 +8078,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
         }
       };
-      // Horizontal city avenues — wide urban corridors
-      drawRoad(CITY_LEFT,5400,CITY_RIGHT,5400,44,.12);
-      drawRoad(CITY_LEFT,5850,CITY_RIGHT,5850,40,.11);
-      drawRoad(CITY_LEFT,6300,CITY_RIGHT,6300,40,.11);
-      drawRoad(CITY_LEFT,6750,CITY_RIGHT,6750,38,.10);
-      drawRoad(CITY_LEFT,7200,CITY_RIGHT,7200,38,.10);
-      // Vertical city streets — wide urban corridors
-      drawRoad(5700,CITY_TOP,5700,CITY_BOTTOM+40,36,.11);
-      drawRoad(6200,CITY_TOP,6200,CITY_BOTTOM+40,34,.10);
-      drawRoad(6700,CITY_TOP,6700,CITY_BOTTOM+40,36,.11);
-      drawRoad(7200,CITY_TOP,7200,CITY_BOTTOM+40,34,.10);
-      drawRoad(7700,CITY_TOP,7700,CITY_BOTTOM+40,34,.09);
-      drawRoad(8200,CITY_TOP,8200,CITY_BOTTOM+40,34,.09);
-      drawRoad(8700,CITY_TOP,8700,CITY_BOTTOM+40,32,.08);
-      // Alley roads — narrower cross-connections between main roads
-      for (const ay of CITY_ALLEYS_H) drawRoad(CITY_LEFT,ay,CITY_RIGHT,ay,16,.06);
-      for (const ax of CITY_ALLEYS_V) drawRoad(ax,CITY_TOP,ax,CITY_BOTTOM+40,14,.05);
+      // Main crossroads — one E-W avenue + one N-S boulevard
+      drawRoad(CITY_LEFT - 80,6300,CITY_RIGHT + 80,6300,36,.14);
+      drawRoad(6800,CITY_TOP - 80,6800,CITY_BOTTOM + 80,36,.14);
+      // Secondary streets — one per quadrant edge
+      drawRoad(CITY_LEFT,6000,CITY_RIGHT,6000,22,.08);
+      drawRoad(CITY_LEFT,6550,CITY_RIGHT,6550,22,.08);
+      drawRoad(6400,CITY_TOP,6400,CITY_BOTTOM,20,.07);
+      drawRoad(7100,CITY_TOP,7100,CITY_BOTTOM,20,.07);
+      // City perimeter road
+      drawRoad(CITY_LEFT,CITY_TOP,CITY_RIGHT,CITY_TOP,18,.06);
+      drawRoad(CITY_LEFT,CITY_BOTTOM,CITY_RIGHT,CITY_BOTTOM,18,.06);
+      drawRoad(CITY_LEFT,CITY_TOP,CITY_LEFT,CITY_BOTTOM,18,.06);
+      drawRoad(CITY_RIGHT,CITY_TOP,CITY_RIGHT,CITY_BOTTOM,18,.06);
       // North wasteland trails (dashed, dimmer)
       drawRoad(0,1800,W,1800,10,.04,true);
       drawRoad(0,3200,W,3200,8,.03,true);
       drawRoad(2000,BORDER,2000,CITY_TOP,8,.04,true);
       drawRoad(5000,BORDER,5000,CITY_TOP,8,.04,true);
+      drawRoad(6800,BORDER,6800,CITY_TOP,10,.05,true);
       drawRoad(8000,BORDER,8000,CITY_TOP,8,.04,true);
       drawRoad(11000,BORDER,11000,CITY_TOP,8,.04,true);
       // South wasteland trails (dashed, dimmer)
@@ -7254,6 +8104,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       drawRoad(0,10500,W,10500,8,.03,true);
       drawRoad(2000,CITY_BOTTOM,2000,H-BORDER,8,.04,true);
       drawRoad(5000,CITY_BOTTOM,5000,H-BORDER,8,.04,true);
+      drawRoad(6800,CITY_BOTTOM,6800,H-BORDER,10,.05,true);
       drawRoad(8000,CITY_BOTTOM,8000,H-BORDER,8,.04,true);
       drawRoad(11000,CITY_BOTTOM,11000,H-BORDER,8,.04,true);
 
@@ -7261,17 +8112,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 5180, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 5580, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 5960, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6350, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6600, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6780, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: false, coord: 5560, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 6060, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 6680, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7160, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7850, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: true,  coord: 6300, from: CITY_LEFT - 80, to: CITY_RIGHT + 80 },
+        { horiz: true,  coord: 6000, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6550, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: false, coord: 6800, from: CITY_TOP - 80, to: CITY_BOTTOM + 80 },
+        { horiz: false, coord: 6400, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 7100, from: CITY_TOP, to: CITY_BOTTOM },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
@@ -7790,8 +8636,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Online players — faction-specific sprites
+      // Online players — faction-specific sprites (skip peers in interiors)
       for (const [, op] of g.peers) {
+        if (op.interiorBid) continue;
         const px2 = op.x + ox, py2 = op.y + oy;
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
@@ -8706,6 +9553,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.shadowBlur = 0;
 
           for (const [, op] of g.peers) {
+            if (op.interiorBid) continue;
             mctx.fillStyle = '#44aaff'; mctx.shadowColor = '#44aaff'; mctx.shadowBlur = 3;
             mctx.beginPath(); mctx.arc(toMX(op.x), toMY(op.y), 3, 0, Math.PI * 2); mctx.fill();
           }
@@ -9093,7 +9941,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem .7rem', overflow: 'hidden' }}>
           {nearB && (
             <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.55)', letterSpacing: '.1em', marginBottom: '.15rem' }}>
-              NEARBY: {nearB.label}{lockMap.has(nearB.id) ? ' 🔒' : ''}
+              NEARBY: {nearB.label}
             </div>
           )}
           <div style={{ fontSize: '.9rem', color: 'rgba(0,255,65,.85)', letterSpacing: '.03em', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{narration}</div>
@@ -9331,9 +10179,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['chat','stats','call','crm','city'] as const).map(t => (
+                {(['chat','stats','call','crm','city','share'] as const).map(t => (
                   <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : '🏙 INFO'}
+                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : t === 'share' ? '📺 SHARE' : '🏙 INFO'}
                   </button>
                 ))}
               </div>
@@ -9551,6 +10399,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 )}
 
+                {pabloTab === 'share' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>SCREEN SHARE</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7, marginBottom: '.3rem' }}>
+                      Share your screen or a URL with nearby operatives. Content will be visible on the nearest display.
+                    </div>
+                    <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
+                    {screenShareUrl && /^https?:\/\//.test(screenShareUrl) && (
+                      <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,20,0,.5)', padding: '.4rem' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
+                        <div style={{ width: '100%', height: 180, background: '#0a0a0a', border: '1px solid rgba(0,255,65,.1)', overflow: 'hidden' }}>
+                          <iframe src={screenShareUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Screen Share" sandbox="allow-scripts allow-same-origin" />
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '.4rem' }}>
+                      <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.1em', cursor: 'pointer' }}>BROADCAST</button>
+                      <button onClick={() => { setShowScreenShare(true); setShowPablo(false); }} style={{ padding: '.45rem .6rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.8)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>FULLSCREEN</button>
+                    </div>
+                    <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.15)', marginTop: '.15rem', lineHeight: 1.6 }}>
+                      Screen share is available on all terminals — personal device and public kiosks. All shared content is logged by PABLO CORP.
+                    </div>
+                  </div>
+                )}
+
                 {/* PABLO AI CHAT TAB */}
                 {pabloTab === 'chat' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
@@ -9696,6 +10569,273 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onOk={pw => { if (pwPrompt.mode === 'set') wsSend({ type: 'building_lock_set', buildingId: pwPrompt.bid, password: pw }); else wsSend({ type: 'building_lock_check', buildingId: pwPrompt.bid, password: pw }); }} />
       )}
 
+      {showWhiteboard && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 420, maxWidth: '92vw', maxHeight: '80vh', border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,10,0,.98)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.15em' }}>WHITEBOARD</div>
+              <button onClick={() => setShowWhiteboard(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '.6rem', minHeight: 200, background: 'rgba(240,240,245,.95)' }}>
+              {whiteboardLines.length === 0 && <div style={{ color: 'rgba(100,100,100,.5)', fontSize: '.7rem', fontStyle: 'italic', textAlign: 'center', paddingTop: '2rem' }}>Empty whiteboard. Start writing below.</div>}
+              {whiteboardLines.map((line, i) => (
+                <div key={i} style={{ fontSize: '.75rem', color: '#1a1a2e', fontFamily: "'Share Tech Mono',monospace", lineHeight: 1.6, padding: '2px 4px', borderBottom: '1px solid rgba(200,60,60,.15)' }}>{line}</div>
+              ))}
+            </div>
+            <div style={{ padding: '.5rem', borderTop: '1px solid rgba(0,255,65,.2)', display: 'flex', gap: '.4rem' }}>
+              <input value={whiteboardInput} onChange={e => setWhiteboardInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} placeholder="Write on the whiteboard..." autoFocus style={{ flex: 1, padding: '.4rem .5rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none' }} />
+              <button onClick={() => { if (whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} style={{ padding: '.4rem .7rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>POST</button>
+              <button onClick={() => setWhiteboardLines([])} style={{ padding: '.4rem .5rem', background: 'transparent', border: '1px solid rgba(255,60,60,.3)', color: 'rgba(255,60,60,.6)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CLEAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScreenShare && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 440, maxWidth: '92vw', border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.15em' }}>SCREEN SHARE</div>
+              <button onClick={() => setShowScreenShare(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
+            </div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby operatives</div>
+            <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
+            {screenShareUrl && (
+              <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,20,0,.5)', padding: '.6rem', marginBottom: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
+                <div style={{ width: '100%', height: 200, background: '#0a0a0a', border: '1px solid rgba(0,255,65,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {/^https?:\/\//.test(screenShareUrl) ? (
+                    <iframe src={screenShareUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Screen Share" sandbox="allow-scripts allow-same-origin" />
+                  ) : (
+                    <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.7rem' }}>Enter a valid URL to preview</div>
+                  )}
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); setShowScreenShare(false); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>SHARE</button>
+              <button onClick={() => setShowScreenShare(false)} style={{ padding: '.45rem .7rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {elevatorPrompt && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,255,.5)', background: 'rgba(0,8,12,.98)', padding: '1.4rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,255,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>▲▼ ELEVATOR</div>
+            <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
+              {BUILDINGS.find(b => b.id === elevatorPrompt.bid)?.label ?? elevatorPrompt.bid}
+            </div>
+            {elevatorPrompt.mode === 'select' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.4)', letterSpacing: '.1em', marginBottom: '.5rem' }}>SELECT FLOOR</div>
+                <button onClick={() => {
+                  if (currentFloor === 0) { setElevatorPrompt(null); setNarr('> Lobby — You are already here.'); return; }
+                  const g = gs.current; if (!g.interior) return;
+                  const lobbyKey = BUILDING_INTERIOR_MAP[g.interior.bid] ?? '_lobby';
+                  const lobbyDef = INTERIOR_DEFS[lobbyKey] ?? INTERIOR_DEFS['_lobby'];
+                  g.interior = { bid: g.interior.bid, def: { ...lobbyDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — LOBBY` }, px: lobbyDef.exitX + lobbyDef.exitW / 2, py: lobbyDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                  setCurrentFloor(0); setElevatorPrompt(null); setNarr('> Elevator — Returning to lobby.');
+                }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: currentFloor === 0 ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${currentFloor === 0 ? '.25' : '.15'})`, color: `rgba(0,200,255,${currentFloor === 0 ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>FL 01 — LOBBY {currentFloor === 0 ? '(current)' : ''}</button>
+                {[2, 3, 4, 5].map(fl => {
+                  const hasPw = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.has(fl);
+                  const isCurrent = currentFloor === fl;
+                  return (
+                    <div key={fl}>
+                      <button onClick={() => {
+                        if (isCurrent) { setElevatorPrompt(null); setNarr(`> Floor ${fl} — You are already here.`); return; }
+                        if (hasPw) {
+                          setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'enter_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                        } else {
+                          const g = gs.current;
+                          if (g.interior) {
+                            const offDef = INTERIOR_DEFS['_office_floor'];
+                            g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${fl} (VACANT)` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                          }
+                          setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl} — Vacant office. Use elevator to claim with a password.`);
+                        }
+                      }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${isCurrent ? '.25' : '.15'})`, color: `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
+                        FL {String(fl).padStart(2, '0')} — {isCurrent ? '(current)' : hasPw ? 'RENTED 🔒' : 'VACANT'}
+                      </button>
+                      {!isCurrent && !hasPw && (
+                        <button onClick={() => {
+                          setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                        }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
+                          CLAIM FL {String(fl).padStart(2, '0')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <button onClick={() => setElevatorPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,255,.12)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CANCEL</button>
+              </div>
+            )}
+            {elevatorPrompt.mode === 'set_pw' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>CLAIM FLOOR {elevatorPrompt.floor} — SET PASSWORD</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>This will lock the floor. Only you and those with the password can enter. Min 6 characters, 1 number, 1 symbol.</div>
+                <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
+                  if (e.key === 'Enter' && elevatorPw.trim()) {
+                    const err = VALID_PASSWORD(elevatorPw.trim());
+                    if (err) { setElevatorPwError(err); return; }
+                    if (!FLOOR_PASSWORDS.has(elevatorPrompt.bid)) FLOOR_PASSWORDS.set(elevatorPrompt.bid, new Map());
+                    FLOOR_PASSWORDS.get(elevatorPrompt.bid)!.set(elevatorPrompt.floor, elevatorPw.trim());
+                    setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
+                    const g = gs.current;
+                    if (g.interior) {
+                      const floorDef = getInterior('_office_floor_standalone');
+                      if (floorDef) { g.interior = { bid: g.interior.bid, def: { ...floorDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: floorDef.exitX + floorDef.exitW / 2, py: floorDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY }; }
+                      else { const offDef = INTERIOR_DEFS['_office_floor']; g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY }; }
+                    }
+                    setCurrentFloor(elevatorPrompt.floor);
+                    setElevatorPrompt(null);
+                  }
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button onClick={() => {
+                    const err = VALID_PASSWORD(elevatorPw.trim());
+                    if (err) { setElevatorPwError(err); return; }
+                    if (!FLOOR_PASSWORDS.has(elevatorPrompt.bid)) FLOOR_PASSWORDS.set(elevatorPrompt.bid, new Map());
+                    FLOOR_PASSWORDS.get(elevatorPrompt.bid)!.set(elevatorPrompt.floor, elevatorPw.trim());
+                    setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
+                    const g = gs.current;
+                    if (g.interior) {
+                      const offDef = INTERIOR_DEFS['_office_floor'];
+                      g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                    }
+                    setCurrentFloor(elevatorPrompt.floor);
+                    setElevatorPrompt(null);
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>SET & ENTER</button>
+                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                </div>
+              </div>
+            )}
+            {elevatorPrompt.mode === 'enter_pw' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>ENTER PASSWORD — FLOOR {elevatorPrompt.floor} 🔒</div>
+                <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
+                  if (e.key === 'Enter' && elevatorPw.trim()) {
+                    const stored = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor);
+                    if (stored === elevatorPw.trim()) {
+                      setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
+                      const g = gs.current;
+                      if (g.interior) {
+                        const offDef = INTERIOR_DEFS['_office_floor'];
+                        g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                      }
+                      setCurrentFloor(elevatorPrompt.floor);
+                      setElevatorPrompt(null);
+                    } else {
+                      setElevatorPwError('ACCESS DENIED — Wrong password.');
+                    }
+                  }
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button onClick={() => {
+                    const stored = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor);
+                    if (stored === elevatorPw.trim()) {
+                      setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
+                      const g = gs.current;
+                      if (g.interior) {
+                        const offDef = INTERIOR_DEFS['_office_floor'];
+                        g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                      }
+                      setCurrentFloor(elevatorPrompt.floor);
+                      setElevatorPrompt(null);
+                    } else {
+                      setElevatorPwError('ACCESS DENIED — Wrong password.');
+                    }
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
+                  <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {doorLockPrompt && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,100,.5)', background: 'rgba(0,8,6,.98)', padding: '1.4rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,100,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🔒 DOOR LOCK</div>
+            <div style={{ fontSize: '.5rem', color: 'rgba(0,200,100,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
+              {BUILDINGS.find(b => b.id === doorLockPrompt.bid)?.label ?? doorLockPrompt.bid} — UNIT SECURITY
+            </div>
+            {doorLockPrompt.mode === 'menu' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,100,.5)', marginBottom: '.5rem' }}>Your unit is currently LOCKED 🔒</div>
+                <button onClick={() => { setDoorLockPrompt(prev => prev ? { ...prev, mode: 'change_pw' } : null); setDoorLockPw(''); setDoorLockPwError(''); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.25)', color: 'rgba(0,200,100,.7)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>CHANGE PASSWORD</button>
+                <button onClick={() => { HOME_PASSWORDS.delete(doorLockPrompt.bid); setDoorLockPrompt(null); setNarr('> DOOR LOCK — Password removed. Unit is now unlocked.'); }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>REMOVE LOCK</button>
+                <button onClick={() => setDoorLockPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,100,.12)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CLOSE</button>
+              </div>
+            )}
+            {(doorLockPrompt.mode === 'set_pw' || doorLockPrompt.mode === 'change_pw') && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,100,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>{doorLockPrompt.mode === 'set_pw' ? 'SET PASSWORD' : 'CHANGE PASSWORD'}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,100,.3)', marginBottom: '.5rem' }}>Secure your unit. Other players will need this password to enter. Min 6 characters, 1 number, 1 symbol.</div>
+                <input value={doorLockPw} onChange={e => setDoorLockPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
+                  if (e.key === 'Enter' && doorLockPw.trim()) {
+                    const err = VALID_PASSWORD(doorLockPw.trim());
+                    if (err) { setDoorLockPwError(err); return; }
+                    HOME_PASSWORDS.set(doorLockPrompt.bid, doorLockPw.trim());
+                    setNarr(`> DOOR LOCK — Password ${doorLockPrompt.mode === 'set_pw' ? 'set' : 'changed'}. Unit is now locked.`);
+                    setDoorLockPrompt(null);
+                  }
+                  if (e.key === 'Escape') setDoorLockPrompt(null);
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,100,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                {doorLockPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{doorLockPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button onClick={() => {
+                    const err = VALID_PASSWORD(doorLockPw.trim());
+                    if (err) { setDoorLockPwError(err); return; }
+                    HOME_PASSWORDS.set(doorLockPrompt.bid, doorLockPw.trim());
+                    setNarr(`> DOOR LOCK — Password ${doorLockPrompt.mode === 'set_pw' ? 'set' : 'changed'}. Unit is now locked.`);
+                    setDoorLockPrompt(null);
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>{doorLockPrompt.mode === 'set_pw' ? 'SET LOCK' : 'UPDATE'}</button>
+                  <button onClick={() => doorLockPrompt.mode === 'change_pw' ? setDoorLockPrompt(prev => prev ? { ...prev, mode: 'menu' } : null) : setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                </div>
+              </div>
+            )}
+            {doorLockPrompt.mode === 'enter_pw' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(255,80,60,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>THIS UNIT IS LOCKED 🔒</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,100,.3)', marginBottom: '.5rem' }}>Enter the password to gain access.</div>
+                <input value={doorLockPw} onChange={e => setDoorLockPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
+                  if (e.key === 'Enter' && doorLockPw.trim()) {
+                    const stored = HOME_PASSWORDS.get(doorLockPrompt.bid);
+                    if (stored === doorLockPw.trim()) {
+                      setNarr('> DOOR LOCK — Access granted.');
+                      setDoorLockPrompt(null);
+                      enterInterior(doorLockPrompt.bid);
+                    } else {
+                      setDoorLockPwError('ACCESS DENIED — Wrong password.');
+                    }
+                  }
+                  if (e.key === 'Escape') setDoorLockPrompt(null);
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,100,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                {doorLockPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{doorLockPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button onClick={() => {
+                    const stored = HOME_PASSWORDS.get(doorLockPrompt.bid);
+                    if (stored === doorLockPw.trim()) {
+                      setNarr('> DOOR LOCK — Access granted.');
+                      setDoorLockPrompt(null);
+                      enterInterior(doorLockPrompt.bid);
+                    } else {
+                      setDoorLockPwError('ACCESS DENIED — Wrong password.');
+                    }
+                  }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
+                  <button onClick={() => setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── FLOOR PANEL / ELEVATOR ── */}
       {floorPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 320 }}>
@@ -9783,6 +10923,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {/* ── BILLS HUD PANEL ── */}
+      {(() => {
+        const g = gs.current;
+        const wsRentCost = 500;
+        const hasWorkstation = g.ownedItems.has('workstation_furn');
+        const loanPrincipal = g.loan ? g.loan.amount : 0;
+        const loanInterest = g.loan ? g.loan.interest : 0;
+        const loanDue = loanPrincipal + loanInterest;
+        const loanOverdue = g.loan && g.frame > g.loan.dueAt;
+        const loanPenaltyRate = '5%/cycle';
+        const loanPenaltyAmt = loanOverdue ? Math.floor(loanPrincipal * 0.05) : 0;
+        const realEstateCount = g.realEstate?.length ?? 0;
+        if (!hasWorkstation && !g.loan && realEstateCount <= 0 && !g.officeTerminalRenting) return null;
+        const billCol = loanOverdue ? '#ff4444' : '#ffaa00';
+        return (
+          <div style={{ position: 'absolute', top: powerPct < 100 ? '5.2rem' : '3.5rem', left: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', border: `1px solid ${billCol}44`, background: 'rgba(0,0,0,.85)', padding: '.3rem .55rem', color: billCol, letterSpacing: '.08em', maxWidth: 220 }}>
+            <div style={{ fontSize: '.42rem', color: `${billCol}88`, letterSpacing: '.12em', marginBottom: '.15rem' }}>BILLS & OBLIGATIONS</div>
+            {hasWorkstation && <div style={{ color: 'rgba(0,255,65,.5)' }}>WORKSTATION RENT: ƒ{wsRentCost}/rest</div>}
+            {(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht && ht.rent > 0 ? <div style={{ color: 'rgba(0,255,65,.4)' }}>HOUSING RENT: ƒ{ht.rent.toLocaleString()}/{ht.rentPeriod === 'week' ? 'week' : 'night'}</div> : null; })()}
+            {loanDue > 0 && (
+              <>
+                <div style={{ color: loanOverdue ? '#ff4444' : '#ffaa00' }}>LOAN: ƒ{loanPrincipal.toLocaleString()} + ƒ{loanInterest.toLocaleString()} INT{loanOverdue ? ' [OVERDUE]' : ''}</div>
+                {loanOverdue && <div style={{ color: '#ff4444', fontSize: '.42rem' }}>PENALTY: −ƒ{loanPenaltyAmt.toLocaleString()} ({loanPenaltyRate})</div>}
+              </>
+            )}
+            {realEstateCount > 0 && <>
+              <div style={{ color: '#cc44ff', fontSize: '.42rem', letterSpacing: '.12em', marginTop: '.15rem' }}>REAL ESTATE PORTFOLIO</div>
+              {(() => { const counts: Record<string, number> = {}; for (const r of g.realEstate) counts[r] = (counts[r] ?? 0) + 1; return Object.entries(counts).map(([id, c]) => { const inc = REAL_ESTATE_INCOME[id] ?? 0; const name = VEND_CATALOG.find(v => v.id === 'realestate')?.items.find(i => i.id === id)?.name ?? id.toUpperCase(); return <div key={id} style={{ color: '#33ffaa', fontSize: '.42rem' }}>{name}{c > 1 ? ` x${c}` : ''}: +ƒ{(inc * c).toLocaleString()}/cycle</div>; }); })()}
+              <div style={{ color: '#33ffaa', fontSize: '.42rem', borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.1rem', paddingTop: '.1rem' }}>TOTAL: +ƒ{(() => { let t = 0; for (const r of g.realEstate) t += REAL_ESTATE_INCOME[r] ?? 0; if (g.ownedItems.has('neon_sign')) t = Math.floor(t * 1.1); return t.toLocaleString(); })()}/cycle{g.ownedItems.has('neon_sign') ? ' (+10% NEON)' : ''}</div>
+            </>}
+            {g.officeTerminalRenting && <div style={{ color: '#ff8844' }}>TERMINAL RENTAL: −ƒ{PUBLIC_OFFICE_TERMINAL_RATE}/min ({g.officeTerminalRenting.label})</div>}
+          </div>
+        );
+      })()}
+
       {/* ── RADIO HUD + HIDDEN PLAYER ── */}
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} />
       <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={musicMuted || allMuted} />
@@ -9868,10 +11043,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const parts = item.effect.split(' ');
               for (const p of parts) {
                 if (p.startsWith('hunger'))  { g.hunger  = Math.min(100, g.hunger  + parseInt(p.slice(6)));  setHunger(g.hunger);  }
-                if (p.startsWith('thirst'))  { g.thirst  = Math.min(100, g.thirst  + parseInt(p.slice(6)));  setThirst(g.thirst);  }
+                if (p === 'thirst-10')       { g.thirst  = Math.max(0, g.thirst - 10); setThirst(g.thirst); }
+                else if (p.startsWith('thirst'))  { g.thirst  = Math.min(100, g.thirst  + parseInt(p.slice(6)));  setThirst(g.thirst);  }
                 if (p.startsWith('energy'))  { g.energy  = Math.min(100, g.energy  + parseInt(p.slice(6)));  setEnergy(g.energy);  }
-                if (p.startsWith('hp'))      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
+                if (p.startsWith('hp') && p !== 'hprisk5')      { g.hp      = Math.min(g.maxHp, g.hp  + parseInt(p.slice(2)));  setHp(Math.floor(g.hp)); }
+                if (p === 'hprisk5' && Math.random() < 0.1)     { g.hp = Math.max(0, g.hp - 5); setHp(Math.floor(g.hp)); g.floaters.push({ x: g.px, y: g.py - 20, text: 'BAD BATCH −5 HP', color: '#ff4444', life: 60, maxLife: 60 }); }
                 if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+                if (p.startsWith('power'))   { const pv = parseInt(p.slice(5)); g.powerLevel = Math.min(100, g.powerLevel + pv); }
               }
             }
             setNarr(`> VENDING MACHINE — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
@@ -10789,7 +11967,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: accentColor, letterSpacing: '.15em', marginBottom: '1.5rem', opacity: 0.7 }}>
               {isUnemployed
                 ? `${hamletLabel} — YOUR HAMLET`
-                : 'MINX ARMS — FLOOR 4 — YOUR UNIT'}
+                : (() => { const ht = HOUSING_TIERS.find(t => t.id === gs.current.housingTier); return ht ? ht.label : 'YOUR ROOM'; })()}
             </div>
             <div style={{ width: '100%', height: '1px', background: `linear-gradient(90deg, transparent, ${spawnColor}.3), transparent)`, marginBottom: '1.2rem' }} />
             <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: `${spawnColor}.5)`, lineHeight: 2, marginBottom: '1.5rem', letterSpacing: '.04em' }}>
@@ -10861,7 +12039,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setShowIndoorStart(false);
                 setNarr(isUnemployed
                   ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
-                  : '> MINX ARMS — FLOOR 4 — UNIT 408. Your apartment. The intercom crackles. Walk to the EXIT to step outside.');
+                  : `> ${(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht ? ht.label : hamletLabel; })()} — Your place. Walk to the EXIT to step outside.`);
               }}
               style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(0,255,65,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(0,255,65,.5)'}`, color: accentColor, fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
             >
@@ -11243,10 +12421,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ─────────────────────── SUBWAY FAST TRAVEL ────────────────────────── */}
       {showSubway && (() => {
         const STATIONS = [
-          { id: 'sub_west',    label: 'METRO WEST',    sub: 'Sector 1 · Industrial District', x: 5740, y: 7130 },
-          { id: 'sub_central', label: 'METRO CENTRAL', sub: 'Sector 4 · Commercial Hub',      x: 6740, y: 7130 },
-          { id: 'sub_east',    label: 'METRO EAST',    sub: 'Sector 7 · Corporate Row',       x: 7740, y: 7130 },
-          { id: 'sub_north',   label: 'METRO NORTH',   sub: 'North Quarter · Edge District',  x: 8540, y: 5530 },
+          { id: 'sub_west',    label: 'METRO WEST',    sub: 'SW · Residential Row',       x: 6100, y: 6600 },
+          { id: 'sub_central', label: 'METRO CENTRAL', sub: 'Crossroads · City Center',   x: 6800, y: 6300 },
+          { id: 'sub_east',    label: 'METRO EAST',    sub: 'NE · Neon Strip',            x: 7500, y: 6000 },
+          { id: 'sub_north',   label: 'METRO NORTH',   sub: 'NW · Shadow District',       x: 6300, y: 5700 },
         ];
         const FARE = 500;
         const origin = STATIONS.find(s => s.id === subwayOrigin);
@@ -11323,10 +12501,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (recipe.result.effect) {
             const fx = recipe.result.effect;
             if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
-            if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
+            if (fx.includes('thirst-')) { const m = fx.match(/thirst-(\d+)/); if (m) g.thirst = Math.max(0, g.thirst - parseInt(m[1])); }
+            else if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
             if (fx.includes('energy')) { const m = fx.match(/energy(\d+)/); if (m) g.energy = Math.min(100, g.energy + parseInt(m[1])); }
-            if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
+            if (fx.includes('hprisk')) { if (Math.random() < 0.1) { g.hp = Math.max(0, g.hp - 5); g.floaters.push({ x: g.px, y: g.py - 20, text: 'BAD BATCH −5 HP', color: '#ff4444', life: 60, maxLife: 60 }); } }
+            else if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
             if (fx.includes('cure_poison')) { g.poisoned = false; setPoisoned(false); }
+            if (fx.includes('power')) { const m = fx.match(/power(\d+)/); if (m) g.powerLevel = Math.min(100, g.powerLevel + parseInt(m[1])); }
             setHp(Math.floor(g.hp)); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
           } else {
             g.ownedItems.add(recipe.result.id);
@@ -11382,11 +12563,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (item.consumable && item.effect) {
             const fx = item.effect;
             if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
-            if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
+            if (fx.includes('thirst-')) { const m = fx.match(/thirst-(\d+)/); if (m) g.thirst = Math.max(0, g.thirst - parseInt(m[1])); }
+            else if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
             if (fx.includes('energy')) { const m = fx.match(/energy(\d+)/); if (m) g.energy = Math.min(100, g.energy + parseInt(m[1])); }
-            if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
+            if (fx.includes('hprisk')) { if (Math.random() < 0.1) { g.hp = Math.max(0, g.hp - 5); g.floaters.push({ x: g.px, y: g.py - 20, text: 'BAD BATCH −5 HP', color: '#ff4444', life: 60, maxLife: 60 }); } }
+            else if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
             if (fx.includes('cure_poison')) { g.poisoned = false; setPoisoned(false); }
             if (fx.includes('rad_block')) { g.radiationLevel = 0; }
+            if (fx.includes('power')) { const m = fx.match(/power(\d+)/); if (m) g.powerLevel = Math.min(100, g.powerLevel + parseInt(m[1])); }
             setHp(Math.floor(g.hp)); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
           } else {
             g.ownedItems.add(item.id);
@@ -11426,11 +12610,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── GOLD EXCHANGE PANEL ────────────────────────────────────────────── */}
+      {/* ── GOLD EXCHANGE PANEL (TABBED: GOLD / ASSETS / STOCKS) ──────────── */}
       {showGoldExchange && (() => {
         const g = gs.current;
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const rate = FIAT_PER_GOLD;
+        const frame = g.worldTime;
         const doBuyGold = (amt: number) => {
           if (amt <= 0) return;
           const cost = Math.ceil(amt * rate * (1 + getTransactionTax(amt * rate)));
@@ -11446,12 +12631,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
           setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${gain.toLocaleString()} FIAT. Tax: ${(getTransactionTax(gain) * 100).toFixed(1)}%.`);
         };
+        const doBuyAsset = (asset: AssetDef) => {
+          const price = getAssetPrice(asset, frame);
+          if (g.salary < price) { sfxError(); setNarr(`> EXCHANGE — Insufficient FIAT. ${asset.label} costs ƒ${price.toLocaleString()}.`); return; }
+          g.salary -= price; g.assets[asset.id] = (g.assets[asset.id] ?? 0) + 1;
+          setSalary(g.salary); sfxCoin();
+          setNarr(`> EXCHANGE — Purchased 1x ${asset.label} for ƒ${price.toLocaleString()}. Holdings: ${g.assets[asset.id]}.`);
+        };
+        const doSellAsset = (asset: AssetDef) => {
+          if ((g.assets[asset.id] ?? 0) <= 0) { sfxError(); return; }
+          const price = getAssetPrice(asset, frame);
+          const gain = Math.floor(price * (1 - getTransactionTax(price)));
+          g.assets[asset.id] = (g.assets[asset.id] ?? 0) - 1;
+          if (g.assets[asset.id] <= 0) delete g.assets[asset.id];
+          g.salary += gain; setSalary(g.salary); sfxCoin();
+          setNarr(`> EXCHANGE — Sold 1x ${asset.label} for ƒ${gain.toLocaleString()}. Holdings: ${g.assets[asset.id] ?? 0}.`);
+        };
+        const doBuyStock = (stock: StockDef) => {
+          const price = getStockPrice(stock, frame);
+          if (g.salary < price) { sfxError(); setNarr(`> STOCK EXCHANGE — Insufficient FIAT. 1 share of ${stock.ticker} costs ƒ${price.toLocaleString()}.`); return; }
+          g.salary -= price; g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) + 1;
+          setSalary(g.salary); sfxCoin();
+          setNarr(`> STOCK EXCHANGE — Bought 1x ${stock.ticker} @ ƒ${price.toLocaleString()}. Holdings: ${g.stocks[stock.ticker]} share${g.stocks[stock.ticker] !== 1 ? 's' : ''}.`);
+        };
+        const doSellStock = (stock: StockDef) => {
+          if ((g.stocks[stock.ticker] ?? 0) <= 0) { sfxError(); return; }
+          const price = getStockPrice(stock, frame);
+          const gain = Math.floor(price * (1 - getTransactionTax(price)));
+          g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) - 1;
+          if (g.stocks[stock.ticker] <= 0) delete g.stocks[stock.ticker];
+          g.salary += gain; setSalary(g.salary); sfxCoin();
+          setNarr(`> STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
+        };
+        const tabBtn = (tab: 'gold' | 'assets' | 'stocks', label: string, col: string) => (
+          <button key={tab} onClick={() => setGoldExchangeTab(tab)}
+            style={{ flex:1, padding:'.4rem', background: goldExchangeTab === tab ? `${col}22` : 'transparent', border: `1px solid ${goldExchangeTab === tab ? col : 'rgba(255,255,255,.1)'}`, color: goldExchangeTab === tab ? col : 'rgba(255,255,255,.3)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>
+            {label}
+          </button>
+        );
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
-            onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); } }}>
-            <div style={{ width:560, border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>GOLD EXCHANGE</div>
-              <div style={{ fontSize:'.42rem', color:'rgba(255,215,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>RATE: 1oz GOLD = ƒ{rate.toLocaleString()} FIAT · TAX SCALES WITH SIZE</div>
+            onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); setGoldExchangeTab('gold'); } }}>
+            <div style={{ width:620, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>MINX CITY EXCHANGE</div>
+              <div style={{ display:'flex', gap:'.4rem', marginBottom:'1rem' }}>
+                {tabBtn('gold', 'GOLD', '#FFD700')}
+                {tabBtn('assets', 'JEWELS & METALS', '#b9f2ff')}
+                {tabBtn('stocks', 'STOCK MARKET', '#44aaff')}
+              </div>
               <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:'.5rem', color:'rgba(0,255,65,.4)', marginBottom:'.3rem' }}>FIAT BALANCE</div>
@@ -11462,23 +12689,191 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ ...VT2, fontSize:'1.3rem', color:'#FFD700' }}>{goldBalance}oz</div>
                 </div>
               </div>
-              <div style={{ display:'flex', gap:'.8rem' }}>
-                {[1, 5, 10].map(amt => (
-                  <button key={`buy${amt}`} onClick={() => doBuyGold(amt)} disabled={g.salary < amt * rate}
-                    style={{ flex:1, padding:'.5rem', background:'rgba(255,215,0,.08)', border:'1px solid rgba(255,215,0,.3)', color:'#FFD700', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    BUY {amt}oz
-                  </button>
-                ))}
+
+              {goldExchangeTab === 'gold' && (<div>
+                <div style={{ fontSize:'.42rem', color:'rgba(255,215,0,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>RATE: 1oz GOLD = ƒ{rate.toLocaleString()} FIAT · TAX SCALES WITH SIZE</div>
+                <div style={{ display:'flex', gap:'.8rem' }}>
+                  {[1, 5, 10].map(amt => (
+                    <button key={`buy${amt}`} onClick={() => doBuyGold(amt)} disabled={g.salary < amt * rate}
+                      style={{ flex:1, padding:'.5rem', background:'rgba(255,215,0,.08)', border:'1px solid rgba(255,215,0,.3)', color:'#FFD700', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                      BUY {amt}oz
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display:'flex', gap:'.8rem', marginTop:'.5rem' }}>
+                  {[1, 5, 10].map(amt => (
+                    <button key={`sell${amt}`} onClick={() => doSellGold(amt)} disabled={g.goldBalance < amt}
+                      style={{ flex:1, padding:'.5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.25)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                      SELL {amt}oz
+                    </button>
+                  ))}
+                </div>
+              </div>)}
+
+              {goldExchangeTab === 'assets' && (<div>
+                <div style={{ fontSize:'.42rem', color:'rgba(180,220,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>PRECIOUS COMMODITIES · PRICES FLUCTUATE IN REAL-TIME</div>
+                {TRADEABLE_ASSETS.map(asset => {
+                  const price = getAssetPrice(asset, frame);
+                  const held = g.assets[asset.id] ?? 0;
+                  const pctChange = ((price - asset.basePrice) / asset.basePrice * 100);
+                  return (
+                    <div key={asset.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
+                      <div style={{ width:12, height:12, borderRadius:'50%', background: asset.color, flexShrink:0 }} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ ...VT2, fontSize:'1rem', color: asset.color }}>{asset.label}</div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
+                      </div>
+                      <button onClick={() => doBuyAsset(asset)} disabled={g.salary < price}
+                        style={{ padding:'.3rem .6rem', background:'rgba(255,255,255,.05)', border:`1px solid ${asset.color}44`, color: asset.color, cursor:'pointer', ...VT2, fontSize:'.9rem' }}>BUY</button>
+                      <button onClick={() => doSellAsset(asset)} disabled={held <= 0}
+                        style={{ padding:'.3rem .6rem', background:'rgba(0,255,65,.03)', border:'1px solid rgba(0,255,65,.2)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
+                    </div>
+                  );
+                })}
+                {Object.keys(g.assets).length > 0 && (
+                  <div style={{ marginTop:'.8rem', padding:'.5rem', border:'1px solid rgba(180,220,255,.15)', background:'rgba(180,220,255,.03)' }}>
+                    <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(180,220,255,.6)', marginBottom:'.3rem' }}>PORTFOLIO VALUE</div>
+                    <div style={{ ...VT2, fontSize:'1.1rem', color:'#b9f2ff' }}>
+                      ƒ{Object.entries(g.assets).reduce((sum, [id, qty]) => {
+                        const a = TRADEABLE_ASSETS.find(x => x.id === id);
+                        return sum + (a ? getAssetPrice(a, frame) * qty : 0);
+                      }, 0).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+              </div>)}
+
+              {goldExchangeTab === 'stocks' && (<div>
+                <div style={{ fontSize:'.42rem', color:'rgba(68,170,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>MINX CITY STOCK EXCHANGE · REGISTERED BUSINESSES ONLY · DIVIDENDS PAID PERIODICALLY</div>
+                {(() => {
+                  const allStocks = [...PRE_LISTED_STOCKS];
+                  if (char.hasBusiness && char.bizType === 'real' && char.company) {
+                    const ticker = char.company.replace(/[^A-Z]/gi, '').slice(0, 4).toUpperCase() || 'PLYR';
+                    if (!allStocks.find(s => s.ticker === ticker)) {
+                      allStocks.push({ ticker, company: char.company.toUpperCase(), industry: 'Player Enterprise', basePrice: 2000, isReal: true });
+                    }
+                  }
+                  return allStocks;
+                })().map(stock => {
+                  const price = getStockPrice(stock, frame);
+                  const held = g.stocks[stock.ticker] ?? 0;
+                  const pctChange = ((price - stock.basePrice) / stock.basePrice * 100);
+                  return (
+                    <div key={stock.ticker} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)' }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
+                          <span style={{ ...VT2, fontSize:'1rem', color: stock.isReal ? '#ff9900' : '#44aaff' }}>{stock.ticker}</span>
+                          {stock.isReal && <span style={{ fontSize:'.35rem', color:'#ff9900', border:'1px solid rgba(255,153,0,.3)', padding:'0 .3rem', borderRadius:2 }}>REAL</span>}
+                        </div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{stock.company} · {stock.industry}</div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
+                      </div>
+                      <button onClick={() => doBuyStock(stock)} disabled={g.salary < price}
+                        style={{ padding:'.3rem .6rem', background:'rgba(68,170,255,.05)', border:'1px solid rgba(68,170,255,.3)', color:'#44aaff', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>BUY</button>
+                      <button onClick={() => doSellStock(stock)} disabled={held <= 0}
+                        style={{ padding:'.3rem .6rem', background:'rgba(0,255,65,.03)', border:'1px solid rgba(0,255,65,.2)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
+                    </div>
+                  );
+                })}
+                {Object.keys(g.stocks).length > 0 && (
+                  <div style={{ marginTop:'.8rem', padding:'.5rem', border:'1px solid rgba(68,170,255,.15)', background:'rgba(68,170,255,.03)' }}>
+                    <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(68,170,255,.6)', marginBottom:'.3rem' }}>STOCK PORTFOLIO</div>
+                    <div style={{ ...VT2, fontSize:'1.1rem', color:'#44aaff' }}>
+                      ƒ{Object.entries(g.stocks).reduce((sum, [ticker, qty]) => {
+                        const s = PRE_LISTED_STOCKS.find(x => x.ticker === ticker);
+                        return sum + (s ? getStockPrice(s, frame) * qty : 0);
+                      }, 0).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+              </div>)}
+
+              <button onClick={() => { setShowGoldExchange(false); setGoldExchangeTab('gold'); }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,215,0,.2)', color:'rgba(255,215,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── HOUSING MANAGEMENT PANEL ───────────────────────────────────────── */}
+      {showHousingPanel && (() => {
+        const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const currentTier = HOUSING_TIERS.find(t => t.id === g.housingTier) ?? HOUSING_TIERS[0];
+        const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
+        const currentCycleDays = RENT_PERIOD_DAYS(currentTier);
+        const daysUntilDue = Math.max(0, currentCycleDays - daysSinceRent);
+        const canUpgrade = (tier: HousingTier) => {
+          if (tier.id === g.housingTier) return false;
+          if (tier.minBizType === 'real' && char.bizType !== 'real') return false;
+          if (tier.minBizType === 'fictitious' && (!char.hasBusiness)) return false;
+          return true;
+        };
+        const doUpgrade = (tier: HousingTier) => {
+          if (!canUpgrade(tier)) { sfxError(); return; }
+          const movingCost = tier.rent * 2;
+          if (g.salary < movingCost && tier.rent > 0) { sfxError(); setNarr(`> HOUSING — Moving to ${tier.label} requires ƒ${movingCost.toLocaleString()} deposit (2x ${tier.rentPeriod === 'week' ? 'weekly' : 'nightly'} rate).`); return; }
+          if (tier.rent > 0) { g.salary -= movingCost; setSalary(g.salary); }
+          g.housingTier = tier.id; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
+          const spawn = getHamletSpawn(char, tier.id);
+          g.hamletBuildingId = spawn.buildingId;
+          sfxCoin();
+          const periodStr = tier.rentPeriod === 'week' ? `ƒ${tier.rent.toLocaleString()}/week` : `ƒ${tier.rent.toLocaleString()}/night`;
+          setNarr(`> HOUSING — Moved to ${tier.label}. ${tier.rent > 0 ? `Deposit: ƒ${movingCost.toLocaleString()}. Rate: ${periodStr}.` : 'No rent. Shared accommodation.'}`);
+          setShowHousingPanel(false);
+        };
+        const doPayRent = () => {
+          const tier = HOUSING_TIERS.find(t => t.id === g.housingTier);
+          if (!tier || tier.rent <= 0) return;
+          if (g.salary < tier.rent) { sfxError(); setNarr(`> HOUSING — Insufficient FIAT. Rent is ƒ${tier.rent.toLocaleString()}.`); return; }
+          g.salary -= tier.rent; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
+          setSalary(g.salary); sfxCoin();
+          const nextDue = tier.rentPeriod === 'week' ? `${RENT_PERIOD_DAYS(tier)} days` : 'tomorrow';
+          setNarr(`> HOUSING — Rent paid: ƒ${tier.rent.toLocaleString()} for ${tier.label}. Next due ${nextDue}.`);
+        };
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowHousingPanel(false); }}>
+            <div style={{ width:580, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(0,255,65,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
+              <div style={{ padding:'.6rem', border:'1px solid rgba(0,255,65,.15)', background:'rgba(0,255,65,.03)', marginBottom:'1rem' }}>
+                <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>CURRENT: {currentTier.label}</div>
+                <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.4)', marginTop:'.2rem' }}>{currentTier.desc}</div>
+                {currentTier.rent > 0 && (
+                  <div style={{ marginTop:'.4rem' }}>
+                    <div style={{ fontSize:'.42rem', color: daysUntilDue <= 1 ? '#ff4444' : 'rgba(255,255,255,.4)' }}>
+                      RENT: ƒ{currentTier.rent.toLocaleString()} / {currentTier.rentPeriod === 'week' ? 'week' : 'night'} · {daysUntilDue > 0 ? `DUE IN ${daysUntilDue} DAY${daysUntilDue !== 1 ? 'S' : ''}` : 'OVERDUE'}
+                    </div>
+                    <button onClick={doPayRent} disabled={g.salary < currentTier.rent || daysUntilDue > 3}
+                      style={{ marginTop:'.3rem', padding:'.3rem .8rem', background:'rgba(0,255,65,.08)', border:'1px solid rgba(0,255,65,.3)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>
+                      PAY RENT EARLY — ƒ{currentTier.rent.toLocaleString()}
+                    </button>
+                  </div>
+                )}
               </div>
-              <div style={{ display:'flex', gap:'.8rem', marginTop:'.5rem' }}>
-                {[1, 5, 10].map(amt => (
-                  <button key={`sell${amt}`} onClick={() => doSellGold(amt)} disabled={g.goldBalance < amt}
-                    style={{ flex:1, padding:'.5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.25)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    SELL {amt}oz
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowGoldExchange(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,215,0,.2)', color:'rgba(255,215,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+              <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(255,255,255,.4)', marginBottom:'.5rem' }}>AVAILABLE PROPERTIES</div>
+              {HOUSING_TIERS.map(tier => {
+                const isCurrent = tier.id === g.housingTier;
+                const eligible = canUpgrade(tier);
+                const moveCost = tier.rent * 2;
+                const locked = tier.minBizType === 'real' && char.bizType !== 'real' ? 'REAL BUSINESS REQUIRED' : tier.minBizType === 'fictitious' && !char.hasBusiness ? 'REGISTERED BUSINESS REQUIRED' : null;
+                return (
+                  <div key={tier.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)', opacity: isCurrent ? 0.4 : 1 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
+                      <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{tier.desc}</div>
+                      <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.25)' }}>RENT: {tier.rent > 0 ? `ƒ${tier.rent.toLocaleString()} / ${tier.rentPeriod === 'week' ? 'week' : 'night'}` : 'FREE'} {moveCost > 0 && !isCurrent ? `· DEPOSIT: ƒ${moveCost.toLocaleString()}` : ''}</div>
+                      {locked && <div style={{ fontSize:'.38rem', color:'#ff4444' }}>{locked}</div>}
+                    </div>
+                    {!isCurrent && (
+                      <button onClick={() => doUpgrade(tier)} disabled={!eligible || (moveCost > 0 && g.salary < moveCost)}
+                        style={{ padding:'.3rem .8rem', background: eligible ? 'rgba(0,255,65,.08)' : 'transparent', border:`1px solid ${eligible ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible ? '#00ff41' : 'rgba(255,255,255,.2)', cursor: eligible ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
+                        {tier.rent === 0 ? 'MOVE' : 'LEASE'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button onClick={() => setShowHousingPanel(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );
