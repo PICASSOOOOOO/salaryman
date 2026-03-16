@@ -1776,7 +1776,7 @@ const CLASS_DISPLAY_NAME: Record<string, string> = {
   corporate: 'SUITS', outlaw: 'OUTLAWS', replicant: 'REPLICANTS',
 };
 const FACTION_SALARY_PER_MIN: Record<string, number> = {
-  corporate: 500, replicant: 300, outlaw: 100,
+  corporate: 100, replicant: 50, outlaw: 25,
 };
 const FACTION_STARTING_NET_WORTH: Record<string, number> = {
   corporate: 25000, replicant: 18000, outlaw: 10000,
@@ -2405,7 +2405,7 @@ export default function WorldPlay() {
     gangZone: null as string | null,
     hunger: _ss?.hunger ?? 100, thirst: _ss?.thirst ?? 100, energy: _ss?.energy ?? 100,
     survivalTick: 0,
-    incomeTick: 0,
+    lastIncomeTime: Date.now(),
     interestTick: 0,
     savings: _ss?.savings ?? 0,
     loan: _ss?.loan ?? null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
@@ -5498,17 +5498,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
         // ── ECONOMY: Periodic income by class (salary per minute) ────────
-        g.incomeTick++;
         const cls = char.class.toLowerCase();
-        const salaryPerMin = FACTION_SALARY_PER_MIN[cls] ?? 200;
-        const INCOME_INTERVAL = 6;
-        const INCOME_AMOUNT = Math.floor(salaryPerMin / 6);
+        const salaryPerMin = FACTION_SALARY_PER_MIN[cls] ?? 25;
         const factionName = CLASS_DISPLAY_NAME[cls] ?? 'FACTION';
         const INCOME_LABEL = cls === 'corporate' ? `${factionName} SALARY` : cls === 'replicant' ? `${factionName} GIG PAY` : `${factionName} SCAVENGING`;
-        if (g.incomeTick >= INCOME_INTERVAL) {
-          g.incomeTick = 0;
+        const now = Date.now();
+        if (now - g.lastIncomeTime >= 60000) {
+          g.lastIncomeTime = now;
           const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 150) : 0;
-          const total = INCOME_AMOUNT + bonus;
+          const total = salaryPerMin + bonus;
           g.salary += total; setSalary(g.salary);
           g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
           sfxCoin();
