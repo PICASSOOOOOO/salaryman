@@ -60,6 +60,7 @@ export function NavBar() {
         background: 'rgba(0, 10, 0, 0.97)',
         borderBottom: '1px solid rgba(0,255,65,0.25)',
         boxShadow: '0 2px 20px rgba(0,255,65,0.08), inset 0 -1px 0 rgba(0,255,65,0.1)',
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
       }}
     >
       {/* Top strip — device info bar */}
