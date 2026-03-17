@@ -16,7 +16,7 @@ async function ensureTable() {
 }
 ensureTable().catch(console.error);
 
-router.get("/api/plan", async (req, res) => {
+router.get("/plan", async (req, res) => {
   if (!req.isAuthenticated?.()) { res.json({ tier: "free", isOwner: false }); return; }
   const user = req.user;
   const tier = await getUserTier(user.id, user.email);
@@ -28,7 +28,7 @@ router.get("/api/plan", async (req, res) => {
   });
 });
 
-router.post("/api/plan/grant", async (req, res) => {
+router.post("/plan/grant", async (req, res) => {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return; }
   const caller = req.user;
   if (!isOwnerEmail(caller.email)) { res.status(403).json({ error: "Not authorized" }); return; }

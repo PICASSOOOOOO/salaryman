@@ -15,7 +15,7 @@ function requireAuth(req: any, res: any): string | null {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // GET all projects
-router.get("/api/workspace/projects", async (req, res) => {
+router.get("/workspace/projects", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   try {
     const rows = await db.select().from(projectsTable).where(eq(projectsTable.userId, userId)).orderBy(desc(projectsTable.updatedAt));
@@ -24,7 +24,7 @@ router.get("/api/workspace/projects", async (req, res) => {
 });
 
 // POST create project
-router.post("/api/workspace/projects", async (req, res) => {
+router.post("/workspace/projects", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { name, type = "general", description = "" } = req.body;
   if (!name?.trim()) { res.status(400).json({ error: "Name required" }); return; }
@@ -35,7 +35,7 @@ router.post("/api/workspace/projects", async (req, res) => {
 });
 
 // PUT update project
-router.put("/api/workspace/projects/:id", async (req, res) => {
+router.put("/workspace/projects/:id", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const id = parseInt(req.params.id);
   const { name, type, description } = req.body;
@@ -50,7 +50,7 @@ router.put("/api/workspace/projects/:id", async (req, res) => {
 });
 
 // DELETE project (also deletes its notes)
-router.delete("/api/workspace/projects/:id", async (req, res) => {
+router.delete("/workspace/projects/:id", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const id = parseInt(req.params.id);
   try {
@@ -65,7 +65,7 @@ router.delete("/api/workspace/projects/:id", async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // GET notes for a project
-router.get("/api/workspace/projects/:id/notes", async (req, res) => {
+router.get("/workspace/projects/:id/notes", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const projectId = parseInt(req.params.id);
   try {
@@ -75,7 +75,7 @@ router.get("/api/workspace/projects/:id/notes", async (req, res) => {
 });
 
 // GET global knowledge base notes (no project)
-router.get("/api/workspace/knowledge", async (req, res) => {
+router.get("/workspace/knowledge", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   try {
     const rows = await db.select().from(notesTable).where(eq(notesTable.userId, userId)).orderBy(desc(notesTable.updatedAt));
@@ -84,7 +84,7 @@ router.get("/api/workspace/knowledge", async (req, res) => {
 });
 
 // POST create note
-router.post("/api/workspace/notes", async (req, res) => {
+router.post("/workspace/notes", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { projectId = null, title, content = "", category = "general" } = req.body;
   if (!title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
@@ -95,7 +95,7 @@ router.post("/api/workspace/notes", async (req, res) => {
 });
 
 // PUT update note
-router.put("/api/workspace/notes/:id", async (req, res) => {
+router.put("/workspace/notes/:id", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const id = parseInt(req.params.id);
   const { title, content, category } = req.body;
@@ -110,7 +110,7 @@ router.put("/api/workspace/notes/:id", async (req, res) => {
 });
 
 // DELETE note
-router.delete("/api/workspace/notes/:id", async (req, res) => {
+router.delete("/workspace/notes/:id", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const id = parseInt(req.params.id);
   try {
@@ -124,7 +124,7 @@ router.delete("/api/workspace/notes/:id", async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // GET brand kit
-router.get("/api/workspace/brand-kit", async (req, res) => {
+router.get("/workspace/brand-kit", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   try {
     const [row] = await db.select().from(brandKitTable).where(eq(brandKitTable.userId, userId));
@@ -133,7 +133,7 @@ router.get("/api/workspace/brand-kit", async (req, res) => {
 });
 
 // PUT upsert brand kit
-router.put("/api/workspace/brand-kit", async (req, res) => {
+router.put("/workspace/brand-kit", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { companyName, tagline, mission, primaryColor, secondaryColor, logoUrl, website, industry, targetAudience } = req.body;
   try {

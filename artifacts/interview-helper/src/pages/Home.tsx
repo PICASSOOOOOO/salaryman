@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, Radio, ScanSearch, Bot, Square, Keyboard, RotateCcw, MessageSquare, Send, Brain, ArrowRight, Clock, X, Zap, Globe } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@workspace/replit-auth-web';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
@@ -29,6 +30,7 @@ const CHAT_STARTERS = [
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
   const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
   const [trialBanner, setTrialBanner] = useState(() => {
     return isTrial && !localStorage.getItem(TRIAL_SEEN_KEY);
@@ -82,19 +84,21 @@ export default function Home() {
       const raw = localStorage.getItem('sm_save');
       if (raw) { const p = parseFields(JSON.parse(raw)); localLevel = p.level; setGameSave(p); }
     } catch {}
-    fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(res => {
-        if (!res?.saves?.length) return;
-        const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
-          new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
-        if (newest?.data) {
-          const cloud = parseFields(newest.data as Record<string, unknown>);
-          if (cloud.level >= localLevel) setGameSave(cloud);
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (isAuthenticated) {
+      fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(res => {
+          if (!res?.saves?.length) return;
+          const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
+            new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
+          if (newest?.data) {
+            const cloud = parseFields(newest.data as Record<string, unknown>);
+            if (cloud.level >= localLevel) setGameSave(cloud);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   const { response, status, isStreaming, solve, cancel, reset } = useInterviewSolver();
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();

@@ -343,4 +343,30 @@ Update it based on the new conversation. Keep it brief. Use bullet points. Plain
   }
 });
 
+// ── POST /advisor/chat ────────────────────────────────────────────────────────
+// Pablo in-world AI chat used by World.tsx, WorldPlay.tsx, MobileTerminal.tsx
+router.post("/advisor/chat", async (req, res) => {
+  const { message, context = "" } = req.body as { message: string; context?: string };
+  if (!message?.trim()) {
+    res.status(400).json({ error: "Missing message" });
+    return;
+  }
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 300,
+      stream: false,
+      messages: [
+        { role: "system", content: context || "You are PABLO, a gritty in-world AI assistant. Be brief and stay in character." },
+        { role: "user", content: message },
+      ],
+    });
+    const response = completion.choices[0]?.message?.content?.trim() ?? "Signal lost.";
+    res.json({ response });
+  } catch (err) {
+    console.error("Error in /advisor/chat:", err);
+    res.status(500).json({ error: "Failed to get response" });
+  }
+});
+
 export default router;
