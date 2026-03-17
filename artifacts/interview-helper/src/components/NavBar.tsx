@@ -55,19 +55,17 @@ export function NavBar() {
 
   return (
     <header
-      className="shrink-0 z-20 relative"
+      className="app-header shrink-0"
       style={{
         background: 'rgba(0, 10, 0, 0.97)',
         borderBottom: '1px solid rgba(0,255,65,0.25)',
         boxShadow: '0 2px 20px rgba(0,255,65,0.08), inset 0 -1px 0 rgba(0,255,65,0.1)',
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
       }}
     >
       {/* Top strip — device info bar */}
       <div
         className="flex items-center justify-between px-2 sm:px-4 py-0.5 gap-2 flex-wrap"
         style={{
-          display: 'flex',
           borderBottom: '1px solid rgba(0,255,65,0.1)',
           background: 'rgba(0,255,65,0.02)',
         }}
@@ -126,7 +124,6 @@ export function NavBar() {
         {/* Brand / Logo */}
         <div
           className="flex items-center gap-2 group/logo cursor-pointer"
-          style={{ display: 'flex' }}
           onClick={() => navigate('/')}
         >
           <div
@@ -141,7 +138,7 @@ export function NavBar() {
           >
             <Radio className="w-3.5 h-3.5" style={{ color: '#00ff41' }} />
           </div>
-          <div style={{ display: 'block' }}>
+          <div>
             <h1
               className="display-text leading-none"
               style={{

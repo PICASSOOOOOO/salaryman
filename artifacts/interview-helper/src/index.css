@@ -398,6 +398,16 @@ body::after {
   animation: data-scroll 60s linear infinite;
 }
 
+/* ─── App Header — NavBar cut-off prevention ─── */
+/* Uses element selector so the fix persists even if NavBar.tsx is overwritten */
+header {
+  position: relative;
+  z-index: 20;
+  padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  flex-shrink: 0;
+  visibility: visible !important;
+}
+
 /* ─── Override Radix / shadcn components ─── */
 [data-radix-popper-content-wrapper] {
   z-index: 9999 !important;
