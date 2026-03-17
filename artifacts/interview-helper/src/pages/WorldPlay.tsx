@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
-import { type NpcDef, type NpcIdleBehavior, type NpcScheduleDef, NPCS } from './worldNpcData';
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
   type NewspaperIssue, THE_MINX_ISSUES, NEWSPAPER_WORLD_SPOTS,
