@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Briefcase, UserPlus, Users, Plus, X, Trash2, ChevronDown, ChevronUp, Loader2, ArrowRight, Edit2, Check } from 'lucide-react';
-import { NavBar } from '@/components/NavBar';
+
 import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
@@ -208,7 +208,6 @@ export default function Hiring() {
   if (!planLoading && !isPro) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <NavBar />
         <ProGate feature={PABLO_PRODUCTS.HIRING.name} />
       </div>
     );
@@ -218,8 +217,6 @@ export default function Hiring() {
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
-
-      <NavBar />
 
       <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
         <div className="flex items-center gap-3 mb-1">

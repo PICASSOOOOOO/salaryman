@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Presentation, ChevronLeft, ChevronRight, Maximize2, Minimize2, Globe, Mic2, Loader2, X, Plus, MessageSquare } from 'lucide-react';
-import { NavBar } from '@/components/NavBar';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
+import { useNavBarVisibility } from '@/hooks/use-navbar-visibility';
 
 interface Slide {
   title: string;
@@ -77,6 +77,7 @@ type ActiveTab = 'present' | 'analyze' | 'conduct';
 
 export default function PresenterMode() {
   const { isPro, loading: planLoading } = usePlan();
+  const { setHideNavBar } = useNavBarVisibility();
   const [tab, setTab] = useState<ActiveTab>('present');
 
   // ── Presentation ──────────────────────────────────────────────────────────
@@ -86,6 +87,12 @@ export default function PresenterMode() {
   const [presentation, setPresentation] = useState<PresentationData | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
+
+  useEffect(() => {
+    setHideNavBar(fullScreen);
+    return () => setHideNavBar(false);
+  }, [fullScreen, setHideNavBar]);
+
   const [generating, setGenerating] = useState(false);
   const [showScript, setShowScript] = useState(true);
 
@@ -190,7 +197,6 @@ export default function PresenterMode() {
   if (!planLoading && !isPro) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <NavBar />
         <ProGate feature={PABLO_PRODUCTS.PRESENTER.name} />
       </div>
     );
@@ -200,8 +206,6 @@ export default function PresenterMode() {
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
-
-      {!fullScreen && <NavBar />}
 
       <main className="flex-1 flex flex-col p-6 relative z-10">
 

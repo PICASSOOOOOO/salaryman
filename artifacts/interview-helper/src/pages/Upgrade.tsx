@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock, Loader2 } from "lucide-react";
-import { NavBar } from "@/components/NavBar";
+
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
 import { PABLO_PRODUCTS } from "@/lib/product-names";
@@ -60,8 +60,6 @@ export default function Upgrade() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[40%] h-[40%] bg-primary/8 blur-[140px] rounded-full pointer-events-none" />
-      <NavBar />
-
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full relative z-10">
         {/* Header */}
         <div className="text-center mb-10 mt-6">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Download, Trash2, Plus, X, ChevronDown, ChevronUp, Mail, Loader2, Check } from 'lucide-react';
-import { NavBar } from '@/components/NavBar';
+
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { ProGate } from '@/components/ProGate';
@@ -171,7 +171,6 @@ export default function ContactCollector() {
   if (!planLoading && !isPro) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <NavBar />
         <ProGate feature={PABLO_PRODUCTS.CONTACTS.name} />
       </div>
     );
@@ -181,8 +180,6 @@ export default function ContactCollector() {
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
-
-      <NavBar />
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
 

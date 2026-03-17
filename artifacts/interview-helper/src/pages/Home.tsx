@@ -7,7 +7,7 @@ import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, 
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { NavBar } from '@/components/NavBar';
+
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
@@ -229,7 +229,6 @@ export default function Home() {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
-      <NavBar />
       <OnboardingModal onComplete={updateMemory} />
 
       {/* City Info Section */}

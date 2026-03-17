@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2 } from 'lucide-react';
-import { NavBar } from '@/components/NavBar';
+
 import { useAuth } from '@workspace/replit-auth-web';
 
 interface AccountData {
@@ -227,7 +227,6 @@ export default function Profile() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <NavBar />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground text-sm">Sign in to manage your account.</p>
         </div>
@@ -242,8 +241,6 @@ export default function Profile() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <NavBar />
-
       <main className="flex-1 p-6 max-w-2xl mx-auto w-full relative z-10">
 
         {/* Header */}
