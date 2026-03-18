@@ -142,7 +142,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ],
   },
   admin_bureau: {
-    id: 'admin_bureau', label: 'CITY ADMIN BUREAU — REGISTRATION HALL',
+    id: 'admin_bureau', label: 'MINX ADMINISTRATION BUILDING — LOBBY',
     width: 380, height: 280,
     wallColor: 'rgba(18,20,28,.95)', floorColor: 'rgba(6,8,14,.9)', accentColor: 'rgba(255,200,60,.25)',
     exitX: 175, exitY: 265, exitW: 30, exitH: 15,
@@ -929,7 +929,7 @@ export const BUILDINGS = [
   // ═══ BLOCK G — MID-EAST (Corporate Row) ═══════════════════════════════════
   { id: 'call_home',    x: 6900, y: 5700, w: 130, h: 80,  label: 'CALL HOME',         bright: true,  doors: mkDoorS(6900,5700,130,80) },
   { id: 'noodle_bar',   x: 7060, y: 5700, w: 120, h: 80,  label: 'NOODLE BAR',        bright: true,  doors: mkDoorS(7060,5700,120,80) },
-  { id: 'admin_bureau', x: 7210, y: 5700, w: 130, h: 90,  label: 'CITY ADMIN BUREAU', bright: true,  doors: mkDoorS(7210,5700,130,90) },
+  { id: 'admin_bureau', x: 7210, y: 5700, w: 130, h: 90,  label: 'MINX ADMIN BUILDING', bright: true,  doors: mkDoorS(7210,5700,130,90) },
   { id: 'plaza_market', x: 7370, y: 5700, w: 120, h: 80,  label: 'CENTRAL PLAZA',     bright: true,  doors: mkDoorS(7370,5700,120,80) },
   { id: 'eastside_flat',x: 7520, y: 5700, w: 130, h: 120, label: 'EASTSIDE FLATS',    bright: false, doors: mkDoorS(7520,5700,130,120) },
   // ═══ BLOCK H — SOUTH-WEST (Industrial) ════════════════════════════════════

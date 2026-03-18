@@ -179,6 +179,10 @@ function getCurrentSector(px: number, py: number): string {
   }
   return 'MINX CITY LIMITS · OUTSKIRTS';
 }
+function getBusinessLocationLabel(px: number, py: number): string {
+  if (inCityBounds(px, py)) return 'MINX';
+  return getNearestSettlement(px, py);
+}
 
 // ── Parked vehicle locations (stealable) ─────────────────────────────────────
 interface ParkedVehicle { x: number; y: number; type: string; stolen: boolean; }
@@ -1957,7 +1961,7 @@ const OFFICE_TIERS = [
 ];
 
 // ── Building floor directories ────────────────────────────────────────────────
-interface BFloor { floor: number; name: string; desc: string; restricted?: boolean; }
+interface BFloor { floor: number; name: string; desc: string; restricted?: boolean; action?: string; }
 interface BDirectory { label: string; history: string; floors: BFloor[]; }
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string): InteriorDef {
   const w = 300, h = 260;
@@ -2058,6 +2062,17 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     floors: [
       { floor: 1, name: 'TRAINING FLOOR',     desc: 'Sparring mats. Old equipment. A clock that stopped in \'88 — nobody winds it because the sensei says time is a weakness.' },
       { floor: 2, name: 'SENSEI\'S QUARTERS', desc: 'Study, archive, and the sensei\'s room. Door has no handle from outside. Lights on 24/7. Nobody has ever seen the sensei sleep.' },
+    ],
+  },
+  admin_bureau: {
+    label: 'MINX ADMINISTRATION BUILDING', history: 'Constructed 1979. The oldest surviving municipal structure. Every permit, license, registration, and complaint in Minx City passes through this building. The elevator still uses the original buttons — brass, polished daily by a custodian nobody has met. The stairwell is under renovation. It has been under renovation since 1994.',
+    floors: [
+      { floor: 1, name: 'LOBBY', desc: 'Marble floors, worn down to grooves by decades of foot traffic. A reception desk with a blinking terminal. Pamphlets for every department are stacked in a rack. Half are outdated. The security guard nods at everyone but checks nobody.' },
+      { floor: 2, name: 'DEPT. OF BUSINESS AFFAIRS', desc: 'Business registration, licensing, and compliance. Clerks process fictitious entity filings and real enterprise charters. The queue management system was installed in \'88 and has never displayed the correct number.', action: 'open_admin' },
+      { floor: 3, name: 'DEPT. OF RECORDS & ARCHIVES', desc: 'Municipal records dating back to the founding. Birth certificates, property deeds, criminal histories. Rows of filing cabinets stretch to the far wall. A clerk is always re-filing something that was misfiled.', action: 'open_records' },
+      { floor: 4, name: 'DEPT. OF PERMITS & ZONING', desc: 'Construction permits, zoning variances, land-use applications. A massive city map covers the north wall with colored pins. Some pins mark locations that no longer exist.', action: 'open_permits' },
+      { floor: 5, name: 'DEPT. OF REVENUE & TAXATION', desc: 'Tax assessments, FIAT levies, and audit processing. The overhead lights flicker at irregular intervals. The staff say it is normal. The staff do not look up from their desks.', action: 'open_revenue' },
+      { floor: 6, name: 'DIRECTOR\'S OFFICE', desc: 'Director Lane\'s office. The door is always closed. Meetings are by appointment only. No appointments have been granted since \'93. A secretary sits outside and types continuously.', restricted: true },
     ],
   },
 };
@@ -2727,6 +2742,7 @@ export default function WorldPlay() {
   const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks'>('gold');
   const [showHousingPanel, setShowHousingPanel] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showAdminDept, setShowAdminDept] = useState<string | null>(null);
   const [showRealEstateOffice, setShowRealEstateOffice] = useState(false);
   const [showRecruitOffice, setShowRecruitOffice] = useState(false);
   const [recruitJobDraft, setRecruitJobDraft] = useState({ title: '', pay: '', desc: '' });
@@ -2954,15 +2970,11 @@ export default function WorldPlay() {
     else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'gold_exchange') {
       sfxEnter(); setShowGoldExchange(true); setGoldExchangeTab('gold'); frozenRef.current = true;
-      setNarr('> MINX CITY EXCHANGE — Trade GOLD, precious JEWELS & METALS, and STOCKS. Tax scales with transaction size.');
+      setNarr('> WORLD EXCHANGE — Trade GOLD, precious JEWELS & METALS, and STOCKS. Tax scales with transaction size.');
     }
     else if (bid === 'admin_bureau') {
-      sfxEnter(); setShowAdmin(true); frozenRef.current = true;
-      if (char.hasBusiness) {
-        setNarr(`> CITY ADMIN BUREAU — "${char.company}" is on file. Visit to view your business license.`);
-      } else {
-        setNarr('> CITY ADMIN BUREAU — SUITS Municipal Services. Register a business. Fictitious entity: ƒ50,000. Real enterprise: ƒ100,000.');
-      }
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.admin_bureau, selectedFloor: 0 });
+      setNarr('> MINX ADMINISTRATION BUILDING — Municipal services. Floor 2: Department of Business Affairs. All registrations and permits processed here.');
     }
     else if (bid === 'realestate_office') {
       sfxEnter(); setShowHousingPanel(true); frozenRef.current = true;
@@ -3924,7 +3936,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
 
@@ -4357,7 +4369,7 @@ export default function WorldPlay() {
         setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
         if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
         setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
+        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
         setShowNewspaper(null); setShowInventory(false);
         doSaveRef.current(buildSaveData());
       }
@@ -9646,16 +9658,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showOffice && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
-            {char.hasBusiness && (
+            {char.hasBusiness && char.bizType === 'real' && (
               <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.04)', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em' }}>MINX CITY BUSINESS</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em' }}>{getBusinessLocationLabel(gs.current.px, gs.current.py)} ENTERPRISE</div>
                 <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
+              </div>
+            )}
+            {char.hasBusiness && char.bizType === 'fictitious' && (
+              <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(255,200,60,.25)', background: 'rgba(255,200,60,.04)', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: 'rgba(255,200,60,.7)', letterSpacing: '.12em' }}>FICTITIOUS ENTITY — STOREFRONT REQUIRED</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.08em', marginTop: '.15rem' }}>{char.company} — Visit a storefront location to set up operations</div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
                 <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>SHADOW TOWER</div>
-                <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — COMMERCIAL LEASE. FLOOR 40+ RESTRICTED.</div>
+                <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — REAL ENTERPRISE LEASE ONLY. FLOOR 40+ RESTRICTED.</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                 {rentedOffice && (
@@ -9679,19 +9697,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.32)', lineHeight: 1.6 }}>{desc}</div>
                     <button onClick={() => {
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
+                      if (char.bizType !== 'real') { sfxError(); setNarr('> SHADOW TOWER — Office leases require a registered REAL ENTERPRISE. Fictitious entities operate from storefronts.'); return; }
                       if (!canAfford) { setNarr(`> Need ƒ${price.toLocaleString()} FIAT. Have ƒ${salary.toLocaleString()}.`); return; }
                       const g = gs.current; g.salary -= price; setSalary(g.salary);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
                       setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
-                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford ? 'rgba(0,255,65,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford ? '1px solid rgba(0,255,65,.38)' : '1px solid rgba(0,255,65,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford ? '#00ff41' : 'rgba(0,255,65,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: canAfford || isRented ? 'pointer' : 'default' }}>
-                      {isRented ? 'CANCEL' : canAfford ? 'RENT' : 'NO FUNDS'}
+                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(0,255,65,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(0,255,65,.38)' : '1px solid rgba(0,255,65,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#00ff41' : 'rgba(0,255,65,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
+                      {isRented ? 'CANCEL' : char.bizType !== 'real' ? 'REAL BIZ REQUIRED' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
                   </div>
                 );
               })}
             </div>
             <div style={{ fontSize: '.48rem', color: 'rgba(140,0,220,.35)', lineHeight: 1.7, borderTop: '1px solid rgba(140,0,220,.12)', paddingTop: '.6rem' }}>
-              Tenants may set a security code. Floors 40+ are permanently sealed by order of SENIOR PABLO. Do not inquire about the penthouse.
+              Real enterprise tenants may set a security code. Fictitious entities operate from storefronts — not the tower. Floors 40+ are permanently sealed by order of SENIOR PABLO. Do not inquire about the penthouse.
             </div>
           </div>
         </div>
@@ -10011,6 +10030,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         e.stopPropagation();
                         if (fl.restricted) {
                           setNarr(`> ACCESS DENIED — Floor ${fl.floor} requires clearance you do not have.`);
+                          return;
+                        }
+                        if (fl.action === 'open_admin') {
+                          setFloorPanel(null);
+                          setShowAdmin(true); frozenRef.current = true;
+                          if (char.hasBusiness) {
+                            setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${char.company}" is on file. Visit to view your business license.`);
+                          } else {
+                            setNarr('> DEPT. OF BUSINESS AFFAIRS — Business registration. Fictitious entity: ƒ50,000. Real enterprise: ƒ100,000.');
+                          }
+                          return;
+                        }
+                        if (fl.action === 'open_records' || fl.action === 'open_permits' || fl.action === 'open_revenue') {
+                          setFloorPanel(null);
+                          setShowAdminDept(fl.action); frozenRef.current = true;
+                          const deptNames: Record<string, string> = { open_records: 'RECORDS & ARCHIVES', open_permits: 'PERMITS & ZONING', open_revenue: 'REVENUE & TAXATION' };
+                          setNarr(`> DEPT. OF ${deptNames[fl.action]} — Floor ${fl.floor}. ${fl.desc}`);
                           return;
                         }
                         const g = gs.current;
@@ -11789,10 +11825,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         const doBuyStock = (stock: StockDef) => {
           const price = getStockPrice(stock, frame);
-          if (g.salary < price) { sfxError(); setNarr(`> STOCK EXCHANGE — Insufficient FIAT. 1 share of ${stock.ticker} costs ƒ${price.toLocaleString()}.`); return; }
+          if (g.salary < price) { sfxError(); setNarr(`> WORLD STOCK EXCHANGE — Insufficient FIAT. 1 share of ${stock.ticker} costs ƒ${price.toLocaleString()}.`); return; }
           g.salary -= price; g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) + 1;
           setSalary(g.salary); sfxCoin();
-          setNarr(`> STOCK EXCHANGE — Bought 1x ${stock.ticker} @ ƒ${price.toLocaleString()}. Holdings: ${g.stocks[stock.ticker]} share${g.stocks[stock.ticker] !== 1 ? 's' : ''}.`);
+          setNarr(`> WORLD STOCK EXCHANGE — Bought 1x ${stock.ticker} @ ƒ${price.toLocaleString()}. Holdings: ${g.stocks[stock.ticker]} share${g.stocks[stock.ticker] !== 1 ? 's' : ''}.`);
         };
         const doSellStock = (stock: StockDef) => {
           if ((g.stocks[stock.ticker] ?? 0) <= 0) { sfxError(); return; }
@@ -11801,7 +11837,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.stocks[stock.ticker] = (g.stocks[stock.ticker] ?? 0) - 1;
           if (g.stocks[stock.ticker] <= 0) delete g.stocks[stock.ticker];
           g.salary += gain; setSalary(g.salary); sfxCoin();
-          setNarr(`> STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
+          setNarr(`> WORLD STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
         };
         const tabBtn = (tab: 'gold' | 'assets' | 'stocks', label: string, col: string) => (
           <button key={tab} onClick={() => setGoldExchangeTab(tab)}
@@ -11884,7 +11920,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>)}
 
               {goldExchangeTab === 'stocks' && (<div>
-                <div style={{ fontSize:'.42rem', color:'rgba(68,170,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>MINX CITY STOCK EXCHANGE · REGISTERED BUSINESSES ONLY · DIVIDENDS PAID PERIODICALLY</div>
+                <div style={{ fontSize:'.42rem', color:'rgba(68,170,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>WORLD STOCK EXCHANGE · REGISTERED BUSINESSES ONLY · DIVIDENDS PAID PERIODICALLY</div>
                 {(() => {
                   const allStocks = [...PRE_LISTED_STOCKS];
                   if (char.hasBusiness && char.bizType === 'real' && char.company) {
@@ -12141,15 +12177,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ];
         const industries = adminBizType === 'real' ? REAL_INDUSTRIES : FICT_INDUSTRIES;
         const doRegister = () => {
-          if (!adminBizName.trim()) { sfxError(); setNarr('> ADMIN BUREAU — Enter a business name.'); return; }
-          if (!adminBizIndustry) { sfxError(); setNarr('> ADMIN BUREAU — Select an industry.'); return; }
-          if (g.salary < regFee) { sfxError(); setNarr(`> ADMIN BUREAU — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Fictitious entity'} registration: ƒ${regFee.toLocaleString()}.`); return; }
+          if (!adminBizName.trim()) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Enter a business name.'); return; }
+          if (!adminBizIndustry) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Select an industry.'); return; }
+          if (g.salary < regFee) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Fictitious entity'} registration: ƒ${regFee.toLocaleString()}.`); return; }
           g.salary -= regFee; setSalary(g.salary); sfxCoin();
           char.hasBusiness = true;
           char.bizType = adminBizType;
           char.company = adminBizName.trim().toUpperCase();
           char.bizRegisteredAt = Date.now();
-          setNarr(`> CITY ADMIN BUREAU — "${char.company}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Welcome to Minx City commerce.`);
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${char.company}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
           setShowAdmin(false);
           setAdminBizName(''); setAdminBizIndustry('');
         };
@@ -12158,10 +12194,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             onClick={e => { if (e.target === e.currentTarget) setShowAdmin(false); }}>
             <div style={{ width: 440, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(0,255,65,.4)', boxShadow: '0 0 40px rgba(0,255,65,.12)', padding: '1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>CITY ADMIN BUREAU</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>DEPT. OF BUSINESS AFFAIRS</div>
                 <button onClick={() => setShowAdmin(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
               </div>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>SUITS MUNICIPAL SERVICES — BUSINESS REGISTRATION</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL 2 — BUSINESS REGISTRATION</div>
 
               {alreadyRegistered ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
@@ -12180,7 +12216,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
-                    Register a business in Minx City. Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
+                    Register a business in {getBusinessLocationLabel(gs.current.px, gs.current.py)}. Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
                   </div>
                   <div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
@@ -12235,6 +12271,105 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── ADMIN DEPARTMENT PANELS ──────────────────────────────────────── */}
+      {showAdminDept && (() => {
+        const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const deptConfig: Record<string, { title: string; floor: number; subtitle: string }> = {
+          open_records: { title: 'DEPT. OF RECORDS & ARCHIVES', floor: 3, subtitle: 'MUNICIPAL RECORDS · CIVIL REGISTRY · HISTORICAL ARCHIVES' },
+          open_permits: { title: 'DEPT. OF PERMITS & ZONING', floor: 4, subtitle: 'CONSTRUCTION · ZONING · LAND USE · VARIANCES' },
+          open_revenue: { title: 'DEPT. OF REVENUE & TAXATION', floor: 5, subtitle: 'TAX ASSESSMENT · FIAT LEVIES · DEBT RESOLUTION' },
+        };
+        const dept = deptConfig[showAdminDept] ?? { title: 'DEPARTMENT', floor: 0, subtitle: '' };
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 900, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={e => { if (e.target === e.currentTarget) setShowAdminDept(null); }}>
+            <div style={{ width: 460, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(0,255,65,.4)', boxShadow: '0 0 40px rgba(0,255,65,.12)', padding: '1.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ ...VT2, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>{dept.title}</div>
+                <button onClick={() => setShowAdminDept(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+              </div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL {dept.floor} — {dept.subtitle}</div>
+
+              {showAdminDept === 'open_records' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                    Public records terminal. Search municipal databases for property deeds, business filings, and citizen registries.
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>YOUR RECORDS</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                      Name: {char.name}<br/>
+                      Class: {char.class?.toUpperCase()}<br/>
+                      Level: {g.level}<br/>
+                      Business: {char.hasBusiness ? `${char.company} (${char.bizType === 'real' ? 'Real Enterprise' : 'Fictitious Entity'})` : 'NONE REGISTERED'}<br/>
+                      Criminal Record: {(g as any).wantedLevel > 0 ? 'ACTIVE WARRANTS' : 'CLEAN'}
+                    </div>
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>PROPERTY RECORDS</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                      Housing: {g.housingTier ? g.housingTier.toUpperCase().replace(/_/g, ' ') : 'NO RESIDENCE ON FILE'}<br/>
+                      Office: {char.hasOffice ? 'SHADOW TOWER — LEASED' : 'NONE'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showAdminDept === 'open_permits' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                    Permits and zoning applications. All construction, modification, and land-use changes require department approval.
+                  </div>
+                  {[
+                    { name: 'CONSTRUCTION PERMIT', desc: 'Required for any structural modification to owned property.', status: char.hasBusiness ? 'ELIGIBLE' : 'REQUIRES BUSINESS' },
+                    { name: 'VENDOR LICENSE', desc: 'Authorizes street-level commerce and trade operations.', status: char.hasBusiness ? 'ELIGIBLE' : 'REQUIRES BUSINESS' },
+                    { name: 'WEAPONS PERMIT', desc: 'Legal carry authorization within city limits.', status: g.level >= 5 ? 'ELIGIBLE' : `REQUIRES LEVEL 5 (CURRENT: ${g.level})` },
+                    { name: 'ZONING VARIANCE', desc: 'Exception request for non-conforming land use.', status: 'APPLICATIONS CLOSED' },
+                  ].map(p => (
+                    <div key={p.name} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.55rem .7rem', background: 'rgba(0,255,65,.02)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ ...VT2, fontSize: '.9rem', color: '#00ff41', letterSpacing: '.08em' }}>{p.name}</span>
+                        <span style={{ fontSize: '.42rem', color: p.status === 'ELIGIBLE' ? 'rgba(0,255,65,.6)' : 'rgba(255,100,60,.5)', letterSpacing: '.08em' }}>{p.status}</span>
+                      </div>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: '.2rem' }}>{p.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showAdminDept === 'open_revenue' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                    Tax assessment and debt resolution. Outstanding debts and levies are processed here.
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>FINANCIAL SUMMARY</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                      FIAT Balance: ƒ{salary.toLocaleString()}<br/>
+                      Gold Holdings: {goldBalance}oz<br/>
+                      Outstanding Debt: ƒ0<br/>
+                      Tax Status: CURRENT
+                    </div>
+                  </div>
+                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>TAX RATES</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', lineHeight: 2 }}>
+                      Transaction Tax: 1-5% (scales with size)<br/>
+                      Property Tax: ƒ25,000–100,000 / in-game month<br/>
+                      Business License Renewal: ƒ10,000 / in-game quarter<br/>
+                      Income Levy: 8% on earnings above ƒ500,000/month
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={() => setShowAdminDept(null)} style={{ marginTop: '1rem', width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', ...VT2, fontSize: '.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );
