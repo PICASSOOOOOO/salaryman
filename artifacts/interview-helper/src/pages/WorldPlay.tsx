@@ -138,6 +138,81 @@ const getInterior = (bid: string): InteriorDef | null => {
 
 const INTERIOR_TILE = 16;
 
+// ── Building Size Classification ──────────────────────────────────────────────
+type BuildingScale = 'kiosk' | 'small' | 'medium' | 'large' | 'tower';
+const BUILDING_SCALE_MAP: Record<string, BuildingScale> = {
+  pablo_tower: 'tower',
+  megabank: 'large',
+  admin_bureau: 'large',
+  police_hq: 'large',
+  data_vault: 'large',
+  overlook: 'large',
+  nightclub: 'medium',
+  hotel: 'medium',
+  dojo: 'medium',
+  nexus_hub: 'medium',
+  public_office: 'large',
+  realestate_office: 'medium',
+  clinic: 'medium',
+  minx_arms: 'medium',
+  arcade: 'medium',
+  armory: 'medium',
+  eastside_flat: 'medium',
+  picassoo_hq: 'medium',
+  safe_house: 'medium',
+  gold_exchange: 'small',
+  print_shop: 'small',
+  pawn_shop: 'small',
+  noodle_bar: 'small',
+  food_court: 'small',
+  market: 'small',
+  scrap: 'medium',
+  radio: 'small',
+  bunker: 'small',
+  pablo_store: 'small',
+  vehicle_dealer: 'small',
+  plaza_market: 'small',
+  depot_south: 'medium',
+  vend: 'kiosk',
+  crystal: 'kiosk', crystal2: 'kiosk', crystal3: 'kiosk', crystal4: 'kiosk', crystal5: 'kiosk', crystal6: 'kiosk', crystal7: 'kiosk',
+};
+const getBuildingScale = (bid: string): BuildingScale => BUILDING_SCALE_MAP[bid] ?? 'small';
+
+const getBuildingZone = (bid: string): CityZone | null => {
+  const bld = BUILDINGS.find(b => b.id === bid);
+  if (!bld) return null;
+  return CITY_ZONES.find(z => bld.x >= z.x && bld.x < z.x + z.w && bld.y >= z.y && bld.y < z.y + z.h) ?? null;
+};
+
+const ZONE_RENT_MULTIPLIER: Record<CityZone['type'], number> = {
+  downtown: 1.5,
+  commercial: 1.2,
+  residential: 1.0,
+  industrial: 0.8,
+  transit: 0.9,
+};
+
+const getZoneRentMultiplier = (bid: string): number => {
+  const zone = getBuildingZone(bid);
+  return zone ? (ZONE_RENT_MULTIPLIER[zone.type] ?? 1.0) : 1.0;
+};
+
+// ── City Zoning Districts (organic, road-based, variable lot sizes) ──────────
+// Inspired by Cities Skylines: downtown is dense with small lots,
+// residential is medium, industrial lots are large and irregular.
+interface CityZone { id: string; name: string; type: 'downtown' | 'commercial' | 'residential' | 'industrial' | 'transit'; x: number; y: number; w: number; h: number; color: string; }
+const CITY_ZONES: CityZone[] = [
+  { id: 'tower_quarter',    name: 'TOWER QUARTER',       type: 'downtown',    x: 5950, y: 5150, w: 500, h: 400, color: 'rgba(120,0,200,.03)' },
+  { id: 'shadow_district',  name: 'SHADOW DISTRICT',     type: 'commercial',  x: 5550, y: 5200, w: 400, h: 350, color: 'rgba(60,0,100,.025)' },
+  { id: 'neon_strip',       name: 'NEON STRIP',          type: 'commercial',  x: 6500, y: 5250, w: 500, h: 400, color: 'rgba(0,100,200,.025)' },
+  { id: 'market_row',       name: 'MARKET ROW',          type: 'commercial',  x: 5550, y: 5600, w: 650, h: 250, color: 'rgba(200,120,0,.025)' },
+  { id: 'corp_row',         name: 'CORPORATE ROW',       type: 'downtown',    x: 6800, y: 5600, w: 800, h: 260, color: 'rgba(0,60,200,.025)' },
+  { id: 'neon_south',       name: 'NEON SOUTH',          type: 'commercial',  x: 6100, y: 6000, w: 700, h: 300, color: 'rgba(200,0,150,.02)' },
+  { id: 'industrial_sw',    name: 'INDUSTRIAL SOUTH-WEST', type: 'industrial', x: 5550, y: 6000, w: 500, h: 500, color: 'rgba(150,100,0,.02)' },
+  { id: 'transit_corridor', name: 'TRANSIT CORRIDOR',    type: 'transit',     x: 5550, y: 6550, w: 2200, h: 200, color: 'rgba(0,150,200,.02)' },
+  { id: 'residential_east', name: 'RESIDENTIAL EAST',    type: 'residential', x: 7300, y: 5550, w: 400, h: 600, color: 'rgba(0,150,80,.02)' },
+];
+
 // ── City Sectors (12 named sectors for the city hierarchy) ──────────────────
 interface CitySector { id: string; name: string; x: number; y: number; w: number; h: number; }
 const CITY_SECTORS: CitySector[] = [
@@ -1662,15 +1737,17 @@ const VEND_CATALOG: VendCategory[] = [
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, salvage_yard: 3500, minx_studio: 5000, street_stall: 4000, transit_kiosk: 3000, corpo_office: 15000, penthouse_suite: 25000, warehouse: 8000, data_center: 12000, lot_wasteland_north: 2000, lot_wasteland_south: 2000, studio_sector_3: 5000, studio_sector_7: 5000, office_tower_12: 15000, office_tower_8: 15000, penthouse_pinnacle: 30000, warehouse_east: 8000 };
 
-interface HousingTier { id: string; label: string; building: string; rent: number; rentPeriod: 'day' | 'week'; minBizType: 'unemployed' | 'fictitious' | 'real'; desc: string; }
+interface HousingTier { id: string; label: string; building: string; rent: number; rentPeriod: 'day' | 'week'; minBizType: 'unemployed' | 'fictitious' | 'real'; desc: string; tier: 'shelter' | 'apartment' | 'house' | 'villa'; wealthMin?: number; }
 const HOUSING_TIERS: HousingTier[] = [
-  { id: 'shelter', label: 'CITY SHELTER / BUNKER', building: 'bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Free bunk. Crowded. Shared with dozens of drifters, workers, and displaced. Closest to the bunker exit.' },
-  { id: 'outpost', label: 'DESERT OUTPOST', building: 'outpost_alpha', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Free cot. Wasteland outpost. Sparse but functional. Generator power, rations, armed warden.' },
-  { id: 'machine_bunker', label: 'MACHINE BUNKER (UNDERGROUND)', building: 'machine_bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', desc: 'Deep underground. Room closest to the bunker exit. Packed with replicants and refugees.' },
-  { id: 'minx_arms', label: 'MINX ARMS HOTEL', building: 'minx_arms', rent: 80, rentPeriod: 'day', minBizType: 'fictitious', desc: 'Cheap hotel. Single room per night. Curtains never close. Pay daily or get tossed.' },
-  { id: 'eastside', label: 'EASTSIDE FLATS', building: 'eastside_flat', rent: 500, rentPeriod: 'week', minBizType: 'fictitious', desc: 'Mid-tier apartment. Mailboxes. Notice board. Actual door that locks. Weekly lease.' },
-  { id: 'overlook', label: 'THE PINNACLE', building: 'overlook', rent: 200, rentPeriod: 'day', minBizType: 'real', desc: 'Upscale hotel. Concierge. Crystal chandelier. Real address for a real business.' },
-  { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', desc: 'Premium suite. Room service. Neon skyline views. The top.' },
+  { id: 'shelter', label: 'CITY SHELTER / BUNKER', building: 'bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Free bunk. Crowded. Shared with dozens of drifters, workers, and displaced. Closest to the bunker exit.' },
+  { id: 'outpost', label: 'DESERT OUTPOST', building: 'outpost_alpha', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Free cot. Wasteland outpost. Sparse but functional. Generator power, rations, armed warden.' },
+  { id: 'machine_bunker', label: 'MACHINE BUNKER (UNDERGROUND)', building: 'machine_bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Deep underground. Room closest to the bunker exit. Packed with replicants and refugees.' },
+  { id: 'minx_arms', label: 'MINX ARMS HOTEL', building: 'minx_arms', rent: 80, rentPeriod: 'day', minBizType: 'fictitious', tier: 'apartment', desc: 'Cheap hotel. Single room per night. Curtains never close. Pay daily or get tossed.' },
+  { id: 'eastside', label: 'EASTSIDE FLATS', building: 'eastside_flat', rent: 500, rentPeriod: 'week', minBizType: 'fictitious', tier: 'apartment', desc: 'Mid-tier apartment. Mailboxes. Notice board. Actual door that locks. Weekly lease.' },
+  { id: 'city_house', label: 'MINX CITY ROWHOUSE', building: 'safe_house', rent: 2000, rentPeriod: 'week', minBizType: 'real', tier: 'house', wealthMin: 200000, desc: 'Private rowhouse in the Neon Strip. Two floors. Separate entrance. Locked mailbox. No shared walls — a concept most residents have forgotten.' },
+  { id: 'overlook', label: 'THE PINNACLE', building: 'overlook', rent: 200, rentPeriod: 'day', minBizType: 'real', tier: 'apartment', desc: 'Upscale hotel. Concierge. Crystal chandelier. Real address for a real business.' },
+  { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', tier: 'house', wealthMin: 500000, desc: 'Premium suite. Room service. Neon skyline views. The closest thing to a house in the corporate district.' },
+  { id: 'tower_villa', label: 'SHADOW TOWER RESIDENCE', building: 'pablo_tower', rent: 5000, rentPeriod: 'week', minBizType: 'real', tier: 'villa', wealthMin: 2000000, desc: 'Private residence in the lower tower floors. Floor-to-ceiling glass. Climate controlled. The address says everything. SUITS reserves the right to revoke at any time for any reason.' },
 ];
 const RENT_PERIOD_DAYS = (tier: HousingTier) => tier.rentPeriod === 'week' ? 7 : 1;
 const RENT_GRACE_DAYS = 1;
@@ -1946,12 +2023,13 @@ const STORE_LINES = [
 ];
 
 const TOWER_LINES = [
-  '> SHADOW TOWER — 62 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
+  '> SHADOW TOWER — 67 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
   '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as every city that ever fell.',
-  '> Floors 1-39: commercial rentals. Floors 40+: permanently restricted by order of SENIOR PABLO.',
+  '> Floors 1-39: commercial rentals. Floors 40-65: permanently restricted by order of SENIOR PABLO.',
+  '> Floor 66: PICASSOO.AI executive suite. Floor 67: The penthouse. PICASSO himself. Nobody returns from there with a story.',
   '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
   '> HARLAN CROSS was outside this building for three days. Said he felt something. Left without explaining.',
-  '> SENIOR PABLO. Villain of Minx City. Hero of the rich. Nobody has ever met him face to face and told the story.',
+  '> PICASSO, SENIOR PABLO, and the city\'s core power structure — all resident above floor 65. All watching.',
 ];
 
 const OFFICE_TIERS = [
@@ -1978,36 +2056,81 @@ const WORKER_AMBIENT_LINES = [
 ];
 
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
-  const w = 300, h = 260;
+  const scale = getBuildingScale(bid);
+  const baseW = scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
+  const baseH = scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
+  const w = baseW, h = baseH;
   const seed = bid.length * 137 + fl.floor * 53;
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
   const objects: InteriorObject[] = [];
   const workers: InteriorWorker[] = [];
 
+  const isTowerFloor = scale === 'tower';
+  const isRestrictedFloor = fl.restricted ?? false;
+
+  const wallColor = isRestrictedFloor
+    ? 'rgba(22,10,14,.98)'
+    : isTowerFloor
+    ? 'rgba(12,14,22,.97)'
+    : isOwnedByPlayer ? 'rgba(14,26,18,.97)' : 'rgba(18,28,22,.95)';
+  const accentColor = isRestrictedFloor
+    ? 'rgba(180,20,40,.3)'
+    : isTowerFloor
+    ? 'rgba(120,60,255,.35)'
+    : isOwnedByPlayer ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.25)';
+
   if (isOwnedByPlayer && companyName) {
-    objects.push({ x: 80, y: 60, w: 55, h: 35, type: 'desk', label: 'PRIMARY DESK', color: 'rgba(0,80,40,.5)' });
-    objects.push({ x: 160, y: 60, w: 45, h: 35, type: 'terminal', label: 'OPERATIONS TERMINAL', color: 'rgba(0,60,30,.4)' });
-    objects.push({ x: 40, y: 120, w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: 220, y: 120, w: 40, h: 30, type: 'chair', label: 'VISITOR SEAT', color: 'rgba(30,45,30,.4)' });
+    const deskX = Math.floor(w * 0.27);
+    const deskY = Math.floor(h * 0.23);
+    objects.push({ x: deskX, y: deskY, w: 55, h: 35, type: 'desk', label: 'PRIMARY DESK', color: 'rgba(0,80,40,.5)' });
+    objects.push({ x: deskX + 65, y: deskY, w: 45, h: 35, type: 'terminal', label: 'OPERATIONS TERMINAL', color: 'rgba(0,60,30,.4)' });
+    objects.push({ x: 40, y: Math.floor(h * 0.46), w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: Math.floor(w * 0.72), y: Math.floor(h * 0.46), w: 40, h: 30, type: 'chair', label: 'VISITOR SEAT', color: 'rgba(30,45,30,.4)' });
     objects.push({ x: 20, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: 255, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 45, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    if (isTowerFloor) {
+      objects.push({ x: w - 70, y: 20, w: 60, h: 55, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
+      objects.push({ x: w - 80, y: 100, w: 45, h: 30, type: 'server', label: 'SECURE SERVER', color: 'rgba(40,0,80,.5)' });
+    }
     const ambientIdx = Math.floor(hash(seed + 99) * WORKER_AMBIENT_LINES.length);
-    workers.push({ x: 107, y: 75, name: 'WORKER', role: `${companyName} — FLOOR OPS`, hostile: false, dialogue: WORKER_AMBIENT_LINES[ambientIdx] });
+    workers.push({ x: deskX + 12, y: deskY + 10, name: 'WORKER', role: `${companyName} — FLOOR OPS`, hostile: false, dialogue: WORKER_AMBIENT_LINES[ambientIdx] });
   } else {
-    const objCount = 3 + Math.floor(hash(seed + 1) * 4);
-    const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = [
-      { type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
-      { type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
-      { type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)', w: 30, h: 20 },
-      { type: 'chair', label: 'CHAIR', color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
-      { type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
-      { type: 'crate', label: 'CRATE', color: 'rgba(55,45,30,.5)', w: 25, h: 25 },
-    ];
+    const baseObjCount = isTowerFloor ? 5 : scale === 'large' ? 4 : 3;
+    const objCount = baseObjCount + Math.floor(hash(seed + 1) * 4);
+    const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = isRestrictedFloor
+      ? [
+          { type: 'server',         label: 'SERVER RACK',   color: 'rgba(40,0,60,.6)',  w: 45, h: 30 },
+          { type: 'terminal',       label: 'TERMINAL',      color: 'rgba(60,0,40,.5)',  w: 45, h: 35 },
+          { type: 'security_gate',  label: 'GATE',          color: 'rgba(80,20,40,.5)', w: 30, h: 20 },
+          { type: 'locker',         label: 'SEALED LOCKER', color: 'rgba(55,30,40,.5)', w: 25, h: 30 },
+          { type: 'filing_cabinet', label: 'CLASSIFIED',    color: 'rgba(50,25,35,.4)', w: 20, h: 25 },
+        ]
+      : isTowerFloor
+      ? [
+          { type: 'desk',              label: 'EXEC DESK',      color: 'rgba(30,35,60,.55)', w: 55, h: 35 },
+          { type: 'terminal',          label: 'TERMINAL',       color: 'rgba(0,50,90,.5)',   w: 45, h: 35 },
+          { type: 'conference_table',  label: 'CONF TABLE',     color: 'rgba(25,30,55,.5)',  w: 75, h: 40 },
+          { type: 'window',            label: 'CITY VIEW',      color: 'rgba(0,30,80,.4)',   w: 50, h: 60 },
+          { type: 'server',            label: 'SERVER RACK',    color: 'rgba(40,0,80,.5)',   w: 40, h: 30 },
+          { type: 'bookshelf',         label: 'ARCHIVE',        color: 'rgba(50,40,25,.5)',  w: 35, h: 20 },
+          { type: 'water_cooler',      label: 'UNIT',           color: 'rgba(0,50,70,.4)',   w: 15, h: 20 },
+        ]
+      : [
+          { type: 'desk',    label: 'DESK',    color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
+          { type: 'terminal',label: 'TERMINAL',color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
+          { type: 'shelf',   label: 'SHELF',   color: 'rgba(45,55,40,.4)',w: 30, h: 20 },
+          { type: 'chair',   label: 'CHAIR',   color: 'rgba(40,45,35,.4)',w: 20, h: 20 },
+          { type: 'window',  label: 'WINDOW',  color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
+          { type: 'crate',   label: 'CRATE',   color: 'rgba(55,45,30,.5)',w: 25, h: 25 },
+        ];
     for (let i = 0; i < objCount; i++) {
       const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
-      const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - 80));
-      const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - 100));
+      const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - ft.w - 40));
+      const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - ft.h - 60));
       objects.push({ x: ox, y: oy, w: ft.w, h: ft.h, type: ft.type, label: ft.label, color: ft.color });
+    }
+    if (isTowerFloor && !isRestrictedFloor) {
+      objects.push({ x: w - 60, y: 15, w: 55, h: 65, type: 'window', label: 'PANORAMIC GLASS', color: 'rgba(0,30,80,.35)' });
     }
   }
 
@@ -2017,13 +2140,14 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
       ? `${companyName} — FL ${String(fl.floor).padStart(2, '0')}`
       : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`,
     width: w, height: h,
-    wallColor: isOwnedByPlayer ? 'rgba(14,26,18,.97)' : 'rgba(18,28,22,.95)',
-    floorColor: 'rgba(6,12,8,.9)',
-    accentColor: isOwnedByPlayer ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.25)',
+    wallColor,
+    floorColor: isRestrictedFloor ? 'rgba(4,2,6,.95)' : isTowerFloor ? 'rgba(4,5,12,.95)' : 'rgba(6,12,8,.9)',
+    accentColor,
     exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
     ambientText: isOwnedByPlayer && companyName
       ? `${companyName} operations floor. A worker manages communications from a desk near the center of the room.`
       : fl.desc,
+    buildingSize: scale === 'tower' ? 'tower' : scale === 'large' ? 'large' : scale === 'medium' ? 'medium' : 'small',
     workers,
     objects,
   };
@@ -2054,24 +2178,75 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   pablo_tower: {
-    label: 'SHADOW TOWER', history: 'SHADOW TOWER — 100 floors. Built 1986–1991 (floors 1–62). Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. Floors 63–100 were added between 1992–1995. The permits for these floors have never been filed with any municipal office. Nobody asked.',
+    label: 'SHADOW TOWER', history: 'SHADOW TOWER — 67 FLOORS. Built 1986–1992. Construction records partially sealed. Three architects. Two retired. One was not found after floor 40 was completed. The building was publicly announced as 39 floors. Floors 40–67 do not appear on any municipal filing. The planning office says they are reviewing. They have been reviewing since 1993.',
     floors: [
-      { floor: 1,  name: 'LOBBY / SECURITY', desc: 'SUITS reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
-      { floor: 5,  name: 'SUITS OFFICES', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
-      { floor: 12, name: 'DATA PROCESSING',   desc: 'Server rows. The hum is constant. Visitors report hearing their own name in the static. The IT staff deny this.' },
-      { floor: 20, name: 'EXECUTIVE SUITES',  desc: 'Full glass. City views. Each suite has a panic button. None have ever been pressed.' },
-      { floor: 39, name: 'LAST PUBLIC FLOOR', desc: 'A whiteboard reads: "PHASE THREE IS AUTHORIZED." Nobody has erased it. Nobody has added to it. It has been there for eleven years.' },
-      { floor: 40, name: '── RESTRICTED ──',  desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7.', restricted: true },
-      { floor: 50, name: '── RESTRICTED ──',  desc: 'Unknown. Floor plans don\'t exist. The windows are opaque from outside. The glass is black on all sides.', restricted: true },
-      { floor: 62, name: 'PENTHOUSE — PABLO', desc: 'Nobody has been here and returned to describe it. The silhouette in the window has been there for a very long time.', restricted: true },
-      { floor: 63, name: '── CORPORATE ──',   desc: 'A maze of identical offices. The signage has all been removed. The nameplates on the desks are blank.', restricted: true },
-      { floor: 70, name: '── CORPORATE ──',   desc: 'Open floor plan. Hundreds of desks. No workers. The chairs are all pulled out. Someone was here recently.', restricted: true },
-      { floor: 75, name: '── RESTRICTED ──',  desc: 'Biometric lock. The scanner has been painted over. Someone still uses this floor. The power draw proves it.', restricted: true },
-      { floor: 80, name: '── RESTRICTED ──',  desc: 'Climate-controlled. Cold enough to see your breath. Rows of sealed containers. Labels removed. All of them.', restricted: true },
-      { floor: 88, name: '── RESTRICTED ──',  desc: 'The elevator pauses here uninstructed. Nobody has ever seen this floor selected. The doors open anyway.', restricted: true },
-      { floor: 92, name: '── RESTRICTED ──',  desc: 'A single chair at a single desk. A document. Face-down. The chair is warm. The document is not for you.', restricted: true },
-      { floor: 99, name: '── RESTRICTED ──',  desc: 'One floor below the top. The architects\' note on this floor simply says: "do not name this one." Nobody named it.', restricted: true },
-      { floor: 100, name: '── APEX ──',        desc: 'The building was supposed to stop at 62. Floor 100 exists. No one knows how. The city maps do not include it.', restricted: true },
+      { floor: 1,  name: 'LOBBY / SECURITY',   desc: 'SUITS reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
+      { floor: 2,  name: 'PABLO STORE — RETAIL', desc: 'Ground-level commercial facing the lobby. PABLO-branded devices. Complimentary compliance forms with every purchase.' },
+      { floor: 3,  name: 'FOOD COURT — TOWER CANTEEN', desc: 'Corporate cafeteria. The menu rotates weekly. The prices are subsidized by SUITS. Nobody asks why.' },
+      { floor: 4,  name: 'DIRECTORY SERVICES', desc: 'Building management. Leasing inquiries. Visitor badges. The records here go back to 1986. Some pages are water-damaged in ways that are difficult to explain.' },
+      { floor: 5,  name: 'SUITS OFFICES — ADMIN', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
+      { floor: 6,  name: 'SUITS OFFICES — OPERATIONS', desc: 'Network monitoring. City infrastructure feeds. One screen shows a map of Minx City with real-time citizen movement. Nobody is watching it. Officially.' },
+      { floor: 7,  name: 'SUITS OFFICES — COMMUNICATIONS', desc: 'Relay hub for all SUITS internal comms. Messages are archived for seventy-two hours. Then they are archived somewhere else.' },
+      { floor: 8,  name: 'CONFERENCE SUITES', desc: 'Three meeting rooms. Always booked. The booking system only shows initials. You cannot request a room. You are invited or you are not.' },
+      { floor: 9,  name: 'SUITS OFFICES — ANALYSIS', desc: 'Statistical modeling. Twelve workstations. One empty with a screensaver that says MONITORING.' },
+      { floor: 10, name: 'BANCO OMBRA — TOWER BRANCH', desc: 'Internal banking floor for tower tenants. No queues. The rates here are different from the public branch. Nobody explains how.' },
+      { floor: 11, name: 'BANCO OMBRA — VAULT ACCESS', desc: 'Private transaction terminal. Ledger services. The records here are not shared with the municipal bank authority.' },
+      { floor: 12, name: 'DATA PROCESSING', desc: 'Server rows. The hum is constant. Visitors report hearing their own name in the static. The IT staff deny this.' },
+      { floor: 13, name: 'DATA PROCESSING — SECONDARY', desc: 'Redundant systems. Backup tapes dating from 1988. Some tapes are labelled CITIZEN — [REDACTED]. The IT manager says they are obsolete. They are not obsolete.' },
+      { floor: 14, name: 'ARCHIVE — CITY RECORDS', desc: 'Pre-SUITS city documents. Election rolls. Permits. Property disputes. The documents are physically present. They can be requested. Requests take ninety days.' },
+      { floor: 15, name: 'OXIDE LABS — RESEARCH WING', desc: 'Oxide Labs occupies three suites. Their research logs are transmitted directly to Floor 40. They are not aware of this.' },
+      { floor: 16, name: 'OXIDE LABS — TESTING DIVISION', desc: 'Materials testing. Experimental coatings. The lab coat hanging by the door has not been claimed in three months.' },
+      { floor: 17, name: 'OXIDE LABS — SUPPLY LOGISTICS', desc: 'Chemical inventory and procurement. The manifest lists only part numbers. No compound names.' },
+      { floor: 18, name: 'VOSS BIOTECH — IMPLANT DIVISION', desc: 'Voss Biotech implant testing and distribution hub. The lab smells of coolant and antiseptic. Clearance required beyond reception.' },
+      { floor: 19, name: 'VOSS BIOTECH — CLINICAL', desc: 'Procedure rooms. Three bays. All equipped. Rarely used for scheduled appointments. More often for walk-ins from floors above.' },
+      { floor: 20, name: 'EXECUTIVE SUITES', desc: 'Full glass. City views. Each suite has a panic button. None have ever been pressed. That is by design.' },
+      { floor: 21, name: 'EXECUTIVE SUITES — EAST WING', desc: 'Corner offices. The tenants here do not appear in the city business registry. Their names are in the building roster. Not in the registry.' },
+      { floor: 22, name: 'EXECUTIVE SUITES — WEST WING', desc: 'Reserved for rotating occupancy. Three corporations per quarter. The handover process involves a sealed briefing and a non-disclosure.' },
+      { floor: 23, name: 'SUITS COMPLIANCE — MONITORING', desc: 'Twenty workstations. Surveillance routing. Not all of what is watched is external.' },
+      { floor: 24, name: 'SUITS COMPLIANCE — LEGAL DESK', desc: 'Contract review and regulatory filings. The filing stack in the corner is eleven months old. They are still working on 2024.' },
+      { floor: 25, name: 'IRON DOJO — CORPORATE GYM', desc: 'Tower-resident fitness facility. The equipment is better than the street location. The sensei visits once a month and says nothing.' },
+      { floor: 26, name: 'WELLNESS SUITE', desc: 'Recovery rooms. Sleep pods. A nutritionist on retainer. Unused most days. Heavily used after certain meetings on upper floors.' },
+      { floor: 27, name: 'LEISURE FLOOR — TOWER CLUB', desc: 'Members-only lounge. Membership is assigned, not applied for. The bar does not post prices. You are charged if you are a member. You cannot find out the prices if you are not.' },
+      { floor: 28, name: 'NEXUS HUB — ENTERPRISE', desc: 'Premium co-working for verified tower tenants. The desks face outward. The view is deliberate.' },
+      { floor: 29, name: 'NEXUS HUB — PRIVATE PODS', desc: 'Sound-isolated booths. Verified occupancy only. Three booths show names. The fourth shows: AWAITING ASSIGNMENT — since 1999.' },
+      { floor: 30, name: 'GUEST SUITES', desc: 'Visitor accommodation. Stays are logged. The guest book is not optional. There is one name in the book that has recurred every six months for twelve years.' },
+      { floor: 31, name: 'SUITS PR — COMMS FLOOR', desc: 'Public relations and media management. The press release queue has entries dated up to 2031. They are pre-approved.' },
+      { floor: 32, name: 'SUITS PR — BROADCAST', desc: 'Internal TV feed for the tower monitors. Content production. The logo on the broadcast ID card reads MINX CITY NEWS DIVISION.' },
+      { floor: 33, name: 'SUITS LEGAL — COMPLIANCE', desc: 'Legal division. Contracts, litigation, enforcement. A wall of filing cabinets runs the full south wall. The cabinets are alphabetical. Your name may be in there.' },
+      { floor: 34, name: 'SUITS LEGAL — ENFORCEMENT', desc: 'Litigation active files. Court liaison. Three cases currently open. Two involving businesses. One involving an individual. The individual does not know yet.' },
+      { floor: 35, name: 'SUITS LEGAL — CONTRACT VAULT', desc: 'Executed agreements. The safe holds originals. Digital backups exist. The physical copies are stored here because digital evidence is inadmissible in one jurisdiction.' },
+      { floor: 36, name: 'EXECUTIVE BOARDROOM FLOOR', desc: 'Three boardrooms. Capacity: twenty each. Usually occupied by four or fewer. The chairs are identical. The positioning is not.' },
+      { floor: 37, name: 'SENIOR MANAGEMENT — NORTH', desc: 'C-level adjacents. Chief of Staff offices. The assistant at the south desk controls the senior schedule. She has not taken a day off in two years.' },
+      { floor: 38, name: 'SENIOR MANAGEMENT — SOUTH', desc: 'Strategy division. City growth projections. One whiteboard is never erased. The contents are covered with a grey sheet when visitors are present.' },
+      { floor: 39, name: 'LAST PUBLIC FLOOR', desc: 'A whiteboard reads: "PHASE THREE IS AUTHORIZED." Nobody has erased it. Nobody has added to it. It has been there for eleven years. The view from here shows all four city sectors.' },
+      { floor: 40, name: '── RESTRICTED ──', restricted: true, desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7. Officially.' },
+      { floor: 41, name: '── RESTRICTED ──', restricted: true, desc: 'Biometric-locked corridor. Single corridor extending to the north face. The north face windows are treated glass — you cannot see in from outside. You cannot see the city from inside.' },
+      { floor: 42, name: '── RESTRICTED ──', restricted: true, desc: 'Server farm. Heat-managed. The power draw for this floor exceeds the combined draw of floors 1 through 15. The power bill goes to an entity that has never filed taxes.' },
+      { floor: 43, name: '── RESTRICTED ──', restricted: true, desc: 'Empty. Clean floor. Three chairs. One table. One glass of water — always full. Nobody explains who fills it. Nobody sees who drinks it.' },
+      { floor: 44, name: '── RESTRICTED ──', restricted: true, desc: 'Logs show this floor is accessed seven times per week. Consistently. The logs do not show who accesses it. The log field for IDENTITY reads: SYSTEM.' },
+      { floor: 45, name: '── RESTRICTED ──', restricted: true, desc: 'Climate-controlled. Cold enough to see your breath. Rows of sealed containers. Labels removed. All of them.' },
+      { floor: 46, name: '── RESTRICTED ──', restricted: true, desc: 'Research bay. Equipment in use. The equipment is not branded. The methodology is not documented. The output of whatever runs here is transmitted to an unknown destination every 72 hours.' },
+      { floor: 47, name: '── RESTRICTED ──', restricted: true, desc: 'Holding area. The furniture is bolted down. The room has acoustic dampening in the walls. The exit requires a key that is not distributed through standard SUITS channels.' },
+      { floor: 48, name: '── RESTRICTED ──', restricted: true, desc: 'Signal relay. Encrypted handshakes logged every six seconds. The handshake partners are listed only as: NODE-A, NODE-B, and ORACLE.' },
+      { floor: 49, name: '── RESTRICTED ──', restricted: true, desc: 'Cold storage. Low light. The smell of chemical preservative. Three units are in long-term suspension protocols. Their designation tags read: RESERVE.' },
+      { floor: 50, name: '── RESTRICTED ──', restricted: true, desc: 'Unknown. Floor plans do not exist. The windows are opaque from outside. The glass is black on all sides. Satellite imaging shows no window openings at this level.' },
+      { floor: 51, name: '── RESTRICTED ──', restricted: true, desc: 'Power routing hub for upper floors. Engineers who work here are rotated every three months. No engineer has worked here twice.' },
+      { floor: 52, name: '── RESTRICTED ──', restricted: true, desc: 'Nothing on record. The floor appears in the power grid logs. It appears in the building maintenance schedule. It does not appear in any SUITS floor registry.' },
+      { floor: 53, name: '── RESTRICTED ──', restricted: true, desc: 'Seven terminals. Six active. One displaying a single cursor, blinking. The cursor has been blinking since the building opened. Facilities staff have been told not to power it down.' },
+      { floor: 54, name: '── RESTRICTED ──', restricted: true, desc: 'Cleared space. High ceiling. The height suggests this floor was designed for something taller than a person. The slab markings are in a unit system that does not match any current standard.' },
+      { floor: 55, name: '── RESTRICTED ──', restricted: true, desc: 'Biometric lock. The scanner has been painted over. Someone still uses this floor. The power draw proves it.' },
+      { floor: 56, name: '── RESTRICTED ──', restricted: true, desc: 'Communications array. External-facing signal emitters. The output frequency is not within any registered broadcast band. It is also not within any restricted band. It simply is not registered anywhere.' },
+      { floor: 57, name: '── RESTRICTED ──', restricted: true, desc: 'Long room. High ceiling. A model of Minx City on a central table — accurate to street level. Red markers on seventeen locations. You do not know what the markers mean. You suspect they are not decorative.' },
+      { floor: 58, name: '── RESTRICTED ──', restricted: true, desc: 'Antechamber. One door. One guard — not SUITS uniformed. Unknown affiliation. No badge. No acknowledgment of your presence.' },
+      { floor: 59, name: '── RESTRICTED ──', restricted: true, desc: 'Environmental control hub. Humidity, air pressure, thermal systems for floors 60 through 67. The settings are within human tolerances. Barely.' },
+      { floor: 60, name: '── RESTRICTED ──', restricted: true, desc: 'The elevator pauses here uninstructed. Nobody has ever seen this floor selected. The doors open anyway. There is always a chair facing the door. It is always empty when the doors open.' },
+      { floor: 61, name: '── RESTRICTED ──', restricted: true, desc: 'Transition floor. Biometric + voice scan. The voice recognition system is tuned to a single authorized voice. The voice has never been heard by anyone below floor 60.' },
+      { floor: 62, name: '── RESTRICTED ──', restricted: true, desc: 'Protocol buffer. Any data moving between lower floors and the penthouse cluster passes through here. It is scrubbed, reformatted, and re-encrypted in under four milliseconds.' },
+      { floor: 63, name: '── SUITS COMMAND ──', restricted: true, desc: 'SUITS inner command. Single corridor. No windows. Every surface is white. A single desk at the end holds a terminal that is always on.' },
+      { floor: 64, name: '── RESTRICTED ──', restricted: true, desc: 'Anteroom to command. Two chairs. One of them has never been used. The other shows years of use — the same wear pattern, always the same seat position.' },
+      { floor: 65, name: '── RESTRICTED ──', restricted: true, desc: 'A single chair at a single desk. A document. Face-down. The chair is warm. The document is not for you.' },
+      { floor: 66, name: 'PICASSOO.AI — EXECUTIVE SUITE', restricted: true, desc: 'PICASSO\'s corporate office. Holographic art rotates on every wall. The servers here connect directly to the PCSO global model. Staff on this floor do not take breaks. Or blink. Often enough.' },
+      { floor: 67, name: '── PENTHOUSE — PICASSO ──', restricted: true, desc: 'The top. PICASSO\'s penthouse. The city is visible from every angle. The glass is floor-to-ceiling. He sees everything. He has always seen everything. The lights never go off. The chair at the window is never empty.' },
     ],
   },
   data_vault: {
@@ -2089,7 +2264,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'CLUB NEON', history: 'Three names since 1982. The lights have not been fully off since 1988.',
     floors: [
       { floor: 1, name: 'MAIN FLOOR / BAR',   desc: 'The floor moves slightly. Engineers said: structural flex. The regulars say: it dances back.' },
-      { floor: 2, name: 'VIP / ROOF TERRACE', desc: 'VIP booth and open-air rooftop. Floor 62 is visible. Some nights it is lit. The bartender says it is random.' },
+      { floor: 2, name: 'VIP / ROOF TERRACE', desc: 'VIP booth and open-air rooftop. The Shadow Tower rises from here — you can see the penthouse on Floor 67. Some nights it is lit. The bartender says it is random.' },
     ],
   },
   machine_bunker: {
@@ -3393,8 +3568,18 @@ export default function WorldPlay() {
 
   const enterInterior = useCallback((bid: string) => {
     const g = gs.current;
-    const def = getInterior(bid);
+    let def = getInterior(bid);
     if (!def) return;
+    if (bid === 'pablo_tower' && g.housingTier === 'tower_villa') {
+      const bld = BUILDINGS.find(b => b.id === 'pablo_tower');
+      const villaDef = INTERIOR_DEFS['_villa'];
+      if (villaDef) def = { ...villaDef, id: 'pablo_tower', label: bld?.label ?? 'SHADOW TOWER' };
+    }
+    if (bid === 'safe_house' && g.housingTier === 'city_house') {
+      const bld = BUILDINGS.find(b => b.id === 'safe_house');
+      const houseDef = INTERIOR_DEFS['_house'];
+      if (houseDef) def = { ...houseDef, id: 'safe_house', label: bld?.label ?? 'ROWHOUSE' };
+    }
     g.interiorFade = 0;
     g.interiorFadeDir = 1;
     g.interiorFadeCallback = () => {
@@ -6596,23 +6781,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const cycleDays = RENT_PERIOD_DAYS(tier);
             const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
             const daysSinceRemind = Math.floor((Date.now() - g.rentReminded) / 86400000);
+            const autoRent = Math.round(tier.rent * getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker'));
             if (daysSinceRent >= cycleDays + RENT_GRACE_DAYS) {
-              if (g.salary >= tier.rent) {
-                g.salary -= tier.rent; setSalary(g.salary);
+              if (g.salary >= autoRent) {
+                g.salary -= autoRent; setSalary(g.salary);
                 g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
-                g.floaters.push({ x: g.px, y: g.py - 40, text: `-ƒ${tier.rent.toLocaleString()} RENT`, color: '#ff4444', life: 90, maxLife: 90 });
+                g.floaters.push({ x: g.px, y: g.py - 40, text: `-ƒ${autoRent.toLocaleString()} RENT`, color: '#ff4444', life: 90, maxLife: 90 });
                 const periodLabel = tier.rentPeriod === 'week' ? `${cycleDays} days` : 'tomorrow';
-                setNarr(`> RENT AUTO-DEDUCTED — ƒ${tier.rent.toLocaleString()} paid for ${tier.label}. Next payment ${periodLabel}.`);
+                setNarr(`> RENT AUTO-DEDUCTED — ƒ${autoRent.toLocaleString()} paid for ${tier.label}. Next payment ${periodLabel}.`);
               } else {
                 g.housingTier = 'shelter'; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
                 const spawn = getHamletSpawn(char, 'shelter');
                 g.hamletBuildingId = spawn.buildingId;
-                setNarr(`> EVICTION NOTICE — You couldn't pay ƒ${tier.rent.toLocaleString()} rent. Relocated to CITY SHELTER. Visit REAL ESTATE OFFICE to upgrade.`);
+                setNarr(`> EVICTION NOTICE — You couldn't pay ƒ${autoRent.toLocaleString()} rent. Relocated to CITY SHELTER. Visit REAL ESTATE OFFICE to upgrade.`);
               }
             } else if (daysSinceRent >= cycleDays - 1 && daysSinceRemind >= 1) {
               g.rentReminded = Date.now();
               const daysLeft = Math.max(0, cycleDays + RENT_GRACE_DAYS - daysSinceRent);
-              setNarr(`> RENT REMINDER — ƒ${tier.rent.toLocaleString()} due at ${tier.label}. ${daysLeft} day${daysLeft !== 1 ? 's' : ''} until auto-deduction or eviction.`);
+              setNarr(`> RENT REMINDER — ƒ${autoRent.toLocaleString()} due at ${tier.label}. ${daysLeft} day${daysLeft !== 1 ? 's' : ''} until auto-deduction or eviction.`);
             }
           }
         }
@@ -10606,36 +10792,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.interior = { bid: g.interior.bid, def: { ...lobbyDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — LOBBY` }, px: lobbyDef.exitX + lobbyDef.exitW / 2, py: lobbyDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                   setCurrentFloor(0); setElevatorPrompt(null); setNarr('> Elevator — Returning to lobby.');
                 }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: currentFloor === 0 ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${currentFloor === 0 ? '.25' : '.15'})`, color: `rgba(0,200,255,${currentFloor === 0 ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>FL 01 — LOBBY {currentFloor === 0 ? '(current)' : ''}</button>
-                {[2, 3, 4, 5].map(fl => {
-                  const hasPw = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.has(fl);
-                  const isCurrent = currentFloor === fl;
-                  return (
-                    <div key={fl}>
-                      <button onClick={() => {
-                        if (isCurrent) { setElevatorPrompt(null); setNarr(`> Floor ${fl} — You are already here.`); return; }
-                        if (hasPw) {
-                          setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'enter_pw' } : null); setElevatorPw(''); setElevatorPwError('');
-                        } else {
-                          const g = gs.current;
-                          if (g.interior) {
-                            const offDef = INTERIOR_DEFS['_office_floor'];
-                            g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${fl} (VACANT)` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                          }
-                          setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl} — Vacant office. Use elevator to claim with a password.`);
-                        }
-                      }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : 'transparent', border: `1px solid rgba(0,200,255,${isCurrent ? '.25' : '.15'})`, color: `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
-                        FL {String(fl).padStart(2, '0')} — {isCurrent ? '(current)' : hasPw ? 'RENTED 🔒' : 'VACANT'}
-                      </button>
-                      {!isCurrent && !hasPw && (
+                {(() => {
+                  const dir = BUILDING_FLOORS[elevatorPrompt.bid];
+                  const dirFloors = dir ? dir.floors.filter(f => f.floor > 1).map(f => f.floor) : [2, 3, 4, 5];
+                  const floorList = dirFloors.length > 0 ? dirFloors : [2, 3, 4, 5];
+                  return floorList.map(fl => {
+                    const hasPw = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.has(fl);
+                    const isCurrent = currentFloor === fl;
+                    const bfloor = dir?.floors.find(f => f.floor === fl);
+                    return (
+                      <div key={fl}>
                         <button onClick={() => {
-                          setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null); setElevatorPw(''); setElevatorPwError('');
-                        }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
-                          CLAIM FL {String(fl).padStart(2, '0')}
+                          if (isCurrent) { setElevatorPrompt(null); setNarr(`> Floor ${fl} — You are already here.`); return; }
+                          if (bfloor?.restricted) {
+                            sfxError(); setNarr(`> ACCESS DENIED — FL ${fl}: ${bfloor.name}. Clearance required.`); setElevatorPrompt(null); return;
+                          }
+                          if (hasPw) {
+                            setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'enter_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                          } else {
+                            const g = gs.current;
+                            if (g.interior) {
+                              const offDef = bfloor ? generateFloorInterior(elevatorPrompt.bid, bfloor, dir?.label ?? elevatorPrompt.bid) : INTERIOR_DEFS['_office_floor']!;
+                              g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(fl).padStart(2,'0')} ${bfloor ? '— ' + bfloor.name : '(VACANT)'}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                            }
+                            setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl}${bfloor ? ' — ' + bfloor.name : ' — Vacant office'}. Use elevator to claim with a password.`);
+                          }
+                        }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
+                          FL {String(fl).padStart(2, '0')} {bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? 'RENTED 🔒' : 'VACANT'}
                         </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        {!isCurrent && !hasPw && !bfloor?.restricted && (
+                          <button onClick={() => {
+                            setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                          }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
+                            CLAIM FL {String(fl).padStart(2, '0')}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
                 <button onClick={() => setElevatorPrompt(null)} style={{ width: '100%', padding: '.35rem', marginTop: '.3rem', background: 'transparent', border: '1px solid rgba(0,200,255,.12)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CANCEL</button>
               </div>
             )}
@@ -10652,9 +10847,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
                     const g = gs.current;
                     if (g.interior) {
-                      const floorDef = getInterior('_office_floor_standalone');
-                      if (floorDef) { g.interior = { bid: g.interior.bid, def: { ...floorDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: floorDef.exitX + floorDef.exitW / 2, py: floorDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY }; }
-                      else { const offDef = INTERIOR_DEFS['_office_floor']; g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY }; }
+                      const dir2 = BUILDING_FLOORS[elevatorPrompt.bid];
+                      const bfl2 = dir2?.floors.find(f => f.floor === elevatorPrompt.floor);
+                      const offDef2 = bfl2 ? generateFloorInterior(elevatorPrompt.bid, bfl2, dir2?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
+                      g.interior = { bid: g.interior.bid, def: { ...offDef2, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl2 ? '— ' + bfl2.name : ''}` }, px: offDef2.exitX + offDef2.exitW / 2, py: offDef2.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                     }
                     setCurrentFloor(elevatorPrompt.floor);
                     setElevatorPrompt(null);
@@ -10670,8 +10866,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
                     const g = gs.current;
                     if (g.interior) {
-                      const offDef = INTERIOR_DEFS['_office_floor'];
-                      g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                      const dir2 = BUILDING_FLOORS[elevatorPrompt.bid];
+                      const bfl2 = dir2?.floors.find(f => f.floor === elevatorPrompt.floor);
+                      const offDef2 = bfl2 ? generateFloorInterior(elevatorPrompt.bid, bfl2, dir2?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
+                      g.interior = { bid: g.interior.bid, def: { ...offDef2, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl2 ? '— ' + bfl2.name : ''}` }, px: offDef2.exitX + offDef2.exitW / 2, py: offDef2.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                     }
                     setCurrentFloor(elevatorPrompt.floor);
                     setElevatorPrompt(null);
@@ -10690,8 +10888,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
                       const g = gs.current;
                       if (g.interior) {
-                        const offDef = INTERIOR_DEFS['_office_floor'];
-                        g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                        const dir3 = BUILDING_FLOORS[elevatorPrompt.bid];
+                        const bfl3 = dir3?.floors.find(f => f.floor === elevatorPrompt.floor);
+                        const offDef3 = bfl3 ? generateFloorInterior(elevatorPrompt.bid, bfl3, dir3?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
+                        g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                       }
                       setCurrentFloor(elevatorPrompt.floor);
                       setElevatorPrompt(null);
@@ -10708,8 +10908,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
                       const g = gs.current;
                       if (g.interior) {
-                        const offDef = INTERIOR_DEFS['_office_floor'];
-                        g.interior = { bid: g.interior.bid, def: { ...offDef, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FLOOR ${elevatorPrompt.floor}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                        const dir3 = BUILDING_FLOORS[elevatorPrompt.bid];
+                        const bfl3 = dir3?.floors.find(f => f.floor === elevatorPrompt.floor);
+                        const offDef3 = bfl3 ? generateFloorInterior(elevatorPrompt.bid, bfl3, dir3?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
+                        g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
                       }
                       setCurrentFloor(elevatorPrompt.floor);
                       setElevatorPrompt(null);
@@ -10817,6 +11019,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <button onClick={() => setFloorPanel(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>✕ ESC</button>
             </div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg,transparent,rgba(0,255,65,.3),transparent)', marginBottom: '.9rem' }} />
+            {/* Zone tag */}
+            {(() => {
+              const zone = getBuildingZone(floorPanel.bid);
+              const scale = getBuildingScale(floorPanel.bid);
+              if (!zone && scale === 'small') return null;
+              return (
+                <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.6rem', fontSize: '.38rem', flexWrap: 'wrap' }}>
+                  {zone && <span style={{ padding: '1px 5px', border: `1px solid ${zone.color.replace(',.025', ',.4').replace(',.02', ',.4').replace(',.03', ',.5')}`, color: zone.color.replace(',.025', ',.7').replace(',.02', ',.7').replace(',.03', ',.8') }}>ZONE: {zone.name} [{zone.type.toUpperCase()}]</span>}
+                  <span style={{ padding: '1px 5px', border: '1px solid rgba(100,80,255,.35)', color: 'rgba(140,110,255,.7)' }}>SCALE: {scale.toUpperCase()} · {floorPanel.dir.floors.length} FLOORS</span>
+                  <span style={{ padding: '1px 5px', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.5)' }}>RENT IDX: x{getZoneRentMultiplier(floorPanel.bid).toFixed(1)}</span>
+                </div>
+              );
+            })()}
             {/* History */}
             <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, marginBottom: '1rem', padding: '.6rem', border: '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.02)' }}>
               {floorPanel.dir.history}
@@ -10863,7 +11078,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       onClick={(e) => {
                         e.stopPropagation();
                         if (fl.restricted) {
-                          setNarr(`> ACCESS DENIED — Floor ${fl.floor} requires clearance you do not have.`);
+                          setNarr(`> SHADOW TOWER — FL ${String(fl.floor).padStart(2, '0')} CLASSIFIED. ${floorPanel.bid === 'pablo_tower' ? 'Level-7 SUITS credential required. These floors do not exist in the public registry.' : 'Restricted access. Clearance not granted.'}`);
                           return;
                         }
                         if (fl.action === 'open_admin') {
@@ -11436,12 +11651,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
               <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
               <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
-              {BUILDINGS.map(b => (
-                <g key={b.id}>
-                  <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={b.bright ? 'rgba(0,255,65,.25)' : 'rgba(0,180,55,.14)'} stroke={b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'} strokeWidth={1} />
-                  <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill="rgba(0,255,65,.7)" fontSize={7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
-                </g>
+              {CITY_ZONES.map(z => (
+                <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} stroke="none" />
               ))}
+              {BUILDINGS.map(b => {
+                const scale = getBuildingScale(b.id);
+                const isTower = scale === 'tower';
+                const isLarge = scale === 'large';
+                const zone = CITY_ZONES.find(z => b.x >= z.x && b.x < z.x + z.w && b.y >= z.y && b.y < z.y + z.h);
+                const zoneFill = zone?.type === 'residential' ? 'rgba(0,180,80,.18)' : zone?.type === 'industrial' ? 'rgba(180,120,0,.18)' : zone?.type === 'transit' ? 'rgba(0,160,200,.18)' : b.bright ? 'rgba(0,255,65,.28)' : 'rgba(0,180,55,.14)';
+                const zoneStroke = isTower ? 'rgba(160,80,255,.9)' : isLarge ? 'rgba(0,200,255,.55)' : b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.22)';
+                const strokeW = isTower ? 2 : isLarge ? 1.5 : 1;
+                return (
+                  <g key={b.id}>
+                    {isTower && <rect x={b.x - 2} y={b.y - 2} width={b.w + 4} height={b.h + 4} fill="none" stroke="rgba(120,0,200,.25)" strokeWidth={4} />}
+                    <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={zoneFill} stroke={zoneStroke} strokeWidth={strokeW} />
+                    {isTower && <rect x={b.x + 2} y={b.y + 2} width={b.w - 4} height={b.h - 4} fill="none" stroke="rgba(180,100,255,.2)" strokeWidth={1} strokeDasharray="4 3" />}
+                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(0,255,65,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
+                  </g>
+                );
+              })}
               {BILLBOARDS.map(bb => (
                 <g key={bb.locationId}>
                   <rect x={bb.x - 4} y={bb.y - 4} width={8} height={8} fill="rgba(0,200,255,.2)" stroke="rgba(0,200,255,.5)" strokeWidth={1} />
@@ -11466,7 +11695,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </svg>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-              {[['#00ff41','CITY BUILDING'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','SUITS GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
+              {[['#00ff41','CITY BUILDING'],['rgba(200,150,255,.9)','TOWER'],['rgba(0,200,255,.8)','LARGE BLDG'],['rgba(0,180,80,.4)','RESIDENTIAL'],['rgba(180,120,0,.4)','INDUSTRIAL'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','SUITS GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
                   <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
@@ -12886,15 +13115,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const currentCycleDays = RENT_PERIOD_DAYS(currentTier);
         const daysUntilDue = Math.max(0, currentCycleDays - daysSinceRent);
         const homeGoldNetWorth = ((g.salary ?? 0) + (g.savings ?? 0)) / 100000 + (g.goldBalance ?? 0);
+        const playerWealth = (g.salary ?? 0) + (g.savings ?? 0);
+        const TIER_LABEL: Record<string, string> = { shelter: '[ SHELTER ]', apartment: '[ APARTMENT ]', house: '[ HOUSE ]', villa: '[ VILLA ]' };
+        const TIER_COLOR: Record<string, string> = { shelter: 'rgba(180,100,60,.6)', apartment: 'rgba(0,200,255,.6)', house: 'rgba(120,255,100,.6)', villa: 'rgba(200,100,255,.6)' };
         const canUpgrade = (tier: HousingTier) => {
           if (tier.id === g.housingTier) return false;
           if (tier.minBizType === 'real' && char.bizType !== 'real') return false;
           if (tier.minBizType === 'fictitious' && (!char.hasBusiness)) return false;
+          if (tier.wealthMin && playerWealth < tier.wealthMin) return false;
           return true;
         };
         const getHomeLockReason = (tier: HousingTier): string | null => {
           if (tier.minBizType === 'real' && char.bizType !== 'real') return 'REAL BUSINESS REQUIRED';
           if (tier.minBizType === 'fictitious' && !char.hasBusiness) return 'REGISTERED BUSINESS REQUIRED';
+          if (tier.wealthMin && playerWealth < tier.wealthMin) return `LOCKED — Requires ƒ${tier.wealthMin.toLocaleString()} FIAT wealth (you: ƒ${playerWealth.toLocaleString()})`;
           const tierIdx = HOUSING_TIERS.indexOf(tier);
           if (tierIdx >= 2) {
             const homeReqLevel = 10 + 10 * (tierIdx - 1);
@@ -12905,29 +13139,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           return null;
         };
+        const zoneRentMult = getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker');
+        const effectiveRent = (tier: HousingTier) => Math.round(tier.rent * zoneRentMult);
         const doUpgrade = (tier: HousingTier) => {
           if (!canUpgrade(tier)) { sfxError(); return; }
           const lockReason = getHomeLockReason(tier);
           if (lockReason) { sfxError(); setNarr(`> HOUSING — ${lockReason}`); return; }
-          const movingCost = tier.rent * 2;
-          if (g.salary < movingCost && tier.rent > 0) { sfxError(); setNarr(`> HOUSING — Moving to ${tier.label} requires ƒ${movingCost.toLocaleString()} deposit (2x ${tier.rentPeriod === 'week' ? 'weekly' : 'nightly'} rate).`); return; }
+          const spawn = getHamletSpawn(char, tier.id);
+          const upgZoneRentMult = getZoneRentMultiplier(spawn.buildingId);
+          const upgRent = Math.round(tier.rent * upgZoneRentMult);
+          const movingCost = upgRent * 2;
+          if (g.salary < movingCost && tier.rent > 0) { sfxError(); setNarr(`> HOUSING — Moving to ${tier.label} requires ƒ${movingCost.toLocaleString()} deposit (2x ${tier.rentPeriod === 'week' ? 'weekly' : 'nightly'} zone-adjusted rate).`); return; }
           if (tier.rent > 0) { g.salary -= movingCost; setSalary(g.salary); }
           g.housingTier = tier.id; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
-          const spawn = getHamletSpawn(char, tier.id);
           g.hamletBuildingId = spawn.buildingId;
           sfxCoin();
-          const periodStr = tier.rentPeriod === 'week' ? `ƒ${tier.rent.toLocaleString()}/week` : `ƒ${tier.rent.toLocaleString()}/night`;
-          setNarr(`> HOUSING — Moved to ${tier.label}. ${tier.rent > 0 ? `Deposit: ƒ${movingCost.toLocaleString()}. Rate: ${periodStr}.` : 'No rent. Shared accommodation.'}`);
+          const periodStr = tier.rentPeriod === 'week' ? `ƒ${upgRent.toLocaleString()}/week` : `ƒ${upgRent.toLocaleString()}/night`;
+          setNarr(`> HOUSING — Moved to ${tier.label}. ${tier.rent > 0 ? `Deposit: ƒ${movingCost.toLocaleString()}. Zone-adjusted rate: ${periodStr}.` : 'No rent. Shared accommodation.'}`);
           setShowHousingPanel(false);
         };
         const doPayRent = () => {
           const tier = HOUSING_TIERS.find(t => t.id === g.housingTier);
           if (!tier || tier.rent <= 0) return;
-          if (g.salary < tier.rent) { sfxError(); setNarr(`> HOUSING — Insufficient FIAT. Rent is ƒ${tier.rent.toLocaleString()}.`); return; }
-          g.salary -= tier.rent; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
+          const zoneRent = effectiveRent(tier);
+          if (g.salary < zoneRent) { sfxError(); setNarr(`> HOUSING — Insufficient FIAT. Zone-adjusted rent is ƒ${zoneRent.toLocaleString()}.`); return; }
+          g.salary -= zoneRent; g.rentPaidAt = Date.now(); g.rentReminded = Date.now();
           setSalary(g.salary); sfxCoin();
           const nextDue = tier.rentPeriod === 'week' ? `${RENT_PERIOD_DAYS(tier)} days` : 'tomorrow';
-          setNarr(`> HOUSING — Rent paid: ƒ${tier.rent.toLocaleString()} for ${tier.label}. Next due ${nextDue}.`);
+          setNarr(`> HOUSING — Rent paid: ƒ${zoneRent.toLocaleString()} (zone x${zoneRentMult.toFixed(1)}) for ${tier.label}. Next due ${nextDue}.`);
         };
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
@@ -12935,19 +13174,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ width:580, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(0,255,65,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
               <div style={{ padding:'.6rem', border:'1px solid rgba(0,255,65,.15)', background:'rgba(0,255,65,.03)', marginBottom:'1rem' }}>
-                <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>CURRENT: {currentTier.label}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
+                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>CURRENT: {currentTier.label}</div>
+                  <div style={{ fontSize:'.38rem', color: TIER_COLOR[currentTier.tier] ?? 'rgba(255,255,255,.3)', border:`1px solid ${TIER_COLOR[currentTier.tier] ?? 'rgba(255,255,255,.2)'}`, padding:'1px 5px' }}>{TIER_LABEL[currentTier.tier]}</div>
+                </div>
                 <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.4)', marginTop:'.2rem' }}>{currentTier.desc}</div>
                 {currentTier.rent > 0 && (
                   <div style={{ marginTop:'.4rem' }}>
                     <div style={{ fontSize:'.42rem', color: daysUntilDue <= 1 ? '#ff4444' : 'rgba(255,255,255,.4)' }}>
-                      RENT: ƒ{currentTier.rent.toLocaleString()} / {currentTier.rentPeriod === 'week' ? 'week' : 'night'} · {daysUntilDue > 0 ? `DUE IN ${daysUntilDue} DAY${daysUntilDue !== 1 ? 'S' : ''}` : 'OVERDUE'}
+                      RENT: ƒ{effectiveRent(currentTier).toLocaleString()} / {currentTier.rentPeriod === 'week' ? 'week' : 'night'} {zoneRentMult !== 1 ? <span style={{ color:'rgba(255,200,0,.5)' }}>(zone x{zoneRentMult.toFixed(1)})</span> : null} · {daysUntilDue > 0 ? `DUE IN ${daysUntilDue} DAY${daysUntilDue !== 1 ? 'S' : ''}` : 'OVERDUE'}
                     </div>
-                    <button onClick={doPayRent} disabled={g.salary < currentTier.rent || daysUntilDue > 3}
+                    <button onClick={doPayRent} disabled={g.salary < effectiveRent(currentTier) || daysUntilDue > 3}
                       style={{ marginTop:'.3rem', padding:'.3rem .8rem', background:'rgba(0,255,65,.08)', border:'1px solid rgba(0,255,65,.3)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>
-                      PAY RENT EARLY — ƒ{currentTier.rent.toLocaleString()}
+                      PAY RENT EARLY — ƒ{effectiveRent(currentTier).toLocaleString()}
                     </button>
                   </div>
                 )}
+              </div>
+              <div style={{ padding:'.4rem .6rem', border:'1px solid rgba(255,255,255,.08)', background:'rgba(255,255,255,.02)', marginBottom:'.8rem', fontSize:'.4rem', color:'rgba(255,255,255,.35)' }}>
+                FIAT WEALTH: <span style={{ color:'rgba(0,255,65,.6)' }}>ƒ{playerWealth.toLocaleString()}</span> · GOLD NET WORTH: <span style={{ color:'rgba(255,215,0,.6)' }}>{homeGoldNetWorth.toFixed(1)}oz</span> · LEVEL: <span style={{ color:'rgba(0,200,255,.6)' }}>{g.level}</span>
+              </div>
+              <div style={{ padding:'.4rem .6rem', border:'1px solid rgba(255,255,255,.06)', background:'rgba(255,255,255,.01)', marginBottom:'.8rem', fontSize:'.38rem', color:'rgba(255,255,255,.25)' }}>
+                CITY ZONE: {getBuildingZone(g.hamletBuildingId ?? 'bunker')?.name ?? 'UNZONED'} · ZONE RENT INDEX: x{getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker').toFixed(1)}
               </div>
               <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(255,255,255,.4)', marginBottom:'.5rem' }}>AVAILABLE PROPERTIES</div>
               {HOUSING_TIERS.map(tier => {
@@ -12958,9 +13206,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 return (
                   <div key={tier.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)', opacity: isCurrent ? 0.4 : 1 }}>
                     <div style={{ flex:1 }}>
-                      <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
+                        <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
+                        <div style={{ fontSize:'.36rem', color: TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.3)', border:`1px solid ${TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.2)'}`, padding:'1px 4px' }}>{TIER_LABEL[tier.tier]}</div>
+                      </div>
                       <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{tier.desc}</div>
                       <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.25)' }}>RENT: {tier.rent > 0 ? `ƒ${tier.rent.toLocaleString()} / ${tier.rentPeriod === 'week' ? 'week' : 'night'}` : 'FREE'} {moveCost > 0 && !isCurrent ? `· DEPOSIT: ƒ${moveCost.toLocaleString()}` : ''}</div>
+                      {tier.wealthMin && <div style={{ fontSize:'.38rem', color:'rgba(200,180,255,.4)' }}>MIN WEALTH: ƒ{tier.wealthMin.toLocaleString()}</div>}
                       {locked && <div style={{ fontSize:'.38rem', color:'#ff4444' }}>{locked}</div>}
                     </div>
                     {!isCurrent && (
