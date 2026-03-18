@@ -230,7 +230,7 @@ export function NavBar() {
           })}
 
           {/* Mobile boomer mode toggle */}
-          {!location.startsWith('/world') && (
+          {!location.startsWith('/world') && !boomerMode && (
             <button
               onClick={() => {
                 const nb = !boomerMode;
