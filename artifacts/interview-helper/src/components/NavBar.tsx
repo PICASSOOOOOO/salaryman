@@ -229,27 +229,6 @@ export function NavBar() {
             );
           })}
 
-          {/* Mobile boomer mode toggle */}
-          {!location.startsWith('/world') && !boomerMode && (
-            <button
-              onClick={() => {
-                const nb = !boomerMode;
-                setBoomerMode(nb);
-                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-              }}
-              className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 transition-all"
-              style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '0.6rem',
-                letterSpacing: '0.08em',
-                color: boomerMode ? '#ffaa00' : 'rgba(0,255,65,0.35)',
-                border: boomerMode ? '1px solid rgba(255,170,0,0.5)' : '1px solid rgba(0,255,65,0.2)',
-                background: boomerMode ? 'rgba(255,170,0,0.1)' : 'transparent',
-              }}
-            >
-              {boomerMode ? '✓ PLAIN' : 'PLAIN'}
-            </button>
-          )}
 
           <button
             onClick={() => navigate('/world')}
