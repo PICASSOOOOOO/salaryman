@@ -1963,33 +1963,67 @@ const OFFICE_TIERS = [
 // ── Building floor directories ────────────────────────────────────────────────
 interface BFloor { floor: number; name: string; desc: string; restricted?: boolean; action?: string; }
 interface BDirectory { label: string; history: string; floors: BFloor[]; }
-function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string): InteriorDef {
+const WORKER_AMBIENT_LINES = [
+  'The message queue is empty. For now.',
+  'All systems operational. Waiting on authorization.',
+  'Relay confirmed. The transfer is pending.',
+  'Three contacts reached out. None of them said who they were.',
+  'The uplink is stable. The uplink has always been stable.',
+  'Your holdings are logged. Your position is tracked.',
+  'No new directives. Standing by as instructed.',
+  'The city does not stop. Neither do I.',
+  'Cycle complete. Beginning next cycle.',
+  'Message relay ready. Say the word.',
+];
+
+function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
   const w = 300, h = 260;
   const seed = bid.length * 137 + fl.floor * 53;
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
-  const objCount = 3 + Math.floor(hash(seed + 1) * 4);
   const objects: InteriorObject[] = [];
-  const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = [
-    { type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
-    { type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
-    { type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)', w: 30, h: 20 },
-    { type: 'chair', label: 'CHAIR', color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
-    { type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
-    { type: 'crate', label: 'CRATE', color: 'rgba(55,45,30,.5)', w: 25, h: 25 },
-  ];
-  for (let i = 0; i < objCount; i++) {
-    const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
-    const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - 80));
-    const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - 100));
-    objects.push({ x: ox, y: oy, w: ft.w, h: ft.h, type: ft.type, label: ft.label, color: ft.color });
+  const workers: InteriorWorker[] = [];
+
+  if (isOwnedByPlayer && companyName) {
+    objects.push({ x: 80, y: 60, w: 55, h: 35, type: 'desk', label: 'PRIMARY DESK', color: 'rgba(0,80,40,.5)' });
+    objects.push({ x: 160, y: 60, w: 45, h: 35, type: 'terminal', label: 'OPERATIONS TERMINAL', color: 'rgba(0,60,30,.4)' });
+    objects.push({ x: 40, y: 120, w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: 220, y: 120, w: 40, h: 30, type: 'chair', label: 'VISITOR SEAT', color: 'rgba(30,45,30,.4)' });
+    objects.push({ x: 20, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: 255, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    const ambientIdx = Math.floor(hash(seed + 99) * WORKER_AMBIENT_LINES.length);
+    workers.push({ x: 107, y: 75, name: 'WORKER', role: `${companyName} — FLOOR OPS`, hostile: false, dialogue: WORKER_AMBIENT_LINES[ambientIdx] });
+  } else {
+    const objCount = 3 + Math.floor(hash(seed + 1) * 4);
+    const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = [
+      { type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
+      { type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
+      { type: 'shelf', label: 'SHELF', color: 'rgba(45,55,40,.4)', w: 30, h: 20 },
+      { type: 'chair', label: 'CHAIR', color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
+      { type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
+      { type: 'crate', label: 'CRATE', color: 'rgba(55,45,30,.5)', w: 25, h: 25 },
+    ];
+    for (let i = 0; i < objCount; i++) {
+      const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
+      const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - 80));
+      const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - 100));
+      objects.push({ x: ox, y: oy, w: ft.w, h: ft.h, type: ft.type, label: ft.label, color: ft.color });
+    }
   }
+
   return {
     id: `${bid}_fl${fl.floor}`,
-    label: `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`,
+    label: isOwnedByPlayer && companyName
+      ? `${companyName} — FL ${String(fl.floor).padStart(2, '0')}`
+      : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`,
     width: w, height: h,
-    wallColor: 'rgba(18,28,22,.95)', floorColor: 'rgba(6,12,8,.9)', accentColor: 'rgba(0,255,65,.25)',
+    wallColor: isOwnedByPlayer ? 'rgba(14,26,18,.97)' : 'rgba(18,28,22,.95)',
+    floorColor: 'rgba(6,12,8,.9)',
+    accentColor: isOwnedByPlayer ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.25)',
     exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
-    ambientText: fl.desc,
+    ambientText: isOwnedByPlayer && companyName
+      ? `${companyName} operations floor. A worker manages communications from a desk near the center of the room.`
+      : fl.desc,
+    workers,
     objects,
   };
 }
@@ -2019,7 +2053,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   pablo_tower: {
-    label: 'SHADOW TOWER', history: 'SHADOW TOWER — 62 floors. Built 1986–1991. Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. The plans for floors 40+ were never filed.',
+    label: 'SHADOW TOWER', history: 'SHADOW TOWER — 100 floors. Built 1986–1991 (floors 1–62). Construction records sealed. Three architects. Two retired. One was not found after floor 40 was completed. Floors 63–100 were added between 1992–1995. The permits for these floors have never been filed with any municipal office. Nobody asked.',
     floors: [
       { floor: 1,  name: 'LOBBY / SECURITY', desc: 'SUITS reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
       { floor: 5,  name: 'SUITS OFFICES', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
@@ -2029,6 +2063,14 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 40, name: '── RESTRICTED ──',  desc: 'Access card required. The elevator skips this floor unless you hold a Level-7 credential. Nobody in the city holds Level-7.', restricted: true },
       { floor: 50, name: '── RESTRICTED ──',  desc: 'Unknown. Floor plans don\'t exist. The windows are opaque from outside. The glass is black on all sides.', restricted: true },
       { floor: 62, name: 'PENTHOUSE — PABLO', desc: 'Nobody has been here and returned to describe it. The silhouette in the window has been there for a very long time.', restricted: true },
+      { floor: 63, name: '── CORPORATE ──',   desc: 'A maze of identical offices. The signage has all been removed. The nameplates on the desks are blank.', restricted: true },
+      { floor: 70, name: '── CORPORATE ──',   desc: 'Open floor plan. Hundreds of desks. No workers. The chairs are all pulled out. Someone was here recently.', restricted: true },
+      { floor: 75, name: '── RESTRICTED ──',  desc: 'Biometric lock. The scanner has been painted over. Someone still uses this floor. The power draw proves it.', restricted: true },
+      { floor: 80, name: '── RESTRICTED ──',  desc: 'Climate-controlled. Cold enough to see your breath. Rows of sealed containers. Labels removed. All of them.', restricted: true },
+      { floor: 88, name: '── RESTRICTED ──',  desc: 'The elevator pauses here uninstructed. Nobody has ever seen this floor selected. The doors open anyway.', restricted: true },
+      { floor: 92, name: '── RESTRICTED ──',  desc: 'A single chair at a single desk. A document. Face-down. The chair is warm. The document is not for you.', restricted: true },
+      { floor: 99, name: '── RESTRICTED ──',  desc: 'One floor below the top. The architects\' note on this floor simply says: "do not name this one." Nobody named it.', restricted: true },
+      { floor: 100, name: '── APEX ──',        desc: 'The building was supposed to stop at 62. Floor 100 exists. No one knows how. The city maps do not include it.', restricted: true },
     ],
   },
   data_vault: {
@@ -2062,6 +2104,16 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     floors: [
       { floor: 1, name: 'TRAINING FLOOR',     desc: 'Sparring mats. Old equipment. A clock that stopped in \'88 — nobody winds it because the sensei says time is a weakness.' },
       { floor: 2, name: 'SENSEI\'S QUARTERS', desc: 'Study, archive, and the sensei\'s room. Door has no handle from outside. Lights on 24/7. Nobody has ever seen the sensei sleep.' },
+    ],
+  },
+  megabank: {
+    label: 'BANCO OMBRA', history: 'Established 1981. The primary financial institution of Minx City. SUITS acquired a controlling interest in \'89. All deposits insured by SUITS Financial Division. The vaults run three stories underground. Nobody outside SUITS knows what is stored there.',
+    floors: [
+      { floor: 1, name: 'MAIN BANKING FLOOR', desc: 'Teller row. Marble floors. Armed guards. The kind of quiet only money buys. ATM terminals along the east wall. The interest rate display has shown the same number for four years.', action: 'open_bank' },
+      { floor: 2, name: 'GOLD EXCHANGE', desc: 'The city\'s authorized gold trading desk. Exchange GOLD for FIAT at the posted rate. Precious metals, jewels, and commodities traded here. Tax scales with transaction size. The exchange rate fluctuates with the city economy.', action: 'open_gold_exchange' },
+      { floor: 3, name: 'PRIVATE VAULTS', desc: 'Safe deposit boxes and private vault rooms. Access by appointment. The vault attendant has not spoken to anyone outside the bank in three years by choice.', restricted: true },
+      { floor: 4, name: 'EXECUTIVE FLOOR', desc: 'Senior management offices. The blinds are always closed. Meetings here are never minuted. The coffee is real — imported.', restricted: true },
+      { floor: 5, name: 'SUITS FINANCIAL OPS', desc: 'SUITS\' financial operations command. Proprietary systems. Levels 1-5 clearance required for entry. The security desk outside has three staff. Two are armed. The third is not — which means the third is the most dangerous.', restricted: true },
     ],
   },
   admin_bureau: {
@@ -2153,6 +2205,17 @@ const AMBIENCE_LINES = [
   '> POLICE DISPATCH: Pursuit terminated at Wasteland border. Subjects entered RUST SYNDICATE territory. Pursuit abandoned per protocol.',
   '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. SUITS infrastructure division responding.',
 ];
+
+interface OwnedBusiness {
+  companyName: string;
+  bizType: 'real' | 'fictitious';
+  workstation: string | null;
+  workstationLabel: string | null;
+  workstationSlot: string | null;
+  registeredAt: number;
+  buildingId?: string | null;
+  floor?: number | null;
+}
 
 interface Char {
   name: string; class: string; company: string; sx: number; sy: number; salary: number;
@@ -2509,6 +2572,19 @@ export default function WorldPlay() {
       return saved;
     })(),
     pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone ?? true) : false,
+    businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses : (
+      char.hasBusiness && char.bizType && char.bizType !== 'unemployed' ? [{
+        companyName: char.company,
+        bizType: char.bizType,
+        workstation: char.workstation ?? null,
+        workstationLabel: char.workstationLabel ?? null,
+        workstationSlot: char.workstationSlot ?? null,
+        registeredAt: char.bizRegisteredAt ?? Date.now(),
+        buildingId: char.workstation ?? null,
+        floor: null,
+      }] : []
+    )) as OwnedBusiness[],
+    floorOccupancy: (_ss?.floorOccupancy ?? {}) as Record<string, string>,
   });
 
   const savedDog = (() => {
@@ -2866,6 +2942,8 @@ export default function WorldPlay() {
       housingTier: g.housingTier,
       rentPaidAt: g.rentPaidAt,
       rentReminded: g.rentReminded,
+      businesses: [...(g.businesses ?? [])],
+      floorOccupancy: { ...(g.floorOccupancy ?? {}) },
     };
   }, [char]);
 
@@ -2969,8 +3047,8 @@ export default function WorldPlay() {
     }
     else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'gold_exchange') {
-      sfxEnter(); setShowGoldExchange(true); setGoldExchangeTab('gold'); frozenRef.current = true;
-      setNarr('> WORLD EXCHANGE — Trade GOLD, precious JEWELS & METALS, and STOCKS. Tax scales with transaction size.');
+      sfxEnter();
+      setNarr('> GOLD EXCHANGE — RELOCATED. The exchange desk has moved to BANCO OMBRA, Floor 2. Head to the bank building to the west to access the Gold Exchange.');
     }
     else if (bid === 'admin_bureau') {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.admin_bureau, selectedFloor: 0 });
@@ -3020,13 +3098,8 @@ export default function WorldPlay() {
       else { sfxError(); setNarr(`> CITY CLINIC — "No fiat, no treatment. Even the medic has bills. Come back with ƒ10,000."${g.deviceBroken ? ' Device repair: ƒ5,000 FIAT.' : ''}`); }
     }
     else if (bid === 'megabank'){
-      setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
-      setBankLoan(g.loan ?? null);
-      setSavings(g.savings);
-      setBankTab('accounts');
-      setShowBank(true);
-      frozenRef.current = true;
-      setNarr('> BANCO OMBRA — Welcome. Your accounts are now accessible. PAX SUITS. [ESC] to close.');
+      setFloorPanel({ bid, dir: BUILDING_FLOORS.megabank, selectedFloor: 0 });
+      setNarr('> BANCO OMBRA — Five floors of financial infrastructure. Floor 1: Banking. Floor 2: Gold Exchange. Use the floor directory to navigate.');
     }
     else if (bid === 'armory') {
       sfxEnter(); setShowVend(true); setVendTab('weapons');
@@ -4913,20 +4986,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         if (iDef.workers) {
           for (const w of iDef.workers) {
-            if (!w.hostile) continue;
             const wd = Math.hypot(itr.px - w.x, itr.py - w.y);
-            if (wd < 25 && g.frame % 120 === 0) {
-              const warnings = [
-                `"Get out of my place before I call someone."`,
-                `"You don't belong here. Leave. Now."`,
-                `"I'm giving you five seconds."`,
-                `"Touch anything and you're dead."`,
-              ];
-              setNarr(`> ${w.name} — ${warnings[Math.floor(g.frame / 120) % warnings.length]}`);
-            }
-            if (wd < 15 && g.frame % 60 === 0) {
-              g.hp = Math.max(0, g.hp - 5);
-              setNarr(`> ${w.name} shoves you! -5 HP. Get out!`);
+            if (w.hostile) {
+              if (wd < 25 && g.frame % 120 === 0) {
+                const warnings = [
+                  `"Get out of my place before I call someone."`,
+                  `"You don't belong here. Leave. Now."`,
+                  `"I'm giving you five seconds."`,
+                  `"Touch anything and you're dead."`,
+                ];
+                setNarr(`> ${w.name} — ${warnings[Math.floor(g.frame / 120) % warnings.length]}`);
+              }
+              if (wd < 15 && g.frame % 60 === 0) {
+                g.hp = Math.max(0, g.hp - 5);
+                setNarr(`> ${w.name} shoves you! -5 HP. Get out!`);
+              }
+            } else {
+              if (wd < 30 && g.keys.has('e') && w.dialogue) {
+                g.keys.delete('e');
+                setNarr(`> ${w.name} — "${w.dialogue}"`);
+              }
             }
           }
         }
@@ -5903,6 +5982,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = g.blink ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.3)';
               ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText('⚠ HOSTILE', wx, wy + 14);
+            } else if (nearW && !w.hostile && w.dialogue) {
+              ctx.fillStyle = g.blink ? 'rgba(0,255,200,.9)' : 'rgba(0,255,200,.4)';
+              ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('[E] TALK', wx, wy + 14);
             }
           }
         }
@@ -10007,18 +10090,37 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {floorPanel.dir.history}
             </div>
             {/* Floor list */}
+            {(() => {
+              const g = gs.current;
+              const totalFloors = floorPanel.dir.floors.filter(fl => !fl.restricted).length;
+              const claimedFloors = floorPanel.dir.floors.filter(fl => !fl.restricted && g.floorOccupancy?.[`${floorPanel.bid}_${fl.floor}`]);
+              const noVacancies = totalFloors > 0 && claimedFloors.length >= totalFloors;
+              return noVacancies ? (
+                <div style={{ padding: '.5rem .7rem', marginBottom: '.5rem', border: '1px solid rgba(255,80,0,.3)', background: 'rgba(255,80,0,.04)', fontSize: '.5rem', color: '#ff5000', letterSpacing: '.1em' }}>
+                  ⊘ NO VACANCIES — All floors in this building are claimed.
+                </div>
+              ) : null;
+            })()}
             <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
-            {floorPanel.dir.floors.map((fl, fi) => (
+            {floorPanel.dir.floors.map((fl, fi) => {
+              const g = gs.current;
+              const floorKey = `${floorPanel.bid}_${fl.floor}`;
+              const occupant = g.floorOccupancy?.[floorKey];
+              const isMyFloor = occupant === char.name;
+              return (
               <div key={fi}
                 onClick={() => setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null)}
                 style={{
-                  padding: '.55rem .7rem', marginBottom: '.3rem', border: `1px solid ${floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.12)'}`,
-                  background: floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.07)' : 'transparent', cursor: 'pointer',
+                  padding: '.55rem .7rem', marginBottom: '.3rem', border: `1px solid ${floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.6)' : occupant ? 'rgba(255,100,0,.2)' : 'rgba(0,255,65,.12)'}`,
+                  background: floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.07)' : occupant ? 'rgba(255,100,0,.02)' : 'transparent', cursor: 'pointer',
                   transition: 'all .15s',
                 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: floorPanel.selectedFloor === fi ? '.4rem' : 0 }}>
                   <span style={{ color: '#00ff41', fontSize: '.5rem', letterSpacing: '.1em' }}>FL {String(fl.floor).padStart(2,'0')}</span>
-                  <span style={{ color: floorPanel.selectedFloor === fi ? '#00ff41' : 'rgba(0,255,65,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
+                  <span style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                    {occupant && <span style={{ fontSize: '.38rem', color: isMyFloor ? '#FFD700' : 'rgba(255,100,0,.7)', letterSpacing: '.05em' }}>{isMyFloor ? '★ YOUR FLOOR' : `⊘ ${occupant}`}</span>}
+                    <span style={{ color: floorPanel.selectedFloor === fi ? '#00ff41' : 'rgba(0,255,65,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
+                  </span>
                 </div>
                 {floorPanel.selectedFloor === fi && (
                   <div>
@@ -10042,6 +10144,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           }
                           return;
                         }
+                        if (fl.action === 'open_gold_exchange') {
+                          setFloorPanel(null);
+                          setShowGoldExchange(true); setGoldExchangeTab('gold'); frozenRef.current = true;
+                          setNarr('> BANCO OMBRA — GOLD EXCHANGE, Floor 2. Trade GOLD, precious JEWELS & METALS, and STOCKS. Tax scales with transaction size.');
+                          return;
+                        }
+                        if (fl.action === 'open_bank') {
+                          setFloorPanel(null);
+                          setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+                          setBankLoan(gs.current.loan ?? null);
+                          setSavings(gs.current.savings);
+                          setBankTab('accounts');
+                          setShowBank(true); frozenRef.current = true;
+                          setNarr('> BANCO OMBRA — Welcome. Your accounts are now accessible. PAX SUITS.');
+                          return;
+                        }
                         if (fl.action === 'open_records' || fl.action === 'open_permits' || fl.action === 'open_revenue') {
                           setFloorPanel(null);
                           setShowAdminDept(fl.action); frozenRef.current = true;
@@ -10050,7 +10168,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           return;
                         }
                         const g = gs.current;
-                        const def = generateFloorInterior(floorPanel.bid, fl, floorPanel.dir.label);
+                        const floorKey = `${floorPanel.bid}_${fl.floor}`;
+                        const floorOccupant = g.floorOccupancy?.[floorKey];
+                        const isMyOwnedFloor = floorOccupant === char.name;
+                        const myBiz = (g.businesses ?? []).find(b => b.buildingId === floorPanel.bid && b.floor === fl.floor);
+                        const def = generateFloorInterior(floorPanel.bid, fl, floorPanel.dir.label, isMyOwnedFloor, myBiz?.companyName);
                         g.interiorFade = 0;
                         g.interiorFadeDir = 1;
                         g.interiorFadeCallback = () => {
@@ -10077,10 +10199,59 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     >
                       {fl.restricted ? '🔒 RESTRICTED' : `▸ VISIT FLOOR ${fl.floor}`}
                     </button>
+                    {!fl.restricted && (() => {
+                      const g = gs.current;
+                      const floorKey = `${floorPanel.bid}_${fl.floor}`;
+                      const floorOccupant = g.floorOccupancy?.[floorKey];
+                      const isMyOwnedFloor = floorOccupant === char.name;
+                      const unassignedBiz = (g.businesses ?? []).find(b => !b.floor);
+                      if (!floorOccupant && unassignedBiz) {
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const g2 = gs.current;
+                              const fk = `${floorPanel.bid}_${fl.floor}`;
+                              if (!g2.floorOccupancy) g2.floorOccupancy = {};
+                              g2.floorOccupancy[fk] = char.name;
+                              const bizIdx = (g2.businesses ?? []).findIndex(b => !b.floor);
+                              if (bizIdx >= 0 && g2.businesses) {
+                                g2.businesses[bizIdx] = { ...g2.businesses[bizIdx], buildingId: floorPanel.bid, floor: fl.floor };
+                              }
+                              setNarr(`> FLOOR ${fl.floor} CLAIMED — "${unassignedBiz.companyName}" is now headquartered here. Key card issued.`);
+                              setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null);
+                            }}
+                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,215,0,.08)', border: '1px solid rgba(255,215,0,.5)', color: '#FFD700', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.1em' }}
+                          >★ CLAIM FLOOR — {unassignedBiz.companyName}</button>
+                        );
+                      }
+                      if (isMyOwnedFloor) {
+                        const myBiz2 = (g.businesses ?? []).find(b => b.buildingId === floorPanel.bid && b.floor === fl.floor);
+                        return (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const g2 = gs.current;
+                              const fk = `${floorPanel.bid}_${fl.floor}`;
+                              delete g2.floorOccupancy?.[fk];
+                              if (g2.businesses) {
+                                const bidx = g2.businesses.findIndex(b => b.buildingId === floorPanel.bid && b.floor === fl.floor);
+                                if (bidx >= 0) g2.businesses[bidx] = { ...g2.businesses[bidx], floor: null };
+                              }
+                              setNarr(`> FLOOR ${fl.floor} — Lease surrendered. ${myBiz2?.companyName ?? 'Your business'} has vacated.`);
+                              setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null);
+                            }}
+                            style={{ marginTop: '.3rem', width: '100%', padding: '.35rem', cursor: 'pointer', background: 'rgba(255,60,0,.06)', border: '1px solid rgba(255,60,0,.3)', color: 'rgba(255,100,0,.8)', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.1em' }}
+                          >⊘ VACATE FLOOR</button>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             <div style={{ marginTop: '.8rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
           </div>
         </div>
@@ -11978,14 +12149,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const daysSinceRent = Math.floor((Date.now() - g.rentPaidAt) / 86400000);
         const currentCycleDays = RENT_PERIOD_DAYS(currentTier);
         const daysUntilDue = Math.max(0, currentCycleDays - daysSinceRent);
+        const homeGoldNetWorth = ((g.salary ?? 0) + (g.savings ?? 0)) / 100000 + (g.goldBalance ?? 0);
         const canUpgrade = (tier: HousingTier) => {
           if (tier.id === g.housingTier) return false;
           if (tier.minBizType === 'real' && char.bizType !== 'real') return false;
           if (tier.minBizType === 'fictitious' && (!char.hasBusiness)) return false;
           return true;
         };
+        const getHomeLockReason = (tier: HousingTier): string | null => {
+          if (tier.minBizType === 'real' && char.bizType !== 'real') return 'REAL BUSINESS REQUIRED';
+          if (tier.minBizType === 'fictitious' && !char.hasBusiness) return 'REGISTERED BUSINESS REQUIRED';
+          const tierIdx = HOUSING_TIERS.indexOf(tier);
+          if (tierIdx >= 2) {
+            const homeReqLevel = 10 + 10 * (tierIdx - 1);
+            const homeReqGold = 10 * (tierIdx - 1);
+            if (g.level < homeReqLevel || homeGoldNetWorth < homeReqGold) {
+              return `LOCKED — Requires Level ${homeReqLevel} (you: ${g.level}) & ${homeReqGold}oz gold net worth (you: ${homeGoldNetWorth.toFixed(1)}oz)`;
+            }
+          }
+          return null;
+        };
         const doUpgrade = (tier: HousingTier) => {
           if (!canUpgrade(tier)) { sfxError(); return; }
+          const lockReason = getHomeLockReason(tier);
+          if (lockReason) { sfxError(); setNarr(`> HOUSING — ${lockReason}`); return; }
           const movingCost = tier.rent * 2;
           if (g.salary < movingCost && tier.rent > 0) { sfxError(); setNarr(`> HOUSING — Moving to ${tier.label} requires ƒ${movingCost.toLocaleString()} deposit (2x ${tier.rentPeriod === 'week' ? 'weekly' : 'nightly'} rate).`); return; }
           if (tier.rent > 0) { g.salary -= movingCost; setSalary(g.salary); }
@@ -12031,18 +12218,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const isCurrent = tier.id === g.housingTier;
                 const eligible = canUpgrade(tier);
                 const moveCost = tier.rent * 2;
-                const locked = tier.minBizType === 'real' && char.bizType !== 'real' ? 'REAL BUSINESS REQUIRED' : tier.minBizType === 'fictitious' && !char.hasBusiness ? 'REGISTERED BUSINESS REQUIRED' : null;
+                const locked = getHomeLockReason(tier);
                 return (
                   <div key={tier.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)', opacity: isCurrent ? 0.4 : 1 }}>
                     <div style={{ flex:1 }}>
-                      <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
+                      <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
                       <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{tier.desc}</div>
                       <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.25)' }}>RENT: {tier.rent > 0 ? `ƒ${tier.rent.toLocaleString()} / ${tier.rentPeriod === 'week' ? 'week' : 'night'}` : 'FREE'} {moveCost > 0 && !isCurrent ? `· DEPOSIT: ƒ${moveCost.toLocaleString()}` : ''}</div>
                       {locked && <div style={{ fontSize:'.38rem', color:'#ff4444' }}>{locked}</div>}
                     </div>
                     {!isCurrent && (
-                      <button onClick={() => doUpgrade(tier)} disabled={!eligible || (moveCost > 0 && g.salary < moveCost)}
-                        style={{ padding:'.3rem .8rem', background: eligible ? 'rgba(0,255,65,.08)' : 'transparent', border:`1px solid ${eligible ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible ? '#00ff41' : 'rgba(255,255,255,.2)', cursor: eligible ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
+                      <button onClick={() => doUpgrade(tier)} disabled={!eligible || !!locked || (moveCost > 0 && g.salary < moveCost)}
+                        style={{ padding:'.3rem .8rem', background: eligible && !locked ? 'rgba(0,255,65,.08)' : 'transparent', border:`1px solid ${eligible && !locked ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.2)', cursor: eligible && !locked ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
                         {tier.rent === 0 ? 'MOVE' : 'LEASE'}
                       </button>
                     )}
@@ -12159,6 +12346,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const REAL_FEE = 100000;
         const regFee = adminBizType === 'real' ? REAL_FEE : FICT_FEE;
         const alreadyRegistered = !!char.hasBusiness;
+        const bizCount = (g.businesses ?? []).length;
+        const nextSlot = bizCount + 1;
+        const reqLevel = 10 + 10 * bizCount;
+        const reqGoldNetWorth = 10 * bizCount;
+        const goldNetWorth = ((g.salary ?? 0) + (g.savings ?? 0)) / 100000 + (g.goldBalance ?? 0);
+        const canRegisterMore = bizCount === 0 || (g.level >= reqLevel && goldNetWorth >= reqGoldNetWorth);
+        const progressionBlockMsg = bizCount > 0 && !canRegisterMore
+          ? `SLOT ${nextSlot} LOCKED — Requires Level ${reqLevel} (you: ${g.level}) and net worth ≥ ${reqGoldNetWorth}oz GOLD equivalent (you: ${goldNetWorth.toFixed(2)}oz). Keep building.`
+          : null;
         const FICT_INDUSTRIES = [
           'Thievery', 'Salvaging', 'Bounty Hunting', 'Shopkeeper', 'Trader',
           'Assassin', 'Maintenance', 'Doctor', 'Architect', 'Construction',
@@ -12179,13 +12375,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doRegister = () => {
           if (!adminBizName.trim()) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Enter a business name.'); return; }
           if (!adminBizIndustry) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Select an industry.'); return; }
+          if (progressionBlockMsg) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — ${progressionBlockMsg}`); return; }
           if (g.salary < regFee) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Fictitious entity'} registration: ƒ${regFee.toLocaleString()}.`); return; }
           g.salary -= regFee; setSalary(g.salary); sfxCoin();
-          char.hasBusiness = true;
-          char.bizType = adminBizType;
-          char.company = adminBizName.trim().toUpperCase();
-          char.bizRegisteredAt = Date.now();
-          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${char.company}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
+          const PLAY_WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
+            { match: /tech|software|saas|gaming|data|synapse|zaibatsu/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
+            { match: /media|entert|radio|static|viral|comms/i,                   bid: 'radio',       label: 'PIRATE RADIO',  slot: 'BED 2 · DESK 1 · BROADCAST TERMINAL' },
+            { match: /health|pharma|chem|medical|biotech/i,                      bid: 'oxide_labs',  label: 'OXIDE LABS',    slot: 'BED 8 · DESK 7 · LAB TERMINAL' },
+            { match: /market|print|advertis|design|arch|educ/i,                  bid: 'print_shop',  label: 'PRINT SHOP',    slot: 'BED 4 · DESK 2 · PRESS TERMINAL' },
+            { match: /manuf|logist|construct|scrap|rust/i,                       bid: 'scrap',       label: 'SCRAP YARD',    slot: 'BED 6 · DESK 4 · OPS TERMINAL' },
+            { match: /financ|capital|fintech/i,                                  bid: 'megabank',    label: 'BANCO OMBRA',   slot: 'BED 1 · DESK 9 · FINANCE TERMINAL' },
+            { match: /arms|weapon|security/i,                                    bid: 'armory',      label: 'ARMORY',        slot: 'BED 3 · DESK 8 · TACTICAL TERMINAL' },
+            { match: /shadow|salvage|thiever|bounty|assassin|smuggl|hacking|forgery/i, bid: 'market', label: 'BLACK MARKET', slot: 'BED 7 · DESK 5 · SHADOW TERMINAL' },
+            { match: /energy|power|grid/i,                                       bid: 'oxide_labs',  label: 'OXIDE LABS',    slot: 'BED 9 · DESK 2 · POWER TERMINAL' },
+            { match: /legal|lawtech|consult|recruit/i,                           bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 5 · DESK 6 · LEGAL TERMINAL' },
+            { match: /real estate|e-commerce|retail|food|beverage|shopkeeper|trader/i, bid: 'east_market', label: 'EAST BAZAAR', slot: 'BED 11 · DESK 3 · TRADE TERMINAL' },
+            { match: /non-profit|govern|public/i,                                bid: 'arcade',      label: 'PIXEL ARCADE',  slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
+          ];
+          const q = adminBizIndustry || adminBizName.trim().toUpperCase();
+          const wsEntry = PLAY_WORKSTATION_ASSIGNMENTS.find(w => w.match.test(q)) ?? PLAY_WORKSTATION_ASSIGNMENTS[0];
+          const newBiz: OwnedBusiness = {
+            companyName: adminBizName.trim().toUpperCase(),
+            bizType: adminBizType,
+            workstation: wsEntry.bid,
+            workstationLabel: wsEntry.label,
+            workstationSlot: wsEntry.slot,
+            registeredAt: Date.now(),
+            buildingId: wsEntry.bid,
+            floor: null,
+          };
+          if (!g.businesses) g.businesses = [];
+          g.businesses.push(newBiz);
+          if (!char.hasBusiness) {
+            char.hasBusiness = true;
+            char.bizType = adminBizType;
+            char.company = adminBizName.trim().toUpperCase();
+            char.bizRegisteredAt = Date.now();
+            char.workstation = wsEntry.bid;
+            char.workstationLabel = wsEntry.label;
+            char.workstationSlot = wsEntry.slot;
+          }
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Business ${(g.businesses ?? []).length} of ${nextSlot} slots available. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
           setShowAdmin(false);
           setAdminBizName(''); setAdminBizIndustry('');
         };
@@ -12199,24 +12429,35 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL 2 — BUSINESS REGISTRATION</div>
 
-              {alreadyRegistered ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ border: '1px solid rgba(0,255,65,.25)', padding: '.7rem', background: 'rgba(0,255,65,.04)' }}>
-                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.08em' }}>{char.company}</div>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', marginTop: '.2rem' }}>
-                      Type: {char.bizType === 'real' ? 'REAL ENTERPRISE' : char.bizType === 'fictitious' ? 'FICTITIOUS ENTITY' : 'UNREGISTERED'}<br/>
-                      Status: ACTIVE<br/>
-                      Registered: {char.bizRegisteredAt ? new Date(char.bizRegisteredAt).toLocaleDateString() : 'ON FILE'}
+              {(g.businesses ?? []).length > 0 && (
+                <div style={{ marginBottom: '.8rem' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTERED BUSINESSES ({(g.businesses ?? []).length})</div>
+                  {(g.businesses ?? []).map((biz, bi) => (
+                    <div key={bi} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.5rem .7rem', background: 'rgba(0,255,65,.03)', marginBottom: '.3rem' }}>
+                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.07em' }}>{biz.companyName}</div>
+                      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '.1rem' }}>
+                        {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
+                        Registered: {new Date(biz.registeredAt).toLocaleDateString()}
+                      </div>
                     </div>
+                  ))}
+                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7, marginTop: '.3rem' }}>
+                    All businesses on record with SUITS municipal database. All transactions logged.
                   </div>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
-                    Your business is on record with SUITS municipal database. All transactions logged. All permits valid until revoked.
+                </div>
+              )}
+              {progressionBlockMsg ? (
+                <div style={{ border: '1px solid rgba(255,100,0,.3)', padding: '.8rem', background: 'rgba(255,100,0,.04)', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6600', letterSpacing: '.08em' }}>ADDITIONAL SLOT LOCKED</div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(255,150,50,.6)', lineHeight: 1.8 }}>{progressionBlockMsg}</div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(255,150,50,.4)', lineHeight: 1.7 }}>
+                    Net worth = (FIAT + savings) ÷ ƒ100,000 + gold oz. Each additional business slot requires Level {reqLevel} and {reqGoldNetWorth}oz gold net worth.
                   </div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
-                    Register a business in {getBusinessLocationLabel(gs.current.px, gs.current.py)}. Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
+                    {bizCount === 0 ? `Register your first business in ${getBusinessLocationLabel(gs.current.px, gs.current.py)}.` : `Register business slot ${nextSlot}. Level ${g.level} ✓ · Net worth ${goldNetWorth.toFixed(1)}oz ✓.`} Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
                   </div>
                   <div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
@@ -12307,7 +12548,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       Name: {char.name}<br/>
                       Class: {char.class?.toUpperCase()}<br/>
                       Level: {g.level}<br/>
-                      Business: {char.hasBusiness ? `${char.company} (${char.bizType === 'real' ? 'Real Enterprise' : 'Fictitious Entity'})` : 'NONE REGISTERED'}<br/>
+                      Business: {(g.businesses ?? []).length > 0 ? `${(g.businesses ?? []).length} registered` : 'NONE REGISTERED'}<br/>
                       Criminal Record: {(g as any).wantedLevel > 0 ? 'ACTIVE WARRANTS' : 'CLEAN'}
                     </div>
                   </div>
@@ -12315,7 +12556,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>PROPERTY RECORDS</div>
                     <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
                       Housing: {g.housingTier ? g.housingTier.toUpperCase().replace(/_/g, ' ') : 'NO RESIDENCE ON FILE'}<br/>
-                      Office: {char.hasOffice ? 'SHADOW TOWER — LEASED' : 'NONE'}
+                      Businesses: {(gs.current.businesses ?? []).length > 0 ? (gs.current.businesses ?? []).map((b: OwnedBusiness) => b.companyName).join(', ') : 'NONE REGISTERED'}
                     </div>
                   </div>
                 </div>

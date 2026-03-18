@@ -30,7 +30,7 @@ export interface InteriorObject {
   label?: string;
   color?: string;
 }
-export interface InteriorWorker { x: number; y: number; name: string; role: string; hostile?: boolean; }
+export interface InteriorWorker { x: number; y: number; name: string; role: string; hostile?: boolean; dialogue?: string; }
 
 export interface InteriorDef {
   id: string;
