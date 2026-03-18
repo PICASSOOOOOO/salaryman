@@ -2214,6 +2214,7 @@ interface OwnedBusiness {
   workstationLabel: string | null;
   workstationSlot: string | null;
   registeredAt: number;
+  lastActivityAt: number;
   buildingId?: string | null;
   floor?: number | null;
 }
@@ -2574,7 +2575,10 @@ export default function WorldPlay() {
       return saved;
     })(),
     pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone ?? true) : false,
-    businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses : (
+    businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses.map((b: OwnedBusiness) => ({
+      ...b,
+      lastActivityAt: b.lastActivityAt ?? b.registeredAt ?? Date.now(),
+    })) : (
       char.hasBusiness && char.bizType && char.bizType !== 'unemployed' ? [{
         companyName: char.company,
         bizType: char.bizType,
@@ -2582,6 +2586,7 @@ export default function WorldPlay() {
         workstationLabel: char.workstationLabel ?? null,
         workstationSlot: char.workstationSlot ?? null,
         registeredAt: char.bizRegisteredAt ?? Date.now(),
+        lastActivityAt: char.bizRegisteredAt ?? Date.now(),
         buildingId: char.workstation ?? null,
         floor: null,
       }] : []
@@ -2862,6 +2867,46 @@ export default function WorldPlay() {
   const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
+  // ── Business inactivity demolition on game load ──────────────────────────
+  useEffect(() => {
+    const g = gs.current;
+    if (!g.businesses || g.businesses.length === 0) return;
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const demolished: OwnedBusiness[] = [];
+    g.businesses = g.businesses.filter((b: OwnedBusiness) => {
+      const lastActivity = b.lastActivityAt ?? b.registeredAt ?? now;
+      if (now - lastActivity > THIRTY_DAYS_MS) {
+        demolished.push(b);
+        return false;
+      }
+      return true;
+    });
+    for (const d of demolished) {
+      const isFirst = char.company === d.companyName;
+      if (isFirst) {
+        char.hasBusiness = g.businesses.length > 0;
+        if (!char.hasBusiness) {
+          char.bizType = undefined;
+          char.company = '';
+          char.workstation = undefined;
+          char.workstationLabel = undefined;
+          char.workstationSlot = undefined;
+          char.bizRegisteredAt = undefined;
+        } else {
+          const next = g.businesses[0];
+          char.bizType = next.bizType;
+          char.company = next.companyName;
+          char.workstation = next.workstation ?? undefined;
+          char.workstationLabel = next.workstationLabel ?? undefined;
+          char.workstationSlot = next.workstationSlot ?? undefined;
+          char.bizRegisteredAt = next.registeredAt;
+        }
+      }
+      setNarr(`> DEPT. OF BUSINESS AFFAIRS — Your business '${d.companyName}' has been demolished due to 30 days of inactivity. The location is now available. All registrations are non-refundable.`);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
     setBankHistory(h => [{ id: Date.now(), desc, amount, bal }, ...h].slice(0, 30));
   }, []);
@@ -2996,6 +3041,8 @@ export default function WorldPlay() {
     if (char.hasBusiness && char.workstation === bid) {
       completeQuestTask('establish_business', 'visit_workstation');
       completeQuestTask('establish_business', 'setup_signage');
+      const biz = (g.businesses ?? []).find((b: OwnedBusiness) => b.workstation === bid || b.companyName === char.company);
+      if (biz) biz.lastActivityAt = Date.now();
       const daysSinceReg = char.bizRegisteredAt
         ? Math.floor((Date.now() - char.bizRegisteredAt) / 86400000)
         : 0;
@@ -4160,7 +4207,14 @@ export default function WorldPlay() {
     if (dialog.idx < dialog.lines.length - 1) setDialog(d => d ? { ...d, idx: d.idx + 1 } : null);
     else {
       if (dialog.bid === 'pablo_store')      { gs.current.hasDevice = true; gs.current.deviceBroken = false; gs.current.deviceDurability = 100; setHasDevice(true); setDeviceBroken(false); setShowStore(true); completeQuestTask('establish_business', 'get_device'); }
-      if (dialog.bid === 'pablo_tower_enter') { setShowOffice(true); completeQuestTask('establish_business', 'visit_tower'); }
+      if (dialog.bid === 'pablo_tower_enter') {
+        setShowOffice(true);
+        completeQuestTask('establish_business', 'visit_tower');
+        const g = gs.current;
+        if (g.businesses) {
+          for (const b of g.businesses) b.lastActivityAt = Date.now();
+        }
+      }
       setDialog(null);
     }
   }, [dialog]);
@@ -4785,6 +4839,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.maxHp = cs.maxHp; g.hp = cs.maxHp;
         }
         setHp(Math.floor(g.hp));
+      }
+
+      // ── Business inactivity demolition check (runs every ~10 min of real time at 60fps) ──
+      if (g.frame % 36000 === 0 && g.businesses && g.businesses.length > 0) {
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const demolished: OwnedBusiness[] = [];
+        g.businesses = g.businesses.filter((b: OwnedBusiness) => {
+          const lastActivity = b.lastActivityAt ?? b.registeredAt ?? now;
+          if (now - lastActivity > THIRTY_DAYS_MS) {
+            demolished.push(b);
+            return false;
+          }
+          return true;
+        });
+        for (const d of demolished) {
+          const isFirst = char.company === d.companyName;
+          if (isFirst) {
+            char.hasBusiness = g.businesses.length > 0;
+            if (!char.hasBusiness) {
+              char.bizType = undefined;
+              char.company = '';
+              char.workstation = undefined;
+              char.workstationLabel = undefined;
+              char.workstationSlot = undefined;
+              char.bizRegisteredAt = undefined;
+            } else {
+              const next = g.businesses[0];
+              char.bizType = next.bizType;
+              char.company = next.companyName;
+              char.workstation = next.workstation ?? undefined;
+              char.workstationLabel = next.workstationLabel ?? undefined;
+              char.workstationSlot = next.workstationSlot ?? undefined;
+              char.bizRegisteredAt = next.registeredAt;
+            }
+          }
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — Your business '${d.companyName}' has been demolished due to 30 days of inactivity. The location is now available. All registrations are non-refundable.`);
+        }
       }
 
       // ── Job cooldown ticks ───────────────────────────────────────────────
@@ -10214,6 +10306,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           setFloorPanel(null);
                           setShowAdmin(true); frozenRef.current = true;
                           if (char.hasBusiness) {
+                            const _g = gs.current;
+                            if (_g.businesses) {
+                              for (const _b of _g.businesses) _b.lastActivityAt = Date.now();
+                            }
                             setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${char.company}" is on file. Visit to view your business license.`);
                           } else {
                             setNarr('> DEPT. OF BUSINESS AFFAIRS — Business registration. Fictitious entity: ƒ50,000. Real enterprise: ƒ100,000.');
@@ -12485,6 +12581,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             workstationLabel: wsEntry.label,
             workstationSlot: wsEntry.slot,
             registeredAt: Date.now(),
+            lastActivityAt: Date.now(),
             buildingId: wsEntry.bid,
             floor: null,
           };
@@ -12581,6 +12678,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           {ind}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                  <div style={{ padding: '.5rem .7rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.25)', marginTop: '.2rem' }}>
+                    <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', color: 'rgba(255,200,0,.7)', letterSpacing: '.08em', lineHeight: 1.8 }}>
+                      NOTICE: Businesses with no activity for 30 consecutive days will be demolished and the registration voided. All fees are non-refundable.
                     </div>
                   </div>
                   <button onClick={doRegister} style={{
