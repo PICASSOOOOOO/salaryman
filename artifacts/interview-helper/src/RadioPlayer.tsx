@@ -4,16 +4,19 @@ export interface RadioStation {
   id: string;
   name: string;
   freq: string;
-  embedUrl: string;
   genre: string;
+  tracks?: string[];
 }
 
+const BASE = import.meta.env.BASE_URL;
+
+const CALL_HOME_TRACKS: string[] = Array.from({ length: 31 }, (_, i) => {
+  const n = String(i + 1).padStart(2, '0');
+  return `${BASE}callhome/track-${n}.mp3`;
+});
+
 export const RADIO_STATIONS: RadioStation[] = [
-  { id: 'minx_fm', name: 'MINX CITY FM', freq: '107.3', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'OFFICIAL OST' },
-  { id: 'wasteland_radio', name: 'WASTELAND RADIO', freq: '92.1', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'AMBIENT' },
-  { id: 'neon_beats', name: 'NEON BEATS', freq: '104.7', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'ELECTRONIC' },
-  { id: 'iron_station', name: 'IRON STATION', freq: '88.5', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'ROCK' },
-  { id: 'shadow_lounge', name: 'SHADOW LOUNGE', freq: '99.9', embedUrl: 'https://open.spotify.com/embed/album/4RaCWf5BhI9OctBZgKXWXV?utm_source=generator&theme=0', genre: 'LO-FI' },
+  { id: 'call_home_fm', name: 'CALL HOME FM', freq: '107.3', genre: 'OFFICIAL OST', tracks: CALL_HOME_TRACKS },
 ];
 
 interface RadioPlayerProps {
@@ -21,23 +24,80 @@ interface RadioPlayerProps {
   mounted: boolean;
   muted?: boolean;
   stationId?: string;
+  volume?: number;
 }
 
-export function RadioPlayer({ playing, mounted, muted, stationId }: RadioPlayerProps) {
-  if (!mounted) return null;
+export function RadioPlayer({ playing, mounted, muted, stationId, volume = 1 }: RadioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const trackIdxRef = useRef(0);
+  const activeRef = useRef(false);
+
   const station = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
-  const active = playing && !muted;
-  return (
-    <iframe
-      src={active ? station.embedUrl : 'about:blank'}
-      width="300"
-      height="80"
-      style={{ position: 'fixed', left: -9999, top: -9999, border: 'none', opacity: 0, pointerEvents: 'none' }}
-      allow="autoplay; encrypted-media"
-      loading="lazy"
-      title={station.name}
-    />
-  );
+  const tracks = station.tracks ?? [];
+
+  const loadTrack = useCallback((idx: number) => {
+    const audio = audioRef.current;
+    if (!audio || tracks.length === 0) return;
+    trackIdxRef.current = idx % tracks.length;
+    audio.src = tracks[trackIdxRef.current];
+    audio.load();
+    if (activeRef.current) {
+      audio.play().catch(() => {});
+    }
+  }, [tracks]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const audio = new Audio();
+    audio.preload = 'none';
+    audioRef.current = audio;
+
+    const onEnded = () => {
+      loadTrack(trackIdxRef.current + 1);
+    };
+
+    audio.addEventListener('ended', onEnded);
+    loadTrack(0);
+
+    return () => {
+      audio.removeEventListener('ended', onEnded);
+      audio.pause();
+      audio.src = '';
+      audioRef.current = null;
+    };
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!audioRef.current || tracks.length === 0) return;
+    loadTrack(0);
+  }, [stationId]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const active = playing && !muted;
+    activeRef.current = active;
+    if (active) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [playing, muted]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = !!muted;
+  }, [muted]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = Math.max(0, Math.min(1, volume));
+  }, [volume]);
+
+  return null;
 }
 
 interface RadioHudProps {

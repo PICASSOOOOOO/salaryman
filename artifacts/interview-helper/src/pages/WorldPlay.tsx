@@ -13,7 +13,8 @@ import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteMusic, toggleMuteAll, getMusicMuted, getMuted, resumeAudioContext,
-  fadeOutAmbient, fadeInAmbient, toggleMusicMute, toggleScoreMute, sfxAmbientRadio, 
+  setMusicVolume, setSfxVolume,
+  toggleMusicMute, toggleScoreMute, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
   startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur, sfxNpcMurmur,
@@ -2855,6 +2856,10 @@ export default function WorldPlay() {
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [musicMuted, setMusicMuted] = useState(() => getMusicMuted());
   const [allMuted, setAllMuted] = useState(() => getMuted());
+  const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
+  const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
+  const [outputVolume, setOutputVolume] = useState(() => { try { const v = localStorage.getItem('sm_output_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
+  const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
   const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
@@ -3936,7 +3941,8 @@ export default function WorldPlay() {
         const dist = Math.hypot(peer.x - myX, peer.y - myY);
         const entry = peerAudioGains.current.get(peer.id);
         if (dist <= PROX_RANGE) {
-          const vol = phoneCallRef.current.status === 'connected' ? 0.1 : Math.max(0, 1 - dist / PROX_RANGE);
+          const baseVol = phoneCallRef.current.status === 'connected' ? 0.1 : Math.max(0, 1 - dist / PROX_RANGE);
+          const vol = baseVol * micVolumeRef.current;
           if (entry) {
             entry.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
           } else if (!peerConns.current.has(peer.id)) {
@@ -4113,13 +4119,19 @@ export default function WorldPlay() {
   }, []);
 
   useEffect(() => {
-    const radioActive = radioOn && !musicMuted && !allMuted;
-    if (radioActive) {
-      fadeOutAmbient(1.5);
-    } else {
-      fadeInAmbient(2.0);
-    }
-  }, [radioOn, musicMuted, allMuted]);
+    setMusicVolume(outputVolume * 0.35);
+    setSfxVolume(outputVolume * 0.55);
+    try { localStorage.setItem('sm_output_vol', String(outputVolume)); } catch {}
+  }, [outputVolume]);
+
+  useEffect(() => {
+    try { localStorage.setItem('sm_radio_vol', String(radioVolume)); } catch {}
+  }, [radioVolume]);
+
+  useEffect(() => {
+    micVolumeRef.current = micVolume;
+    try { localStorage.setItem('sm_mic_vol', String(micVolume)); } catch {}
+  }, [micVolume]);
 
   // ── Commodity price drift (Star Citizen-style supply/demand oscillation) ─────
   useEffect(() => {
@@ -9101,6 +9113,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
             </button>
+            <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+            </div>
+            <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+            </div>
+            <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 OUTPUT VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+            </div>
             {char.class.toLowerCase() === 'outlaw' && (
               <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(136,255,68,.2)', color: '#88ff44', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 CRAFTING
@@ -10344,7 +10377,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── RADIO HUD + HIDDEN PLAYER ── */}
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={musicMuted} scoreMuted={scoreMuted} onToggleMusicMute={() => { const m = toggleMusicMute(); setMusicMuted(m); }} onToggleScoreMute={() => { const m = toggleScoreMute(); setScoreMuted(m); }} />
-      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || musicMuted} stationId={stationId} />
+      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || musicMuted} stationId={stationId} volume={radioVolume} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
