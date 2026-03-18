@@ -5213,10 +5213,111 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (g.frame % 120 === 0) setNarr(`> CHECKPOINT — "Passport valid but crossing fee is ƒ${CHECKPOINT_FEE.toLocaleString()} FIAT. Current balance insufficient. Come back with funds."`);
           }
         }
-        // ── Natural border collision: mountains N/S, water W/E ──
-        nx = Math.max(BORDER + PSIZE, Math.min(W - BORDER - PSIZE, nx));
+        // ── Natural border: terrain-based passability ─────────────────────────
+        // Ocean shores: gradual slow-down in surf zone, hard stop at deep water
+        const BEACH_ZONE = BORDER + 80;   // surf / shallow water — wading slows player
+        const DEEP_WATER  = BORDER + PSIZE; // impassable deep ocean
+        // Mountain cliffs: foothills slow the player, cliff face is impassable
+        const FOOTHILL_ZONE = BORDER + 120; // rocky terrain, movement penalised by caller
+        const CLIFF_HARD    = BORDER + PSIZE;
+
+        // West coast — sandy surf zone before deep water
+        if (nx < BEACH_ZONE) {
+          // scale back towards shore: deeper = more resistance
+          const depth = BEACH_ZONE - nx;
+          if (nx < DEEP_WATER) {
+            nx = DEEP_WATER;
+            if (g.frame % 150 === 0) setNarr('> WESTERN OCEAN — The current drags hard. Deep water — you cannot swim across.');
+          } else {
+            // surf drag: push player shoreward proportionally to depth
+            nx += depth * 0.08;
+            if (g.frame % 180 === 0) setNarr('> WESTERN SHORE — Waves crash around your feet. The ocean is impassable.');
+          }
+        }
+        // East coast
+        if (nx > W - BEACH_ZONE) {
+          const depth = nx - (W - BEACH_ZONE);
+          if (nx > W - DEEP_WATER) {
+            nx = W - DEEP_WATER;
+            if (g.frame % 150 === 0) setNarr('> EASTERN OCEAN — The cliffs drop straight to open sea. You are turned back.');
+          } else {
+            nx -= depth * 0.08;
+            if (g.frame % 180 === 0) setNarr('> EASTERN SHORE — Surf pounds the rocks. The ocean is impassable.');
+          }
+        }
+        // North mountains — foothills then sheer cliff
+        if (ny < FOOTHILL_ZONE) {
+          const slope = FOOTHILL_ZONE - ny;
+          if (ny < CLIFF_HARD) {
+            ny = CLIFF_HARD;
+            if (g.frame % 150 === 0) setNarr('> NORTHERN RANGE — Sheer cliff face. The wind cuts like a blade. No passage.');
+          } else {
+            ny += slope * 0.1;
+            if (g.frame % 180 === 0) setNarr('> NORTHERN FOOTHILLS — The slope steepens. The mountain range is impassable.');
+          }
+        }
+        // South mountains
+        if (ny > H - FOOTHILL_ZONE) {
+          const slope = ny - (H - FOOTHILL_ZONE);
+          if (ny > H - CLIFF_HARD) {
+            ny = H - CLIFF_HARD;
+            if (g.frame % 150 === 0) setNarr('> SOUTHERN MOUNTAINS — Sheer rock. No trail leads through these peaks.');
+          } else {
+            ny -= slope * 0.1;
+            if (g.frame % 180 === 0) setNarr('> SOUTHERN FOOTHILLS — The ground rises sharply. The mountains are impassable.');
+          }
+        }
+        // ── River collision — blocked unless near a bridge crossing ──────────
+        // Bridge crossings: road/river intersections (world coords)
+        // River 1 (NW): x≈2124, y≈1800  |  x≈2000, y≈2011
+        // River 2 (NE): x≈11000, y≈1893  |  x≈12822, y≈3200
+        // River 3 (SW): x≈2826, y≈10500  |  x≈2000, y≈9958
+        // River 4 (SE): x≈12377, y≈10500  |  x≈11000, y≈11320
+        const RIVER_BRIDGES = [
+          { wx: 2100, wy: 1820 }, { wx: 2020, wy: 2010 },
+          { wx: 11000, wy: 1900 }, { wx: 12800, wy: 3200 },
+          { wx: 2820, wy: 10500 }, { wx: 2020, wy: 9960 },
+          { wx: 12370, wy: 10500 }, { wx: 11000, wy: 11320 },
+        ];
+        const RIVER_HALF = 10; // half-width of river body that blocks movement
+        const BRIDGE_RADIUS = 55; // passable radius around bridge centre
+        // River 1: from (3200,BORDER+80) to (BORDER+60,5000) — approximate spine
+        const river1Blocked = (px: number, py: number) => {
+          const t = (px - (BORDER + 60)) / (3200 - (BORDER + 60));
+          if (t < 0 || t > 1) return false;
+          const ry = (BORDER + 80) + t * (5000 - (BORDER + 80));
+          return Math.abs(py - ry) < RIVER_HALF;
+        };
+        const river2Blocked = (px: number, py: number) => {
+          const t = (px - 8500) / ((W - BORDER - 80) - 8500);
+          if (t < 0 || t > 1) return false;
+          const ry = (BORDER + 100) + t * (4200 - (BORDER + 100));
+          return Math.abs(py - ry) < RIVER_HALF;
+        };
+        const river3Blocked = (px: number, py: number) => {
+          const t = (px - (BORDER + 80)) / (5800 - (BORDER + 80));
+          if (t < 0 || t > 1) return false;
+          const ry = (H - BORDER - 90) + t * (8800 - (H - BORDER - 90));
+          return Math.abs(py - ry) < RIVER_HALF;
+        };
+        const river4Blocked = (px: number, py: number) => {
+          const t = (px - 9200) / ((W - BORDER - 70) - 9200);
+          if (t < 0 || t > 1) return false;
+          const ry = (H - BORDER - 110) + t * (9400 - (H - BORDER - 110));
+          return Math.abs(py - ry) < RIVER_HALF;
+        };
+        const nearBridge = (px: number, py: number) =>
+          RIVER_BRIDGES.some(b => Math.hypot(px - b.wx, py - b.wy) < BRIDGE_RADIUS);
+        const checkRiverCollision = (px: number, py: number) =>
+          !nearBridge(px, py) && (river1Blocked(px, py) || river2Blocked(px, py) || river3Blocked(px, py) || river4Blocked(px, py));
+        if (checkRiverCollision(nx, ny)) {
+          if (!checkRiverCollision(g.px, ny)) nx = g.px;
+          else if (!checkRiverCollision(nx, g.py)) ny = g.py;
+          else { nx = g.px; ny = g.py; }
+          if (g.frame % 200 === 0) setNarr('> RIVER — The current is strong here. Find a bridge to cross.');
+        }
         g.px = nx;
-        g.py = Math.max(BORDER + PSIZE, Math.min(H - BORDER - PSIZE, ny));
+        g.py = ny;
         if (dx !== 0 || dy !== 0) {
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
@@ -6975,7 +7076,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const sx = gx + ox, sy = gy + oy;
           if (sx + TILE < 0 || sx > cw || sy + TILE < 0 || sy > ch) continue;
           const inCityZone = gx >= CITY_LEFT && gx <= CITY_RIGHT && gy >= CITY_TOP && gy <= CITY_BOTTOM;
-          const nearWater = gx < BORDER + 120 || gx > W - BORDER - 120 || gy < BORDER + 120 || gy > H - BORDER - 120;
+          // Graduated biome zones from city outward toward borders
+          const distW = gx - BORDER;
+          const distE = W - BORDER - gx;
+          const distN = gy - BORDER;
+          const distS = H - BORDER - gy;
+          const minDistBorder = Math.min(distW, distE, distN, distS);
+          const isNearWestOcean = distW < 400;
+          const isNearEastOcean = distE < 400;
+          const isNearNorthMtn = distN < 500;
+          const isNearSouthMtn = distS < 500;
+          const isNearAnyBorder = minDistBorder < 500;
+          const isSandyShore = (isNearWestOcean && distW < 200) || (isNearEastOcean && distE < 200);
+          const isRockyFoothill = (isNearNorthMtn && distN < 300) || (isNearSouthMtn && distS < 300);
+          const isSuburb = !inCityZone && !isNearAnyBorder && (
+            gx > CITY_LEFT - 600 && gx < CITY_RIGHT + 600 && gy > CITY_TOP - 600 && gy < CITY_BOTTOM + 600
+          );
           const h = tileHash(gx / TILE, gy / TILE);
           const h2 = tileHash(gx / TILE + 100, gy / TILE + 100);
 
@@ -6985,8 +7101,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             else if (h < 0.6) { baseR = 75; baseG = 72; baseB = 68; }
             else { baseR = 90; baseG = 88; baseB = 82; }
             baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 8;
-          } else if (nearWater) {
-            baseR = 180 + h * 25; baseG = 165 + h * 20; baseB = 120 + h * 15;
+          } else if (isSandyShore) {
+            // Sandy coastal zone transitioning to beach
+            const shoreBlend = 1 - (isNearWestOcean ? distW : distE) / 200;
+            baseR = Math.floor(175 + h * 22 + shoreBlend * 8); baseG = Math.floor(158 + h * 18 + shoreBlend * 5); baseB = Math.floor(110 + h * 12 - shoreBlend * 8);
+          } else if (isRockyFoothill) {
+            // Rocky terrain near mountains — gravelly, more stone-like
+            const rockBlend = 1 - (isNearNorthMtn ? distN : distS) / 300;
+            baseR = Math.floor(105 + h2 * 20 - rockBlend * 10); baseG = Math.floor(90 + h2 * 15 - rockBlend * 8); baseB = Math.floor(68 + h2 * 10 - rockBlend * 5);
+          } else if (isSuburb) {
+            // Suburban/outskirts — mix of grass and pavement
+            if (h < 0.3) { baseR = 72 + h2 * 12; baseG = 72 + h2 * 10; baseB = 68 + h2 * 8; }
+            else { baseR = 68 + h2 * 15; baseG = 95 + h2 * 18; baseB = 42 + h2 * 10; }
           } else {
             if (h < 0.25) { baseR = 110 + h2 * 15; baseG = 85 + h2 * 10; baseB = 55 + h2 * 8; }
             else if (h < 0.55) { baseR = 75 + h2 * 15; baseG = 105 + h2 * 20; baseB = 45 + h2 * 10; }
@@ -7020,55 +7146,493 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const westEdge = BORDER + ox;
         const eastEdge = (W - BORDER) + ox;
         const mtnBr = dayBright;
+        const waterBr = isNight ? 0.38 : mtnBr;
+        const waveT = g.frame * 0.022;
+        const noiseS = (x: number, y: number, freq: number) =>
+          (Math.sin(x * freq * 0.013 + y * freq * 0.007) * 0.5 +
+           Math.sin(x * freq * 0.019 + y * freq * 0.011 + 1.3) * 0.35 +
+           Math.sin(x * freq * 0.007 + y * freq * 0.023 + 2.7) * 0.15) * 0.5 + 0.5;
 
-        if (northEdge > -60) {
-          ctx.fillStyle = `rgb(${Math.floor(90 * mtnBr)},${Math.floor(75 * mtnBr)},${Math.floor(55 * mtnBr)})`;
-          ctx.fillRect(0, Math.max(0, oy), cw, northEdge - oy + 30);
-          for (let mx = 0; mx < cw; mx += 16) {
-            const peakH = 20 + Math.sin(mx * 0.05) * 14 + Math.cos(mx * 0.03) * 8;
-            const shade = 0.7 + Math.sin(mx * 0.02) * 0.15;
-            ctx.fillStyle = `rgb(${Math.floor(110 * shade * mtnBr)},${Math.floor(90 * shade * mtnBr)},${Math.floor(65 * shade * mtnBr)})`;
-            ctx.beginPath(); ctx.moveTo(mx, northEdge); ctx.lineTo(mx + 8, northEdge - peakH); ctx.lineTo(mx + 16, northEdge); ctx.fill();
-            ctx.fillStyle = `rgb(${Math.floor(130 * shade * mtnBr)},${Math.floor(110 * shade * mtnBr)},${Math.floor(80 * shade * mtnBr)})`;
-            ctx.fillRect(mx + 4, northEdge - peakH + 2, 4, 4);
+        // ── NORTH BORDER — Mountain range ────────────────────────────────────
+        if (northEdge > -220) {
+          // Rocky base fill
+          ctx.fillStyle = `rgb(${Math.floor(72 * mtnBr)},${Math.floor(60 * mtnBr)},${Math.floor(45 * mtnBr)})`;
+          ctx.fillRect(0, Math.max(0, oy), cw, Math.max(0, northEdge - oy + 40));
+
+          // Foothills gradient band (playable side)
+          const foothillDepth = 160;
+          for (let fx = 0; fx < cw; fx += 4) {
+            const wPos = (fx - ox + g.cam.x);
+            const fNoise = noiseS(wPos, 0, 1.2);
+            const foothillH = 28 + fNoise * 22;
+            const foothillY = northEdge + foothillH * 0.4;
+            for (let fd = 0; fd < foothillDepth; fd += 4) {
+              const t2 = fd / foothillDepth;
+              const gR = Math.floor((55 + t2 * 35) * mtnBr);
+              const gG = Math.floor((80 + t2 * 45) * mtnBr);
+              const gB = Math.floor((35 + t2 * 20) * mtnBr);
+              ctx.fillStyle = `rgba(${gR},${gG},${gB},0.28)`;
+              ctx.fillRect(fx, foothillY + fd, 4, 4);
+            }
+          }
+
+          // Main mountain silhouette — back layer (larger, darker)
+          ctx.beginPath();
+          ctx.moveTo(0, northEdge + 10);
+          for (let mx = 0; mx <= cw; mx += 10) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 55 + noiseS(wPos, 0, 0.8) * 55 + noiseS(wPos, 500, 1.8) * 25;
+            ctx.lineTo(mx, northEdge - peakH);
+          }
+          ctx.lineTo(cw, northEdge + 10);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(60 * mtnBr)},${Math.floor(50 * mtnBr)},${Math.floor(38 * mtnBr)})`;
+          ctx.fill();
+
+          // Main mountain silhouette — front layer (sharper peaks)
+          ctx.beginPath();
+          ctx.moveTo(0, northEdge + 5);
+          for (let mx = 0; mx <= cw; mx += 8) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 32 + noiseS(wPos, 200, 1.5) * 42 + noiseS(wPos, 800, 3.0) * 16;
+            ctx.lineTo(mx, northEdge - peakH);
+          }
+          ctx.lineTo(cw, northEdge + 5);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(85 * mtnBr)},${Math.floor(70 * mtnBr)},${Math.floor(52 * mtnBr)})`;
+          ctx.fill();
+
+          // Snow caps on tallest peaks
+          for (let mx = 0; mx < cw; mx += 24) {
+            const wPos = mx - ox + g.cam.x;
+            const n1 = noiseS(wPos, 200, 1.5);
+            const n2 = noiseS(wPos, 800, 3.0);
+            const peakH = 32 + n1 * 42 + n2 * 16;
+            if (n1 > 0.58) {
+              const snowBase = northEdge - peakH;
+              const snowH = (n1 - 0.58) * 38;
+              ctx.fillStyle = `rgba(235,240,255,${0.75 * mtnBr})`;
+              ctx.beginPath();
+              ctx.moveTo(mx - 2, snowBase + snowH);
+              ctx.lineTo(mx + 12, snowBase + snowH);
+              ctx.lineTo(mx + 6, snowBase);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = `rgba(210,225,255,${0.45 * mtnBr})`;
+              ctx.fillRect(mx + 2, snowBase + 2, 8, snowH * 0.5);
+            }
+          }
+
+          // Rocky cliff face details
+          for (let mx = 0; mx < cw; mx += 6) {
+            const wPos = mx - ox + g.cam.x;
+            const ledge = noiseS(wPos * 2.3, 100, 2.0);
+            if (ledge > 0.62) {
+              const ly = northEdge - 8 - ledge * 12;
+              ctx.fillStyle = `rgba(${Math.floor(140 * mtnBr)},${Math.floor(115 * mtnBr)},${Math.floor(85 * mtnBr)},0.5)`;
+              ctx.fillRect(mx, ly, 6, 2);
+            }
+          }
+
+          // Wind particles near north mountains
+          for (let wi = 0; wi < 8; wi++) {
+            const wSeed = Math.sin(wi * 3.7 + g.frame * 0.008) * 0.5 + 0.5;
+            const windX = ((g.frame * 0.8 + wi * 180) % (cw + 40)) - 20;
+            const windY = northEdge + 20 + wSeed * 80;
+            const windAlpha = 0.12 + wSeed * 0.1;
+            ctx.fillStyle = `rgba(200,220,240,${windAlpha})`;
+            ctx.fillRect(windX, windY, 18 + wSeed * 10, 1.5);
+            ctx.fillRect(windX + 4, windY + 3, 10 + wSeed * 6, 1);
           }
         }
-        if (southEdge < ch + 60) {
-          ctx.fillStyle = `rgb(${Math.floor(85 * mtnBr)},${Math.floor(70 * mtnBr)},${Math.floor(50 * mtnBr)})`;
-          ctx.fillRect(0, southEdge - 10, cw, ch - southEdge + 70);
-          for (let mx = 0; mx < cw; mx += 16) {
-            const peakH = 18 + Math.sin(mx * 0.04 + 1) * 12 + Math.cos(mx * 0.06) * 7;
-            const shade = 0.7 + Math.cos(mx * 0.025) * 0.15;
-            ctx.fillStyle = `rgb(${Math.floor(105 * shade * mtnBr)},${Math.floor(85 * shade * mtnBr)},${Math.floor(60 * shade * mtnBr)})`;
-            ctx.beginPath(); ctx.moveTo(mx, southEdge); ctx.lineTo(mx + 8, southEdge + peakH); ctx.lineTo(mx + 16, southEdge); ctx.fill();
+
+        // ── SOUTH BORDER — Mountain range ────────────────────────────────────
+        if (southEdge < ch + 220) {
+          ctx.fillStyle = `rgb(${Math.floor(68 * mtnBr)},${Math.floor(55 * mtnBr)},${Math.floor(42 * mtnBr)})`;
+          ctx.fillRect(0, southEdge - 30, cw, ch - southEdge + 260);
+
+          // Foothills on playable side
+          const foothillDepth = 160;
+          for (let fx = 0; fx < cw; fx += 4) {
+            const wPos = (fx - ox + g.cam.x);
+            const fNoise = noiseS(wPos, 9999, 1.1);
+            const foothillH = 24 + fNoise * 20;
+            const foothillY = southEdge - foothillH * 0.4;
+            for (let fd = foothillDepth; fd >= 0; fd -= 4) {
+              const t2 = 1 - fd / foothillDepth;
+              const gR = Math.floor((50 + t2 * 30) * mtnBr);
+              const gG = Math.floor((75 + t2 * 40) * mtnBr);
+              const gB = Math.floor((30 + t2 * 15) * mtnBr);
+              ctx.fillStyle = `rgba(${gR},${gG},${gB},0.25)`;
+              ctx.fillRect(fx, foothillY - fd, 4, 4);
+            }
+          }
+
+          // Back mountain layer
+          ctx.beginPath();
+          ctx.moveTo(0, southEdge - 8);
+          for (let mx = 0; mx <= cw; mx += 10) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 50 + noiseS(wPos, 3000, 0.9) * 50 + noiseS(wPos, 3500, 1.9) * 22;
+            ctx.lineTo(mx, southEdge + peakH);
+          }
+          ctx.lineTo(cw, southEdge - 8);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(58 * mtnBr)},${Math.floor(47 * mtnBr)},${Math.floor(36 * mtnBr)})`;
+          ctx.fill();
+
+          // Front mountain layer
+          ctx.beginPath();
+          ctx.moveTo(0, southEdge - 4);
+          for (let mx = 0; mx <= cw; mx += 8) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 28 + noiseS(wPos, 3200, 1.6) * 38 + noiseS(wPos, 4000, 3.2) * 14;
+            ctx.lineTo(mx, southEdge + peakH);
+          }
+          ctx.lineTo(cw, southEdge - 4);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(80 * mtnBr)},${Math.floor(65 * mtnBr)},${Math.floor(48 * mtnBr)})`;
+          ctx.fill();
+
+          // Snow caps
+          for (let mx = 0; mx < cw; mx += 24) {
+            const wPos = mx - ox + g.cam.x;
+            const n1 = noiseS(wPos, 3200, 1.6);
+            const n2 = noiseS(wPos, 4000, 3.2);
+            const peakH = 28 + n1 * 38 + n2 * 14;
+            if (n1 > 0.6) {
+              const snowBase = southEdge + peakH;
+              const snowH = (n1 - 0.6) * 32;
+              ctx.fillStyle = `rgba(235,240,255,${0.7 * mtnBr})`;
+              ctx.beginPath();
+              ctx.moveTo(mx - 2, snowBase - snowH);
+              ctx.lineTo(mx + 12, snowBase - snowH);
+              ctx.lineTo(mx + 6, snowBase);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+
+          // Rocky ledges
+          for (let mx = 0; mx < cw; mx += 6) {
+            const wPos = mx - ox + g.cam.x;
+            const ledge = noiseS(wPos * 2.1, 3100, 2.2);
+            if (ledge > 0.65) {
+              const ly = southEdge + 6 + ledge * 10;
+              ctx.fillStyle = `rgba(${Math.floor(135 * mtnBr)},${Math.floor(108 * mtnBr)},${Math.floor(80 * mtnBr)},0.45)`;
+              ctx.fillRect(mx, ly, 6, 2);
+            }
+          }
+
+          // Wind particles near south mountains
+          for (let wi = 0; wi < 8; wi++) {
+            const wSeed = Math.sin(wi * 4.1 + g.frame * 0.009 + 5) * 0.5 + 0.5;
+            const windX = cw - ((g.frame * 0.7 + wi * 160) % (cw + 40));
+            const windY = southEdge - 20 - wSeed * 70;
+            const windAlpha = 0.1 + wSeed * 0.1;
+            ctx.fillStyle = `rgba(195,215,235,${windAlpha})`;
+            ctx.fillRect(windX, windY, 16 + wSeed * 12, 1.5);
           }
         }
-        if (westEdge > -60) {
-          const waveT = g.frame * 0.025;
-          const waterBr = isNight ? 0.4 : mtnBr;
-          ctx.fillStyle = `rgb(${Math.floor(30 * waterBr)},${Math.floor(90 * waterBr)},${Math.floor(160 * waterBr)})`;
-          ctx.fillRect(Math.max(0, ox), 0, westEdge - ox + 20, ch);
-          for (let wy = 0; wy < ch; wy += 8) {
-            const wx = westEdge + Math.sin(wy * 0.08 + waveT) * 6;
-            const wBr = 0.8 + Math.sin(wy * 0.05 + waveT * 2) * 0.2;
-            ctx.fillStyle = `rgb(${Math.floor(50 * wBr * waterBr)},${Math.floor(130 * wBr * waterBr)},${Math.floor(200 * wBr * waterBr)})`;
-            ctx.fillRect(wx - 10, wy, 12, 6);
-            ctx.fillStyle = `rgba(255,255,255,${0.15 * wBr})`;
-            ctx.fillRect(wx - 4, wy, 4, 2);
+
+        // ── WEST BORDER — Ocean coastline ────────────────────────────────────
+        if (westEdge > -300) {
+
+          // Deep ocean base — dark blue with depth gradient
+          const oceanGrad = ctx.createLinearGradient(Math.max(0, ox), 0, westEdge + 40, 0);
+          const deepR = Math.floor(18 * waterBr), deepG = Math.floor(55 * waterBr), deepB = Math.floor(130 * waterBr);
+          const shallR = Math.floor(35 * waterBr), shallG = Math.floor(110 * waterBr), shallB = Math.floor(180 * waterBr);
+          oceanGrad.addColorStop(0, `rgb(${deepR},${deepG},${deepB})`);
+          oceanGrad.addColorStop(0.65, `rgb(${Math.floor(25 * waterBr)},${Math.floor(80 * waterBr)},${Math.floor(155 * waterBr)})`);
+          oceanGrad.addColorStop(1, `rgb(${shallR},${shallG},${shallB})`);
+          ctx.fillStyle = oceanGrad;
+          ctx.fillRect(Math.max(0, ox), 0, westEdge - Math.max(0, ox) + 40, ch);
+
+          // Procedural coastline with noise — irregular shore
+          ctx.beginPath();
+          ctx.moveTo(westEdge + 40, 0);
+          for (let wy2 = 0; wy2 <= ch; wy2 += 4) {
+            const wPos = wy2 - oy + g.cam.y;
+            const coastN = noiseS(0, wPos, 1.0) * 22 + noiseS(100, wPos, 2.8) * 10 + Math.sin(waveT + wPos * 0.009) * 5;
+            ctx.lineTo(westEdge + coastN, wy2);
+          }
+          ctx.lineTo(westEdge + 40, ch);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(${shallR},${shallG},${shallB},0.6)`;
+          ctx.fill();
+
+          // Animated wave bands — multiple layers
+          for (let wl = 0; wl < 3; wl++) {
+            const wOffset = wl * 14 + waveT * (1 + wl * 0.4);
+            for (let wy2 = 0; wy2 < ch; wy2 += 7) {
+              const wPos = wy2 - oy + g.cam.y;
+              const wx2 = westEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.02 + wOffset * 0.5) * 14 + noiseS(0, wPos + wl * 300, 1.5) * 12;
+              const wBr2 = 0.7 + Math.sin(wy2 * 0.04 + wOffset) * 0.3;
+              const wAlpha = (0.3 - wl * 0.08) * wBr2;
+              ctx.fillStyle = `rgb(${Math.floor(60 * wBr2 * waterBr)},${Math.floor(150 * wBr2 * waterBr)},${Math.floor(220 * wBr2 * waterBr)})`;
+              ctx.fillRect(wx2 - 14, wy2, 16, 5);
+            }
+          }
+
+          // Foam / surf line at coastline
+          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+            const wPos = wy2 - oy + g.cam.y;
+            const foamX = westEdge + noiseS(0, wPos, 1.0) * 18 + Math.sin(waveT * 1.4 + wPos * 0.008) * 7;
+            const foamBr = 0.5 + Math.sin(waveT * 2 + wy2 * 0.1) * 0.5;
+            if (foamBr > 0.3) {
+              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.35 * waterBr})`;
+              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 10), 2);
+            }
+          }
+
+          // Sandy beach strip
+          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+            const wPos = wy2 - oy + g.cam.y;
+            const beachX = westEdge + noiseS(0, wPos, 1.0) * 18 + 6;
+            const beachW = 14 + noiseS(50, wPos, 1.4) * 12;
+            const sandR = Math.floor((185 + noiseS(wPos * 0.3, 0, 2) * 20) * mtnBr);
+            const sandG = Math.floor((165 + noiseS(wPos * 0.3, 100, 2) * 15) * mtnBr);
+            const sandB = Math.floor((115 + noiseS(wPos * 0.3, 200, 2) * 10) * mtnBr);
+            ctx.fillStyle = `rgb(${sandR},${sandG},${sandB})`;
+            ctx.fillRect(beachX, wy2, beachW, 3);
+          }
+
+          // Seabirds near west coast
+          const nearWestCoast = g.px < BORDER + 800;
+          if (nearWestCoast) {
+            for (let bi = 0; bi < 5; bi++) {
+              const bTime = g.frame * 0.012 + bi * 1.8;
+              const bx2 = westEdge + 30 + Math.sin(bTime * 0.7 + bi) * 60 + ox * 0.05;
+              const by2 = (ch * (0.15 + bi * 0.16)) + Math.sin(bTime + bi * 0.5) * 20;
+              if (bx2 < 0 || bx2 > cw || by2 < 0 || by2 > ch) continue;
+              const wingFlap = Math.sin(bTime * 3.5) * 3;
+              ctx.strokeStyle = `rgba(240,240,250,${0.7 * waterBr})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(bx2, by2);
+              ctx.quadraticCurveTo(bx2 - 5, by2 - wingFlap, bx2 - 9, by2 - 1);
+              ctx.moveTo(bx2, by2);
+              ctx.quadraticCurveTo(bx2 + 5, by2 - wingFlap, bx2 + 9, by2 - 1);
+              ctx.stroke();
+            }
+          }
+
+          // Ocean surface shimmer
+          if (!isNight) {
+            for (let sy2 = 0; sy2 < ch; sy2 += 18) {
+              for (let sx2 = Math.max(0, ox + 4); sx2 < westEdge - 10; sx2 += 28) {
+                const shimTime = g.frame * 0.04 + sx2 * 0.02 + sy2 * 0.015;
+                const shimAlpha = Math.max(0, Math.sin(shimTime) * 0.12);
+                if (shimAlpha > 0.02) {
+                  ctx.fillStyle = `rgba(255,255,255,${shimAlpha})`;
+                  ctx.fillRect(sx2, sy2, 8, 2);
+                }
+              }
+            }
           }
         }
-        if (eastEdge < cw + 60) {
-          const waveT = g.frame * 0.025;
-          const waterBr = isNight ? 0.4 : mtnBr;
-          ctx.fillStyle = `rgb(${Math.floor(25 * waterBr)},${Math.floor(80 * waterBr)},${Math.floor(150 * waterBr)})`;
-          ctx.fillRect(eastEdge - 10, 0, cw - eastEdge + 70, ch);
-          for (let wy = 0; wy < ch; wy += 8) {
-            const wx = eastEdge + Math.sin(wy * 0.08 + waveT + 2) * 6;
-            const wBr = 0.8 + Math.sin(wy * 0.06 + waveT * 1.5) * 0.2;
-            ctx.fillStyle = `rgb(${Math.floor(45 * wBr * waterBr)},${Math.floor(120 * wBr * waterBr)},${Math.floor(190 * wBr * waterBr)})`;
-            ctx.fillRect(wx - 2, wy, 12, 6);
-            ctx.fillStyle = `rgba(255,255,255,${0.12 * wBr})`;
-            ctx.fillRect(wx + 2, wy, 4, 2);
+
+        // ── EAST BORDER — Ocean coastline ────────────────────────────────────
+        if (eastEdge < cw + 300) {
+
+          const oceanGrad2 = ctx.createLinearGradient(eastEdge - 40, 0, Math.min(cw, eastEdge + (cw - eastEdge)), 0);
+          oceanGrad2.addColorStop(0, `rgb(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)})`);
+          oceanGrad2.addColorStop(0.4, `rgb(${Math.floor(22 * waterBr)},${Math.floor(68 * waterBr)},${Math.floor(140 * waterBr)})`);
+          oceanGrad2.addColorStop(1, `rgb(${Math.floor(14 * waterBr)},${Math.floor(45 * waterBr)},${Math.floor(110 * waterBr)})`);
+          ctx.fillStyle = oceanGrad2;
+          ctx.fillRect(eastEdge - 40, 0, cw - eastEdge + 300, ch);
+
+          // Coastal edge shape
+          ctx.beginPath();
+          ctx.moveTo(eastEdge - 40, 0);
+          for (let wy2 = 0; wy2 <= ch; wy2 += 4) {
+            const wPos = wy2 - oy + g.cam.y;
+            const coastN = -(noiseS(5000, wPos, 1.0) * 22 + noiseS(5100, wPos, 2.8) * 10 + Math.sin(waveT * 1.1 + wPos * 0.009) * 5);
+            ctx.lineTo(eastEdge + coastN, wy2);
+          }
+          ctx.lineTo(eastEdge - 40, ch);
+          ctx.closePath();
+          ctx.fillStyle = `rgba(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)},0.55)`;
+          ctx.fill();
+
+          // East wave bands
+          for (let wl = 0; wl < 3; wl++) {
+            const wOffset = wl * 12 + waveT * (0.9 + wl * 0.35) + 2;
+            for (let wy2 = 0; wy2 < ch; wy2 += 7) {
+              const wPos = wy2 - oy + g.cam.y;
+              const wx2 = eastEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.025 + wOffset * 0.6) * 12 + noiseS(5000, wPos + wl * 300, 1.5) * 10;
+              const wBr2 = 0.65 + Math.sin(wy2 * 0.045 + wOffset) * 0.3;
+              ctx.fillStyle = `rgb(${Math.floor(50 * wBr2 * waterBr)},${Math.floor(140 * wBr2 * waterBr)},${Math.floor(210 * wBr2 * waterBr)})`;
+              ctx.fillRect(wx2 - 2, wy2, 14, 5);
+            }
+          }
+
+          // Foam at east shore
+          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+            const wPos = wy2 - oy + g.cam.y;
+            const foamX = eastEdge - noiseS(5000, wPos, 1.0) * 18 - Math.sin(waveT * 1.6 + wPos * 0.008) * 6;
+            const foamBr = 0.5 + Math.sin(waveT * 2.2 + wy2 * 0.09) * 0.5;
+            if (foamBr > 0.3) {
+              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.3 * waterBr})`;
+              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 9), 2);
+            }
+          }
+
+          // Sandy east beach
+          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+            const wPos = wy2 - oy + g.cam.y;
+            const beachX = eastEdge - noiseS(5000, wPos, 1.0) * 16 - 20;
+            const beachW = 13 + noiseS(5050, wPos, 1.4) * 11;
+            const sandR = Math.floor((178 + noiseS(wPos * 0.3, 500, 2) * 18) * mtnBr);
+            const sandG = Math.floor((158 + noiseS(wPos * 0.3, 600, 2) * 14) * mtnBr);
+            const sandB = Math.floor((108 + noiseS(wPos * 0.3, 700, 2) * 10) * mtnBr);
+            ctx.fillStyle = `rgb(${sandR},${sandG},${sandB})`;
+            ctx.fillRect(beachX, wy2, beachW, 3);
+          }
+
+          // Seabirds near east coast
+          const nearEastCoast = g.px > W - BORDER - 800;
+          if (nearEastCoast) {
+            for (let bi = 0; bi < 5; bi++) {
+              const bTime = g.frame * 0.011 + bi * 2.1 + 3;
+              const bx2 = eastEdge - 25 - Math.sin(bTime * 0.65 + bi) * 55;
+              const by2 = (ch * (0.12 + bi * 0.17)) + Math.sin(bTime * 0.9 + bi) * 18;
+              if (bx2 < 0 || bx2 > cw || by2 < 0 || by2 > ch) continue;
+              const wingFlap = Math.sin(bTime * 3.2) * 3;
+              ctx.strokeStyle = `rgba(235,235,245,${0.65 * waterBr})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(bx2, by2);
+              ctx.quadraticCurveTo(bx2 - 5, by2 - wingFlap, bx2 - 8, by2 - 1);
+              ctx.moveTo(bx2, by2);
+              ctx.quadraticCurveTo(bx2 + 5, by2 - wingFlap, bx2 + 8, by2 - 1);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // ── RIVERS: from mountains toward coast ───────────────────────────────
+        const RIVERS = [
+          { startX: 3200, startY: BORDER + 80, endX: BORDER + 60, endY: 5000 },
+          { startX: 8500, startY: BORDER + 100, endX: W - BORDER - 80, endY: 4200 },
+          { startX: 5800, startY: H - BORDER - 90, endX: BORDER + 80, endY: 8800 },
+          { startX: 9200, startY: H - BORDER - 110, endX: W - BORDER - 70, endY: 9400 },
+        ];
+        const riverT = g.frame * 0.018;
+        for (const rv of RIVERS) {
+          const rx1 = rv.startX + ox, ry1 = rv.startY + oy;
+          const rx2 = rv.endX + ox, ry2 = rv.endY + oy;
+          const rBounds = Math.max(rx1, rx2) > -20 && Math.min(rx1, rx2) < cw + 20 && Math.max(ry1, ry2) > -20 && Math.min(ry1, ry2) < ch + 20;
+          if (!rBounds) continue;
+          const steps = 60;
+          ctx.lineWidth = 3.5;
+          for (let rs = 0; rs < steps - 1; rs++) {
+            const t1 = rs / steps, t2 = (rs + 1) / steps;
+            const mx1 = rx1 + (rx2 - rx1) * t1 + Math.sin(t1 * 8 + riverT) * 18;
+            const my1 = ry1 + (ry2 - ry1) * t1 + Math.cos(t1 * 6 + riverT * 0.7) * 12;
+            const mx2 = rx1 + (rx2 - rx1) * t2 + Math.sin(t2 * 8 + riverT) * 18;
+            const my2 = ry1 + (ry2 - ry1) * t2 + Math.cos(t2 * 6 + riverT * 0.7) * 12;
+            const riverBr = isNight ? 0.35 : mtnBr;
+            const flowBright = 0.7 + Math.sin(t1 * 12 + riverT * 1.5) * 0.3;
+            ctx.strokeStyle = `rgb(${Math.floor(35 * flowBright * riverBr)},${Math.floor(100 * flowBright * riverBr)},${Math.floor(170 * flowBright * riverBr)})`;
+            ctx.beginPath(); ctx.moveTo(mx1, my1); ctx.lineTo(mx2, my2); ctx.stroke();
+          }
+          ctx.lineWidth = 1.5;
+          for (let rs = 0; rs < steps - 1; rs++) {
+            const t1 = rs / steps;
+            const mx1 = rx1 + (rx2 - rx1) * t1 + Math.sin(t1 * 8 + riverT) * 18;
+            const my1 = ry1 + (ry2 - ry1) * t1 + Math.cos(t1 * 6 + riverT * 0.7) * 12;
+            const flowFoam = Math.sin(t1 * 20 + riverT * 2) > 0.5;
+            if (flowFoam) {
+              ctx.strokeStyle = `rgba(180,220,255,0.3)`;
+              ctx.beginPath(); ctx.moveTo(mx1 - 1, my1); ctx.lineTo(mx1 + 2, my1 + 2); ctx.stroke();
+            }
+          }
+        }
+
+        // ── Bridge structures at river/road crossings ────────────────────────
+        // Each bridge is drawn as a short set of wooden planks over the river,
+        // oriented along the road direction (H=horizontal road, V=vertical road).
+        const BRIDGE_CROSSINGS = [
+          { wx: 2100, wy: 1820, dir: 'H' }, // River 1 × road y=1800
+          { wx: 2020, wy: 2010, dir: 'V' }, // River 1 × road x=2000
+          { wx: 11000, wy: 1900, dir: 'V' }, // River 2 × road x=11000
+          { wx: 12800, wy: 3200, dir: 'H' }, // River 2 × road y=3200
+          { wx: 2820, wy: 10500, dir: 'H' }, // River 3 × road y=10500
+          { wx: 2020, wy: 9960, dir: 'V' }, // River 3 × road x=2000
+          { wx: 12370, wy: 10500, dir: 'H' }, // River 4 × road y=10500
+          { wx: 11000, wy: 11320, dir: 'V' }, // River 4 × road x=11000
+        ];
+        for (const br2 of BRIDGE_CROSSINGS) {
+          const bsx = br2.wx + ox, bsy = br2.wy + oy;
+          if (bsx < -60 || bsx > cw + 60 || bsy < -60 || bsy > ch + 60) continue;
+          const deckBr = isNight ? 0.28 : dayBright;
+          if (br2.dir === 'H') {
+            // Horizontal road crossing — planks run left–right over the river
+            const bW = 48, bH = 18;
+            // River water fill beneath bridge
+            ctx.fillStyle = `rgba(20,80,150,${0.55 * waterBr})`;
+            ctx.fillRect(bsx - bW / 2, bsy - 5, bW, 10);
+            // Bridge deck
+            ctx.fillStyle = `rgb(${Math.floor(140 * deckBr)},${Math.floor(100 * deckBr)},${Math.floor(50 * deckBr)})`;
+            ctx.fillRect(bsx - bW / 2, bsy - bH / 2, bW, bH);
+            // Plank lines
+            ctx.strokeStyle = `rgba(0,0,0,0.22)`;
+            ctx.lineWidth = 1;
+            for (let pl = -bW / 2 + 6; pl < bW / 2; pl += 8) {
+              ctx.beginPath(); ctx.moveTo(bsx + pl, bsy - bH / 2); ctx.lineTo(bsx + pl, bsy + bH / 2); ctx.stroke();
+            }
+            // Bridge rails
+            ctx.strokeStyle = `rgb(${Math.floor(90 * deckBr)},${Math.floor(60 * deckBr)},${Math.floor(25 * deckBr)})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(bsx - bW / 2, bsy - bH / 2 - 1); ctx.lineTo(bsx + bW / 2, bsy - bH / 2 - 1); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(bsx - bW / 2, bsy + bH / 2 + 1); ctx.lineTo(bsx + bW / 2, bsy + bH / 2 + 1); ctx.stroke();
+          } else {
+            // Vertical road crossing — planks run top–bottom
+            const bW2 = 18, bH2 = 48;
+            ctx.fillStyle = `rgba(20,80,150,${0.55 * waterBr})`;
+            ctx.fillRect(bsx - 5, bsy - bH2 / 2, 10, bH2);
+            ctx.fillStyle = `rgb(${Math.floor(140 * deckBr)},${Math.floor(100 * deckBr)},${Math.floor(50 * deckBr)})`;
+            ctx.fillRect(bsx - bW2 / 2, bsy - bH2 / 2, bW2, bH2);
+            ctx.strokeStyle = `rgba(0,0,0,0.22)`;
+            ctx.lineWidth = 1;
+            for (let pl = -bH2 / 2 + 6; pl < bH2 / 2; pl += 8) {
+              ctx.beginPath(); ctx.moveTo(bsx - bW2 / 2, bsy + pl); ctx.lineTo(bsx + bW2 / 2, bsy + pl); ctx.stroke();
+            }
+            ctx.strokeStyle = `rgb(${Math.floor(90 * deckBr)},${Math.floor(60 * deckBr)},${Math.floor(25 * deckBr)})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(bsx - bW2 / 2 - 1, bsy - bH2 / 2); ctx.lineTo(bsx - bW2 / 2 - 1, bsy + bH2 / 2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(bsx + bW2 / 2 + 1, bsy - bH2 / 2); ctx.lineTo(bsx + bW2 / 2 + 1, bsy + bH2 / 2); ctx.stroke();
+          }
+        }
+
+        // ── Forest mist near north/south mountain borders ─────────────────────
+        const mistNorth = northEdge + 120;
+        const mistSouth = southEdge - 120;
+        if (mistNorth > 0 && mistNorth < ch + 80) {
+          for (let mx = 0; mx < cw; mx += 40) {
+            const wPos = mx - ox + g.cam.x;
+            const mistN = noiseS(wPos, 8888, 0.8);
+            const mistAlpha = 0.06 + mistN * 0.08;
+            const mistH = 40 + mistN * 30;
+            const mistGrad = ctx.createLinearGradient(0, mistNorth, 0, mistNorth + mistH);
+            mistGrad.addColorStop(0, `rgba(160,180,200,${mistAlpha})`);
+            mistGrad.addColorStop(1, 'rgba(160,180,200,0)');
+            ctx.fillStyle = mistGrad;
+            ctx.fillRect(mx, mistNorth, 40, mistH);
+          }
+        }
+        if (mistSouth > 0 && mistSouth < ch + 80) {
+          for (let mx = 0; mx < cw; mx += 40) {
+            const wPos = mx - ox + g.cam.x;
+            const mistN = noiseS(wPos, 7777, 0.8);
+            const mistAlpha = 0.05 + mistN * 0.07;
+            const mistH = 35 + mistN * 28;
+            const mistGrad2 = ctx.createLinearGradient(0, mistSouth - mistH, 0, mistSouth);
+            mistGrad2.addColorStop(0, 'rgba(160,180,200,0)');
+            mistGrad2.addColorStop(1, `rgba(155,175,195,${mistAlpha})`);
+            ctx.fillStyle = mistGrad2;
+            ctx.fillRect(mx, mistSouth - mistH, 40, mistH);
           }
         }
       };
