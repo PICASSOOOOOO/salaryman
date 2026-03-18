@@ -312,9 +312,7 @@ export function setMuted(m: boolean) {
 
 export function toggleMusicMute(): boolean {
   _musicMuted = !_musicMuted;
-  if (_musicMuted && !_scoreMuted && !_ambientRunning && !_muted) {
-    startAmbient();
-  }
+  _applyAmbientVolume();
   return _musicMuted;
 }
 
@@ -322,20 +320,100 @@ export function toggleScoreMute(): boolean {
   _scoreMuted = !_scoreMuted;
   if (_scoreMuted) {
     stopAmbient();
-  } else if (!_muted) {
+  } else if (!_muted && !_musicMuted) {
     startAmbient();
   }
+  _applyAmbientVolume();
   return _scoreMuted;
 }
 
-export function setMusicMuted(m: boolean) { _musicMuted = m; }
+export function setMusicMuted(m: boolean) { _musicMuted = m; _applyAmbientVolume(); }
 export function setScoreMuted(m: boolean) {
   _scoreMuted = m;
   if (m) stopAmbient();
-  else if (!_muted) startAmbient();
+  else if (!_muted && !_musicMuted) startAmbient();
+  _applyAmbientVolume();
 }
 
 let _ambientRadioLastPlay = 0;
+// ── NPC Ambient Vocalizations (Vietnamese-cadence tonal murmurs) ──────────────
+// Generates short, subdued non-verbal vocalizations with rising/falling tones
+// resembling Vietnamese speech patterns — like Simlish but quieter.
+export function sfxNpcMurmur(npcSeed = 0) {
+  if (_muted || _sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+
+  const masterG = c.createGain();
+  const vol = 0.045 + (((npcSeed * 7 + 3) % 10) / 10) * 0.02;
+  masterG.gain.setValueAtTime(0, t);
+  masterG.gain.linearRampToValueAtTime(vol * _sfxVol, t + 0.04);
+  masterG.connect(c.destination);
+
+  // Pick a base pitch seeded per NPC (80–240 Hz range — human vocal range)
+  const basePitch = 90 + ((npcSeed * 13 + 7) % 30) * 5;
+
+  // Vietnamese-like tonal patterns: sequences of rising, falling, level tones
+  const TONE_PATTERNS: Array<[number, number][]> = [
+    [[1.0, 1.3], [1.3, 1.0]],              // rising-falling (hỏi tone)
+    [[1.0, 1.0], [1.0, 1.4]],              // level then rise (sắc tone)
+    [[1.2, 0.8], [0.8, 0.6]],              // falling drop (huyền tone)
+    [[1.0, 1.5], [1.5, 0.9], [0.9, 1.1]], // dipping rise (ngã tone)
+    [[1.0, 0.9], [0.9, 0.9]],              // low level (nặng)
+  ];
+  const pattern = TONE_PATTERNS[(npcSeed + Math.floor(Math.random() * 2)) % TONE_PATTERNS.length];
+
+  // Vowel formants — approximate the nasal/open vowel quality of Vietnamese
+  const fmtFreq1 = 500 + ((npcSeed * 5) % 200);
+  const fmtFreq2 = 1200 + ((npcSeed * 11) % 400);
+
+  let segT = t;
+  for (const [startMult, endMult] of pattern) {
+    const segDur = 0.12 + Math.random() * 0.1;
+    const startFreq = basePitch * startMult;
+    const endFreq = basePitch * endMult;
+
+    // Main vocal tone (sine — soft, non-buzzy)
+    const vocalG = c.createGain();
+    vocalG.gain.setValueAtTime(0.6, segT);
+    vocalG.gain.linearRampToValueAtTime(0.8, segT + segDur * 0.3);
+    vocalG.gain.linearRampToValueAtTime(0, segT + segDur);
+
+    const fmt1 = c.createBiquadFilter();
+    fmt1.type = 'bandpass';
+    fmt1.frequency.value = fmtFreq1;
+    fmt1.Q.value = 4;
+
+    const fmt2 = c.createBiquadFilter();
+    fmt2.type = 'bandpass';
+    fmt2.frequency.value = fmtFreq2;
+    fmt2.Q.value = 3;
+
+    const vocalOsc = c.createOscillator();
+    vocalOsc.type = 'sawtooth';
+    vocalOsc.frequency.setValueAtTime(startFreq, segT);
+    vocalOsc.frequency.linearRampToValueAtTime(endFreq, segT + segDur);
+    vocalOsc.detune.value = (npcSeed % 5) * 3 - 7;
+
+    vocalOsc.connect(fmt1);
+    vocalOsc.connect(fmt2);
+    fmt1.connect(vocalG);
+    fmt2.connect(vocalG);
+    vocalG.connect(masterG);
+
+    vocalOsc.start(segT);
+    vocalOsc.stop(segT + segDur + 0.01);
+    vocalOsc.onended = () => {
+      try { vocalOsc.disconnect(); fmt1.disconnect(); fmt2.disconnect(); vocalG.disconnect(); } catch (_) {}
+    };
+
+    segT += segDur + 0.02 + Math.random() * 0.04;
+  }
+
+  const totalDur = segT - t + 0.15;
+  masterG.gain.setTargetAtTime(0, segT - 0.08, 0.06);
+  setTimeout(() => { try { masterG.disconnect(); } catch (_) {} }, (totalDur + 0.3) * 1000);
+}
+
 export function sfxAmbientRadio(playerX: number, playerY: number, srcX: number, srcY: number) {
   const now = performance.now();
   if (now - _ambientRadioLastPlay < 3000) return;

@@ -269,6 +269,7 @@ export interface DialogueNode {
   portrait: 'player' | 'npc';
   text: string;
   choices: DialogueChoice[];
+  effect?: 'open_shop' | 'give_gold' | 'give_fiat' | 'heal';
 }
 
 export interface DialogueTree {
@@ -325,6 +326,221 @@ export const STORY_DIALOGUES: Record<string, DialogueTree> = {
     },
   },
 };
+
+// ── Generic NPC Dialogue Templates ───────────────────────────────────────────
+// Lightweight branching dialogues for all NPCs without a dedicated story tree.
+// Role/faction-aware so each type of NPC feels distinct.
+
+type GenericNpcRole = 'police' | 'corpo_military' | 'corpo_worker' | 'homeless' | 'pedestrian' | 'dealer_papers' | 'dealer_weapons' | 'blade_runner' | 'gang_patrol' | 'guard' | 'default';
+
+interface GenericTemplate {
+  opening: string[];
+  branches: { playerText: string; npcReply: string; mood: 'friendly' | 'dismissive' | 'cryptic' }[];
+  farewells: string[];
+}
+
+const GENERIC_TEMPLATES: Record<GenericNpcRole, GenericTemplate> = {
+  police: {
+    opening: [
+      'Move along, citizen. Nothing to see here.',
+      'Keep it moving. This area is under surveillance.',
+      'I\'m watching you. We\'re all watching.',
+    ],
+    branches: [
+      { playerText: 'What\'s the situation out there?', npcReply: 'Above my clearance. And yours. Keep your head down.', mood: 'dismissive' },
+      { playerText: 'Seems quiet tonight.', npcReply: 'Quiet is when you should be most worried in this city.', mood: 'cryptic' },
+      { playerText: 'Need any help?', npcReply: 'No civilians on active patrol zones. That\'s protocol.', mood: 'dismissive' },
+      { playerText: 'Stay safe out there.', npcReply: 'That\'s the job. Doesn\'t always work out.', mood: 'cryptic' },
+    ],
+    farewells: ['Move on.', 'Noted. Continue.', 'Dismissed.'],
+  },
+  corpo_military: {
+    opening: [
+      'Halt. State your clearance level.',
+      'Unauthorized proximity detected. Step back.',
+      'Sector is restricted. Authorized personnel only.',
+    ],
+    branches: [
+      { playerText: 'I\'m just passing through.', npcReply: 'Everyone\'s just passing through. Not everyone makes it.', mood: 'dismissive' },
+      { playerText: 'Who do you work for?', npcReply: 'SUITS contracted security. Beyond that — classified.', mood: 'dismissive' },
+      { playerText: 'Tough assignment?', npcReply: 'All assignments are tough if you\'re paying attention.', mood: 'cryptic' },
+      { playerText: 'What\'s behind that door?', npcReply: 'Nothing you need to know about. Keep walking.', mood: 'dismissive' },
+    ],
+    farewells: ['Move out.', 'Proceed.', 'Area cleared.'],
+  },
+  corpo_worker: {
+    opening: [
+      'Busy day. Always a busy day.',
+      'Running diagnostics on my lunch break. Standard stuff.',
+      'The reports won\'t file themselves. Believe me, I\'ve tried.',
+    ],
+    branches: [
+      { playerText: 'What do you do here?', npcReply: 'Compliance, mostly. Make sure the numbers align with the story they want told.', mood: 'cryptic' },
+      { playerText: 'How long have you worked here?', npcReply: 'Long enough to know which questions not to ask. You should learn that too.', mood: 'cryptic' },
+      { playerText: 'Things seem tense lately.', npcReply: 'Things are always tense. You only notice when the tension breaks.', mood: 'cryptic' },
+      { playerText: 'Know anything useful?', npcReply: 'Useful to who? Be specific. Vague questions get vague answers.', mood: 'dismissive' },
+    ],
+    farewells: ['Right. Back to it.', 'I have a meeting.', 'Stay out of trouble.'],
+  },
+  homeless: {
+    opening: [
+      'Hey. You got any fiat to spare?',
+      'I used to work the towers. Long time ago.',
+      'They took everything in the consolidation. Everything.',
+    ],
+    branches: [
+      { playerText: 'What happened to you?', npcReply: 'SUITS buyout, \'91. Lost the job, lost the flat. City doesn\'t have a reset button.', mood: 'cryptic' },
+      { playerText: 'Can I help?', npcReply: 'Already past helping. But it\'s kind of you to ask. Rare quality these days.', mood: 'friendly' },
+      { playerText: 'Know any good spots?', npcReply: 'Under the east bridge if it\'s dry. Watch out for the Rust boys after midnight.', mood: 'friendly' },
+      { playerText: 'Stay warm out here.', npcReply: 'Warmth is a luxury, friend. But thank you. Genuinely.', mood: 'friendly' },
+    ],
+    farewells: ['Take care of yourself.', 'Watch your back out there.', 'May your luck hold.'],
+  },
+  pedestrian: {
+    opening: [
+      'Just trying to get to work on time.',
+      'Minx City never sleeps. Neither do I, apparently.',
+      'You ever feel like you\'re being watched? I feel it constantly.',
+    ],
+    branches: [
+      { playerText: 'What\'s the mood out there?', npcReply: 'Tense. The gangs are quiet, which is somehow worse than loud.', mood: 'cryptic' },
+      { playerText: 'Anything interesting happening?', npcReply: 'Depends what you call interesting. I call it survival.', mood: 'dismissive' },
+      { playerText: 'Where are you headed?', npcReply: 'Market district. Same as every morning. Routine is armor.', mood: 'friendly' },
+      { playerText: 'How long have you lived here?', npcReply: 'Grew up in the east sector. Before it was renamed. Before everything changed.', mood: 'cryptic' },
+    ],
+    farewells: ['Good luck.', 'Keep moving.', 'Eyes open out there.'],
+  },
+  dealer_papers: {
+    opening: [
+      'Fresh papers. Current issue. Don\'t let SUITS see you reading it.',
+      'News from the underground. Actual news. Not the sanctioned kind.',
+      'You want the truth? I\'ve got it right here. For a price.',
+    ],
+    branches: [
+      { playerText: 'What\'s in the paper today?', npcReply: 'Three stories they don\'t want you to read. Buy one and find out.', mood: 'friendly' },
+      { playerText: 'Is it safe to be selling this?', npcReply: 'Safe? No. Necessary? Absolutely. That\'s the calculus we all make out here.', mood: 'cryptic' },
+      { playerText: 'Who writes this stuff?', npcReply: 'People who\'d rather not be named. Smart people. Brave people.', mood: 'cryptic' },
+      { playerText: 'Keep up the good work.', npcReply: 'Thanks. Knowing someone\'s reading makes the risk worth something.', mood: 'friendly' },
+    ],
+    farewells: ['Stay informed.', 'Knowledge is armor.', 'Come back tomorrow.'],
+  },
+  dealer_weapons: {
+    opening: [
+      'What\'re you shopping for? Defense or offense?',
+      'Quality hardware. No questions asked. That\'s the deal.',
+      'You look like someone who knows what they need.',
+    ],
+    branches: [
+      { playerText: 'What do you recommend?', npcReply: 'Depends on what you\'re up against. Gangs? Go heavy. Corpo patrols? Go quiet.', mood: 'friendly' },
+      { playerText: 'Is this stuff legal?', npcReply: 'SUITS Decree 12 says no. My price list says yes. You decide.', mood: 'dismissive' },
+      { playerText: 'Where do you get this?', npcReply: 'East bloc surplus, mostly. Some corp black market overflow. Don\'t worry about it.', mood: 'dismissive' },
+      { playerText: 'Just browsing.', npcReply: 'Browsing\'s free. Buying\'s where it gets interesting. Come back when you\'re ready.', mood: 'friendly' },
+    ],
+    farewells: ['Stay armed.', 'Come back when loaded.', 'Good hunting.'],
+  },
+  blade_runner: {
+    opening: [
+      'Replicant activity logged in this sector. You look... organic enough.',
+      'Neural scan shows clear. For now.',
+      'My job is to find what doesn\'t belong. You wouldn\'t know anything about that.',
+    ],
+    branches: [
+      { playerText: 'Are you looking for someone?', npcReply: 'Something. The distinction matters in this line of work.', mood: 'cryptic' },
+      { playerText: 'What does a replicant look like?', npcReply: 'Like everyone else. That\'s the problem and the job.', mood: 'cryptic' },
+      { playerText: 'Must be a tough gig.', npcReply: 'Every gig in Minx City is tough. Mine just comes with a mandate.', mood: 'dismissive' },
+      { playerText: 'I haven\'t seen anything suspicious.', npcReply: 'They never think they have. Keep your eyes open anyway.', mood: 'dismissive' },
+    ],
+    farewells: ['Under observation.', 'Stay human.', 'Log complete.'],
+  },
+  gang_patrol: {
+    opening: [
+      'This is our block. What\'s your business here?',
+      'You got a reason to be in the territory?',
+      'Eyes on you, stranger. Don\'t make it into something.',
+    ],
+    branches: [
+      { playerText: 'Just passing through.', npcReply: 'Pass through fast. And don\'t touch anything.', mood: 'dismissive' },
+      { playerText: 'I\'m not looking for trouble.', npcReply: 'Smart. Trouble finds you anyway out here, but smart helps.', mood: 'cryptic' },
+      { playerText: 'Who runs this area?', npcReply: 'Ask that question again and you\'ll find out the hard way.', mood: 'dismissive' },
+      { playerText: 'Respect your territory.', npcReply: 'Good instinct. People who respect the territory live longer.', mood: 'friendly' },
+    ],
+    farewells: ['Move on.', 'Don\'t come back.', 'Keep walking.'],
+  },
+  guard: {
+    opening: [
+      'Authorized access only beyond this point.',
+      'Credentials required. Do you have credentials?',
+      'No loitering in restricted zones. Keep moving.',
+    ],
+    branches: [
+      { playerText: 'I have business inside.', npcReply: 'Business requires authorization. Authorization requires clearance. You have clearance?', mood: 'dismissive' },
+      { playerText: 'Who do I talk to for access?', npcReply: 'Above my paygrade to say. Try the admin desk. Third floor.', mood: 'friendly' },
+      { playerText: 'Long shift?', npcReply: 'Twelve hours. Four to go. The building doesn\'t know what time it is either.', mood: 'cryptic' },
+      { playerText: 'Quiet night?', npcReply: 'Quiet nights are when the real problems happen. Ask anyone who\'s worked security long enough.', mood: 'cryptic' },
+    ],
+    farewells: ['Proceed to the exit.', 'Area secured.', 'Have a good evening.'],
+  },
+  default: {
+    opening: [
+      'Another day in Minx City.',
+      'You\'re not from around here, are you?',
+      'I\'ve been here long enough to know when to keep quiet.',
+    ],
+    branches: [
+      { playerText: 'What\'s going on around here?', npcReply: 'More than I\'d like to admit and less than you probably think.', mood: 'cryptic' },
+      { playerText: 'Any advice for a stranger?', npcReply: 'Trust nobody above floor 10 and nobody below the poverty line. That covers most angles.', mood: 'friendly' },
+      { playerText: 'Seen anything strange lately?', npcReply: 'Strange is relative in Minx City. Strange is what passes for normal.', mood: 'cryptic' },
+      { playerText: 'Thanks. Take care.', npcReply: 'You too. And I mean that — it\'s harder than it sounds around here.', mood: 'friendly' },
+    ],
+    farewells: ['Take care.', 'Safe travels.', 'Good luck out there.'],
+  },
+};
+
+export function getGenericDialogueTree(npcName: string, role: string | undefined, job: string, npcSeed: number): DialogueTree {
+  const roleKey: GenericNpcRole = (role as GenericNpcRole) ?? 'default';
+  const template = GENERIC_TEMPLATES[roleKey] ?? GENERIC_TEMPLATES.default;
+
+  const openingIdx = npcSeed % template.opening.length;
+  const openingText = template.opening[openingIdx];
+
+  // Pick 2-3 branches based on seed
+  const branchCount = 2 + (npcSeed % 2);
+  const shuffled = [...template.branches].sort((a, b) => {
+    const ha = ((npcSeed * 31 + template.branches.indexOf(a) * 7) % 17);
+    const hb = ((npcSeed * 31 + template.branches.indexOf(b) * 7) % 17);
+    return ha - hb;
+  });
+  const selectedBranches = shuffled.slice(0, branchCount);
+
+  const farewellIdx = (npcSeed + 1) % template.farewells.length;
+  const farewellText = template.farewells[farewellIdx];
+
+  const nodes: Record<string, DialogueNode> = {
+    start: {
+      id: 'start',
+      speaker: npcName,
+      portrait: 'npc',
+      text: openingText,
+      choices: [
+        ...selectedBranches.map((b, i) => ({ text: b.playerText, nextId: `branch_${i}` })),
+        { text: 'Never mind. Goodbye.', nextId: null },
+      ],
+    },
+  };
+
+  for (let i = 0; i < selectedBranches.length; i++) {
+    const branch = selectedBranches[i];
+    nodes[`branch_${i}`] = {
+      id: `branch_${i}`,
+      speaker: npcName,
+      portrait: 'npc',
+      text: branch.npcReply,
+      choices: [{ text: farewellText, nextId: null }],
+    };
+  }
+
+  return { npcName, startId: 'start', nodes };
+}
 
 // ── Rumor System ─────────────────────────────────────────────────────────────
 export const RUMORS: string[] = [

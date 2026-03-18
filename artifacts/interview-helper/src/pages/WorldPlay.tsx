@@ -16,7 +16,7 @@ import {
   fadeOutAmbient, fadeInAmbient, toggleMusicMute, toggleScoreMute, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
-  startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur,
+  startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur, sfxNpcMurmur,
   type ConversationEvent, type ConversationLine,
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
@@ -36,7 +36,7 @@ import {
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
   TREASURE_CHESTS, TREASURE_MAPS,
   LORE_WEAPON_NAMES, CLOTHES,
-  RUMORS, STORY_DIALOGUES,
+  RUMORS, STORY_DIALOGUES, getGenericDialogueTree,
   boomerize, TIMEZONE_CITIES, SUBSCRIPTION_PRICING,
   createWeatherParticles, updateWeatherParticles,
 } from '../gameSystems';
@@ -2418,6 +2418,7 @@ export default function WorldPlay() {
   const frozenRef     = useRef(false);
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
   const chatOpenRef   = useRef(false);
+  const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
   const zoomRef       = useRef(1.6);
   const targetZoomRef = useRef(1.6);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
@@ -2840,6 +2841,7 @@ export default function WorldPlay() {
   const [showDialoguePanel, setShowDialoguePanel] = useState(false);
   const [dialogueNpcName, setDialogueNpcName] = useState('');
   const [dialogueNode, setDialogueNode] = useState<DialogueNode | null>(null);
+  const [dialogueNpcSeed, setDialogueNpcSeed] = useState(0);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   useEffect(() => {
     const sync = () => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} };
@@ -3461,52 +3463,45 @@ export default function WorldPlay() {
 
   const enterNpc = useCallback((idx: number) => {
     const n = NPCS[idx];
-    sfxTalk();
-    const contextWhisper = getNpcContextualWhisper(n, gs.current.worldTime ?? 0);
+    const storyDlg = Object.values(STORY_DIALOGUES).find(d => d.npcName === n.name);
+    const baseDlg = storyDlg ?? getGenericDialogueTree(n.name, n.role, n.job, idx);
+    const dlgTree: DialogueTree = { ...baseDlg, nodes: { ...baseDlg.nodes } };
     if (n.role === 'newspaper_seller') {
       const g = gs.current;
       const seasonIdx = Math.floor(((g.worldTime ?? 8) / 24 * 365) / 91.25) % 4;
-      setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
-      setNarr(`> ${n.name} — "${contextWhisper}"`);
-      return;
+      pendingNpcActionRef.current = { type: 'newspaper', seasonIdx };
+      const shopNodeId = '__open_shop__';
+      dlgTree.nodes[shopNodeId] = { id: shopNodeId, speaker: n.name, portrait: 'npc', text: 'Here you go. Latest issue. Don\'t get caught reading it.', choices: [{ text: '[Read the paper]', nextId: null }], effect: 'open_shop' };
+      const startN = dlgTree.nodes[dlgTree.startId];
+      if (startN) dlgTree.nodes[dlgTree.startId] = { ...startN, choices: [{ text: 'Let me see the paper.', nextId: shopNodeId }, ...startN.choices] };
     }
     if (n.role === 'dealer_papers') {
-      setShowMerchant({ name: n.name, items: MERCHANT_SENNA });
-      frozenRef.current = true;
-      setNarr(`> ${n.name} — "${contextWhisper}" [ESC] to close.`);
-      return;
+      pendingNpcActionRef.current = { type: 'merchant', name: n.name, items: MERCHANT_SENNA };
+      const shopNodeId = '__open_shop__';
+      dlgTree.nodes[shopNodeId] = { id: shopNodeId, speaker: n.name, portrait: 'npc', text: 'Take a look. Don\'t touch what you\'re not buying.', choices: [{ text: '[Browse wares]', nextId: null }], effect: 'open_shop' };
+      const startN = dlgTree.nodes[dlgTree.startId];
+      if (startN) dlgTree.nodes[dlgTree.startId] = { ...startN, choices: [{ text: 'Let me see what you\'ve got.', nextId: shopNodeId }, ...startN.choices] };
     }
     if (n.role === 'dealer_weapons') {
       const items = n.name === 'MARSH KETTER' ? MERCHANT_MARSH : MERCHANT_ROOK;
-      setShowMerchant({ name: n.name, items });
+      pendingNpcActionRef.current = { type: 'merchant', name: n.name, items };
+      const shopNodeId = '__open_shop__';
+      dlgTree.nodes[shopNodeId] = { id: shopNodeId, speaker: n.name, portrait: 'npc', text: 'Alright. Spread\'s laid out. Don\'t grab anything without paying.', choices: [{ text: '[Browse wares]', nextId: null }], effect: 'open_shop' };
+      const startN = dlgTree.nodes[dlgTree.startId];
+      if (startN) dlgTree.nodes[dlgTree.startId] = { ...startN, choices: [{ text: 'Show me what you\'re carrying.', nextId: shopNodeId }, ...startN.choices] };
+    }
+    const startNode = dlgTree.nodes[dlgTree.startId];
+    if (startNode) {
+      setDialogueNpcName(n.name);
+      setDialogueNode(startNode);
+      setDialogueNpcSeed(idx);
+      gs.current.activeDialogue = dlgTree;
+      gs.current.activeDialogueNode = dlgTree.startId;
+      setShowDialoguePanel(true);
       frozenRef.current = true;
-      setNarr(`> ${n.name} — "${contextWhisper}" [ESC] to close.`);
-      return;
+      setNarr(`> ${n.name.toUpperCase()} — ${n.job}`);
+      sfxNpcMurmur(idx);
     }
-    const storyDlg = Object.values(STORY_DIALOGUES).find(d => d.npcName === n.name);
-    if (storyDlg) {
-      const startNode = storyDlg.nodes[storyDlg.startId];
-      if (startNode) {
-        setDialogueNpcName(n.name);
-        setDialogueNode(startNode);
-        gs.current.activeDialogue = storyDlg;
-        gs.current.activeDialogueNode = storyDlg.startId;
-        setShowDialoguePanel(true);
-        frozenRef.current = true;
-        setNarr(`> ${n.name.toUpperCase()} — ${n.job}`);
-        if (n.voiceActor && startNode.text) {
-          // voice removed — browser TTS sounds robotic
-        }
-        return;
-      }
-    }
-    const lines = [`> ${n.name.toUpperCase()} — ${n.job}${n.voiceActor ? ' [Voice Actor]' : ''}`, `"${contextWhisper}"`];
-    if (n.backstory) lines.push(`[${n.backstory}]`);
-    if (n.voiceActor && n.voiceLines && n.voiceLines.length > 0) {
-      const vl = n.voiceLines[Math.floor(Math.random() * n.voiceLines.length)];
-      // voice removed — browser TTS sounds robotic
-    }
-    setDialog({ lines, idx: 0, bid: 'npc' });
   }, []);
 
   const tryEnter = useCallback((bid: string) => {
@@ -4172,6 +4167,41 @@ export default function WorldPlay() {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
           if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
+          if (g.interior) {
+            const itr = g.interior;
+            const openInteriorNpcDlg = (npcName: string, npcRole: string) => {
+              const npcSeedInt = (npcName.charCodeAt(0) * 31 + npcName.charCodeAt(Math.max(0, npcName.length - 1))) % 200;
+              const roleLower = npcRole.toLowerCase();
+              const inferredRole: string = roleLower.includes('police') || roleLower.includes('officer') || roleLower.includes('sergeant') || roleLower.includes('cop') ? 'police'
+                : roleLower.includes('guard') || roleLower.includes('security') ? 'guard'
+                : roleLower.includes('military') || roleLower.includes('soldier') || roleLower.includes('trooper') ? 'corpo_military'
+                : roleLower.includes('manager') || roleLower.includes('director') || roleLower.includes('executive') || roleLower.includes('chief') || roleLower.includes('engineer') || roleLower.includes('researcher') || roleLower.includes('teller') || roleLower.includes('clerk') || roleLower.includes('broker') || roleLower.includes('staff') || roleLower.includes('host') || roleLower.includes('trader') || roleLower.includes('registrar') ? 'corpo_worker'
+                : 'default';
+              const dlgTree = getGenericDialogueTree(npcName, inferredRole, npcRole, npcSeedInt);
+              const startNode = dlgTree.nodes[dlgTree.startId];
+              if (startNode) {
+                setDialogueNpcName(npcName);
+                setDialogueNode(startNode);
+                setDialogueNpcSeed(npcSeedInt);
+                gs.current.activeDialogue = dlgTree;
+                gs.current.activeDialogueNode = dlgTree.startId;
+                setShowDialoguePanel(true);
+                frozenRef.current = true;
+                setNarr(`> ${npcName} — ${npcRole}`);
+                sfxNpcMurmur(npcSeedInt);
+                return true;
+              }
+              return false;
+            };
+            const iDef = getInterior(itr.bid);
+            if (iDef?.workers) {
+              const nearWorker = iDef.workers.find(w => !w.hostile && Math.hypot(itr.px - w.x, itr.py - w.y) < 30);
+              if (nearWorker && openInteriorNpcDlg(nearWorker.name, nearWorker.role)) return;
+            }
+            const intNpcs = INTERIOR_NPCS[itr.bid] ?? [];
+            const nearIntNpc = intNpcs.find(inpc => Math.hypot(itr.px - inpc.x, itr.py - inpc.y) < 30);
+            if (nearIntNpc && openInteriorNpcDlg(nearIntNpc.name, nearIntNpc.role)) return;
+          }
           if (g.interior && nearArcadeMachine) {
             sfxEnter();
             setArcadeGameId(nearArcadeMachine);
@@ -5987,6 +6017,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText('[E] TALK', wx, wy + 14);
             }
+            if (nearW && !w.hostile) {
+              ctx.fillStyle = g.blink ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.4)';
+              ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('[E] TALK', wx, wy + 16);
+            }
           }
         }
 
@@ -6024,9 +6059,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.4)';
             ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('[E] TALK', inx, iny + 16);
-            const dLine = inpc.dialogue[Math.floor(g.frame / 300) % inpc.dialogue.length];
-            ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '5px "Share Tech Mono"';
-            ctx.fillText(`"${dLine}"`, inx, iny + 22);
           }
         }
 
@@ -6156,8 +6188,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.frame % 20 === 0) {
         const convos = activeConvosRef.current;
         for (let ci = convos.length - 1; ci >= 0; ci--) {
-          const ev = tickConversationEvent(convos[ci], 0.33);
+          const prev = convos[ci];
+          const ev = tickConversationEvent(prev, 0.33);
           convos[ci] = ev;
+          if (ev.currentLine !== prev.currentLine && !ev.finished) {
+            const speakerName = ev.lines[ev.currentLine]?.speaker ?? '';
+            const isPlayer = speakerName === 'YOU';
+            if (!isPlayer) {
+              const seed = (speakerName.charCodeAt(0) * 31 + speakerName.charCodeAt(Math.max(0, speakerName.length - 1))) % 200;
+              sfxNpcMurmur(seed);
+            }
+          }
           if (ev.finished) { convos.splice(ci, 1); }
         }
       }
@@ -6184,6 +6225,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ];
             activeConvosRef.current.push(createConversationEvent(oPos.x, oPos.y, playerStopLines));
             setNarr(`> ${officer.name} stops you. "${playerStopLines[0].text}"`);
+            { const s = officer.name; sfxNpcMurmur((s.charCodeAt(0) * 31 + s.charCodeAt(Math.max(0, s.length - 1))) % 200); }
             continue;
           }
           for (const ped of pedestrians) {
@@ -6194,6 +6236,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ? POLICE_STOP_DIALOGS[Math.floor(Math.random() * POLICE_STOP_DIALOGS.length)]
                 : CORPO_MILITARY_STOP_DIALOGS[Math.floor(Math.random() * CORPO_MILITARY_STOP_DIALOGS.length)];
               activeConvosRef.current.push(createConversationEvent(oPos.x, oPos.y, dialogs));
+              { const s = dialogs[0]?.speaker ?? ''; if (s && s !== 'YOU') sfxNpcMurmur((s.charCodeAt(0) * 31 + s.charCodeAt(Math.max(0, s.length - 1))) % 200); }
               break;
             }
           }
@@ -12246,18 +12289,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showDialoguePanel && dialogueNode && (() => {
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const npcColor = '#33ffaa';
-        const handleChoice = (nextId: string | null) => {
+        const handleChoice = (nextId: string | null, fromShopNode?: boolean) => {
           if (!nextId || !gs.current.activeDialogue) {
             setShowDialoguePanel(false); setDialogueNode(null);
             gs.current.activeDialogue = null; gs.current.activeDialogueNode = null;
+            const pending = pendingNpcActionRef.current;
+            pendingNpcActionRef.current = null;
+            if (fromShopNode && pending?.type === 'newspaper') {
+              setShowNewspaper(THE_MINX_ISSUES[pending.seasonIdx] ?? THE_MINX_ISSUES[0]);
+            } else if (fromShopNode && pending?.type === 'merchant') {
+              setShowMerchant({ name: pending.name, items: pending.items });
+              frozenRef.current = true;
+            }
             return;
           }
           const next = gs.current.activeDialogue.nodes[nextId];
           if (next) {
             setDialogueNode(next);
             gs.current.activeDialogueNode = nextId;
-            sfxTalk();
-            const nodeEffect = (next as any).effect;
+            sfxNpcMurmur(dialogueNpcSeed);
+            const nodeEffect = next.effect;
             if (nodeEffect === 'give_gold') { gs.current.goldBalance += 5; setGoldBalance(gs.current.goldBalance); }
             if (nodeEffect === 'give_fiat') { gs.current.salary += 2000; setSalary(gs.current.salary); }
             if (nodeEffect === 'heal') { gs.current.hp = gs.current.maxHp; setHp(gs.current.maxHp); }
@@ -12282,12 +12333,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               <div style={{ padding:'1rem 1.2rem', display:'flex', flexDirection:'column', gap:'.5rem' }}>
                 {dialogueNode.choices && dialogueNode.choices.length > 0 ? dialogueNode.choices.map((c, ci) => (
-                  <button key={ci} onClick={() => handleChoice(c.nextId)}
+                  <button key={ci} onClick={() => handleChoice(c.nextId, dialogueNode.effect === 'open_shop')}
                     style={{ padding:'.5rem 1rem', background:'rgba(51,255,170,.05)', border:'1px solid rgba(51,255,170,.25)', color:'rgba(51,255,170,.7)', cursor:'pointer', textAlign:'left', ...VT2, fontSize:'1rem', letterSpacing:'.05em' }}>
                     [{ci + 1}] {c.text}
                   </button>
                 )) : (
-                  <button data-dialogue-continue="true" onClick={() => handleChoice(null)}
+                  <button data-dialogue-continue="true" onClick={() => handleChoice(null, dialogueNode.effect === 'open_shop')}
                     style={{ padding:'.5rem 1rem', background:'rgba(51,255,170,.05)', border:'1px solid rgba(51,255,170,.25)', color:'rgba(51,255,170,.5)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
                     [CONTINUE] <span style={{ fontSize: '.6rem', color: 'rgba(51,255,170,.3)' }}>or press any key</span>
                   </button>
