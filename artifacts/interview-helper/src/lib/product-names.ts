@@ -109,6 +109,11 @@ export const PABLO_PRODUCTS = {
     short: "CHRONO-4",
     desc: "Precision scheduling module. Track appointments, set alarms, and sync events across the field.",
   },
+  SOUND_LAB: {
+    name: "THE LAB 1999",
+    short: "THE LAB",
+    desc: "THE LAB 1999 — Sub-basement audio forge. Beat machines, oscillators, and sample banks wired into the neural core. Password-protected.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

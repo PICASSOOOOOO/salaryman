@@ -1,0 +1,1612 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ProGate } from '@/components/ProGate';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+
+const C = '#00ff41';
+const C2 = 'rgba(0,255,65,';
+const OC = '#ff8c00';
+const OC2 = 'rgba(255,140,0,';
+const BG = '#0a0d0a';
+const CHASSIS = '#0d100d';
+const PANEL_BG = '#080b08';
+const BORDER = 'rgba(0,255,65,.18)';
+const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+
+let _actx: AudioContext | null = null;
+function actx(): AudioContext {
+  if (!_actx) _actx = new AudioContext();
+  if (_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+
+function mkImpulseResponse(ctx: AudioContext, duration = 2.5, decay = 2.5): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = Math.floor(sr * duration);
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
+type WaveType = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+interface EffectParams {
+  enabled: boolean;
+  wetDry: number;
+  reverbDecay?: number;
+  delayTime?: number;
+  delayFeedback?: number;
+  distDrive?: number;
+  compThreshold?: number;
+  compRatio?: number;
+  eqLow?: number;
+  eqMid?: number;
+  eqHigh?: number;
+  chorusDepth?: number;
+  chorusRate?: number;
+  flangerDepth?: number;
+  flangerRate?: number;
+  phaserDepth?: number;
+  phaserRate?: number;
+  tremoloRate?: number;
+  tremoloDepth?: number;
+  bitDepth?: number;
+}
+
+interface TrackDef {
+  id: string;
+  name: string;
+  vol: number;
+  pan: number;
+  mute: boolean;
+  solo: boolean;
+  color: string;
+  effects: EffectParams[];
+}
+
+interface SequencerPattern {
+  rows: boolean[][];
+  steps: 16 | 32 | 64;
+}
+
+interface AudioBus {
+  gain: GainNode;
+  panner: StereoPannerNode;
+  analyser: AnalyserNode;
+}
+
+interface AudioEngine {
+  ctx: AudioContext;
+  masterGain: GainNode;
+  masterAnalyser: AnalyserNode;
+  trackBuses: AudioBus[];
+  effectNodes: Map<number, AudioNode[]>;
+}
+
+interface SynthVoice {
+  osc1Type: WaveType;
+  osc2Type: WaveType;
+  osc1Detune: number;
+  osc2Detune: number;
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+  filterType: BiquadFilterType;
+  filterCutoff: number;
+  filterRes: number;
+}
+
+type DAWSection = 'machine' | 'synth' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects' | 'looper';
+
+const TRACK_COLORS = ['#00ff41', '#ff4444', '#4488ff', '#ffaa00', '#cc44ff', '#44ffff', '#ff44cc', '#88ff44'];
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const SCALES: Record<string, number[]> = {
+  'Major': [0,2,4,5,7,9,11],
+  'Minor': [0,2,3,5,7,8,10],
+  'Pentatonic': [0,2,4,7,9],
+  'Blues': [0,3,5,6,7,10],
+  'Dorian': [0,2,3,5,7,9,10],
+  'Phrygian': [0,1,3,5,7,8,10],
+  'Lydian': [0,2,4,6,7,9,11],
+  'Mixolydian': [0,2,4,5,7,9,10],
+  'Chromatic': [0,1,2,3,4,5,6,7,8,9,10,11],
+};
+const ARP_PATTERNS = ['Up', 'Down', 'Up-Down', 'Random', 'As-Played'];
+const ARP_RATES = ['1/4', '1/8', '1/16', '1/32'];
+
+const DRUM_NAMES = ['KICK', 'SNARE', 'HI-HAT', 'OPEN HAT', 'CLAP', 'TOM LO', 'TOM HI', 'PERC'];
+const DRUM_COLORS = ['#ff4444','#ffaa00','#00ff41','#4488ff','#ff44cc','#cc44ff','#44ffff','#88ff44'];
+
+const DEFAULT_SYNTH: SynthVoice = {
+  osc1Type: 'sawtooth', osc2Type: 'square', osc1Detune: 0, osc2Detune: 7,
+  attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3,
+  filterType: 'lowpass', filterCutoff: 2000, filterRes: 1,
+};
+
+const EFFECT_NAMES = ['Reverb', 'Delay', 'Distortion', 'Compressor', 'EQ', 'Chorus', 'Flanger', 'Phaser', 'Tremolo', 'BitCrusher'];
+const DEFAULT_EFFECT: EffectParams = {
+  enabled: false, wetDry: 0.3,
+  reverbDecay: 2.5, delayTime: 0.3, delayFeedback: 0.4,
+  distDrive: 20, compThreshold: -24, compRatio: 4,
+  eqLow: 0, eqMid: 0, eqHigh: 0,
+  chorusDepth: 0.003, chorusRate: 1.5,
+  flangerDepth: 0.003, flangerRate: 0.5,
+  phaserDepth: 400, phaserRate: 0.8,
+  tremoloRate: 4, tremoloDepth: 0.5,
+  bitDepth: 8,
+};
+
+function makeTrack(id: string, name: string, colorIdx: number): TrackDef {
+  return {
+    id, name, vol: 0.8, pan: 0, mute: false, solo: false,
+    color: TRACK_COLORS[colorIdx % TRACK_COLORS.length],
+    effects: EFFECT_NAMES.map(() => ({ ...DEFAULT_EFFECT })),
+  };
+}
+
+function noteToFreq(note: number): number {
+  return 440 * Math.pow(2, (note - 69) / 12);
+}
+
+function playDrum(ctx: AudioContext, drumIdx: number, masterGain: GainNode) {
+  const t = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.value = 0.7;
+  out.connect(masterGain);
+  switch (drumIdx) {
+    case 0: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      const o = ctx.createOscillator();
+      o.type = 'sine'; o.frequency.setValueAtTime(160, t);
+      o.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.5); break;
+    }
+    case 1: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+      const d = nBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = nBuf;
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.5, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      const flt = ctx.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 3000;
+      src.connect(flt); flt.connect(ng); ng.connect(out);
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 200;
+      const og = ctx.createGain(); og.gain.setValueAtTime(0.4, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      o2.connect(og); og.connect(out);
+      src.start(t); src.stop(t + 0.15); o2.start(t); o2.stop(t + 0.08); break;
+    }
+    case 2: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+      const d = nBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = nBuf;
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.3, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      const flt = ctx.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 8000;
+      src.connect(flt); flt.connect(ng); ng.connect(out); src.start(t); src.stop(t + 0.05); break;
+    }
+    case 3: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+      const d = nBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = nBuf;
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.35, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      const flt = ctx.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 7000;
+      src.connect(flt); flt.connect(ng); ng.connect(out); src.start(t); src.stop(t + 0.4); break;
+    }
+    case 4: {
+      for (let i = 0; i < 3; i++) {
+        const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+        const d = nBuf.getChannelData(0);
+        for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource(); src.buffer = nBuf;
+        const ng = ctx.createGain(); const st = t + i * 0.012;
+        ng.gain.setValueAtTime(0.4, st); ng.gain.exponentialRampToValueAtTime(0.001, st + 0.03);
+        const flt = ctx.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 2500;
+        src.connect(flt); flt.connect(ng); ng.connect(out); src.start(st); src.stop(st + 0.03);
+      }
+      break;
+    }
+    case 5: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(120, t);
+      o.frequency.exponentialRampToValueAtTime(70, t + 0.2);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.3); break;
+    }
+    case 6: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(240, t);
+      o.frequency.exponentialRampToValueAtTime(130, t + 0.18);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.25); break;
+    }
+    case 7: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+      const d = nBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const src = ctx.createBufferSource(); src.buffer = nBuf;
+      const ng = ctx.createGain(); ng.gain.value = 0.5;
+      const flt = ctx.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 1200; flt.Q.value = 2;
+      src.connect(flt); flt.connect(ng); ng.connect(out); src.start(t); src.stop(t + 0.08); break;
+    }
+  }
+}
+
+function playSynthNote(ctx: AudioContext, noteNum: number, synth: SynthVoice, masterGain: GainNode, dur = 0.5) {
+  const t = ctx.currentTime;
+  const freq = noteToFreq(noteNum);
+  const { attack: a, decay: d, sustain: s, release: r } = synth;
+  const envGain = ctx.createGain();
+  envGain.gain.setValueAtTime(0, t);
+  envGain.gain.linearRampToValueAtTime(0.7, t + a);
+  envGain.gain.linearRampToValueAtTime(0.7 * s, t + a + d);
+  envGain.gain.setValueAtTime(0.7 * s, t + dur);
+  envGain.gain.linearRampToValueAtTime(0, t + dur + r);
+  const filter = ctx.createBiquadFilter();
+  filter.type = synth.filterType;
+  filter.frequency.value = synth.filterCutoff;
+  filter.Q.value = synth.filterRes;
+  const o1 = ctx.createOscillator();
+  o1.type = synth.osc1Type; o1.frequency.value = freq; o1.detune.value = synth.osc1Detune;
+  const o2 = ctx.createOscillator();
+  o2.type = synth.osc2Type; o2.frequency.value = freq; o2.detune.value = synth.osc2Detune;
+  const mix = ctx.createGain(); mix.gain.value = 0.5;
+  o1.connect(mix); o2.connect(mix);
+  mix.connect(filter); filter.connect(envGain); envGain.connect(masterGain);
+  o1.start(t); o1.stop(t + dur + r + 0.01);
+  o2.start(t); o2.stop(t + dur + r + 0.01);
+}
+
+const hwPanel: React.CSSProperties = {
+  background: PANEL_BG,
+  border: `2px solid ${BORDER}`,
+  borderRadius: 6,
+  padding: '10px',
+  boxShadow: 'inset 0 1px 4px rgba(0,0,0,.6), 0 1px 0 rgba(0,255,65,.05)',
+};
+
+const hwLabel: React.CSSProperties = {
+  ...MONO,
+  fontSize: '.42rem',
+  color: C2 + '.45)',
+  letterSpacing: '.14em',
+  textTransform: 'uppercase' as const,
+  marginBottom: 6,
+};
+
+function Screw() {
+  return (
+    <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #1a1f1a 0%, #2a302a 50%, #1a1f1a 100%)', border: '1px solid rgba(0,255,65,.12)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.5)', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '50%', left: '15%', right: '15%', height: 1, background: 'rgba(0,255,65,.15)', transform: 'translateY(-50%) rotate(45deg)' }} />
+    </div>
+  );
+}
+
+function HwKnob({ label, val, min, max, step = 0.01, onChange, color = C, size = 44 }: { label: string; val: number; min: number; max: number; step?: number; onChange: (v: number) => void; color?: string; size?: number }) {
+  const angle = ((val - min) / (max - min)) * 270 - 135;
+  const ticks = 11;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, cursor: 'ns-resize', userSelect: 'none' }}
+      onMouseDown={e => {
+        const startY = e.clientY, startVal = val;
+        const onMove = (me: MouseEvent) => {
+          const delta = (startY - me.clientY) * (max - min) / 150;
+          onChange(Math.max(min, Math.min(max, Number((startVal + delta).toFixed(3)))));
+        };
+        const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+      }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle at 40% 35%, #2a302a, #151a15 70%)', border: `2px solid rgba(0,255,65,.2)`, position: 'relative', boxShadow: `0 2px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.03), 0 0 ${val > (max - min) * 0.7 + min ? '8' : '0'}px ${color}33` }}>
+        {Array.from({ length: ticks }, (_, i) => {
+          const a = (i / (ticks - 1)) * 270 - 135;
+          const rad = (a * Math.PI) / 180;
+          const r = size / 2 + 4;
+          const cx = size / 2 + Math.sin(rad) * r;
+          const cy = size / 2 - Math.cos(rad) * r;
+          return <div key={i} style={{ position: 'absolute', width: 2, height: 2, borderRadius: '50%', background: C2 + '.2)', left: cx - 1, top: cy - 1 }} />;
+        })}
+        <div style={{ width: 2, height: size / 2 - 4, background: color, borderRadius: 1, position: 'absolute', bottom: '50%', left: 'calc(50% - 1px)', transformOrigin: 'bottom center', transform: `rotate(${angle}deg)`, boxShadow: `0 0 4px ${color}88` }} />
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 6, height: 6, borderRadius: '50%', background: '#0a0d0a', border: '1px solid rgba(0,255,65,.1)' }} />
+      </div>
+      <span style={{ ...MONO, fontSize: '.38rem', color: C2 + '.5)', letterSpacing: '.08em' }}>{label}</span>
+      <span style={{ ...MONO, fontSize: '.34rem', color: color + '66' }}>{typeof val === 'number' && val % 1 !== 0 ? val.toFixed(2) : val}</span>
+    </div>
+  );
+}
+
+function HwSlider({ label, val, min, max, onChange, vertical = false }: { label: string; val: number; min: number; max: number; onChange: (v: number) => void; vertical?: boolean }) {
+  const pct = ((val - min) / (max - min)) * 100;
+  return (
+    <div style={{ display: 'flex', flexDirection: vertical ? 'column-reverse' : 'column', alignItems: 'center', gap: 3 }}>
+      {vertical ? (
+        <div style={{ width: 20, height: 80, background: '#0a0d0a', border: `2px solid ${BORDER}`, borderRadius: 4, position: 'relative', cursor: 'ns-resize', boxShadow: 'inset 0 2px 6px rgba(0,0,0,.6)' }}
+          onMouseDown={e => {
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const onMove = (me: MouseEvent) => {
+              const p = 1 - Math.max(0, Math.min(1, (me.clientY - rect.top) / rect.height));
+              onChange(min + p * (max - min));
+            };
+            const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+            window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+          }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 2, right: 2, height: `${pct}%`, background: `linear-gradient(to top, ${C}44, ${C}22)`, borderRadius: 2 }} />
+          <div style={{ position: 'absolute', left: '50%', bottom: `${pct}%`, transform: 'translate(-50%, 50%)', width: 16, height: 8, background: 'linear-gradient(to bottom, #3a3f3a, #1a1f1a)', border: '1px solid rgba(0,255,65,.3)', borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,.5)' }} />
+        </div>
+      ) : (
+        <input type="range" min={min} max={max} step={(max - min) / 200} value={val}
+          onChange={e => onChange(Number(e.target.value))}
+          style={{ width: '100%', accentColor: C }} />
+      )}
+      <span style={{ ...MONO, fontSize: '.36rem', color: C2 + '.4)', letterSpacing: '.06em' }}>{label}</span>
+    </div>
+  );
+}
+
+function HwButton({ label, onClick, active = false, color = C, small = false }: { label: string; onClick: () => void; active?: boolean; color?: string; small?: boolean }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: small ? '3px 6px' : '5px 10px',
+      background: active ? `linear-gradient(to bottom, ${color}22, ${color}11)` : 'linear-gradient(to bottom, #1a1f1a, #101310)',
+      border: `2px solid ${active ? color + '88' : 'rgba(0,255,65,.15)'}`,
+      color: active ? color : C2 + '.4)',
+      cursor: 'pointer', ...VT,
+      fontSize: small ? '.6rem' : '.7rem',
+      letterSpacing: '.08em',
+      borderRadius: 4,
+      boxShadow: active ? `0 0 8px ${color}33, inset 0 1px 2px rgba(0,0,0,.3)` : 'inset 0 1px 2px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.02)',
+      transition: 'all .1s',
+    }}>
+      {label}
+    </button>
+  );
+}
+
+function LED({ on, color = C }: { on: boolean; color?: string }) {
+  return <div style={{ width: 6, height: 6, borderRadius: '50%', background: on ? color : '#1a1f1a', boxShadow: on ? `0 0 6px ${color}` : 'none', border: '1px solid rgba(0,255,65,.15)', transition: 'all .05s' }} />;
+}
+
+function LevelMeter({ analyser }: { analyser: AnalyserNode | null }) {
+  const canRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!analyser || !canRef.current) return;
+    const can = canRef.current;
+    const ctx2 = can.getContext('2d');
+    if (!ctx2) return;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let raf = 0;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      const level = avg / 256;
+      ctx2.clearRect(0, 0, can.width, can.height);
+      const segments = 12;
+      const segH = can.height / segments;
+      for (let i = 0; i < segments; i++) {
+        const threshold = (segments - i) / segments;
+        if (level >= threshold - 1 / segments) {
+          const ratio = i / segments;
+          ctx2.fillStyle = ratio < 0.15 ? '#ff4444' : ratio < 0.3 ? '#ffaa00' : '#00ff41';
+          ctx2.fillRect(1, i * segH + 1, can.width - 2, segH - 2);
+        } else {
+          ctx2.fillStyle = 'rgba(0,255,65,.06)';
+          ctx2.fillRect(1, i * segH + 1, can.width - 2, segH - 2);
+        }
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [analyser]);
+  return <canvas ref={canRef} width={10} height={60} style={{ borderRadius: 2, border: `1px solid ${BORDER}`, background: '#050805' }} />;
+}
+
+function Oscilloscope({ analyser, color = OC }: { analyser: AnalyserNode | null; color?: string }) {
+  const canRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!canRef.current) return;
+    const can = canRef.current;
+    const ctx2 = can.getContext('2d');
+    if (!ctx2) return;
+    if (!analyser) {
+      ctx2.fillStyle = '#050805';
+      ctx2.fillRect(0, 0, can.width, can.height);
+      ctx2.strokeStyle = color + '33';
+      ctx2.lineWidth = 1;
+      ctx2.beginPath();
+      ctx2.moveTo(0, can.height / 2);
+      ctx2.lineTo(can.width, can.height / 2);
+      ctx2.stroke();
+      for (let x = 0; x < can.width; x += 20) {
+        ctx2.strokeStyle = color + '0a';
+        ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, can.height); ctx2.stroke();
+      }
+      for (let y = 0; y < can.height; y += 20) {
+        ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(can.width, y); ctx2.stroke();
+      }
+      return;
+    }
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    let raf = 0;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      analyser.getByteTimeDomainData(data);
+      ctx2.fillStyle = 'rgba(5,8,5,.3)';
+      ctx2.fillRect(0, 0, can.width, can.height);
+      for (let x = 0; x < can.width; x += 20) {
+        ctx2.strokeStyle = color + '08';
+        ctx2.lineWidth = 1;
+        ctx2.beginPath(); ctx2.moveTo(x, 0); ctx2.lineTo(x, can.height); ctx2.stroke();
+      }
+      for (let y = 0; y < can.height; y += 20) {
+        ctx2.strokeStyle = color + '08';
+        ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(can.width, y); ctx2.stroke();
+      }
+      ctx2.strokeStyle = color + '15';
+      ctx2.lineWidth = 1;
+      ctx2.beginPath(); ctx2.moveTo(0, can.height / 2); ctx2.lineTo(can.width, can.height / 2); ctx2.stroke();
+      ctx2.strokeStyle = color;
+      ctx2.lineWidth = 2;
+      ctx2.shadowColor = color;
+      ctx2.shadowBlur = 6;
+      ctx2.beginPath();
+      const sliceW = can.width / data.length;
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i] / 128.0;
+        const y = (v * can.height) / 2;
+        if (i === 0) ctx2.moveTo(0, y); else ctx2.lineTo(i * sliceW, y);
+      }
+      ctx2.stroke();
+      ctx2.shadowBlur = 0;
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [analyser, color]);
+  return (
+    <div style={{ ...hwPanel, padding: 4 }}>
+      <div style={hwLabel}>OSCILLOSCOPE</div>
+      <canvas ref={canRef} width={280} height={80} style={{ width: '100%', height: 80, borderRadius: 4, border: `1px solid ${OC}22`, background: '#050805', display: 'block' }} />
+    </div>
+  );
+}
+
+const PIANO_START = 48;
+const PIANO_NOTES = 24;
+const WHITE_KEYS = [0,2,4,5,7,9,11];
+
+function PianoKeyboard({ synth, masterGain, octave = 0 }: { synth: SynthVoice; masterGain: GainNode | null; octave?: number }) {
+  const [pressed, setPressed] = useState<Set<number>>(new Set());
+  const off = octave * 12;
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', height: 50, overflow: 'hidden', border: `2px solid ${BORDER}`, borderRadius: 4, background: '#0a0d0a' }}>
+      {Array.from({ length: PIANO_NOTES }, (_, i) => {
+        const note = PIANO_START + off + i;
+        const mod = i % 12;
+        const isWhite = WHITE_KEYS.includes(mod);
+        return (
+          <div key={note} onMouseDown={() => {
+            if (!masterGain) return;
+            const c = actx();
+            setPressed(p => new Set([...p, note]));
+            playSynthNote(c, note, synth, masterGain, 0.3);
+          }} onMouseUp={() => setPressed(p => { const n = new Set(p); n.delete(note); return n; })}
+            style={{
+              width: isWhite ? 14 : 9, height: isWhite ? 48 : 30,
+              background: isWhite ? (pressed.has(note) ? C + '55' : 'linear-gradient(to bottom, #252a25, #181d18)') : (pressed.has(note) ? C + '88' : 'linear-gradient(to bottom, #0a0d0a, #050805)'),
+              border: isWhite ? `1px solid ${BORDER}` : `1px solid ${C}55`,
+              borderRadius: '0 0 3px 3px', cursor: 'pointer', zIndex: isWhite ? 1 : 2,
+              position: 'relative', marginLeft: isWhite ? 0 : -5, marginRight: isWhite ? 0 : -4,
+              alignSelf: 'flex-start',
+              boxShadow: pressed.has(note) ? `0 0 8px ${C}44` : 'inset 0 -2px 3px rgba(0,0,0,.3)',
+            }} />
+        );
+      })}
+    </div>
+  );
+}
+
+function DrumPads({ busGain, activePads }: { busGain: GainNode | null; activePads: Set<number> }) {
+  const [hitPad, setHitPad] = useState<number | null>(null);
+
+  const triggerPad = (idx: number) => {
+    const c = actx();
+    const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.6; g.connect(c.destination); return g; })();
+    playDrum(c, idx, out);
+    setHitPad(idx);
+    setTimeout(() => setHitPad(p => p === idx ? null : p), 120);
+  };
+
+  return (
+    <div style={{ ...hwPanel }}>
+      <div style={hwLabel}>DRUM PADS</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+        {DRUM_NAMES.map((name, i) => {
+          const isActive = hitPad === i || activePads.has(i);
+          return (
+            <div key={i} onMouseDown={() => triggerPad(i)} style={{
+              width: '100%', aspectRatio: '1', minWidth: 48,
+              background: isActive
+                ? `radial-gradient(circle at 45% 40%, ${DRUM_COLORS[i]}55, ${DRUM_COLORS[i]}22)`
+                : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
+              border: `2px solid ${isActive ? DRUM_COLORS[i] + '88' : 'rgba(0,255,65,.12)'}`,
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+              boxShadow: isActive
+                ? `0 0 12px ${DRUM_COLORS[i]}44, inset 0 1px 3px rgba(0,0,0,.3)`
+                : 'inset 0 2px 4px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.02)',
+              transition: 'all .05s',
+              userSelect: 'none',
+            }}>
+              <LED on={isActive} color={DRUM_COLORS[i]} />
+              <span style={{ ...MONO, fontSize: '.35rem', color: isActive ? DRUM_COLORS[i] : C2 + '.35)', letterSpacing: '.06em' }}>{name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActivePads }: {
+  busGain: GainNode | null;
+  bpm: number;
+  onBpmChange: (v: number) => void;
+  swing: number;
+  onSwingChange: (v: number) => void;
+  onActivePads: (pads: Set<number>) => void;
+}) {
+  const [steps, setSteps] = useState<16 | 32>(16);
+  const [pattern, setPattern] = useState<SequencerPattern>(() => ({
+    steps: 16,
+    rows: Array.from({ length: 8 }, () => Array(16).fill(false)),
+  }));
+  const [playing, setPlaying] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1);
+  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const toggleCell = (row: number, col: number) => {
+    setPattern(p => {
+      const newRows = p.rows.map((r, ri) => ri === row ? r.map((v, ci) => ci === col ? !v : v) : r);
+      return { ...p, rows: newRows };
+    });
+  };
+
+  const clearPattern = () => setPattern({ steps: pattern.steps, rows: Array.from({ length: 8 }, () => Array(pattern.steps).fill(false)) });
+
+  useEffect(() => {
+    if (!playing) {
+      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+      setCurrentStep(-1);
+      onActivePads(new Set());
+      return;
+    }
+    const c = actx();
+    const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.6; g.connect(c.destination); return g; })();
+    let step = 0;
+    const baseInterval = (60 / bpm / 4) * 1000;
+    const scheduleNext = () => {
+      const s = step % pattern.steps;
+      setCurrentStep(s);
+      const activeDrums = new Set<number>();
+      pattern.rows.forEach((row, ri) => { if (row[s]) { playDrum(c, ri, out); activeDrums.add(ri); } });
+      onActivePads(activeDrums);
+      const isOdd = s % 2 === 1;
+      const swingMs = isOdd ? baseInterval * (1 + swing) : baseInterval * (1 - swing);
+      step++;
+      stepTimerRef.current = setTimeout(scheduleNext, swingMs);
+    };
+    scheduleNext();
+    return () => { if (stepTimerRef.current) clearTimeout(stepTimerRef.current); };
+  }, [playing, bpm, pattern, swing, busGain, onActivePads]);
+
+  const changeSteps = (n: 16 | 32) => {
+    setSteps(n);
+    setPattern(p => ({ steps: n, rows: p.rows.map(r => Array(n).fill(false).map((_, i) => r[i] ?? false)) }));
+  };
+
+  const cellSize = steps <= 16 ? 24 : 14;
+
+  return (
+    <div style={{ ...hwPanel, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={hwLabel}>STEP SEQUENCER</div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <HwButton label={playing ? '■' : '▶'} onClick={() => setPlaying(p => !p)} active={playing} small />
+          <HwButton label="CLR" onClick={clearPattern} small />
+          <HwButton label="16" onClick={() => changeSteps(16)} active={steps === 16} small />
+          <HwButton label="32" onClick={() => changeSteps(32)} active={steps === 32} small />
+        </div>
+      </div>
+      <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        {DRUM_NAMES.map((name, ri) => (
+          <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 3 }}>
+            <span style={{ ...MONO, fontSize: '.38rem', color: DRUM_COLORS[ri], width: 44, letterSpacing: '.04em', flexShrink: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>{name}</span>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {pattern.rows[ri]?.map((on, ci) => {
+                const isCurrent = ci === currentStep;
+                const isBar = ci % 4 === 0;
+                return (
+                  <div key={ci} onClick={() => toggleCell(ri, ci)} style={{
+                    width: cellSize, height: 18,
+                    background: on
+                      ? (isCurrent ? DRUM_COLORS[ri] + 'cc' : DRUM_COLORS[ri] + '55')
+                      : (isCurrent ? 'rgba(0,255,65,.15)' : isBar ? 'rgba(0,255,65,.06)' : 'rgba(0,255,65,.03)'),
+                    border: isCurrent
+                      ? `1px solid ${DRUM_COLORS[ri]}cc`
+                      : on ? `1px solid ${DRUM_COLORS[ri]}55` : `1px solid rgba(0,255,65,.08)`,
+                    cursor: 'pointer', borderRadius: 2,
+                    boxShadow: on && isCurrent ? `0 0 6px ${DRUM_COLORS[ri]}88` : 'none',
+                    transition: 'background .05s',
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMasterVolChange, playing, engineReady }: {
+  bpm: number; onBpmChange: (v: number) => void;
+  swing: number; onSwingChange: (v: number) => void;
+  masterVol: number; onMasterVolChange: (v: number) => void;
+  playing: boolean;
+  engineReady: boolean;
+}) {
+  return (
+    <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '8px 14px' }}>
+      <LED on={playing} color="#ff4444" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)', letterSpacing: '.1em' }}>BPM</span>
+        <input type="number" value={bpm} onChange={e => onBpmChange(Number(e.target.value))} min={40} max={240}
+          style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.6rem', padding: '3px 6px', borderRadius: 3, textAlign: 'center' }} />
+      </div>
+      <HwKnob label="SWING" val={swing} min={0} max={0.5} onChange={onSwingChange} size={32} />
+      <HwKnob label="MASTER" val={masterVol} min={0} max={1} onChange={onMasterVolChange} size={32} />
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <LED on={engineReady} />
+        <span style={{ ...MONO, fontSize: '.35rem', color: engineReady ? C2 + '.4)' : C2 + '.15)' }}>AUDIO {engineReady ? 'ACTIVE' : 'INIT'}</span>
+      </div>
+    </div>
+  );
+}
+
+function SynthPanel({ busGain }: { busGain: GainNode | null }) {
+  const [synth, setSynth] = useState<SynthVoice>(DEFAULT_SYNTH);
+  const [octave, setOctave] = useState(0);
+  const fallbackRef = useRef<GainNode | null>(null);
+  const getOutput = useCallback(() => {
+    if (busGain) return busGain;
+    const c = actx();
+    if (!fallbackRef.current) { fallbackRef.current = c.createGain(); fallbackRef.current.gain.value = 0.5; fallbackRef.current.connect(c.destination); }
+    return fallbackRef.current;
+  }, [busGain]);
+  const up = (key: keyof SynthVoice, val: SynthVoice[keyof SynthVoice]) => setSynth(s => ({ ...s, [key]: val }));
+  const WAVE_TYPES: WaveType[] = ['sine', 'square', 'sawtooth', 'triangle'];
+  const FILTER_TYPES: BiquadFilterType[] = ['lowpass', 'highpass', 'bandpass'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={hwPanel}>
+          <div style={hwLabel}>OSC 1</div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+            {WAVE_TYPES.map(w => <HwButton key={w} label={w.toUpperCase().slice(0,3)} onClick={() => up('osc1Type', w)} active={synth.osc1Type === w} small />)}
+          </div>
+          <HwKnob label="DETUNE" val={synth.osc1Detune} min={-100} max={100} step={1} onChange={v => up('osc1Detune', v)} color={OC} />
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>OSC 2</div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+            {WAVE_TYPES.map(w => <HwButton key={w} label={w.toUpperCase().slice(0,3)} onClick={() => up('osc2Type', w)} active={synth.osc2Type === w} small />)}
+          </div>
+          <HwKnob label="DETUNE" val={synth.osc2Detune} min={-100} max={100} step={1} onChange={v => up('osc2Detune', v)} color={OC} />
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>ENVELOPE</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <HwKnob label="ATK" val={synth.attack} min={0.001} max={2} onChange={v => up('attack', v)} size={36} />
+            <HwKnob label="DEC" val={synth.decay} min={0.001} max={2} onChange={v => up('decay', v)} size={36} />
+            <HwKnob label="SUS" val={synth.sustain} min={0} max={1} onChange={v => up('sustain', v)} size={36} />
+            <HwKnob label="REL" val={synth.release} min={0.001} max={4} onChange={v => up('release', v)} size={36} />
+          </div>
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>FILTER</div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+            {FILTER_TYPES.map(ft => <HwButton key={ft} label={ft.toUpperCase().slice(0,2)} onClick={() => up('filterType', ft)} active={synth.filterType === ft} small />)}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <HwKnob label="CUTOFF" val={synth.filterCutoff} min={50} max={20000} step={10} onChange={v => up('filterCutoff', v)} color={OC} />
+            <HwKnob label="RES" val={synth.filterRes} min={0.01} max={30} onChange={v => up('filterRes', v)} color={OC} />
+          </div>
+        </div>
+      </div>
+      <div style={hwPanel}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+          <span style={hwLabel}>OCTAVE</span>
+          <HwButton label="-" onClick={() => setOctave(o => Math.max(-2, o - 1))} small />
+          <span style={{ ...VT, fontSize: '.9rem', color: C }}>{octave > 0 ? '+' : ''}{octave}</span>
+          <HwButton label="+" onClick={() => setOctave(o => Math.min(3, o + 1))} small />
+        </div>
+        <PianoKeyboard synth={synth} masterGain={getOutput()} octave={octave} />
+      </div>
+    </div>
+  );
+}
+
+function Arpeggiator({ busGain }: { busGain: GainNode | null }) {
+  const [rootNote, setRootNote] = useState(0);
+  const [scale, setScale] = useState('Minor');
+  const [pattern, setPattern] = useState('Up');
+  const [rate, setRate] = useState('1/8');
+  const [octaveRange, setOctaveRange] = useState(2);
+  const [gateLen, setGateLen] = useState(0.5);
+  const [playing, setPlaying] = useState(false);
+  const [bpm, setBpm] = useState(120);
+  const [currentNote, setCurrentNote] = useState(-1);
+  const [synth, setSynth] = useState<SynthVoice>(DEFAULT_SYNTH);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const posRef = useRef(0);
+
+  const scaleNotes = useCallback(() => {
+    const intervals = SCALES[scale] ?? SCALES.Minor;
+    const notes: number[] = [];
+    for (let oct = 0; oct < octaveRange; oct++) {
+      for (const interval of intervals) notes.push(60 + rootNote + oct * 12 + interval);
+    }
+    return notes;
+  }, [scale, rootNote, octaveRange]);
+
+  const getNextNote = useCallback((notes: number[]) => {
+    if (notes.length === 0) return -1;
+    let idx = posRef.current;
+    switch (pattern) {
+      case 'Up': idx = posRef.current % notes.length; posRef.current++; break;
+      case 'Down': idx = notes.length - 1 - (posRef.current % notes.length); posRef.current++; break;
+      case 'Up-Down': {
+        const total = notes.length * 2 - 2;
+        const p = posRef.current % (total || 1);
+        idx = p < notes.length ? p : total - p;
+        posRef.current++; break;
+      }
+      case 'Random': idx = Math.floor(Math.random() * notes.length); posRef.current++; break;
+      default: idx = posRef.current % notes.length; posRef.current++;
+    }
+    return notes[Math.max(0, Math.min(notes.length - 1, idx))];
+  }, [pattern]);
+
+  useEffect(() => {
+    if (!playing) { if (intervalRef.current) clearInterval(intervalRef.current); setCurrentNote(-1); return; }
+    const c = actx();
+    const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.4; g.connect(c.destination); return g; })();
+    const rateMap: Record<string, number> = { '1/4': 1, '1/8': 0.5, '1/16': 0.25, '1/32': 0.125 };
+    const interval = (60 / bpm) * rateMap[rate] * 1000;
+    intervalRef.current = setInterval(() => {
+      const notes = scaleNotes();
+      const note = getNextNote(notes);
+      if (note >= 0) { playSynthNote(c, note, synth, out, (60 / bpm) * rateMap[rate] * gateLen); setCurrentNote(note); }
+    }, interval);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [playing, bpm, rate, scale, rootNote, octaveRange, gateLen, synth, scaleNotes, getNextNote, busGain]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <HwButton label={playing ? '■ STOP' : '▶ PLAY'} onClick={() => setPlaying(p => !p)} active={playing} />
+        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
+        <input type="number" value={bpm} onChange={e => setBpm(Number(e.target.value))} min={40} max={240}
+          style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.55rem', padding: '3px 6px', borderRadius: 3 }} />
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={hwPanel}>
+          <div style={hwLabel}>ROOT</div>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', maxWidth: 180 }}>
+            {NOTE_NAMES.map((n, i) => <HwButton key={i} label={n} onClick={() => setRootNote(i)} active={rootNote === i} small />)}
+          </div>
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>SCALE</div>
+          <select value={scale} onChange={e => setScale(e.target.value)} style={{ background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.5rem', padding: '4px 8px', borderRadius: 3 }}>
+            {Object.keys(SCALES).map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>PATTERN</div>
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            {ARP_PATTERNS.map(p => <HwButton key={p} label={p.toUpperCase()} onClick={() => setPattern(p)} active={pattern === p} small />)}
+          </div>
+        </div>
+        <div style={hwPanel}>
+          <div style={hwLabel}>RATE</div>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {ARP_RATES.map(r => <HwButton key={r} label={r} onClick={() => setRate(r)} active={rate === r} small />)}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <HwKnob label="OCTAVES" val={octaveRange} min={1} max={4} step={1} onChange={setOctaveRange} size={36} />
+        <HwKnob label="GATE" val={gateLen} min={0.05} max={1} onChange={setGateLen} size={36} />
+      </div>
+      <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>
+        CURRENT: {currentNote >= 0 ? `${NOTE_NAMES[currentNote % 12]}${Math.floor(currentNote / 12) - 1}` : '—'}
+      </div>
+      <div style={hwPanel}>
+        <div style={hwLabel}>SYNTH VOICE</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {(['sine','square','sawtooth','triangle'] as WaveType[]).map(w => <HwButton key={w} label={w.slice(0,3).toUpperCase()} onClick={() => setSynth(s => ({ ...s, osc1Type: w }))} active={synth.osc1Type === w} small />)}
+          <HwKnob label="ATK" val={synth.attack} min={0.001} max={1} onChange={v => setSynth(s => ({ ...s, attack: v }))} size={32} />
+          <HwKnob label="REL" val={synth.release} min={0.01} max={2} onChange={v => setSynth(s => ({ ...s, release: v }))} size={32} />
+          <HwKnob label="CUTOFF" val={synth.filterCutoff} min={200} max={18000} step={100} onChange={v => setSynth(s => ({ ...s, filterCutoff: v }))} size={32} color={OC} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Sampler({ busGain }: { busGain: GainNode | null }) {
+  const [pads, setPads] = useState<Array<{ name: string; buffer: AudioBuffer | null; color: string; pitch: number; vol: number }>>(() =>
+    Array.from({ length: 16 }, (_, i) => ({ name: `PAD ${i + 1}`, buffer: null, color: TRACK_COLORS[i % 8], pitch: 0, vol: 0.8 }))
+  );
+  const [activePad, setActivePad] = useState<number | null>(null);
+  const fallbackRef = useRef<GainNode | null>(null);
+  const getOutput = useCallback(() => {
+    if (busGain) return busGain;
+    const c = actx();
+    if (!fallbackRef.current) { fallbackRef.current = c.createGain(); fallbackRef.current.gain.value = 0.7; fallbackRef.current.connect(c.destination); }
+    return fallbackRef.current;
+  }, [busGain]);
+
+  const playPad = useCallback((idx: number) => {
+    const pad = pads[idx];
+    if (!pad?.buffer) return;
+    const c = actx();
+    const src = c.createBufferSource();
+    src.buffer = pad.buffer;
+    src.playbackRate.value = Math.pow(2, pad.pitch / 12);
+    const g = c.createGain(); g.gain.value = pad.vol;
+    src.connect(g); g.connect(getOutput());
+    src.start();
+    setActivePad(idx);
+    setTimeout(() => setActivePad(a => a === idx ? null : a), 200);
+  }, [pads, getOutput]);
+
+  const loadFile = async (idx: number, file: File) => {
+    const c = actx();
+    const ab = await file.arrayBuffer();
+    const buffer = await c.decodeAudioData(ab);
+    setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer, name: file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 10) } : p));
+  };
+
+  const KEYBOARD_MAP = ['q','w','e','r','t','y','u','i','a','s','d','f','g','h','j','k'];
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const idx = KEYBOARD_MAP.indexOf(e.key.toLowerCase());
+      if (idx >= 0 && idx < pads.length) playPad(idx);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pads, playPad]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>DROP AUDIO FILES ON PADS — KEYBOARD: Q W E R T Y U I / A S D F G H J K</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+        {pads.map((pad, i) => (
+          <div key={i}
+            onClick={() => playPad(i)}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadFile(i, f); }}
+            style={{
+              padding: 8, minHeight: 60,
+              background: activePad === i
+                ? `radial-gradient(circle at 45% 40%, ${pad.color}33, ${pad.color}11)`
+                : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
+              border: `2px solid ${pad.buffer ? pad.color + '55' : BORDER}`,
+              borderRadius: 6, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+              boxShadow: activePad === i ? `0 0 12px ${pad.color}44` : 'inset 0 2px 4px rgba(0,0,0,.4)',
+              userSelect: 'none', position: 'relative',
+            }}>
+            <LED on={activePad === i || !!pad.buffer} color={pad.color} />
+            <div style={{ ...MONO, fontSize: '.35rem', color: pad.buffer ? pad.color : C2 + '.25)', letterSpacing: '.06em', textAlign: 'center' }}>{pad.name}</div>
+            <div style={{ ...MONO, fontSize: '.28rem', color: C2 + '.2)' }}>{KEYBOARD_MAP[i]?.toUpperCase()}</div>
+            {!pad.buffer && (
+              <label style={{ position: 'absolute', inset: 0, cursor: 'pointer', opacity: 0 }}>
+                <input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (f) loadFile(i, f); }} style={{ display: 'none' }} />
+              </label>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AudioRecorder() {
+  const [recording, setRecording] = useState(false);
+  const [recordings, setRecordings] = useState<Array<{ name: string; url: string; date: string }>>([]);
+  const [level, setLevel] = useState(0);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number>(0);
+
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const c = actx();
+    const src = c.createMediaStreamSource(stream);
+    const analyser = c.createAnalyser(); analyser.fftSize = 256;
+    src.connect(analyser);
+    analyserRef.current = analyser;
+    const mr = new MediaRecorder(stream);
+    chunksRef.current = [];
+    mr.ondataavailable = e => chunksRef.current.push(e.data);
+    mr.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      setRecordings(r => [...r, { name: `REC-${new Date().toLocaleTimeString().replace(/:/g, '')}`, url, date: new Date().toLocaleTimeString() }]);
+      stream.getTracks().forEach(t => t.stop());
+    };
+    mr.start(); mediaRef.current = mr; setRecording(true);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => { rafRef.current = requestAnimationFrame(tick); analyser.getByteFrequencyData(data); setLevel(data.reduce((a, b) => a + b, 0) / data.length / 256); };
+    tick();
+  };
+
+  const stopRecording = () => { mediaRef.current?.stop(); setRecording(false); cancelAnimationFrame(rafRef.current); setLevel(0); };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {recording ? (
+          <HwButton label="■ STOP REC" onClick={stopRecording} active color="#ff4444" />
+        ) : (
+          <HwButton label="● RECORD" onClick={startRecording} color="#ff4444" />
+        )}
+        {recording && (
+          <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 20 }}>
+            {Array.from({ length: 12 }, (_, i) => (
+              <div key={i} style={{ width: 3, background: '#ff4444', borderRadius: 1, height: `${Math.max(2, level * 20 * (Math.sin(i * 0.5 + Date.now() * 0.01) * 0.3 + 0.7))}px` }} />
+            ))}
+            <LED on color="#ff4444" />
+          </div>
+        )}
+      </div>
+      {recordings.length === 0 && <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.2)' }}>No recordings yet.</div>}
+      {recordings.map((r, i) => (
+        <div key={i} style={{ ...hwPanel, display: 'flex', gap: 6, alignItems: 'center', padding: 6 }}>
+          <span style={{ ...VT, fontSize: '.7rem', color: C, flex: 1 }}>{r.name}</span>
+          <span style={{ ...MONO, fontSize: '.35rem', color: C2 + '.3)' }}>{r.date}</span>
+          <audio src={r.url} controls style={{ height: 22, filter: 'invert(1) hue-rotate(90deg)' }} />
+          <HwButton label="DL" onClick={() => { const a = document.createElement('a'); a.href = r.url; a.download = `${r.name}.webm`; a.click(); }} small />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Looper() {
+  const [loopLength, setLoopLength] = useState(4);
+  const [bpm, setBpm] = useState(120);
+  const [layers, setLayers] = useState<Array<{ url: string; label: string }>>([]);
+  const [recording, setRecording] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const posRef = useRef(0);
+  const audioRefs = useRef<HTMLAudioElement[]>([]);
+  const loopDurationMs = (60 / bpm) * 4 * loopLength * 1000;
+
+  const startRecord = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mr = new MediaRecorder(stream);
+    chunksRef.current = [];
+    mr.ondataavailable = e => chunksRef.current.push(e.data);
+    mr.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+      setLayers(l => [...l, { url: URL.createObjectURL(blob), label: `LAYER ${l.length + 1}` }]);
+      stream.getTracks().forEach(t => t.stop());
+    };
+    setTimeout(() => { mr.stop(); setRecording(false); }, loopDurationMs);
+    mr.start(); mediaRef.current = mr; setRecording(true);
+  };
+
+  useEffect(() => {
+    if (!playing) { if (timerRef.current) clearInterval(timerRef.current); audioRefs.current.forEach(a => a.pause()); return; }
+    audioRefs.current.forEach(a => { a.currentTime = 0; a.loop = true; a.play().catch(() => {}); });
+    timerRef.current = setInterval(() => { posRef.current = (posRef.current + 50 / loopDurationMs) % 1; setPosition(posRef.current); }, 50);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [playing, layers, loopDurationMs]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <HwButton label={recording ? '■ STOP' : '● REC LAYER'} onClick={recording ? () => { mediaRef.current?.stop(); setRecording(false); } : startRecord} active={recording} color="#ff4444" />
+        <HwButton label={playing ? '■ STOP' : '▶ PLAY ALL'} onClick={() => setPlaying(p => !p)} active={playing} />
+        <HwButton label="CLEAR" onClick={() => { setLayers([]); audioRefs.current = []; setPlaying(false); setPosition(0); }} small />
+        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
+        <input type="number" value={bpm} onChange={e => setBpm(Number(e.target.value))} min={40} max={240}
+          style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.55rem', padding: '3px 6px', borderRadius: 3 }} />
+        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BARS</span>
+        {[1,2,4,8].map(n => <HwButton key={n} label={String(n)} onClick={() => setLoopLength(n)} active={loopLength === n} small />)}
+      </div>
+      <div style={{ height: 6, background: '#050805', border: `1px solid ${BORDER}`, borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${position * 100}%`, background: C + '55' }} />
+      </div>
+      {layers.length === 0 && <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.2)' }}>No layers — REC lasts {(loopDurationMs / 1000).toFixed(1)}s</div>}
+      {layers.map((layer, i) => (
+        <div key={i} style={{ ...hwPanel, display: 'flex', gap: 6, alignItems: 'center', padding: 6 }}>
+          <span style={{ ...VT, fontSize: '.7rem', color: C, flex: 1 }}>{layer.label}</span>
+          <audio ref={el => { if (el) audioRefs.current[i] = el; }} src={layer.url} />
+          <HwButton label="✕" onClick={() => { setLayers(l => l.filter((_, li) => li !== i)); audioRefs.current.splice(i, 1); }} small />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectParams) {
+  const dry = ctx.createGain(); dry.gain.value = 1 - effect.wetDry;
+  const wet = ctx.createGain(); wet.gain.value = effect.wetDry;
+  const merger = ctx.createGain(); dry.connect(merger); wet.connect(merger);
+  switch (effectIdx) {
+    case 0: {
+      const conv = ctx.createConvolver();
+      conv.buffer = mkImpulseResponse(ctx, effect.reverbDecay ?? 2.5, effect.reverbDecay ?? 2.5);
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(conv); conv.connect(wet); return s; })(), output: merger };
+    }
+    case 1: {
+      const delay = ctx.createDelay(5);
+      delay.delayTime.value = effect.delayTime ?? 0.3;
+      const fb = ctx.createGain(); fb.gain.value = effect.delayFeedback ?? 0.4;
+      delay.connect(fb); fb.connect(delay);
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+    }
+    case 2: {
+      const ws = ctx.createWaveShaper();
+      const drive = effect.distDrive ?? 20;
+      const samples = 44100;
+      const curve = new Float32Array(samples);
+      for (let i = 0; i < samples; i++) {
+        const x = (i * 2) / samples - 1;
+        curve[i] = ((3 + drive) * x * 20 * (Math.PI / 180)) / (Math.PI + drive * Math.abs(x));
+      }
+      ws.curve = curve; ws.oversample = '4x';
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(ws); ws.connect(wet); return s; })(), output: merger };
+    }
+    case 3: {
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = effect.compThreshold ?? -24;
+      comp.ratio.value = effect.compRatio ?? 4;
+      comp.knee.value = 10; comp.attack.value = 0.003; comp.release.value = 0.25;
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(comp); comp.connect(wet); return s; })(), output: merger };
+    }
+    case 4: {
+      const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 320; low.gain.value = effect.eqLow ?? 0;
+      const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 1000; mid.Q.value = 0.5; mid.gain.value = effect.eqMid ?? 0;
+      const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 3200; high.gain.value = effect.eqHigh ?? 0;
+      low.connect(mid); mid.connect(high);
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(low); high.connect(wet); return s; })(), output: merger };
+    }
+    case 5: {
+      const delay = ctx.createDelay(0.05);
+      delay.delayTime.value = effect.chorusDepth ?? 0.003;
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = effect.chorusRate ?? 1.5;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.chorusDepth ?? 0.003;
+      lfo.connect(lfoGain); lfoGain.connect(delay.delayTime); lfo.start();
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+    }
+    case 6: {
+      const delay = ctx.createDelay(0.02);
+      delay.delayTime.value = effect.flangerDepth ?? 0.003;
+      const fb = ctx.createGain(); fb.gain.value = 0.5;
+      delay.connect(fb); fb.connect(delay);
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = effect.flangerRate ?? 0.5;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.flangerDepth ?? 0.003;
+      lfo.connect(lfoGain); lfoGain.connect(delay.delayTime); lfo.start();
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+    }
+    case 7: {
+      const filters: BiquadFilterNode[] = [];
+      for (let i = 0; i < 4; i++) {
+        const ap = ctx.createBiquadFilter(); ap.type = 'allpass';
+        ap.frequency.value = 200 + i * (effect.phaserDepth ?? 400); ap.Q.value = 0.7; filters.push(ap);
+      }
+      for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = effect.phaserRate ?? 0.8;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.phaserDepth ?? 400;
+      lfo.connect(lfoGain); filters.forEach(f => lfoGain.connect(f.frequency)); lfo.start();
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(filters[0]); filters[filters.length - 1].connect(wet); return s; })(), output: merger };
+    }
+    case 8: {
+      const tremGain = ctx.createGain();
+      tremGain.gain.value = 1 - (effect.tremoloDepth ?? 0.5) / 2;
+      const lfo = ctx.createOscillator();
+      lfo.type = 'sine'; lfo.frequency.value = effect.tremoloRate ?? 4;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = (effect.tremoloDepth ?? 0.5) / 2;
+      lfo.connect(lfoGain); lfoGain.connect(tremGain.gain); lfo.start();
+      return { input: (() => { const s = ctx.createGain(); s.connect(tremGain); tremGain.connect(merger); return s; })(), output: merger };
+    }
+    case 9: {
+      const ws = ctx.createWaveShaper();
+      const bits = effect.bitDepth ?? 8;
+      const levels = Math.pow(2, bits);
+      const samples = 44100;
+      const curve = new Float32Array(samples);
+      for (let i = 0; i < samples; i++) { const x = (i * 2) / samples - 1; curve[i] = Math.round(x * levels) / levels; }
+      ws.curve = curve;
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(ws); ws.connect(wet); return s; })(), output: merger };
+    }
+    default: {
+      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(wet); return s; })(), output: merger };
+    }
+  }
+}
+
+function EffectsRack() {
+  const [effects, setEffects] = useState<EffectParams[]>(EFFECT_NAMES.map(() => ({ ...DEFAULT_EFFECT })));
+  const [selected, setSelected] = useState(0);
+  const upEff = (idx: number, key: keyof EffectParams, val: EffectParams[keyof EffectParams]) =>
+    setEffects(es => es.map((e, i) => i === idx ? { ...e, [key]: val } : e));
+  const eff = effects[selected];
+
+  return (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ ...hwPanel, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 110 }}>
+        {EFFECT_NAMES.map((name, i) => (
+          <button key={i} onClick={() => setSelected(i)} style={{
+            padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6,
+            background: selected === i ? 'rgba(0,255,65,.08)' : 'transparent',
+            border: selected === i ? `1px solid ${C}44` : '1px solid transparent',
+            color: effects[i].enabled ? C : C2 + '.3)', cursor: 'pointer', ...MONO, fontSize: '.4rem', textAlign: 'left', borderRadius: 3,
+          }}>
+            <LED on={effects[i].enabled} />
+            {name.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <div style={{ ...hwPanel, flex: 1, minWidth: 200 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ ...VT, fontSize: '1rem', color: C, letterSpacing: '.1em' }}>{EFFECT_NAMES[selected].toUpperCase()}</span>
+          <HwButton label={eff.enabled ? 'ON' : 'OFF'} onClick={() => upEff(selected, 'enabled', !eff.enabled)} active={eff.enabled} small />
+          <HwKnob label="WET/DRY" val={eff.wetDry} min={0} max={1} onChange={v => upEff(selected, 'wetDry', v)} size={32} />
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {selected === 0 && <HwKnob label="DECAY" val={eff.reverbDecay!} min={0.1} max={10} onChange={v => upEff(selected, 'reverbDecay', v)} />}
+          {selected === 1 && <>
+            <HwKnob label="TIME" val={eff.delayTime!} min={0.01} max={2} onChange={v => upEff(selected, 'delayTime', v)} />
+            <HwKnob label="FEEDBACK" val={eff.delayFeedback!} min={0} max={0.95} onChange={v => upEff(selected, 'delayFeedback', v)} />
+          </>}
+          {selected === 2 && <HwKnob label="DRIVE" val={eff.distDrive!} min={1} max={100} step={1} onChange={v => upEff(selected, 'distDrive', v)} color={OC} />}
+          {selected === 3 && <>
+            <HwKnob label="THRESHOLD" val={eff.compThreshold!} min={-60} max={0} step={1} onChange={v => upEff(selected, 'compThreshold', v)} />
+            <HwKnob label="RATIO" val={eff.compRatio!} min={1} max={20} step={0.5} onChange={v => upEff(selected, 'compRatio', v)} />
+          </>}
+          {selected === 4 && <>
+            <HwKnob label="LOW" val={eff.eqLow!} min={-12} max={12} step={0.5} onChange={v => upEff(selected, 'eqLow', v)} />
+            <HwKnob label="MID" val={eff.eqMid!} min={-12} max={12} step={0.5} onChange={v => upEff(selected, 'eqMid', v)} />
+            <HwKnob label="HIGH" val={eff.eqHigh!} min={-12} max={12} step={0.5} onChange={v => upEff(selected, 'eqHigh', v)} />
+          </>}
+          {selected === 5 && <>
+            <HwKnob label="RATE" val={eff.chorusRate!} min={0.1} max={8} onChange={v => upEff(selected, 'chorusRate', v)} />
+            <HwKnob label="DEPTH" val={eff.chorusDepth!} min={0} max={0.02} onChange={v => upEff(selected, 'chorusDepth', v)} />
+          </>}
+          {selected === 6 && <>
+            <HwKnob label="RATE" val={eff.flangerRate!} min={0.1} max={5} onChange={v => upEff(selected, 'flangerRate', v)} />
+            <HwKnob label="DEPTH" val={eff.flangerDepth!} min={0} max={0.01} onChange={v => upEff(selected, 'flangerDepth', v)} />
+          </>}
+          {selected === 7 && <>
+            <HwKnob label="RATE" val={eff.phaserRate!} min={0.1} max={5} onChange={v => upEff(selected, 'phaserRate', v)} />
+            <HwKnob label="DEPTH" val={eff.phaserDepth!} min={50} max={2000} step={10} onChange={v => upEff(selected, 'phaserDepth', v)} />
+          </>}
+          {selected === 8 && <>
+            <HwKnob label="RATE" val={eff.tremoloRate!} min={0.5} max={20} onChange={v => upEff(selected, 'tremoloRate', v)} />
+            <HwKnob label="DEPTH" val={eff.tremoloDepth!} min={0} max={1} onChange={v => upEff(selected, 'tremoloDepth', v)} />
+          </>}
+          {selected === 9 && <HwKnob label="BITS" val={eff.bitDepth!} min={1} max={16} step={1} onChange={v => upEff(selected, 'bitDepth', v)} color={OC} />}
+        </div>
+        <div style={{ marginTop: 10, ...MONO, fontSize: '.35rem', color: C2 + '.2)', lineHeight: 1.5 }}>
+          {selected === 0 && 'REVERB — ConvolverNode impulse response. Room simulation.'}
+          {selected === 1 && 'DELAY — Feedback delay. Echo and slapback.'}
+          {selected === 2 && 'DISTORTION — WaveShaperNode with drive curve.'}
+          {selected === 3 && 'COMPRESSOR — DynamicsCompressor. Dynamics control.'}
+          {selected === 4 && '3-BAND EQ — Low/Mid/High frequency shaping.'}
+          {selected === 5 && 'CHORUS — LFO-modulated delay for thickening.'}
+          {selected === 6 && 'FLANGER — Swept short delay with feedback.'}
+          {selected === 7 && 'PHASER — All-pass filter chain with LFO.'}
+          {selected === 8 && 'TREMOLO — LFO amplitude modulation.'}
+          {selected === 9 && 'BITCRUSHER — Lo-fi bit depth reduction.'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Mixer({ tracks, onTracksChange, engine }: { tracks: TrackDef[]; onTracksChange: (t: TrackDef[]) => void; engine: AudioEngine | null }) {
+  const [masterVol, setMasterVol] = useState(0.8);
+  const upTrack = (idx: number, key: keyof TrackDef, val: TrackDef[keyof TrackDef]) => {
+    const updated = tracks.map((t, i) => i === idx ? { ...t, [key]: val } as TrackDef : t);
+    onTracksChange(updated);
+    if (engine && engine.trackBuses[idx]) {
+      if (key === 'vol') engine.trackBuses[idx].gain.gain.value = val as number;
+      if (key === 'pan') engine.trackBuses[idx].panner.pan.value = val as number;
+      if (key === 'mute') engine.trackBuses[idx].gain.gain.value = (val as boolean) ? 0 : tracks[idx].vol;
+    }
+  };
+  useEffect(() => { if (engine) engine.masterGain.gain.value = masterVol; }, [masterVol, engine]);
+  const hasSolo = tracks.some(t => t.solo);
+  useEffect(() => {
+    if (!engine) return;
+    tracks.forEach((t, i) => {
+      if (!engine.trackBuses[i]) return;
+      const shouldPlay = hasSolo ? t.solo : !t.mute;
+      engine.trackBuses[i].gain.gain.value = shouldPlay ? t.vol : 0;
+      engine.trackBuses[i].panner.pan.value = t.pan;
+    });
+  }, [tracks, engine, hasSolo]);
+
+  return (
+    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+      {tracks.map((track, i) => (
+        <div key={track.id} style={{ ...hwPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 58, padding: '8px 6px' }}>
+          <div style={{ ...MONO, fontSize: '.35rem', color: track.color, letterSpacing: '.04em', textAlign: 'center', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.name}</div>
+          <LevelMeter analyser={engine?.trackBuses[i]?.analyser ?? null} />
+          <HwSlider label="VOL" val={track.vol} min={0} max={1} onChange={v => upTrack(i, 'vol', v)} vertical />
+          <HwKnob label="PAN" val={track.pan} min={-1} max={1} onChange={v => upTrack(i, 'pan', v)} size={28} />
+          <HwButton label="M" onClick={() => upTrack(i, 'mute', !track.mute)} active={track.mute} color="#ff4444" small />
+          <HwButton label="S" onClick={() => upTrack(i, 'solo', !track.solo)} active={track.solo} color="#ffaa00" small />
+        </div>
+      ))}
+      <div style={{ ...hwPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 58, padding: '8px 6px', borderColor: C + '33' }}>
+        <div style={{ ...MONO, fontSize: '.35rem', color: C, letterSpacing: '.04em' }}>MASTER</div>
+        <LevelMeter analyser={engine?.masterAnalyser ?? null} />
+        <HwSlider label="OUT" val={masterVol} min={0} max={1} onChange={setMasterVol} vertical />
+      </div>
+    </div>
+  );
+}
+
+function Timeline({ tracks, bpm }: { tracks: TrackDef[]; bpm: number }) {
+  const BARS = 32;
+  const BAR_W = 40;
+  const ROW_H = 28;
+  const [clips, setClips] = useState<Array<{ trackIdx: number; start: number; len: number; label: string; color: string }>>([]);
+  const [playhead, setPlayhead] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [dragClip, setDragClip] = useState<{ idx: number; offsetX: number; startX: number } | null>(null);
+
+  useEffect(() => {
+    if (!playing) { if (timerRef.current) clearInterval(timerRef.current); return; }
+    timerRef.current = setInterval(() => {
+      setPlayhead(p => { const next = p + 1 / (60 / bpm * 4 * 20); return next >= BARS ? 0 : next; });
+    }, 50);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [playing, bpm]);
+
+  useEffect(() => {
+    if (!dragClip) return;
+    const onMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragClip.startX;
+      const barDelta = Math.round(dx / BAR_W);
+      setClips(cs => cs.map((c, i) => {
+        if (i !== dragClip.idx) return c;
+        const newStart = Math.max(0, Math.min(BARS - c.len, (dragClip.offsetX) + barDelta));
+        return { ...c, start: newStart };
+      }));
+    };
+    const onUp = () => setDragClip(null);
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [dragClip]);
+
+  const addClip = (trackIdx: number, bar: number) => {
+    setClips(cs => [...cs, { trackIdx, start: bar, len: 2, label: `CLIP ${cs.length + 1}`, color: tracks[trackIdx]?.color ?? C }]);
+  };
+
+  const containerWidth = BARS * BAR_W;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <HwButton label={playing ? '■' : '▶'} onClick={() => setPlaying(p => !p)} active={playing} small />
+        <HwButton label="⏮" onClick={() => setPlayhead(0)} small />
+        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BAR: {Math.floor(playhead) + 1}</span>
+        <span style={{ ...MONO, fontSize: '.35rem', color: C2 + '.25)' }}>CLICK ROWS TO ADD CLIPS</span>
+      </div>
+      <div style={{ overflowX: 'auto', position: 'relative', border: `2px solid ${BORDER}`, background: '#050805', borderRadius: 4 }}>
+        <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, height: 16, minWidth: containerWidth + 80 }}>
+          <div style={{ width: 80, flexShrink: 0 }} />
+          {Array.from({ length: BARS }, (_, i) => (
+            <div key={i} style={{ width: BAR_W, borderLeft: `1px solid rgba(0,255,65,.08)`, flexShrink: 0, ...MONO, fontSize: '.3rem', color: C2 + '.25)', lineHeight: '16px', paddingLeft: 2 }}>{i + 1}</div>
+          ))}
+        </div>
+        {tracks.map((track, ti) => (
+          <div key={track.id} style={{ display: 'flex', height: ROW_H, borderBottom: '1px solid rgba(0,255,65,.04)', position: 'relative' }}>
+            <div style={{ width: 80, flexShrink: 0, borderRight: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', paddingLeft: 6, background: '#0a0d0a' }}>
+              <span style={{ ...MONO, fontSize: '.33rem', color: track.color, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: 70 }}>{track.name}</span>
+            </div>
+            <div style={{ flex: 1, position: 'relative', minWidth: containerWidth }}
+              onClick={e => { const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect(); addClip(ti, Math.floor((e.clientX - rect.left) / BAR_W)); }}>
+              {Array.from({ length: BARS }, (_, bi) => (
+                <div key={bi} style={{ position: 'absolute', top: 0, left: bi * BAR_W, width: BAR_W, height: ROW_H, borderLeft: bi % 4 === 0 ? `1px solid rgba(0,255,65,.1)` : '1px solid rgba(0,255,65,.03)' }} />
+              ))}
+              {clips.filter(c => c.trackIdx === ti).map((clip, ci) => {
+                const globalIdx = clips.findIndex(c2 => c2 === clip);
+                return (
+                  <div key={ci} style={{
+                    position: 'absolute', top: 2, left: clip.start * BAR_W, width: clip.len * BAR_W - 2, height: ROW_H - 4,
+                    background: clip.color + '22', border: `1px solid ${clip.color}66`, borderRadius: 2, cursor: 'move',
+                    display: 'flex', alignItems: 'center', paddingLeft: 4, userSelect: 'none',
+                  }}
+                    onMouseDown={e => { e.stopPropagation(); setDragClip({ idx: globalIdx, offsetX: clip.start, startX: e.clientX }); }}
+                    onContextMenu={e => { e.preventDefault(); setClips(cs => cs.filter((_, ii) => ii !== globalIdx)); }}>
+                    <span style={{ ...MONO, fontSize: '.3rem', color: clip.color, letterSpacing: '.04em', overflow: 'hidden', whiteSpace: 'nowrap' }}>{clip.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 80 + playhead * BAR_W, width: 2, background: '#ff4444', pointerEvents: 'none' }} />
+      </div>
+    </div>
+  );
+}
+
+function createAudioEngine(trackCount: number): AudioEngine {
+  const ctx = actx();
+  const masterGain = ctx.createGain();
+  masterGain.gain.value = 0.8;
+  const masterAnalyser = ctx.createAnalyser();
+  masterAnalyser.fftSize = 256;
+  masterGain.connect(masterAnalyser);
+  masterAnalyser.connect(ctx.destination);
+  const trackBuses: AudioBus[] = [];
+  for (let i = 0; i < trackCount; i++) {
+    const gain = ctx.createGain(); gain.gain.value = 0.8;
+    const panner = new StereoPannerNode(ctx);
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
+    gain.connect(panner); panner.connect(analyser); analyser.connect(masterGain);
+    trackBuses.push({ gain, panner, analyser });
+  }
+  return { ctx, masterGain, masterAnalyser, trackBuses, effectNodes: new Map() };
+}
+
+function SoundLabInner({ onClose }: { onClose?: () => void }) {
+  const [section, setSection] = useState<DAWSection>('machine');
+  const [bpm, setBpm] = useState(120);
+  const [swing, setSwing] = useState(0);
+  const [masterVol, setMasterVol] = useState(0.8);
+  const [tracks, setTracks] = useState<TrackDef[]>([
+    makeTrack('t1', 'BEAT', 0), makeTrack('t2', 'SYNTH', 1), makeTrack('t3', 'BASS', 2), makeTrack('t4', 'SAMPLE', 3), makeTrack('t5', 'ARP', 4),
+  ]);
+  const [projectName, setProjectName] = useState('UNTITLED PROJECT');
+  const [boomerMode] = useState(() => getDefaultBoomerMode());
+  const engineRef = useRef<AudioEngine | null>(null);
+  const [engineReady, setEngineReady] = useState(false);
+  const [activePads, setActivePads] = useState<Set<number>>(new Set());
+  const [seqPlaying, setSeqPlaying] = useState(false);
+
+  const initEngine = useCallback(() => {
+    if (!engineRef.current) { engineRef.current = createAudioEngine(5); setEngineReady(true); }
+    return engineRef.current;
+  }, []);
+
+  useEffect(() => {
+    const onClick = () => { initEngine(); window.removeEventListener('click', onClick); };
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
+  }, [initEngine]);
+
+  useEffect(() => {
+    if (engineRef.current) engineRef.current.masterGain.gain.value = masterVol;
+  }, [masterVol]);
+
+  const SECTIONS: { id: DAWSection; label: string }[] = [
+    { id: 'machine', label: 'MACHINE' },
+    { id: 'synth', label: 'SYNTH' },
+    { id: 'arpeggiator', label: 'ARP' },
+    { id: 'sampler', label: 'SAMPLER' },
+    { id: 'timeline', label: 'TIMELINE' },
+    { id: 'looper', label: 'LOOPER' },
+    { id: 'mixer', label: 'MIXER' },
+    { id: 'effects', label: 'FX' },
+  ];
+
+  const saveProject = () => {
+    const data = JSON.stringify({ projectName, bpm, tracks: tracks.map(t => ({ id: t.id, name: t.name, vol: t.vol, pan: t.pan, mute: t.mute, solo: t.solo, color: t.color, effects: t.effects })) });
+    const blob = new Blob([data], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${projectName.replace(/\s+/g, '_')}.slb`; a.click();
+  };
+
+  const loadProject = () => {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.slb,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0]; if (!file) return;
+      try {
+        const proj = JSON.parse(await file.text());
+        if (proj.projectName) setProjectName(proj.projectName);
+        if (proj.bpm) setBpm(proj.bpm);
+        if (proj.tracks) setTracks(proj.tracks.map((t: TrackDef, i: number) => ({
+          ...makeTrack(t.id || `t${i}`, t.name || `TRACK ${i}`, i),
+          vol: t.vol ?? 0.8, pan: t.pan ?? 0, mute: t.mute ?? false, solo: t.solo ?? false,
+          effects: t.effects ?? EFFECT_NAMES.map(() => ({ ...DEFAULT_EFFECT })),
+        })));
+      } catch { /* invalid file */ }
+    };
+    input.click();
+  };
+
+  const exportWav = () => {
+    if (!engineRef.current) { initEngine(); return; }
+    const e = engineRef.current;
+    const offCtx = new OfflineAudioContext(2, e.ctx.sampleRate * 10, e.ctx.sampleRate);
+    const osc = offCtx.createOscillator();
+    const g = offCtx.createGain(); g.gain.value = 0;
+    osc.connect(g); g.connect(offCtx.destination);
+    osc.start(); osc.stop(10);
+    offCtx.startRendering().then(buffer => {
+      const numCh = buffer.numberOfChannels;
+      const length = buffer.length;
+      const sr = buffer.sampleRate;
+      const bitsPerSample = 16;
+      const bytesPerSample = bitsPerSample / 8;
+      const blockAlign = numCh * bytesPerSample;
+      const dataSize = length * blockAlign;
+      const bufSize = 44 + dataSize;
+      const ab = new ArrayBuffer(bufSize);
+      const view = new DataView(ab);
+      const writeString = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+      writeString(0, 'RIFF'); view.setUint32(4, bufSize - 8, true); writeString(8, 'WAVE');
+      writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+      view.setUint16(22, numCh, true); view.setUint32(24, sr, true);
+      view.setUint32(28, sr * blockAlign, true); view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitsPerSample, true); writeString(36, 'data'); view.setUint32(40, dataSize, true);
+      let offset = 44;
+      for (let i = 0; i < length; i++) {
+        for (let ch = 0; ch < numCh; ch++) {
+          const sample = buffer.getChannelData(ch)[i];
+          const clamped = Math.max(-1, Math.min(1, sample));
+          view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF, true);
+          offset += 2;
+        }
+      }
+      const blob = new Blob([ab], { type: 'audio/wav' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${projectName.replace(/\s+/g, '_')}.wav`; a.click();
+    });
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: BG, color: C, ...MONO, overflow: 'hidden' }}
+      onClick={() => { if (!engineReady) initEngine(); }}>
+
+      <div style={{
+        background: `linear-gradient(to bottom, #111411, ${CHASSIS})`,
+        borderBottom: `3px solid ${BORDER}`,
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <Screw />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div style={{ ...VT, fontSize: '1.6rem', color: OC, letterSpacing: '.25em', textShadow: `0 0 16px ${OC}88, 0 0 4px ${OC}44`, lineHeight: 1 }}>1999</div>
+          <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)', letterSpacing: '.2em', marginTop: 1 }}>{boomerMode ? 'DAW' : 'THE LAB'}</div>
+        </div>
+        <div style={{ width: 1, height: 28, background: BORDER, margin: '0 4px' }} />
+        <input value={projectName} onChange={e => setProjectName(e.target.value)}
+          style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${BORDER}`, color: C, ...MONO, fontSize: '.48rem', letterSpacing: '.08em', outline: 'none', width: 140 }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+          <HwButton label="SAVE" onClick={saveProject} small />
+          <HwButton label="LOAD" onClick={loadProject} small />
+          <HwButton label="WAV" onClick={exportWav} small />
+          {onClose && <HwButton label="✕" onClick={onClose} small color="#ff4444" />}
+        </div>
+        <Screw />
+      </div>
+
+      <div style={{ display: 'flex', gap: 2, padding: '4px 10px', background: '#0c0f0c', borderBottom: `1px solid ${BORDER}`, overflowX: 'auto', flexShrink: 0 }}>
+        {SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setSection(s.id)} style={{
+            padding: '4px 10px',
+            background: section === s.id ? 'linear-gradient(to bottom, rgba(0,255,65,.12), rgba(0,255,65,.04))' : 'transparent',
+            border: section === s.id ? `1px solid ${C}44` : '1px solid transparent',
+            borderBottom: section === s.id ? `2px solid ${C}` : '2px solid transparent',
+            color: section === s.id ? C : C2 + '.35)',
+            cursor: 'pointer', ...VT, fontSize: '.65rem', letterSpacing: '.1em', borderRadius: '4px 4px 0 0',
+            transition: 'all .1s',
+          }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: 10 }}>
+
+        {section === 'machine' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flexShrink: 0 }}>
+                <DrumPads busGain={engineRef.current?.trackBuses[0]?.gain ?? null} activePads={activePads} />
+              </div>
+              <div style={{ flex: 1, minWidth: 300 }}>
+                <StepSequencer
+                  busGain={engineRef.current?.trackBuses[0]?.gain ?? null}
+                  bpm={bpm} onBpmChange={setBpm}
+                  swing={swing} onSwingChange={setSwing}
+                  onActivePads={setActivePads}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <Oscilloscope analyser={engineRef.current?.masterAnalyser ?? null} />
+              </div>
+              <div style={{ ...hwPanel, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={hwLabel}>CONTROLS</div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                  <HwKnob label="FILTER" val={2000} min={50} max={20000} step={10} onChange={() => {}} color={OC} />
+                  <HwKnob label="DRIVE" val={20} min={1} max={100} step={1} onChange={() => {}} color={OC} />
+                  <HwKnob label="DECAY" val={0.1} min={0.001} max={2} onChange={() => {}} />
+                  <HwKnob label="ATTACK" val={0.01} min={0.001} max={2} onChange={() => {}} />
+                  <HwKnob label="RELEASE" val={0.3} min={0.001} max={4} onChange={() => {}} />
+                </div>
+              </div>
+            </div>
+            <TransportBar bpm={bpm} onBpmChange={setBpm} swing={swing} onSwingChange={setSwing} masterVol={masterVol} onMasterVolChange={setMasterVol} playing={seqPlaying} engineReady={engineReady} />
+          </div>
+        )}
+
+        {section === 'synth' && <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} />}
+        {section === 'arpeggiator' && <Arpeggiator busGain={engineRef.current?.trackBuses[4]?.gain ?? null} />}
+        {section === 'sampler' && <Sampler busGain={engineRef.current?.trackBuses[3]?.gain ?? null} />}
+        {section === 'timeline' && <Timeline tracks={tracks} bpm={bpm} />}
+        {section === 'looper' && <Looper />}
+        {section === 'mixer' && <Mixer tracks={tracks} onTracksChange={setTracks} engine={engineRef.current} />}
+        {section === 'effects' && <EffectsRack />}
+
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '4px 14px',
+        borderTop: `2px solid ${BORDER}`,
+        background: `linear-gradient(to top, #111411, ${CHASSIS})`,
+        flexShrink: 0,
+      }}>
+        <Screw />
+        <span style={{ ...MONO, fontSize: '.35rem', color: OC2 + '.4)' }}>1999</span>
+        <span style={{ ...MONO, fontSize: '.32rem', color: C2 + '.2)' }}>{boomerMode ? 'DAW' : 'THE LAB'} — {projectName} — {bpm} BPM — {tracks.length} TRACKS</span>
+        <span style={{ ...MONO, fontSize: '.32rem', color: engineReady ? C2 + '.35)' : C2 + '.12)', marginLeft: 'auto' }}>WEB AUDIO {engineReady ? 'RUNNING' : 'CLICK TO INIT'}</span>
+        <Screw />
+      </div>
+    </div>
+  );
+}
+
+export default function SoundLab({ onClose }: { onClose?: () => void }) {
+  const BG_FULL = '#0a0d0a';
+  if (onClose) {
+    return <SoundLabInner onClose={onClose} />;
+  }
+  return (
+    <ProGate feature="THE LAB">
+      <div style={{ minHeight: '100vh', background: BG_FULL }}>
+        <SoundLabInner />
+      </div>
+    </ProGate>
+  );
+}

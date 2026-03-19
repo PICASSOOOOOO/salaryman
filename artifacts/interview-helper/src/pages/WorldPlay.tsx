@@ -11,6 +11,7 @@ import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
+const SoundLabOverlay = lazy(() => import('./SoundLab'));
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
@@ -3010,6 +3011,7 @@ export default function WorldPlay() {
       }] : []
     )) as OwnedBusiness[],
     floorOccupancy: (_ss?.floorOccupancy ?? {}) as Record<string, string>,
+    secretLab: (_ss?.secretLab ?? null) as null | { password: string; purchasedAt: number },
   });
 
   const savedDog = (() => {
@@ -3244,6 +3246,9 @@ export default function WorldPlay() {
   const [translatorResult, setTranslatorResult] = useState('');
   const [translatorListening, setTranslatorListening] = useState(false);
   const translatorRecRef = useRef<{ stop: () => void } | null>(null);
+  const [showSoundLab, setShowSoundLab] = useState(false);
+  const [showSecretLabPrompt, setShowSecretLabPrompt] = useState<'buy' | 'password' | 'setpw' | null>(null);
+  const [secretLabPwInput, setSecretLabPwInput] = useState('');
   const [showGoldExchange, setShowGoldExchange] = useState(false);
   const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks'>('gold');
   const [showHousingPanel, setShowHousingPanel] = useState(false);
@@ -3444,6 +3449,7 @@ export default function WorldPlay() {
       rentReminded: g.rentReminded,
       businesses: [...(g.businesses ?? [])],
       floorOccupancy: { ...(g.floorOccupancy ?? {}) },
+      secretLab: g.secretLab,
       ownedVehicles: [...(g.ownedVehicles ?? [])],
       parkedLoadout: [...(g.parkedLoadout ?? [])],
       ownedFurniture: [...(g.ownedFurniture ?? [])],
@@ -3868,6 +3874,16 @@ export default function WorldPlay() {
       const bld = BUILDINGS.find(b => b.id === 'safe_house');
       const houseDef = INTERIOR_DEFS['_house'];
       if (houseDef) def = { ...houseDef, id: 'safe_house', label: bld?.label ?? 'ROWHOUSE' };
+    }
+    const isOwnerHomeEntry = bid === g.hamletBuildingId;
+    const qualifiesForLab = isOwnerHomeEntry && g.housingTier !== 'shelter' && g.housingTier !== 'outpost' && g.housingTier !== 'machine_bunker';
+    if (qualifiesForLab) {
+      const hasStaircase = def.objects.some(o => o.label === 'SECRET STAIRCASE');
+      if (!hasStaircase) {
+        const stairX = def.width - 55;
+        const stairY = def.height - 65;
+        def = { ...def, objects: [...def.objects, { x: stairX, y: stairY, w: 35, h: 35, type: 'elevator' as const, label: 'SECRET STAIRCASE', color: 'rgba(0,150,255,.2)' }] };
+      }
     }
     g.interiorFade = 0;
     g.interiorFadeDir = 1;
@@ -4531,7 +4547,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen;
+  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -4760,6 +4776,17 @@ export default function WorldPlay() {
           if (g.interior && nearArcadeMachine) {
             sfxEnter();
             setArcadeGameId(nearArcadeMachine);
+            return;
+          }
+          if (g.interior && g.nearInteriorObj?.type === 'elevator' && g.nearInteriorObj?.label === 'SECRET STAIRCASE') {
+            sfxEnter();
+            if (!g.secretLab) {
+              setShowSecretLabPrompt('buy');
+              setSecretLabPwInput('');
+            } else {
+              setShowSecretLabPrompt('password');
+              setSecretLabPwInput('');
+            }
             return;
           }
           if (g.interior && nearWaterCooler) {
@@ -6958,6 +6985,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = g.blink ? 'rgba(255,0,255,.9)' : 'rgba(255,0,255,.3)';
               ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText(`[E] PLAY — 1 FIAT`, ocx, obj.y - 6);
+            }
+          }
+          if (obj.type === 'elevator' && obj.label === 'SECRET STAIRCASE') {
+            const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
+            if (Math.hypot(itr.px - ocx, itr.py - ocy) < 35) {
+              ctx.fillStyle = g.blink ? 'rgba(0,200,255,.95)' : 'rgba(0,200,255,.35)';
+              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText(g.secretLab ? '[E] DESCEND TO THE LAB — 1999' : '[E] SECRET STAIRCASE — 500K', ocx, obj.y - 6);
             }
           }
           if (obj.type === 'water_cooler') {
@@ -13554,6 +13589,101 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }}
           />
         </Suspense>
+      )}
+
+      {showSoundLab && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 620, background: 'rgba(0,0,0,.0)' }}>
+          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>LOADING SOUND LAB...</div>}>
+            <SoundLabOverlay onClose={() => { setShowSoundLab(false); gameRef.current?.focus(); }} />
+          </Suspense>
+        </div>
+      )}
+
+      {showSecretLabPrompt && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 650, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}
+          onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}>
+          <div style={{ background: 'rgba(0,6,2,.97)', border: '1px solid rgba(0,255,65,.2)', borderRadius: '6px', padding: '28px 36px', minWidth: 340, maxWidth: '92vw', textAlign: 'center' }}
+            onClick={e => e.stopPropagation()}>
+            {showSecretLabPrompt === 'buy' && (<>
+              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SECRET STAIRCASE</div>
+              <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.55rem', marginBottom: '16px', lineHeight: 1.6 }}>
+                A hidden basement studio awaits below.<br/>Cost: <span style={{ color: '#00ff41' }}>500,000 FIAT</span>
+              </div>
+              <div style={{ color: 'rgba(0,255,65,.35)', fontSize: '.45rem', marginBottom: '12px' }}>Current balance: {salary.toLocaleString()} FIAT</div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                <button onClick={() => {
+                  const g = gs.current;
+                  if (g.salary < 500000) { setNarr('> INSUFFICIENT FIAT — You need 500,000 FIAT.'); setShowSecretLabPrompt(null); gameRef.current?.focus(); return; }
+                  g.salary -= 500000; setSalary(g.salary);
+                  setShowSecretLabPrompt('setpw');
+                }}
+                  style={{ padding: '6px 18px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                  PURCHASE — 500K
+                </button>
+              </div>
+            </>)}
+            {showSecretLabPrompt === 'setpw' && (<>
+              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SET STUDIO PASSWORD</div>
+              <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.5rem', marginBottom: '14px' }}>Choose a password to protect your studio.</div>
+              <input value={secretLabPwInput} onChange={e => setSecretLabPwInput(e.target.value)}
+                placeholder="Enter password..."
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && secretLabPwInput.trim()) {
+                    const g = gs.current;
+                    g.secretLab = { password: secretLabPwInput.trim(), purchasedAt: Date.now() };
+                    setShowSecretLabPrompt(null);
+                    setShowSoundLab(true);
+                  }
+                }}
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+              <button onClick={() => {
+                if (!secretLabPwInput.trim()) return;
+                const g = gs.current;
+                g.secretLab = { password: secretLabPwInput.trim(), purchasedAt: Date.now() };
+                setShowSecretLabPrompt(null);
+                setShowSoundLab(true);
+              }}
+                style={{ padding: '6px 24px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                CONFIRM & ENTER
+              </button>
+            </>)}
+            {showSecretLabPrompt === 'password' && (<>
+              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>ENTER STUDIO PASSWORD</div>
+              <input value={secretLabPwInput} onChange={e => setSecretLabPwInput(e.target.value)}
+                type="password" placeholder="Password..."
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const g = gs.current;
+                    if (g.secretLab && secretLabPwInput === g.secretLab.password) {
+                      setShowSecretLabPrompt(null);
+                      setShowSoundLab(true);
+                    } else {
+                      setNarr('> WRONG PASSWORD.');
+                    }
+                  }
+                }}
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                <button onClick={() => {
+                  const g = gs.current;
+                  if (g.secretLab && secretLabPwInput === g.secretLab.password) {
+                    setShowSecretLabPrompt(null);
+                    setShowSoundLab(true);
+                  } else {
+                    setNarr('> WRONG PASSWORD.');
+                  }
+                }}
+                  style={{ padding: '6px 18px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>ENTER</button>
+              </div>
+            </>)}
+          </div>
+        </div>
       )}
 
       {showNewspaper && (() => {

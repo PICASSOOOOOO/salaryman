@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2 } from 'lucide-react';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, type InterviewMode } from '@/hooks/use-interview';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
@@ -9,6 +9,8 @@ import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+
+const SoundLab = lazy(() => import('./SoundLab'));
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -22,6 +24,7 @@ export default function Console() {
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan'>('solve');
   const [typeMode, setTypeMode] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const [consoleView, setConsoleView] = useState<'terminal' | 'lab'>('terminal');
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -140,13 +143,32 @@ export default function Console() {
 
       <div className="relative z-20 px-4 py-2 flex items-center gap-3"
         style={{ background: 'rgba(0,255,65,0.03)', borderBottom: '1px solid rgba(0,255,65,0.08)' }}>
-        <Terminal className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(0,255,65,0.35)' }} />
-        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)', letterSpacing: '0.08em', flex: 1 }}>
-          <strong style={{ color: 'rgba(0,255,65,0.6)' }}>{boomerMode ? 'CODE/CONSOLE' : PABLO_PRODUCTS.PROBLEM_DESC.name}</strong>
-          {' '}— {boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+          <button onClick={() => setConsoleView('terminal')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(0,255,65,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(0,255,65,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(0,255,65,0.7)' : 'rgba(0,255,65,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            <Terminal className="w-3.5 h-3.5 shrink-0" />
+            {boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short}
+          </button>
+          <button onClick={() => setConsoleView('lab')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(0,200,255,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(0,200,255,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(0,200,255,0.7)' : 'rgba(0,255,65,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            <Music2 className="w-3.5 h-3.5 shrink-0" />
+            {boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short}
+          </button>
+        </div>
+        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.06em' }}>
+          {consoleView === 'terminal'
+            ? (boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.')
+            : (boomerMode ? 'DAW 1999 — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
         </span>
       </div>
 
+      {consoleView === 'lab' ? (
+        <div className="flex-1 relative z-10 min-h-0 overflow-auto">
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
+            <SoundLab />
+          </Suspense>
+        </div>
+      ) : (
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 min-h-0">
 
         {/* LEFT PANEL */}
@@ -391,6 +413,7 @@ export default function Console() {
           </div>
         </section>
       </main>
+      )}
     </div>
   );
 }
