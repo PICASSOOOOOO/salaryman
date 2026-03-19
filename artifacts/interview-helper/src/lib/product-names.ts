@@ -94,6 +94,11 @@ export const PABLO_PRODUCTS = {
     short: "CIPHER-X",
     desc: "Full interception and solve suite. Interview Solver, Live Listen, Screen Scan, and Ghost Hands type module.",
   },
+  STUDIO: {
+    name: "FORGE-7 CONTENT MATRIX",
+    short: "FORGE-7",
+    desc: "AI-powered content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

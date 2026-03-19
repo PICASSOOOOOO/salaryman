@@ -18,6 +18,7 @@ const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const Hiring = lazy(() => import("@/pages/Hiring"));
+const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ function AppShell() {
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/admin/billboards" component={BillboardAdmin} />
+            <Route path="/studio" component={ContentStudio} />
             <Route path="/mobile" component={MobileTerminal} />
             <Route component={NotFound} />
           </Switch>

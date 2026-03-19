@@ -13,6 +13,7 @@ import salarymanSavesRouter from "./salaryman-saves";
 import billboardRouter from "./billboards";
 import hiringRouter from "./hiring";
 import versionRouter from "./version";
+import studioRouter from "./studio";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(worldRouter);
 router.use(salarymanSavesRouter);
 router.use(billboardRouter);
 router.use(hiringRouter);
+router.use(studioRouter);
 
 export default router;

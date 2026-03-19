@@ -19,9 +19,11 @@ export const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
+export type GptImageSize = "1024x1024" | "1024x1536" | "1536x1024";
+
 export async function generateImageBuffer(
   prompt: string,
-  size: "1024x1024" | "512x512" | "256x256" = "1024x1024"
+  size: GptImageSize = "1024x1024"
 ): Promise<Buffer> {
   const response = await openai.images.generate({
     model: "gpt-image-1",
