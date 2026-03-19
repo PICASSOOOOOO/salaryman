@@ -64,7 +64,7 @@ export function ProGate({ children, feature = "This feature", inline = false }: 
         <h3 className="text-lg font-bold text-foreground mb-2">{PABLO_PRODUCTS.PRO_TIER.name} REQUIRED</h3>
         <p className="text-sm text-muted-foreground mb-6">
           <span className="font-semibold text-foreground">{feature}</span> requires {PABLO_PRODUCTS.PRO_TIER.name}.
-          Upgrade to unlock {PABLO_PRODUCTS.LIVE_LISTEN.short}, {PABLO_PRODUCTS.SCAN_SCREEN.short}, {PABLO_PRODUCTS.PRESENTER.short}, {PABLO_PRODUCTS.CONTACTS.short}, {PABLO_PRODUCTS.HIRING.short}, and {PABLO_PRODUCTS.WORKSPACE.short}.
+          Upgrade to unlock {PABLO_PRODUCTS.LIVE_LISTEN.short}, {PABLO_PRODUCTS.SCAN_SCREEN.short}, Voice PABLO, {PABLO_PRODUCTS.CONTACTS.short}, {PABLO_PRODUCTS.HIRING.short}, and {PABLO_PRODUCTS.WORKSPACE.short}.
         </p>
         <a href="/upgrade"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">

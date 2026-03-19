@@ -89,6 +89,11 @@ export const PABLO_PRODUCTS = {
     short: "INK-6",
     desc: "Stealth document fabrication unit. Outputs formatted intel at any connected terminal.",
   },
+  CONSOLE: {
+    name: "CIPHER-X CONSOLE",
+    short: "CIPHER-X",
+    desc: "Full interception and solve suite. Interview Solver, Live Listen, Screen Scan, and Ghost Hands type module.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

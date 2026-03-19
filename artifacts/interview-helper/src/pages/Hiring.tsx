@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, UserPlus, Users, Plus, X, Trash2, ChevronDown, ChevronUp, Loader2, ArrowRight, Edit2, Check } from 'lucide-react';
+import { Briefcase, UserPlus, Users, Plus, X, Trash2, ChevronDown, ChevronUp, Loader2, ArrowRight, Edit2, Check, Mic2, Presentation } from 'lucide-react';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { InterviewConductor } from '@/components/InterviewConductor';
+import { PresentationTool } from '@/components/PresentationTool';
 
-type ActiveTab = 'jobs' | 'applicants' | 'staff';
+type ActiveTab = 'jobs' | 'applicants' | 'staff' | 'conduct' | 'present';
 
 interface Job {
   id: number;
@@ -88,7 +90,17 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 export default function Hiring() {
   const { isAuthenticated } = useAuth();
   const { isPro, loading: planLoading } = usePlan();
-  const [tab, setTab] = useState<ActiveTab>('jobs');
+  const [tab, setTab] = useState<ActiveTab>(() => {
+    try {
+      const raw = localStorage.getItem('devdocs_action_prefill');
+      if (raw) {
+        const p = JSON.parse(raw) as Record<string, unknown>;
+        const age = Date.now() - ((p._ts as number) || 0);
+        if (age < 30000 && (p.tab === 'conduct' || p.tab === 'present')) return p.tab as ActiveTab;
+      }
+    } catch {}
+    return 'jobs';
+  });
   const [loading, setLoading] = useState(true);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   useEffect(() => {
@@ -131,6 +143,20 @@ export default function Hiring() {
   }, [isAuthenticated]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  useEffect(() => {
+    const onPabloAction = (e: Event) => {
+      const detail = (e as CustomEvent<Record<string, unknown>>).detail;
+      if (!detail) return;
+      const age = Date.now() - ((detail._ts as number) || 0);
+      if (age > 30000) return;
+      if (detail.tab === 'conduct' || detail.tab === 'present') {
+        setTab(detail.tab as ActiveTab);
+      }
+    };
+    window.addEventListener('pablo-action', onPabloAction);
+    return () => window.removeEventListener('pablo-action', onPabloAction);
+  }, []);
 
   const saveJob = async () => {
     if (!jobForm.title.trim()) return;
@@ -213,13 +239,7 @@ export default function Hiring() {
 
   const getJobTitle = (jobId: number) => jobs.find(j => j.id === jobId)?.title ?? 'Unknown Position';
 
-  if (!planLoading && !isPro) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <ProGate feature={PABLO_PRODUCTS.HIRING.name} />
-      </div>
-    );
-  }
+  const isProTab = tab === 'jobs' || tab === 'applicants' || tab === 'staff';
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -249,11 +269,13 @@ export default function Hiring() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border">
+        <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border flex-wrap">
           {([
             { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'Job Board', icon: Briefcase },
             { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'Applicants', icon: UserPlus },
             { id: 'staff' as const, label: 'Staff', boomerLabel: 'Team', icon: Users },
+            { id: 'conduct' as const, label: 'Interview Conductor', boomerLabel: 'Interview Conductor', icon: Mic2 },
+            { id: 'present' as const, label: 'Presentation', boomerLabel: 'Presentation', icon: Presentation },
           ]).map(({ id, label, boomerLabel, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
@@ -278,7 +300,11 @@ export default function Hiring() {
           </div>
         )}
 
-        {!loading && isAuthenticated && tab === 'jobs' && (
+        {!planLoading && !isPro && isProTab && (
+          <ProGate feature={PABLO_PRODUCTS.HIRING.name} />
+        )}
+
+        {!loading && isAuthenticated && isPro && tab === 'jobs' && (
           <div>
             <div className="flex justify-end mb-4">
               <button onClick={() => { setEditingJob(null); setJobForm({ title: '', description: '', requirements: '', salaryMin: '', salaryMax: '', status: 'open' }); setShowJobForm(v => !v); }}
@@ -412,7 +438,7 @@ export default function Hiring() {
           </div>
         )}
 
-        {!loading && isAuthenticated && tab === 'applicants' && (
+        {!loading && isAuthenticated && isPro && tab === 'applicants' && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -554,7 +580,7 @@ export default function Hiring() {
           </div>
         )}
 
-        {!loading && isAuthenticated && tab === 'staff' && (
+        {!loading && isAuthenticated && isPro && tab === 'staff' && (
           <div>
             {staff.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -604,6 +630,20 @@ export default function Hiring() {
             )}
           </div>
         )}
+        {/* Interview Conductor tab */}
+        {tab === 'conduct' && (
+          <div className="flex-1">
+            <InterviewConductor />
+          </div>
+        )}
+
+        {/* Presentation tab */}
+        {tab === 'present' && (
+          <div className="flex-1">
+            <PresentationTool />
+          </div>
+        )}
+
       </main>
     </div>
   );

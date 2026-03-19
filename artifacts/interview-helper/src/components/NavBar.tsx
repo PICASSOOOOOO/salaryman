@@ -1,4 +1,4 @@
-import { Terminal, Users, Presentation, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase, Code2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -48,7 +48,7 @@ export function NavBar() {
 
   const NAV = [
     { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, pro: false, mobileShow: true },
-    { path: '/presenter', label: boomerMode ? 'SLIDES' : PABLO_PRODUCTS.PRESENTER.short, icon: Presentation, pro: true, mobileShow: false },
+    { path: '/console', label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, icon: Code2, pro: true, mobileShow: false },
     { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true, mobileShow: false },
     { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, pro: true, mobileShow: false },
     { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true, mobileShow: false },
