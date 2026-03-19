@@ -33,7 +33,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 ## Freemium Model
 
 - **Free tier**: PABLO AI chat only (fully functional, always free)
-- **Pro tier** ($4–6/mo, 7-day free trial): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Hiring/HR (RECRUIT-8), Workspace
+- **Pro tier** ($4–6/mo, 7-day free trial): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Hiring/HR (RECRUIT-8), Workspace, Documents/ARCHIVE-X (INK-6)
 - **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
 - **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
 - **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email
@@ -41,6 +41,14 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Stripe payment**: Stripe Checkout integration for Pro tier subscriptions. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`. Endpoints: `POST /api/stripe/create-checkout-session` (creates Checkout session, requires auth), `POST /api/stripe/webhook` (handles `checkout.session.completed` → upgrade to pro, `customer.subscription.deleted` → downgrade to free). Raw body parsing is skipped for webhook route in `app.ts`. Upgrade page handles `?checkout=success` and `?checkout=cancel` query params. `usePlan` hook invalidates cache on `?checkout=success`.
 - **DB table**: `user_tiers` — stores tier assignments; auto-created by `ensureTables()` in `plan.ts`
 - **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/api-server/src/routes/stripe.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
+
+## Documents / ARCHIVE-X / INK-6 (Pro feature at `/documents`)
+
+- **Invoice Generator**: Create invoices with client details, line items, tax rate, terms. Download as PDF using jsPDF with CRT/green aesthetic. Stored in `invoices` DB table.
+- **Contract Generator**: 3 templates (NDA, Freelance Agreement, Service Contract). Fill in parties, scope, terms, compensation, jurisdiction. Download as PDF. Stored in `contracts` DB table.
+- **File Manager**: Upload files (any type) to Replit object storage (GCS-backed). Browse/organize in folders. Download files. Generate shareable links (public token-based). Stored in `files_folders` DB table.
+- **Object Storage**: GCS-backed via Replit App Storage. Presigned URL upload flow. See env vars: `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PUBLIC_OBJECT_SEARCH_PATHS`, `PRIVATE_OBJECT_DIR`.
+- **Key files**: `artifacts/interview-helper/src/pages/Documents.tsx`, `artifacts/api-server/src/routes/documents.ts`, `artifacts/api-server/src/routes/storage.ts`, `artifacts/api-server/src/lib/objectStorage.ts`, `lib/db/src/schema/documents.ts`, `lib/object-storage-web/`
 
 ## Integrations
 - **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.

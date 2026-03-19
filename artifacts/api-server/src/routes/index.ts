@@ -14,6 +14,8 @@ import billboardRouter from "./billboards";
 import hiringRouter from "./hiring";
 import versionRouter from "./version";
 import studioRouter from "./studio";
+import storageRouter from "./storage";
+import documentsRouter from "./documents";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,7 @@ router.use(salarymanSavesRouter);
 router.use(billboardRouter);
 router.use(hiringRouter);
 router.use(studioRouter);
+router.use(storageRouter);
+router.use(documentsRouter);
 
 export default router;
