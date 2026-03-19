@@ -93,6 +93,16 @@ export const PABLO_PRODUCTS = {
     short: "BABEL-3",
     desc: "Real-time translation module. Converts any text between languages with cultural context.",
   },
+  DICTIONARY: {
+    name: "LEXICON-5 VOCAB CORTEX",
+    short: "LEXICON-5",
+    desc: "Neural word lookup module. Definitions, synonyms, and phonetic pronunciation for any word in the database.",
+  },
+  NOTES: {
+    name: "MEMO-2 NEURAL SCRATCH PAD",
+    short: "MEMO-2",
+    desc: "Persistent memory buffer. Jot short notes that survive neural reboots. No sync, no cloud, no PABLO CORP oversight.",
+  },
   PRINTER: {
     name: "INK-6 PHANTOM PRINTER",
     short: "INK-6",

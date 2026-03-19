@@ -76,7 +76,7 @@ export function NavBar() {
               }`}
               title={boomerMode ? 'Boomer Mode ON — click to disable' : 'Boomer Mode: simpler labels'}
             >
-              {boomerMode ? 'BOOMER ✓' : 'BOOMER'}
+              {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
             </button>
           )}
         </div>

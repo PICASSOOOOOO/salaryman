@@ -181,7 +181,7 @@ export default function Console() {
           }}
           title={boomerMode ? 'Boomer Mode ON' : 'Boomer Mode OFF'}
         >
-          {boomerMode ? 'BOOMER ✓' : 'BOOMER'}
+          {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
         </button>
       </div>
 

@@ -134,11 +134,48 @@ export default function Home() {
   const [gameSave, setGameSave] = useState<{ salary: number; governmentBaseSalary?: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number; createdAt?: string } | null>(null);
 
   const [translatorText, setTranslatorText] = useState('');
-  const [translatorFrom, setTranslatorFrom] = useState('vi');
-  const [translatorTo, setTranslatorTo] = useState('en');
+  const [translatorFrom, setTranslatorFrom] = useState(() => localStorage.getItem('sm_xlat_from') ?? 'vi');
+  const [translatorTo, setTranslatorTo] = useState(() => localStorage.getItem('sm_xlat_to') ?? 'en');
   const [translatorResult, setTranslatorResult] = useState('');
   const [translatorListening, setTranslatorListening] = useState(false);
   const translatorRecRef = useRef<{ stop: () => void } | null>(null);
+
+  const [dictWord, setDictWord] = useState('');
+  const [dictResult, setDictResult] = useState<{ word: string; phonetic?: string; meanings: { partOfSpeech: string; definitions: { definition: string; synonyms?: string[] }[] }[] } | null>(null);
+  const [dictLoading, setDictLoading] = useState(false);
+  const [dictError, setDictError] = useState('');
+
+  const [notes, setNotes] = useState<{ id: number; text: string; ts: number }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('sm_notes') ?? '[]'); } catch { return []; }
+  });
+  const [noteInput, setNoteInput] = useState('');
+
+  useEffect(() => { localStorage.setItem('sm_xlat_from', translatorFrom); }, [translatorFrom]);
+  useEffect(() => { localStorage.setItem('sm_xlat_to', translatorTo); }, [translatorTo]);
+  useEffect(() => { localStorage.setItem('sm_notes', JSON.stringify(notes)); }, [notes]);
+
+  const lookupWord = async (word: string) => {
+    const w = word.trim().toLowerCase();
+    if (!w) return;
+    setDictLoading(true); setDictError(''); setDictResult(null);
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`);
+      if (!res.ok) { setDictError(`No definition found for "${w}".`); setDictLoading(false); return; }
+      const data = await res.json();
+      const entry = data[0];
+      setDictResult({ word: entry.word, phonetic: entry.phonetic ?? entry.phonetics?.find((p: { text?: string }) => p.text)?.text, meanings: entry.meanings ?? [] });
+    } catch { setDictError('Dictionary service unavailable.'); }
+    setDictLoading(false);
+  };
+
+  const addNote = () => {
+    const text = noteInput.trim();
+    if (!text) return;
+    setNotes(prev => [{ id: Date.now(), text, ts: Date.now() }, ...prev]);
+    setNoteInput('');
+  };
+
+  const deleteNote = (id: number) => setNotes(prev => prev.filter(n => n.id !== id));
 
   const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false);
   const lastSpokenRef = useRef(-1);
@@ -261,7 +298,7 @@ export default function Home() {
       <OnboardingModal onComplete={updateMemory} />
 
       {/* City Info Bar */}
-      <div className="relative z-20 px-4 py-3"
+      <div className="relative z-10 px-4 py-3 shrink-0"
         style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(34,197,94,0.1)' }}>
         <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
@@ -412,6 +449,90 @@ export default function Home() {
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
                   <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
                 </div>
+              )}
+            </div>
+
+            {/* Dictionary — FREE */}
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'DICTIONARY — FREE' : PABLO_PRODUCTS.DICTIONARY.name}</span>
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                <input value={dictWord} onChange={e => setDictWord(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') lookupWord(dictWord); }}
+                  placeholder="Type a word..."
+                  className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                <button onClick={() => lookupWord(dictWord)}
+                  className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  LOOKUP
+                </button>
+              </div>
+              {dictLoading && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Looking up...</p>
+                </div>
+              )}
+              {dictError && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className="text-xs text-pink-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictError}</p>
+                </div>
+              )}
+              {dictResult && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-bold text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.word.toUpperCase()}</span>
+                    {dictResult.phonetic && <span className="text-[10px] text-pink-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.phonetic}</span>}
+                  </div>
+                  {dictResult.meanings.slice(0, 3).map((m, mi) => (
+                    <div key={mi}>
+                      <span className="text-[10px] font-bold text-pink-400/50 uppercase" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{m.partOfSpeech}</span>
+                      {m.definitions.slice(0, 2).map((d, di) => (
+                        <p key={di} className="text-xs text-pink-300/80 ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>• {d.definition}</p>
+                      ))}
+                      {m.definitions[0]?.synonyms && m.definitions[0].synonyms.length > 0 && (
+                        <p className="text-[10px] text-pink-400/40 ml-2 mt-0.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>syn: {m.definitions[0].synonyms.slice(0, 4).join(', ')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Notes — FREE */}
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES — FREE' : PABLO_PRODUCTS.NOTES.name}</span>
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                <textarea value={noteInput} onChange={e => setNoteInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); } }}
+                  placeholder="Jot a note..."
+                  className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none resize-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 36 }} />
+                <button onClick={addNote}
+                  className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0 self-end`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  SAVE
+                </button>
+              </div>
+              {notes.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {notes.map(n => (
+                    <div key={n.id} className="flex items-start gap-2 rounded-md border border-pink-500/10 bg-pink-500/5 px-2.5 py-1.5 group">
+                      <p className="flex-1 text-xs text-pink-300/80 whitespace-pre-wrap break-words" style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>{n.text}</p>
+                      <button onClick={() => deleteNote(n.id)}
+                        className="shrink-0 text-pink-500/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-[10px] mt-0.5"
+                        title="Delete note">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {notes.length === 0 && (
+                <p className="text-[10px] text-pink-400/30 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>No notes yet. Your notes persist locally.</p>
               )}
             </div>
           </div>

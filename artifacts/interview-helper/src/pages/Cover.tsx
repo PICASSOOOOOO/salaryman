@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
-import { motion } from 'framer-motion';
-import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { PhoneDialer } from '../components/PhoneDialer';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -83,8 +84,9 @@ function EmailSubscribeForm() {
 }
 
 export default function Cover() {
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [, navigate] = useLocation();
+  const [showPhone, setShowPhone] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#09090b] relative overflow-x-hidden px-6 py-16">
@@ -118,9 +120,9 @@ export default function Cover() {
           .animated-title {
             background: linear-gradient(
               270deg,
-              #22c55e, #ec4899, #22c55e
+              #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
             );
-            background-size: 200% 200%;
+            background-size: 300% 300%;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -129,9 +131,9 @@ export default function Cover() {
           .animated-title-glow {
             background: linear-gradient(
               270deg,
-              #22c55e, #ec4899, #22c55e
+              #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
             );
-            background-size: 200% 200%;
+            background-size: 300% 300%;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -233,6 +235,44 @@ export default function Cover() {
           </div>
         </motion.div>
       </div>
+
+      {/* Phone System */}
+      {isAuthenticated && (
+        <>
+          <button
+            onClick={() => setShowPhone(!showPhone)}
+            style={{
+              position: 'fixed', bottom: 20, right: 20, zIndex: 50,
+              width: 48, height: 48, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: showPhone ? 'rgba(255,40,40,0.2)' : 'rgba(34,197,94,0.1)',
+              border: showPhone ? '1px solid rgba(255,40,40,0.5)' : '1px solid rgba(34,197,94,0.4)',
+              color: showPhone ? 'rgba(255,60,60,0.9)' : 'rgba(34,197,94,0.9)',
+              cursor: 'pointer',
+              boxShadow: showPhone ? '0 0 20px rgba(255,40,40,0.2)' : '0 0 20px rgba(34,197,94,0.15)',
+            }}
+            title={showPhone ? 'Close Calll Home' : 'Calll Home'}
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+          <AnimatePresence>
+            {showPhone && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                style={{ position: 'fixed', bottom: 76, right: 20, zIndex: 50 }}
+              >
+                <PhoneDialer
+                  userId={user?.id ?? 'anon'}
+                  callerName={user?.firstName ?? undefined}
+                  onClose={() => setShowPhone(false)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }
