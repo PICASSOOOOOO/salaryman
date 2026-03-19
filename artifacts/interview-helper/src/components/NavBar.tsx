@@ -5,7 +5,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useEffect, useRef, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
-import { getDefaultBoomerMode } from '../hooks/use-mobile';
+import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 
 function BlinkingClock() {
   const [display, setDisplay] = useState('');
@@ -37,6 +37,7 @@ export function NavBar() {
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -231,30 +232,42 @@ export function NavBar() {
 
 
           <button
-            onClick={() => navigate('/world')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 transition-all"
+            onClick={e => { if (isMobile || window.innerWidth < 768) { e.preventDefault(); return; } navigate('/world'); }}
+            aria-disabled={isMobile ? true : undefined}
+            title={isMobile ? 'Desktop only' : undefined}
+            disabled={isMobile}
+            className="flex items-center gap-1.5 px-3 py-2 transition-all flex-col"
             style={{
               fontFamily: "'Share Tech Mono', monospace",
               fontSize: '0.65rem',
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
-              color: 'rgba(0,255,65,0.7)',
-              border: '1px solid rgba(0,255,65,0.35)',
-              background: 'rgba(0,255,65,0.06)',
+              color: isMobile ? 'rgba(0,255,65,0.25)' : 'rgba(0,255,65,0.7)',
+              border: isMobile ? '1px solid rgba(0,255,65,0.12)' : '1px solid rgba(0,255,65,0.35)',
+              background: isMobile ? 'rgba(0,255,65,0.02)' : 'rgba(0,255,65,0.06)',
+              cursor: isMobile ? 'default' : 'pointer',
+              opacity: isMobile ? 0.5 : 1,
             }}
-            onMouseEnter={e => {
+            onMouseEnter={isMobile ? undefined : e => {
               (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.12)';
               (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.6)';
               (e.currentTarget as HTMLButtonElement).style.color = '#00ff41';
             }}
-            onMouseLeave={e => {
+            onMouseLeave={isMobile ? undefined : e => {
               (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.06)';
               (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.35)';
               (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,65,0.7)';
             }}
           >
-            <Globe className="w-3 h-3" />
-            EXPLORE
+            <span className="flex items-center gap-1.5">
+              <Globe className="w-3 h-3" />
+              EXPLORE
+            </span>
+            {isMobile && (
+              <span style={{ fontSize: '0.5rem', letterSpacing: '0.08em', opacity: 0.7, lineHeight: 1 }}>
+                DESKTOP ONLY
+              </span>
+            )}
           </button>
 
           {isTrial ? (
