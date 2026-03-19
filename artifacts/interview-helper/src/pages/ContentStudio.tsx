@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Image, FileText, Share2, Download, Loader2, Wand2, RefreshCw, Copy, Check,
   ChevronDown, Zap, Type, AlignLeft, Mail, Megaphone, Tag, Target, Instagram,
-  Twitter, Linkedin, Layers, Palette, SlidersHorizontal, Plus, X
+  Twitter, Linkedin, Layers, Palette, SlidersHorizontal, Plus, X, Video, Globe
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
@@ -616,13 +616,14 @@ function CopyStudio() {
 
 // ── SOCIAL MEDIA STUDIO ───────────────────────────────────────────────────────
 
-type SocialTemplate = 'instagram_square' | 'twitter_card' | 'linkedin_banner';
+type SocialTemplate = 'instagram_square' | 'twitter_card' | 'linkedin_banner' | 'tiktok_vertical' | 'facebook_feed';
 
 interface SocialResult {
   caption?: string;
   tweet?: string;
   post?: string;
   hook?: string;
+  description?: string;
   hashtags?: string[];
   cta?: string;
   image_prompt?: string;
@@ -634,6 +635,8 @@ const SOCIAL_TEMPLATES = [
   { value: 'instagram_square' as SocialTemplate, label: 'Instagram Square', icon: Instagram, aspect: '1:1' },
   { value: 'twitter_card' as SocialTemplate, label: 'Twitter / X Card', icon: Twitter, aspect: '2:1' },
   { value: 'linkedin_banner' as SocialTemplate, label: 'LinkedIn Post', icon: Linkedin, aspect: '1.91:1' },
+  { value: 'tiktok_vertical' as SocialTemplate, label: 'TikTok', icon: Video, aspect: '9:16' },
+  { value: 'facebook_feed' as SocialTemplate, label: 'Facebook Post', icon: Globe, aspect: '1.91:1' },
 ];
 
 function SocialStudio() {
@@ -673,6 +676,8 @@ function SocialStudio() {
         instagram_square: '1024x1024',
         twitter_card: '1536x1024',
         linkedin_banner: '1536x1024',
+        tiktok_vertical: '1024x1536',
+        facebook_feed: '1536x1024',
       };
       const res = await fetch('/api/studio/generate-image', {
         method: 'POST',
@@ -704,7 +709,7 @@ function SocialStudio() {
     a.click();
   }
 
-  const mainText = result?.caption ?? result?.tweet ?? result?.post ?? '';
+  const mainText = result?.caption ?? result?.tweet ?? result?.post ?? result?.description ?? '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -772,7 +777,7 @@ function SocialStudio() {
 
             {mainText && (
               <Panel>
-                <SectionLabel>{result.caption ? 'CAPTION' : result.tweet ? 'TWEET' : 'POST'}</SectionLabel>
+                <SectionLabel>{result.caption ? 'CAPTION' : result.tweet ? 'TWEET' : result.description ? 'DESCRIPTION' : 'POST'}</SectionLabel>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
                   <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: 'rgba(34,197,94,0.85)', lineHeight: 1.6, flex: 1, whiteSpace: 'pre-wrap' }}>
                     {mainText}
@@ -894,7 +899,7 @@ type StudioTab = 'graphics' | 'copy' | 'social';
 const TABS: { id: StudioTab; label: string; boomerLabel: string; icon: React.FC<any>; desc: string }[] = [
   { id: 'graphics', label: 'GRAPHICS', boomerLabel: 'IMAGES', icon: Image, desc: 'AI image generation + canvas editor' },
   { id: 'copy', label: 'COPY', boomerLabel: 'COPYWRITING', icon: FileText, desc: 'Marketing copy, emails, ads & pitches' },
-  { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Instagram, Twitter, LinkedIn templates' },
+  { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Instagram, Twitter, LinkedIn, TikTok & Facebook templates' },
 ];
 
 export default function ContentStudio() {

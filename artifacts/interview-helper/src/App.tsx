@@ -27,6 +27,7 @@ const Calendar = lazy(() => import("@/pages/Calendar"));
 const Features = lazy(() => import("@/pages/Features"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
+const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -133,6 +134,7 @@ function AppShell() {
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/admin/billboards" component={BillboardAdmin} />
             <Route path="/studio" component={ContentStudio} />
+            <Route path="/lab">{() => <SoundLab />}</Route>
             <Route path="/documents" component={Documents} />
             <Route path="/reporting" component={Reporting} />
             <Route path="/mobile" component={MobileTerminal} />
