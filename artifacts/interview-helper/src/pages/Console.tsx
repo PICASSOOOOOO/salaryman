@@ -160,6 +160,29 @@ export default function Console() {
             ? (boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.')
             : (boomerMode ? 'DAW 1999 — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
         </span>
+        <button
+          onClick={() => {
+            const nb = !boomerMode;
+            setBoomerMode(nb);
+            try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
+          }}
+          style={{
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '0.5rem',
+            letterSpacing: '0.08em',
+            padding: '2px 8px',
+            cursor: 'pointer',
+            borderRadius: '4px',
+            transition: 'all .15s',
+            whiteSpace: 'nowrap',
+            background: boomerMode ? 'rgba(255,170,0,0.08)' : 'transparent',
+            border: boomerMode ? '1px solid rgba(255,170,0,0.4)' : '1px solid rgba(34,197,94,0.15)',
+            color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(34,197,94,0.3)',
+          }}
+          title={boomerMode ? 'Boomer Mode ON' : 'Boomer Mode OFF'}
+        >
+          {boomerMode ? 'BOOMER ✓' : 'BOOMER'}
+        </button>
       </div>
 
       {consoleView === 'lab' ? (

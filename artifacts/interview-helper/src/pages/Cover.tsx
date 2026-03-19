@@ -144,7 +144,7 @@ export default function Cover() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.08 }}
-          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.02em] leading-none mb-5"
+          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-5"
           style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
         >
           <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
@@ -161,7 +161,7 @@ export default function Cover() {
           transition={{ duration: 0.5, delay: 0.18 }}
           className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-2 max-w-xl"
         >
-          The professional intelligence platform — AI advisor, contacts, calendar, documents, hiring, and more. Built for people who take their career seriously.
+          The professional intelligence platform — live listen, screen scan, ghost typing, AI agents, CRM, and more. Built for people who take their career seriously.
         </motion.p>
 
         <motion.p
