@@ -687,22 +687,21 @@ function DrumPads({ busGain, activePads }: { busGain: GainNode | null; activePad
   );
 }
 
-function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActivePads }: {
+function StepSequencer({ busGain, bpm, swing, onActivePads, globalPlaying, globalStep, muted }: {
   busGain: GainNode | null;
   bpm: number;
-  onBpmChange: (v: number) => void;
   swing: number;
-  onSwingChange: (v: number) => void;
   onActivePads: (pads: Set<number>) => void;
+  globalPlaying: boolean;
+  globalStep: number;
+  muted: boolean;
 }) {
   const [steps, setSteps] = useState<16 | 32>(16);
   const [pattern, setPattern] = useState<SequencerPattern>(() => ({
     steps: 16,
     rows: Array.from({ length: 16 }, () => Array(16).fill(false)),
   }));
-  const [playing, setPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
-  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toggleCell = (row: number, col: number) => {
     setPattern(p => {
@@ -714,30 +713,23 @@ function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActi
   const clearPattern = () => setPattern({ steps: pattern.steps, rows: Array.from({ length: 16 }, () => Array(pattern.steps).fill(false)) });
 
   useEffect(() => {
-    if (!playing) {
-      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+    if (!globalPlaying) {
       setCurrentStep(-1);
       onActivePads(new Set());
       return;
     }
-    const c = actx();
-    const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.6; g.connect(c.destination); return g; })();
-    let step = 0;
-    const baseInterval = (60 / bpm / 4) * 1000;
-    const scheduleNext = () => {
-      const s = step % pattern.steps;
-      setCurrentStep(s);
+    const s = globalStep % pattern.steps;
+    setCurrentStep(s);
+    if (!muted) {
+      const c = actx();
+      const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.6; g.connect(c.destination); return g; })();
       const activeDrums = new Set<number>();
       pattern.rows.forEach((row, ri) => { if (row[s]) { playDrum(c, ri, out); activeDrums.add(ri); } });
       onActivePads(activeDrums);
-      const isOdd = s % 2 === 1;
-      const swingMs = isOdd ? baseInterval * (1 + swing) : baseInterval * (1 - swing);
-      step++;
-      stepTimerRef.current = setTimeout(scheduleNext, swingMs);
-    };
-    scheduleNext();
-    return () => { if (stepTimerRef.current) clearTimeout(stepTimerRef.current); };
-  }, [playing, bpm, pattern, swing, busGain, onActivePads]);
+    } else {
+      onActivePads(new Set());
+    }
+  }, [globalPlaying, globalStep, pattern, muted, busGain, onActivePads]);
 
   const changeSteps = (n: 16 | 32) => {
     setSteps(n);
@@ -751,7 +743,7 @@ function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActi
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={hwLabel}>STEP SEQUENCER</div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <HwButton label={playing ? '■' : '▶'} onClick={() => setPlaying(p => !p)} active={playing} small />
+          <LED on={globalPlaying && !muted} color="#ff4444" />
           <HwButton label="CLR" onClick={clearPattern} small />
           <HwButton label="16" onClick={() => changeSteps(16)} active={steps === 16} small />
           <HwButton label="32" onClick={() => changeSteps(32)} active={steps === 32} small />
@@ -788,15 +780,34 @@ function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActi
   );
 }
 
-function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMasterVolChange, playing, engineReady }: {
+function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMasterVolChange, playing, onPlayToggle, engineReady, instrumentMutes, onMuteToggle }: {
   bpm: number; onBpmChange: (v: number) => void;
   swing: number; onSwingChange: (v: number) => void;
   masterVol: number; onMasterVolChange: (v: number) => void;
   playing: boolean;
+  onPlayToggle: () => void;
   engineReady: boolean;
+  instrumentMutes: Record<string, boolean>;
+  onMuteToggle: (id: string) => void;
 }) {
+  const instruments = [
+    { id: 'drums', label: 'DRUMS', color: '#ff4444' },
+    { id: 'arp', label: 'ARP', color: '#4488ff' },
+    { id: 'looper', label: 'LOOP', color: '#ffaa00' },
+  ];
   return (
-    <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '8px 14px' }}>
+    <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 14px' }}>
+      <button onClick={onPlayToggle} style={{
+        padding: '5px 14px',
+        background: playing ? 'linear-gradient(to bottom, rgba(255,68,68,.2), rgba(255,68,68,.08))' : 'linear-gradient(to bottom, rgba(0,255,65,.12), rgba(0,255,65,.04))',
+        border: `2px solid ${playing ? '#ff444488' : C + '55'}`,
+        color: playing ? '#ff4444' : C,
+        cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.12em', borderRadius: 4,
+        boxShadow: playing ? '0 0 10px #ff444433' : '0 0 8px rgba(0,255,65,.15)',
+        transition: 'all .1s',
+      }}>
+        {playing ? '■ STOP' : '▶ PLAY'}
+      </button>
       <LED on={playing} color="#ff4444" />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)', letterSpacing: '.1em' }}>BPM</span>
@@ -805,6 +816,22 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
       </div>
       <HwKnob label="SWING" val={swing} min={0} max={0.5} onChange={onSwingChange} size={32} />
       <HwKnob label="MASTER" val={masterVol} min={0} max={1} onChange={onMasterVolChange} size={32} />
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 6px', borderLeft: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
+        {instruments.map(inst => (
+          <div key={inst.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <LED on={playing && !instrumentMutes[inst.id]} color={inst.color} />
+            <button onClick={() => onMuteToggle(inst.id)} style={{
+              padding: '2px 5px',
+              background: instrumentMutes[inst.id] ? 'rgba(255,68,68,.12)' : 'transparent',
+              border: `1px solid ${instrumentMutes[inst.id] ? '#ff444455' : BORDER}`,
+              color: instrumentMutes[inst.id] ? '#ff4444' : inst.color + '88',
+              cursor: 'pointer', ...MONO, fontSize: '.3rem', borderRadius: 2, letterSpacing: '.05em',
+            }}>
+              {instrumentMutes[inst.id] ? 'M' : inst.label.slice(0, 3)}
+            </button>
+          </div>
+        ))}
+      </div>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
         <LED on={engineReady} />
         <span style={{ ...MONO, fontSize: '.35rem', color: engineReady ? C2 + '.4)' : C2 + '.15)' }}>AUDIO {engineReady ? 'ACTIVE' : 'INIT'}</span>
@@ -886,19 +913,20 @@ function SynthPanel({ busGain, synth, onSynthChange }: { busGain: GainNode | nul
   );
 }
 
-function Arpeggiator({ busGain }: { busGain: GainNode | null }) {
+function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGain: GainNode | null; bpm: number; globalPlaying: boolean; globalStep: number; muted: boolean }) {
   const [rootNote, setRootNote] = useState(0);
   const [scale, setScale] = useState('Minor');
   const [pattern, setPattern] = useState('Up');
   const [rate, setRate] = useState('1/8');
   const [octaveRange, setOctaveRange] = useState(2);
   const [gateLen, setGateLen] = useState(0.5);
-  const [playing, setPlaying] = useState(false);
-  const [bpm, setBpm] = useState(120);
   const [currentNote, setCurrentNote] = useState(-1);
   const [synth, setSynth] = useState<SynthVoice>(DEFAULT_SYNTH);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const posRef = useRef(0);
+
+  const stepsPerNoteMap: Record<string, number> = { '1/4': 4, '1/8': 2, '1/16': 1, '1/32': 1 };
+  const noteDurMap: Record<string, number> = { '1/4': 1, '1/8': 0.5, '1/16': 0.25, '1/32': 0.125 };
+  const stepsPerNote = stepsPerNoteMap[rate] ?? 2;
 
   const scaleNotes = useCallback(() => {
     const intervals = SCALES[scale] ?? SCALES.Minor;
@@ -928,26 +956,25 @@ function Arpeggiator({ busGain }: { busGain: GainNode | null }) {
   }, [pattern]);
 
   useEffect(() => {
-    if (!playing) { if (intervalRef.current) clearInterval(intervalRef.current); setCurrentNote(-1); return; }
+    if (!globalPlaying) { setCurrentNote(-1); posRef.current = 0; return; }
+    if (muted) return;
+    if (globalStep % stepsPerNote !== 0) return;
     const c = actx();
     const out = busGain ?? (() => { const g = c.createGain(); g.gain.value = 0.4; g.connect(c.destination); return g; })();
-    const rateMap: Record<string, number> = { '1/4': 1, '1/8': 0.5, '1/16': 0.25, '1/32': 0.125 };
-    const interval = (60 / bpm) * rateMap[rate] * 1000;
-    intervalRef.current = setInterval(() => {
-      const notes = scaleNotes();
-      const note = getNextNote(notes);
-      if (note >= 0) { playSynthNote(c, note, synth, out, (60 / bpm) * rateMap[rate] * gateLen); setCurrentNote(note); }
-    }, interval);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [playing, bpm, rate, scale, rootNote, octaveRange, gateLen, synth, scaleNotes, getNextNote, busGain]);
+    const notes = scaleNotes();
+    const note = getNextNote(notes);
+    if (note >= 0) {
+      playSynthNote(c, note, synth, out, (60 / bpm) * (noteDurMap[rate] ?? 0.5) * gateLen);
+      setCurrentNote(note);
+    }
+  }, [globalPlaying, globalStep, muted, stepsPerNote, scaleNotes, getNextNote, synth, gateLen, bpm, rate, busGain]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <HwButton label={playing ? '■ STOP' : '▶ PLAY'} onClick={() => setPlaying(p => !p)} active={playing} />
+        <LED on={globalPlaying && !muted} color="#4488ff" />
         <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
-        <input type="number" value={bpm} onChange={e => setBpm(Number(e.target.value))} min={40} max={240}
-          style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.55rem', padding: '3px 6px', borderRadius: 3 }} />
+        <span style={{ ...VT, fontSize: '.8rem', color: C }}>{bpm}</span>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={hwPanel}>
@@ -1138,12 +1165,10 @@ function AudioRecorder() {
   );
 }
 
-function Looper() {
+function Looper({ bpm, globalPlaying, muted }: { bpm: number; globalPlaying: boolean; muted: boolean }) {
   const [loopLength, setLoopLength] = useState(4);
-  const [bpm, setBpm] = useState(120);
   const [layers, setLayers] = useState<Array<{ url: string; label: string }>>([]);
   const [recording, setRecording] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -1167,21 +1192,24 @@ function Looper() {
   };
 
   useEffect(() => {
-    if (!playing) { if (timerRef.current) clearInterval(timerRef.current); audioRefs.current.forEach(a => a.pause()); return; }
+    if (!globalPlaying || muted) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      audioRefs.current.forEach(a => a.pause());
+      return;
+    }
     audioRefs.current.forEach(a => { a.currentTime = 0; a.loop = true; a.play().catch(() => {}); });
     timerRef.current = setInterval(() => { posRef.current = (posRef.current + 50 / loopDurationMs) % 1; setPosition(posRef.current); }, 50);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, layers, loopDurationMs]);
+  }, [globalPlaying, muted, layers, loopDurationMs]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <LED on={globalPlaying && !muted} color="#ffaa00" />
         <HwButton label={recording ? '■ STOP' : '● REC LAYER'} onClick={recording ? () => { mediaRef.current?.stop(); setRecording(false); } : startRecord} active={recording} color="#ff4444" />
-        <HwButton label={playing ? '■ STOP' : '▶ PLAY ALL'} onClick={() => setPlaying(p => !p)} active={playing} />
-        <HwButton label="CLEAR" onClick={() => { setLayers([]); audioRefs.current = []; setPlaying(false); setPosition(0); }} small />
+        <HwButton label="CLEAR" onClick={() => { setLayers([]); audioRefs.current = []; setPosition(0); }} small />
         <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
-        <input type="number" value={bpm} onChange={e => setBpm(Number(e.target.value))} min={40} max={240}
-          style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.55rem', padding: '3px 6px', borderRadius: 3 }} />
+        <span style={{ ...VT, fontSize: '.8rem', color: C }}>{bpm}</span>
         <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BARS</span>
         {[1,2,4,8].map(n => <HwButton key={n} label={String(n)} onClick={() => setLoopLength(n)} active={loopLength === n} small />)}
       </div>
@@ -1685,12 +1713,21 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const engineRef = useRef<AudioEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [activePads, setActivePads] = useState<Set<number>>(new Set());
-  const [seqPlaying, setSeqPlaying] = useState(false);
   const [synthVoice, setSynthVoice] = useState<SynthVoice>(DEFAULT_SYNTH);
   const synthVoiceRef = useRef<SynthVoice>(DEFAULT_SYNTH);
   const midiVoicesRef = useRef<Map<number, MidiVoiceHandle>>(new Map());
 
   useEffect(() => { synthVoiceRef.current = synthVoice; }, [synthVoice]);
+
+  const [globalPlaying, setGlobalPlaying] = useState(false);
+  const [globalStep, setGlobalStep] = useState(0);
+  const globalStepRef = useRef(0);
+  const transportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [instrumentMutes, setInstrumentMutes] = useState<Record<string, boolean>>({ drums: false, arp: false, looper: false });
+
+  const toggleMute = useCallback((id: string) => {
+    setInstrumentMutes(m => ({ ...m, [id]: !m[id] }));
+  }, []);
 
   const initEngine = useCallback(() => {
     if (!engineRef.current) { engineRef.current = createAudioEngine(5); setEngineReady(true); }
@@ -1747,6 +1784,39 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (engineRef.current) engineRef.current.masterGain.gain.value = masterVol;
   }, [masterVol]);
+
+  const bpmRef = useRef(bpm);
+  const swingRef = useRef(swing);
+  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+  useEffect(() => { swingRef.current = swing; }, [swing]);
+
+  useEffect(() => {
+    if (!globalPlaying) {
+      if (transportTimerRef.current) clearTimeout(transportTimerRef.current);
+      globalStepRef.current = 0;
+      setGlobalStep(0);
+      setActivePads(new Set());
+      return;
+    }
+    initEngine();
+    globalStepRef.current = 0;
+    const tick = () => {
+      const step = globalStepRef.current;
+      globalStepRef.current = step + 1;
+      setGlobalStep(step);
+      const baseMs = (60 / bpmRef.current / 4) * 1000;
+      const isOdd = step % 2 === 1;
+      const swingMs = isOdd ? baseMs * (1 + swingRef.current) : baseMs * (1 - swingRef.current);
+      transportTimerRef.current = setTimeout(tick, swingMs);
+    };
+    tick();
+    return () => { if (transportTimerRef.current) clearTimeout(transportTimerRef.current); };
+  }, [globalPlaying, initEngine]);
+
+  const toggleGlobalPlay = useCallback(() => {
+    if (!engineReady) initEngine();
+    setGlobalPlaying(p => !p);
+  }, [engineReady, initEngine]);
 
   const SECTIONS: { id: DAWSection; label: string }[] = [
     { id: 'machine', label: 'MACHINE' },
@@ -1866,50 +1936,87 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         ))}
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 10 }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 10, position: 'relative' }}>
 
-        {section === 'machine' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flexShrink: 0 }}>
-                <DrumPads busGain={engineRef.current?.trackBuses[0]?.gain ?? null} activePads={activePads} />
-              </div>
-              <div style={{ flex: 1, minWidth: 300 }}>
-                <StepSequencer
-                  busGain={engineRef.current?.trackBuses[0]?.gain ?? null}
-                  bpm={bpm} onBpmChange={setBpm}
-                  swing={swing} onSwingChange={setSwing}
-                  onActivePads={setActivePads}
-                />
-              </div>
+        <div style={{ display: section === 'machine' ? 'flex' : 'none', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ flexShrink: 0 }}>
+              <DrumPads busGain={engineRef.current?.trackBuses[0]?.gain ?? null} activePads={activePads} />
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <Oscilloscope analyser={engineRef.current?.masterAnalyser ?? null} />
-              </div>
-              <div style={{ ...hwPanel, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={hwLabel}>CONTROLS</div>
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                  <HwKnob label="FILTER" val={2000} min={50} max={20000} step={10} onChange={() => {}} color={OC} />
-                  <HwKnob label="DRIVE" val={20} min={1} max={100} step={1} onChange={() => {}} color={OC} />
-                  <HwKnob label="DECAY" val={0.1} min={0.001} max={2} onChange={() => {}} />
-                  <HwKnob label="ATTACK" val={0.01} min={0.001} max={2} onChange={() => {}} />
-                  <HwKnob label="RELEASE" val={0.3} min={0.001} max={4} onChange={() => {}} />
-                </div>
-              </div>
+            <div style={{ flex: 1, minWidth: 300 }}>
+              <StepSequencer
+                busGain={engineRef.current?.trackBuses[0]?.gain ?? null}
+                bpm={bpm}
+                swing={swing}
+                onActivePads={setActivePads}
+                globalPlaying={globalPlaying}
+                globalStep={globalStep}
+                muted={instrumentMutes.drums}
+              />
             </div>
-            <TransportBar bpm={bpm} onBpmChange={setBpm} swing={swing} onSwingChange={setSwing} masterVol={masterVol} onMasterVolChange={setMasterVol} playing={seqPlaying} engineReady={engineReady} />
           </div>
-        )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <Oscilloscope analyser={engineRef.current?.masterAnalyser ?? null} />
+            </div>
+            <div style={{ ...hwPanel, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={hwLabel}>CONTROLS</div>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                <HwKnob label="FILTER" val={2000} min={50} max={20000} step={10} onChange={() => {}} color={OC} />
+                <HwKnob label="DRIVE" val={20} min={1} max={100} step={1} onChange={() => {}} color={OC} />
+                <HwKnob label="DECAY" val={0.1} min={0.001} max={2} onChange={() => {}} />
+                <HwKnob label="ATTACK" val={0.01} min={0.001} max={2} onChange={() => {}} />
+                <HwKnob label="RELEASE" val={0.3} min={0.001} max={4} onChange={() => {}} />
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {section === 'synth' && <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} synth={synthVoice} onSynthChange={setSynthVoice} />}
-        {section === 'arpeggiator' && <Arpeggiator busGain={engineRef.current?.trackBuses[4]?.gain ?? null} />}
-        {section === 'sampler' && <Sampler busGain={engineRef.current?.trackBuses[3]?.gain ?? null} />}
-        {section === 'timeline' && <Timeline tracks={tracks} bpm={bpm} />}
-        {section === 'looper' && <Looper />}
-        {section === 'mixer' && <Mixer tracks={tracks} onTracksChange={setTracks} engine={engineRef.current} />}
-        {section === 'effects' && <EffectsRack />}
+        <div style={{ display: section === 'synth' ? 'block' : 'none' }}>
+          <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} synth={synthVoice} onSynthChange={setSynthVoice} />
+        </div>
 
+        <div style={{ display: section === 'arpeggiator' ? 'block' : 'none' }}>
+          <Arpeggiator
+            busGain={engineRef.current?.trackBuses[4]?.gain ?? null}
+            bpm={bpm}
+            globalPlaying={globalPlaying}
+            globalStep={globalStep}
+            muted={instrumentMutes.arp}
+          />
+        </div>
+
+        <div style={{ display: section === 'sampler' ? 'block' : 'none' }}>
+          <Sampler busGain={engineRef.current?.trackBuses[3]?.gain ?? null} />
+        </div>
+
+        <div style={{ display: section === 'timeline' ? 'block' : 'none' }}>
+          <Timeline tracks={tracks} bpm={bpm} />
+        </div>
+
+        <div style={{ display: section === 'looper' ? 'block' : 'none' }}>
+          <Looper bpm={bpm} globalPlaying={globalPlaying} muted={instrumentMutes.looper} />
+        </div>
+
+        <div style={{ display: section === 'mixer' ? 'block' : 'none' }}>
+          <Mixer tracks={tracks} onTracksChange={setTracks} engine={engineRef.current} />
+        </div>
+
+        <div style={{ display: section === 'effects' ? 'block' : 'none' }}>
+          <EffectsRack />
+        </div>
+
+      </div>
+
+      <div style={{ padding: '6px 10px', borderTop: `1px solid ${BORDER}`, background: CHASSIS, flexShrink: 0 }}>
+        <TransportBar
+          bpm={bpm} onBpmChange={setBpm}
+          swing={swing} onSwingChange={setSwing}
+          masterVol={masterVol} onMasterVolChange={setMasterVol}
+          playing={globalPlaying} onPlayToggle={toggleGlobalPlay}
+          engineReady={engineReady}
+          instrumentMutes={instrumentMutes} onMuteToggle={toggleMute}
+        />
       </div>
 
       <div style={{
@@ -1921,7 +2028,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         <Screw />
         <span style={{ ...MONO, fontSize: '.35rem', color: OC2 + '.4)' }}>1999</span>
         <span style={{ ...MONO, fontSize: '.32rem', color: C2 + '.2)' }}>{boomerMode ? 'DAW' : 'THE LAB'} — {projectName} — {bpm} BPM — {tracks.length} TRACKS</span>
-        <span style={{ ...MONO, fontSize: '.32rem', color: engineReady ? C2 + '.35)' : C2 + '.12)', marginLeft: 'auto' }}>WEB AUDIO {engineReady ? 'RUNNING' : 'CLICK TO INIT'}</span>
+        <span style={{ ...MONO, fontSize: '.32rem', color: engineReady ? C2 + '.35)' : C2 + '.12)', marginLeft: 'auto' }}>WEB AUDIO {globalPlaying ? 'PLAYING' : engineReady ? 'RUNNING' : 'CLICK TO INIT'}</span>
         <Screw />
       </div>
     </div>
