@@ -104,6 +104,11 @@ export const PABLO_PRODUCTS = {
     short: "FORGE-7",
     desc: "AI-powered content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
   },
+  CALENDAR: {
+    name: "CHRONO-4 TEMPORAL ARRAY",
+    short: "CHRONO-4",
+    desc: "Precision scheduling module. Track appointments, set alarms, and sync events across the field.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

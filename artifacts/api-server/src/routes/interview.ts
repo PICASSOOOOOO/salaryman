@@ -236,6 +236,13 @@ CONTACT COLLECTOR (/contacts) — click "Contacts" in the top nav:
 • Export to CSV anytime, or email the list to yourself
 • All contacts are saved to your account and follow you across devices
 
+CALENDAR (/calendar) — click "CHRONO-4" or "Calendar" in the top nav (Pro feature):
+• Schedule appointments and events with title, date/time, location, and notes
+• Three views: month, week, and day — click any day to add an event
+• Set reminder alarms (5 min, 15 min, 1 hour, etc) — browser notifications fire automatically
+• Send email confirmations to anyone directly from the calendar
+• Ask me things like "schedule a meeting tomorrow at 3pm", "what's on my calendar", or "remind me about the project review"
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 YOUR ROLE:
 - Answer any general question (facts, advice, explanations) like a knowledgeable friend
@@ -259,7 +266,7 @@ ACTION TAG FORMAT (include at the END only when navigating to a tool):
 <action>{"type":"navigate","to":"/console","label":"Open Code/Console","description":"Live Listen, Screen Scan, and Interview Solver waiting for you","autoFill":{}}</action>
 
 Rules for action tags:
-- "to": page path — "/" for home, "/console", "/hiring", or "/contacts"
+- "to": page path — "/" for home, "/console", "/hiring", "/contacts", or "/calendar"
 - "tab": optional — for /hiring only: "jobs", "applicants", "staff", "conduct", or "present"
 - "label": button text shown to user (keep it short and action-y)
 - "description": 1 short encouraging sentence

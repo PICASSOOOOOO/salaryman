@@ -17,6 +17,7 @@ import versionRouter from "./version";
 import studioRouter from "./studio";
 import storageRouter from "./storage";
 import documentsRouter from "./documents";
+import calendarRouter from "./calendar";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(studioRouter);
 router.use(storageRouter);
 router.use(documentsRouter);
 router.use(reportingRouter);
+router.use(calendarRouter);
 
 export default router;

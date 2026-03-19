@@ -33,7 +33,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 ## Freemium Model
 
 - **Free tier**: PABLO AI chat only (fully functional, always free)
-- **Pro tier** ($4–6/mo, 7-day free trial): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Hiring/HR (RECRUIT-8), Workspace, Documents/ARCHIVE-X (INK-6)
+- **Pro tier** ($4–6/mo, 7-day free trial): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Hiring/HR (RECRUIT-8), Workspace, Documents/ARCHIVE-X (INK-6), Calendar (CHRONO-4)
 - **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
 - **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
 - **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email

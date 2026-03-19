@@ -23,6 +23,7 @@ const Hiring = lazy(() => import("@/pages/Hiring"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const Reporting = lazy(() => import("@/pages/Reporting"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -106,6 +107,7 @@ function AppShell() {
         <Suspense fallback={<CRTFallback />}>
           <Switch>
             <Route path="/contacts" component={ContactCollector} />
+            <Route path="/calendar" component={Calendar} />
             <Route path="/profile" component={Profile} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/upgrade" component={Upgrade} />
