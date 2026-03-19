@@ -120,14 +120,34 @@ const SCALES: Record<string, number[]> = {
 const ARP_PATTERNS = ['Up', 'Down', 'Up-Down', 'Random', 'As-Played'];
 const ARP_RATES = ['1/4', '1/8', '1/16', '1/32'];
 
-const DRUM_NAMES = ['KICK', 'SNARE', 'HI-HAT', 'OPEN HAT', 'CLAP', 'TOM LO', 'TOM HI', 'PERC'];
-const DRUM_COLORS = ['#ff4444','#ffaa00','#00ff41','#4488ff','#ff44cc','#cc44ff','#44ffff','#88ff44'];
+const DRUM_NAMES = [
+  'KICK', 'SNARE', 'HI-HAT', 'OPEN HAT', 'CLAP', 'TOM LO', 'TOM HI', 'PERC',
+  'RIM SHOT', 'COWBELL', 'SHAKER', 'TAMB', 'CRASH', 'RIDE', 'CONGA', 'WOODBLK',
+];
+const DRUM_COLORS = [
+  '#ff4444','#ffaa00','#00ff41','#4488ff','#ff44cc','#cc44ff','#44ffff','#88ff44',
+  '#ff8844','#ffdd00','#44ffbb','#ff6688','#aaaaff','#55ffaa','#ff9933','#ccff55',
+];
 
 const DEFAULT_SYNTH: SynthVoice = {
   osc1Type: 'sawtooth', osc2Type: 'square', osc1Detune: 0, osc2Detune: 7,
   attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3,
   filterType: 'lowpass', filterCutoff: 2000, filterRes: 1,
 };
+
+interface SynthPreset { name: string; voice: SynthVoice; }
+const SYNTH_PRESETS: SynthPreset[] = [
+  { name: 'FAT BASS', voice: { osc1Type: 'sawtooth', osc2Type: 'sawtooth', osc1Detune: -7, osc2Detune: 7, attack: 0.01, decay: 0.2, sustain: 0.8, release: 0.15, filterType: 'lowpass', filterCutoff: 400, filterRes: 6 } },
+  { name: 'ACID LEAD', voice: { osc1Type: 'sawtooth', osc2Type: 'sawtooth', osc1Detune: 0, osc2Detune: 12, attack: 0.003, decay: 0.08, sustain: 0.5, release: 0.1, filterType: 'lowpass', filterCutoff: 1200, filterRes: 18 } },
+  { name: 'WARM PAD', voice: { osc1Type: 'sine', osc2Type: 'triangle', osc1Detune: -5, osc2Detune: 5, attack: 0.6, decay: 0.4, sustain: 0.9, release: 1.2, filterType: 'lowpass', filterCutoff: 800, filterRes: 1 } },
+  { name: 'PLUCK', voice: { osc1Type: 'sawtooth', osc2Type: 'square', osc1Detune: 0, osc2Detune: 0, attack: 0.001, decay: 0.15, sustain: 0.0, release: 0.3, filterType: 'lowpass', filterCutoff: 3000, filterRes: 3 } },
+  { name: 'BRASS STAB', voice: { osc1Type: 'square', osc2Type: 'sawtooth', osc1Detune: -3, osc2Detune: 3, attack: 0.02, decay: 0.15, sustain: 0.6, release: 0.08, filterType: 'lowpass', filterCutoff: 3500, filterRes: 4 } },
+  { name: 'DETUNED SAW', voice: { osc1Type: 'sawtooth', osc2Type: 'sawtooth', osc1Detune: -25, osc2Detune: 25, attack: 0.05, decay: 0.3, sustain: 0.7, release: 0.4, filterType: 'lowpass', filterCutoff: 5000, filterRes: 2 } },
+  { name: 'SUB BASS', voice: { osc1Type: 'sine', osc2Type: 'sine', osc1Detune: 0, osc2Detune: -12, attack: 0.02, decay: 0.4, sustain: 0.9, release: 0.3, filterType: 'lowpass', filterCutoff: 200, filterRes: 1 } },
+  { name: 'GLASS BELL', voice: { osc1Type: 'sine', osc2Type: 'sine', osc1Detune: 0, osc2Detune: 1200, attack: 0.001, decay: 0.8, sustain: 0.0, release: 1.5, filterType: 'bandpass', filterCutoff: 4000, filterRes: 5 } },
+  { name: 'REESE BASS', voice: { osc1Type: 'sawtooth', osc2Type: 'sawtooth', osc1Detune: -14, osc2Detune: 14, attack: 0.01, decay: 0.1, sustain: 1.0, release: 0.2, filterType: 'lowpass', filterCutoff: 300, filterRes: 8 } },
+  { name: 'STRING ENS', voice: { osc1Type: 'sawtooth', osc2Type: 'triangle', osc1Detune: -10, osc2Detune: 10, attack: 0.4, decay: 0.2, sustain: 0.85, release: 0.8, filterType: 'lowpass', filterCutoff: 2500, filterRes: 1 } },
+];
 
 const EFFECT_NAMES = ['Reverb', 'Delay', 'Distortion', 'Compressor', 'EQ', 'Chorus', 'Flanger', 'Phaser', 'Tremolo', 'BitCrusher'];
 const DEFAULT_EFFECT: EffectParams = {
@@ -235,6 +255,86 @@ function playDrum(ctx: AudioContext, drumIdx: number, masterGain: GainNode) {
       const flt = ctx.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 1200; flt.Q.value = 2;
       src.connect(flt); flt.connect(ng); ng.connect(out); src.start(t); src.stop(t + 0.08); break;
     }
+    case 8: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 400;
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.02, ctx.sampleRate);
+      const d2 = nBuf.getChannelData(0);
+      for (let i = 0; i < d2.length; i++) d2[i] = Math.random() * 2 - 1;
+      const src2 = ctx.createBufferSource(); src2.buffer = nBuf;
+      const ng2 = ctx.createGain(); ng2.gain.setValueAtTime(0.4, t); ng2.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+      const flt2 = ctx.createBiquadFilter(); flt2.type = 'bandpass'; flt2.frequency.value = 1800; flt2.Q.value = 3;
+      o.connect(g); g.connect(out);
+      src2.connect(flt2); flt2.connect(ng2); ng2.connect(out);
+      o.start(t); o.stop(t + 0.07); src2.start(t); src2.stop(t + 0.02); break;
+    }
+    case 9: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      const o1 = ctx.createOscillator(); o1.type = 'square'; o1.frequency.value = 562;
+      const o2 = ctx.createOscillator(); o2.type = 'square'; o2.frequency.value = 845;
+      const mix = ctx.createGain(); mix.gain.value = 0.5;
+      o1.connect(mix); o2.connect(mix); mix.connect(g); g.connect(out);
+      o1.start(t); o1.stop(t + 0.6); o2.start(t); o2.stop(t + 0.6); break;
+    }
+    case 10: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+      const d3 = nBuf.getChannelData(0);
+      for (let i = 0; i < d3.length; i++) d3[i] = (Math.random() * 2 - 1) * (i % 3 === 0 ? 1 : 0.1);
+      const src3 = ctx.createBufferSource(); src3.buffer = nBuf;
+      const ng3 = ctx.createGain(); ng3.gain.setValueAtTime(0.4, t); ng3.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      const flt3 = ctx.createBiquadFilter(); flt3.type = 'highpass'; flt3.frequency.value = 5000;
+      src3.connect(flt3); flt3.connect(ng3); ng3.connect(out); src3.start(t); src3.stop(t + 0.12); break;
+    }
+    case 11: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+      const d4 = nBuf.getChannelData(0);
+      for (let i = 0; i < d4.length; i++) d4[i] = (Math.random() * 2 - 1) * (i % 2 === 0 ? 0.8 : 0.2);
+      const src4 = ctx.createBufferSource(); src4.buffer = nBuf;
+      const ng4 = ctx.createGain(); ng4.gain.setValueAtTime(0.35, t); ng4.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      const flt4 = ctx.createBiquadFilter(); flt4.type = 'bandpass'; flt4.frequency.value = 4000; flt4.Q.value = 1;
+      src4.connect(flt4); flt4.connect(ng4); ng4.connect(out); src4.start(t); src4.stop(t + 0.25); break;
+    }
+    case 12: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+      const d5 = nBuf.getChannelData(0);
+      for (let i = 0; i < d5.length; i++) d5[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d5.length, 0.4);
+      const src5 = ctx.createBufferSource(); src5.buffer = nBuf;
+      const ng5 = ctx.createGain(); ng5.gain.setValueAtTime(0.5, t); ng5.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      const flt5 = ctx.createBiquadFilter(); flt5.type = 'highpass'; flt5.frequency.value = 4000;
+      src5.connect(flt5); flt5.connect(ng5); ng5.connect(out); src5.start(t); src5.stop(t + 1.2); break;
+    }
+    case 13: {
+      const nBuf = ctx.createBuffer(1, ctx.sampleRate * 2.5, ctx.sampleRate);
+      const d6 = nBuf.getChannelData(0);
+      for (let i = 0; i < d6.length; i++) d6[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d6.length, 0.6);
+      const src6 = ctx.createBufferSource(); src6.buffer = nBuf;
+      const ng6 = ctx.createGain(); ng6.gain.setValueAtTime(0.3, t); ng6.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+      const flt6a = ctx.createBiquadFilter(); flt6a.type = 'highpass'; flt6a.frequency.value = 5000;
+      const flt6b = ctx.createBiquadFilter(); flt6b.type = 'peaking'; flt6b.frequency.value = 8000; flt6b.gain.value = 4;
+      src6.connect(flt6a); flt6a.connect(flt6b); flt6b.connect(ng6); ng6.connect(out); src6.start(t); src6.stop(t + 2.5); break;
+    }
+    case 14: {
+      const freqs = [180, 293];
+      for (const freq of freqs) {
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq, t);
+        o.frequency.exponentialRampToValueAtTime(freq * 0.85, t + 0.25);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.35);
+      }
+      break;
+    }
+    case 15: {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      const o1 = ctx.createOscillator(); o1.type = 'square'; o1.frequency.value = 800;
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 1200;
+      const mix2 = ctx.createGain(); mix2.gain.value = 0.5;
+      o1.connect(mix2); o2.connect(mix2); mix2.connect(g); g.connect(out);
+      o1.start(t); o1.stop(t + 0.12); o2.start(t); o2.stop(t + 0.12); break;
+    }
   }
 }
 
@@ -261,6 +361,40 @@ function playSynthNote(ctx: AudioContext, noteNum: number, synth: SynthVoice, ma
   mix.connect(filter); filter.connect(envGain); envGain.connect(masterGain);
   o1.start(t); o1.stop(t + dur + r + 0.01);
   o2.start(t); o2.stop(t + dur + r + 0.01);
+}
+
+interface MidiVoiceHandle { o1: OscillatorNode; o2: OscillatorNode; envGain: GainNode; release: number; }
+
+function startSynthVoice(ctx: AudioContext, noteNum: number, synth: SynthVoice, masterGain: GainNode): MidiVoiceHandle {
+  const t = ctx.currentTime;
+  const freq = noteToFreq(noteNum);
+  const { attack: a, decay: d, sustain: s, release: r } = synth;
+  const envGain = ctx.createGain();
+  envGain.gain.setValueAtTime(0, t);
+  envGain.gain.linearRampToValueAtTime(0.7, t + a);
+  envGain.gain.linearRampToValueAtTime(0.7 * s, t + a + d);
+  const filter = ctx.createBiquadFilter();
+  filter.type = synth.filterType;
+  filter.frequency.value = synth.filterCutoff;
+  filter.Q.value = synth.filterRes;
+  const o1 = ctx.createOscillator();
+  o1.type = synth.osc1Type; o1.frequency.value = freq; o1.detune.value = synth.osc1Detune;
+  const o2 = ctx.createOscillator();
+  o2.type = synth.osc2Type; o2.frequency.value = freq; o2.detune.value = synth.osc2Detune;
+  const mix = ctx.createGain(); mix.gain.value = 0.5;
+  o1.connect(mix); o2.connect(mix);
+  mix.connect(filter); filter.connect(envGain); envGain.connect(masterGain);
+  o1.start(t); o2.start(t);
+  return { o1, o2, envGain, release: r };
+}
+
+function stopSynthVoice(ctx: AudioContext, handle: MidiVoiceHandle) {
+  const t = ctx.currentTime;
+  handle.envGain.gain.cancelScheduledValues(t);
+  handle.envGain.gain.setValueAtTime(handle.envGain.gain.value, t);
+  handle.envGain.gain.linearRampToValueAtTime(0, t + handle.release);
+  handle.o1.stop(t + handle.release + 0.01);
+  handle.o2.stop(t + handle.release + 0.01);
 }
 
 const hwPanel: React.CSSProperties = {
@@ -529,7 +663,7 @@ function DrumPads({ busGain, activePads }: { busGain: GainNode | null; activePad
           const isActive = hitPad === i || activePads.has(i);
           return (
             <div key={i} onMouseDown={() => triggerPad(i)} style={{
-              width: '100%', aspectRatio: '1', minWidth: 48,
+              width: '100%', aspectRatio: '1', minWidth: 40,
               background: isActive
                 ? `radial-gradient(circle at 45% 40%, ${DRUM_COLORS[i]}55, ${DRUM_COLORS[i]}22)`
                 : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
@@ -564,7 +698,7 @@ function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActi
   const [steps, setSteps] = useState<16 | 32>(16);
   const [pattern, setPattern] = useState<SequencerPattern>(() => ({
     steps: 16,
-    rows: Array.from({ length: 8 }, () => Array(16).fill(false)),
+    rows: Array.from({ length: 16 }, () => Array(16).fill(false)),
   }));
   const [playing, setPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
@@ -577,7 +711,7 @@ function StepSequencer({ busGain, bpm, onBpmChange, swing, onSwingChange, onActi
     });
   };
 
-  const clearPattern = () => setPattern({ steps: pattern.steps, rows: Array.from({ length: 8 }, () => Array(pattern.steps).fill(false)) });
+  const clearPattern = () => setPattern({ steps: pattern.steps, rows: Array.from({ length: 16 }, () => Array(pattern.steps).fill(false)) });
 
   useEffect(() => {
     if (!playing) {
@@ -679,9 +813,9 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
   );
 }
 
-function SynthPanel({ busGain }: { busGain: GainNode | null }) {
-  const [synth, setSynth] = useState<SynthVoice>(DEFAULT_SYNTH);
+function SynthPanel({ busGain, synth, onSynthChange }: { busGain: GainNode | null; synth: SynthVoice; onSynthChange: (v: SynthVoice) => void }) {
   const [octave, setOctave] = useState(0);
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const fallbackRef = useRef<GainNode | null>(null);
   const getOutput = useCallback(() => {
     if (busGain) return busGain;
@@ -689,12 +823,21 @@ function SynthPanel({ busGain }: { busGain: GainNode | null }) {
     if (!fallbackRef.current) { fallbackRef.current = c.createGain(); fallbackRef.current.gain.value = 0.5; fallbackRef.current.connect(c.destination); }
     return fallbackRef.current;
   }, [busGain]);
-  const up = (key: keyof SynthVoice, val: SynthVoice[keyof SynthVoice]) => setSynth(s => ({ ...s, [key]: val }));
+  const up = (key: keyof SynthVoice, val: SynthVoice[keyof SynthVoice]) => { onSynthChange({ ...synth, [key]: val }); setSelectedPreset(null); };
   const WAVE_TYPES: WaveType[] = ['sine', 'square', 'sawtooth', 'triangle'];
   const FILTER_TYPES: BiquadFilterType[] = ['lowpass', 'highpass', 'bandpass'];
+  const loadPreset = (idx: number) => { setSelectedPreset(idx); onSynthChange({ ...SYNTH_PRESETS[idx].voice }); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={hwPanel}>
+        <div style={hwLabel}>PRESETS</div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {SYNTH_PRESETS.map((p, i) => (
+            <HwButton key={i} label={p.name} onClick={() => loadPreset(i)} active={selectedPreset === i} small />
+          ))}
+        </div>
+      </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={hwPanel}>
           <div style={hwLabel}>OSC 1</div>
@@ -1388,6 +1531,147 @@ function createAudioEngine(trackCount: number): AudioEngine {
   return { ctx, masterGain, masterAnalyser, trackBuses, effectNodes: new Map() };
 }
 
+interface MidiState {
+  supported: boolean;
+  connected: boolean;
+  deviceName: string | null;
+  devices: Array<{ id: string; name: string }>;
+  selectedDeviceId: string | null;
+  midiChannel: number;
+}
+
+const MIDI_DRUM_MAP: Record<number, number> = {
+  36: 0, 38: 1, 42: 2, 46: 3, 39: 4, 45: 5, 50: 6, 56: 7,
+  37: 8, 76: 9, 70: 10, 54: 11, 49: 12, 51: 13, 63: 14, 75: 15,
+};
+
+function useMidi(
+  onNoteOn: (note: number, velocity: number, channel: number) => void,
+  onNoteOff: (note: number, channel: number) => void,
+) {
+  const [midi, setMidi] = useState<MidiState>({
+    supported: !!navigator.requestMIDIAccess,
+    connected: false,
+    deviceName: null,
+    devices: [],
+    selectedDeviceId: null,
+    midiChannel: 0,
+  });
+  const accessRef = useRef<MIDIAccess | null>(null);
+  const noteOnRef = useRef(onNoteOn);
+  const noteOffRef = useRef(onNoteOff);
+  noteOnRef.current = onNoteOn;
+  noteOffRef.current = onNoteOff;
+
+  const midiChannelRef = useRef(0);
+  useEffect(() => { midiChannelRef.current = midi.midiChannel; }, [midi.midiChannel]);
+
+  const handleMidiMessage = useCallback((e: MIDIMessageEvent) => {
+    const data = e.data;
+    if (!data || data.length < 3) return;
+    const status = data[0] & 0xf0;
+    const channel = data[0] & 0x0f;
+    const note = data[1];
+    const velocity = data[2];
+    const filterCh = midiChannelRef.current;
+    if (filterCh !== 0 && channel !== filterCh - 1) return;
+    if (status === 0x90 && velocity > 0) {
+      noteOnRef.current(note, velocity / 127, channel);
+    } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
+      noteOffRef.current(note, channel);
+    }
+  }, []);
+
+  const refreshDevices = useCallback((access: MIDIAccess) => {
+    const devs: Array<{ id: string; name: string }> = [];
+    access.inputs.forEach((input) => {
+      devs.push({ id: input.id, name: input.name || `MIDI ${input.id}` });
+    });
+    setMidi(m => {
+      const connected = devs.length > 0;
+      const selId = m.selectedDeviceId && devs.find(d => d.id === m.selectedDeviceId) ? m.selectedDeviceId : (devs[0]?.id ?? null);
+      const deviceName = devs.find(d => d.id === selId)?.name ?? null;
+      return { ...m, devices: devs, connected, selectedDeviceId: selId, deviceName };
+    });
+  }, []);
+
+  const bindInput = useCallback((access: MIDIAccess, deviceId: string | null) => {
+    access.inputs.forEach(input => { input.onmidimessage = null; });
+    if (deviceId) {
+      const input = access.inputs.get(deviceId);
+      if (input) input.onmidimessage = handleMidiMessage;
+    }
+  }, [handleMidiMessage]);
+
+  const selectDevice = useCallback((id: string) => {
+    setMidi(m => {
+      const dev = m.devices.find(d => d.id === id);
+      return { ...m, selectedDeviceId: id, deviceName: dev?.name ?? null };
+    });
+    if (accessRef.current) bindInput(accessRef.current, id);
+  }, [bindInput]);
+
+  const setChannel = useCallback((ch: number) => {
+    setMidi(m => ({ ...m, midiChannel: ch }));
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.requestMIDIAccess) return;
+    navigator.requestMIDIAccess({ sysex: false }).then(access => {
+      accessRef.current = access;
+      refreshDevices(access);
+      access.onstatechange = () => refreshDevices(access);
+    }).catch(() => {});
+    return () => {
+      if (accessRef.current) {
+        accessRef.current.inputs.forEach(input => { input.onmidimessage = null; });
+        accessRef.current.onstatechange = null;
+      }
+    };
+  }, [refreshDevices]);
+
+  useEffect(() => {
+    if (accessRef.current && midi.selectedDeviceId) {
+      bindInput(accessRef.current, midi.selectedDeviceId);
+    }
+  }, [midi.selectedDeviceId, bindInput]);
+
+  return { midi, selectDevice, setChannel };
+}
+
+function MidiIndicator({ midi, onSelectDevice, onSetChannel }: {
+  midi: MidiState;
+  onSelectDevice: (id: string) => void;
+  onSetChannel: (ch: number) => void;
+}) {
+  if (!midi.supported) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <LED on={midi.connected} color={midi.connected ? '#44ffbb' : '#ff4444'} />
+      <span style={{ ...MONO, fontSize: '.35rem', color: midi.connected ? '#44ffbb' : C2 + '.3)', letterSpacing: '.06em' }}>
+        MIDI {midi.connected ? midi.deviceName ?? 'ON' : 'OFF'}
+      </span>
+      {midi.devices.length > 1 && (
+        <select
+          value={midi.selectedDeviceId ?? ''}
+          onChange={e => onSelectDevice(e.target.value)}
+          style={{ background: '#050805', border: `1px solid ${BORDER}`, color: C, ...MONO, fontSize: '.35rem', padding: '2px 4px', borderRadius: 2, maxWidth: 100 }}
+        >
+          {midi.devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      )}
+      <select
+        value={midi.midiChannel}
+        onChange={e => onSetChannel(Number(e.target.value))}
+        style={{ background: '#050805', border: `1px solid ${BORDER}`, color: C, ...MONO, fontSize: '.35rem', padding: '2px 4px', borderRadius: 2, width: 42 }}
+      >
+        <option value={0}>ALL</option>
+        {Array.from({ length: 16 }, (_, i) => <option key={i + 1} value={i + 1}>CH{i + 1}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const [section, setSection] = useState<DAWSection>('machine');
   const [bpm, setBpm] = useState(120);
@@ -1402,11 +1686,57 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const [engineReady, setEngineReady] = useState(false);
   const [activePads, setActivePads] = useState<Set<number>>(new Set());
   const [seqPlaying, setSeqPlaying] = useState(false);
+  const [synthVoice, setSynthVoice] = useState<SynthVoice>(DEFAULT_SYNTH);
+  const synthVoiceRef = useRef<SynthVoice>(DEFAULT_SYNTH);
+  const midiVoicesRef = useRef<Map<number, MidiVoiceHandle>>(new Map());
+
+  useEffect(() => { synthVoiceRef.current = synthVoice; }, [synthVoice]);
 
   const initEngine = useCallback(() => {
     if (!engineRef.current) { engineRef.current = createAudioEngine(5); setEngineReady(true); }
     return engineRef.current;
   }, []);
+
+  const handleMidiNoteOn = useCallback((note: number, _velocity: number, channel: number) => {
+    const e = initEngine();
+    const c = actx();
+    if (channel === 9) {
+      const drumIdx = MIDI_DRUM_MAP[note];
+      if (drumIdx !== undefined) {
+        playDrum(c, drumIdx, e.trackBuses[0]?.gain ?? e.masterGain);
+        setActivePads(p => new Set([...p, drumIdx]));
+        setTimeout(() => setActivePads(p => { const n = new Set(p); n.delete(drumIdx); return n; }), 120);
+      }
+    } else {
+      const existing = midiVoicesRef.current.get(note);
+      if (existing) { stopSynthVoice(c, existing); midiVoicesRef.current.delete(note); }
+      const handle = startSynthVoice(c, note, synthVoiceRef.current, e.trackBuses[1]?.gain ?? e.masterGain);
+      midiVoicesRef.current.set(note, handle);
+    }
+  }, [initEngine]);
+
+  const handleMidiNoteOff = useCallback((note: number, channel: number) => {
+    if (channel === 9) return;
+    const c = actx();
+    const handle = midiVoicesRef.current.get(note);
+    if (handle) {
+      stopSynthVoice(c, handle);
+      midiVoicesRef.current.delete(note);
+    }
+  }, []);
+
+  const midiPanic = useCallback(() => {
+    const c = actx();
+    midiVoicesRef.current.forEach((handle) => { try { stopSynthVoice(c, handle); } catch {} });
+    midiVoicesRef.current.clear();
+  }, []);
+
+  const { midi, selectDevice: rawSelectDevice, setChannel: rawSetChannel } = useMidi(handleMidiNoteOn, handleMidiNoteOff);
+
+  const selectDevice = useCallback((id: string) => { midiPanic(); rawSelectDevice(id); }, [midiPanic, rawSelectDevice]);
+  const setChannel = useCallback((ch: number) => { midiPanic(); rawSetChannel(ch); }, [midiPanic, rawSetChannel]);
+
+  useEffect(() => { return () => { midiPanic(); }; }, [midiPanic]);
 
   useEffect(() => {
     const onClick = () => { initEngine(); window.removeEventListener('click', onClick); };
@@ -1510,6 +1840,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         <div style={{ width: 1, height: 28, background: BORDER, margin: '0 4px' }} />
         <input value={projectName} onChange={e => setProjectName(e.target.value)}
           style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${BORDER}`, color: C, ...MONO, fontSize: '.48rem', letterSpacing: '.08em', outline: 'none', width: 140 }} />
+        <MidiIndicator midi={midi} onSelectDevice={selectDevice} onSetChannel={setChannel} />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
           <HwButton label="SAVE" onClick={saveProject} small />
           <HwButton label="LOAD" onClick={loadProject} small />
@@ -1571,7 +1902,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           </div>
         )}
 
-        {section === 'synth' && <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} />}
+        {section === 'synth' && <SynthPanel busGain={engineRef.current?.trackBuses[1]?.gain ?? null} synth={synthVoice} onSynthChange={setSynthVoice} />}
         {section === 'arpeggiator' && <Arpeggiator busGain={engineRef.current?.trackBuses[4]?.gain ?? null} />}
         {section === 'sampler' && <Sampler busGain={engineRef.current?.trackBuses[3]?.gain ?? null} />}
         {section === 'timeline' && <Timeline tracks={tracks} bpm={bpm} />}
