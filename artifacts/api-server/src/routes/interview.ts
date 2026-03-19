@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
+import { streamWithRouter } from "../lib/ai-router";
 
 const router: IRouter = Router();
 
@@ -290,22 +291,17 @@ router.post("/interview/advisor", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 600,
-      stream: true,
-      messages: [
-        { role: "system", content: buildAdvisorPrompt(businessMemory) },
-        ...messages,
-      ],
-    });
-
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
-    }
-
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    await streamWithRouter(
+      messages,
+      buildAdvisorPrompt(businessMemory),
+      { maxTokens: 600 },
+      (chunk) => {
+        if (chunk.agent) res.write(`data: ${JSON.stringify({ agent: chunk.agent })}\n\n`);
+        if (chunk.content) res.write(`data: ${JSON.stringify({ content: chunk.content })}\n\n`);
+        if (chunk.done) res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        if (chunk.error) res.write(`data: ${JSON.stringify({ error: chunk.error })}\n\n`);
+      }
+    );
   } catch (err) {
     console.error("Error in /advisor:", err);
     res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);

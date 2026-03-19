@@ -174,7 +174,7 @@ export default function Home() {
     }
   }, [isAuthenticated]);
 
-  const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, send: sendChat, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
+  const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, currentAgent, send: sendChat, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
 
   const handlePABLOAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
     if (action.autoFill || action.tab) {
@@ -385,6 +385,18 @@ export default function Home() {
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO AI' : 'PABLO NEURAL CORE'}
+                {currentAgent && (
+                  <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider border ${
+                    currentAgent.provider === 'claude'
+                      ? 'bg-orange-500/10 text-orange-400 border-orange-500/30'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {boomerMode
+                      ? (currentAgent.provider === 'claude' ? 'CODE EXPERT' : 'QUICK ASSIST')
+                      : currentAgent.agentShort
+                    }
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={clearChat} disabled={chatMessages.length === 0}
@@ -444,6 +456,18 @@ export default function Home() {
 
                         {msg.role === 'assistant' && !chatStreaming && (
                           <div className="flex items-center gap-1 mt-1 ml-1">
+                            {msg.agent && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider border ${
+                                msg.agent.provider === 'claude'
+                                  ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20'
+                                  : 'bg-emerald-500/10 text-emerald-400/70 border-emerald-500/20'
+                              }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                {boomerMode
+                                  ? (msg.agent.provider === 'claude' ? 'Code Expert' : 'Quick Assist')
+                                  : msg.agent.agentShort
+                                }
+                              </span>
+                            )}
                             <button onClick={() => voice.speakResponse(msg.content)}
                               className="p-1 rounded-md text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors"
                               title="Hear PABLO say this">

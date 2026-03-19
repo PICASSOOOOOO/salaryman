@@ -446,10 +446,19 @@ export interface ActionCard {
   autoFill?: Record<string, unknown>;
 }
 
+export interface AgentInfo {
+  provider: 'claude' | 'gpt';
+  model: string;
+  agentName: string;
+  agentShort: string;
+  requestType: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   action?: ActionCard;
+  agent?: AgentInfo;
 }
 
 const CHAT_STORAGE_KEY = 'devdocs_chat_history';
@@ -531,6 +540,7 @@ export function useAdvisorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadChatHistory());
   const [businessMemory, setBusinessMemory] = useState<string>(() => loadBusinessMemoryLocal());
   const [isStreaming, setIsStreaming] = useState(false);
+  const [currentAgent, setCurrentAgent] = useState<AgentInfo | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -548,11 +558,13 @@ export function useAdvisorChat() {
     setMessages(withPlaceholder);
     saveChatHistory(withPlaceholder);
     setIsStreaming(true);
+    setCurrentAgent(null);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
     let fullText = '';
+    let detectedAgent: AgentInfo | null = null;
 
     const advisorUrl = `${import.meta.env.BASE_URL}api/interview/advisor`;
 
@@ -574,41 +586,69 @@ export function useAdvisorChat() {
     };
 
     try {
-      await streamSSE(
-        advisorUrl,
-        {
+      const res = await fetch(advisorUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           messages: history.map(m => ({ role: m.role, content: m.content })),
           businessMemory,
-        },
-        ctrl.signal,
-        (chunk) => {
-          fullText += chunk;
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', content: fullText };
-            return updated;
-          });
-        },
-        () => {
-          // Parse action tags and finalize
-          const { clean, action } = parseAction(fullText);
-          const finalMsg: ChatMessage = { role: 'assistant', content: clean, action };
-          const finalHistory = [...history, finalMsg];
-          setMessages(finalHistory);
-          saveChatHistory(finalHistory);
-          setIsStreaming(false);
+        }),
+        signal: ctrl.signal,
+      });
 
-          // Background: update business memory
-          const currentMem = loadBusinessMemoryLocal();
-          extractBusinessContext(finalHistory, currentMem).then(newMem => {
-            if (newMem !== currentMem) {
-              setBusinessMemory(newMem);
-              saveBusinessMemory(newMem);
+      if (!res.ok) throw new Error(`HTTP_${res.status}`);
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No stream');
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim().startsWith('data:')) continue;
+          const jsonStr = line.replace(/^data:\s*/, '').trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.agent) {
+              detectedAgent = data.agent as AgentInfo;
+              setCurrentAgent(detectedAgent);
             }
-          });
-        },
-        (err) => handleError(err)
-      );
+            if (data.content) {
+              fullText += data.content;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: fullText, agent: detectedAgent ?? undefined };
+                return updated;
+              });
+            }
+            if (data.done) {
+              const { clean, action } = parseAction(fullText);
+              const finalMsg: ChatMessage = { role: 'assistant', content: clean, action, agent: detectedAgent ?? undefined };
+              const finalHistory = [...history, finalMsg];
+              setMessages(finalHistory);
+              saveChatHistory(finalHistory);
+              setIsStreaming(false);
+
+              const currentMem = loadBusinessMemoryLocal();
+              extractBusinessContext(finalHistory, currentMem).then(newMem => {
+                if (newMem !== currentMem) {
+                  setBusinessMemory(newMem);
+                  saveBusinessMemory(newMem);
+                }
+              });
+            }
+            if (data.error) {
+              handleError(data.error);
+            }
+          } catch {}
+        }
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         setIsStreaming(false);
@@ -623,6 +663,7 @@ export function useAdvisorChat() {
     setMessages([]);
     saveChatHistory([]);
     setIsStreaming(false);
+    setCurrentAgent(null);
   }, []);
 
   const clearMemory = useCallback(() => {
@@ -635,7 +676,7 @@ export function useAdvisorChat() {
     saveBusinessMemory(mem);
   }, []);
 
-  return { messages, businessMemory, isStreaming, send, clear, clearMemory, updateMemory };
+  return { messages, businessMemory, isStreaming, currentAgent, send, clear, clearMemory, updateMemory };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

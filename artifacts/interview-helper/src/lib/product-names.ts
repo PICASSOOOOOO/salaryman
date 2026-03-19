@@ -114,6 +114,21 @@ export const PABLO_PRODUCTS = {
     short: "THE LAB",
     desc: "THE LAB 1999 — Sub-basement audio forge. Beat machines, oscillators, and sample banks wired into the neural core. Password-protected.",
   },
+  AI_AGENTS: {
+    name: "PABLO AI NETWORK",
+    short: "AI NETWORK",
+    desc: "Multi-agent orchestration layer. CORTEX-1 handles code and deep reasoning. SWIFT-3 handles speed and general tasks. Auto-routing with fallback.",
+  },
+  CORTEX_1: {
+    name: "CORTEX-1 — DEEP ANALYSIS",
+    short: "CORTEX-1",
+    desc: "Advanced reasoning core. Code analysis, architecture review, and complex problem solving. Powered by Anthropic Claude.",
+  },
+  SWIFT_3: {
+    name: "SWIFT-3 — RAPID RESPONSE",
+    short: "SWIFT-3",
+    desc: "Speed-optimized general intelligence. Chat, Q&A, translations, and creative tasks. Powered by OpenAI GPT.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },
