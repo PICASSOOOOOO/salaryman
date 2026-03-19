@@ -45,7 +45,6 @@ export const MODULES: Module[] = [
       { id: 'listen', path: '/console', label: 'LIVE LISTEN', boomerLabel: 'LIVE LISTEN', codename: 'ECHO-7', icon: Mic },
       { id: 'scan', path: '/console', label: 'SCREEN SCAN', boomerLabel: 'SCREEN SCAN', codename: 'OPTIC-9', icon: Monitor },
       { id: 'interview', path: '/console', label: 'INTERVIEW SOLVER', boomerLabel: 'INTERVIEW SOLVER', codename: 'CIPHER-X', icon: Code2 },
-      { id: 'phone', path: '/console', label: 'PHONE', boomerLabel: 'PHONE SYSTEM', codename: 'COMM-1', icon: PhoneCall },
     ],
   },
   {
@@ -62,6 +61,7 @@ export const MODULES: Module[] = [
       { id: 'documents', path: '/business/documents', label: 'DOCUMENTS', boomerLabel: 'DOCUMENTS', codename: 'INK-6', icon: Archive },
       { id: 'invoices', path: '/business/invoices', label: 'INVOICES', boomerLabel: 'INVOICES', codename: 'LEDGER-3', icon: FileText },
       { id: 'deals', path: '/business/deals', label: 'DEALS', boomerLabel: 'DEALS', codename: 'PIPELINE-X', icon: TrendingUp },
+      { id: 'phone', path: '/business/phone', label: 'PHONE', boomerLabel: 'PHONE SYSTEM', codename: 'COMM-1', icon: PhoneCall },
     ],
   },
   {

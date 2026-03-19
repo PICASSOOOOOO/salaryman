@@ -146,6 +146,7 @@ function AppShell() {
             <Route path="/business/documents" component={Documents} />
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
+            <Route path="/business/phone">{() => <Redirect to="/business/contacts" />}</Route>
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
