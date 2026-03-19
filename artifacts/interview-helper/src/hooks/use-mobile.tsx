@@ -32,3 +32,18 @@ export function getDefaultBoomerMode(): boolean {
     return false;
   }
 }
+
+export function useBoomerMode(): [boolean, (on: boolean) => void] {
+  const [boomerMode, setBoomerMode] = React.useState(() => getDefaultBoomerMode());
+  React.useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
+  const setBoomer = React.useCallback((on: boolean) => {
+    setBoomerMode(on);
+    try { localStorage.setItem('sm_boomer', on ? '1' : '0'); } catch {}
+  }, []);
+  return [boomerMode, setBoomer];
+}

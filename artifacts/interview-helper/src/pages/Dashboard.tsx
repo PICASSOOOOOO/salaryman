@@ -10,6 +10,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -470,11 +471,18 @@ export default function Dashboard() {
   const { isAuthenticated } = useAuth();
   const { isPro, loading: planLoading } = usePlan();
   const [tab, setTab] = useState<Tab>('projects');
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
-  const tabs: { id: Tab; label: string; icon: React.FC<any> }[] = [
-    { id: 'projects',  label: 'Projects',       icon: FolderOpen },
-    { id: 'knowledge', label: 'Knowledge Base',  icon: BookOpen   },
-    { id: 'creative',  label: 'Creative Kit',    icon: Palette    },
+  const tabs: { id: Tab; label: string; boomerLabel: string; icon: React.FC<any> }[] = [
+    { id: 'projects',  label: 'Projects',       boomerLabel: 'Projects',       icon: FolderOpen },
+    { id: 'knowledge', label: 'Knowledge Base',  boomerLabel: 'My Notes',       icon: BookOpen   },
+    { id: 'creative',  label: 'Creative Kit',    boomerLabel: 'Brand Settings', icon: Palette    },
   ];
 
   if (!isAuthenticated) {
@@ -506,8 +514,8 @@ export default function Dashboard() {
             <LayoutDashboard className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">My Workspace</h2>
-            <p className="text-sm text-muted-foreground">Projects, knowledge base, and brand kit — all in one place</p>
+            <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'My Workspace' : PABLO_PRODUCTS.WORKSPACE.short}</h2>
+            <p className="text-sm text-muted-foreground">{boomerMode ? 'Projects, notes, and brand settings — all in one place' : 'Projects, knowledge base, and brand kit — all in one place'}</p>
           </div>
         </div>
 
@@ -517,7 +525,7 @@ export default function Dashboard() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.id ? 'bg-card text-foreground border border-border shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
               <t.icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.label}</span>
+              <span className="hidden sm:inline">{boomerMode ? t.boomerLabel : t.label}</span>
             </button>
           ))}
         </div>

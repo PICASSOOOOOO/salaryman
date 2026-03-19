@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock, Loader2 } from "lucide-react";
 
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
 import { PABLO_PRODUCTS } from "@/lib/product-names";
+import { getDefaultBoomerMode } from "@/hooks/use-mobile";
 
-const FREE_ITEMS = [
+const FREE_ITEMS_NORMAL = [
   { icon: MessageSquare, label: "PABLO AI Chat — ask anything, anytime" },
   { icon: Code2, label: "Decipher & understand any code (via PABLO chat)" },
   { icon: Check, label: "Basic profile & account" },
 ];
+const FREE_ITEMS_BOOMER = [
+  { icon: MessageSquare, label: "AI Chat — ask questions, get help anytime" },
+  { icon: Code2, label: "Explain or simplify any code or text" },
+  { icon: Check, label: "Basic profile & account" },
+];
 
-const PRO_ITEMS = [
+const PRO_ITEMS_NORMAL = [
   { icon: MessageSquare, label: `${PABLO_PRODUCTS.PABLO_AI_PRO.name} — ${PABLO_PRODUCTS.PABLO_AI_PRO.desc}` },
   { icon: Mic, label: `${PABLO_PRODUCTS.SAY_THIS.name} — ${PABLO_PRODUCTS.SAY_THIS.desc}` },
   { icon: Lightbulb, label: `${PABLO_PRODUCTS.GET_HINT.short}, ${PABLO_PRODUCTS.FULL_SOLUTION.short}, ${PABLO_PRODUCTS.EXPLAIN_APPROACH.short}, ${PABLO_PRODUCTS.ANALYZE_COMPLEXITY.short} — Tactical analysis modules` },
@@ -22,12 +28,29 @@ const PRO_ITEMS = [
   { icon: Users, label: `${PABLO_PRODUCTS.CONTACTS.name} — ${PABLO_PRODUCTS.CONTACTS.desc}` },
   { icon: LayoutDashboard, label: `${PABLO_PRODUCTS.WORKSPACE.name} — ${PABLO_PRODUCTS.WORKSPACE.desc}` },
 ];
+const PRO_ITEMS_BOOMER = [
+  { icon: MessageSquare, label: "Advanced AI Chat — smarter, faster answers" },
+  { icon: Mic, label: "Voice mode — speak and get real-time coaching" },
+  { icon: Lightbulb, label: "Hints, solutions, and analysis tools" },
+  { icon: Mic, label: "Live meeting listener — AI listens in and helps you respond" },
+  { icon: Monitor, label: "Screen reader — AI reads what's on your screen" },
+  { icon: Presentation, label: "Slide builder — create presentations from scratch" },
+  { icon: Users, label: "Contacts — save and manage your network" },
+  { icon: LayoutDashboard, label: "Workspace — projects, notes, and brand settings" },
+];
 
 export default function Upgrade() {
   const { isPro, isOwner, isTrial, trialDaysLeft, trialHoursLeft, loading } = usePlan();
   const { isAuthenticated, login } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   const checkoutResult = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("checkout")
@@ -69,11 +92,10 @@ export default function Upgrade() {
               <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP — SALARYMAN</span>
             </div>
             <h1 className="display-text mb-3" style={{ fontSize: '2.5rem', color: '#00ff41', textShadow: '0 0 20px rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
-              PRODUCT CATALOG
+              {boomerMode ? 'PLANS & PRICING' : 'PRODUCT CATALOG'}
             </h1>
             <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
-              Browse Pablo Corp augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
-              {PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.
+              {boomerMode ? `Choose the plan that works for you. Free gets you started. Pro unlocks everything.` : `Browse Pablo Corp augmentation modules. ${PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access. ${PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.`}
             </p>
           </motion.div>
         </div>
@@ -168,7 +190,7 @@ export default function Upgrade() {
             </div>
 
             <ul className="space-y-3 flex-1 mb-6">
-              {FREE_ITEMS.map(({ icon: Icon, label }) => (
+              {(boomerMode ? FREE_ITEMS_BOOMER : FREE_ITEMS_NORMAL).map(({ icon: Icon, label }) => (
                 <li key={label} className="flex items-start gap-3 text-sm text-foreground">
                   <div className="w-5 h-5 rounded-lg bg-muted/40 flex items-center justify-center shrink-0 mt-0.5">
                     <Icon className="w-3 h-3 text-muted-foreground" />
@@ -202,7 +224,7 @@ export default function Upgrade() {
             </div>
 
             <ul className="space-y-3 flex-1 mb-6">
-              {PRO_ITEMS.map(({ icon: Icon, label }) => (
+              {(boomerMode ? PRO_ITEMS_BOOMER : PRO_ITEMS_NORMAL).map(({ icon: Icon, label }) => (
                 <li key={label} className="flex items-start gap-3 text-sm text-foreground">
                   <div className="w-5 h-5 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
                     <Icon className="w-3 h-3 text-primary" />

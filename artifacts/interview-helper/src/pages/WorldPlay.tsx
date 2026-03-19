@@ -2509,7 +2509,158 @@ function getHamletLabel(bid: string): string {
   return b?.label ?? 'SHELTER';
 }
 
+// ── INTRO STORY CINEMATIC ──────────────────────────────────────────────────────
+const INTRO_LINES = [
+  'YEAR 2047.',
+  '',
+  'THE CORPO WARS ARE OVER.',
+  'PABLO CORP WON.',
+  '',
+  'MINX CITY IS THEIR CROWN JEWEL —',
+  'A VERTICAL MEGALOPOLIS BUILT ON DEBT,',
+  'SURVEILLANCE, AND HUSTLE.',
+  '',
+  'EVERYONE OWES SOMETHING.',
+  'EVERYONE WORKS.',
+  'EVERYONE GETS RATED.',
+  '',
+  'YOU JUST ARRIVED.',
+  '',
+  'YOUR INTAKE CHIP WAS SCANNED AT THE CHECKPOINT.',
+  'YOUR CREDIT SCORE WAS LOGGED.',
+  'YOUR MISSION ASSIGNMENT IS PENDING.',
+  '',
+  'REPORT TO SHADOW TOWER FOR PROCESSING.',
+  '',
+  'GOOD LUCK, OPERATIVE.',
+  'YOU\'LL NEED IT.',
+];
+
+function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinish: () => void }) {
+  const [lineIdx, setLineIdx] = useState(0);
+  const [displayed, setDisplayed] = useState('');
+  const [charIdx, setCharIdx] = useState(0);
+  const [done, setDone] = useState(false);
+  const [blink, setBlink] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => { const t = setInterval(() => setBlink(b => !b), 400); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    try {
+      const audio = new Audio('/callhome/track-01.mp3');
+      audio.loop = true;
+      audio.volume = 0.35;
+      audio.play().catch(() => {});
+      audioRef.current = audio;
+    } catch {}
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (done) return;
+    const line = INTRO_LINES[lineIdx] ?? '';
+    if (charIdx < line.length) {
+      const t = setTimeout(() => {
+        setDisplayed(prev => prev + line[charIdx]);
+        setCharIdx(c => c + 1);
+      }, line === '' ? 0 : 28);
+      return () => clearTimeout(t);
+    } else {
+      const delay = line === '' ? 300 : 900;
+      const t = setTimeout(() => {
+        if (lineIdx < INTRO_LINES.length - 1) {
+          setLineIdx(i => i + 1);
+          setDisplayed('');
+          setCharIdx(0);
+        } else {
+          setDone(true);
+        }
+      }, delay);
+      return () => clearTimeout(t);
+    }
+  }, [lineIdx, charIdx, done]);
+
+  const skip = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    try { localStorage.setItem('sm_intro_seen', '1'); } catch {}
+    onFinish();
+  };
+
+  const VT: React.CSSProperties = { fontFamily: "'VT323', monospace" };
+  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: '#000', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px)', pointerEvents: 'none' }} />
+      <div style={{ maxWidth: 520, width: '90%', textAlign: 'center', padding: '2rem' }}>
+        <div style={{ marginBottom: '1.5rem', ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '.2em' }}>
+          PABLO CORP — CLASSIFIED BRIEFING
+        </div>
+        <div style={{ minHeight: 320, display: 'flex', flexDirection: 'column', gap: '.6rem', justifyContent: 'center' }}>
+          {INTRO_LINES.slice(0, lineIdx).map((l, i) => (
+            <div key={i} style={{ ...VT, fontSize: '1.35rem', color: l === '' ? 'transparent' : 'rgba(0,255,65,0.75)', letterSpacing: '.1em', lineHeight: 1.3 }}>
+              {l || '\u00A0'}
+            </div>
+          ))}
+          {lineIdx < INTRO_LINES.length && (
+            <div style={{ ...VT, fontSize: '1.35rem', color: '#00ff41', letterSpacing: '.1em', lineHeight: 1.3 }}>
+              {displayed}<span style={{ opacity: blink ? 1 : 0 }}>█</span>
+            </div>
+          )}
+        </div>
+        {done && (
+          <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '.8rem', alignItems: 'center' }}>
+            <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '.15em' }}>
+              OPERATIVE {charName.toUpperCase()} — STANDING BY
+            </div>
+            <button onClick={skip} style={{
+              ...VT, fontSize: '1.1rem', letterSpacing: '.15em',
+              padding: '.5rem 2rem', background: 'rgba(0,255,65,0.1)',
+              border: '1px solid rgba(0,255,65,0.6)', color: '#00ff41',
+              cursor: 'pointer',
+            }}>
+              BEGIN INTAKE ▸
+            </button>
+          </div>
+        )}
+        {!done && (
+          <button onClick={skip} style={{
+            marginTop: '2.5rem', ...ST, fontSize: '.65rem', letterSpacing: '.12em',
+            padding: '.25rem .8rem', background: 'transparent',
+            border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.3)',
+            cursor: 'pointer',
+          }}>
+            SKIP ▸
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function createFirstMission(char: Char): Quest | null {
+  const towerB = BUILDINGS.find(b => b.id === 'pablo_tower');
+  return {
+    id: 'report_to_terminal',
+    title: 'REPORT TO TERMINAL FOR INTAKE',
+    description: 'New operative detected. Report to SHADOW TOWER (PABLO CORP HQ) for mandatory intake processing. NOTE: Personal arm-terminals are issued post-intake only. Until processed, all operatives must use the public terminal at HQ. No exceptions.',
+    completed: false,
+    tasks: [
+      { id: 'visit_tower_intake', label: 'Report to SHADOW TOWER for intake', done: false, mapMarker: towerB ? { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER — INTAKE' } : undefined },
+    ],
+  };
+}
+
+function createEstablishBusinessMission(char: Char): Quest | null {
   if (char.bizType === 'unemployed' || !char.hasBusiness) return null;
   const towerB = BUILDINGS.find(b => b.id === 'pablo_tower')!;
   const storeB = BUILDINGS.find(b => b.id === 'pablo_store')!;
@@ -2903,6 +3054,11 @@ export default function WorldPlay() {
   const [chatMsgs,  setChatMsgs]  = useState<ChatMsg[]>([]);
   const [dmTarget,  setDmTarget]  = useState<Peer | null>(null);
   const [unread,    setUnread]    = useState(0);
+
+  // Intro story cinematic (shows once on very first game entry, tracked by localStorage)
+  const [showIntroStory, setShowIntroStory] = useState(() => {
+    try { return localStorage.getItem('sm_intro_seen') !== '1'; } catch { return false; }
+  });
 
   // Panels
   const [dialog,   setDialog]   = useState<{ lines: string[]; idx: number; bid: string } | null>(null);
@@ -4352,7 +4508,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen;
+  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -4512,7 +4668,15 @@ export default function WorldPlay() {
       if (dialog.bid === 'pablo_tower_enter') {
         setShowOffice(true);
         completeQuestTask('establish_business', 'visit_tower');
+        completeQuestTask('report_to_terminal', 'visit_tower_intake');
         const g = gs.current;
+        // If intake quest is now complete and player has a business, add establish_business quest
+        const intakeQ = g.quests?.find((q: Quest) => q.id === 'report_to_terminal');
+        const hasEstablish = g.quests?.some((q: Quest) => q.id === 'establish_business');
+        if (intakeQ && intakeQ.tasks.every((t: QuestTask) => t.done) && !hasEstablish) {
+          const bizMission = createEstablishBusinessMission(char);
+          if (bizMission && g.quests) g.quests.push(bizMission);
+        }
         if (g.businesses) {
           for (const b of g.businesses) b.lastActivityAt = Date.now();
         }
@@ -10947,8 +11111,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {/* ── INTRO STORY CINEMATIC (before onboarding, first entry only) ── */}
+      {showIntroStory && (
+        <IntroStoryCinematic charName={char.name} onFinish={() => setShowIntroStory(false)} />
+      )}
+
       {/* ── PABLO CORP ONBOARDING (first Terminal open) ── */}
-      {showPablo && !gs.current.pabloOnboardingDone && (
+      {showPablo && !gs.current.pabloOnboardingDone && !showIntroStory && (
         <PabloOnboarding
           charName={char.name}
           charClass={char.class}

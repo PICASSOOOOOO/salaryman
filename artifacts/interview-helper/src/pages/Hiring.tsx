@@ -6,6 +6,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 type ActiveTab = 'jobs' | 'applicants' | 'staff';
 
@@ -89,6 +90,13 @@ export default function Hiring() {
   const { isPro, loading: planLoading } = usePlan();
   const [tab, setTab] = useState<ActiveTab>('jobs');
   const [loading, setLoading] = useState(true);
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   const [stats, setStats] = useState<Stats>({ openPositions: 0, totalApplicants: 0, activeStaff: 0, filledThisMonth: 0 });
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -223,16 +231,16 @@ export default function Hiring() {
           <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-teal-400" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">{PABLO_PRODUCTS.HIRING.short}</h2>
+          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'Hiring' : PABLO_PRODUCTS.HIRING.short}</h2>
         </div>
-        <p className="text-sm text-muted-foreground ml-12 mb-6">Post positions, track candidates, manage your roster.</p>
+        <p className="text-sm text-muted-foreground ml-12 mb-6">{boomerMode ? 'Post jobs, track applicants, manage your team.' : 'Post positions, track candidates, manage your roster.'}</p>
 
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Open Positions', value: stats.openPositions, color: 'text-emerald-400' },
-            { label: 'Total Applicants', value: stats.totalApplicants, color: 'text-blue-400' },
-            { label: 'Active Staff', value: stats.activeStaff, color: 'text-purple-400' },
-            { label: 'Filled This Month', value: stats.filledThisMonth, color: 'text-amber-400' },
+            { label: boomerMode ? 'Open Jobs' : 'Open Positions', value: stats.openPositions, color: 'text-emerald-400' },
+            { label: boomerMode ? 'Applicants' : 'Total Applicants', value: stats.totalApplicants, color: 'text-blue-400' },
+            { label: boomerMode ? 'Active Staff' : 'Active Staff', value: stats.activeStaff, color: 'text-purple-400' },
+            { label: boomerMode ? 'Filled This Month' : 'Filled This Month', value: stats.filledThisMonth, color: 'text-amber-400' },
           ].map(s => (
             <div key={s.label} className="bg-card border border-border rounded-xl p-4">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{s.label}</p>
@@ -243,14 +251,14 @@ export default function Hiring() {
 
         <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border">
           {([
-            { id: 'jobs' as const, label: 'Job Board', icon: Briefcase },
-            { id: 'applicants' as const, label: 'Applicants', icon: UserPlus },
-            { id: 'staff' as const, label: 'Staff', icon: Users },
-          ]).map(({ id, label, icon: Icon }) => (
+            { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'Job Board', icon: Briefcase },
+            { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'Applicants', icon: UserPlus },
+            { id: 'staff' as const, label: 'Staff', boomerLabel: 'Team', icon: Users },
+          ]).map(({ id, label, boomerLabel, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
                 ${tab === id ? 'bg-card border border-border text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-              <Icon className="w-4 h-4" /> {label}
+              <Icon className="w-4 h-4" /> {boomerMode ? boomerLabel : label}
             </button>
           ))}
         </div>

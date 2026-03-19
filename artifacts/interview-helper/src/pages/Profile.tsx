@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2 } from 'lucide-react';
 
 import { useAuth } from '@workspace/replit-auth-web';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface AccountData {
   user: { id: string; email?: string; firstName?: string; lastName?: string; profileImageUrl?: string; createdAt: string };
@@ -153,6 +154,13 @@ export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [data, setData] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
   const [memoryDraft, setMemoryDraft] = useState('');
   const [savingMemory, setSavingMemory] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
@@ -249,8 +257,8 @@ export default function Profile() {
             <User className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">My Account</h2>
-            <p className="text-sm text-muted-foreground">Manage your profile, memory, and data</p>
+            <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'My Account' : 'My Account'}</h2>
+            <p className="text-sm text-muted-foreground">{boomerMode ? 'Manage your profile, memory, and saved data' : 'Manage your profile, memory, and data'}</p>
           </div>
         </div>
 
@@ -297,7 +305,7 @@ export default function Profile() {
                   <Brain className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">PABLO Memory</p>
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'My Notes / AI Memory' : 'PABLO Memory'}</p>
                   <p className="text-xs text-muted-foreground">What PABLO knows about you — edit or clear anytime</p>
                 </div>
               </div>

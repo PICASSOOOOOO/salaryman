@@ -7,6 +7,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface Contact {
   id: number;
@@ -55,6 +56,13 @@ export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
   const { isPro, loading: planLoading } = usePlan();
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...EMPTY });
@@ -190,9 +198,9 @@ export default function ContactCollector() {
               <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
                 <Users className="w-5 h-5 text-violet-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">Contact Collector</h2>
+              <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'Contacts' : 'Contact Collector'}</h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">Build your contact database. Export to CSV → Google Sheets anytime.</p>
+            <p className="text-sm text-muted-foreground ml-12">{boomerMode ? 'Save and manage your contacts. Export to a spreadsheet anytime.' : 'Build your contact database. Export to CSV → Google Sheets anytime.'}</p>
           </div>
           <div className="flex items-center gap-2">
             {contacts.length > 0 && (

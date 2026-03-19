@@ -104,15 +104,15 @@ export function NavBar() {
               className="display-text text-xs transition-all"
               style={{
                 letterSpacing: '0.08em',
-                color: boomerMode ? 'rgba(255,170,0,0.75)' : 'rgba(0,255,65,0.25)',
+                color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(0,255,65,0.5)',
                 cursor: 'pointer',
-                background: 'none',
-                border: 'none',
-                padding: 0,
+                background: boomerMode ? 'rgba(255,170,0,0.08)' : 'rgba(0,255,65,0.04)',
+                border: boomerMode ? '1px solid rgba(255,170,0,0.35)' : '1px solid rgba(0,255,65,0.2)',
+                padding: '1px 6px',
               }}
-              title={boomerMode ? 'Boomer Mode ON — plain labels & bigger fonts' : 'Turn on Boomer Mode for plain labels & bigger fonts'}
+              title={boomerMode ? 'Boomer Mode ON — plain labels & bigger fonts. Click to disable.' : 'Boomer Mode: plain labels, no jargon. Click to enable.'}
             >
-              {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
+              {boomerMode ? '🔶 PLAIN MODE ✓' : 'PLAIN MODE'}
             </button>
           )}
           <BlinkingClock />

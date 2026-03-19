@@ -314,7 +314,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 cursor: 'pointer',
               }}
             >
-              ENTER {CITY_NAME} ▸
+              BEGIN OPERATIONS ▸
             </button>
           ) : (
             <button

@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { CITY_NAME } from '../gameSystems';
+import { getDefaultBoomerMode } from '../hooks/use-mobile';
 
 interface CargoItem {
   id: string;
@@ -119,6 +120,13 @@ export default function MobileTerminal() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<TabId>('chat');
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   const [pabloMsgs, setPabloMsgs] = useState<PabloMsg[]>([]);
   const [pabloIn, setPabloIn] = useState('');
@@ -308,9 +316,9 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
           {([
-            { id: 'chat' as TabId, label: '🤖 PABLO AI', locked: false },
-            { id: 'stats' as TabId, label: `📊 STATS ${!isPro ? '🔒' : ''}`, locked: false },
-            { id: 'overview' as TabId, label: `🏙 OVERVIEW ${!isPro ? '🔒' : ''}`, locked: false },
+            { id: 'chat' as TabId, label: '🤖 PABLO AI', boomerLabel: '🤖 AI CHAT', locked: false },
+            { id: 'stats' as TabId, label: `📊 STATS ${!isPro ? '🔒' : ''}`, boomerLabel: `📊 MY STATS ${!isPro ? '🔒' : ''}`, locked: false },
+            { id: 'overview' as TabId, label: `🏙 OVERVIEW ${!isPro ? '🔒' : ''}`, boomerLabel: `🏙 OVERVIEW ${!isPro ? '🔒' : ''}`, locked: false },
           ]).map(t => (
             <button
               key={t.id}
@@ -322,7 +330,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                 ...VT, fontSize: '.9rem', letterSpacing: '.1em',
               }}
             >
-              {t.label}
+              {boomerMode ? t.boomerLabel : t.label}
             </button>
           ))}
         </div>

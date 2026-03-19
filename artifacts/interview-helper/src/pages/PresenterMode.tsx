@@ -6,6 +6,7 @@ import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { useNavBarVisibility } from '@/hooks/use-navbar-visibility';
+import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface Slide {
   title: string;
@@ -79,6 +80,13 @@ export default function PresenterMode() {
   const { isPro, loading: planLoading } = usePlan();
   const { setHideNavBar } = useNavBarVisibility();
   const [tab, setTab] = useState<ActiveTab>('present');
+  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
+    window.addEventListener('storage', onStorage);
+    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
+  }, []);
 
   // ── Presentation ──────────────────────────────────────────────────────────
   const [topic, setTopic] = useState('');
@@ -216,8 +224,8 @@ export default function PresenterMode() {
               <Presentation className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Presenter Studio</h2>
-              <p className="text-sm text-muted-foreground">Generate slides, analyze websites, conduct interviews — then screen-share on Zoom or Meet</p>
+              <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'Presentation Tools' : 'Presenter Studio'}</h2>
+              <p className="text-sm text-muted-foreground">{boomerMode ? 'Build slides, check websites, run interviews — then share on Zoom or Meet' : 'Generate slides, analyze websites, conduct interviews — then screen-share on Zoom or Meet'}</p>
             </div>
           </div>
         )}
@@ -226,14 +234,14 @@ export default function PresenterMode() {
         {!fullScreen && (
           <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border">
             {([
-              { id: 'present', label: 'Presentation', icon: Presentation },
-              { id: 'analyze', label: 'Website Analyzer', icon: Globe },
-              { id: 'conduct', label: 'Interview Conductor', icon: Mic2 },
-            ] as const).map(({ id, label, icon: Icon }) => (
+              { id: 'present', label: 'Presentation', boomerLabel: 'Build Slides', icon: Presentation },
+              { id: 'analyze', label: 'Website Analyzer', boomerLabel: 'Check Websites', icon: Globe },
+              { id: 'conduct', label: 'Interview Conductor', boomerLabel: 'Interview Questions', icon: Mic2 },
+            ] as const).map(({ id, label, boomerLabel, icon: Icon }) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
                   ${tab === id ? 'bg-card border border-border text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                <Icon className="w-4 h-4" /> {label}
+                <Icon className="w-4 h-4" /> {boomerMode ? boomerLabel : label}
               </button>
             ))}
           </div>
