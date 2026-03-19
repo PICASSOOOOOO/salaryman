@@ -25,7 +25,7 @@ modules = ["nodejs-24", "postgresql-16"]
 
         [agent]
         stack = "PNPM_WORKSPACE"
-  expertMode = true
+expertMode = true
         integrations = ["resend:1.0.0"]
 
           [postMerge]
