@@ -1,11 +1,12 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays, Megaphone, Music2, Search } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays, Megaphone, Music2, Phone, Search } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
+import { PhoneDialer } from './PhoneDialer';
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -14,6 +15,19 @@ export function NavBar() {
   usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const phoneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!phoneOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (phoneRef.current && !phoneRef.current.contains(e.target as Node)) setPhoneOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [phoneOpen]);
+
+  useEffect(() => { setPhoneOpen(false); }, [location]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -22,10 +36,12 @@ export function NavBar() {
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
 
-  const NAV = [
+  const NAV_BEFORE_PHONE = [
     { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, mobileShow: true },
     { path: '/console', label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, icon: Code2, mobileShow: false },
     { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, mobileShow: false },
+  ];
+  const NAV_AFTER_PHONE = [
     { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, mobileShow: false },
     { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, mobileShow: false },
     { path: '/calendar', label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, icon: CalendarDays, mobileShow: false },
@@ -108,7 +124,55 @@ export function NavBar() {
 
         {/* Nav Items */}
         <nav className="flex items-center gap-0.5 shrink-0">
-          {NAV.map(({ path, label, icon: Icon, mobileShow }) => {
+          {NAV_BEFORE_PHONE.map(({ path, label, icon: Icon, mobileShow }) => {
+            const active = location === path || (path !== '/' && location.startsWith(path));
+            return (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
+                  active
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                }`}
+              >
+                <Icon className="w-3 h-3 shrink-0" />
+                {label}
+              </button>
+            );
+          })}
+
+          {isAuthenticated && (
+            <div ref={phoneRef} className="relative hidden sm:block">
+              <button
+                onClick={() => setPhoneOpen(prev => !prev)}
+                title="Calll Home — Phone System"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
+                  phoneOpen
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                }`}
+              >
+                <Phone className="w-3 h-3 shrink-0" />
+                {boomerMode ? 'PHONE' : 'CALLL HOME'}
+              </button>
+              {phoneOpen && (
+                <div
+                  className="absolute top-full left-0 mt-1.5 z-50"
+                  style={{ filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.6))' }}
+                >
+                  <PhoneDialer
+                    userId={user?.id ?? ''}
+                    callerName={user?.firstName ?? user?.email?.split('@')[0]}
+                    compact
+                    onClose={() => setPhoneOpen(false)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {NAV_AFTER_PHONE.map(({ path, label, icon: Icon, mobileShow }) => {
             const active = location === path || (path !== '/' && location.startsWith(path));
             return (
               <button

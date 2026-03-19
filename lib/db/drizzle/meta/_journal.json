@@ -36,6 +36,13 @@
       "when": 1773914617588,
       "tag": "0004_salty_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773916303012,
+      "tag": "0005_flaky_boomerang",
+      "breakpoints": true
     }
   ]
 }
