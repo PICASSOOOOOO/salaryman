@@ -10975,7 +10975,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 OUTPUT VOL</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 SCORE VOL</span>
                 <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
               </div>
               <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
@@ -12252,7 +12252,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── RADIO HUD + HIDDEN PLAYER ── */}
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={musicMuted} scoreMuted={scoreMuted} onToggleMusicMute={() => { const m = toggleMusicMute(); setMusicMuted(m); }} onToggleScoreMute={() => { const m = toggleScoreMute(); setScoreMuted(m); }} />
-      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || musicMuted} stationId={stationId} volume={radioVolume} />
+      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted} stationId={stationId} volume={radioVolume} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
