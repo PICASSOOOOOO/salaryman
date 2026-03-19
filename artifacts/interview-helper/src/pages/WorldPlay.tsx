@@ -2625,7 +2625,6 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
       background: '#000', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
     }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px)', pointerEvents: 'none' }} />
       <div style={{ maxWidth: 520, width: '90%', textAlign: 'center', padding: '2rem' }}>
         <div style={{ marginBottom: '1.5rem', ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '.2em' }}>
           PABLO CORP — CLASSIFIED BRIEFING
@@ -6527,15 +6526,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }
           }
         }
-        ctx.strokeStyle = 'rgba(80,70,50,0.15)';
-        ctx.lineWidth = 0.3;
-        for (let tx = 0; tx < iDef.width; tx += INTERIOR_TILE) {
-          ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, iDef.height); ctx.stroke();
-        }
-        for (let ty = 0; ty < iDef.height; ty += INTERIOR_TILE) {
-          ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(iDef.width, ty); ctx.stroke();
-        }
-
         ctx.fillStyle = 'rgb(90,75,55)';
         ctx.fillRect(0, 0, iDef.width, 20);
         ctx.fillStyle = 'rgb(80,68,48)';
@@ -6912,14 +6902,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── Decoration mode overlay ──────────────────────────────────────────
         if (decorModeRef.current && itr.bid === (g.interior?.bid ?? '')) {
           const iw = iDef.width; const ih = iDef.height;
-          ctx.strokeStyle = 'rgba(0,255,65,0.12)';
-          ctx.lineWidth = 0.5;
-          for (let gx2 = 0; gx2 <= iw; gx2 += FURNITURE_GRID_SIZE) {
-            ctx.beginPath(); ctx.moveTo(gx2, 0); ctx.lineTo(gx2, ih); ctx.stroke();
-          }
-          for (let gy2 = 0; gy2 <= ih; gy2 += FURNITURE_GRID_SIZE) {
-            ctx.beginPath(); ctx.moveTo(0, gy2); ctx.lineTo(iw, gy2); ctx.stroke();
-          }
           const ghost = decorGhostPosRef.current;
           const selItem = decorSelectedItemRef.current;
           if (ghost && selItem) {
@@ -10589,11 +10571,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
           for (const gz of GANG_ZONES) { mctx.fillStyle = gz.color.replace('.06', '.3').replace('.05', '.25'); mctx.fillRect(toMX(gz.x), toMY(gz.y), gz.w * scale, gz.h * scale); }
 
-          mctx.strokeStyle = 'rgba(0,255,65,.2)'; mctx.lineWidth = 1; mctx.setLineDash([2, 3]);
-          mctx.beginPath(); mctx.moveTo(0, cityTopMY); mctx.lineTo(mmD, cityTopMY); mctx.stroke();
-          mctx.beginPath(); mctx.moveTo(0, cityBotMY); mctx.lineTo(mmD, cityBotMY); mctx.stroke();
-          mctx.setLineDash([]);
-
           for (const b of BUILDINGS) {
             const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
             mctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
@@ -10758,9 +10735,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         @keyframes smblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
         
       `}</style>
-      {/* Scanlines */}
-      <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.14) 2px,rgba(0,0,0,.14) 4px)', pointerEvents: 'none', zIndex: 9999 }} />
-
       {/* Canvas — full screen game world */}
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 

@@ -520,12 +520,6 @@ export default function World() {
       for(let gx=sgx;gx<g.cam.x+cw+TILE;gx+=TILE){ ctx.beginPath();ctx.moveTo(gx+ox,0);ctx.lineTo(gx+ox,ch);ctx.stroke(); }
       for(let gy=sgy;gy<g.cam.y+ch+TILE;gy+=TILE){ ctx.beginPath();ctx.moveTo(0,gy+oy);ctx.lineTo(cw,gy+oy);ctx.stroke(); }
 
-      // Zone splits (city top & bottom borders)
-      const cityTopY2=CITY_TOP+oy; const cityBotY2=CITY_BOTTOM+oy;
-      ctx.strokeStyle='rgba(0,255,65,.12)'; ctx.setLineDash([6,4]); ctx.lineWidth=1;
-      if(cityTopY2>0&&cityTopY2<ch){ ctx.beginPath();ctx.moveTo(0,cityTopY2);ctx.lineTo(cw,cityTopY2);ctx.stroke(); }
-      if(cityBotY2>0&&cityBotY2<ch){ ctx.beginPath();ctx.moveTo(0,cityBotY2);ctx.lineTo(cw,cityBotY2);ctx.stroke(); }
-      ctx.setLineDash([]);
       ctx.fillStyle='rgba(0,255,65,.025)';ctx.font='60px "VT323"';ctx.textAlign='center';
       ctx.fillText((g.py>=CITY_TOP&&g.py<=CITY_BOTTOM)?'CITY':'WASTELAND',cw/2,ch/2);
 
@@ -604,10 +598,6 @@ export default function World() {
       ctx.strokeStyle='rgba(0,255,65,.25)';ctx.lineWidth=1;ctx.strokeRect(mmX,mmY,mmW,mmH);
       ctx.fillStyle='rgba(0,255,65,.18)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='left';
       ctx.fillText(`MAP  ${g.peers.size+1}P`,mmX+3,mmY+9);
-      const mwTop=mmY+(CITY_TOP/H)*mmH; const mwBot=mmY+(CITY_BOTTOM/H)*mmH;
-      ctx.strokeStyle='rgba(0,255,65,.18)';ctx.setLineDash([2,2]);
-      ctx.beginPath();ctx.moveTo(mmX,mwTop);ctx.lineTo(mmX+mmW,mwTop);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(mmX,mwBot);ctx.lineTo(mmX+mmW,mwBot);ctx.stroke();ctx.setLineDash([]);
       for(const b of BUILDINGS){
         const bIsLocked=g.locks.has(b.id)&&!!g.locks.get(b.id)?.ownerName;
         ctx.fillStyle=bIsLocked?'rgba(255,120,50,.5)':b.bright?'rgba(0,255,65,.7)':'rgba(0,160,50,.35)';
