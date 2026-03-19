@@ -10832,7 +10832,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-        <canvas ref={minimapRef} width={360} height={360} style={{ width: 160, height: 160, borderRadius: '50%', boxShadow: '0 0 14px rgba(0,255,65,.15)', border: '2px solid rgba(0,255,65,.3)' }} />
+        <canvas ref={minimapRef} width={450} height={450} style={{ width: 200, height: 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(0,255,65,.15)', border: '2px solid rgba(0,255,65,.3)' }} />
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
