@@ -1,4 +1,4 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays, Megaphone, Music2, Phone, Search } from 'lucide-react';
+import { Terminal, LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -6,6 +6,7 @@ import { usePlan } from '../hooks/use-plan';
 import { useEffect, useState, useRef } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
+import { MODULES, getModuleForPath } from '../lib/modules';
 import { PhoneDialer } from './PhoneDialer';
 
 export function NavBar() {
@@ -15,6 +16,7 @@ export function NavBar() {
   usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const phoneRef = useRef<HTMLDivElement>(null);
 
@@ -36,28 +38,44 @@ export function NavBar() {
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
 
-  const NAV_BEFORE_PHONE = [
-    { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, mobileShow: true },
-    { path: '/console', label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, icon: Code2, mobileShow: false },
-    { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, mobileShow: false },
-  ];
-  const NAV_AFTER_PHONE = [
-    { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, mobileShow: false },
-    { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, mobileShow: false },
-    { path: '/calendar', label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, icon: CalendarDays, mobileShow: false },
-    { path: '/studio', label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, icon: Layers, mobileShow: false },
-    { path: '/lab', label: boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short, icon: Music2, mobileShow: false },
-    { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, mobileShow: false },
-    { path: '/campaigns', label: boomerMode ? 'CAMPAIGNS' : 'CAMPAIGNS', icon: Megaphone, mobileShow: false },
-    { path: '/seo', label: boomerMode ? 'SEO' : PABLO_PRODUCTS.SEO.short, icon: Search, mobileShow: false },
-    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, mobileShow: false },
-  ];
+  const pathname = location.split('?')[0];
+  const currentModule = getModuleForPath(pathname);
+
+  const isModuleActive = (mod: typeof MODULES[0]) => {
+    if (mod.id === 'pablo') return pathname === '/';
+    if (mod.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    return pathname.startsWith(mod.path + '/') || pathname === mod.path;
+  };
+
+  const handleModuleClick = (mod: typeof MODULES[0]) => {
+    if (mod.subs.length === 0) {
+      navigate(mod.defaultPath);
+      setActiveModuleId(null);
+      return;
+    }
+    if (activeModuleId === mod.id) {
+      setActiveModuleId(null);
+    } else {
+      setActiveModuleId(mod.id);
+    }
+  };
+
+  const getModuleLabel = (mod: typeof MODULES[0]) => {
+    if (mod.id === 'pablo') return boomerMode ? 'PABLO' : config.navLabel;
+    return boomerMode ? mod.label : mod.codename;
+  };
+
+  const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
+    return boomerMode ? sub.boomerLabel : sub.codename;
+  };
+
+  const expandedModule = MODULES.find(m => m.id === activeModuleId) ?? null;
 
   return (
     <header className="app-header shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
 
-      {/* Top strip — plan / trial info */}
-      <div className="flex items-center justify-between px-4 py-0.5 border-b border-white/[0.04] bg-white/[0.01]">
+      {/* Top strip — plan / trial info (hidden on mobile) */}
+      <div className="hidden sm:flex items-center justify-between px-4 py-0.5 border-b border-white/[0.04] bg-white/[0.01]">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-zinc-600 tracking-widest uppercase">
             {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
@@ -95,7 +113,7 @@ export function NavBar() {
       </div>
 
       {/* Main nav row */}
-      <div className="flex items-center justify-between px-4 h-11 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center justify-between px-4 h-11">
 
         {/* Brand / Logo */}
         <div
@@ -105,14 +123,16 @@ export function NavBar() {
           <div className="w-7 h-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
             <Terminal className="w-3.5 h-3.5 text-emerald-400" />
           </div>
-          <div>
-            <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
-              {config.name}
-            </h1>
-            <p className="font-mono text-[9px] text-zinc-600 tracking-widest leading-none mt-0.5">
-              {config.sub}
-            </p>
-          </div>
+          {!isMobile && (
+            <div>
+              <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
+                {config.name}
+              </h1>
+              <p className="font-mono text-[9px] text-zinc-600 tracking-widest leading-none mt-0.5">
+                {config.sub}
+              </p>
+            </div>
+          )}
           <button
             onClick={e => { e.stopPropagation(); toggleMode(); }}
             title={isDiscreet ? 'Show real name' : 'Discreet mode'}
@@ -122,28 +142,34 @@ export function NavBar() {
           </button>
         </div>
 
-        {/* Nav Items */}
-        <nav className="flex items-center gap-0.5 shrink-0">
-          {NAV_BEFORE_PHONE.map(({ path, label, icon: Icon, mobileShow }) => {
-            const active = location === path || (path !== '/' && location.startsWith(path));
+        {/* Module Tabs — hidden on mobile (shown in bottom bar instead) */}
+        <nav className="hidden sm:flex items-center gap-0.5 shrink-0">
+          {MODULES.map(mod => {
+            const active = isModuleActive(mod);
+            const expanded = activeModuleId === mod.id;
+            const Icon = mod.icon;
             return (
               <button
-                key={path}
-                onClick={() => navigate(path)}
-                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
-                  active
+                key={mod.id}
+                onClick={() => handleModuleClick(mod)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
+                  active || expanded
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >
                 <Icon className="w-3 h-3 shrink-0" />
-                {label}
+                {getModuleLabel(mod)}
+                {mod.subs.length > 0 && (
+                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                )}
               </button>
             );
           })}
 
+          {/* Phone dialer — desktop only, auth required */}
           {isAuthenticated && (
-            <div ref={phoneRef} className="relative hidden sm:block">
+            <div ref={phoneRef} className="relative">
               <button
                 onClick={() => setPhoneOpen(prev => !prev)}
                 title="Calll Home — Phone System"
@@ -172,46 +198,14 @@ export function NavBar() {
             </div>
           )}
 
-          {NAV_AFTER_PHONE.map(({ path, label, icon: Icon, mobileShow }) => {
-            const active = location === path || (path !== '/' && location.startsWith(path));
-            return (
-              <button
-                key={path}
-                onClick={() => navigate(path)}
-                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
-                  active
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
-                }`}
-              >
-                <Icon className="w-3 h-3 shrink-0" />
-                {label}
-              </button>
-            );
-          })}
-
+          {/* EXPLORE button — desktop only */}
           <button
-            onClick={e => { if (isMobile || window.innerWidth < 768) { e.preventDefault(); return; } navigate('/world'); }}
-            aria-disabled={isMobile ? true : undefined}
-            title={isMobile ? 'Desktop only' : undefined}
-            disabled={isMobile}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors flex-col ${
-              isMobile
-                ? 'text-zinc-700 border border-zinc-800/50 opacity-50 cursor-default'
-                : 'text-emerald-500/70 border border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-400'
-            }`}
+            onClick={() => navigate('/world')}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-emerald-500/70 border border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-400"
           >
-            <span className="flex items-center gap-1.5">
-              <Globe className="w-3 h-3" />
-              EXPLORE
-            </span>
-            {isMobile && (
-              <span className="text-[8px] tracking-wide opacity-70 leading-none">
-                DESKTOP ONLY
-              </span>
-            )}
+            <Globe className="w-3 h-3" />
+            EXPLORE
           </button>
-
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
@@ -265,7 +259,57 @@ export function NavBar() {
             )}
           </div>
         </nav>
+
+        {/* Mobile: show only auth */}
+        <div className="flex sm:hidden items-center gap-2">
+          {isLoading ? null : isAuthenticated && user ? (
+            <button
+              onClick={() => navigate('/profile')}
+              className="hover:opacity-80 transition-opacity"
+            >
+              {user.profileImageUrl ? (
+                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'} className="w-7 h-7 rounded-md object-cover border border-white/10" />
+              ) : (
+                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
+                </div>
+              )}
+            </button>
+          ) : (
+            <button onClick={login} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4">
+              <LogIn className="w-3 h-3" />
+              LOG IN
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Sub-nav row — shown when a module with subs is expanded (desktop only) */}
+      {expandedModule && expandedModule.subs.length > 0 && (
+        <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.01] overflow-x-auto scrollbar-hide">
+          <span className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase mr-2 shrink-0">
+            {boomerMode ? expandedModule.label : expandedModule.codename}
+          </span>
+          {expandedModule.subs.map(sub => {
+            const isSubActive = pathname === sub.path;
+            const Icon = sub.icon;
+            return (
+              <button
+                key={sub.id}
+                onClick={() => { navigate(sub.path); setActiveModuleId(null); }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+                  isSubActive
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                }`}
+              >
+                <Icon className="w-3 h-3 shrink-0" />
+                {getSubLabel(sub)}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </header>
   );
 }

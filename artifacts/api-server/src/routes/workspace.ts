@@ -135,7 +135,7 @@ router.get("/workspace/brand-kit", async (req, res) => {
 // PUT upsert brand kit
 router.put("/workspace/brand-kit", async (req, res) => {
   const userId = requireAuth(req, res); if (!userId) return;
-  const { companyName, tagline, mission, primaryColor, secondaryColor, logoUrl, website, industry, targetAudience } = req.body;
+  const { companyName, tagline, mission, primaryColor, secondaryColor, logoUrl, website, industry, targetAudience, fontPrimary, fontSecondary, toneOfVoice } = req.body;
   try {
     const values: Record<string, unknown> = { userId };
     if (companyName !== undefined) values.companyName = companyName;
@@ -147,6 +147,9 @@ router.put("/workspace/brand-kit", async (req, res) => {
     if (website !== undefined) values.website = website;
     if (industry !== undefined) values.industry = industry;
     if (targetAudience !== undefined) values.targetAudience = targetAudience;
+    if (fontPrimary !== undefined) values.fontPrimary = fontPrimary;
+    if (fontSecondary !== undefined) values.fontSecondary = fontSecondary;
+    if (toneOfVoice !== undefined) values.toneOfVoice = toneOfVoice;
     const [row] = await db.insert(brandKitTable).values(values as any).onConflictDoUpdate({ target: brandKitTable.userId, set: values as any }).returning();
     res.json(row);
   } catch (e) { res.status(500).json({ error: "Failed to save brand kit" }); }

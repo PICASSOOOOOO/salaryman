@@ -23,6 +23,8 @@ import aiAgentsRouter from "./ai-agents";
 import subscribersRouter from "./subscribers";
 import campaignsRouter from "./campaigns";
 import seoRouter from "./seo";
+import dealsRouter from "./deals";
+import goalsRouter from "./goals";
 
 const router: IRouter = Router();
 
@@ -50,5 +52,7 @@ router.use(aiAgentsRouter);
 router.use(subscribersRouter);
 router.use(campaignsRouter);
 router.use(seoRouter);
+router.use(dealsRouter);
+router.use(goalsRouter);
 
 export default router;

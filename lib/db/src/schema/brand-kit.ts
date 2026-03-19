@@ -11,6 +11,9 @@ export const brandKitTable = pgTable("brand_kit", {
   website: varchar("website").notNull().default(""),
   industry: varchar("industry").notNull().default(""),
   targetAudience: text("target_audience").notNull().default(""),
+  fontPrimary: varchar("font_primary").notNull().default(""),
+  fontSecondary: varchar("font_secondary").notNull().default(""),
+  toneOfVoice: text("tone_of_voice").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

@@ -155,6 +155,41 @@ export const PABLO_PRODUCTS = {
     short: "CLAW-7",
     desc: "Open-source AI gateway. Routes through OpenClaw's multi-provider mesh — DeepSeek, Gemini, Mistral, local models. Triple-fallback to CORTEX-1 and SWIFT-3.",
   },
+  BUSINESS_MODULE: {
+    name: "OPS-CORE v2.0",
+    short: "OPS-CORE",
+    desc: "Operations command hub. Contacts, hiring, calendar, documents, invoices, and deal pipeline in one tactical module.",
+  },
+  CREATIVE_MODULE: {
+    name: "FORGE MATRIX v3.0",
+    short: "FORGE MATRIX",
+    desc: "Creative fabrication suite. Content studio, sound lab, campaign engine, and brand identity matrix.",
+  },
+  INTEL_MODULE: {
+    name: "COMMAND NET v1.0",
+    short: "COMMAND NET",
+    desc: "Intelligence and analytics hub. Reports, workspace dashboard, agent team roster, and objective tracker.",
+  },
+  DEALS: {
+    name: "PIPELINE-X DEAL TRACKER",
+    short: "PIPELINE-X",
+    desc: "Deal flow interception module. Track leads from first contact through negotiation to close.",
+  },
+  INVOICES: {
+    name: "LEDGER-3 INVOICE ENGINE",
+    short: "LEDGER-3",
+    desc: "Invoice generation and delivery module. Line items, PDF export, and email dispatch via Resend.",
+  },
+  BRAND_KIT: {
+    name: "BRAND-CORE IDENTITY MATRIX",
+    short: "BRAND-CORE",
+    desc: "Brand identity storage unit. Colors, fonts, logo, tagline, and tone-of-voice in one reference card.",
+  },
+  GOALS: {
+    name: "OBJECTIVE-7 MISSION TRACKER",
+    short: "OBJECTIVE-7",
+    desc: "Goal and milestone tracking module. Set quarterly targets, log progress, and mark objectives complete.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

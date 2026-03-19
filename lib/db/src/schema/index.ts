@@ -36,3 +36,5 @@ export * from "./appointments";
 export * from "./call-history";
 export * from "./subscribers";
 export * from "./campaigns";
+export * from "./deals";
+export * from "./goals";
