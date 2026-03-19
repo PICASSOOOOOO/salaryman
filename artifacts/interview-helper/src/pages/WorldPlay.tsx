@@ -10891,6 +10891,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           >
             ☰ TERMINAL {unread > 0 && <span style={{ display: 'inline-block', width: 8, height: 8, background: '#ff4444', borderRadius: '50%', marginLeft: 4 }} />}
           </button>
+          <button
+            onClick={() => setShowTranslatorOverlay(v => !v)}
+            style={{
+              padding: '.5rem .8rem',
+              background: showTranslatorOverlay ? 'rgba(236,72,153,.15)' : 'rgba(0,5,0,.92)',
+              border: `1px solid ${showTranslatorOverlay ? 'rgba(236,72,153,.5)' : 'rgba(236,72,153,.25)'}`,
+              color: showTranslatorOverlay ? '#ec4899' : 'rgba(236,72,153,.55)',
+              cursor: 'pointer',
+              fontFamily: "'VT323',monospace",
+              fontSize: '1.1rem',
+              letterSpacing: '.1em',
+            }}
+          >
+            🌐 TRANSLATE
+          </button>
         </div>
         {showTopMenu && (
           <div style={{ width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
@@ -11002,6 +11017,42 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+        {showTranslatorOverlay && (
+          <div style={{ width: 260, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(236,72,153,.35)', padding: '.5rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
+            <div style={{ display: 'flex', gap: 4, marginBottom: '.3rem' }}>
+              <select value={translatorFrom} onChange={e => { setTranslatorFrom(e.target.value); localStorage.setItem('sm_xlat_from', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
+                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </select>
+              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); localStorage.setItem('sm_xlat_from', translatorTo); localStorage.setItem('sm_xlat_to', translatorFrom); }} style={{ padding: '.2rem .4rem', background: 'rgba(236,72,153,.07)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>⇄</button>
+              <select value={translatorTo} onChange={e => { setTranslatorTo(e.target.value); localStorage.setItem('sm_xlat_to', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
+                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type text to translate..."
+              style={{ width: '100%', minHeight: 40, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.3rem', outline: 'none', resize: 'vertical', caretColor: '#ec4899', marginBottom: '.3rem' }} />
+            <button onClick={async () => {
+              if (!translatorText.trim()) return;
+              setTranslatorResult('Translating...');
+              try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(translatorText)}&langpair=${translatorFrom}|${translatorTo}`);
+                const data = await res.json();
+                setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
+              } catch { setTranslatorResult('Translation service unavailable.'); }
+            }} style={{ width: '100%', padding: '.25rem', background: 'rgba(236,72,153,.1)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+              TRANSLATE ▶
+            </button>
+            {translatorResult && (
+              <div style={{ background: 'rgba(236,72,153,.05)', border: '1px solid rgba(236,72,153,.15)', padding: '.3rem', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(236,72,153,.8)', lineHeight: 1.5, wordBreak: 'break-word' }}>
+                {translatorResult}
               </div>
             )}
           </div>
@@ -12888,49 +12939,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── IN-GAME TRANSLATOR OVERLAY — collapsible floating widget ─── */}
-      <div style={{ position: 'absolute', bottom: 100, left: 14, zIndex: 170, pointerEvents: 'all' }}>
-        <button onClick={() => setShowTranslatorOverlay(v => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '.3rem .6rem', background: showTranslatorOverlay ? 'rgba(236,72,153,.15)' : 'rgba(0,5,0,.92)', border: `1px solid ${showTranslatorOverlay ? 'rgba(236,72,153,.5)' : 'rgba(236,72,153,.25)'}`, color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.85rem', letterSpacing: '.06em' }}>
-          🌐 {showTranslatorOverlay ? 'HIDE' : 'TRANSLATE'}
-        </button>
-        {showTranslatorOverlay && (
-          <div style={{ position: 'absolute', bottom: '100%', left: 0, width: 260, marginBottom: 4, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(236,72,153,.35)', padding: '.5rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
-            <div style={{ display: 'flex', gap: 4, marginBottom: '.3rem' }}>
-              <select value={translatorFrom} onChange={e => { setTranslatorFrom(e.target.value); localStorage.setItem('sm_xlat_from', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
-                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
-                  <option key={code} value={code}>{name}</option>
-                ))}
-              </select>
-              <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); localStorage.setItem('sm_xlat_from', translatorTo); localStorage.setItem('sm_xlat_to', translatorFrom); }} style={{ padding: '.2rem .4rem', background: 'rgba(236,72,153,.07)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>⇄</button>
-              <select value={translatorTo} onChange={e => { setTranslatorTo(e.target.value); localStorage.setItem('sm_xlat_to', e.target.value); }} onKeyDown={e => e.stopPropagation()} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.25rem .3rem', outline: 'none' }}>
-                {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
-                  <option key={code} value={code}>{name}</option>
-                ))}
-              </select>
-            </div>
-            <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type text to translate..."
-              style={{ width: '100%', minHeight: 40, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(236,72,153,.2)', color: '#ec4899', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', padding: '.3rem', outline: 'none', resize: 'vertical', caretColor: '#ec4899', marginBottom: '.3rem' }} />
-            <button onClick={async () => {
-              if (!translatorText.trim()) return;
-              setTranslatorResult('Translating...');
-              try {
-                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(translatorText)}&langpair=${translatorFrom}|${translatorTo}`);
-                const data = await res.json();
-                setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
-              } catch { setTranslatorResult('Translation service unavailable.'); }
-            }} style={{ width: '100%', padding: '.25rem', background: 'rgba(236,72,153,.1)', border: '1px solid rgba(236,72,153,.3)', color: '#ec4899', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', marginBottom: '.3rem' }}>
-              TRANSLATE ▶
-            </button>
-            {translatorResult && (
-              <div style={{ background: 'rgba(236,72,153,.05)', border: '1px solid rgba(236,72,153,.15)', padding: '.3rem', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(236,72,153,.8)', lineHeight: 1.5, wordBreak: 'break-word' }}>
-                {translatorResult}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* ── WEAPONS WHEEL — bottom-right dual-slot display ─────────────── */}
       <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
