@@ -9479,7 +9479,35 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const n = NPCS[ni];
         const isFleeing = n.reactState === 'FLEEING';
         const isSpectating = n.reactState === 'SPECTATING';
-        const sPos = (isFleeing || isSpectating) ? { x: n.x, y: n.y } : getNpcSchedulePos(n, worldTimeFine);
+        // Determine phase for visibility/nudge logic
+        const npcPhase = getNpcPhaseForNpc(n, worldTimeFine);
+        // NPCs in "home" or "work" phase are inside buildings — hide them on the world map.
+        // Outdoor-only roles (gang_patrol, police, corpo_military, blade_runner) patrol streets
+        // even during their 'work' phase, so only hide them during 'home' (sleeping) phase.
+        const isOutdoorRole = n.role === 'gang_patrol' || n.role === 'police' || n.role === 'corpo_military' || n.role === 'blade_runner';
+        const hideOnMap = !isFleeing && !isSpectating && (
+          npcPhase === 'home' || (npcPhase === 'work' && !isOutdoorRole)
+        );
+        if (hideOnMap) continue;
+        let sPos = (isFleeing || isSpectating) ? { x: n.x, y: n.y } : getNpcSchedulePos(n, worldTimeFine);
+        // For outdoor phases (or outdoor roles), nudge position out of building footprints
+        const schedForNudge = getCachedSchedule(n);
+        if (!isFleeing && !isSpectating && (npcPhase === 'wander' || npcPhase === 'commute_work' || npcPhase === 'commute_home' || schedForNudge.isErratic || isOutdoorRole)) {
+          const BPAD = 6;
+          for (const bld of BUILDINGS) {
+            const bx1 = bld.x - BPAD, by1 = bld.y - BPAD, bx2 = bld.x + bld.w + BPAD, by2 = bld.y + bld.h + BPAD;
+            if (sPos.x >= bx1 && sPos.x <= bx2 && sPos.y >= by1 && sPos.y <= by2) {
+              // Nudge to nearest edge
+              const dLeft = sPos.x - bx1, dRight = bx2 - sPos.x, dTop = sPos.y - by1, dBottom = by2 - sPos.y;
+              const minD = Math.min(dLeft, dRight, dTop, dBottom);
+              if (minD === dLeft) sPos = { x: bx1 - 1, y: sPos.y };
+              else if (minD === dRight) sPos = { x: bx2 + 1, y: sPos.y };
+              else if (minD === dTop) sPos = { x: sPos.x, y: by1 - 1 };
+              else sPos = { x: sPos.x, y: by2 + 1 };
+              break;
+            }
+          }
+        }
         const nx2 = sPos.x + ox, ny2 = sPos.y + oy;
         if (nx2 < -14 || nx2 > cw + 14 || ny2 < -14 || ny2 > ch + 14) continue;
         const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
