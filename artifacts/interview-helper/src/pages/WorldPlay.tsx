@@ -260,12 +260,48 @@ function getBusinessLocationLabel(px: number, py: number): string {
   return getNearestSettlement(px, py);
 }
 
+// ── Vehicle type catalog ──────────────────────────────────────────────────────
+interface VehicleDef {
+  id: string; label: string;
+  color: string; accentColor: string; windowColor: string;
+  speed: number;
+  bodyW: number; bodyH: number;
+  category: 'bike' | 'car' | 'truck' | 'special';
+}
+const VEHICLE_DEFS: VehicleDef[] = [
+  { id: 'cargo_bike',     label: 'CARGO BIKE',     color: '#886622', accentColor: '#aa8833', windowColor: '#000', speed: 1.5, bodyW: 16, bodyH: 8,  category: 'bike' },
+  { id: 'hover_scooter',  label: 'HOVER SCOOTER',  color: '#2266aa', accentColor: '#3399cc', windowColor: '#66ccff', speed: 1.8, bodyW: 14, bodyH: 7, category: 'bike' },
+  { id: 'armored_moped',  label: 'ARMORED MOPED',  color: '#553344', accentColor: '#774455', windowColor: '#000', speed: 1.3, bodyW: 14, bodyH: 8,  category: 'bike' },
+  { id: 'motorcycle',     label: 'MOTORCYCLE',     color: '#cc2222', accentColor: '#881111', windowColor: '#000', speed: 2.2, bodyW: 10, bodyH: 10, category: 'bike' },
+  { id: 'sedan',          label: 'SEDAN',          color: '#334466', accentColor: '#4455aa', windowColor: '#88ccff', speed: 1.6, bodyW: 22, bodyH: 12, category: 'car' },
+  { id: 'sports_car',     label: 'SPORTS CAR',     color: '#cc3311', accentColor: '#ff4422', windowColor: '#aaddff', speed: 2.8, bodyW: 20, bodyH: 10, category: 'car' },
+  { id: 'taxi',           label: 'TAXI',           color: '#ddaa00', accentColor: '#ffcc00', windowColor: '#88ccee', speed: 1.5, bodyW: 22, bodyH: 12, category: 'car' },
+  { id: 'van',            label: 'VAN',            color: '#445533', accentColor: '#556644', windowColor: '#88aacc', speed: 1.2, bodyW: 20, bodyH: 14, category: 'truck' },
+  { id: 'truck',          label: 'TRUCK',          color: '#664433', accentColor: '#885544', windowColor: '#99aacc', speed: 1.0, bodyW: 28, bodyH: 14, category: 'truck' },
+  { id: 'police_cruiser', label: 'POLICE CRUISER', color: '#112244', accentColor: '#1133aa', windowColor: '#99aadd', speed: 2.0, bodyW: 22, bodyH: 12, category: 'special' },
+];
+const getVehicleDef = (id: string): VehicleDef => VEHICLE_DEFS.find(v => v.id === id) ?? VEHICLE_DEFS[0];
+
+// ── Parking spots near buildings ──────────────────────────────────────────────
+interface ParkingSpot { x: number; y: number; label: string; }
+const PARKING_SPOTS: ParkingSpot[] = [
+  { x: 6150, y: 5780, label: 'SHADOW DISTRICT LOT' },
+  { x: 6600, y: 5780, label: 'NEON STRIP LOT' },
+  { x: 7100, y: 5780, label: 'NORTH LOT' },
+  { x: 7500, y: 5780, label: 'EAST LOT' },
+  { x: 6150, y: 6800, label: 'SOUTH DISTRICT LOT' },
+  { x: 6600, y: 6800, label: 'MARKET LOT' },
+  { x: 7100, y: 6800, label: 'INDUSTRIAL LOT' },
+  { x: 7500, y: 6800, label: 'SOUTHERN LOT' },
+];
+const PARKING_RANGE = 50;
+
 // ── Parked vehicle locations (stealable) ─────────────────────────────────────
 interface ParkedVehicle { x: number; y: number; type: string; stolen: boolean; }
 
 interface TrafficVehicle {
   x: number; y: number; dx: number; dy: number;
-  type: 'car' | 'truck' | 'van';
+  type: 'sedan' | 'truck' | 'van' | 'taxi' | 'police_cruiser' | 'sports_car';
   color: string; speed: number;
   routeIdx: number; wpIdx: number;
 }
@@ -286,7 +322,7 @@ function initTrafficVehicles(): TrafficVehicle[] {
     const route = TRAFFIC_ROUTES[i];
     const startWp = Math.floor(Math.random() * route.length);
     const wp = route[startWp];
-    const types: ('car' | 'truck' | 'van')[] = ['car', 'car', 'car', 'truck', 'van'];
+    const types: TrafficVehicle['type'][] = ['sedan', 'sedan', 'sedan', 'truck', 'van', 'taxi', 'police_cruiser'];
     vehicles.push({
       x: wp.x + Math.random() * 100 - 50,
       y: wp.y + Math.random() * 50 - 25,
@@ -298,12 +334,12 @@ function initTrafficVehicles(): TrafficVehicle[] {
       wpIdx: startWp,
     });
   }
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const ri = Math.floor(Math.random() * TRAFFIC_ROUTES.length);
     const route = TRAFFIC_ROUTES[ri];
     const startWp = Math.floor(Math.random() * route.length);
     const wp = route[startWp];
-    const types: ('car' | 'truck' | 'van')[] = ['car', 'car', 'truck', 'van'];
+    const types: TrafficVehicle['type'][] = ['sedan', 'sedan', 'truck', 'van', 'sports_car', 'taxi'];
     vehicles.push({
       x: wp.x + Math.random() * 200 - 100,
       y: wp.y + Math.random() * 100 - 50,
@@ -318,18 +354,41 @@ function initTrafficVehicles(): TrafficVehicle[] {
   return vehicles;
 }
 const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
-  { x: 5600, y: 5580, type: 'cargo_bike', stolen: false },
-  { x: 6680, y: 5580, type: 'cargo_bike', stolen: false },
-  { x: 7160, y: 5580, type: 'hover_scooter', stolen: false },
-  { x: 7850, y: 5580, type: 'cargo_bike', stolen: false },
-  { x: 5600, y: 5960, type: 'hover_scooter', stolen: false },
-  { x: 6680, y: 6350, type: 'cargo_bike', stolen: false },
-  { x: 7160, y: 6350, type: 'armored_moped', stolen: false },
-  { x: 6060, y: 6600, type: 'cargo_bike', stolen: false },
-  { x: 8450, y: 6430, type: 'motorcycle', stolen: false },
+  { x: 5600, y: 5580, type: 'sedan',          stolen: false },
+  { x: 6680, y: 5580, type: 'cargo_bike',     stolen: false },
+  { x: 7160, y: 5580, type: 'hover_scooter',  stolen: false },
+  { x: 7850, y: 5580, type: 'taxi',           stolen: false },
+  { x: 5600, y: 5960, type: 'police_cruiser', stolen: false },
+  { x: 6680, y: 6350, type: 'sports_car',     stolen: false },
+  { x: 7160, y: 6350, type: 'armored_moped',  stolen: false },
+  { x: 6060, y: 6600, type: 'van',            stolen: false },
+  { x: 8450, y: 6430, type: 'motorcycle',     stolen: false },
+  { x: 6400, y: 6100, type: 'truck',          stolen: false },
+  { x: 7400, y: 6100, type: 'sedan',          stolen: false },
+  { x: 6900, y: 5700, type: 'sports_car',     stolen: false },
 ];
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
+
+// ── Ambient animation spots (neon signs, steam vents, debris) ─────────────────
+interface NeonSignDef { x: number; y: number; text: string; color: string; w: number; }
+const NEON_SIGNS: NeonSignDef[] = [
+  { x: 6240, y: 5840, text: 'MINX BAR', color: '#ff44aa', w: 40 },
+  { x: 6840, y: 5860, text: 'NOODLE HUT', color: '#ffaa00', w: 48 },
+  { x: 7240, y: 5880, text: 'DATA VAULT', color: '#00ffcc', w: 44 },
+  { x: 6440, y: 6140, text: 'ARCADE', color: '#ff5500', w: 36 },
+  { x: 7040, y: 6140, text: 'MARKET', color: '#aaff00', w: 36 },
+  { x: 6640, y: 6440, text: 'HOTEL', color: '#ff00aa', w: 32 },
+  { x: 7340, y: 6240, text: 'NIGHTCLUB', color: '#aa00ff', w: 44 },
+];
+interface SteamVentDef { x: number; y: number; }
+const STEAM_VENTS: SteamVentDef[] = [
+  { x: 6320, y: 5920 }, { x: 6720, y: 5920 }, { x: 7020, y: 5920 },
+  { x: 6320, y: 6220 }, { x: 7120, y: 6220 }, { x: 6820, y: 6520 },
+  { x: 6520, y: 6020 }, { x: 7220, y: 6020 },
+];
+interface DebrisParticle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; col: string; }
+const MAX_DEBRIS = 20;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 30;
@@ -1783,7 +1842,10 @@ function getStockPrice(stock: StockDef, gameFrame: number): number {
   const noise = Math.sin(gameFrame * 0.002 + seed * 11) * 0.05;
   return Math.max(Math.floor(stock.basePrice * (1 + cycle + trend + noise)), Math.floor(stock.basePrice * 0.3));
 }
-const VEHICLE_SPEED: Record<string, number> = { cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9, motorcycle: 2.24 };
+const VEHICLE_SPEED: Record<string, number> = {
+  cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9, motorcycle: 2.24,
+  sedan: 1.6, sports_car: 2.8, taxi: 1.5, van: 1.2, truck: 1.0, police_cruiser: 2.0,
+};
 const WEAPON_TIER: Record<string, number> = {
   pipe_wrench: 1, boxing_gloves: 1, combat_knife: 1,
   dirk: 2, spear: 2, stun_baton: 2,
@@ -2687,8 +2749,11 @@ export default function WorldPlay() {
     projectiles: [] as Projectile[],
     bombs: [] as BombEffect[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
+    ownedVehicles: (Array.isArray(_ss?.ownedVehicles) ? _ss.ownedVehicles : []) as string[],
+    parkedLoadout: (Array.isArray(_ss?.parkedLoadout) ? _ss.parkedLoadout : []) as { type: string; spotIdx: number }[],
     parkedVehicles: PARKED_VEHICLES_INIT.map(v => ({ ...v })),
     trafficVehicles: initTrafficVehicles(),
+    debrisParticles: [] as DebrisParticle[],
     policeAlertTimer: 0,
     policeAlertX: 0,
     policeAlertY: 0,
@@ -3171,6 +3236,8 @@ export default function WorldPlay() {
       rentReminded: g.rentReminded,
       businesses: [...(g.businesses ?? [])],
       floorOccupancy: { ...(g.floorOccupancy ?? {}) },
+      ownedVehicles: [...(g.ownedVehicles ?? [])],
+      parkedLoadout: [...(g.parkedLoadout ?? [])],
     };
   }, [char]);
 
@@ -7183,28 +7250,110 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── Parked vehicle steal interaction ──
+      // ── Debris particle tick ──
+      if (inCityBounds(g.px, g.py) && g.frame % 40 === 0 && g.debrisParticles.length < MAX_DEBRIS) {
+        const cols = ['#887766', '#aa9977', '#665544', '#997755', '#ccbbaa'];
+        g.debrisParticles.push({
+          x: CITY_LEFT + Math.random() * (CITY_RIGHT - CITY_LEFT),
+          y: CITY_TOP + Math.random() * (CITY_BOTTOM - CITY_TOP),
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.15 - Math.random() * 0.2,
+          life: 180 + Math.floor(Math.random() * 120),
+          maxLife: 300,
+          size: 1 + Math.random() * 2,
+          col: cols[Math.floor(Math.random() * cols.length)],
+        });
+      }
+      for (const dp of g.debrisParticles) { dp.x += dp.vx; dp.y += dp.vy; dp.life--; }
+      g.debrisParticles = g.debrisParticles.filter(dp => dp.life > 0);
+
+      // ── Parked vehicle steal & park interaction ──
       const nearAnyBuilding = BUILDINGS.some(b => g.px >= b.x - 20 && g.px <= b.x + b.w + 20 && g.py >= b.y - 20 && g.py <= b.y + b.h + 20);
       const nearAnyNpc = NPCS.some(nn => Math.hypot(g.px - nn.x, g.py - nn.y) < NPC_RANGE);
-      if (g.keys.has('e') && !g.vehicle && !nearAnyBuilding && !nearAnyNpc) {
-        for (const pv of g.parkedVehicles) {
-          if (pv.stolen) continue;
-          const pvDist = Math.hypot(g.px - pv.x, g.py - pv.y);
-          if (pvDist < STEAL_RANGE) {
-            g.keys.delete('e');
-            if (Math.random() < STEAL_CHANCE) {
-              pv.stolen = true;
-              g.vehicle = pv.type;
-              g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace('_', ' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
-              setNarr(`> POLICE ALERT — You hotwired a ${pv.type.replace('_', ' ')}. All units converging.`);
-              g.policeAlertTimer = 300;
-              g.policeAlertX = g.px; g.policeAlertY = g.py;
+
+      // Park vehicle at a parking spot
+      if (g.keys.has('p') && g.vehicle) {
+        for (let si = 0; si < PARKING_SPOTS.length; si++) {
+          const sp = PARKING_SPOTS[si];
+          if (Math.hypot(g.px - sp.x, g.py - sp.y) < PARKING_RANGE) {
+            g.keys.delete('p');
+            const already = g.parkedLoadout.findIndex(pl => pl.spotIdx === si);
+            if (already >= 0) {
+              g.floaters.push({ x: g.px, y: g.py - 16, text: 'SPOT OCCUPIED', color: '#ff4444', life: 40, maxLife: 40 });
             } else {
-              g.floaters.push({ x: g.px, y: g.py - 16, text: 'STEAL FAILED', color: '#ff4444', life: 40, maxLife: 40 });
-              setNarr('> Hotwire attempt failed. The alarm triggered briefly.');
+              g.parkedLoadout.push({ type: g.vehicle, spotIdx: si });
+              g.floaters.push({ x: g.px, y: g.py - 16, text: `PARKED ${g.vehicle.replace(/_/g,' ').toUpperCase()}`, color: '#00ffcc', life: 60, maxLife: 60 });
+              setNarr(`> VEHICLE — ${getVehicleDef(g.vehicle).label} parked at ${sp.label}. Press [E] near spot to retrieve.`);
+              g.vehicle = null;
             }
             break;
           }
+        }
+      }
+
+      // Retrieve parked vehicle from spot — parking retrieval checked BEFORE
+      // building/NPC gate so spots near buildings always work
+      if (g.keys.has('e') && !g.vehicle) {
+        let retrieved = false;
+        for (let si = 0; si < PARKING_SPOTS.length; si++) {
+          const sp = PARKING_SPOTS[si];
+          if (Math.hypot(g.px - sp.x, g.py - sp.y) < PARKING_RANGE) {
+            const idx = g.parkedLoadout.findIndex(pl => pl.spotIdx === si);
+            if (idx >= 0) {
+              const vt = g.parkedLoadout[idx].type;
+              g.parkedLoadout.splice(idx, 1);
+              g.vehicle = vt;
+              g.keys.delete('e');
+              retrieved = true;
+              g.floaters.push({ x: g.px, y: g.py - 16, text: `RETRIEVED ${vt.replace(/_/g,' ').toUpperCase()}`, color: '#00ffcc', life: 60, maxLife: 60 });
+              setNarr(`> VEHICLE — ${getVehicleDef(vt).label} retrieved. Press [P] near a parking spot to park.`);
+              break;
+            }
+          }
+        }
+        // Steal a parked street vehicle if not near a spot with a stored vehicle,
+        // and the player is not near a building/NPC (standard interaction priority)
+        if (!retrieved && !nearAnyBuilding && !nearAnyNpc) {
+          for (const pv of g.parkedVehicles) {
+            if (pv.stolen) continue;
+            const pvDist = Math.hypot(g.px - pv.x, g.py - pv.y);
+            if (pvDist < STEAL_RANGE) {
+              g.keys.delete('e');
+              if (Math.random() < STEAL_CHANCE) {
+                pv.stolen = true;
+                g.vehicle = pv.type;
+                if (!g.ownedVehicles.includes(pv.type)) g.ownedVehicles.push(pv.type);
+                g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace(/_/g,' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
+                setNarr(`> POLICE ALERT — You hotwired a ${pv.type.replace(/_/g,' ')}. All units converging.`);
+                g.policeAlertTimer = 300;
+                g.policeAlertX = g.px; g.policeAlertY = g.py;
+              } else {
+                g.floaters.push({ x: g.px, y: g.py - 16, text: 'STEAL FAILED', color: '#ff4444', life: 40, maxLife: 40 });
+                setNarr('> Hotwire attempt failed. The alarm triggered briefly.');
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // [V] — cycle through ownedVehicles loadout: select next owned vehicle as active
+      if (g.keys.has('v') && g.ownedVehicles.length > 0) {
+        g.keys.delete('v');
+        // Only cycle vehicles not currently parked in a spot
+        const parkedTypes = new Set(g.parkedLoadout.map(pl => pl.type));
+        const available = g.ownedVehicles.filter(vid => !parkedTypes.has(vid));
+        if (available.length > 0) {
+          const curIdx = g.vehicle ? available.indexOf(g.vehicle) : -1;
+          const nextIdx = (curIdx + 1) % available.length;
+          const nextVehicle = available[nextIdx];
+          g.vehicle = nextVehicle ?? null;
+          if (nextVehicle) {
+            g.floaters.push({ x: g.px, y: g.py - 18, text: `VEHICLE: ${nextVehicle.replace(/_/g,' ').toUpperCase()}`, color: '#00ffcc', life: 70, maxLife: 70 });
+            setNarr(`> LOADOUT — Switched to ${getVehicleDef(nextVehicle).label}. [V] to cycle, [P] to park.`);
+          }
+        } else {
+          g.floaters.push({ x: g.px, y: g.py - 16, text: 'ALL VEHICLES PARKED', color: '#ffcc00', life: 50, maxLife: 50 });
         }
       }
 
@@ -7282,11 +7431,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const h2 = tileHash(gx / TILE + 100, gy / TILE + 100);
 
           let baseR: number, baseG: number, baseB: number;
+          // Zone classification for richer textures
+          const inDowntown = inCityZone && gx >= CITY_LEFT + 100 && gx < CITY_LEFT + 600 && gy >= CITY_TOP + 100;
+          const inNeonStrip = inCityZone && gx >= CITY_LEFT + 600 && gy < CITY_TOP + 500;
+          const inIndustrial = inCityZone && gx >= CITY_LEFT + 600 && gy >= CITY_TOP + 500;
+          const inOldDistrict = inCityZone && gx < CITY_LEFT + 100;
           if (inCityZone) {
-            if (h < 0.3) { baseR = 85; baseG = 85; baseB = 80; }
-            else if (h < 0.6) { baseR = 75; baseG = 72; baseB = 68; }
-            else { baseR = 90; baseG = 88; baseB = 82; }
-            baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 8;
+            if (inDowntown) {
+              // Cracked asphalt — downtown
+              if (h < 0.25) { baseR = 72; baseG = 70; baseB = 66; }
+              else if (h < 0.5) { baseR = 80; baseG = 78; baseB = 74; }
+              else if (h < 0.75) { baseR = 68; baseG = 65; baseB = 62; }
+              else { baseR = 88; baseG = 85; baseB = 80; }
+              baseR += (h2 - 0.5) * 12; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 8;
+            } else if (inNeonStrip) {
+              // Dark wet pavement, slightly reflective
+              if (h < 0.35) { baseR = 55; baseG = 55; baseB = 65; }
+              else if (h < 0.65) { baseR = 62; baseG = 60; baseB = 72; }
+              else { baseR = 70; baseG = 68; baseB = 80; }
+              baseR += (h2 - 0.5) * 8; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 14;
+            } else if (inIndustrial) {
+              // Metal grating and concrete
+              if (h < 0.2) { baseR = 90; baseG = 88; baseB = 82; }
+              else if (h < 0.45) { baseR = 78; baseG = 74; baseB = 70; }
+              else if (h < 0.7) { baseR = 82; baseG = 80; baseB = 75; }
+              else { baseR = 68; baseG = 66; baseB = 64; }
+              baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 10;
+            } else if (inOldDistrict) {
+              // Cobblestone — old district
+              if (h < 0.3) { baseR = 95; baseG = 88; baseB = 78; }
+              else if (h < 0.6) { baseR = 82; baseG = 76; baseB = 68; }
+              else { baseR = 105; baseG = 96; baseB = 85; }
+              baseR += (h2 - 0.5) * 15; baseG += (h2 - 0.5) * 12; baseB += (h2 - 0.5) * 10;
+            } else {
+              if (h < 0.3) { baseR = 85; baseG = 85; baseB = 80; }
+              else if (h < 0.6) { baseR = 75; baseG = 72; baseB = 68; }
+              else { baseR = 90; baseG = 88; baseB = 82; }
+              baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 8;
+            }
           } else if (isSandyShore) {
             // Sandy coastal zone transitioning to beach
             const shoreBlend = 1 - (isNearWestOcean ? distW : distE) / 200;
@@ -7300,26 +7482,77 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (h < 0.3) { baseR = 72 + h2 * 12; baseG = 72 + h2 * 10; baseB = 68 + h2 * 8; }
             else { baseR = 68 + h2 * 15; baseG = 95 + h2 * 18; baseB = 42 + h2 * 10; }
           } else {
-            if (h < 0.25) { baseR = 110 + h2 * 15; baseG = 85 + h2 * 10; baseB = 55 + h2 * 8; }
-            else if (h < 0.55) { baseR = 75 + h2 * 15; baseG = 105 + h2 * 20; baseB = 45 + h2 * 10; }
-            else if (h < 0.8) { baseR = 95 + h2 * 12; baseG = 90 + h2 * 15; baseB = 60 + h2 * 10; }
-            else { baseR = 120 + h2 * 10; baseG = 100 + h2 * 10; baseB = 65 + h2 * 8; }
+            // Wasteland: sand / dust / scrub patches
+            if (h < 0.25) { baseR = 118 + h2 * 15; baseG = 92 + h2 * 10; baseB = 58 + h2 * 8; }
+            else if (h < 0.5) { baseR = 80 + h2 * 15; baseG = 110 + h2 * 20; baseB = 48 + h2 * 10; }
+            else if (h < 0.75) { baseR = 100 + h2 * 12; baseG = 94 + h2 * 15; baseB = 62 + h2 * 10; }
+            else { baseR = 125 + h2 * 10; baseG = 105 + h2 * 10; baseB = 68 + h2 * 8; }
           }
           const br = dayBright * (1 - pwDark * 0.7);
           ctx.fillStyle = `rgb(${Math.floor(baseR * br)},${Math.floor(baseG * br)},${Math.floor(baseB * br)})`;
           ctx.fillRect(sx, sy, TILE, TILE);
 
+          // Zone-specific detail pixels
           const pxSize = 8;
-          for (let px2 = 0; px2 < TILE; px2 += pxSize) {
-            for (let py3 = 0; py3 < TILE; py3 += pxSize) {
-              const ph = tileHash(gx + px2, gy + py3);
-              if (ph > 0.7) {
-                const vr = (ph - 0.7) * 30;
-                ctx.fillStyle = `rgba(${Math.floor(baseR * br + vr)},${Math.floor(baseG * br + vr * 0.8)},${Math.floor(baseB * br + vr * 0.5)},0.3)`;
-                ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
-              } else if (ph < 0.15) {
-                ctx.fillStyle = `rgba(0,0,0,0.08)`;
-                ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
+          if (inCityZone && inDowntown) {
+            // Cracked asphalt lines
+            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
+              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
+                const ph = tileHash(gx + px2 * 0.5, gy + py3 * 0.5);
+                if (ph > 0.82) {
+                  ctx.fillStyle = `rgba(0,0,0,0.18)`;
+                  ctx.fillRect(sx + px2, sy + py3, ph > 0.92 ? 2 : 1, pxSize);
+                } else if (ph < 0.1) {
+                  ctx.fillStyle = `rgba(180,160,130,0.12)`;
+                  ctx.fillRect(sx + px2, sy + py3, pxSize, 1);
+                }
+              }
+            }
+          } else if (inCityZone && inOldDistrict) {
+            // Cobblestone grid pattern
+            for (let px2 = 0; px2 < TILE; px2 += 10) {
+              ctx.fillStyle = `rgba(0,0,0,0.12)`;
+              ctx.fillRect(sx + px2, sy, 1, TILE);
+            }
+            for (let py3 = 0; py3 < TILE; py3 += 8) {
+              ctx.fillStyle = `rgba(0,0,0,0.10)`;
+              ctx.fillRect(sx, sy + py3, TILE, 1);
+            }
+          } else if (inCityZone && inIndustrial) {
+            // Metal grating
+            for (let px2 = 0; px2 < TILE; px2 += 6) {
+              ctx.fillStyle = `rgba(0,0,0,0.08)`;
+              ctx.fillRect(sx + px2, sy, 1, TILE);
+            }
+            for (let py3 = 0; py3 < TILE; py3 += 6) {
+              ctx.fillStyle = `rgba(255,255,255,0.04)`;
+              ctx.fillRect(sx, sy + py3, TILE, 1);
+            }
+          } else if (inCityZone && inNeonStrip && isNight) {
+            // Neon puddle reflections at night
+            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
+              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
+                const ph = tileHash(gx + px2, gy + py3 + 700);
+                if (ph > 0.78) {
+                  const rc = Math.floor(ph * 3) % 3;
+                  const pudCol = rc === 0 ? `rgba(255,80,150,0.12)` : rc === 1 ? `rgba(0,200,255,0.12)` : `rgba(180,0,255,0.10)`;
+                  ctx.fillStyle = pudCol;
+                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
+                }
+              }
+            }
+          } else {
+            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
+              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
+                const ph = tileHash(gx + px2, gy + py3);
+                if (ph > 0.7) {
+                  const vr = (ph - 0.7) * 30;
+                  ctx.fillStyle = `rgba(${Math.floor(baseR * br + vr)},${Math.floor(baseG * br + vr * 0.8)},${Math.floor(baseB * br + vr * 0.5)},0.3)`;
+                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
+                } else if (ph < 0.15) {
+                  ctx.fillStyle = `rgba(0,0,0,0.08)`;
+                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
+                }
               }
             }
           }
@@ -8414,6 +8647,122 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 7); }
       }
 
+      // ── Shared vehicle draw helper (directional pixel art) ──
+      const drawVehicleSprite = (vx: number, vy: number, type: string, facing: 'up'|'down'|'left'|'right', col?: string) => {
+        const vd = getVehicleDef(type);
+        const vc = col ?? vd.color;
+        const va = vd.accentColor;
+        const vw2 = vd.bodyW / 2, vh2 = vd.bodyH / 2;
+        const isHoriz = facing === 'left' || facing === 'right';
+        const fwdX = isHoriz ? (facing === 'right' ? 1 : -1) : 0;
+        const fwdY = !isHoriz ? (facing === 'down' ? 1 : -1) : 0;
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.beginPath(); ctx.ellipse(vx, vy + 5, isHoriz ? vw2 + 2 : vh2 + 2, isHoriz ? 3 : 4, 0, 0, Math.PI * 2); ctx.fill();
+        if (vd.category === 'bike') {
+          if (isHoriz) {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
+            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy - vh2 - 2, vh2 * 2, 3);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx + fwdX * (vw2 - 1), vy - 1, 2, 2);
+            ctx.fillStyle = '#ff4444'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - 1, 2, 2);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.5, vy + vh2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.5, vy + vh2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
+            ctx.fillStyle = va; ctx.fillRect(vx - 2, vy + fwdY * (vw2 - 2), 4, 3);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx - 1, vy + fwdY * vw2, 2, 2);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx + vh2 + 1, vy, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vh2 - 1, vy, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        } else if (vd.category === 'car') {
+          if (isHoriz) {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vw2 * 0.4, vy - vh2 + 1, vd.bodyW * 0.5, vh2 - 1);
+            ctx.fillStyle = va; ctx.fillRect(vx - vw2, vy - vh2, vw2 * 0.5, vd.bodyH);
+            if (type === 'police_cruiser') {
+              const blink2 = Math.floor(g.frame / 8) % 2;
+              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff'; ctx.fillRect(vx - 3, vy - vh2 - 2, 6, 2);
+            }
+            if (type === 'taxi') { ctx.fillStyle = '#000'; ctx.font = '5px monospace'; ctx.textAlign = 'center'; ctx.fillText('TAXI', vx, vy - vh2 - 1); }
+            ctx.fillStyle = '#ffcc44';
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy - vh2 + 1, 2, 2);
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy + vh2 - 3, 2, 2);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - vh2 + 2, 2, 2); ctx.fillRect(vx - fwdX * (vw2 - 1), vy + vh2 - 4, 2, 2);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.65, vy + vh2 + 1, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.65, vy + vh2 + 1, 2.5, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vh2 + 1, vy - vw2 * 0.3, vd.bodyH - 2, vd.bodyW * 0.45);
+            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy + fwdY * (vw2 - 4), vd.bodyH, 4);
+            if (type === 'police_cruiser') {
+              const blink2 = Math.floor(g.frame / 8) % 2;
+              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff'; ctx.fillRect(vx - 3, vy + fwdY * (vw2 + 2), 6, 2);
+            }
+            ctx.fillStyle = '#ffcc44';
+            ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 2), 2, 2);
+            ctx.fillRect(vx + vh2 - 3, vy + fwdY * (vw2 - 2), 2, 2);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx - vh2 - 1, vy + vw2 * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 1, vy + vw2 * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+          }
+        } else {
+          // truck / van
+          if (isHoriz) {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
+            ctx.fillStyle = va; ctx.fillRect(vx + fwdX * (vw2 - 6), vy - vh2, 6, vd.bodyH);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx + fwdX * (vw2 - 5), vy - vh2 + 1, 4, vh2);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx + fwdX * (vw2 - 1), vy - 2, 2, 2); ctx.fillRect(vx + fwdX * (vw2 - 1), vy + 2, 2, 2);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - 2, 2, 4);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.6, vy + vh2 + 2, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.6, vy + vh2 + 2, 3, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
+            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy + fwdY * (vw2 - 6), vd.bodyH, 6);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 5), vd.bodyH - 2, 4);
+            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx - 2, vy + fwdY * (vw2 - 1), 2, 2); ctx.fillRect(vx + 2, vy + fwdY * (vw2 - 1), 2, 2);
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy + vw2 * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy + vw2 * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      };
+
+      // ── Parking spot markers ──
+      for (let si = 0; si < PARKING_SPOTS.length; si++) {
+        const sp = PARKING_SPOTS[si];
+        const spx = sp.x + ox, spy = sp.y + oy;
+        if (spx < -60 || spx > cw + 60 || spy < -40 || spy > ch + 40) continue;
+        const spDist = Math.hypot(g.px - sp.x, g.py - sp.y);
+        const spNear = spDist < PARKING_RANGE;
+        const hasParked = g.parkedLoadout.some(pl => pl.spotIdx === si);
+        ctx.strokeStyle = hasParked ? '#00ffcc' : 'rgba(0,200,255,0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(spx - 22, spy - 14, 44, 28);
+        ctx.setLineDash([]);
+        if (hasParked) {
+          const pl = g.parkedLoadout.find(p => p.spotIdx === si)!;
+          drawVehicleSprite(spx, spy, pl.type, 'right');
+          if (spNear && !g.vehicle) {
+            ctx.fillStyle = g.blink ? 'rgba(0,255,204,.85)' : 'rgba(0,255,204,.3)';
+            ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('[E] RETRIEVE', spx, spy - 20);
+          }
+        } else if (spNear && g.vehicle) {
+          ctx.fillStyle = g.blink ? 'rgba(0,255,204,.85)' : 'rgba(0,255,204,.3)';
+          ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[P] PARK HERE', spx, spy - 20);
+        }
+        if (spNear) {
+          ctx.fillStyle = 'rgba(0,200,255,0.5)';
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(sp.label, spx, spy + 24);
+        }
+      }
+
       // ── Parked vehicles on streets ──
       for (const pv of g.parkedVehicles) {
         if (pv.stolen) continue;
@@ -8422,81 +8771,73 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const pvDist = Math.hypot(g.px - pv.x, g.py - pv.y);
         const pvNear = pvDist < STEAL_RANGE;
         ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = pvNear ? 8 : 2;
-        ctx.fillStyle = 'rgba(0,0,0,.2)';
-        ctx.beginPath(); ctx.ellipse(pvx, pvy + 6, 10, 3, 0, 0, Math.PI * 2); ctx.fill();
-        const vCol = pv.type === 'cargo_bike' ? '#886622' : pv.type === 'hover_scooter' ? '#2266aa' : pv.type === 'motorcycle' ? '#cc2222' : '#553344';
-        if (pv.type === 'motorcycle') {
-          ctx.fillStyle = vCol; ctx.fillRect(pvx - 5, pvy - 6, 10, 10);
-          ctx.fillStyle = '#881111'; ctx.fillRect(pvx - 3, pvy - 8, 6, 3);
-          ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 2, pvy - 9, 4, 2);
-          ctx.fillStyle = '#ff4444'; ctx.fillRect(pvx - 2, pvy + 4, 4, 2);
-          ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx, pvy + 7, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(pvx, pvy - 5, 2, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#444'; ctx.fillRect(pvx - 6, pvy - 2, 2, 4); ctx.fillRect(pvx + 4, pvy - 2, 2, 4);
-        } else {
-          ctx.fillStyle = vCol; ctx.fillRect(pvx - 8, pvy - 4, 16, 8);
-          ctx.fillStyle = '#ffcc44'; ctx.fillRect(pvx - 9, pvy - 2, 2, 2); ctx.fillRect(pvx + 7, pvy - 2, 2, 2);
-          ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(pvx - 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(pvx + 5, pvy + 5, 2, 0, Math.PI * 2); ctx.fill();
-        }
+        drawVehicleSprite(pvx, pvy, pv.type, 'right');
         ctx.shadowBlur = 0;
         if (pvNear && !g.vehicle) {
           ctx.fillStyle = g.blink ? 'rgba(255,204,0,.85)' : 'rgba(255,204,0,.3)';
           ctx.font = '12px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E] STEAL', pvx, pvy - 14);
           ctx.fillStyle = 'rgba(255,204,0,.6)';
-          ctx.fillText(pv.type.replace('_', ' ').toUpperCase(), pvx, pvy - 26);
+          ctx.fillText(getVehicleDef(pv.type).label, pvx, pvy - 26);
         }
       }
 
       // ── Ambient traffic vehicles ──
       for (const tv of g.trafficVehicles) {
         const tvx = tv.x + ox, tvy = tv.y + oy;
-        if (tvx < -20 || tvx > cw + 20 || tvy < -20 || tvy > ch + 20) continue;
-        ctx.fillStyle = 'rgba(0,0,0,.15)';
-        ctx.beginPath(); ctx.ellipse(tvx, tvy + 5, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-        const isHoriz = Math.abs(tv.dx) > Math.abs(tv.dy);
-        if (tv.type === 'truck') {
-          if (isHoriz) {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 12, tvy - 5, 24, 10);
-            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 14, tvy - 4, 4, 8);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 11, tvy - 2, 3, 2); ctx.fillRect(tvx + 11, tvy, 3, 2);
-            ctx.fillStyle = '#ff3333'; ctx.fillRect(tvx - 14, tvy - 2, 2, 4);
-          } else {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 5, tvy - 12, 10, 24);
-            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 4, tvy - 14, 8, 4);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 11, 2, 3); ctx.fillRect(tvx, tvy + 11, 2, 3);
-          }
-        } else if (tv.type === 'van') {
-          if (isHoriz) {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 10, tvy - 5, 20, 10);
-            ctx.fillStyle = '#333'; ctx.fillRect(tvx - 10, tvy - 4, 5, 8);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 9, tvy - 2, 2, 4);
-          } else {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 5, tvy - 10, 10, 20);
-            ctx.fillStyle = '#333'; ctx.fillRect(tvx - 4, tvy - 10, 8, 5);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 9, 4, 2);
-          }
-        } else {
-          if (isHoriz) {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 8, tvy - 4, 16, 8);
-            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 6, tvy - 3, 5, 6);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx + 7, tvy - 2, 2, 2); ctx.fillRect(tvx + 7, tvy, 2, 2);
-            ctx.fillStyle = '#ff3333'; ctx.fillRect(tvx - 8, tvy - 2, 2, 4);
-          } else {
-            ctx.fillStyle = tv.color; ctx.fillRect(tvx - 4, tvy - 8, 8, 16);
-            ctx.fillStyle = '#222'; ctx.fillRect(tvx - 3, tvy - 6, 6, 5);
-            ctx.fillStyle = '#ffcc33'; ctx.fillRect(tvx - 2, tvy + 7, 2, 2); ctx.fillRect(tvx, tvy + 7, 2, 2);
-          }
+        if (tvx < -30 || tvx > cw + 30 || tvy < -20 || tvy > ch + 20) continue;
+        const tvFacing: 'left'|'right'|'up'|'down' = Math.abs(tv.dx) >= Math.abs(tv.dy)
+          ? (tv.dx >= 0 ? 'right' : 'left')
+          : (tv.dy >= 0 ? 'down' : 'up');
+        drawVehicleSprite(tvx, tvy, tv.type, tvFacing, tv.color);
+      }
+
+      // ── Neon signs ──
+      for (const ns of NEON_SIGNS) {
+        const nsx = ns.x + ox, nsy = ns.y + oy;
+        if (nsx < -60 || nsx > cw + 60 || nsy < -20 || nsy > ch + 20) continue;
+        const flicker = Math.sin(g.frame * 0.15 + ns.x * 0.03) > -0.7 ? 1 : (Math.sin(g.frame * 0.5 + ns.x * 0.02) * 0.5 + 0.5);
+        const nAlpha = flicker * (isNight ? 0.9 : 0.5);
+        ctx.save();
+        ctx.globalAlpha = nAlpha;
+        ctx.shadowColor = ns.color; ctx.shadowBlur = isNight ? 12 : 4;
+        ctx.fillStyle = ns.color;
+        ctx.fillRect(nsx - ns.w / 2, nsy - 4, ns.w, 8);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+        ctx.fillText(ns.text, nsx, nsy + 2);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      // ── Steam/smoke vents ──
+      for (let vi = 0; vi < STEAM_VENTS.length; vi++) {
+        const sv = STEAM_VENTS[vi];
+        const svx = sv.x + ox, svy = sv.y + oy;
+        if (svx < -20 || svx > cw + 20 || svy < -20 || svy > ch + 20) continue;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(svx - 3, svy - 2, 6, 4);
+        for (let pi = 0; pi < 3; pi++) {
+          const t3 = ((g.frame * 0.012 + vi * 0.4 + pi * 0.33) % 1);
+          const sy3 = svy - 4 - t3 * 28;
+          const sx3 = svx + Math.sin(g.frame * 0.04 + vi + pi) * 4;
+          const sa = (1 - t3) * 0.35;
+          const sz = 2 + t3 * 6;
+          ctx.fillStyle = `rgba(200,200,210,${sa})`;
+          ctx.beginPath(); ctx.arc(sx3, sy3, sz, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.fillStyle = '#111';
-        if (isHoriz) {
-          ctx.beginPath(); ctx.arc(tvx - 5, tvy + 5, 2, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(tvx + 5, tvy + 5, 2, 0, Math.PI * 2); ctx.fill();
-        } else {
-          ctx.beginPath(); ctx.arc(tvx - 4, tvy - 4, 2, 0, Math.PI * 2); ctx.fill();
-          ctx.beginPath(); ctx.arc(tvx - 4, tvy + 4, 2, 0, Math.PI * 2); ctx.fill();
-        }
+      }
+
+      // ── Debris particles ──
+      for (const dp of g.debrisParticles) {
+        const dpx = dp.x + ox, dpy = dp.y + oy;
+        if (dpx < -5 || dpx > cw + 5 || dpy < -5 || dpy > ch + 5) continue;
+        const da = (dp.life / dp.maxLife) * 0.7;
+        ctx.save();
+        ctx.globalAlpha = da;
+        ctx.fillStyle = dp.col;
+        ctx.fillRect(dpx - dp.size / 2, dpy - dp.size / 2, dp.size, dp.size);
+        ctx.restore();
       }
 
       // ── Campsite rendering ──
@@ -8537,8 +8878,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // NPCs — pixel sprite bodies (schedule-aware positions)
+      // NPCs — enhanced pixel sprite bodies with walk animation & accessories
       const worldTimeFine = ((g.worldTime ?? 0) + (g.worldTimeTick / 1800) * 0.1) % 24;
+      // Precompute per-NPC variety seeds for accessories, skin, body type
+      const npcVariety = (ni: number) => {
+        const s1 = Math.sin(ni * 17.31) * 0.5 + 0.5;
+        const s2 = Math.sin(ni * 43.17 + 1) * 0.5 + 0.5;
+        const s3 = Math.sin(ni * 7.77 + 2) * 0.5 + 0.5;
+        return { s1, s2, s3 };
+      };
+      const SKIN_TONES = ['#c8906c', '#a06848', '#d4a87a', '#8a5840', '#e0b890', '#7a4830'];
       for (let ni = 0; ni < NPCS.length; ni++) {
         const n = NPCS[ni];
         const isFleeing = n.reactState === 'FLEEING';
@@ -8553,61 +8902,113 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowColor = nCol; ctx.shadowBlur = isNearNpc ? 6 : 0;
         const isFemale = (n as { gender?: string }).gender === 'f';
         const idle = n.idleBehavior ?? 'WALKING';
+        const nv = npcVariety(ni);
+        const skinTone = SKIN_TONES[Math.floor(nv.s1 * SKIN_TONES.length)];
+        // Multi-frame walk cycle
+        const isMoving = idle === 'WALKING' || isFleeing;
+        const walkPhase = isMoving ? (g.frame * 0.12 + ni * 1.3) : 0;
+        const nLLeg = isMoving ? Math.sin(walkPhase) * 3 : 0;
+        const nRLeg = -nLLeg;
+        const nBob = isMoving ? Math.abs(Math.sin(walkPhase)) * 1 : Math.sin(g.frame * 0.05 + ni) * 0.5;
+        // Body proportions variation
+        const bodyW = 7 + Math.floor(nv.s2 * 3);
+        const headR = 2.5 + nv.s3 * 0.8;
         ctx.fillStyle = 'rgba(0,0,0,.25)';
         ctx.beginPath(); ctx.ellipse(nx2, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         if (idle === 'SITTING' && !isFleeing) {
-          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 4, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 4, headR, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = nCol; ctx.fillRect(nx2 - 3, ny2 - 1, 6, 4);
           ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 3, 8, 3);
           ctx.fillStyle = '#443322'; ctx.fillRect(nx2 - 6, ny2 + 2, 12, 3);
         } else if (idle === 'EATING' && !isFleeing) {
+          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
           if (isFemale) {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
             ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
           } else {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
             ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           }
           ctx.fillStyle = '#ffcc88'; ctx.fillRect(nx2 + 4, ny2 - 4, 4, 3);
         } else if (idle === 'BROWSING' && !isFleeing) {
+          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
           if (isFemale) {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
             ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
           } else {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
             ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           }
-          const bob = Math.sin(g.frame * 0.05 + ni) * 2;
-          ctx.fillStyle = '#c8906c'; ctx.fillRect(nx2 + 5, ny2 - 3 + bob, 2, 4);
+          const browseBob = Math.sin(g.frame * 0.05 + ni) * 2;
+          ctx.fillStyle = skinTone; ctx.fillRect(nx2 + 5, ny2 - 3 + browseBob, 2, 4);
         } else if (idle === 'TALKING' && !isFleeing) {
+          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
           if (isFemale) {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-            ctx.fillStyle = '#553322'; ctx.fillRect(nx2 - 3, ny2 - 12, 7, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12, 2, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
           } else {
-            ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
             ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           }
           if (g.frame % 60 < 30) {
             ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('...', nx2 + 8, ny2 - 12);
           }
-        } else if (isFemale) {
-          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-          ctx.fillStyle = '#553322'; ctx.fillRect(nx2 - 3, ny2 - 12, 7, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12, 2, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
         } else {
-          ctx.fillStyle = '#c8906c'; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, 8, 6);
-          ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
+          // Walking or default — multi-frame animated legs
+          if (isFemale) {
+            // Skirt silhouette
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
+            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = skinTone; ctx.fillRect(nx2 - 1, ny2 + 8 + nLLeg, 2, 3); ctx.fillRect(nx2 + 2, ny2 + 8 + nRLeg, 2, 3);
+          } else {
+            // Trousers with animated legs
+            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
+            // Arms swing opposite to legs
+            ctx.fillStyle = nCol; ctx.fillRect(nx2 - bodyW / 2 - 3, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
+          }
+          // Head
+          ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7 + nBob, headR, 0, Math.PI * 2); ctx.fill();
+          // Hair styles — variety based on NPC seed
+          const hairStyle = Math.floor(nv.s2 * 5);
+          const hairCols = ['#1a0800', '#5a3010', '#c09050', '#ee2222', '#aaaaaa'];
+          const hairCol = hairCols[Math.floor(nv.s3 * hairCols.length)];
+          ctx.fillStyle = hairCol;
+          if (hairStyle === 0) { ctx.fillRect(nx2 - 3, ny2 - 12 + nBob, 6, 3); ctx.beginPath(); ctx.arc(nx2, ny2 - 12 + nBob, 2, 0, Math.PI * 2); ctx.fill(); }
+          else if (hairStyle === 1) { ctx.fillRect(nx2 - 4, ny2 - 13 + nBob, 8, 4); }
+          else if (hairStyle === 2) { ctx.fillRect(nx2 - 3, ny2 - 10 + nBob, 6, 2); }
+          else if (hairStyle === 3) { ctx.beginPath(); ctx.arc(nx2 - 1, ny2 - 11 + nBob, 2, 0, Math.PI * 2); ctx.arc(nx2 + 2, ny2 - 11 + nBob, 1.5, 0, Math.PI * 2); ctx.fill(); }
+          // else 4 = bald/shaved (no hair drawn)
         }
+
+        // Faction accessories & detail
+        if (n.role === 'police') {
+          // Badge flash
+          ctx.fillStyle = '#ffcc00'; ctx.fillRect(nx2 - 1, ny2 - 5, 2, 3);
+        } else if (n.role === 'corpo_military') {
+          // Shoulder armor plates
+          ctx.fillStyle = '#884422'; ctx.fillRect(nx2 - 7, ny2 - 6, 3, 4); ctx.fillRect(nx2 + 4, ny2 - 6, 3, 4);
+        } else if (n.role === 'gang_patrol') {
+          // Gang bandana / scarf
+          const gangScarf = gangPatrolColor ?? '#888';
+          ctx.fillStyle = gangScarf; ctx.fillRect(nx2 - 2, ny2 - 5, 4, 2);
+        } else if (n.role === 'blade_runner') {
+          // Visor
+          ctx.fillStyle = '#cc44ff'; ctx.fillRect(nx2 - 3, ny2 - 8, 6, 2);
+        } else if (n.role === 'homeless') {
+          // Ragged outer layer
+          ctx.fillStyle = '#887755'; ctx.fillRect(nx2 - 6, ny2 - 4, 1, 8); ctx.fillRect(nx2 + 5, ny2 - 4, 1, 8);
+        } else if (nv.s1 > 0.7) {
+          // Random accessory: hat
+          ctx.fillStyle = nv.s2 > 0.5 ? '#334455' : '#553322';
+          ctx.fillRect(nx2 - 4, ny2 - 12, 8, 2);
+        } else if (nv.s1 > 0.5 && nv.s2 > 0.6) {
+          // Glasses
+          ctx.fillStyle = '#556688'; ctx.fillRect(nx2 - 4, ny2 - 8, 3, 2); ctx.fillRect(nx2 + 1, ny2 - 8, 3, 2);
+          ctx.fillStyle = '#335577'; ctx.fillRect(nx2 - 1, ny2 - 7, 2, 1);
+        }
+
         if (isFleeing) {
           ctx.fillStyle = 'rgba(255,68,68,.7)'; ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('!', nx2, ny2 - 16);
@@ -9057,42 +9458,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ctx.beginPath(); ctx.ellipse(px, py2 + 9, g.vehicle ? 10 : 7, g.vehicle ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
       const facingDir = g.facing;
       if (g.vehicle) {
-        const vIsHoriz = facingDir === 'left' || facingDir === 'right';
-        if (g.vehicle === 'motorcycle') {
-          if (vIsHoriz) {
-            ctx.fillStyle = '#cc2222'; ctx.fillRect(px - 9, py2 + 1, 18, 7);
-            ctx.fillStyle = '#881111'; ctx.fillRect(px - 7, py2 - 1, 14, 3);
-            ctx.fillStyle = '#ffcc44'; ctx.fillRect(px + (facingDir === 'right' ? 8 : -10), py2 + 2, 3, 2);
-            ctx.fillStyle = '#ff4444'; ctx.fillRect(px + (facingDir === 'right' ? -10 : 8), py2 + 3, 2, 2);
-            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px - 7, py2 + 9, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(px + 7, py2 + 9, 3, 0, Math.PI * 2); ctx.fill();
-          } else {
-            ctx.fillStyle = '#cc2222'; ctx.fillRect(px - 5, py2 - 2, 10, 16);
-            ctx.fillStyle = '#881111'; ctx.fillRect(px - 3, py2 - 4, 6, 4);
-            ctx.fillStyle = '#ffcc44'; ctx.fillRect(px - 2, py2 - 5, 4, 2);
-            ctx.fillStyle = '#ff4444'; ctx.fillRect(px - 2, py2 + 13, 4, 2);
-            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px, py2 + 12, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(px, py2 - 1, 2.5, 0, Math.PI * 2); ctx.fill();
-          }
-        } else {
-          if (vIsHoriz) {
-            const vc = g.vehicle === 'cargo_bike' ? '#886622' : g.vehicle === 'hover_scooter' ? '#2266aa' : '#553344';
-            ctx.fillStyle = vc; ctx.fillRect(px - 10, py2 + 1, 20, 8);
-            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px - 6, py2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(px + 6, py2 + 10, 2.5, 0, Math.PI * 2); ctx.fill();
-          } else {
-            const vc = g.vehicle === 'cargo_bike' ? '#886622' : g.vehicle === 'hover_scooter' ? '#2266aa' : '#553344';
-            ctx.fillStyle = vc; ctx.fillRect(px - 5, py2, 10, 16);
-            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(px, py2 + 14, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(px, py2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
-          }
-        }
+        // Draw player vehicle using the shared directional sprite helper defined above
+        const pvFacing = (facingDir ?? 'right') as 'up'|'down'|'left'|'right';
+        drawVehicleSprite(px, py2 + 4, g.vehicle, pvFacing);
       }
       ctx.globalAlpha = bodyAlpha;
       const wf = g.walkFrame;
-      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3;
+      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3.5;
       const rLeg = -lLeg;
-      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : 0;
+      const lArm = Math.sin(wf / 28 * Math.PI * 2 + Math.PI) * 3;
+      const rArm = -lArm;
+      const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1.2;
+      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : bodyBob;
       const facingRight = facingDir === 'right';
       const facingLeft = facingDir === 'left';
       const facingUp = facingDir === 'up';
@@ -9105,7 +9482,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#eeeeee'; ctx.fillRect(px - 2, py2 - 9 + idleBob, 4, 2);
         ctx.fillStyle = '#cc0000'; ctx.fillRect(px - 1, py2 - 7 + idleBob, 2, 5);
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#333333');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + idleBob, 3, 7);
+        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
         ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
@@ -9121,7 +9498,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#8a7744'; ctx.fillRect(px - 8, py2 - 10 + idleBob, 16, 3);
         ctx.fillStyle = '#554422'; ctx.fillRect(px - 9 + armOffX, py2 - 4 + idleBob, 2, 6);
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b5533');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + idleBob, 3, 7);
+        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
         ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
@@ -9137,7 +9514,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 5 + idleBob, 6, 1);
         ctx.fillStyle = '#33ffaa44'; ctx.fillRect(px - 6, py2 - 8 + idleBob, 1, 6); ctx.fillRect(px + 5, py2 - 8 + idleBob, 1, 6);
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2a5566');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + idleBob, 3, 7);
+        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
         ctx.fillStyle = '#aacccc'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
@@ -9153,8 +9530,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = defCol; ctx.fillRect(px - 7, py2 - 9 + idleBob, 14, 9);
         ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(px - 2, py2 - 9 + idleBob, 4, 3);
         ctx.fillStyle = defCol;
-        ctx.fillRect(px - 10 + armOffX, py2 - 9 + idleBob, 3, 8); ctx.fillRect(px + 7 + armOffX, py2 - 9 + idleBob, 3, 8);
-        ctx.fillStyle = '#d4906a'; ctx.fillRect(px - 10 + armOffX, py2 - 1 + idleBob, 3, 2); ctx.fillRect(px + 7 + armOffX, py2 - 1 + idleBob, 3, 2);
+        ctx.fillRect(px - 10 + armOffX, py2 - 9 + lArm + idleBob, 3, 8); ctx.fillRect(px + 7 + armOffX, py2 - 9 + rArm + idleBob, 3, 8);
+        ctx.fillStyle = '#d4906a'; ctx.fillRect(px - 10 + armOffX, py2 - 1 + lArm + idleBob, 3, 2); ctx.fillRect(px + 7 + armOffX, py2 - 1 + rArm + idleBob, 3, 2);
         ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 16 + idleBob, 5.5, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
@@ -9164,6 +9541,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.arc(px, py2 - 21 + idleBob, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#221108'; ctx.fillRect(px - 6, py2 - 18 + idleBob, 1, 3); ctx.fillRect(px + 5, py2 - 18 + idleBob, 1, 3);
       }
+
+      // ── Visible weapon on player sprite ──
+      if (!g.vehicle && activeWeaponRef.current !== 'fists') {
+        const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current);
+        if (wpn) {
+          const wHandX = facingRight ? px + 10 : facingLeft ? px - 10 : px + 9;
+          const wHandY = py2 - 6 + idleBob + rArm;
+          if (wpn.type === 'melee') {
+            if (wpn.icon === 'sword') {
+              ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 2.5;
+              ctx.shadowColor = '#aaeeff'; ctx.shadowBlur = 4;
+              ctx.beginPath();
+              if (facingRight) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 10, wHandY - 8); }
+              else if (facingLeft) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX - 10, wHandY - 8); }
+              else { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 2, wHandY - 12); }
+              ctx.stroke();
+              ctx.fillStyle = '#886644'; ctx.fillRect(wHandX - 1, wHandY, 2, 4);
+              ctx.shadowBlur = 0;
+            } else if (wpn.icon === 'bat') {
+              ctx.strokeStyle = '#885522'; ctx.lineWidth = 3;
+              ctx.beginPath();
+              if (facingRight) { ctx.moveTo(wHandX, wHandY + 2); ctx.lineTo(wHandX + 11, wHandY - 6); }
+              else if (facingLeft) { ctx.moveTo(wHandX, wHandY + 2); ctx.lineTo(wHandX - 11, wHandY - 6); }
+              else { ctx.moveTo(wHandX, wHandY + 2); ctx.lineTo(wHandX, wHandY - 11); }
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = '#668866'; ctx.fillRect(wHandX - 1, wHandY - 6, 3, 8);
+            }
+          } else if (wpn.type === 'ranged') {
+            // Ranged weapons — distinguish by icon
+            const isLongBarrel = wpn.icon === 'rifle' || wpn.icon === 'laser';
+            const isHeavy = wpn.icon === 'bomb';
+            const barW = isLongBarrel ? 14 : isHeavy ? 12 : 10;
+            const barH = isHeavy ? 6 : 4;
+            const barCol = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#334455';
+            const barGlow = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#88aacc';
+            ctx.fillStyle = barCol; ctx.shadowColor = barGlow; ctx.shadowBlur = 2;
+            if (facingRight) { ctx.fillRect(wHandX, wHandY - barH / 2, barW, barH); ctx.fillRect(wHandX + 4, wHandY + barH / 2, 2, 4); }
+            else if (facingLeft) { ctx.fillRect(wHandX - barW, wHandY - barH / 2, barW, barH); ctx.fillRect(wHandX - 6, wHandY + barH / 2, 2, 4); }
+            else { ctx.fillRect(wHandX - barH / 2, wHandY - barW, barH, barW); }
+            ctx.shadowBlur = 0;
+          } else {
+            // Fallback generic icon
+            ctx.fillStyle = '#556677'; ctx.fillRect(wHandX - 2, wHandY - 4, 4, 8);
+          }
+        }
+      }
+
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       if (gamePausedRef.current) {
         const shieldPulse = 0.35 + Math.sin(g.frame * 0.06) * 0.15;
@@ -11359,8 +11784,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             return;
           }
           if (VEHICLE_SPEED[item.id]) {
-            const curSpd = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
-            if ((VEHICLE_SPEED[item.id] ?? 1) > curSpd) { g.vehicle = item.id; }
+            // Always activate the purchased vehicle (player explicitly chose it);
+            // speed comparison only matters for steals/finds, not purchases
+            g.vehicle = item.id;
+            if (!g.ownedVehicles.includes(item.id)) g.ownedVehicles.push(item.id);
           }
           if (WEAPON_TIER[item.id] && (WEAPON_TIER[item.id] ?? 0) > g.weaponTier) {
             g.weaponTier = WEAPON_TIER[item.id] ?? 0;
