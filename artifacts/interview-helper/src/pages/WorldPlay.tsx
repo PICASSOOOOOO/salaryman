@@ -6,7 +6,8 @@ import {
   type InteriorObject, type InteriorWorker, type InteriorDef,
   INTERIOR_DEFS, BUILDING_INTERIOR_MAP,
   type Door, DOOR_W, mkDoorS, mkDoorN, mkDoorW, mkDoorE,
-  BUILDINGS, RADIO_BUILDINGS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS
+  BUILDINGS, RADIO_BUILDINGS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
+  type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
 import {
@@ -1778,6 +1779,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'neon_sign',      name: 'NEON SIGN',        desc: '+10% passive income. Visible from two blocks.',       price: 8000  },
     { id: 'security_cam',   name: 'SECURITY CAM',     desc: 'Alerts you when threats approach your location.',     price: 12000 },
     { id: 'workstation_furn',name:'WORKSTATION',       desc: 'Personal terminal. Earn ƒ500 per job cycle.',         price: 18000 },
+    ...FURNITURE_CATALOG.map(f => ({ id: `furn_${f.id}`, name: f.name, desc: `${f.desc} [Placeable in owned spaces]`, price: f.price })),
   ]},
   { id: 'realestate', label: 'REAL ESTATE (GOLD ONLY)', col: '#cc44ff', items: [
     { id: 'wasteland_lot',   name: 'WASTELAND LOT',         desc: 'Sector W-14 · 200sqm dirt plot. +ƒ2,000/cycle. 5oz GOLD.',            price: 500000,  goldPrice: 5  },
@@ -2744,6 +2746,7 @@ export default function WorldPlay() {
     guardCooldowns: [] as number[],
     policeCooldowns: [] as number[],
     ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
+    ownedFurniture: Array.isArray(_ss?.ownedFurniture) ? (_ss.ownedFurniture as string[]) : [] as string[],
     inventory: (Array.isArray(_ss?.inventory) ? _ss.inventory : []) as InventoryItem[],
     fogRevealed: new Set<string>(Array.isArray(_ss?.fogRevealed) ? _ss.fogRevealed : []),
     projectiles: [] as Projectile[],
@@ -3107,6 +3110,31 @@ export default function WorldPlay() {
   const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
+  // ── Decoration mode state ──────────────────────────────────────────────────
+  const [decorMode, setDecorMode] = useState(false);
+  const decorModeRef = useRef(false);
+  const [decorCatalogOpen, setDecorCatalogOpen] = useState(false);
+  const decorCatalogOpenRef = useRef(false);
+  const [decorCategory, setDecorCategory] = useState<FurnitureCategory | null>('seating');
+  const [decorSelectedItem, setDecorSelectedItem] = useState<FurnitureItemDef | null>(null);
+  const [decorSelectedVariant, setDecorSelectedVariant] = useState<string>('');
+  const [decorRotation, setDecorRotation] = useState<0 | 90 | 180 | 270>(0);
+  const [decorGhostPos, setDecorGhostPos] = useState<{ gridX: number; gridY: number } | null>(null);
+  const decorGhostPosRef = useRef<{ gridX: number; gridY: number } | null>(null);
+  const decorSelectedItemRef = useRef<FurnitureItemDef | null>(null);
+  const decorSelectedVariantRef = useRef<string>('');
+  const decorRotationRef = useRef<0 | 90 | 180 | 270>(0);
+  const [placedFurnitureMap, setPlacedFurnitureMap] = useState<Record<string, PlacedFurnitureItem[]>>(() => {
+    if (_ss?.placedFurniture && typeof _ss.placedFurniture === 'object') {
+      return _ss.placedFurniture as Record<string, PlacedFurnitureItem[]>;
+    }
+    try {
+      const s = localStorage.getItem('sm_furniture');
+      return s ? JSON.parse(s) : {};
+    } catch { return {}; }
+  });
+  const placedFurnitureMapRef = useRef<Record<string, PlacedFurnitureItem[]>>(placedFurnitureMap);
+
   // ── Business inactivity demolition on game load ──────────────────────────
   useEffect(() => {
     const g = gs.current;
@@ -3238,6 +3266,8 @@ export default function WorldPlay() {
       floorOccupancy: { ...(g.floorOccupancy ?? {}) },
       ownedVehicles: [...(g.ownedVehicles ?? [])],
       parkedLoadout: [...(g.parkedLoadout ?? [])],
+      ownedFurniture: [...(g.ownedFurniture ?? [])],
+      placedFurniture: placedFurnitureMapRef.current,
     };
   }, [char]);
 
@@ -3270,6 +3300,18 @@ export default function WorldPlay() {
   const executeBuildingLogic = useCallback((bid: string) => {
     const g = gs.current;
     const isOwnerHome = bid === g.hamletBuildingId;
+
+    // ── Apply HOME_DEFAULT_FURNITURE on first entry ────────────────────────
+    if (isOwnerHome) {
+      const existing = placedFurnitureMapRef.current[bid];
+      if (!existing || existing.length === 0) {
+        if (HOME_DEFAULT_FURNITURE.length > 0) {
+          const newMap = { ...placedFurnitureMapRef.current, [bid]: HOME_DEFAULT_FURNITURE };
+          setPlacedFurnitureMap(newMap);
+          try { localStorage.setItem('sm_furniture', JSON.stringify(newMap)); } catch {}
+        }
+      }
+    }
 
     if (bid === 'clinic') completeQuestTask('starter_explore_clinic', 'visit_clinic');
     if (bid === 'noodle_bar') completeQuestTask('starter_noodle_run', 'visit_noodle');
@@ -4309,9 +4351,16 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel;
+  frozenRef.current = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
+  decorModeRef.current = decorMode;
+  decorCatalogOpenRef.current = decorCatalogOpen;
+  decorSelectedItemRef.current = decorSelectedItem;
+  decorSelectedVariantRef.current = decorSelectedVariant;
+  decorRotationRef.current = decorRotation;
+  decorGhostPosRef.current = decorGhostPos;
+  placedFurnitureMapRef.current = placedFurnitureMap;
 
   useEffect(() => {
     if (!hospitalCinematic) return;
@@ -4781,6 +4830,10 @@ export default function WorldPlay() {
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
+        if (decorModeRef.current) {
+          setDecorMode(false); setDecorSelectedItem(null); setDecorGhostPos(null); setDecorCatalogOpen(false);
+          setNarr('> DECORATION MODE — Exited. Your changes have been saved.'); return;
+        }
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
@@ -4814,6 +4867,60 @@ export default function WorldPlay() {
           }
         }
       }
+      if (e.key === 'f' || e.key === 'F') {
+        if (!chatOpenRef.current) {
+          const g = gs.current;
+          if (!g.interior) { setNarr('> DECORATION MODE — Enter your home or rented space first.'); return; }
+          const bid = g.interior.bid;
+          const isOwnedHome = bid === g.hamletBuildingId;
+          const isOwnedBuilding = g.ownedBuildings.has(bid);
+          if (!isOwnedHome && !isOwnedBuilding) {
+            setNarr('> DECORATION MODE — You can only decorate spaces you own or rent.'); return;
+          }
+          const newMode = !decorModeRef.current;
+          setDecorMode(newMode);
+          if (newMode) {
+            setNarr('> DECORATION MODE — [F] toggle mode · [O] open catalog · [R] rotate · [Click] place · [Del] remove · [Esc] exit mode');
+          } else {
+            setDecorSelectedItem(null); setDecorGhostPos(null);
+            setDecorCatalogOpen(false);
+            setNarr('> DECORATION MODE — Exited. Your changes have been saved.');
+          }
+        }
+      }
+      if ((e.key === 'o' || e.key === 'O') && decorModeRef.current) {
+        if (!chatOpenRef.current) {
+          setDecorCatalogOpen(v => !v);
+        }
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        if (decorModeRef.current && decorSelectedItemRef.current) {
+          const rotations: Array<0 | 90 | 180 | 270> = [0, 90, 180, 270];
+          const curIdx = rotations.indexOf(decorRotationRef.current);
+          const nextRot = rotations[(curIdx + 1) % 4];
+          setDecorRotation(nextRot);
+        }
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && decorModeRef.current) {
+        const g = gs.current;
+        if (!g.interior) return;
+        const bid = g.interior.bid;
+        const ghost = decorGhostPosRef.current;
+        if (ghost) {
+          const current = placedFurnitureMapRef.current[bid] ?? [];
+          const updated = current.filter(pf => {
+            const def = FURNITURE_CATALOG_BY_ID[pf.furnitureId];
+            if (!def) return true;
+            const fw = pf.rotation === 90 || pf.rotation === 270 ? def.gridH : def.gridW;
+            const fh = pf.rotation === 90 || pf.rotation === 270 ? def.gridW : def.gridH;
+            return !(ghost.gridX >= pf.gridX && ghost.gridX < pf.gridX + fw &&
+                     ghost.gridY >= pf.gridY && ghost.gridY < pf.gridY + fh);
+          });
+          const newMap = { ...placedFurnitureMapRef.current, [bid]: updated };
+          setPlacedFurnitureMap(newMap);
+          try { localStorage.setItem('sm_furniture', JSON.stringify(newMap)); } catch {}
+        }
+      }
     };
     const up = (e: KeyboardEvent) => { gs.current.keys.delete(e.key.toLowerCase()); };
     const onBlur = () => { gs.current.keys.clear(); gs.current.moveTarget = null; };
@@ -4836,8 +4943,70 @@ export default function WorldPlay() {
     };
     const handleInteraction = (clientX: number, clientY: number) => {
       gs.current.lastMoveTime = Date.now();
-      if (frozenRef.current || gamePausedRef.current) return;
+      if (gamePausedRef.current) return;
       const g = gs.current;
+      // ── Decoration mode click ──────────────────────────────────────────────
+      if (decorModeRef.current && g.interior && !decorCatalogOpenRef.current) {
+        const iDef = g.interior.def;
+        const rect2 = canvas.getBoundingClientRect();
+        const logW2 = canvas.width; const logH2 = canvas.height;
+        const iScale2 = Math.min(logW2 / (iDef.width + 80), logH2 / (iDef.height + 80));
+        const iox2 = (logW2 - iDef.width * iScale2) / 2;
+        const ioy2 = (logH2 - iDef.height * iScale2) / 2;
+        const cx = (clientX - rect2.left) * (canvas.width / rect2.width);
+        const cy = (clientY - rect2.top) * (canvas.height / rect2.height);
+        const ix = (cx - iox2) / iScale2;
+        const iy = (cy - ioy2) / iScale2;
+        const gridX = Math.floor(ix / FURNITURE_GRID_SIZE);
+        const gridY = Math.floor(iy / FURNITURE_GRID_SIZE);
+        setDecorGhostPos({ gridX, gridY });
+        if (decorSelectedItemRef.current) {
+          const fItem = decorSelectedItemRef.current;
+          // ── Ownership check ─────────────────────────────────────────────────
+          if (!g.ownedFurniture.includes(fItem.id)) {
+            setNarr(`> DECORATION — You don't own ${fItem.name}. Purchase it from a furniture vending machine first.`);
+            return;
+          }
+          const rot = decorRotationRef.current;
+          const fw = (rot === 90 || rot === 270) ? fItem.gridH : fItem.gridW;
+          const fh = (rot === 90 || rot === 270) ? fItem.gridW : fItem.gridH;
+          // ── Wall-mount constraint ───────────────────────────────────────────
+          if (fItem.wallMounted && gridY > 1) {
+            setNarr(`> DECORATION — ${fItem.name} must be placed on the top wall (row 0 or 1).`);
+            return;
+          }
+          const maxX = Math.floor(iDef.width / FURNITURE_GRID_SIZE) - fw;
+          const maxY = fItem.wallMounted ? 1 : Math.floor(iDef.height / FURNITURE_GRID_SIZE) - fh;
+          const clampedX = Math.max(0, Math.min(gridX, maxX));
+          const clampedY = Math.max(0, Math.min(gridY, maxY));
+          const bid = g.interior.bid;
+          const current = placedFurnitureMapRef.current[bid] ?? [];
+          const hasCollision = current.some(pf => {
+            const def2 = FURNITURE_CATALOG_BY_ID[pf.furnitureId]; if (!def2) return false;
+            const pw = pf.rotation === 90 || pf.rotation === 270 ? def2.gridH : def2.gridW;
+            const ph = pf.rotation === 90 || pf.rotation === 270 ? def2.gridW : def2.gridH;
+            return !(clampedX >= pf.gridX + pw || clampedX + fw <= pf.gridX ||
+                     clampedY >= pf.gridY + ph || clampedY + fh <= pf.gridY);
+          });
+          if (!hasCollision && ix >= 0 && iy >= 0 && ix < iDef.width && iy < iDef.height) {
+            const newItem: PlacedFurnitureItem = {
+              id: `pf_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              furnitureId: fItem.id,
+              variantId: decorSelectedVariantRef.current || (fItem.variants[0]?.id ?? ''),
+              gridX: clampedX,
+              gridY: clampedY,
+              rotation: rot,
+            };
+            const updated = [...current, newItem];
+            const newMap = { ...placedFurnitureMapRef.current, [bid]: updated };
+            setPlacedFurnitureMap(newMap);
+            try { localStorage.setItem('sm_furniture', JSON.stringify(newMap)); } catch {}
+            sfxCoin();
+          }
+        }
+        return;
+      }
+      if (frozenRef.current) return;
       const { wx: clickWorldX, wy: clickWorldY } = resolveWorldCoords(clientX, clientY);
       const clickedBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(clickWorldX - b.x, clickWorldY - b.y) < 30 && Math.hypot(g.px - b.x, g.py - b.y) < 50);
       if (clickedBody) {
@@ -4908,9 +5077,25 @@ export default function WorldPlay() {
         handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!decorModeRef.current) return;
+      const g = gs.current;
+      if (!g.interior) return;
+      const iDef = g.interior.def;
+      const rect2 = canvas.getBoundingClientRect();
+      const cx = (e.clientX - rect2.left) * (canvas.width / rect2.width);
+      const cy = (e.clientY - rect2.top) * (canvas.height / rect2.height);
+      const iScale2 = Math.min(canvas.width / (iDef.width + 80), canvas.height / (iDef.height + 80));
+      const iox2 = (canvas.width - iDef.width * iScale2) / 2;
+      const ioy2 = (canvas.height - iDef.height * iScale2) / 2;
+      const ix = (cx - iox2) / iScale2;
+      const iy = (cy - ioy2) / iScale2;
+      setDecorGhostPos({ gridX: Math.floor(ix / FURNITURE_GRID_SIZE), gridY: Math.floor(iy / FURNITURE_GRID_SIZE) });
+    };
     canvas.addEventListener('click', handleClick);
     canvas.addEventListener('touchstart', handleTouch, { passive: false });
-    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); };
+    canvas.addEventListener('mousemove', handleMouseMove);
+    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); canvas.removeEventListener('mousemove', handleMouseMove); };
   }, []);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
@@ -6389,6 +6574,164 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillText('ƒ50/min', osx + obj.w / 2, osy - 3);
             }
           }
+        }
+
+        // ── Render placed furniture (depth-sorted by gridY + height) ─────────
+        const pfList = [...(placedFurnitureMapRef.current[itr.bid] ?? [])].sort((a, b) => {
+          const da = FURNITURE_CATALOG_BY_ID[a.furnitureId];
+          const db = FURNITURE_CATALOG_BY_ID[b.furnitureId];
+          const ah = (a.rotation === 90 || a.rotation === 270) ? (da?.gridW ?? 1) : (da?.gridH ?? 1);
+          const bh = (b.rotation === 90 || b.rotation === 270) ? (db?.gridW ?? 1) : (db?.gridH ?? 1);
+          return (a.gridY + ah) - (b.gridY + bh);
+        });
+        for (const pf of pfList) {
+          const fDef = FURNITURE_CATALOG_BY_ID[pf.furnitureId]; if (!fDef) continue;
+          const variant = fDef.variants.find(v => v.id === pf.variantId) ?? fDef.variants[0];
+          const fw = (pf.rotation === 90 || pf.rotation === 270) ? fDef.gridH : fDef.gridW;
+          const fh = (pf.rotation === 90 || pf.rotation === 270) ? fDef.gridW : fDef.gridH;
+          const fx = pf.gridX * FURNITURE_GRID_SIZE;
+          const fy = pf.gridY * FURNITURE_GRID_SIZE;
+          const fw_px = fw * FURNITURE_GRID_SIZE;
+          const fh_px = fh * FURNITURE_GRID_SIZE;
+          ctx.save();
+          if (fDef.category === 'rugs') {
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            if (variant.accent) {
+              ctx.strokeStyle = variant.accent;
+              ctx.lineWidth = 2;
+              ctx.strokeRect(fx + 3, fy + 3, fw_px - 6, fh_px - 6);
+              ctx.lineWidth = 1;
+              ctx.strokeRect(fx + 5, fy + 5, fw_px - 10, fh_px - 10);
+            }
+          } else if (fDef.category === 'lighting' && fDef.id === 'neon_tube') {
+            const glow = 0.5 + Math.sin(g.frame * 0.04) * 0.2;
+            ctx.fillStyle = variant.color.replace(/rgb\(/, 'rgba(').replace(/\)$/, `,${glow * 0.4})`);
+            ctx.fillRect(fx - 4, fy - 4, fw_px + 8, fh_px + 8);
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+          } else if (fDef.category === 'wall_art') {
+            ctx.fillStyle = 'rgb(60,50,40)';
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx + 2, fy + 2, fw_px - 4, fh_px - 4);
+            if (variant.accent) {
+              ctx.fillStyle = variant.accent.replace(/rgba?\([^)]+\)/, variant.accent);
+              ctx.fillRect(fx + 4, fy + 4, fw_px - 8, fh_px - 8);
+            }
+          } else if (fDef.category === 'lighting' && fDef.id === 'floor_lamp') {
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx + fw_px / 2 - 1, fy, 2, fh_px);
+            const lampGlow = 0.4 + Math.sin(g.frame * 0.03) * 0.15;
+            ctx.fillStyle = variant.accent ? variant.accent.replace('rgb(', 'rgba(').replace(')', `,${lampGlow * 0.6})`) : `rgba(255,230,150,${lampGlow * 0.4})`;
+            ctx.beginPath(); ctx.arc(fx + fw_px / 2, fy + 4, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = variant.accent ?? 'rgb(255,230,150)';
+            ctx.fillRect(fx, fy, fw_px, 4);
+          } else if (fDef.category === 'electronics' && fDef.id === 'tv_unit') {
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            const tp = Math.sin(g.frame * 0.04) * 0.2 + 0.8;
+            ctx.fillStyle = `rgba(${variant.accent?.match(/\d+/g)?.slice(0,3).join(',') ?? '30,80,180'},${tp})`;
+            ctx.fillRect(fx + 2, fy + 2, fw_px - 4, fh_px - 4);
+            const scanY = (g.frame * 0.5) % (fh_px - 4);
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(fx + 2, fy + 2 + scanY, fw_px - 4, 2);
+          } else if (fDef.category === 'plants') {
+            ctx.fillStyle = 'rgb(100,70,30)';
+            ctx.fillRect(fx + fw_px * 0.25, fy + fh_px * 0.55, fw_px * 0.5, fh_px * 0.45);
+            ctx.fillStyle = variant.color;
+            ctx.beginPath(); ctx.arc(fx + fw_px / 2, fy + fh_px * 0.45, fw_px * 0.42, 0, Math.PI * 2); ctx.fill();
+            const sway = Math.sin(g.frame * 0.025 + fx) * 1;
+            ctx.fillStyle = fDef.variants.find(v => v.id === pf.variantId)?.accent ?? variant.color;
+            ctx.beginPath(); ctx.arc(fx + fw_px / 2 + sway, fy + fh_px * 0.2, fw_px * 0.28, 0, Math.PI * 2); ctx.fill();
+          } else if (fDef.category === 'beds') {
+            ctx.fillStyle = 'rgb(110,75,45)';
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            ctx.fillStyle = 'rgb(90,60,35)';
+            ctx.fillRect(fx, fy, fw_px, 4); ctx.fillRect(fx, fy + fh_px - 4, fw_px, 4);
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx + 3, fy + 5, fw_px - 6, fh_px - 12);
+            ctx.fillStyle = 'rgb(220,210,190)';
+            ctx.fillRect(fx + 3, fy + 5, fw_px - 6, 8);
+          } else if (fDef.category === 'seating' && (fDef.id === 'sofa_2seat' || fDef.id === 'armchair')) {
+            ctx.fillStyle = (variant.accent ?? variant.color).replace(/[0-9.]+\)$/, '1)');
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx + 3, fy + 3, fw_px - 6, fh_px - 5);
+            ctx.fillStyle = (variant.accent ?? variant.color);
+            ctx.fillRect(fx, fy, fw_px, 4);
+          } else if (fDef.category === 'decor' && fDef.id === 'fireplace') {
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            ctx.fillStyle = 'rgb(15,15,20)';
+            ctx.fillRect(fx + 4, fy + 3, fw_px - 8, fh_px - 5);
+            const flamePulse = Math.sin(g.frame * 0.08) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255,100,20,${flamePulse})`;
+            ctx.fillRect(fx + 6, fy + 5, fw_px - 12, fh_px - 8);
+            ctx.fillStyle = `rgba(255,200,50,${flamePulse * 0.8})`;
+            ctx.fillRect(fx + 8, fy + 7, fw_px - 16, fh_px - 12);
+          } else {
+            ctx.fillStyle = variant.color;
+            ctx.fillRect(fx, fy, fw_px, fh_px);
+            if (variant.accent) {
+              ctx.fillStyle = variant.accent;
+              ctx.fillRect(fx + 2, fy + 2, fw_px - 4, 3);
+            }
+          }
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(fx, fy, fw_px, fh_px);
+          ctx.fillStyle = 'rgba(220,210,190,0.7)';
+          ctx.font = `5px "Share Tech Mono"`;
+          ctx.textAlign = 'center';
+          ctx.fillText(fDef.name, fx + fw_px / 2, fy + fh_px / 2 + 2);
+          ctx.restore();
+        }
+
+        // ── Decoration mode overlay ──────────────────────────────────────────
+        if (decorModeRef.current && itr.bid === (g.interior?.bid ?? '')) {
+          const iw = iDef.width; const ih = iDef.height;
+          ctx.strokeStyle = 'rgba(0,255,65,0.12)';
+          ctx.lineWidth = 0.5;
+          for (let gx2 = 0; gx2 <= iw; gx2 += FURNITURE_GRID_SIZE) {
+            ctx.beginPath(); ctx.moveTo(gx2, 0); ctx.lineTo(gx2, ih); ctx.stroke();
+          }
+          for (let gy2 = 0; gy2 <= ih; gy2 += FURNITURE_GRID_SIZE) {
+            ctx.beginPath(); ctx.moveTo(0, gy2); ctx.lineTo(iw, gy2); ctx.stroke();
+          }
+          const ghost = decorGhostPosRef.current;
+          const selItem = decorSelectedItemRef.current;
+          if (ghost && selItem) {
+            const rot = decorRotationRef.current;
+            const fw2 = (rot === 90 || rot === 270) ? selItem.gridH : selItem.gridW;
+            const fh2 = (rot === 90 || rot === 270) ? selItem.gridW : selItem.gridH;
+            const gx3 = ghost.gridX * FURNITURE_GRID_SIZE;
+            const gy3 = ghost.gridY * FURNITURE_GRID_SIZE;
+            const fw2px = fw2 * FURNITURE_GRID_SIZE;
+            const fh2px = fh2 * FURNITURE_GRID_SIZE;
+            const current2 = placedFurnitureMapRef.current[itr.bid] ?? [];
+            const clampedX2 = Math.max(0, Math.min(ghost.gridX, Math.floor(iDef.width / FURNITURE_GRID_SIZE) - fw2));
+            const clampedY2 = Math.max(0, Math.min(ghost.gridY, Math.floor(iDef.height / FURNITURE_GRID_SIZE) - fh2));
+            const hasCol2 = current2.some(pf => {
+              const d2 = FURNITURE_CATALOG_BY_ID[pf.furnitureId]; if (!d2) return false;
+              const pw2 = pf.rotation === 90 || pf.rotation === 270 ? d2.gridH : d2.gridW;
+              const ph2 = pf.rotation === 90 || pf.rotation === 270 ? d2.gridW : d2.gridH;
+              return !(clampedX2 >= pf.gridX + pw2 || clampedX2 + fw2 <= pf.gridX ||
+                       clampedY2 >= pf.gridY + ph2 || clampedY2 + fh2 <= pf.gridY);
+            });
+            ctx.fillStyle = hasCol2 ? 'rgba(255,60,60,0.35)' : 'rgba(0,255,65,0.25)';
+            ctx.fillRect(gx3, gy3, fw2px, fh2px);
+            ctx.strokeStyle = hasCol2 ? 'rgba(255,60,60,0.8)' : 'rgba(0,255,65,0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(gx3, gy3, fw2px, fh2px);
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(selItem.name, gx3 + fw2px / 2, gy3 + fh2px / 2 + 2);
+          }
+          const dmPulse = 0.4 + Math.sin(g.frame * 0.06) * 0.3;
+          ctx.fillStyle = `rgba(0,255,65,${dmPulse * 0.9})`;
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('◆ DECORATION MODE — [O] catalog · [R] rotate · Click to place · [Del] remove · [F] exit', iDef.width / 2, -18);
         }
 
         if (g.nearInteriorObj && g.near !== '__interior_exit') {
@@ -11747,7 +12090,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (item.id === 'pablo_device' && !g.hasDevice) { sfxError(); setNarr('> REPAIR KIT — You don\'t have a device to repair. Find one first.'); return; }
           if (item.id === 'pablo_device' && !g.deviceBroken) { sfxError(); setNarr('> REPAIR KIT — Your device is already working fine.'); return; }
-          if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
+          if (!item.consumable && item.id.startsWith('furn_')) {
+            const fId = item.id.slice(5);
+            if (g.ownedFurniture.includes(fId)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your furniture inventory.`); return; }
+          } else if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
           g.salary -= item.price; setSalary(g.salary); sfxCoin();
           // ── Apply effects ──────────────────────────────────────
           if (item.consumable) {
@@ -11794,6 +12140,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (item.id === 'salaryman_pro') { setShowVend(false); setShowStore(true); return; }
           if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
+          // ── Furniture purchase ──────────────────────────────────────────────
+          if (item.id.startsWith('furn_')) {
+            const furnitureId = item.id.slice(5);
+            if (!g.ownedFurniture.includes(furnitureId)) { g.ownedFurniture.push(furnitureId); }
+            setNarr(`> FURNITURE SHOP — ${item.name} purchased. ƒ${item.price.toLocaleString()} FIAT spent. Enter decoration mode [F] in your home to place it.`);
+            return;
+          }
           setNarr(`> VENDING MACHINE — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
         };
         const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
@@ -12134,6 +12487,98 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
         </div>
+        );
+      })()}
+
+      {/* ── DECORATION MODE CATALOG PANEL ───────────────────────────────────── */}
+      {decorMode && decorCatalogOpen && (() => {
+        const g = gs.current;
+        const ownedFurnSet = new Set(g.ownedFurniture);
+        const categories: FurnitureCategory[] = ['seating','beds','desks','storage','lighting','wall_art','plants','electronics','rugs','kitchen','decor'];
+        const catLabels: Record<FurnitureCategory,string> = { seating:'Seating', beds:'Beds', desks:'Desks', storage:'Storage', lighting:'Lighting', wall_art:'Wall Art', plants:'Plants', electronics:'Electronics', rugs:'Rugs', kitchen:'Kitchen', decor:'Decor' };
+        const filteredItems = FURNITURE_CATALOG.filter(fi => !decorCategory || fi.category === decorCategory);
+        const selectedOwned = decorSelectedItem ? ownedFurnSet.has(decorSelectedItem.id) : false;
+        return (
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.82)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:370 }}
+            onClick={() => setDecorCatalogOpen(false)}>
+            <div style={{ width:640, maxHeight:'85vh', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,4,8,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace", display:'flex', flexDirection:'column', overflow:'hidden' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ color:'rgb(0,255,65)', fontSize:'.85rem', letterSpacing:'.15em', borderBottom:'1px solid rgba(0,255,65,.2)', paddingBottom:'.5rem', marginBottom:'.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                FURNITURE CATALOG
+                <span style={{ fontSize:'.6rem', color:'rgba(0,255,65,.5)', letterSpacing:'.08em' }}>{ownedFurnSet.size} OWNED — Purchase from Furniture Vending to unlock</span>
+              </div>
+              {decorSelectedItem && (
+                <div style={{ background: selectedOwned ? 'rgba(0,255,65,.08)' : 'rgba(255,100,0,.06)', border:`1px solid ${selectedOwned?'rgba(0,255,65,.3)':'rgba(255,150,0,.4)'}`, padding:'.5rem', marginBottom:'.6rem', fontSize:'.7rem', color:'rgba(0,255,65,.9)' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                    <b style={{ color:'rgb(0,255,65)' }}>SELECTED: {decorSelectedItem.name}</b>
+                    <span style={{ fontSize:'.6rem', color: selectedOwned ? 'rgb(0,255,65)' : 'rgb(255,140,0)', padding:'.1rem .4rem', border:`1px solid ${selectedOwned?'rgba(0,255,65,.4)':'rgba(255,140,0,.4)'}`, background: selectedOwned ? 'rgba(0,255,65,.1)' : 'rgba(255,140,0,.1)' }}>
+                      {selectedOwned ? '✓ OWNED' : `ƒ${decorSelectedItem.price.toLocaleString()} — BUY FROM SHOP`}
+                    </span>
+                  </div>
+                  <span style={{ color:'rgba(0,200,255,.8)', fontSize:'.62rem' }}>{decorSelectedItem.desc}</span>
+                  {decorSelectedItem.wallMounted && <span style={{ marginLeft:'.5rem', color:'rgba(255,200,0,.7)', fontSize:'.58rem' }}>WALL-MOUNT (top wall only)</span>}
+                  <div style={{ marginTop:'.4rem', display:'flex', gap:'.5rem', flexWrap:'wrap' }}>
+                    {decorSelectedItem.variants.map(v => (
+                      <button key={v.id} onClick={() => setDecorSelectedVariant(v.id)}
+                        style={{ padding:'.2rem .5rem', border:`1px solid ${decorSelectedVariant===v.id?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:decorSelectedVariant===v.id?'rgba(0,255,65,.2)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'.3rem' }}>
+                        <span style={{ width:10, height:10, display:'inline-block', background:v.color, border:'1px solid rgba(255,255,255,.3)', flexShrink:0 }} />
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ marginTop:'.4rem', color:'rgba(0,200,255,.6)', fontSize:'.6rem' }}>
+                    Size: {decorSelectedItem.gridW}×{decorSelectedItem.gridH} tiles · Rotation: {decorRotation}° · [R] to rotate
+                  </div>
+                  {selectedOwned ? (
+                    <button onClick={() => { setDecorCatalogOpen(false); setNarr(`> PLACE ${decorSelectedItem.name.toUpperCase()} — Click on interior floor to place. [R] rotate.`); }}
+                      style={{ marginTop:'.5rem', padding:'.3rem .8rem', background:'rgba(0,255,65,.2)', border:'1px solid rgba(0,255,65,.5)', color:'rgb(0,255,65)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.65rem', cursor:'pointer' }}>
+                      PLACE ITEM →
+                    </button>
+                  ) : (
+                    <div style={{ marginTop:'.5rem', fontSize:'.6rem', color:'rgba(255,140,0,.8)' }}>
+                      Purchase from a Furniture Vending Machine to unlock placement.
+                    </div>
+                  )}
+                </div>
+              )}
+              <div style={{ display:'flex', gap:'.3rem', flexWrap:'wrap', marginBottom:'.5rem' }}>
+                <button onClick={() => setDecorCategory(null)}
+                  style={{ padding:'.2rem .5rem', border:`1px solid ${!decorCategory?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:!decorCategory?'rgba(0,255,65,.15)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                  ALL
+                </button>
+                {categories.map(cat => (
+                  <button key={cat} onClick={() => setDecorCategory(cat)}
+                    style={{ padding:'.2rem .5rem', border:`1px solid ${decorCategory===cat?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:decorCategory===cat?'rgba(0,255,65,.15)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                    {catLabels[cat]}
+                  </button>
+                ))}
+              </div>
+              <div style={{ overflowY:'auto', flex:1, display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'.5rem' }}>
+                {filteredItems.map(fi => {
+                  const isSelected = decorSelectedItem?.id === fi.id;
+                  const isOwned = ownedFurnSet.has(fi.id);
+                  const primaryVariant = fi.variants[0];
+                  return (
+                    <div key={fi.id} onClick={() => { setDecorSelectedItem(fi); setDecorSelectedVariant(fi.variants[0]?.id ?? ''); }}
+                      style={{ border:`1px solid ${isSelected?'rgb(0,255,65)':isOwned?'rgba(0,255,65,.3)':'rgba(0,255,65,.12)'}`, background:isSelected?'rgba(0,255,65,.1)':isOwned?'rgba(0,255,65,.05)':'rgba(0,255,65,.02)', padding:'.5rem', cursor:'pointer', transition:'border-color .15s', position:'relative' }}>
+                      {isOwned && <span style={{ position:'absolute', top:3, right:3, fontSize:'.45rem', color:'rgb(0,255,65)', background:'rgba(0,255,65,.15)', padding:'1px 3px' }}>OWNED</span>}
+                      <div style={{ display:'flex', alignItems:'center', gap:'.4rem', marginBottom:'.3rem' }}>
+                        <div style={{ width:20, height:20, background:primaryVariant?.color??'#333', border:`1px solid ${isOwned?'rgba(0,255,65,.4)':'rgba(255,255,255,.2)'}`, flexShrink:0 }} />
+                        <div style={{ color:isSelected?'rgb(0,255,65)':isOwned?'rgba(0,255,65,.9)':'rgba(0,255,65,.6)', fontSize:'.65rem', fontWeight:'bold', lineHeight:1.2 }}>{fi.name}</div>
+                      </div>
+                      <div style={{ color:'rgba(0,200,255,.5)', fontSize:'.5rem', marginBottom:'.2rem' }}>{fi.desc}</div>
+                      <div style={{ color:isOwned?'rgba(0,255,65,.5)':'rgba(0,255,65,.3)', fontSize:'.5rem' }}>
+                        {fi.gridW}×{fi.gridH} · {isOwned ? 'READY TO PLACE' : `ƒ${fi.price.toLocaleString()}`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop:'.7rem', borderTop:'1px solid rgba(0,255,65,.15)', paddingTop:'.5rem', color:'rgba(0,200,255,.5)', fontSize:'.6rem' }}>
+                [O] or [Esc] close · Buy items from Furniture Vending · Select owned item → choose variant → PLACE ITEM
+              </div>
+            </div>
+          </div>
         );
       })()}
 

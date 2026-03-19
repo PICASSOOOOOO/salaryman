@@ -23,6 +23,293 @@ export interface NewspaperIssue {
   editorial: string;
 }
 
+export type FurnitureCategory = 'seating' | 'beds' | 'desks' | 'storage' | 'lighting' | 'wall_art' | 'plants' | 'electronics' | 'rugs' | 'kitchen' | 'decor';
+
+export interface FurnitureVariant {
+  id: string;
+  label: string;
+  color: string;
+  accent?: string;
+}
+
+export interface FurnitureItemDef {
+  id: string;
+  name: string;
+  category: FurnitureCategory;
+  gridW: number;
+  gridH: number;
+  price: number;
+  desc: string;
+  variants: FurnitureVariant[];
+  wallMounted?: boolean;
+}
+
+export interface PlacedFurnitureItem {
+  id: string;
+  furnitureId: string;
+  variantId: string;
+  gridX: number;
+  gridY: number;
+  rotation: 0 | 90 | 180 | 270;
+}
+
+export const FURNITURE_GRID_SIZE = 16;
+
+export const FURNITURE_CATALOG: FurnitureItemDef[] = [
+  // ── SEATING ───────────────────────────────────────────────────────────────
+  { id: 'sofa_2seat', name: 'SOFA (2-SEAT)', category: 'seating', gridW: 3, gridH: 2, price: 4500, desc: 'A compact two-seater sofa. Comfortable.',
+    variants: [
+      { id: 'grey', label: 'GREY', color: 'rgb(90,90,95)', accent: 'rgb(110,110,115)' },
+      { id: 'red', label: 'RED', color: 'rgb(120,30,30)', accent: 'rgb(150,40,40)' },
+      { id: 'green', label: 'GREEN', color: 'rgb(30,90,50)', accent: 'rgb(40,110,60)' },
+      { id: 'blue', label: 'BLUE', color: 'rgb(30,50,120)', accent: 'rgb(40,65,150)' },
+    ] },
+  { id: 'armchair', name: 'ARMCHAIR', category: 'seating', gridW: 2, gridH: 2, price: 2200, desc: 'A plush single armchair.',
+    variants: [
+      { id: 'brown', label: 'BROWN', color: 'rgb(100,65,30)', accent: 'rgb(130,85,40)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(25,25,30)', accent: 'rgb(40,40,45)' },
+      { id: 'cream', label: 'CREAM', color: 'rgb(200,190,170)', accent: 'rgb(220,210,190)' },
+    ] },
+  { id: 'stool', name: 'BAR STOOL', category: 'seating', gridW: 1, gridH: 1, price: 800, desc: 'Metal bar stool. Stackable.',
+    variants: [
+      { id: 'metal', label: 'METAL', color: 'rgb(140,140,145)', accent: 'rgb(160,160,165)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(30,30,35)', accent: 'rgb(50,50,55)' },
+    ] },
+  { id: 'bench', name: 'WOODEN BENCH', category: 'seating', gridW: 3, gridH: 1, price: 1800, desc: 'Simple wooden bench seating.',
+    variants: [
+      { id: 'oak', label: 'OAK', color: 'rgb(130,90,45)', accent: 'rgb(110,75,35)' },
+      { id: 'dark', label: 'DARK WOOD', color: 'rgb(60,40,20)', accent: 'rgb(80,55,25)' },
+    ] },
+  { id: 'office_chair', name: 'OFFICE CHAIR', category: 'seating', gridW: 1, gridH: 1, price: 3000, desc: 'Ergonomic office chair with lumbar support.',
+    variants: [
+      { id: 'black', label: 'BLACK', color: 'rgb(30,30,35)', accent: 'rgb(50,50,55)' },
+      { id: 'white', label: 'WHITE', color: 'rgb(220,220,225)', accent: 'rgb(200,200,205)' },
+    ] },
+  // ── BEDS ──────────────────────────────────────────────────────────────────
+  { id: 'single_bed', name: 'SINGLE BED', category: 'beds', gridW: 2, gridH: 3, price: 5000, desc: 'A compact single bed. Rest here to recover.',
+    variants: [
+      { id: 'blue', label: 'BLUE SHEETS', color: 'rgb(80,110,140)', accent: 'rgb(65,85,110)' },
+      { id: 'green', label: 'GREEN SHEETS', color: 'rgb(50,100,60)', accent: 'rgb(40,80,50)' },
+      { id: 'red', label: 'RED SHEETS', color: 'rgb(120,40,40)', accent: 'rgb(90,30,30)' },
+    ] },
+  { id: 'double_bed', name: 'DOUBLE BED', category: 'beds', gridW: 3, gridH: 4, price: 9000, desc: 'A full double bed. Premium rest bonus.',
+    variants: [
+      { id: 'white', label: 'WHITE LINEN', color: 'rgb(230,230,235)', accent: 'rgb(110,80,50)' },
+      { id: 'navy', label: 'NAVY SHEETS', color: 'rgb(20,40,90)', accent: 'rgb(100,70,40)' },
+      { id: 'charcoal', label: 'CHARCOAL', color: 'rgb(50,50,55)', accent: 'rgb(80,65,45)' },
+    ] },
+  { id: 'bunk_bed', name: 'BUNK BED', category: 'beds', gridW: 2, gridH: 3, price: 6500, desc: 'Stacked bunks for compact spaces.',
+    variants: [
+      { id: 'metal', label: 'METAL FRAME', color: 'rgb(80,90,100)', accent: 'rgb(60,90,120)' },
+      { id: 'wood', label: 'WOOD FRAME', color: 'rgb(100,70,40)', accent: 'rgb(60,100,120)' },
+    ] },
+  // ── DESKS ─────────────────────────────────────────────────────────────────
+  { id: 'writing_desk', name: 'WRITING DESK', category: 'desks', gridW: 3, gridH: 2, price: 3500, desc: 'A simple writing desk. Classic.',
+    variants: [
+      { id: 'oak', label: 'OAK', color: 'rgb(130,90,45)', accent: 'rgb(110,75,35)' },
+      { id: 'metal', label: 'METAL', color: 'rgb(80,85,90)', accent: 'rgb(100,105,110)' },
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(190,190,195)' },
+    ] },
+  { id: 'corner_desk', name: 'CORNER DESK', category: 'desks', gridW: 4, gridH: 4, price: 7000, desc: 'L-shaped corner desk. Max workspace.',
+    variants: [
+      { id: 'black', label: 'BLACK', color: 'rgb(30,30,35)', accent: 'rgb(50,50,55)' },
+      { id: 'walnut', label: 'WALNUT', color: 'rgb(80,50,25)', accent: 'rgb(100,65,35)' },
+    ] },
+  { id: 'standing_desk', name: 'STANDING DESK', category: 'desks', gridW: 3, gridH: 2, price: 8500, desc: 'Height-adjustable standing desk.',
+    variants: [
+      { id: 'white', label: 'WHITE/CHROME', color: 'rgb(210,210,215)', accent: 'rgb(160,160,165)' },
+      { id: 'black', label: 'BLACK/CHROME', color: 'rgb(25,25,30)', accent: 'rgb(160,160,165)' },
+    ] },
+  // ── STORAGE ───────────────────────────────────────────────────────────────
+  { id: 'wardrobe', name: 'WARDROBE', category: 'storage', gridW: 2, gridH: 1, price: 6000, desc: 'A large wardrobe for clothes storage.',
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(180,180,185)' },
+      { id: 'dark', label: 'DARK OAK', color: 'rgb(60,40,20)', accent: 'rgb(80,55,30)' },
+    ] },
+  { id: 'bookcase', name: 'BOOKCASE', category: 'storage', gridW: 2, gridH: 1, price: 3800, desc: 'A tall bookcase. Fill it with lore.',
+    variants: [
+      { id: 'oak', label: 'OAK', color: 'rgb(120,85,45)', accent: 'rgb(100,70,35)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(25,25,30)', accent: 'rgb(40,40,45)' },
+    ] },
+  { id: 'storage_box', name: 'STORAGE BOX', category: 'storage', gridW: 1, gridH: 1, price: 900, desc: 'Stackable storage cube.',
+    variants: [
+      { id: 'grey', label: 'GREY', color: 'rgb(120,120,125)', accent: 'rgb(100,100,105)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(30,30,35)', accent: 'rgb(50,50,55)' },
+      { id: 'white', label: 'WHITE', color: 'rgb(230,230,235)', accent: 'rgb(200,200,205)' },
+    ] },
+  { id: 'dresser', name: 'DRESSER', category: 'storage', gridW: 2, gridH: 1, price: 4200, desc: 'Chest of drawers for personal items.',
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(180,180,185)' },
+      { id: 'walnut', label: 'WALNUT', color: 'rgb(80,50,25)', accent: 'rgb(60,40,20)' },
+    ] },
+  // ── LIGHTING ──────────────────────────────────────────────────────────────
+  { id: 'floor_lamp', name: 'FLOOR LAMP', category: 'lighting', gridW: 1, gridH: 1, price: 2000, desc: 'Arc floor lamp. Warm ambient glow.',
+    variants: [
+      { id: 'gold', label: 'GOLD', color: 'rgb(180,140,30)', accent: 'rgb(255,220,100)' },
+      { id: 'chrome', label: 'CHROME', color: 'rgb(160,160,165)', accent: 'rgb(220,220,225)' },
+      { id: 'black', label: 'MATTE BLACK', color: 'rgb(25,25,30)', accent: 'rgb(255,200,80)' },
+    ] },
+  { id: 'neon_tube', name: 'NEON TUBE', category: 'lighting', gridW: 2, gridH: 1, price: 3500, desc: 'Glowing neon tube. Wall-mounted. Very cyberpunk.',
+    wallMounted: true,
+    variants: [
+      { id: 'pink', label: 'PINK', color: 'rgb(255,60,150)', accent: 'rgba(255,60,150,0.3)' },
+      { id: 'blue', label: 'BLUE', color: 'rgb(60,130,255)', accent: 'rgba(60,130,255,0.3)' },
+      { id: 'green', label: 'GREEN', color: 'rgb(0,255,65)', accent: 'rgba(0,255,65,0.3)' },
+      { id: 'orange', label: 'ORANGE', color: 'rgb(255,140,0)', accent: 'rgba(255,140,0,0.3)' },
+    ] },
+  { id: 'table_lamp', name: 'TABLE LAMP', category: 'lighting', gridW: 1, gridH: 1, price: 1200, desc: 'Small bedside table lamp.',
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(255,230,160)' },
+      { id: 'brass', label: 'BRASS', color: 'rgb(160,120,40)', accent: 'rgb(255,220,100)' },
+    ] },
+  // ── WALL ART ──────────────────────────────────────────────────────────────
+  { id: 'framed_print', name: 'FRAMED PRINT', category: 'wall_art', gridW: 2, gridH: 1, price: 1800, desc: 'A framed art print. Hang it on your wall.',
+    wallMounted: true,
+    variants: [
+      { id: 'cityscape', label: 'CITYSCAPE', color: 'rgb(30,40,60)', accent: 'rgb(0,200,255)' },
+      { id: 'abstract', label: 'ABSTRACT', color: 'rgb(60,20,80)', accent: 'rgb(200,60,255)' },
+      { id: 'wasteland', label: 'WASTELAND', color: 'rgb(60,45,20)', accent: 'rgb(200,150,50)' },
+      { id: 'propaganda', label: 'PROPAGANDA', color: 'rgb(120,10,10)', accent: 'rgb(255,220,0)' },
+    ] },
+  { id: 'graffiti_panel', name: 'GRAFFITI PANEL', category: 'wall_art', gridW: 3, gridH: 1, price: 2500, desc: 'A spray-painted graffiti canvas.',
+    wallMounted: true,
+    variants: [
+      { id: 'cyan', label: 'CYAN TAG', color: 'rgb(0,200,200)', accent: 'rgb(0,255,220)' },
+      { id: 'red', label: 'RED TAG', color: 'rgb(220,40,40)', accent: 'rgb(255,80,60)' },
+      { id: 'yellow', label: 'YELLOW TAG', color: 'rgb(220,200,0)', accent: 'rgb(255,240,60)' },
+    ] },
+  { id: 'neon_sign_wall', name: 'NEON SIGN', category: 'wall_art', gridW: 3, gridH: 1, price: 5000, desc: 'Custom neon sign. Glows all night.',
+    wallMounted: true,
+    variants: [
+      { id: 'open', label: 'OPEN', color: 'rgb(0,255,65)', accent: 'rgba(0,255,65,0.4)' },
+      { id: 'no_vacancy', label: 'NO VACANCY', color: 'rgb(255,60,60)', accent: 'rgba(255,60,60,0.4)' },
+      { id: 'coffee', label: 'COFFEE', color: 'rgb(255,180,60)', accent: 'rgba(255,180,60,0.4)' },
+      { id: 'bar', label: 'BAR', color: 'rgb(200,60,255)', accent: 'rgba(200,60,255,0.4)' },
+    ] },
+  { id: 'clock_wall', name: 'WALL CLOCK', category: 'wall_art', gridW: 1, gridH: 1, price: 1500, desc: 'A round wall clock.',
+    wallMounted: true,
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(230,230,235)', accent: 'rgb(20,20,25)' },
+      { id: 'wood', label: 'WOOD', color: 'rgb(130,90,45)', accent: 'rgb(20,20,25)' },
+    ] },
+  // ── PLANTS ────────────────────────────────────────────────────────────────
+  { id: 'potted_plant_sm', name: 'SMALL PLANT', category: 'plants', gridW: 1, gridH: 1, price: 600, desc: 'A small potted plant. Low maintenance.',
+    variants: [
+      { id: 'green', label: 'GREEN', color: 'rgb(40,110,50)', accent: 'rgb(130,90,45)' },
+      { id: 'succulent', label: 'SUCCULENT', color: 'rgb(60,130,60)', accent: 'rgb(140,100,50)' },
+    ] },
+  { id: 'potted_plant_lg', name: 'LARGE PLANT', category: 'plants', gridW: 2, gridH: 2, price: 2200, desc: 'A tall leafy plant. Statement piece.',
+    variants: [
+      { id: 'green', label: 'TROPICAL GREEN', color: 'rgb(30,100,40)', accent: 'rgb(120,80,35)' },
+      { id: 'dark', label: 'DARK LEAF', color: 'rgb(20,60,30)', accent: 'rgb(100,70,30)' },
+    ] },
+  { id: 'hanging_plant', name: 'HANGING PLANT', category: 'plants', gridW: 1, gridH: 1, price: 1400, desc: 'A trailing plant hung from the ceiling.',
+    wallMounted: true,
+    variants: [
+      { id: 'green', label: 'IVY', color: 'rgb(40,130,50)', accent: 'rgb(30,90,40)' },
+      { id: 'purple', label: 'PURPLE VINE', color: 'rgb(100,40,130)', accent: 'rgb(70,30,90)' },
+    ] },
+  { id: 'bonsai', name: 'BONSAI TREE', category: 'plants', gridW: 1, gridH: 1, price: 3500, desc: 'A carefully cultivated miniature tree.',
+    variants: [
+      { id: 'pine', label: 'PINE', color: 'rgb(20,70,30)', accent: 'rgb(80,60,30)' },
+      { id: 'flowering', label: 'FLOWERING', color: 'rgb(20,70,30)', accent: 'rgb(180,60,100)' },
+    ] },
+  // ── ELECTRONICS ───────────────────────────────────────────────────────────
+  { id: 'tv_unit', name: 'WALL TV', category: 'electronics', gridW: 3, gridH: 1, price: 12000, desc: 'A large flat-panel TV. Wall-mountable.',
+    wallMounted: true,
+    variants: [
+      { id: 'black', label: 'BLACK BEZEL', color: 'rgb(15,15,20)', accent: 'rgb(30,80,180)' },
+      { id: 'silver', label: 'SILVER BEZEL', color: 'rgb(160,160,165)', accent: 'rgb(30,80,180)' },
+    ] },
+  { id: 'gaming_setup', name: 'GAMING SETUP', category: 'electronics', gridW: 3, gridH: 2, price: 18000, desc: 'Full gaming rig. Triple monitors. RGB.',
+    variants: [
+      { id: 'rgb', label: 'RGB GLOW', color: 'rgb(20,20,30)', accent: 'rgb(255,50,255)' },
+      { id: 'mono', label: 'MONOCHROME', color: 'rgb(20,20,25)', accent: 'rgb(0,255,65)' },
+    ] },
+  { id: 'speaker_system', name: 'SPEAKER SYSTEM', category: 'electronics', gridW: 1, gridH: 1, price: 6500, desc: 'High-fidelity speaker system.',
+    variants: [
+      { id: 'black', label: 'BLACK', color: 'rgb(20,20,25)', accent: 'rgb(60,60,65)' },
+      { id: 'wood', label: 'WOOD PANEL', color: 'rgb(100,70,35)', accent: 'rgb(40,40,45)' },
+    ] },
+  { id: 'mini_fridge', name: 'MINI FRIDGE', category: 'electronics', gridW: 1, gridH: 1, price: 3500, desc: 'Compact refrigerator unit.',
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(180,180,185)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(25,25,30)', accent: 'rgb(50,50,55)' },
+    ] },
+  { id: 'security_panel', name: 'SECURITY PANEL', category: 'electronics', gridW: 1, gridH: 1, price: 8000, desc: 'Home security monitoring panel.',
+    wallMounted: true,
+    variants: [
+      { id: 'black', label: 'BLACK', color: 'rgb(20,20,25)', accent: 'rgb(0,255,65)' },
+    ] },
+  // ── RUGS ──────────────────────────────────────────────────────────────────
+  { id: 'rug_sm', name: 'AREA RUG (S)', category: 'rugs', gridW: 2, gridH: 2, price: 1500, desc: 'Small area rug. Adds warmth to any room.',
+    variants: [
+      { id: 'red', label: 'RED', color: 'rgba(160,40,40,0.8)', accent: 'rgb(200,50,50)' },
+      { id: 'blue', label: 'BLUE', color: 'rgba(30,60,150,0.8)', accent: 'rgb(50,90,200)' },
+      { id: 'grey', label: 'GREY', color: 'rgba(90,90,95,0.8)', accent: 'rgb(120,120,125)' },
+      { id: 'green', label: 'GREEN', color: 'rgba(30,90,50,0.8)', accent: 'rgb(50,120,70)' },
+    ] },
+  { id: 'rug_lg', name: 'AREA RUG (L)', category: 'rugs', gridW: 4, gridH: 3, price: 3800, desc: 'Large area rug. Room-defining.',
+    variants: [
+      { id: 'persian', label: 'PERSIAN', color: 'rgba(120,30,30,0.85)', accent: 'rgb(180,140,50)' },
+      { id: 'modern', label: 'MODERN GREY', color: 'rgba(80,80,85,0.85)', accent: 'rgb(150,150,155)' },
+      { id: 'teal', label: 'TEAL', color: 'rgba(20,100,110,0.85)', accent: 'rgb(40,160,170)' },
+    ] },
+  // ── KITCHEN ───────────────────────────────────────────────────────────────
+  { id: 'coffee_table', name: 'COFFEE TABLE', category: 'kitchen', gridW: 2, gridH: 1, price: 2000, desc: 'Low coffee table for the lounge area.',
+    variants: [
+      { id: 'wood', label: 'WOOD', color: 'rgb(120,85,45)', accent: 'rgb(100,70,35)' },
+      { id: 'glass', label: 'GLASS', color: 'rgba(180,210,230,0.6)', accent: 'rgb(140,160,165)' },
+      { id: 'marble', label: 'MARBLE', color: 'rgb(220,215,210)', accent: 'rgb(180,175,170)' },
+    ] },
+  { id: 'kitchen_counter', name: 'KITCHEN COUNTER', category: 'kitchen', gridW: 4, gridH: 1, price: 8500, desc: 'Sleek kitchen counter unit with sink.',
+    variants: [
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(150,150,155)' },
+      { id: 'black', label: 'GRAPHITE', color: 'rgb(40,40,45)', accent: 'rgb(60,60,65)' },
+    ] },
+  { id: 'dining_table', name: 'DINING TABLE', category: 'kitchen', gridW: 3, gridH: 2, price: 5500, desc: 'A rectangular dining table for four.',
+    variants: [
+      { id: 'wood', label: 'NATURAL WOOD', color: 'rgb(130,95,50)', accent: 'rgb(100,75,40)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(25,25,30)', accent: 'rgb(50,50,55)' },
+    ] },
+  // ── DECOR ─────────────────────────────────────────────────────────────────
+  { id: 'mirror', name: 'FULL MIRROR', category: 'decor', gridW: 1, gridH: 1, price: 2500, desc: 'A full-length standing mirror.',
+    variants: [
+      { id: 'gold', label: 'GOLD FRAME', color: 'rgba(190,220,230,0.7)', accent: 'rgb(180,140,30)' },
+      { id: 'black', label: 'BLACK FRAME', color: 'rgba(190,220,230,0.7)', accent: 'rgb(20,20,25)' },
+    ] },
+  { id: 'side_table', name: 'SIDE TABLE', category: 'decor', gridW: 1, gridH: 1, price: 1200, desc: 'Small bedside or side table.',
+    variants: [
+      { id: 'wood', label: 'WOOD', color: 'rgb(130,90,45)', accent: 'rgb(110,75,35)' },
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(190,190,195)' },
+    ] },
+  { id: 'fireplace', name: 'ELECTRIC FIREPLACE', category: 'decor', gridW: 3, gridH: 1, price: 15000, desc: 'A decorative electric fireplace unit.',
+    variants: [
+      { id: 'white', label: 'WHITE SURROUND', color: 'rgb(210,210,215)', accent: 'rgb(255,120,30)' },
+      { id: 'black', label: 'BLACK SURROUND', color: 'rgb(25,25,30)', accent: 'rgb(255,120,30)' },
+      { id: 'stone', label: 'STONE SURROUND', color: 'rgb(140,130,120)', accent: 'rgb(255,120,30)' },
+    ] },
+  { id: 'trophy_shelf', name: 'TROPHY SHELF', category: 'decor', gridW: 2, gridH: 1, price: 1800, desc: 'A display shelf for trophies and collectibles.',
+    wallMounted: true,
+    variants: [
+      { id: 'gold', label: 'GOLD TRIM', color: 'rgb(100,75,40)', accent: 'rgb(200,160,40)' },
+      { id: 'white', label: 'WHITE', color: 'rgb(210,210,215)', accent: 'rgb(160,160,165)' },
+    ] },
+];
+
+export const FURNITURE_CATALOG_BY_ID: Record<string, FurnitureItemDef> = Object.fromEntries(FURNITURE_CATALOG.map(f => [f.id, f]));
+
+export const HOME_DEFAULT_FURNITURE: PlacedFurnitureItem[] = [
+  { id: 'df_0', furnitureId: 'single_bed', variantId: 'blue', gridX: 1, gridY: 1, rotation: 0 },
+  { id: 'df_1', furnitureId: 'side_table', variantId: 'wood', gridX: 3, gridY: 1, rotation: 0 },
+  { id: 'df_2', furnitureId: 'table_lamp', variantId: 'white', gridX: 3, gridY: 1, rotation: 0 },
+  { id: 'df_3', furnitureId: 'writing_desk', variantId: 'oak', gridX: 1, gridY: 6, rotation: 0 },
+  { id: 'df_4', furnitureId: 'office_chair', variantId: 'black', gridX: 1, gridY: 8, rotation: 0 },
+  { id: 'df_5', furnitureId: 'potted_plant_sm', variantId: 'green', gridX: 6, gridY: 6, rotation: 0 },
+  { id: 'df_6', furnitureId: 'storage_box', variantId: 'grey', gridX: 8, gridY: 1, rotation: 0 },
+  { id: 'df_7', furnitureId: 'rug_sm', variantId: 'blue', gridX: 1, gridY: 9, rotation: 0 },
+];
+
 export interface InteriorObject {
   x: number; y: number; w: number; h: number;
   type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server';
