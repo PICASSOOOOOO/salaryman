@@ -459,7 +459,10 @@ function CopyStudio() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, tone, context }),
       });
-      if (!res.ok) throw new Error('Generation failed');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Generation failed');
+      }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -475,12 +478,17 @@ function CopyStudio() {
           if (!line.startsWith('data: ')) continue;
           try {
             const d = JSON.parse(line.slice(6));
+            if (d.error) throw new Error(d.error);
             if (d.content) setOutput(prev => prev + d.content);
-          } catch {}
+          } catch (sseErr) {
+            if (sseErr instanceof SyntaxError) continue;
+            throw sseErr;
+          }
         }
       }
     } catch (e) {
-      setOutput('ERROR: Failed to generate content. Please try again.');
+      const msg = e instanceof Error ? e.message : 'Failed to generate content';
+      setOutput(`ERROR: ${msg}. Please try again.`);
     } finally {
       setGenerating(false);
     }
@@ -658,11 +666,15 @@ function SocialStudio() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template, topic }),
       });
-      if (!res.ok) throw new Error('Generation failed');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Generation failed');
+      }
       const data = await res.json();
       setResult(data);
     } catch (e) {
-      setResult({ raw: 'ERROR: Generation failed. Please try again.' });
+      const msg = e instanceof Error ? e.message : 'Generation failed';
+      setResult({ raw: `ERROR: ${msg}. Please try again.` });
     } finally {
       setGenerating(false);
     }

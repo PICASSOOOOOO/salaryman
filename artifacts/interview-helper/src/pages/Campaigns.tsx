@@ -221,7 +221,10 @@ function EmailCompose({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'email', tone: aiTone, context: aiGoal }),
       });
-      if (!r.ok) throw new Error('Generation failed');
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        throw new Error(errData.error || 'Generation failed');
+      }
       const reader = r.body!.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -234,12 +237,22 @@ function EmailCompose({
         buf = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
-          try { const d = JSON.parse(line.slice(6)); if (d.content) result += d.content; } catch {}
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.error) throw new Error(d.error);
+            if (d.content) result += d.content;
+          } catch (sseErr) {
+            if (sseErr instanceof SyntaxError) continue;
+            throw sseErr;
+          }
         }
         setHtmlBody(result);
       }
       setTab('compose');
-    } catch (e) { setError('AI generation failed'); }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'AI generation failed';
+      setError(msg);
+    }
     setAiGenerating(false);
   }
 

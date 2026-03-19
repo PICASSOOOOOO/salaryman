@@ -63,37 +63,37 @@ router.post("/studio/generate-copy", async (req: Request, res: Response) => {
 
   if (!type) { res.status(400).json({ error: "Content type required" }); return; }
 
-  const kit = await getBrandKit(userId);
-  const brandCtx = buildBrandContext(kit);
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
 
-  const typePrompts: Record<string, string> = {
-    tagline: `Write 5 punchy tagline options for this brand. Each tagline should be 3-8 words, memorable, and convey the core value proposition. Tone: ${tone}.${brandCtx}\n${context ? `\nAdditional context: ${context}` : ""}
+  try {
+    const kit = await getBrandKit(userId);
+    const brandCtx = buildBrandContext(kit);
+
+    const typePrompts: Record<string, string> = {
+      tagline: `Write 5 punchy tagline options for this brand. Each tagline should be 3-8 words, memorable, and convey the core value proposition. Tone: ${tone}.${brandCtx}\n${context ? `\nAdditional context: ${context}` : ""}
 
 Format each as:
 • [tagline]
 
 Add a one-line explanation for each.`,
 
-    email: `Write a complete marketing email for this brand. Include: subject line, preview text, greeting, body (3 paragraphs), CTA, and sign-off. Tone: ${tone}.${brandCtx}\n${context ? `\nCampaign goal: ${context}` : ""}`,
+      email: `Write a complete marketing email for this brand. Include: subject line, preview text, greeting, body (3 paragraphs), CTA, and sign-off. Tone: ${tone}.${brandCtx}\n${context ? `\nCampaign goal: ${context}` : ""}`,
 
-    blog: `Write a compelling blog post introduction (300-400 words) that hooks readers immediately. Include a working title, subheading, and the intro paragraphs. Tone: ${tone}.${brandCtx}\n${context ? `\nTopic: ${context}` : ""}`,
+      blog: `Write a compelling blog post introduction (300-400 words) that hooks readers immediately. Include a working title, subheading, and the intro paragraphs. Tone: ${tone}.${brandCtx}\n${context ? `\nTopic: ${context}` : ""}`,
 
-    ad: `Write 3 ad copy variations for this brand. Each variation should include: headline (max 8 words), body copy (2-3 sentences), and CTA (max 5 words). Tone: ${tone}.${brandCtx}\n${context ? `\nAd goal: ${context}` : ""}
+      ad: `Write 3 ad copy variations for this brand. Each variation should include: headline (max 8 words), body copy (2-3 sentences), and CTA (max 5 words). Tone: ${tone}.${brandCtx}\n${context ? `\nAd goal: ${context}` : ""}
 
 Label each as Variation A, B, C.`,
 
-    social: `Write a social media post for ${platform ?? "LinkedIn"}. Include the main post text (max 280 words), 5 relevant hashtags, and an optional emoji suggestion. Tone: ${tone}.${brandCtx}\n${context ? `\nPost topic: ${context}` : ""}`,
+      social: `Write a social media post for ${platform ?? "LinkedIn"}. Include the main post text (max 280 words), 5 relevant hashtags, and an optional emoji suggestion. Tone: ${tone}.${brandCtx}\n${context ? `\nPost topic: ${context}` : ""}`,
 
-    pitch: `Write a 30-second elevator pitch for this brand. It should be conversational, mention the problem solved, target audience, and unique advantage. Tone: ${tone}.${brandCtx}\n${context ? `\nAudience: ${context}` : ""}`,
-  };
+      pitch: `Write a 30-second elevator pitch for this brand. It should be conversational, mention the problem solved, target audience, and unique advantage. Tone: ${tone}.${brandCtx}\n${context ? `\nAudience: ${context}` : ""}`,
+    };
 
-  const userPrompt = typePrompts[type] ?? typePrompts.ad;
+    const userPrompt = typePrompts[type] ?? typePrompts.ad;
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  try {
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 2000,
@@ -117,7 +117,8 @@ Label each as Variation A, B, C.`,
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
   } catch (err: unknown) {
     console.error("Copy generation error:", err);
-    res.write(`data: ${JSON.stringify({ error: "Failed to generate copy" })}\n\n`);
+    const message = err instanceof Error ? err.message : "Failed to generate copy";
+    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
   }
 
   res.end();
@@ -129,25 +130,25 @@ router.post("/studio/generate-social", async (req: Request, res: Response) => {
 
   if (!template) { res.status(400).json({ error: "Template required" }); return; }
 
-  const kit = await getBrandKit(userId);
-  const brandCtx = buildBrandContext(kit);
-
-  const templates: Record<string, string> = {
-    instagram_square: `Create an Instagram post for a 1:1 square image format.\n\nReturn a JSON object with these fields:\n- caption: Main post caption (max 2200 chars, engaging, with line breaks)\n- hashtags: Array of 20-30 relevant hashtags (strings without #)\n- cta: Call to action text (max 10 words)\n- image_prompt: A detailed DALL-E image generation prompt for an on-brand Instagram visual (incorporate the brand colors into the style description)\n- alt_text: Image alt text for accessibility${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
-
-    twitter_card: `Create a Twitter/X post optimized for maximum engagement.\n\nReturn a JSON object with these fields:\n- tweet: Main tweet text (max 280 chars, punchy, no hashtags in body)\n- hashtags: Array of 2-3 hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a 2:1 landscape Twitter card image (incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
-
-    linkedin_banner: `Create a LinkedIn thought leadership post.\n\nReturn a JSON object with these fields:\n- post: Main post body (max 700 chars, professional, value-driven, with emojis sparingly)\n- hook: Opening sentence that stops the scroll (max 15 words)\n- hashtags: Array of 5 professional hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a professional LinkedIn banner (1.91:1 landscape, clean, corporate style, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
-
-    tiktok_vertical: `Create a TikTok post optimized for maximum virality and short-form video engagement.\n\nReturn a JSON object with these fields:\n- hook: Opening hook text that grabs attention in the first 2 seconds (max 15 words, punchy, curiosity-driven)\n- description: Video description/caption (max 300 chars, engaging, with line breaks)\n- hashtags: Array of 10-15 trending and relevant hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a 9:16 vertical thumbnail/cover image (bold, eye-catching, designed for mobile screens, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
-
-    facebook_feed: `Create a Facebook feed post optimized for engagement and sharing.\n\nReturn a JSON object with these fields:\n- post: Main post text (max 500 chars, conversational, relatable, with emojis)\n- hook: Opening line that stops the scroll (max 15 words)\n- hashtags: Array of 5-8 relevant hashtags (strings without #)\n- cta: Call to action text encouraging comments or shares (max 15 words)\n- image_prompt: A detailed DALL-E image generation prompt for a Facebook feed image (1.91:1 landscape or square, vibrant, shareable, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
-  };
-
-  const userPrompt = templates[template];
-  if (!userPrompt) { res.status(400).json({ error: "Invalid template" }); return; }
-
   try {
+    const kit = await getBrandKit(userId);
+    const brandCtx = buildBrandContext(kit);
+
+    const templates: Record<string, string> = {
+      instagram_square: `Create an Instagram post for a 1:1 square image format.\n\nReturn a JSON object with these fields:\n- caption: Main post caption (max 2200 chars, engaging, with line breaks)\n- hashtags: Array of 20-30 relevant hashtags (strings without #)\n- cta: Call to action text (max 10 words)\n- image_prompt: A detailed DALL-E image generation prompt for an on-brand Instagram visual (incorporate the brand colors into the style description)\n- alt_text: Image alt text for accessibility${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
+
+      twitter_card: `Create a Twitter/X post optimized for maximum engagement.\n\nReturn a JSON object with these fields:\n- tweet: Main tweet text (max 280 chars, punchy, no hashtags in body)\n- hashtags: Array of 2-3 hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a 2:1 landscape Twitter card image (incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
+
+      linkedin_banner: `Create a LinkedIn thought leadership post.\n\nReturn a JSON object with these fields:\n- post: Main post body (max 700 chars, professional, value-driven, with emojis sparingly)\n- hook: Opening sentence that stops the scroll (max 15 words)\n- hashtags: Array of 5 professional hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a professional LinkedIn banner (1.91:1 landscape, clean, corporate style, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
+
+      tiktok_vertical: `Create a TikTok post optimized for maximum virality and short-form video engagement.\n\nReturn a JSON object with these fields:\n- hook: Opening hook text that grabs attention in the first 2 seconds (max 15 words, punchy, curiosity-driven)\n- description: Video description/caption (max 300 chars, engaging, with line breaks)\n- hashtags: Array of 10-15 trending and relevant hashtags (strings without #)\n- image_prompt: A detailed DALL-E image generation prompt for a 9:16 vertical thumbnail/cover image (bold, eye-catching, designed for mobile screens, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
+
+      facebook_feed: `Create a Facebook feed post optimized for engagement and sharing.\n\nReturn a JSON object with these fields:\n- post: Main post text (max 500 chars, conversational, relatable, with emojis)\n- hook: Opening line that stops the scroll (max 15 words)\n- hashtags: Array of 5-8 relevant hashtags (strings without #)\n- cta: Call to action text encouraging comments or shares (max 15 words)\n- image_prompt: A detailed DALL-E image generation prompt for a Facebook feed image (1.91:1 landscape or square, vibrant, shareable, incorporate the brand colors into the style description)${brandCtx}${topic ? `\n\nPost topic: ${topic}` : ""}`,
+    };
+
+    const userPrompt = templates[template];
+    if (!userPrompt) { res.status(400).json({ error: "Invalid template" }); return; }
+
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 2000,
