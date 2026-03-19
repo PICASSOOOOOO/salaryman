@@ -1,21 +1,15 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, contactsTable, projectsTable, zapierWebhooksTable, userTiersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
-import { getUserTier, isOwnerEmail } from "../lib/plan";
 import { fireWebhook } from "../lib/webhook";
 
 const router: IRouter = Router();
 
 const PRO_MONTHLY_PRICE = 25;
 
-async function requirePro(req: Request, res: Response): Promise<boolean> {
+function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated() || !req.user) {
     res.status(401).json({ error: "Login required" });
-    return false;
-  }
-  const tier = await getUserTier(req.user.id, req.user.email);
-  if (tier !== "pro") {
-    res.status(403).json({ error: "Pro tier required" });
     return false;
   }
   return true;
@@ -120,13 +114,13 @@ async function buildStats(userId: string) {
 }
 
 router.get("/reporting/stats", async (req, res) => {
-  if (!(await requirePro(req, res))) return;
+  if (!requireAuth(req, res)) return;
   const stats = await buildStats(req.user!.id);
   res.json(stats);
 });
 
 router.get("/reporting/webhook", async (req, res) => {
-  if (!(await requirePro(req, res))) return;
+  if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
   const [row] = await db
     .select()
@@ -136,7 +130,7 @@ router.get("/reporting/webhook", async (req, res) => {
 });
 
 router.put("/reporting/webhook", async (req, res) => {
-  if (!(await requirePro(req, res))) return;
+  if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
   const body = req.body as {
     webhookUrl?: string;
@@ -175,14 +169,14 @@ router.put("/reporting/webhook", async (req, res) => {
 });
 
 router.delete("/reporting/webhook", async (req, res) => {
-  if (!(await requirePro(req, res))) return;
+  if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
   await db.delete(zapierWebhooksTable).where(eq(zapierWebhooksTable.userId, userId));
   res.json({ ok: true });
 });
 
 router.post("/reporting/webhook/test", async (req, res) => {
-  if (!(await requirePro(req, res))) return;
+  if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
   const [row] = await db
     .select()

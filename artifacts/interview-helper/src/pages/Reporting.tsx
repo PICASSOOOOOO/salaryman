@@ -7,7 +7,6 @@ import {
   BarChart2, Users, Briefcase, FolderOpen, UserCheck, Loader2,
   Zap, CheckCircle, AlertCircle, RefreshCw, Trash2, Send, DollarSign, TrendingUp,
 } from 'lucide-react';
-import { ProGate } from '@/components/ProGate';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 const ACCENT = '#22c55e';
@@ -407,9 +406,5 @@ function ReportingContent() {
 }
 
 export default function Reporting() {
-  return (
-    <ProGate feature="INTEL-9 COMMAND BRIEF">
-      <ReportingContent />
-    </ProGate>
-  );
+  return <ReportingContent />;
 }
