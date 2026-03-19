@@ -126,19 +126,22 @@ export default function Cover() {
           animate={{ opacity: 0.45 }}
           transition={{ duration: 0.6, delay: 0.7 }}
           style={{
-            fontSize: '0.55rem',
-            color: 'rgba(0,255,65,0.4)',
-            letterSpacing: '0.22em',
-            marginTop: '2rem',
-            maxWidth: '32rem',
-            lineHeight: 1.7,
+            fontSize: '0.7rem',
+            color: 'rgba(0,255,65,0.7)',
+            letterSpacing: '0.18em',
+            marginTop: '2.5rem',
+            maxWidth: '34rem',
+            lineHeight: 1.9,
             textTransform: 'uppercase',
             textAlign: 'center',
+            textShadow: '0 0 12px rgba(0,255,65,0.3)',
           }}
         >
-          POWERED BY CLAUDE SONNET + GPT-4o &mdash; YOUR ENTIRE OFFICE, ONE TERMINAL.
+          BUILT ON CLAUDE SONNET &middot; GPT-4o &middot; REACT &middot; NODE &middot; POSTGRES
           <br />
-          AI CHAT &middot; CRM &middot; INVOICES &middot; CALENDAR &middot; PHONE &middot; DAW &middot; HIRING &middot; REPORTS
+          <span style={{ fontSize: '0.6rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.22em' }}>
+            TWILIO &middot; RESEND &middot; WEB AUDIO API &middot; STRIPE &middot; CANVAS ENGINE
+          </span>
         </motion.p>
       </div>
     </div>
