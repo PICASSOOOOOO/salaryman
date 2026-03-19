@@ -11,7 +11,7 @@ interface AgentDefinition {
   plainSpecialty: string;
   description: string;
   plainDescription: string;
-  provider: 'claude' | 'gpt';
+  provider: 'claude' | 'gpt' | 'openclaw';
   model: string;
   status: 'online' | 'offline' | 'unknown';
   requestTypes: string[];
@@ -157,6 +157,8 @@ export default function AgentTeam() {
                     className={`rounded-2xl border bg-card p-5 ${
                       agent.provider === 'claude'
                         ? 'border-orange-500/20'
+                        : agent.provider === 'openclaw'
+                        ? 'border-cyan-500/20'
                         : 'border-emerald-500/20'
                     }`}
                   >
@@ -164,10 +166,14 @@ export default function AgentTeam() {
                       <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 ${
                         agent.provider === 'claude'
                           ? 'bg-orange-500/10 border-orange-500/30'
+                          : agent.provider === 'openclaw'
+                          ? 'bg-cyan-500/10 border-cyan-500/30'
                           : 'bg-emerald-500/10 border-emerald-500/30'
                       }`}>
                         {agent.provider === 'claude'
                           ? <Brain className="w-6 h-6 text-orange-400" />
+                          : agent.provider === 'openclaw'
+                          ? <Cpu className="w-6 h-6 text-cyan-400" />
                           : <Zap className="w-6 h-6 text-emerald-400" />
                         }
                       </div>
@@ -193,9 +199,11 @@ export default function AgentTeam() {
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                             agent.provider === 'claude'
                               ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
+                              : agent.provider === 'openclaw'
+                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25'
                               : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                           }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                            {agent.provider === 'claude' ? 'ANTHROPIC' : 'OPENAI'}
+                            {agent.provider === 'claude' ? 'ANTHROPIC' : agent.provider === 'openclaw' ? 'OPENCLAW' : 'OPENAI'}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] text-muted-foreground/50 border border-border"
                             style={{ fontFamily: "'Share Tech Mono', monospace" }}>

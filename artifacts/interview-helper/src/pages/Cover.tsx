@@ -137,7 +137,7 @@ export default function Cover() {
             textShadow: '0 0 12px rgba(0,255,65,0.3)',
           }}
         >
-          BUILT ON CLAUDE SONNET &middot; GPT-4o &middot; REACT &middot; NODE &middot; POSTGRES
+          BUILT ON CLAUDE SONNET &middot; GPT-4o &middot; OPENCLAW &middot; REACT &middot; NODE &middot; POSTGRES
           <br />
           <span style={{ fontSize: '0.6rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.22em' }}>
             TWILIO &middot; RESEND &middot; WEB AUDIO API &middot; STRIPE &middot; CANVAS ENGINE

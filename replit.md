@@ -52,7 +52,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 
 ## Integrations
 - **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.
-- **AI**: OpenAI via Replit integration (`@workspace/integrations-openai-ai-server`)
+- **AI**: Multi-AI orchestration — Claude Sonnet (Anthropic via Replit integration `@workspace/integrations-anthropic-ai`), GPT-4o (OpenAI via `@workspace/integrations-openai-ai-server`), OpenClaw gateway (open-source AI gateway at `ws://127.0.0.1:18789`, npm package `openclaw`, config at `~/.openclaw/openclaw.json`). Router: `artifacts/api-server/src/lib/ai-router.ts`. Agent codenames: CORTEX-1 (Claude), SWIFT-3 (GPT), CLAW-7 (OpenClaw). Triple fallback chain: OpenClaw → Claude → GPT. Health check includes all three providers.
 - **Auth**: Replit Auth (OIDC) — session stored in PostgreSQL `sessions` table
 - **Twilio**: PSTN phone calls via Twilio SDK. Credentials stored as secrets: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (user account: alexduong@yourmedicareclub.com). NOT using the Replit Twilio connector — using direct secrets. Routes: `artifacts/api-server/src/routes/twilio.ts`. Schema: `call_history` table in `lib/db/src/schema/call-history.ts`. Frontend: `PhoneDialer` component on Home page (floating button), `WorldPhoneDialer` inline component in WorldPlay phone tab.
 

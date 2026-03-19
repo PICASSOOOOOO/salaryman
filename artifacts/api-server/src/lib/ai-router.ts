@@ -1,8 +1,9 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import WebSocket from "ws";
 
 export type RequestType = "code" | "chat" | "analysis" | "creative" | "general";
-export type ModelProvider = "claude" | "gpt";
+export type ModelProvider = "claude" | "gpt" | "openclaw";
 
 export interface RouterResult {
   provider: ModelProvider;
@@ -10,6 +11,41 @@ export interface RouterResult {
   agentName: string;
   agentShort: string;
   requestType: RequestType;
+}
+
+const OPENCLAW_WS_URL = "ws://127.0.0.1:18789";
+const OPENCLAW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "salaryman-gateway";
+
+let openclawAlive = false;
+let lastOpenclawCheck = 0;
+const OPENCLAW_CHECK_INTERVAL = 30_000;
+
+async function isOpenclawAvailable(): Promise<boolean> {
+  const now = Date.now();
+  if (now - lastOpenclawCheck < OPENCLAW_CHECK_INTERVAL) return openclawAlive;
+  lastOpenclawCheck = now;
+
+  return new Promise((resolve) => {
+    const ws = new WebSocket(OPENCLAW_WS_URL);
+    const timer = setTimeout(() => {
+      ws.terminate();
+      openclawAlive = false;
+      resolve(false);
+    }, 2000);
+
+    ws.on("open", () => {
+      clearTimeout(timer);
+      openclawAlive = true;
+      ws.close();
+      resolve(true);
+    });
+
+    ws.on("error", () => {
+      clearTimeout(timer);
+      openclawAlive = false;
+      resolve(false);
+    });
+  });
 }
 
 function classifyRequest(text: string): RequestType {
@@ -86,6 +122,93 @@ export function routeRequest(userText: string): RouterResult {
 
 type StreamChunk = { content?: string; done?: boolean; error?: string; agent?: RouterResult };
 
+async function tryOpenclawStream(
+  userMessages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  systemPrompt: string,
+  maxTokens: number,
+  onChunk: (chunk: StreamChunk) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(OPENCLAW_WS_URL);
+    let connected = false;
+    let responded = false;
+
+    const timer = setTimeout(() => {
+      if (!responded) {
+        ws.terminate();
+        reject(new Error("OpenClaw gateway timeout"));
+      }
+    }, 30_000);
+
+    ws.on("error", (err) => {
+      clearTimeout(timer);
+      if (!responded) {
+        responded = true;
+        reject(err);
+      }
+    });
+
+    ws.on("close", () => {
+      clearTimeout(timer);
+      if (!responded) {
+        responded = true;
+        resolve();
+      }
+    });
+
+    ws.on("message", (data: WebSocket.Data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+
+        if (msg.event === "connect.challenge" && !connected) {
+          ws.send(JSON.stringify({
+            type: "req",
+            id: "connect-1",
+            method: "connect",
+            params: {
+              minProtocol: 3,
+              maxProtocol: 3,
+              client: { id: "salaryman-api", version: "1.0.0", platform: "node", mode: "operator" },
+              role: "operator",
+              auth: { token: OPENCLAW_TOKEN },
+            },
+          }));
+          return;
+        }
+
+        if (msg.type === "res" && msg.id === "connect-1") {
+          connected = true;
+          const lastUser = userMessages.filter(m => m.role === "user").pop()?.content ?? "";
+          ws.send(JSON.stringify({
+            type: "req",
+            id: "chat-1",
+            method: "agent.message",
+            params: {
+              text: lastUser,
+              systemPrompt,
+              sessionId: "salaryman-" + Date.now(),
+            },
+          }));
+          return;
+        }
+
+        if (msg.event === "agent.text" || msg.event === "agent.delta") {
+          const text = msg.payload?.text || msg.payload?.delta || "";
+          if (text) onChunk({ content: text });
+        }
+
+        if (msg.event === "agent.done" || (msg.type === "res" && msg.id === "chat-1")) {
+          responded = true;
+          clearTimeout(timer);
+          onChunk({ done: true });
+          ws.close();
+          resolve();
+        }
+      } catch {}
+    });
+  });
+}
+
 export async function streamWithRouter(
   userMessages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
   systemPrompt: string,
@@ -101,6 +224,10 @@ export async function streamWithRouter(
       route.model = "claude-sonnet-4-6";
       route.agentName = "CORTEX-1";
       route.agentShort = "CORTEX-1";
+    } else if (options.preferProvider === "openclaw") {
+      route.model = "openclaw-gateway";
+      route.agentName = "CLAW-7";
+      route.agentShort = "CLAW-7";
     } else {
       route.model = "gpt-4o";
       route.agentName = "SWIFT-3";
@@ -109,6 +236,14 @@ export async function streamWithRouter(
   }
 
   const maxTokens = options.maxTokens ?? 8192;
+
+  const openclawUp = await isOpenclawAvailable();
+  if (openclawUp && route.provider !== "openclaw") {
+    route.provider = "openclaw";
+    route.model = "openclaw-gateway";
+    route.agentName = "CLAW-7";
+    route.agentShort = "CLAW-7";
+  }
 
   onChunk({ agent: route });
 
@@ -155,7 +290,34 @@ export async function streamWithRouter(
     onChunk({ done: true });
   };
 
-  if (route.provider === "claude") {
+  if (route.provider === "openclaw") {
+    try {
+      await tryOpenclawStream(userMessages, systemPrompt, maxTokens, onChunk);
+    } catch (err) {
+      console.error("OpenClaw gateway failed, falling back to Claude:", err);
+      route.provider = "claude";
+      route.model = "claude-sonnet-4-6";
+      route.agentName = "CORTEX-1";
+      route.agentShort = "CORTEX-1";
+      onChunk({ agent: route });
+      try {
+        await tryClaudeStream();
+      } catch (claudeErr) {
+        console.error("Claude also failed, falling back to GPT:", claudeErr);
+        route.provider = "gpt";
+        route.model = "gpt-4o";
+        route.agentName = "SWIFT-3";
+        route.agentShort = "SWIFT-3";
+        onChunk({ agent: route });
+        try {
+          await tryGptStream();
+        } catch (gptErr) {
+          console.error("All providers failed:", gptErr);
+          onChunk({ error: "All AI services are temporarily unavailable. Please try again in a moment." });
+        }
+      }
+    }
+  } else if (route.provider === "claude") {
     try {
       await tryClaudeStream();
     } catch (err) {
@@ -195,8 +357,9 @@ export async function streamWithRouter(
 export async function checkProviderHealth(): Promise<{
   claude: boolean;
   gpt: boolean;
+  openclaw: boolean;
 }> {
-  const results = { claude: false, gpt: false };
+  const results = { claude: false, gpt: false, openclaw: false };
 
   await Promise.allSettled([
     (async () => {
@@ -223,6 +386,9 @@ export async function checkProviderHealth(): Promise<{
       } catch {
         results.gpt = false;
       }
+    })(),
+    (async () => {
+      results.openclaw = await isOpenclawAvailable();
     })(),
   ]);
 

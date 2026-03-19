@@ -117,7 +117,7 @@ export const PABLO_PRODUCTS = {
   AI_AGENTS: {
     name: "PABLO AI NETWORK",
     short: "AI NETWORK",
-    desc: "Multi-agent orchestration layer. CORTEX-1 handles code and deep reasoning. SWIFT-3 handles speed and general tasks. Auto-routing with fallback.",
+    desc: "Multi-agent orchestration layer. CORTEX-1 handles code and deep reasoning. SWIFT-3 handles speed and general tasks. CLAW-7 routes through OpenClaw gateway. Auto-routing with triple fallback.",
   },
   CORTEX_1: {
     name: "CORTEX-1 — DEEP ANALYSIS",
@@ -128,6 +128,11 @@ export const PABLO_PRODUCTS = {
     name: "SWIFT-3 — RAPID RESPONSE",
     short: "SWIFT-3",
     desc: "Speed-optimized general intelligence. Chat, Q&A, translations, and creative tasks. Powered by OpenAI GPT.",
+  },
+  CLAW_7: {
+    name: "CLAW-7 — OPENCLAW GATEWAY",
+    short: "CLAW-7",
+    desc: "Open-source AI gateway. Routes through OpenClaw's multi-provider mesh — DeepSeek, Gemini, Mistral, local models. Triple-fallback to CORTEX-1 and SWIFT-3.",
   },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },

@@ -30,6 +30,19 @@ const AGENT_DEFINITIONS = [
     status: "unknown" as "online" | "offline" | "unknown",
     requestTypes: ["chat", "general", "creative"],
   },
+  {
+    id: "claw-7",
+    codeName: "CLAW-7",
+    plainName: "OpenClaw Gateway",
+    specialty: "Open-source AI gateway — multi-provider mesh routing",
+    plainSpecialty: "Routes through multiple AI providers via OpenClaw",
+    description: "Open-source gateway that routes through OpenClaw's multi-provider mesh — DeepSeek, Gemini, Mistral, and local models. When active, takes priority with triple-fallback to CORTEX-1 and SWIFT-3.",
+    plainDescription: "An open-source AI gateway that can connect to many different AI providers at once.",
+    provider: "openclaw" as const,
+    model: "openclaw-gateway",
+    status: "unknown" as "online" | "offline" | "unknown",
+    requestTypes: ["code", "chat", "analysis", "creative", "general"],
+  },
 ];
 
 router.get("/ai-agents/team", async (_req, res) => {
@@ -38,7 +51,11 @@ router.get("/ai-agents/team", async (_req, res) => {
 
     const agents = AGENT_DEFINITIONS.map(agent => ({
       ...agent,
-      status: (agent.provider === "claude" ? health.claude : health.gpt) ? "online" : "offline",
+      status: (
+        agent.provider === "claude" ? health.claude :
+        agent.provider === "openclaw" ? health.openclaw :
+        health.gpt
+      ) ? "online" : "offline",
     }));
 
     res.json({ agents });
@@ -55,7 +72,7 @@ router.get("/ai-agents/health", async (_req, res) => {
     res.json({ health });
   } catch (err) {
     console.error("Health check error:", err);
-    res.json({ health: { claude: false, gpt: false } });
+    res.json({ health: { claude: false, gpt: false, openclaw: false } });
   }
 });
 

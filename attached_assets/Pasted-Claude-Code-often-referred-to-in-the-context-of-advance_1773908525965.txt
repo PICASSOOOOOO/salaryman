@@ -1,0 +1,55 @@
+Claude Code (often referred to in the context of advanced agentic coding, sometimes mentioned alongside creators like @kamparthy or in specialized tutorials as "Claude Code" or "Agentic Claude") is an AI-powered coding tool created by Anthropic that operates directly within your terminal, rather than just as a chat sidebar. 
+YouTube
+YouTube
+ +1
+It is designed to read your entire codebase, edit files, run commands, and automate complex coding tasks. 
+Claude
+Claude
+Where to Use Claude Code
+Terminal/CLI (Recommended): The primary interface is the Command Line Interface (CLI).
+VS Code / Cursor Extension: A VS Code extension is available, acting as a launcher for the terminal interface, making it easy to open in multiple panes.
+Web Interface (Beta): You can use it at claude.ai/code, which runs in an Anthropic-managed virtual machine.
+Desktop App: A dedicated desktop app for macOS and Windows is available for visual diff reviews. 
+YouTube
+YouTube
+ +4
+How to Install and Use Claude Code
+1. Installation
+macOS and Linux (Native): Run this command in your terminal:
+bash
+curl -fsSL https://code.claude.com | bash
+Windows (PowerShell): Run this command:
+powershell
+irm https://code.claude.com | iex
+Verify Installation: Run claude --version. 
+Builder.io
+Builder.io
+ +4
+2. Authentication
+Run claude in any project folder to start the setup process.
+Your default browser will open. Sign in to your Claude Pro, Max, or Teams account (a subscription is required). 
+Builder.io
+Builder.io
+3. Basic Usage (Terminal)
+Once inside a project directory, you can interact with Claude using plain English. 
+Start a session: Type claude and press Enter.
+Ask for help: claude "fix the bug in the login component".
+Reference a file: Use @filename to give context, e.g., claude "add validation to @src/auth.ts".
+Run a one-time command: claude -p "Explain this function".
+Create a commit: claude commit -m "Add authentication logic". 
+Builder.io
+Builder.io
+ +3
+4. Pro Tips and Best Practices
+Use /clear often: To prevent context fatigue and save token usage, run /clear between new tasks.
+Permission Control: Claude asks before editing files. To speed up, use claude --dangerously-skip-permissions (use with caution).
+Stop the Agent: Press Escape to stop Claude from working on a task.
+Use CLAUDE.md: Create a CLAUDE.md file in your project root to provide instructions on coding standards, linting, and testing.
+GitHub Integration: Use /install-github-app to enable automated PR reviews. 
+Builder.io
+Builder.io
+ +3
+Key Differences from Standard ChatGPT
+File System Access: Claude Code reads and edits your local files directly, unlike ChatGPT, which usually requires copy-pasting code snippets.
+Agentic Behavior: Claude Code can plan, write, and run tests autonomously.
+Project Context: It maintains awareness of your entire folder structure, not just the current file.
