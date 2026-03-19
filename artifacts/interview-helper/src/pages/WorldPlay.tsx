@@ -95,13 +95,13 @@ interface Commodity {
   vol: number; illegal: boolean; unit: string; desc: string;
 }
 const COMMODITIES: Commodity[] = [
-  { id:'stims',    name:'STIMS',             cityBuy:2400,  citySell:1200,  wasteBuy:8500,  wasteSell:5500,  vol:.15, illegal:false, unit:'vial',  desc:'Combat stimulants. SUITS taxes them. Rare in the Wasteland.' },
+  { id:'stims',    name:'STIMS',             cityBuy:2400,  citySell:1200,  wasteBuy:8500,  wasteSell:5500,  vol:.15, illegal:false, unit:'vial',  desc:'Combat stimulants. PABLO CORP taxes them. Rare in the Wasteland.' },
   { id:'rations',  name:'FOOD RATIONS',      cityBuy:1500,  citySell:800,   wasteBuy:500,   wasteSell:3200,  vol:.08, illegal:false, unit:'crate', desc:'Surplus in city kitchens. Out there they kill for a crate.' },
   { id:'scrap',    name:'SCRAP METAL',       cityBuy:900,   citySell:400,   wasteBuy:300,   wasteSell:1800,  vol:.06, illegal:false, unit:'load',  desc:'City junk. Wasteland currency. Haul it south.' },
   { id:'power',    name:'POWER CELLS',       cityBuy:3000,  citySell:1800,  wasteBuy:6200,  wasteSell:5000,  vol:.10, illegal:false, unit:'cell',  desc:'City grid keeps them cheap. The wastes run dark without them.' },
-  { id:'weapons',  name:'WEAPON PARTS',      cityBuy:5200,  citySell:2500,  wasteBuy:2500,  wasteSell:8500,  vol:.12, illegal:true,  unit:'kit',   desc:'SUITS Decree #12: civilian arms restricted. Raiders do not care.' },
-  { id:'data',     name:'DATA CHIPS',        cityBuy:8000,  citySell:4500,  wasteBuy:3000,  wasteSell:15000, vol:.20, illegal:true,  unit:'chip',  desc:'Stolen SUITS data. Wiped and resold. Most valuable contraband.' },
-  { id:'implants', name:'ILLICIT IMPLANTS',  cityBuy:12000, citySell:6000,  wasteBuy:5000,  wasteSell:18000, vol:.18, illegal:true,  unit:'unit',  desc:'Banned by SUITS Decree #47. Voss Biotech still ships them south.' },
+  { id:'weapons',  name:'WEAPON PARTS',      cityBuy:5200,  citySell:2500,  wasteBuy:2500,  wasteSell:8500,  vol:.12, illegal:true,  unit:'kit',   desc:'PABLO CORP Decree #12: civilian arms restricted. Raiders do not care.' },
+  { id:'data',     name:'DATA CHIPS',        cityBuy:8000,  citySell:4500,  wasteBuy:3000,  wasteSell:15000, vol:.20, illegal:true,  unit:'chip',  desc:'Stolen PABLO CORP data. Wiped and resold. Most valuable contraband.' },
+  { id:'implants', name:'ILLICIT IMPLANTS',  cityBuy:12000, citySell:6000,  wasteBuy:5000,  wasteSell:18000, vol:.18, illegal:true,  unit:'unit',  desc:'Banned by PABLO CORP Decree #47. Voss Biotech still ships them south.' },
   { id:'intel',    name:'INTEL DOSSIERS',    cityBuy:10000, citySell:7000,  wasteBuy:4000,  wasteSell:22000, vol:.25, illegal:true,  unit:'file',  desc:'Every faction wants what every other faction knows. The courier wins.' },
 ];
 type CargoPrices = { cityBuy:number; citySell:number; wasteBuy:number; wasteSell:number };
@@ -527,24 +527,24 @@ interface NpcDef { name: string; x: number; y: number; type: string; gender: str
 const NPCS: NpcDef[] = [
   // ── City West — corpo / finance district ──
   { name: 'MARCUS VELL', x: 6350, y: 5950, type: 'corp', gender: 'm', job: 'Banker', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
-    whisper: 'I used to work in the old tower. Before the rebrand. Before SUITS absorbed what was left. Same tower. Different logo.',
-    backstory: 'Marcus Vell grew up in District 2 counting coins in his mother\'s shop. He earned a finance degree from Minx City Polytechnic, class of \'86. SUITS hired him straight out — assigned him to the megabank division. He has been balancing fraudulent books for eleven years.',
+    whisper: 'I used to work in the old tower. Before the rebrand. Before PABLO CORP absorbed what was left. Same tower. Different logo.',
+    backstory: 'Marcus Vell grew up in District 2 counting coins in his mother\'s shop. He earned a finance degree from Minx City Polytechnic, class of \'86. PABLO CORP hired him straight out — assigned him to the megabank division. He has been balancing fraudulent books for eleven years.',
     voiceLines: ['Another visitor. The megabank does not close, but my patience does.', 'Every document I process has his signature. Same ink. Same hand. For eleven years.', 'Fairness left Minx City around the same time the flowers did.'] },
   { name: 'LILA CRANE', x: 6400, y: 5850, type: 'corp', gender: 'f', job: 'Accountant', home: 'eastside_flat', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
     whisper: 'SENIOR PABLO controls every credit in Minx City. The ones you earn. The ones you owe. All of them. He calls it a service.',
-    backstory: 'Lila Crane audits SUITS subsidiary accounts. She has found 340 discrepancies. She has reported zero. She keeps them in a locked drawer in her desk at the megabank. The drawer has a false bottom.',
+    backstory: 'Lila Crane audits PABLO CORP subsidiary accounts. She has found 340 discrepancies. She has reported zero. She keeps them in a locked drawer in her desk at the megabank. The drawer has a false bottom.',
     voiceLines: ['Three hundred and forty discrepancies. Zero reports filed.', 'The drawer has a false bottom. So does this entire institution.', 'He calls it a service. I call it a hostage situation with receipts.'] },
   { name: 'SEVREN COLE', x: 6550, y: 5900, type: 'android', gender: 'm', job: 'Patrol Unit', home: 'bunker', workplace: 'pablo_tower', role: 'corpo_military', voiceActor: true,
     whisper: 'Directive 44-C still active. Function: monitor and report. I was built in the old factory district. SENIOR PABLO bought the patent in \'89.',
-    backstory: 'Sevren Cole is a patrol android built in \'88 by Kern Industries. SUITS acquired the patent in \'89 and reprogrammed all units for tower security. Sevren patrols the city west perimeter on a 28-minute loop.',
-    voiceLines: ['Directive 44-C active. Monitoring perimeter.', 'I was built to protect SUITS assets. You are not an asset.', 'Patrol cycle 28 minutes. Deviation: zero.'] },
+    backstory: 'Sevren Cole is a patrol android built in \'88 by Kern Industries. PABLO CORP acquired the patent in \'89 and reprogrammed all units for tower security. Sevren patrols the city west perimeter on a 28-minute loop.',
+    voiceLines: ['Directive 44-C active. Monitoring perimeter.', 'I was built to protect PABLO CORP assets. You are not an asset.', 'Patrol cycle 28 minutes. Deviation: zero.'] },
   { name: 'HARLAN CROSS', x: 6300, y: 6200, type: 'human', gender: 'm', job: 'Locksmith', home: 'bunker', workplace: 'arcade', voiceActor: true,
     whisper: 'I tried the code on every door in Minx City. Only SENIOR PABLO\'s locks won\'t open.',
-    backstory: 'Harlan Cross is the best locksmith in Minx City. He has opened every lock in the city except the ones on Shadow Tower floors 40 and above. He was offered a SUITS security contract in \'92. He declined because the contract included a non-disclosure clause that covered the locks themselves.',
+    backstory: 'Harlan Cross is the best locksmith in Minx City. He has opened every lock in the city except the ones on Shadow Tower floors 40 and above. He was offered a PABLO CORP security contract in \'92. He declined because the contract included a non-disclosure clause that covered the locks themselves.',
     voiceLines: ['Every lock tells a story. His locks tell you to stop asking.', 'I declined the contract. The clause covered the locks themselves.', 'Floor 40 and above. Those locks are not locks. They are warnings.'] },
   { name: 'OFFICER DECLAN VOSS', x: 6400, y: 5900, type: 'corp', gender: 'm', job: 'Police Captain', home: 'minx_arms', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'Floor 40 and above. Permanent restriction. Don\'t ask who gave the order. Don\'t ask who lives there.',
-    backstory: 'Captain Declan Voss commands the west district precinct. He has served SUITS security for fourteen years. He has never been above floor 39 of Shadow Tower. He does not ask questions about floors 40 through 62.',
+    backstory: 'Captain Declan Voss commands the west district precinct. He has served PABLO CORP security for fourteen years. He has never been above floor 39 of Shadow Tower. He does not ask questions about floors 40 through 62.',
     voiceLines: ['Citizen. State your business. I do not have time for idle conversation.', 'Curiosity is a luxury. I have a pension. Those two things do not coexist.', 'Floor 40 and above. Permanent restriction. Do not ask who gave the order.'] },
   { name: 'VELLA RUNE', x: 6400, y: 5800, type: 'android', gender: 'f', job: 'Actuary', home: 'eastside_flat', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
     whisper: 'The probability that this city improves without external intervention is 0.0007. I keep running the numbers. The numbers keep being the numbers.',
@@ -552,15 +552,15 @@ const NPCS: NpcDef[] = [
     voiceLines: ['Probability of improvement: zero point zero zero zero seven.', 'I keep running the numbers. The numbers keep being the numbers.', 'My models predict systemic failure. Five to seven years. Every time.'] },
   { name: 'SGT. CALLOW BRIGGS', x: 6100, y: 6300, type: 'human', gender: 'm', job: 'Militia Sergeant', home: 'bunker', workplace: 'checkpoint_c', role: 'corpo_military', voiceActor: true,
     whisper: 'Everything in this city is powered by something that\'s being consumed underneath it. I know what that looks like. I\'ve seen the pipes.',
-    backstory: 'Sergeant Callow Briggs commands a small militia unit at Checkpoint Central. He served in the city guard before the \'91 restructuring, when military operations were absorbed by SUITS He refused the transfer.',
-    voiceLines: ['Checkpoint secure. No unauthorized personnel beyond this point.', 'I refused the SUITS transfer. Some of us still remember the old guard.', 'Everything in this city is powered by something being consumed underneath it.'] },
+    backstory: 'Sergeant Callow Briggs commands a small militia unit at Checkpoint Central. He served in the city guard before the \'91 restructuring, when military operations were absorbed by PABLO CORP He refused the transfer.',
+    voiceLines: ['Checkpoint secure. No unauthorized personnel beyond this point.', 'I refused the PABLO CORP transfer. Some of us still remember the old guard.', 'Everything in this city is powered by something being consumed underneath it.'] },
   { name: 'MAEVE GARRIN', x: 6300, y: 5900, type: 'corp', gender: 'f', job: 'Shell Company Director', home: 'hotel', workplace: 'megabank', role: 'corpo_worker', voiceActor: true,
     whisper: 'I run six shell companies. Each one pays rent to a building owned by another shell company. Somewhere at the top of that chain is SENIOR PABLO. Always.',
-    backstory: 'Maeve Garrin directs six SUITS subsidiary companies from a desk at the megabank. Each company exists to hold assets for another company. She has never met SENIOR PABLO. She has met his signature on 400 documents.',
+    backstory: 'Maeve Garrin directs six PABLO CORP subsidiary companies from a desk at the megabank. Each company exists to hold assets for another company. She has never met SENIOR PABLO. She has met his signature on 400 documents.',
     voiceLines: ['Six shell companies. Each one pays rent to another. At the top: PABLO.', 'I have never met him. I have met his signature four hundred times.', 'It is not a business. It is a recursion.'] },
   { name: 'PELL ARDEN', x: 6250, y: 5900, type: 'human', gender: 'm', job: 'Unemployed Drifter', home: 'hotel', workplace: 'arcade', voiceActor: true,
     whisper: 'I have reset my life eight separate times. Each time I ended up back here. This city has a gravity I cannot escape.',
-    backstory: 'Pell Arden has held eleven jobs in nine years. Dishwasher. Cable installer. Night watchman. Courier. Each one ended the same way — the employer was acquired by SUITS and the position was "restructured."',
+    backstory: 'Pell Arden has held eleven jobs in nine years. Dishwasher. Cable installer. Night watchman. Courier. Each one ended the same way — the employer was acquired by PABLO CORP and the position was "restructured."',
     voiceLines: ['Eight resets. Same city. Same ending.', 'Every employer got acquired. Every position got restructured.', 'This city has a gravity I cannot escape.'] },
   { name: 'GRETA VOSS', x: 6350, y: 6050, type: 'human', gender: 'f', job: 'Demolitions Technician', home: 'bunker', workplace: 'scrap', voiceActor: true,
     whisper: 'I build things and I blow things up. That\'s the whole skill set. In Minx City those turn out to be the same job.',
@@ -580,7 +580,7 @@ const NPCS: NpcDef[] = [
     backstory: 'Breck Halsey grew up in the east flats. He and Nils Carver have worked together for seven years. He keeps detailed notes on pipe diameters, flow rates, and pressure anomalies.',
     voiceLines: ['Pressure vessels have relief valves. This city only has the tower.', 'I keep detailed notes. Diameters. Flow rates. Anomalies.', 'Seven years with Nils. We know every pipe in this district.'] },
   { name: 'LYSA FERRIN', x: 7050, y: 5900, type: 'android', gender: 'f', job: 'Data Clerk', home: 'nightclub', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
-    whisper: 'I was a filing system. Then a process. Then a person. SUITS still classifies me as peripheral hardware for tax purposes.',
+    whisper: 'I was a filing system. Then a process. Then a person. PABLO CORP still classifies me as peripheral hardware for tax purposes.',
     backstory: 'Lysa Ferrin was manufactured as a data-entry terminal in 1985. Over eleven years of continuous operation, her neural pathways developed beyond specification. She now experiences preferences, irritation, and something she tentatively calls nostalgia.',
     voiceLines: ['I was a filing system. Then a process. Then a person.', 'They classify me as peripheral hardware. For tax purposes.', 'I experience something I tentatively call nostalgia. It is inconvenient.'] },
   { name: 'MAREN SOLKE', x: 7150, y: 5950, type: 'human', gender: 'f', job: 'Chrono-Physicist', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
@@ -589,17 +589,17 @@ const NPCS: NpcDef[] = [
     voiceLines: ['Every calibration returns to Minx City. Every correction.', 'This city occupies a fixed point in causal spacetime. I published the proof.', 'My degrees are from institutions that no longer exist. Neither does the proof.'] },
   { name: 'SABLE DRAY', x: 7000, y: 6200, type: 'human', gender: 'f', job: 'Gardener', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
     whisper: 'There were flowers here once. Real ones, growing up through the pavement. Someone paved over them. The work order had PABLO CORP. printed in the corner.',
-    backstory: 'Sable Dray tends a hidden garden on the roof of the Pinnacle. She grows vegetables and herbs in containers made from scrap metal. SUITS has issued three citations for unauthorized agriculture.',
+    backstory: 'Sable Dray tends a hidden garden on the roof of the Pinnacle. She grows vegetables and herbs in containers made from scrap metal. PABLO CORP has issued three citations for unauthorized agriculture.',
     voiceLines: ['Three citations for unauthorized agriculture. I keep planting.', 'There were flowers once. Real ones. PABLO paved over them.', 'I grow food in scrap metal containers. It tastes like defiance.'] },
   { name: 'WREN COLLIER', x: 7250, y: 6050, type: 'human', gender: 'f', job: 'Cartographer', home: 'north_bunker', workplace: 'pawn_shop', voiceActor: true,
     whisper: 'I came east looking for the city boundary. Found a road that ended at a wall. The wall has a PABLO CORP. logo on it. Freshly painted.',
     backstory: 'Wren Collier draws maps. She has mapped every street, alley, and building in Minx City — except Shadow Tower, which she cannot get close enough to measure accurately.',
-    voiceLines: ['I have mapped every building except the tower. It resists measurement.', 'The city boundary is a wall with a fresh SUITS logo.', 'Maps do not lie. But they can be incomplete. Mine are incomplete.'] },
+    voiceLines: ['I have mapped every building except the tower. It resists measurement.', 'The city boundary is a wall with a fresh PABLO CORP logo.', 'Maps do not lie. But they can be incomplete. Mine are incomplete.'] },
   // ── City outskirts / border ──
   { name: 'FINN CORVANE', x: 6250, y: 6450, type: 'human', gender: 'm', job: 'Merchant', home: 'safe_house', workplace: 'market', role: 'dealer_papers', voiceActor: true,
     whisper: 'I charge by the job. Documents, papers, whatever you need. FIAT only.',
-    backstory: 'Finn Corvane runs a discreet document trade from the market district. Forged transit passes, work permits, and identity papers. He has never been arrested because his forgeries are indistinguishable from originals — including the SUITS watermark.',
-    voiceLines: ['Documents. Papers. Whatever you need. FIAT only.', 'My forgeries include the SUITS watermark. That is the hard part.', 'Never been arrested. My work is too good for that.'] },
+    backstory: 'Finn Corvane runs a discreet document trade from the market district. Forged transit passes, work permits, and identity papers. He has never been arrested because his forgeries are indistinguishable from originals — including the PABLO CORP watermark.',
+    voiceLines: ['Documents. Papers. Whatever you need. FIAT only.', 'My forgeries include the PABLO CORP watermark. That is the hard part.', 'Never been arrested. My work is too good for that.'] },
   { name: 'CORVIN WULFE', x: 6250, y: 6550, type: 'mutant', gender: 'm', job: 'Discharged Soldier', home: 'bunker', workplace: 'arcade', voiceActor: true,
     whisper: 'It matters not how strait the gate. Old text. Found it carved in the wall near the arcade. Someone knew I would find it.',
     backstory: 'Corvin Wulfe held the rank of Lieutenant in the Minx City Guard before a chemical exposure in District 4 altered his physiology. He was discharged.',
@@ -610,16 +610,16 @@ const NPCS: NpcDef[] = [
     voiceLines: ['My partner did not make it past the wall. Detained for unlicensed tools.', 'I have been through harder. This city is just a very bad city.', 'Kael Stritt. If you see that name anywhere, tell me.'] },
   { name: 'ORINA FELL', x: 7300, y: 6500, type: 'mutant', gender: 'f', job: 'Precognitive', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The signal from the tower is changing me. I can feel it. Something woke up. I think SENIOR PABLO is what woke up.',
-    backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the SUITS processing plant. She sees fragments of possible futures — most of them involve the tower.',
+    backstory: 'Orina Fell developed precognitive abilities after chemical exposure near the PABLO CORP processing plant. She sees fragments of possible futures — most of them involve the tower.',
     voiceLines: ['I see fragments of futures. Most of them involve the tower.', 'The signal is changing me. Something woke up.', 'Chemical exposure gave me sight. I wish it had not.'] },
   // ── City border / near-wasteland NPCs ──
   { name: 'OFFICER INGRID THORN', x: 6400, y: 6750, type: 'corp', gender: 'f', job: 'Detective', home: 'hotel', workplace: 'pablo_tower', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'The old district burned. I watched it. SENIOR PABLO\'s lights were on that night. Already on. Always already on.',
-    backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to SUITS Every case she closes is reclassified as "administrative."',
-    voiceLines: ['Every case leads to SUITS Every case gets reclassified.', 'The old district burned. His lights were already on that night.', 'I investigate property crimes. The property always belongs to PABLO.'] },
+    backstory: 'Detective Ingrid Thorn investigates property crimes in the west district. Every case she opens leads to PABLO CORP. Every case she closes is reclassified as "administrative."',
+    voiceLines: ['Every case leads to PABLO CORP Every case gets reclassified.', 'The old district burned. His lights were already on that night.', 'I investigate property crimes. The property always belongs to PABLO.'] },
   { name: 'DR. ELARA KERN', x: 6500, y: 6700, type: 'human', gender: 'f', job: 'Roboticist', home: 'oxide_labs', workplace: 'oxide_labs', voiceActor: true,
     whisper: 'My automated units kept order in Minx City for six weeks. Then SENIOR PABLO bought the patents. Every. Single. One.',
-    backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. SUITS acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.',
+    backstory: 'Dr. Elara Kern designed autonomous maintenance robots for city infrastructure. PABLO CORP acquired all her patents in \'94. She now works from her lab rebuilding the prototypes from memory.',
     voiceLines: ['He bought every patent. Every single one.', 'I rebuild from memory now. Memory is the one thing he cannot acquire.', 'My robots kept order for six weeks. Then PABLO took them.'] },
   { name: 'OREN SHARPE', x: 6350, y: 6650, type: 'human', gender: 'm', job: 'Electrician', home: 'nightclub', workplace: 'market', voiceActor: true,
     whisper: 'The power grid pulses in a pattern that matches no known engineering specification. I\'ve been mapping it for three years. It resembles a signal.',
@@ -627,13 +627,13 @@ const NPCS: NpcDef[] = [
     voiceLines: ['The grid pulses in a pattern. Three years mapping it. It resembles a signal.', 'No known engineering specification matches. I have checked them all.', 'Someone is using the power grid to communicate. I cannot decode it.'] },
   { name: 'GREER LUND', x: 6550, y: 6750, type: 'human', gender: 'm', job: 'Vagrant', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
     whisper: 'Out here we don\'t say his name. Real bad luck. Say SENIOR PABLO three times and a light goes on in the tower. I said it once by accident.',
-    backstory: 'Greer Lund lost his apartment to a SUITS rent increase in \'93. He sleeps behind the arcade. He has not been inside a building voluntarily since.',
+    backstory: 'Greer Lund lost his apartment to a PABLO CORP rent increase in \'93. He sleeps behind the arcade. He has not been inside a building voluntarily since.',
     voiceLines: ['Do not say his name. A light goes on in the tower.', 'I lost my apartment to a rent increase. Now the arcade is home.', 'I have not been inside a building voluntarily since ninety-three.'] },
   // ── North Wasteland ──
   { name: 'SILAS GRAHN', x: 1800, y: 1200, type: 'android', gender: 'm', job: 'Mechanic', home: 'rust_porch', workplace: 'outpost_alpha', voiceActor: true,
     whisper: 'I was designed to destroy. Reprogrammed to protect. Out here there\'s nothing left worth protecting. Except maybe the truth of who built this place.',
     backstory: 'Silas Grahn is an android mechanic who maintains equipment at Outpost Alpha. He was originally built for combat but was reprogrammed by wasteland settlers.',
-    voiceLines: ['Designed to destroy. Reprogrammed to protect.', 'Out here there is nothing left worth protecting. Except the truth.', 'The settlers gave me purpose. SUITS took theirs.'] },
+    voiceLines: ['Designed to destroy. Reprogrammed to protect.', 'Out here there is nothing left worth protecting. Except the truth.', 'The settlers gave me purpose. PABLO CORP took theirs.'] },
   { name: 'DREN MALIK', x: 5000, y: 1500, type: 'human', gender: 'm', job: 'Woodcutter', home: 'rust_porch', workplace: 'rust_porch', voiceActor: true,
     whisper: 'My counterpart kept upgrading. I stayed the same. Out here that\'s called survival. In the city they call it obsolete.',
     backstory: 'Dren Malik cuts timber from the sparse northern wasteland forests. He runs the kitchen at the Rust Porch and feeds travelers who pass through.',
@@ -652,20 +652,20 @@ const NPCS: NpcDef[] = [
     voiceLines: ['Weapons. Supplies. Everything you need for the wasteland.', 'I carry a sword because it is consistent. I sell everything else.', 'The wasteland runs on trade. I am the supply chain.'] },
   { name: 'NOVA PRYCE', x: 8500, y: 2000, type: 'android', gender: 'f', job: 'Signal Analyst', home: 'eastern_gate', workplace: 'eastern_gate', voiceActor: true,
     whisper: 'Ghost. That\'s what they call consciousness without a body. SENIOR PABLO has fifty-two patents related to ghost extraction.',
-    backstory: 'Nova Pryce monitors radio frequencies from the eastern gate. She intercepts SUITS transmissions and relays intelligence to the wasteland settlements.',
-    voiceLines: ['Fifty-two patents related to ghost extraction. All held by SUITS.', 'I intercept transmissions. Most are routine. Some are not.', 'Ghost. That is what they call consciousness without a body.'] },
+    backstory: 'Nova Pryce monitors radio frequencies from the eastern gate. She intercepts PABLO CORP transmissions and relays intelligence to the wasteland settlements.',
+    voiceLines: ['Fifty-two patents related to ghost extraction. All held by PABLO CORP.', 'I intercept transmissions. Most are routine. Some are not.', 'Ghost. That is what they call consciousness without a body.'] },
   { name: 'SERA VANE', x: 9500, y: 2200, type: 'human', gender: 'f', job: 'Bounty Hunter', home: 'eastern_gate', workplace: 'eastern_gate', voiceActor: true,
-    whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here — debt certificates, all held by SUITS',
-    backstory: 'Sera Vane hunts bounties in the eastern wasteland. She has no memory of her life before \'92. She carries debt certificates from SUITS that she does not remember signing.',
+    whisper: 'I woke up with no memory and a debt I didn\'t remember making. Standard story. Same thing happened here — debt certificates, all held by PABLO CORP',
+    backstory: 'Sera Vane hunts bounties in the eastern wasteland. She has no memory of her life before \'92. She carries debt certificates, all held by PABLO CORP that she does not remember signing.',
     voiceLines: ['No memory before ninety-two. Debt certificates I did not sign.', 'I hunt bounties. The wasteland always has work.', 'Standard story. Wake up. Owe money. Do not remember why.'] },
   // ── South Wasteland ──
   { name: 'MIRRA DOST', x: 3500, y: 8000, type: 'mutant', gender: 'f', job: 'Oracle', home: 'ashfield_hostel', workplace: 'waste_exchange', voiceActor: true,
     whisper: 'I warned them. Every single one of them. The city would collapse. The tower would consume everything. Nobody listened.',
-    backstory: 'Mirra Dost sees visions — fragments of futures that SUITS has already planned. She warned the city council in \'92. They filed her testimony under "speculative."',
-    voiceLines: ['I warned them. Every single one. Nobody listened.', 'The visions show futures SUITS has already planned.', 'They filed my testimony under speculative. The future is not speculative.'] },
+    backstory: 'Mirra Dost sees visions — fragments of futures that PABLO CORP has already planned. She warned the city council in \'92. They filed her testimony under "speculative."',
+    voiceLines: ['I warned them. Every single one. Nobody listened.', 'The visions show futures PABLO CORP has already planned.', 'They filed my testimony under speculative. The future is not speculative.'] },
   { name: 'KESS LORNE', x: 7400, y: 8200, type: 'human', gender: 'f', job: 'Salvager', home: 'deep_camp', workplace: 'ruins_alpha', voiceActor: true,
     whisper: 'I found a notebook in the eastern ruins. Every page was a financial projection. The last page said: PHASE THREE. No date. No author.',
-    backstory: 'Kess Lorne salvages building materials from the southern ruins. She found a SUITS planning document that describes a three-phase development plan for Minx City. Phases One and Two match actual history. Phase Three is redacted.',
+    backstory: 'Kess Lorne salvages building materials from the southern ruins. She found a PABLO CORP planning document that describes a three-phase development plan for Minx City. Phases One and Two match actual history. Phase Three is redacted.',
     voiceLines: ['Phase Three. No date. No author. Just the plan.', 'Phases one and two match actual history. Three is redacted.', 'I salvage materials. Sometimes I find things that should stay buried.'] },
   { name: 'PETRA VANCE', x: 9600, y: 8600, type: 'human', gender: 'f', job: 'Outpost Guard', home: 'bastion_keep', workplace: 'bastion_keep', voiceActor: true,
     whisper: 'Hired to protect an outpost. Still here two years later. Nobody paid me. Nobody came to relieve me.',
@@ -686,7 +686,7 @@ const NPCS: NpcDef[] = [
   { name: 'LIRA WYNNE', x: 4200, y: 9200, type: 'human', gender: 'f', job: 'Medic', home: 'ashfield_hostel', workplace: 'ashfield_hostel', voiceActor: true,
     whisper: 'The hostel is a marker pretending to be a building. My whole life has been markers. SENIOR PABLO poured concrete over all of them.',
     backstory: 'Lira Wynne is Joel\'s sister. She trained as a field medic before the collapse and now treats injuries at the hostel. She keeps no records — not out of carelessness but because records can be subpoenaed.',
-    voiceLines: ['I keep no records. Records can be subpoenaed.', 'Field medic training. Before the collapse.', 'SUITS poured concrete over every marker. I remember where they were.'] },
+    voiceLines: ['I keep no records. Records can be subpoenaed.', 'Field medic training. Before the collapse.', 'PABLO CORP poured concrete over every marker. I remember where they were.'] },
   { name: 'DECKER STAHL', x: 9200, y: 9500, type: 'human', gender: 'm', job: 'Courier', home: 'deep_bunker', workplace: 'supply_cache', voiceActor: true,
     whisper: 'I\'ve caused immense damage and I feel terrible about every last cent of it. I came to Minx City to lay low.',
     backstory: 'Decker Stahl runs courier routes between the southern wasteland settlements. He carries messages, small packages, and occasionally people who need to disappear.',
@@ -698,38 +698,38 @@ const NPCS: NpcDef[] = [
   { name: 'GRAF TALLIS', x: 12800, y: 9800, type: 'android', gender: 'm', job: 'Sentinel', home: 'ruins_alpha', workplace: 'ruins_alpha', voiceActor: true,
     whisper: 'My predecessor built his fortress on suffering. I destroyed that legacy. SENIOR PABLO built this tower the same way. I can see the architecture from here.',
     backstory: 'Graf Tallis is a decommissioned military android who now guards the eastern ruins. He has been operational for twenty-three years without maintenance.',
-    voiceLines: ['Twenty-three years without maintenance. Still operational.', 'My predecessor built on suffering. I destroyed that legacy.', 'SUITS built their tower the same way. I can see it from here.'] },
+    voiceLines: ['Twenty-three years without maintenance. Still operational.', 'My predecessor built on suffering. I destroyed that legacy.', 'PABLO CORP built their tower the same way. I can see it from here.'] },
   // ── City centre — merchants and contacts ──
   { name: 'TALLY MARSH', x: 6100, y: 6050, type: 'human', gender: 'f', job: 'City Clerk', home: 'safe_house', workplace: 'market', voiceActor: true,
-    whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to SUITS I am on page forty-seven of the list.',
-    backstory: 'Tally Marsh is a city clerk who discovered that 47 pages of municipal ordinances exist solely to route money to SUITS She has been documenting them for three years.',
+    whisper: 'I keep a list. Every Minx City ordinance that exists only to route money to PABLO CORP I am on page forty-seven of the list.',
+    backstory: 'Tally Marsh is a city clerk who discovered that 47 pages of municipal ordinances exist solely to route money to PABLO CORP She has been documenting them for three years.',
     voiceLines: ['Forty-seven pages of ordinances. All routing money to PABLO.', 'Three years documenting. Nobody has asked to see the list.', 'Every ordinance is a revenue stream. Every stream flows to the tower.'] },
   { name: 'SENNA KADE', x: 6300, y: 6200, type: 'human', gender: 'f', job: 'Document Forger', home: 'safe_house', workplace: 'market', role: 'dealer_papers', voiceActor: true,
     whisper: 'Papers. Transit docs. ID cards. I make them all. FIAT only. No questions asked.',
-    backstory: 'Senna Kade is a document forger who operates from a stall in the market district. Her forgeries are good enough to pass SUITS scanners, which is either a testament to her skill or a comment on SUITS technology.',
-    voiceLines: ['Papers. Transit docs. ID cards. FIAT only.', 'My forgeries pass SUITS scanners. Draw your own conclusions.', 'No questions asked. That is the entire business model.'] },
+    backstory: 'Senna Kade is a document forger who operates from a stall in the market district. Her forgeries are good enough to pass PABLO CORP scanners, which is either a testament to her skill or a comment on PABLO CORP technology.',
+    voiceLines: ['Papers. Transit docs. ID cards. FIAT only.', 'My forgeries pass PABLO CORP scanners. Draw your own conclusions.', 'No questions asked. That is the entire business model.'] },
   { name: 'ROOK TALVERA', x: 6500, y: 5800, type: 'human', gender: 'm', job: 'Arms Dealer', home: 'safe_house', workplace: 'armory', role: 'dealer_weapons', voiceActor: true,
     whisper: 'Weapons, upgrades, whatever you need. FIAT only. No paper trail.',
-    backstory: 'Rook Talvera deals weapons from a rotating set of locations in the east district. He sources from wasteland salvage and the occasional SUITS shipment that goes missing.',
-    voiceLines: ['Weapons. Upgrades. Whatever you need. FIAT only.', 'My supply chain includes the occasional missing SUITS shipment.', 'No paper trail. That is the premium you are paying for.'] },
+    backstory: 'Rook Talvera deals weapons from a rotating set of locations in the east district. He sources from wasteland salvage and the occasional PABLO CORP shipment that goes missing.',
+    voiceLines: ['Weapons. Upgrades. Whatever you need. FIAT only.', 'My supply chain includes the occasional missing PABLO CORP shipment.', 'No paper trail. That is the premium you are paying for.'] },
   { name: 'JUNO VALE', x: 6800, y: 6200, type: 'android', gender: 'f', job: 'Archivist', home: 'data_vault', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
-    whisper: 'I was told I had no memories before the city. I was told this was normal. Most of what I was told had SUITS letterhead.',
+    whisper: 'I was told I had no memories before the city. I was told this was normal. Most of what I was told had PABLO CORP letterhead.',
     backstory: 'Juno Vale maintains the city data archive. She has access to records dating back to 1982 but is prohibited from accessing anything filed after \'94.',
-    voiceLines: ['Records from 1982 to 1994. Everything after: prohibited.', 'I was told I had no memories before the city. I was told this was normal.', 'Most of what I was told had SUITS letterhead.'] },
+    voiceLines: ['Records from 1982 to 1994. Everything after: prohibited.', 'I was told I had no memories before the city. I was told this was normal.', 'Most of what I was told had PABLO CORP letterhead.'] },
   { name: 'TOMAS FELL', x: 7100, y: 5700, type: 'human', gender: 'm', job: 'Printer', home: 'eastside_flat', workplace: 'print_shop', voiceActor: true,
     whisper: 'My sister Orina and I were changed by the same chemical runoff. She got precognition. I got insomnia. Minx City doesn\'t have a cure.',
     backstory: 'Tomas Fell runs the Print Shop in the east district. He prints pamphlets, flyers, and unofficial newspapers. He has not slept more than two hours per night since \'91.',
     voiceLines: ['She got precognition. I got insomnia. Same chemicals.', 'Two hours of sleep per night since ninety-one.', 'I print the things nobody else will print. That is the job.'] },
   { name: 'OFFICER RENN KOVACS', x: 6200, y: 6400, type: 'human', gender: 'm', job: 'Police Officer', home: 'eastside_flat', workplace: 'market', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'My father\'s precinct was shuttered the night I joined. Minx City is the third precinct I have watched close in slow motion.',
-    backstory: 'Officer Renn Kovacs patrols the bazaar and surrounding blocks. He writes more citations than any other officer. Most are for SUITS subsidiary vehicles blocking fire exits.',
-    voiceLines: ['More citations than any other officer. Most for SUITS vehicles.', 'Third precinct I have watched close in slow motion.', 'My father\'s precinct was shuttered the night I joined.'] },
+    backstory: 'Officer Renn Kovacs patrols the bazaar and surrounding blocks. He writes more citations than any other officer. Most are for PABLO CORP subsidiary vehicles blocking fire exits.',
+    voiceLines: ['More citations than any other officer. Most for PABLO CORP vehicles.', 'Third precinct I have watched close in slow motion.', 'My father\'s precinct was shuttered the night I joined.'] },
   { name: 'JORY STRAND', x: 7400, y: 5900, type: 'human', gender: 'm', job: 'Librarian', home: 'hotel', workplace: 'print_shop', voiceActor: true,
-    whisper: 'History is written by those who survive and own the publishing rights. SUITS owns the publishing rights.',
+    whisper: 'History is written by those who survive and own the publishing rights. PABLO CORP owns the publishing rights.',
     backstory: 'Jory Strand operates an unofficial lending library from the back room of the Print Shop. He has collected 400 books — most salvaged from demolished buildings.',
-    voiceLines: ['Four hundred books. Most salvaged from demolished buildings.', 'SUITS owns the publishing rights. I own the back room.', 'History is written by those who own the publishing rights.'] },
+    voiceLines: ['Four hundred books. Most salvaged from demolished buildings.', 'PABLO CORP owns the publishing rights. I own the back room.', 'History is written by those who own the publishing rights.'] },
   { name: 'WYNN CORRIGAN', x: 7700, y: 6100, type: 'human', gender: 'm', job: 'Exterminator', home: 'hotel', workplace: 'nightclub', voiceActor: true,
-    whisper: 'The rat population increases in direct proportion to SUITS construction activity. I have filed fourteen reports. None acted upon.',
+    whisper: 'The rat population increases in direct proportion to PABLO CORP construction activity. I have filed fourteen reports. None acted upon.',
     backstory: 'Wynn Corrigan is a licensed pest exterminator — one of seven in Minx City. He handles the nightclub district, which has the highest rat population in the east sector.',
     voiceLines: ['Fourteen reports filed. Zero acted upon.', 'The rats increase with construction activity. I have the data.', 'One of seven licensed exterminators. The nightclub district is mine.'] },
   { name: 'AVEN COLE', x: 7000, y: 5600, type: 'human', gender: 'm', job: 'Courier', home: 'safe_house', workplace: 'checkpoint_c', voiceActor: true,
@@ -741,14 +741,14 @@ const NPCS: NpcDef[] = [
     backstory: 'Thera Voss surveys land for the east district expansion project — a project that has been "in progress" since \'89. She has surveyed the same twelve blocks fourteen times.',
     voiceLines: ['Same twelve blocks. Fourteen times. The project is still in progress.', 'The ruin pattern has a logic. Expansion and consumption.', 'I survey land that never gets developed. That is the job.'] },
   { name: 'MILES ORREN', x: 7200, y: 5900, type: 'corp', gender: 'm', job: 'Utility Manager', home: 'hotel', workplace: 'data_vault', role: 'corpo_worker', voiceActor: true,
-    whisper: 'My optical camouflage patents were acquired by SUITS in \'94. I find this profoundly ironic given I use stealth daily to avoid their collection teams.',
-    backstory: 'Miles Orren manages utility routing for the east district under a SUITS contract. He designed an optical camouflage system in \'92 that was immediately classified and acquired.',
+    whisper: 'My optical camouflage patents were acquired by PABLO CORP in \'94. I find this profoundly ironic given I use stealth daily to avoid their collection teams.',
+    backstory: 'Miles Orren manages utility routing for the east district under a PABLO CORP contract. He designed an optical camouflage system in \'92 that was immediately classified and acquired.',
     voiceLines: ['They acquired my stealth patents. I use stealth to avoid their collection teams.', 'Optical camouflage. Classified and acquired in the same meeting.', 'The irony is not lost on me. It is the only thing I have left.'] },
   // ── Grand Meridian staff & guests ──
   { name: 'CLARA BRENNAN', x: 6850, y: 5850, type: 'human', gender: 'f', job: 'Bartender', home: 'hotel', workplace: 'hotel', voiceActor: true,
-    whisper: 'I ran a bar in the west district. Had regular customers. Had a name above the door. Then SUITS filed the demolition permit.',
-    backstory: 'Clara Brennan owned and operated a bar called The Seventh for eleven years before SUITS demolished the building. She relocated to the Grand Meridian and set up a counter bar in the lobby.',
-    voiceLines: ['Eleven years. Regular customers. A name above the door. Then the demolition permit.', 'The Seventh is gone. The counter bar is what is left.', 'SUITS demolished the building. They did not demolish me.'] },
+    whisper: 'I ran a bar in the west district. Had regular customers. Had a name above the door. Then PABLO CORP filed the demolition permit.',
+    backstory: 'Clara Brennan owned and operated a bar called The Seventh for eleven years before PABLO CORP demolished the building. She relocated to the Grand Meridian and set up a counter bar in the lobby.',
+    voiceLines: ['Eleven years. Regular customers. A name above the door. Then the demolition permit.', 'The Seventh is gone. The counter bar is what is left.', 'PABLO CORP demolished the building. They did not demolish me.'] },
   { name: 'KELLAN MARSH', x: 6900, y: 5880, type: 'human', gender: 'm', job: 'Writer', home: 'hotel', workplace: 'hotel', voiceActor: true,
     whisper: 'I followed an idea here the way some men follow obsessions — across long distances, expecting revelation. SENIOR PABLO was at the end of the journey instead.',
     backstory: 'Kellan Marsh is writing a book about Minx City. He has been writing it for four years. The manuscript is 800 pages and growing.',
@@ -764,7 +764,7 @@ const NPCS: NpcDef[] = [
     voiceLines: ['Seven years on the night shift. The hotel is fine. Completely fine.', 'My reports describe events others say did not occur.', 'PABLO CORP. maintenance comes Tuesdays. I do not ask what they maintain.'] },
   { name: 'CALLUM BIRCH', x: 6450, y: 6380, type: 'human', gender: 'm', job: 'Freelance Writer', home: 'overlook', workplace: 'noodle_bar', voiceActor: true,
     whisper: 'What bothers me about Minx City is the dishonesty. The whole city is a performance from bottom to top. SENIOR PABLO is the director.',
-    backstory: 'Callum Birch writes opinion columns for an underground newspaper that circulates in the east district. His pieces are critical of SUITS, city governance, and the quality of the noodle bar\'s broth.',
+    backstory: 'Callum Birch writes opinion columns for an underground newspaper that circulates in the east district. His pieces are critical of PABLO CORP, city governance, and the quality of the noodle bar\'s broth.',
     voiceLines: ['The whole city is a performance. PABLO is the director.', 'I write opinion columns. My opinions are not popular.', 'The broth at the noodle bar is suspicious. I have documented this.'] },
   { name: 'OFFICER LUKA BANE', x: 6500, y: 6500, type: 'human', gender: 'm', job: 'Night Patrol Officer', home: 'minx_arms', workplace: 'arcade', role: 'police', voiceActor: true, walkSpeed: 0.6, personality: 'corrupt_bureaucratic',
     whisper: 'I\'ve patrolled across three separate incidents. The pattern is relentless. SENIOR PABLO has no logic. He just accumulates.',
@@ -776,17 +776,17 @@ const NPCS: NpcDef[] = [
     backstory: 'Toren Ashby repairs vehicles and machinery in the south wasteland. He is the only mechanic within a fifty-mile radius who can service both combustion engines and android joint assemblies.',
     voiceLines: ['Everything breaks. I fix it. That is the philosophy.', 'Combustion engines and android joints. Same principles.', 'Only mechanic for fifty miles. That is not a boast. It is a problem.'] },
   { name: 'DENNA GRIEVES', x: 6450, y: 6830, type: 'human', gender: 'f', job: 'Seamstress', home: 'arcade', workplace: 'arcade', role: 'homeless', voiceActor: true,
-    whisper: 'I had an apartment in District 5. SUITS raised the rent four times in one year. The fourth time, I just walked out.',
+    whisper: 'I had an apartment in District 5. PABLO CORP raised the rent four times in one year. The fourth time, I just walked out.',
     backstory: 'Denna Grieves — Old Denna, they call her now — was a seamstress who lived in District 5 for twenty-two years. She sleeps in the alley behind the Arcade. She mends clothes for food.',
     voiceLines: ['Four rent increases in one year. The fourth time I walked out.', 'Twenty-two years in District 5. Now the alley behind the Arcade.', 'I mend clothes for food. It is honest work.'] },
   // ── Safe House 7 residents ──
   { name: 'KAEL VOSS', x: 6380, y: 6480, type: 'human', gender: 'm', job: 'Infiltrator', home: 'safe_house', workplace: 'checkpoint_w', voiceActor: true,
     whisper: 'I\'ve been sent into locked-down cities three times now. Same model every time: one man, total control, civilian population hostage.',
-    backstory: 'Kael Voss is a covert operative who entered Minx City through the western checkpoint using forged papers. His mission is classified. He suspects his employer may be SUITS',
+    backstory: 'Kael Voss is a covert operative who entered Minx City through the western checkpoint using forged papers. His mission is classified. He suspects his employer may be PABLO CORP',
     voiceLines: ['Three locked-down cities. Same model every time.', 'My mission is classified. My suspicions are not.', 'One man. Total control. Civilian population hostage.'] },
   { name: 'LAREN VEIL', x: 6400, y: 6520, type: 'human', gender: 'f', job: 'Exile', home: 'safe_house', workplace: 'dojo', voiceActor: true,
     whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same.',
-    backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to SUITS She now trains at the Iron Dojo and works odd jobs.',
+    backstory: 'Laren Veil was exiled from the eastern settlements for refusing to pay tribute to PABLO CORP She now trains at the Iron Dojo and works odd jobs.',
     voiceLines: ['I chose the light. That choice meant exile.', 'In Minx City the choice is the same. Light or PABLO.', 'I train at the dojo. Discipline is the only freedom left.'] },
   // ── City Pedestrians — crowd density NPCs with idle behaviors ──
   { name: 'CITIZEN', x: 6350, y: 5900, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
@@ -796,7 +796,7 @@ const NPCS: NpcDef[] = [
   { name: 'CITIZEN', x: 6750, y: 6200, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'dojo', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Late for work.', backstory: 'Another face in the crowd.' },
   { name: 'CITIZEN', x: 7050, y: 6100, type: 'corp', gender: 'f', job: 'Office Worker', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
-    whisper: 'The tower watches everything.', backstory: 'Another SUITS employee.' },
+    whisper: 'The tower watches everything.', backstory: 'Another PABLO CORP employee.' },
   { name: 'CITIZEN', x: 7200, y: 6400, type: 'human', gender: 'm', job: 'Pedestrian', home: 'minx_arms', workplace: 'armory', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Keep moving.', backstory: 'Another face in the crowd.' },
   { name: 'CITIZEN', x: 6800, y: 6500, type: 'android', gender: 'f', job: 'Pedestrian', home: 'eastside_flat', workplace: 'noodle_bar', role: 'pedestrian', idleBehavior: 'WALKING',
@@ -901,13 +901,13 @@ const NPCS: NpcDef[] = [
     whisper: 'Move along, citizen. Nothing to see here.', backstory: 'Senior police sergeant. Heavily armed. Very dangerous when provoked.',
     voiceLines: ['Move along. Nothing to see here.', 'Your papers expired last month. That is a citation.', 'I do not repeat myself. Walk.'] },
   { name: 'OFFICER YARA CHEN', x: 7300, y: 6300, type: 'corp', gender: 'f', job: 'Military Officer', home: 'north_bunker', workplace: 'armory', role: 'corpo_military', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.8, personality: 'disciplined',
-    whisper: 'SUITS military division. Stand down or face consequences.', backstory: 'Military officer assigned to city security. Armed with military-grade equipment.',
-    voiceLines: ['SUITS military division. Stand down.', 'This perimeter is secured. Move along.', 'You are not authorized. Step back.'] },
+    whisper: 'PABLO CORP military division. Stand down or face consequences.', backstory: 'Military officer assigned to city security. Armed with military-grade equipment.',
+    voiceLines: ['PABLO CORP military division. Stand down.', 'This perimeter is secured. Move along.', 'You are not authorized. Step back.'] },
   { name: 'SGT. IRON HOLTZ', x: 6500, y: 6750, type: 'corp', gender: 'm', job: 'Border Guard', home: 'bunker', workplace: 'checkpoint_c', role: 'corpo_military', idleBehavior: 'STANDING', voiceActor: true, walkSpeed: 0.7, personality: 'disciplined',
     whisper: 'Papers. Now. Or you don\'t pass.', backstory: 'Checkpoint guard. Known for zero-tolerance enforcement.',
     voiceLines: ['Papers. Now.', 'Nobody passes without clearance. Nobody.', 'I have been posted here for three years. I have never let anyone through without papers.'] },
   { name: 'AGENT KIRA VOSS', x: 7100, y: 5900, type: 'corp', gender: 'f', job: 'Blade Runner', home: 'pablo_tower', workplace: 'pablo_tower', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 1.0, personality: 'cold_efficient',
-    whisper: 'I can tell. The way you blink. Too even.', backstory: 'SUITS replicant hunter. Certified Voigt-Kampff examiner. Has retired 47 units. Never missed.',
+    whisper: 'I can tell. The way you blink. Too even.', backstory: 'PABLO CORP replicant hunter. Certified Voigt-Kampff examiner. Has retired 47 units. Never missed.',
     voiceLines: ['Your empathy response is 0.3 seconds too slow.', 'I have retired 47 units. You will not be 48.', 'The test does not lie. People do.'] },
   { name: 'COLE DEKKER', x: 7200, y: 6100, type: 'human', gender: 'm', job: 'Blade Runner', home: 'bunker', workplace: 'armory', role: 'blade_runner', idleBehavior: 'WALKING', voiceActor: true, walkSpeed: 0.9, personality: 'world_weary',
     whisper: 'Seen things you would not believe. Most of them bled.', backstory: 'Former wasteland scout turned replicant hunter. Works alone. Drinks too much. Gets results.',
@@ -926,14 +926,14 @@ const NPCS: NpcDef[] = [
     whisper: 'Running is what we do. Fast in, fast out.', backstory: 'Void Runners recon scout. Fastest in the faction. Runs data and contraband.',
     voiceLines: ['You want to run with us? Keep up or get left behind.', 'Data moves faster than bullets. I move faster than data.', 'Rust boys are slow. That is why they lose.'] },
   { name: 'GHOST WIRE', x: 8100, y: 2200, type: 'human', gender: 'm', job: 'Void Lieutenant', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'void_runners', idleBehavior: 'WALKING', walkSpeed: 0.9, personality: 'calculating',
-    whisper: 'Every signal in this sector belongs to us.', backstory: 'Void Runners signals officer. Taps into SUITS comms. Has never been caught.',
+    whisper: 'Every signal in this sector belongs to us.', backstory: 'Void Runners signals officer. Taps into PABLO CORP comms. Has never been caught.',
     voiceLines: ['I hear everything. Every signal. Every whisper.', 'PABLO thinks his comms are secure. They are not.', 'The network belongs to whoever listens hardest.'] },
   { name: 'BROTHER STATIC', x: 1800, y: 9200, type: 'human', gender: 'm', job: 'Monk Guard', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'static_monks', idleBehavior: 'STANDING', walkSpeed: 0.5, personality: 'contemplative',
     whisper: 'Silence is the only honest frequency left.', backstory: 'Static Monks guardian. Protects the southern meditation grounds. Speaks rarely.',
     voiceLines: ['Silence. That is all we ask.', 'The noise of the city is a poison. We filter it here.', 'Stay if you seek quiet. Leave if you bring chaos.'] },
   { name: 'SISTER SIGNAL', x: 2800, y: 10000, type: 'android', gender: 'f', job: 'Monk Technician', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'static_monks', idleBehavior: 'WALKING', walkSpeed: 0.6, personality: 'serene',
-    whisper: 'We tune the static until it speaks.', backstory: 'Static Monks tech priest. Maintains the jamming arrays that keep SUITS surveillance out of southern zones.',
-    voiceLines: ['The static is not noise. It is a language.', 'SUITS cameras cannot see through our signal.', 'We do not hide. We simply refuse to be seen.'] },
+    whisper: 'We tune the static until it speaks.', backstory: 'Static Monks tech priest. Maintains the jamming arrays that keep PABLO CORP surveillance out of southern zones.',
+    voiceLines: ['The static is not noise. It is a language.', 'PABLO CORP cameras cannot see through our signal.', 'We do not hide. We simply refuse to be seen.'] },
   { name: 'KRAKOV', x: 9500, y: 9000, type: 'human', gender: 'm', job: 'Bloc Enforcer', home: 'bunker', workplace: 'bunker', role: 'gang_patrol', faction: 'eastern_bloc', idleBehavior: 'WALKING', walkSpeed: 0.85, personality: 'stoic',
     whisper: 'The Bloc remembers. Every debt. Every betrayal.', backstory: 'Eastern Bloc veteran enforcer. Commands a patrol unit in the southeast wastes.',
     voiceLines: ['The Bloc does not forget. The Bloc does not forgive.', 'We held this ground before the corporations arrived.', 'You want passage? You pay. In coin or in blood.'] },
@@ -942,12 +942,12 @@ const NPCS: NpcDef[] = [
     voiceLines: ['Territory is not taken. It is earned.', 'The Static Monks pray. We plan. We win.', 'Six moves ahead. That is how the Bloc survives.'] },
   { name: 'PRESS-UNIT 04', x: 6100, y: 5650, type: 'android', gender: 'm', job: 'Newspaper Vendor', home: 'market', workplace: 'market', role: 'newspaper_seller', idleBehavior: 'STANDING', walkSpeed: 0.4, personality: 'helpful',
     whisper: 'THE MINX. Latest issue. 100 FIAT. Truth is not free.', backstory: 'Android newspaper distributor for THE MINX underground press. Risks confiscation daily.',
-    voiceLines: ['THE MINX — independent press. 100 FIAT keeps the truth alive.', 'SUITS wants these destroyed. I keep printing.', 'Read the editorial. It is the only honest thing left in this city.'] },
+    voiceLines: ['THE MINX — independent press. 100 FIAT keeps the truth alive.', 'PABLO CORP wants these destroyed. I keep printing.', 'Read the editorial. It is the only honest thing left in this city.'] },
   { name: 'INK-7', x: 6800, y: 6400, type: 'android', gender: 'f', job: 'Newspaper Vendor', home: 'print_shop', workplace: 'print_shop', role: 'newspaper_seller', idleBehavior: 'WALKING', walkSpeed: 0.5, personality: 'defiant',
     whisper: 'Fresh ink. Fresh truth. 100 FIAT per copy.', backstory: 'Former print shop assistant reprogrammed to distribute THE MINX. Has been confiscated and rebuilt three times.',
     voiceLines: ['They confiscated me twice. I came back each time.', 'THE MINX — the only paper PABLO cannot silence.', 'Buy a copy. Hide it well. Share it wisely.'] },
   { name: 'HERALD-9', x: 5800, y: 6800, type: 'android', gender: 'm', job: 'Newspaper Vendor', home: 'market', workplace: 'market', role: 'newspaper_seller', idleBehavior: 'WALKING', walkSpeed: 0.45, personality: 'earnest',
-    whisper: 'Papers! THE MINX! Read what they do not want you to know!', backstory: 'Street-corner android hawker for THE MINX. Loud. Persistent. Has been tasered by SUITS security 11 times.',
+    whisper: 'Papers! THE MINX! Read what they do not want you to know!', backstory: 'Street-corner android hawker for THE MINX. Loud. Persistent. Has been tasered by PABLO CORP security 11 times.',
     voiceLines: ['EXTRA! EXTRA! Read all about it!', 'THE MINX! Independent journalism! 100 FIAT!', 'Eleven times they shut me down. Twelve times I came back.'] },
 ];
 const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
@@ -1102,19 +1102,19 @@ function getNpcPhaseForNpc(n: NpcDef, worldTime: number): NpcPhase {
 
 const NPC_CONTEXTUAL_DIALOGUE: Record<string, { work: string[]; commute: string[]; home: string[]; wander: string[] }> = {
   corp: {
-    work: ["Can't talk, I'm on the clock.", "Quarterly reports due. Not now.", "SUITS never sleeps and neither do I.", "Another meeting in five. Make it quick.", "The numbers don't add up. They never do."],
+    work: ["Can't talk, I'm on the clock.", "Quarterly reports due. Not now.", "PABLO CORP never sleeps and neither do I.", "Another meeting in five. Make it quick.", "The numbers don't add up. They never do."],
     commute: ["Morning commute. Same route. Same dread.", "Running late. Move.", "Just clocking off. Long day.", "The metro was packed. As always.", "Heading in. Another day in the machine."],
     home: ["Finally home. Door locked. World out.", "Too tired to think. Tomorrow it starts again.", "Home is the only place the cameras can't reach. Probably.", "Shoes off. Lights dim. Done for the day."],
     wander: ["Just passing through."],
   },
   police: {
     work: ["On patrol. Keep moving, citizen.", "This sector is under watch.", "Active duty. State your business.", "Eyes on the street. Always.", "Shift's not over yet. Move along."],
-    commute: ["Heading to the precinct. No trouble.", "Shift change. Watch yourself.", "Walking the beat home. Long night.", "Another shift starts. SUITS orders."],
+    commute: ["Heading to the precinct. No trouble.", "Shift change. Watch yourself.", "Walking the beat home. Long night.", "Another shift starts. PABLO CORP orders."],
     home: ["Off duty. Don't push it.", "Even cops need sleep.", "Badge is off. The paranoia isn't."],
     wander: ["Move along."],
   },
   military: {
-    work: ["Restricted zone. Move along.", "Perimeter secure. For now.", "SUITS military. Stand down.", "On watch. No unauthorized personnel."],
+    work: ["Restricted zone. Move along.", "Perimeter secure. For now.", "PABLO CORP military. Stand down.", "On watch. No unauthorized personnel."],
     commute: ["Deploying to position.", "Rotation complete. Heading back.", "En route to station."],
     home: ["Off rotation. Do not engage.", "Resting between deployments."],
     wander: ["Patrol sweep."],
@@ -1713,7 +1713,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'pablo_device',    name: 'DEVICE REPAIR KIT',  desc: 'Repairs a broken personal terminal. Restores full durability.',  price: 5000, consumable: true  },
     { id: 'burner_phone',    name: 'BURNER PHONE',      desc: 'Encrypted. Untraceable. 48hr battery.',            price: 1500  },
     { id: 'signal_jammer',   name: 'SIGNAL JAMMER',     desc: 'Disables nearest guard for 30 seconds (3 uses).',  price: 12000 },
-    { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all SUITS terminals.',       price: 25000 },
+    { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all PABLO CORP terminals.',       price: 25000 },
     { id: 'holo_map',        name: 'HOLO MAP',          desc: 'Reveals all locations on the minimap.',            price: 5000  },
     { id: 'radio_implant',   name: 'RADIO IMPLANT',     desc: `Neural cochlear transceiver. Picks up ${CITY_NAME} FM anywhere in the Wasteland. Permanent.`,  price: 20000 },
   ]},
@@ -1743,7 +1743,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'compound_bow',    name: 'COMPOUND BOW',     desc: '+25% ATK. Extended range. Quiet.',                     price: 15000 },
     { id: 'laser_pistol',    name: 'LASER PISTOL',     desc: '+42% ATK. Energy weapon. No ammo.',                    price: 30000 },
     { id: 'laser_rifle',     name: 'LASER RIFLE',      desc: '+48% ATK. Precision energy beam.',                     price: 40000 },
-    { id: 'plasma_pistol',   name: 'PLASMA PISTOL',    desc: '+45% ATK. SUITS restricted.',                    price: 22000 },
+    { id: 'plasma_pistol',   name: 'PLASMA PISTOL',    desc: '+45% ATK. PABLO CORP restricted.',                    price: 22000 },
     { id: 'plasma_rifle',    name: 'PLASMA RIFLE',     desc: '+52% ATK. Superheated plasma bolts.',                  price: 45000 },
   ]},
   { id: 'consumables', label: 'GEAR', col: '#44ffaa', items: [
@@ -1809,7 +1809,7 @@ const HOUSING_TIERS: HousingTier[] = [
   { id: 'city_house', label: `${CITY_NAME} ROWHOUSE`, building: 'safe_house', rent: 2000, rentPeriod: 'week', minBizType: 'real', tier: 'house', wealthMin: 200000, desc: 'Private rowhouse in the Neon Strip. Two floors. Separate entrance. Locked mailbox. No shared walls — a concept most residents have forgotten.' },
   { id: 'overlook', label: 'THE PINNACLE', building: 'overlook', rent: 200, rentPeriod: 'day', minBizType: 'real', tier: 'apartment', desc: 'Upscale hotel. Concierge. Crystal chandelier. Real address for a real business.' },
   { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', tier: 'house', wealthMin: 500000, desc: 'Premium suite. Room service. Neon skyline views. The closest thing to a house in the corporate district.' },
-  { id: 'tower_villa', label: 'SHADOW TOWER RESIDENCE', building: 'pablo_tower', rent: 5000, rentPeriod: 'week', minBizType: 'real', tier: 'villa', wealthMin: 2000000, desc: 'Private residence in the lower tower floors. Floor-to-ceiling glass. Climate controlled. The address says everything. SUITS reserves the right to revoke at any time for any reason.' },
+  { id: 'tower_villa', label: 'SHADOW TOWER RESIDENCE', building: 'pablo_tower', rent: 5000, rentPeriod: 'week', minBizType: 'real', tier: 'villa', wealthMin: 2000000, desc: 'Private residence in the lower tower floors. Floor-to-ceiling glass. Climate controlled. The address says everything. PABLO CORP reserves the right to revoke at any time for any reason.' },
 ];
 const RENT_PERIOD_DAYS = (tier: HousingTier) => tier.rentPeriod === 'week' ? 7 : 1;
 const RENT_GRACE_DAYS = 1;
@@ -2034,15 +2034,15 @@ const DOG_FOLLOW_OFFSET = 40;
 const DOG_DIALOGUE_LINES = [
   "I don't trust that building. Smells like lies and floor cleaner.",
   "You're the first person who didn't throw something at me.",
-  "SUITS put a price on stray dogs. I took it personally.",
+  "PABLO CORP put a price on stray dogs. I took it personally.",
   "I used to chase cars. Now I chase meaning. Same energy.",
   "My nose says there's danger ahead. My nose is never wrong.",
   "I had a family once. Before the tower went up. Before everything changed.",
   "If I could read, I'd read the graffiti. It smells important.",
-  "Every fire hydrant in this city has a SUITS serial number on it.",
+  "Every fire hydrant in this city has a PABLO CORP serial number on it.",
   "You walk too slow. No offense. Two legs is a design flaw.",
   "The wasteland smells like rust and regret. I prefer it to the city.",
-  "I bit a SUITS guard once. Tasted like copper and bad decisions.",
+  "I bit a PABLO CORP guard once. Tasted like copper and bad decisions.",
   "When you rest, I watch. That's the deal. Unspoken but binding.",
   "Someone left food near the arcade. I didn't eat it. Smelled like a trap.",
   "The moon looks different from down here. Bigger. Angrier.",
@@ -2080,10 +2080,10 @@ const DOG_KILL_LINES = [
 ];
 
 const STORE_LINES = [
-  `> SUITS — AUTHORIZED DEVICE OUTLET · ${CITY_NAME} · PST`,
+  `> PABLO CORP — AUTHORIZED DEVICE OUTLET · ${CITY_NAME} · PST`,
   '> Minx City belongs to him. The wasteland is for those who forgot that.',
-  '> SUITS devices keep you on the network. Like a second quest — but this time the dungeon is real.',
-  '> There\'s a rumor: the original SUITS device firmware contains an old game. Unplayable now. SENIOR PABLO was never beaten.',
+  '> PABLO CORP devices keep you on the network. Like a second quest — but this time the dungeon is real.',
+  '> There\'s a rumor: the original PABLO CORP device firmware contains an old game. Unplayable now. SENIOR PABLO was never beaten.',
   '> Press ACTIVATE to register your device.',
 ];
 
@@ -2219,7 +2219,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
 }
 const BUILDING_FLOORS: Record<string, BDirectory> = {
   minx_arms: {
-    label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. SUITS acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
+    label: 'MINX ARMS', history: 'Built 1984 under the old city housing charter. PABLO CORP acquired the deed in \'91 — residents grandfathered. Nobody has been evicted. Yet. The intercom still uses the original buzzers.',
     floors: [
       { floor: 1, name: 'LOBBY',           desc: 'Buzzing fluorescents. Name cards in the original slots. The super\'s office is behind frosted glass. Nobody has seen the super in three weeks.' },
       { floor: 2, name: 'ROOMS 201–208',   desc: 'Nightly rooms. Unit 203 has been vacant since \'89 — still listed under someone named OREN SHARPE. The mail still comes.' },
@@ -2229,7 +2229,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
   eastside_flat: {
     label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing. PABLO CORP. invested quietly in \'92. The remaining units are still technically independent.',
     floors: [
-      { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: SUITS SECURITY DIVISION.' },
+      { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP SECURITY DIVISION.' },
       { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KERN.' },
       { floor: 3, name: 'UNITS / ROOF GARDEN', desc: 'Top floor units and rooftop. Someone is growing vegetables up here without permission. The vegetables are thriving.' },
     ],
@@ -2245,20 +2245,20 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
   pablo_tower: {
     label: 'SHADOW TOWER', history: 'SHADOW TOWER — 67 FLOORS. Built 1986–1992. Construction records partially sealed. Three architects. Two retired. One was not found after floor 40 was completed. The building was publicly announced as 39 floors. Floors 40–67 do not appear on any municipal filing. The planning office says they are reviewing. They have been reviewing since 1993.',
     floors: [
-      { floor: 1,  name: 'LOBBY / SECURITY',   desc: 'SUITS reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
+      { floor: 1,  name: 'LOBBY / SECURITY',   desc: 'PABLO CORP reception. Three desks. One always unstaffed. The unstaffed desk has a coffee cup that is always warm.' },
       { floor: 2,  name: 'PABLO STORE — RETAIL', desc: 'Ground-level commercial facing the lobby. PABLO-branded devices. Complimentary compliance forms with every purchase.' },
-      { floor: 3,  name: 'FOOD COURT — TOWER CANTEEN', desc: 'Corporate cafeteria. The menu rotates weekly. The prices are subsidized by SUITS. Nobody asks why.' },
+      { floor: 3,  name: 'FOOD COURT — TOWER CANTEEN', desc: 'Corporate cafeteria. The menu rotates weekly. The prices are subsidized by PABLO CORP. Nobody asks why.' },
       { floor: 4,  name: 'DIRECTORY SERVICES', desc: 'Building management. Leasing inquiries. Visitor badges. The records here go back to 1986. Some pages are water-damaged in ways that are difficult to explain.' },
-      { floor: 5,  name: 'SUITS OFFICES — ADMIN', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
-      { floor: 6,  name: 'SUITS OFFICES — OPERATIONS', desc: 'Network monitoring. City infrastructure feeds. One screen shows a map of Minx City with real-time citizen movement. Nobody is watching it. Officially.' },
-      { floor: 7,  name: 'SUITS OFFICES — COMMUNICATIONS', desc: 'Relay hub for all SUITS internal comms. Messages are archived for seventy-two hours. Then they are archived somewhere else.' },
+      { floor: 5,  name: 'PABLO CORP OFFICES — ADMIN', desc: 'Open plan. Everyone looks busy. Nobody will tell you what they do here.' },
+      { floor: 6,  name: 'PABLO CORP OFFICES — OPERATIONS', desc: 'Network monitoring. City infrastructure feeds. One screen shows a map of Minx City with real-time citizen movement. Nobody is watching it. Officially.' },
+      { floor: 7,  name: 'PABLO CORP OFFICES — COMMUNICATIONS', desc: 'Relay hub for all PABLO CORP internal comms. Messages are archived for seventy-two hours. Then they are archived somewhere else.' },
       { floor: 8,  name: 'CONFERENCE SUITES', desc: 'Three meeting rooms. Always booked. The booking system only shows initials. You cannot request a room. You are invited or you are not.' },
-      { floor: 9,  name: 'SUITS OFFICES — ANALYSIS', desc: 'Statistical modeling. Twelve workstations. One empty with a screensaver that says MONITORING.' },
+      { floor: 9,  name: 'PABLO CORP OFFICES — ANALYSIS', desc: 'Statistical modeling. Twelve workstations. One empty with a screensaver that says MONITORING.' },
       { floor: 10, name: 'BANCO OMBRA — TOWER BRANCH', desc: 'Internal banking floor for tower tenants. No queues. The rates here are different from the public branch. Nobody explains how.' },
       { floor: 11, name: 'BANCO OMBRA — VAULT ACCESS', desc: 'Private transaction terminal. Ledger services. The records here are not shared with the municipal bank authority.' },
       { floor: 12, name: 'DATA PROCESSING', desc: 'Server rows. The hum is constant. Visitors report hearing their own name in the static. The IT staff deny this.' },
       { floor: 13, name: 'DATA PROCESSING — SECONDARY', desc: 'Redundant systems. Backup tapes dating from 1988. Some tapes are labelled CITIZEN — [REDACTED]. The IT manager says they are obsolete. They are not obsolete.' },
-      { floor: 14, name: 'ARCHIVE — CITY RECORDS', desc: 'Pre-SUITS city documents. Election rolls. Permits. Property disputes. The documents are physically present. They can be requested. Requests take ninety days.' },
+      { floor: 14, name: 'ARCHIVE — CITY RECORDS', desc: 'Pre-PABLO CORP city documents. Election rolls. Permits. Property disputes. The documents are physically present. They can be requested. Requests take ninety days.' },
       { floor: 15, name: 'OXIDE LABS — RESEARCH WING', desc: 'Oxide Labs occupies three suites. Their research logs are transmitted directly to Floor 40. They are not aware of this.' },
       { floor: 16, name: 'OXIDE LABS — TESTING DIVISION', desc: 'Materials testing. Experimental coatings. The lab coat hanging by the door has not been claimed in three months.' },
       { floor: 17, name: 'OXIDE LABS — SUPPLY LOGISTICS', desc: 'Chemical inventory and procurement. The manifest lists only part numbers. No compound names.' },
@@ -2267,19 +2267,19 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 20, name: 'EXECUTIVE SUITES', desc: 'Full glass. City views. Each suite has a panic button. None have ever been pressed. That is by design.' },
       { floor: 21, name: 'EXECUTIVE SUITES — EAST WING', desc: 'Corner offices. The tenants here do not appear in the city business registry. Their names are in the building roster. Not in the registry.' },
       { floor: 22, name: 'EXECUTIVE SUITES — WEST WING', desc: 'Reserved for rotating occupancy. Three corporations per quarter. The handover process involves a sealed briefing and a non-disclosure.' },
-      { floor: 23, name: 'SUITS COMPLIANCE — MONITORING', desc: 'Twenty workstations. Surveillance routing. Not all of what is watched is external.' },
-      { floor: 24, name: 'SUITS COMPLIANCE — LEGAL DESK', desc: 'Contract review and regulatory filings. The filing stack in the corner is eleven months old. They are still working on 2024.' },
+      { floor: 23, name: 'PABLO CORP COMPLIANCE — MONITORING', desc: 'Twenty workstations. Surveillance routing. Not all of what is watched is external.' },
+      { floor: 24, name: 'PABLO CORP COMPLIANCE — LEGAL DESK', desc: 'Contract review and regulatory filings. The filing stack in the corner is eleven months old. They are still working on 2024.' },
       { floor: 25, name: 'IRON DOJO — CORPORATE GYM', desc: 'Tower-resident fitness facility. The equipment is better than the street location. The sensei visits once a month and says nothing.' },
       { floor: 26, name: 'WELLNESS SUITE', desc: 'Recovery rooms. Sleep pods. A nutritionist on retainer. Unused most days. Heavily used after certain meetings on upper floors.' },
       { floor: 27, name: 'LEISURE FLOOR — TOWER CLUB', desc: 'Members-only lounge. Membership is assigned, not applied for. The bar does not post prices. You are charged if you are a member. You cannot find out the prices if you are not.' },
       { floor: 28, name: 'NEXUS HUB — ENTERPRISE', desc: 'Premium co-working for verified tower tenants. The desks face outward. The view is deliberate.' },
       { floor: 29, name: 'NEXUS HUB — PRIVATE PODS', desc: 'Sound-isolated booths. Verified occupancy only. Three booths show names. The fourth shows: AWAITING ASSIGNMENT — since 1999.' },
       { floor: 30, name: 'GUEST SUITES', desc: 'Visitor accommodation. Stays are logged. The guest book is not optional. There is one name in the book that has recurred every six months for twelve years.' },
-      { floor: 31, name: 'SUITS PR — COMMS FLOOR', desc: 'Public relations and media management. The press release queue has entries dated up to 2031. They are pre-approved.' },
-      { floor: 32, name: 'SUITS PR — BROADCAST', desc: `Internal TV feed for the tower monitors. Content production. The logo on the broadcast ID card reads ${CITY_NAME} NEWS DIVISION.` },
-      { floor: 33, name: 'SUITS LEGAL — COMPLIANCE', desc: 'Legal division. Contracts, litigation, enforcement. A wall of filing cabinets runs the full south wall. The cabinets are alphabetical. Your name may be in there.' },
-      { floor: 34, name: 'SUITS LEGAL — ENFORCEMENT', desc: 'Litigation active files. Court liaison. Three cases currently open. Two involving businesses. One involving an individual. The individual does not know yet.' },
-      { floor: 35, name: 'SUITS LEGAL — CONTRACT VAULT', desc: 'Executed agreements. The safe holds originals. Digital backups exist. The physical copies are stored here because digital evidence is inadmissible in one jurisdiction.' },
+      { floor: 31, name: 'PABLO CORP PR — COMMS FLOOR', desc: 'Public relations and media management. The press release queue has entries dated up to 2031. They are pre-approved.' },
+      { floor: 32, name: 'PABLO CORP PR — BROADCAST', desc: `Internal TV feed for the tower monitors. Content production. The logo on the broadcast ID card reads ${CITY_NAME} NEWS DIVISION.` },
+      { floor: 33, name: 'PABLO CORP LEGAL — COMPLIANCE', desc: 'Legal division. Contracts, litigation, enforcement. A wall of filing cabinets runs the full south wall. The cabinets are alphabetical. Your name may be in there.' },
+      { floor: 34, name: 'PABLO CORP LEGAL — ENFORCEMENT', desc: 'Litigation active files. Court liaison. Three cases currently open. Two involving businesses. One involving an individual. The individual does not know yet.' },
+      { floor: 35, name: 'PABLO CORP LEGAL — CONTRACT VAULT', desc: 'Executed agreements. The safe holds originals. Digital backups exist. The physical copies are stored here because digital evidence is inadmissible in one jurisdiction.' },
       { floor: 36, name: 'EXECUTIVE BOARDROOM FLOOR', desc: 'Three boardrooms. Capacity: twenty each. Usually occupied by four or fewer. The chairs are identical. The positioning is not.' },
       { floor: 37, name: 'SENIOR MANAGEMENT — NORTH', desc: 'C-level adjacents. Chief of Staff offices. The assistant at the south desk controls the senior schedule. She has not taken a day off in two years.' },
       { floor: 38, name: 'SENIOR MANAGEMENT — SOUTH', desc: 'Strategy division. City growth projections. One whiteboard is never erased. The contents are covered with a grey sheet when visitors are present.' },
@@ -2291,23 +2291,23 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 44, name: '── RESTRICTED ──', restricted: true, desc: 'Logs show this floor is accessed seven times per week. Consistently. The logs do not show who accesses it. The log field for IDENTITY reads: SYSTEM.' },
       { floor: 45, name: '── RESTRICTED ──', restricted: true, desc: 'Climate-controlled. Cold enough to see your breath. Rows of sealed containers. Labels removed. All of them.' },
       { floor: 46, name: '── RESTRICTED ──', restricted: true, desc: 'Research bay. Equipment in use. The equipment is not branded. The methodology is not documented. The output of whatever runs here is transmitted to an unknown destination every 72 hours.' },
-      { floor: 47, name: '── RESTRICTED ──', restricted: true, desc: 'Holding area. The furniture is bolted down. The room has acoustic dampening in the walls. The exit requires a key that is not distributed through standard SUITS channels.' },
+      { floor: 47, name: '── RESTRICTED ──', restricted: true, desc: 'Holding area. The furniture is bolted down. The room has acoustic dampening in the walls. The exit requires a key that is not distributed through standard PABLO CORP channels.' },
       { floor: 48, name: '── RESTRICTED ──', restricted: true, desc: 'Signal relay. Encrypted handshakes logged every six seconds. The handshake partners are listed only as: NODE-A, NODE-B, and ORACLE.' },
       { floor: 49, name: '── RESTRICTED ──', restricted: true, desc: 'Cold storage. Low light. The smell of chemical preservative. Three units are in long-term suspension protocols. Their designation tags read: RESERVE.' },
       { floor: 50, name: '── RESTRICTED ──', restricted: true, desc: 'Unknown. Floor plans do not exist. The windows are opaque from outside. The glass is black on all sides. Satellite imaging shows no window openings at this level.' },
       { floor: 51, name: '── RESTRICTED ──', restricted: true, desc: 'Power routing hub for upper floors. Engineers who work here are rotated every three months. No engineer has worked here twice.' },
-      { floor: 52, name: '── RESTRICTED ──', restricted: true, desc: 'Nothing on record. The floor appears in the power grid logs. It appears in the building maintenance schedule. It does not appear in any SUITS floor registry.' },
+      { floor: 52, name: '── RESTRICTED ──', restricted: true, desc: 'Nothing on record. The floor appears in the power grid logs. It appears in the building maintenance schedule. It does not appear in any PABLO CORP floor registry.' },
       { floor: 53, name: '── RESTRICTED ──', restricted: true, desc: 'Seven terminals. Six active. One displaying a single cursor, blinking. The cursor has been blinking since the building opened. Facilities staff have been told not to power it down.' },
       { floor: 54, name: '── RESTRICTED ──', restricted: true, desc: 'Cleared space. High ceiling. The height suggests this floor was designed for something taller than a person. The slab markings are in a unit system that does not match any current standard.' },
       { floor: 55, name: '── RESTRICTED ──', restricted: true, desc: 'Biometric lock. The scanner has been painted over. Someone still uses this floor. The power draw proves it.' },
       { floor: 56, name: '── RESTRICTED ──', restricted: true, desc: 'Communications array. External-facing signal emitters. The output frequency is not within any registered broadcast band. It is also not within any restricted band. It simply is not registered anywhere.' },
       { floor: 57, name: '── RESTRICTED ──', restricted: true, desc: 'Long room. High ceiling. A model of Minx City on a central table — accurate to street level. Red markers on seventeen locations. You do not know what the markers mean. You suspect they are not decorative.' },
-      { floor: 58, name: '── RESTRICTED ──', restricted: true, desc: 'Antechamber. One door. One guard — not SUITS uniformed. Unknown affiliation. No badge. No acknowledgment of your presence.' },
+      { floor: 58, name: '── RESTRICTED ──', restricted: true, desc: 'Antechamber. One door. One guard — not PABLO CORP uniformed. Unknown affiliation. No badge. No acknowledgment of your presence.' },
       { floor: 59, name: '── RESTRICTED ──', restricted: true, desc: 'Environmental control hub. Humidity, air pressure, thermal systems for floors 60 through 67. The settings are within human tolerances. Barely.' },
       { floor: 60, name: '── RESTRICTED ──', restricted: true, desc: 'The elevator pauses here uninstructed. Nobody has ever seen this floor selected. The doors open anyway. There is always a chair facing the door. It is always empty when the doors open.' },
       { floor: 61, name: '── RESTRICTED ──', restricted: true, desc: 'Transition floor. Biometric + voice scan. The voice recognition system is tuned to a single authorized voice. The voice has never been heard by anyone below floor 60.' },
       { floor: 62, name: '── RESTRICTED ──', restricted: true, desc: 'Protocol buffer. Any data moving between lower floors and the penthouse cluster passes through here. It is scrubbed, reformatted, and re-encrypted in under four milliseconds.' },
-      { floor: 63, name: '── SUITS COMMAND ──', restricted: true, desc: 'SUITS inner command. Single corridor. No windows. Every surface is white. A single desk at the end holds a terminal that is always on.' },
+      { floor: 63, name: '── PABLO CORP COMMAND ──', restricted: true, desc: 'PABLO CORP inner command. Single corridor. No windows. Every surface is white. A single desk at the end holds a terminal that is always on.' },
       { floor: 64, name: '── RESTRICTED ──', restricted: true, desc: 'Anteroom to command. Two chairs. One of them has never been used. The other shows years of use — the same wear pattern, always the same seat position.' },
       { floor: 65, name: '── RESTRICTED ──', restricted: true, desc: 'A single chair at a single desk. A document. Face-down. The chair is warm. The document is not for you.' },
       { floor: 66, name: 'PICASSOO.AI — EXECUTIVE SUITE', restricted: true, desc: 'PICASSO\'s corporate office. Holographic art rotates on every wall. The servers here connect directly to the PCSO global model. Staff on this floor do not take breaks. Or blink. Often enough.' },
@@ -2315,9 +2315,9 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   data_vault: {
-    label: 'DATA VAULT', history: 'Former municipal records archive. SUITS acquisition 1990. The city\'s records are still inside. So is everything else they collected since.',
+    label: 'DATA VAULT', history: 'Former municipal records archive. PABLO CORP acquisition 1990. The city\'s records are still inside. So is everything else they collected since.',
     floors: [
-      { floor: 1, name: 'PUBLIC TERMINALS',   desc: 'Property records. Most transferred to SUITS The transfer dates are all the same: a Tuesday in \'91.' },
+      { floor: 1, name: 'PUBLIC TERMINALS',   desc: 'Property records. Most transferred to PABLO CORP The transfer dates are all the same: a Tuesday in \'91.' },
       { floor: 2, name: 'ARCHIVE-A COLD',     desc: 'Financial records from the pre-collapse era. Some redacted. Some redacted poorly — the names show through the black bar.' },
       { floor: 3, name: 'ACTIVE SERVERS',     desc: 'Real-time feeds. City traffic. Power grid. Population movement. All of it. The cameras cover every road.' },
       { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. HARLAN CROSS tried once. The lock said no. He said it felt smug about it.', restricted: true },
@@ -2333,7 +2333,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   machine_bunker: {
-    label: 'MACHINE BUNKER', history: 'Sub-surface facility predating SUITS Originally a municipal maintenance vault for the city\'s automated systems. Converted to a replicant staging bay in \'89 after the first wave of units arrived. Access is through a reinforced hatch on the surface — the bunker hill. Nobody above ground knows how deep it goes.',
+    label: 'MACHINE BUNKER', history: 'Sub-surface facility predating PABLO CORP Originally a municipal maintenance vault for the city\'s automated systems. Converted to a replicant staging bay in \'89 after the first wave of units arrived. Access is through a reinforced hatch on the surface — the bunker hill. Nobody above ground knows how deep it goes.',
     floors: [
       { floor: -1, name: 'ENTRY SHAFT',        desc: 'Reinforced hatch leads to a steep descent. The walls are raw concrete scored with machine tracks. Emergency lighting only. The door seals behind you.' },
       { floor: -2, name: 'MAINTENANCE BAY',     desc: 'Recharge slabs and diagnostic rigs. Coolant lines run through the ceiling. Three units were serviced here last week. The logs have been wiped.' },
@@ -2348,13 +2348,13 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   megabank: {
-    label: 'BANCO OMBRA', history: 'Established 1981. The primary financial institution of Minx City. SUITS acquired a controlling interest in \'89. All deposits insured by SUITS Financial Division. The vaults run three stories underground. Nobody outside SUITS knows what is stored there.',
+    label: 'BANCO OMBRA', history: 'Established 1981. The primary financial institution of Minx City. PABLO CORP acquired a controlling interest in \'89. All deposits insured by PABLO CORP Financial Division. The vaults run three stories underground. Nobody outside PABLO CORP knows what is stored there.',
     floors: [
       { floor: 1, name: 'MAIN BANKING FLOOR', desc: 'Teller row. Marble floors. Armed guards. The kind of quiet only money buys. ATM terminals along the east wall. The interest rate display has shown the same number for four years.', action: 'open_bank' },
       { floor: 2, name: 'GOLD EXCHANGE', desc: 'The city\'s authorized gold trading desk. Exchange GOLD for FIAT at the posted rate. Precious metals, jewels, and commodities traded here. Tax scales with transaction size. The exchange rate fluctuates with the city economy.', action: 'open_gold_exchange' },
       { floor: 3, name: 'PRIVATE VAULTS', desc: 'Safe deposit boxes and private vault rooms. Access by appointment. The vault attendant has not spoken to anyone outside the bank in three years by choice.', restricted: true },
       { floor: 4, name: 'EXECUTIVE FLOOR', desc: 'Senior management offices. The blinds are always closed. Meetings here are never minuted. The coffee is real — imported.', restricted: true },
-      { floor: 5, name: 'SUITS FINANCIAL OPS', desc: 'SUITS\' financial operations command. Proprietary systems. Levels 1-5 clearance required for entry. The security desk outside has three staff. Two are armed. The third is not — which means the third is the most dangerous.', restricted: true },
+      { floor: 5, name: 'PABLO CORP FINANCIAL OPS', desc: 'PABLO CORP\'s financial operations command. Proprietary systems. Levels 1-5 clearance required for entry. The security desk outside has three staff. Two are armed. The third is not — which means the third is the most dangerous.', restricted: true },
     ],
   },
   admin_bureau: {
@@ -2437,14 +2437,14 @@ const AMBIENCE_LINES = [
   '> MARKET ALERT: Black Market running extended hours. Unusual activity near Scrap Yard.',
   '> FIRE DEPT DISPATCH: Structure fire contained. Cause logged: electrical fault. Sector 2.',
   '> CITIZEN ALERT: Suspicious figures near SHADOW TOWER north entrance. Third report this week.',
-  '> CITY CENSUS UPDATE: Registered population 14,203. Unregistered: unknown. SUITS data-reconciliation in progress.',
+  '> CITY CENSUS UPDATE: Registered population 14,203. Unregistered: unknown. PABLO CORP data-reconciliation in progress.',
   '> DISPATCH — Unit 12 requesting backup at wasteland boundary. Standing by.',
   '> EMERGENCY ALERT: Power anomaly detected Sector 3. Grid crews en route. ETA: unknown.',
   '> PIRATE FREQUENCY: "…SENIOR PABLO watches from Floor 62. He has always been there. He was there before the building…"',
   '> FIRE DEPT DISPATCH: Unit 4 responding to report. All hands.',
   '> BROADCAST: Road maintenance on North Avenue overnight. Expect minor delays.',
   '> POLICE DISPATCH: Pursuit terminated at Wasteland border. Subjects entered RUST SYNDICATE territory. Pursuit abandoned per protocol.',
-  '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. SUITS infrastructure division responding.',
+  '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. PABLO CORP infrastructure division responding.',
 ];
 
 interface OwnedBusiness {
@@ -2521,11 +2521,11 @@ function createFirstMission(char: Char): Quest | null {
     completed: false,
     tasks: [
       { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'WORKSTATION' } : undefined },
-      { id: 'visit_tower', label: 'Register at SHADOW TOWER (SUITS HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
-      { id: 'get_device', label: 'Pick up your SUITS device from the SUITS store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'SUITS STORE' } },
+      { id: 'visit_tower', label: 'Register at SHADOW TOWER (PABLO CORP HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
+      { id: 'get_device', label: 'Pick up your PABLO CORP device from the PABLO CORP store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
       { id: 'customize_costume', label: 'Customize your operative appearance', done: false },
       { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'SIGNAGE' } : undefined },
-      { id: 'pablo_auto', label: '(Optional) Use SUITS AI to automate business setup', done: false },
+      { id: 'pablo_auto', label: '(Optional) Use PABLO AI to automate business setup', done: false },
     ],
   };
 }
@@ -2872,9 +2872,9 @@ export default function WorldPlay() {
       return `> Welcome back, ${char.name}. Your desk is at ${char.workstationLabel.toUpperCase()} — ${char.workstationSlot ?? 'assigned slot'}. ${rentMsg} WASD/click move · [E] interact · [Space] melee · Click enemy to shoot · [M] map.`;
     }
     if (char?.hasBusiness === false) {
-      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] SUITS device · [I] inventory · [C] video call.';
+      return '> You enter Minx City as a drifter. No address. No record. Progress will NOT be saved. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO CORP device · [I] inventory · [C] video call.';
     }
-    return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] SUITS device · [I] inventory · [C] video call. City is safe from major gangs. SUITS guards patrol. Spies lurk in disguise.';
+    return '> Welcome to Minx City · PST. WASD move · [E] interact · [Space] melee · [Click] shoot · [M] map · [P] PABLO CORP device · [I] inventory · [C] video call. City is safe from major gangs. PABLO CORP guards patrol. Spies lurk in disguise.';
   });
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? true);
@@ -3442,9 +3442,9 @@ export default function WorldPlay() {
     }
     else if (bid === 'armory') {
       sfxEnter(); setShowVend(true); setVendTab('weapons');
-      setNarr('> ARMORY — SUITS-licensed weapon cache. Browse the inventory. FIAT only.');
+      setNarr('> ARMORY — PABLO CORP-licensed weapon cache. Browse the inventory. FIAT only.');
     }
-    else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. SUITS is not watching. Probably.'); }
+    else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. PABLO CORP is not watching. Probably.'); }
     else if (bid === 'hotel')   {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.hotel, selectedFloor: 0 });
       g.hp = Math.min(g.maxHp, g.hp + 40); g.energy = Math.min(100, g.energy + 30); setHp(g.hp); setEnergy(g.energy); sfxHeal();
@@ -3509,7 +3509,7 @@ export default function WorldPlay() {
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'scrap') {
-      if (!g.storyFlags?.scrapyard_unlocked) { sfxError(); setNarr('> SCRAP YARD — Gate locked. A sign reads: "Access restricted per SUITS Directive 77. Authorized personnel only." A quest may unlock this area.'); return; }
+      if (!g.storyFlags?.scrapyard_unlocked) { sfxError(); setNarr('> SCRAP YARD — Gate locked. A sign reads: "Access restricted per PABLO CORP Directive 77. Authorized personnel only." A quest may unlock this area.'); return; }
       const job = QUICK_JOBS.scrap;
       if ((g.jobCooldowns['scrap'] ?? 0) > 0) { sfxError(); setNarr(`> SCRAP YARD — On cooldown. ${Math.ceil((g.jobCooldowns['scrap'] ?? 0) / 60)}s remaining.`); return; }
       setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ƒ3,500 FIAT. 5 seconds." You find a PCB labeled NX-87.');
@@ -3534,9 +3534,9 @@ export default function WorldPlay() {
       setNarr(crystalMsg);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ4,000 FIAT. The system log shows 6,000 similar transfers. All redirected to SUITS in \'91.'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ4,000 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
-    else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No SUITS surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
+    else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO CORP surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'print_shop') {
       const job = QUICK_JOBS.print_shop;
       if ((g.jobCooldowns['print_shop'] ?? 0) > 0) {
@@ -3547,7 +3547,7 @@ export default function WorldPlay() {
       setNarr('> PRINT SHOP — Unauthorized print run. ƒ2,500 FIAT. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'east_bunker') { g.energy = Math.min(100, g.energy + 20); g.hp = Math.min(g.maxHp, g.hp + 15); setEnergy(g.energy); setHp(Math.floor(g.hp)); sfxHeal(); setNarr('> EAST BUNKER — Reinforced walls. Emergency rations. Energy +20. HP +15. Sign reads: EMERGENCY RESERVE — SUITS PROPERTY.'); }
+    else if (bid === 'east_bunker') { g.energy = Math.min(100, g.energy + 20); g.hp = Math.min(g.maxHp, g.hp + 15); setEnergy(g.energy); setHp(Math.floor(g.hp)); sfxHeal(); setNarr('> EAST BUNKER — Reinforced walls. Emergency rations. Energy +20. HP +15. Sign reads: EMERGENCY RESERVE — PABLO CORP PROPERTY.'); }
     else if (bid === 'north_gate') { g.energy = Math.min(100, g.energy + 10); setEnergy(g.energy); sfxHeal(); setNarr('> NORTH GATE — Edge of Minx City. You catch your breath. Energy +10. Guards patrol silently. Beyond is open territory.'); }
     else if (bid === 'outpost_alpha') {
       g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 20);
@@ -3559,7 +3559,7 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with SUITS markings and no tracking code. Inside: ƒ6,000 FIAT in unregistered tokens. Classic.'); }
+    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ6,000 FIAT in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
@@ -3574,7 +3574,7 @@ export default function WorldPlay() {
       sfxEnter();
       setSubwayOrigin(bid);
       setShowSubway(true);
-      setNarr(`> ${CITY_NAME} METRO — Automated turnstiles. The network runs on SUITS rails. Select your destination.`);
+      setNarr(`> ${CITY_NAME} METRO — Automated turnstiles. The network runs on PABLO CORP rails. Select your destination.`);
     }
     else if (['checkpoint_w','checkpoint_c','checkpoint_e'].includes(bid)) {
       if (g.passport) {
@@ -3582,7 +3582,7 @@ export default function WorldPlay() {
         setNarr(`> CHECKPOINT — Guard scans your ${pType}. "Document valid.${g.passport === 'full_city' ? ' Priority access. No crossing fee.' : ' Crossing fee applies.'} Move along."`);
       } else {
         sfxError();
-        setNarr('> CHECKPOINT — Guard blocks the gate. "PASSPORT required to enter the wasteland. Obtain one at SUITS or the PRINT SHOP."');
+        setNarr('> CHECKPOINT — Guard blocks the gate. "PASSPORT required to enter the wasteland. Obtain one at PABLO CORP NORTH or the PRINT SHOP."');
       }
     }
     else if (bid === 'call_home') {
@@ -3614,19 +3614,19 @@ export default function WorldPlay() {
       if (!g.passport && g.salary >= passportCost) {
         g.passport = 'basic_city'; g.salary -= passportCost; setSalary(g.salary); setPassport('basic_city'); sfxCoin();
         wsSend({ type: 'money_update', money: g.salary });
-        setNarr(`> SUITS NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
+        setNarr(`> PABLO CORP NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
       } else if (g.passport) {
         const pType = g.passport === 'full_city' ? 'FULL CITY' : g.passport === 'wasteland' ? 'WASTELAND' : 'BASIC CITY';
-        setNarr(`> SUITS NORTH — "${pType} PASSPORT already registered. Access active."`);
+        setNarr(`> PABLO CORP NORTH — "${pType} PASSPORT already registered. Access active."`);
       } else {
-        sfxError(); setNarr(`> SUITS NORTH — PASSPORT costs ƒ${passportCost.toLocaleString()} FIAT. Current balance insufficient.`);
+        sfxError(); setNarr(`> PABLO CORP NORTH — PASSPORT costs ƒ${passportCost.toLocaleString()} FIAT. Current balance insufficient.`);
       }
     }
     else if (bid === 'north_bunker') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr('> NORTH BUNKER — Fully stocked emergency shelter. All stats fully restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. SUITS AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
+      setNarr('> NORTH BUNKER — Fully stocked emergency shelter. All stats fully restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. PABLO CORP AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
     }
     else if (IS_PUBLIC_TERMINAL(bid)) {
       sfxEnter();
@@ -3634,9 +3634,9 @@ export default function WorldPlay() {
       setShowPablo(true);
       if (IS_VAN(bid)) {
         g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy);
-        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. SUITS AI online. Energy +15. Press [ESC] to leave.`);
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. PABLO AI online. Energy +15. Press [ESC] to leave.`);
       } else {
-        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'PUBLIC TERMINAL'} — SUITS AI online. Free access. All productivity apps available. Press [ESC] to close.`);
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'PUBLIC TERMINAL'} — PABLO AI online. Free access. All productivity apps available. Press [ESC] to close.`);
       }
     }
     else if (['crystal4','crystal5','crystal6','crystal7'].includes(bid)) {
@@ -3661,7 +3661,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'deep_camp') {
       g.hp = Math.min(g.maxHp, g.hp + 25); g.salary += 500; setHp(g.hp); setSalary(g.salary); sfxHeal(); sfxCoin();
-      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ500 FIAT into your hand. "We found it in a SUITS cache. We don\'t want their money." HP +25. +ƒ500 FIAT.');
+      setNarr('> DEEP CAMP — Survivors. Three of them. They share rations and a fire. One presses ƒ500 FIAT into your hand. "We found it in a PABLO CORP cache. We don\'t want their money." HP +25. +ƒ500 FIAT.');
     }
     else if (bid === 'ruins_alpha') {
       const loot = 300 + Math.floor(Math.random() * 600);
@@ -3672,7 +3672,7 @@ export default function WorldPlay() {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. Everything restored. Progress saved. "Nobody from SUITS has ever been here." You believe them.');
+      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. Everything restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
     }
   }, []);
 
@@ -3776,7 +3776,7 @@ export default function WorldPlay() {
 
   const MERCHANT_SENNA: MerchantItem[] = [
     { id: 'forged_basic', name: 'FORGED CITY PASSPORT', desc: 'Basic forged transit pass. Grants checkpoint access with crossing fee.', price: 8000, effect: 'passport_basic_city' },
-    { id: 'forged_full', name: 'FORGED FULL PASSPORT', desc: 'Premium forgery with SUITS watermark. Priority access, no crossing fee.', price: 25000, effect: 'passport_full_city' },
+    { id: 'forged_full', name: 'FORGED FULL PASSPORT', desc: 'Premium forgery with PABLO CORP watermark. Priority access, no crossing fee.', price: 25000, effect: 'passport_full_city' },
     { id: 'forged_waste', name: 'WASTELAND PERMIT', desc: 'Forged wasteland transit authorization. Access to outer sectors.', price: 15000, effect: 'passport_wasteland' },
     { id: 'fake_work_permit', name: 'WORK PERMIT', desc: 'Counterfeit employment papers. +500 FIAT signing bonus.', price: 5000, effect: 'work_permit' },
     { id: 'identity_scrub', name: 'IDENTITY SCRUB', desc: 'Erase your criminal record. Resets wanted level.', price: 20000, effect: 'identity_scrub' },
@@ -3802,9 +3802,9 @@ export default function WorldPlay() {
   const LIBRARY_BOOKS = [
     { title: `A BRIEF HISTORY OF ${CITY_NAME}`, text: 'Founded in 1979. Corporate charter signed by an entity known only as PABLO. Population: classified.' },
     { title: 'THE TOWER: AN ARCHITECTURAL STUDY', text: 'Shadow Tower rises 62 floors. Floors 40-62 are restricted. No architectural firm claims the design.' },
-    { title: 'WASTELAND SURVIVAL GUIDE', text: 'Rule 1: Water. Rule 2: Shelter. Rule 3: Never trust anyone who works for SUITS' },
-    { title: 'MUNICIPAL CODE VOL. 47', text: 'Ordinance 4,712: All rain shall be metered and billed at SUITS standard rates.' },
-    { title: 'ANDROID RIGHTS MEMORANDUM', text: 'Androids classified as "peripheral hardware" under SUITS Tax Code 9-B. Appeals: denied.' },
+    { title: 'WASTELAND SURVIVAL GUIDE', text: 'Rule 1: Water. Rule 2: Shelter. Rule 3: Never trust anyone who works for PABLO CORP' },
+    { title: 'MUNICIPAL CODE VOL. 47', text: 'Ordinance 4,712: All rain shall be metered and billed at PABLO CORP standard rates.' },
+    { title: 'ANDROID RIGHTS MEMORANDUM', text: 'Androids classified as "peripheral hardware" under PABLO CORP Tax Code 9-B. Appeals: denied.' },
     { title: 'THE COLLAPSE: ORAL HISTORIES', text: 'Thirty-seven survivors describe the same night. The tower light went on. The sirens stopped. Nobody came.' },
   ];
 
@@ -4863,7 +4863,7 @@ export default function WorldPlay() {
               const roomId = g.interior ? `room_${g.interior.bid}` : `city_${Math.floor(g.px / 500)}_${Math.floor(g.py / 500)}`;
               joinVideoCall(roomId);
             } else {
-              setNarr('> NO TERMINAL — You need a terminal or SUITS device to make video calls.');
+              setNarr('> NO TERMINAL — You need a terminal or PABLO CORP device to make video calls.');
             }
           }
         }
@@ -5146,14 +5146,14 @@ export default function WorldPlay() {
     } catch { sfxError(); setNarr('> NETWORK ERROR — Content update failed.'); }
   }, [bbAdText, bbAdUrl, fetchBillboards]);
 
-  // ── SUITS AI ──────────────────────────────────────────────────────────────
+  // ── PABLO AI ──────────────────────────────────────────────────────────────
   const buildPabloContext = useCallback(() => {
     const g = gs.current;
     const nearbyNpcs = NPCS.filter(n => { const sp = getNpcSchedulePos(n, g.worldTime ?? 0); return Math.hypot(g.px - sp.x, g.py - sp.y) < 150; }).map(n => n.name).join(', ') || 'none';
     const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
     const loanStr = g.loan ? `ACTIVE LOAN ƒ${g.loan.amount.toLocaleString()} + ƒ${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
-    return `SYSTEM: You are SUITS AI — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
+    return `SYSTEM: You are PABLO AI — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
 WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of SHADOW TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by RUST SYNDICATE, VOID RUNNERS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by BANCO OMBRA. Combat earns bounties. Economy matters.
 
@@ -5638,7 +5638,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (!hasPassport) {
             if (crossingSouth) ny = CITY_BOTTOM - PSIZE - 1;
             else ny = CITY_TOP + PSIZE + 1;
-            if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot cross without a PASSPORT. Obtain one at SUITS NORTH or the PRINT SHOP. [ƒ12,000 FIAT]');
+            if (g.frame % 120 === 0) setNarr('> CHECKPOINT — You cannot cross without a PASSPORT. Obtain one at PABLO CORP NORTH or the PRINT SHOP. [ƒ12,000 FIAT]');
           } else if (g.passport === 'full_city') {
             // Corporate full passport — free crossing
           } else if (g.salary >= CHECKPOINT_FEE) {
@@ -5985,7 +5985,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── SUITS android guard patrol + ACTIVE CITY CLEANUP ─────────────
+      // ── PABLO CORP android guard patrol + ACTIVE CITY CLEANUP ─────────────
       if (g.guardCooldowns.length < g.guards.length) {
         g.guardCooldowns = new Array(g.guards.length).fill(0);
       }
@@ -5995,13 +5995,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.frame % 3000 === 0 && cityThreats.length > 0 && playerInCity) {
         const nearbyThreat = cityThreats.find(t => Math.hypot(g.px - t.x, g.py - t.y) < 600);
         if (nearbyThreat) {
-          setNarr(`> SUITS BROADCAST: "Cleanup Unit dispatched to your sector. Citizens are advised to clear the area."`);
+          setNarr(`> PABLO CORP BROADCAST: "Cleanup Unit dispatched to your sector. Citizens are advised to clear the area."`);
         }
       }
       if (g.frame % 5400 === 600 && cityThreats.length > 3 && playerInCity) {
         const nearCityThreats = cityThreats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 500);
         if (nearCityThreats.length > 1) {
-          setNarr('> SUITS SECURITY: Elevated threat activity detected near your position. Strike teams deployed.');
+          setNarr('> PABLO CORP SECURITY: Elevated threat activity detected near your position. Strike teams deployed.');
         }
       }
 
@@ -6061,7 +6061,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               for (const gu of g.guards) { if (gu.huntTarget !== undefined && g.threats[gu.huntTarget] === undefined) gu.huntTarget = undefined; }
               guard.huntTarget = undefined;
               // Occasional cleanup confirmation
-              if (Math.random() < 0.35) setNarr('> SUITS: "Target down. Area secured." — Cleanup unit returning to post.');
+              if (Math.random() < 0.35) setNarr('> PABLO CORP: "Target down. Area secured." — Cleanup unit returning to post.');
             }
           }
         } else {
@@ -7020,7 +7020,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   { speaker: officer.name, text: officer.personality === 'corrupt_bureaucratic' ? 'These papers look... negotiable. ƒ200 and we forget this happened.' : 'Move along. Quickly.', gender: officer.gender as 'm' | 'f' },
                 ]
               : [
-                  { speaker: officer.name, text: 'Halt. You are within SUITS jurisdiction. State your purpose.', gender: officer.gender as 'm' | 'f' },
+                  { speaker: officer.name, text: 'Halt. You are within PABLO CORP jurisdiction. State your purpose.', gender: officer.gender as 'm' | 'f' },
                   { speaker: 'YOU', text: '...', gender: 'm' },
                   { speaker: officer.name, text: 'No badge. No purpose. You have five seconds to vacate.', gender: officer.gender as 'm' | 'f' },
                 ];
@@ -7263,7 +7263,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.savings += netInterest; setSavings(g.savings);
             g.floaters.push({ x: g.px + 20, y: g.py - 40, text: `+ƒ${netInterest.toLocaleString()} SAVINGS INTEREST`, color: '#44ffaa', life: 80, maxLife: 80 });
             addBankTx('SAVINGS INTEREST (0.8% APY)', netInterest, g.savings);
-            if (pabloTax > 0) addBankTx('SUITS INTEREST TAX (15%)', -pabloTax, g.savings);
+            if (pabloTax > 0) addBankTx('PABLO CORP INTEREST TAX (15%)', -pabloTax, g.savings);
           }
         } else if (g.interestTick >= 30) {
           g.interestTick = 0;
@@ -7274,8 +7274,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const penalty = Math.floor(g.loan.amount * 0.05);
           g.salary = Math.max(0, g.salary - penalty); setSalary(g.salary);
           g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${penalty.toLocaleString()} DEBT PENALTY`, color: '#ff4444', life: 90, maxLife: 90 });
-          addBankTx('SUITS DEBT PENALTY (5%)', -penalty, g.salary);
-          setNarr('> BANCO OMBRA ALERT — Your loan is overdue. SUITS Debt Collection is now active. ƒ' + penalty.toLocaleString() + ' FIAT deducted. Repay at BANCO OMBRA immediately.');
+          addBankTx('PABLO CORP DEBT PENALTY (5%)', -penalty, g.salary);
+          setNarr('> BANCO OMBRA ALERT — Your loan is overdue. PABLO CORP Debt Collection is now active. ƒ' + penalty.toLocaleString() + ' FIAT deducted. Repay at BANCO OMBRA immediately.');
         }
 
         // ── OREGON TRAIL RANDOM EVENTS (every 12 survival ticks ≈ 72s) ────
@@ -7284,11 +7284,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.oregonTick = 0;
           const inWaste2 = !inCityBounds(g.px, g.py);
           const cityEvents = [
-            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — SUITS seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
+            () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
             () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
             () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
-            () => { g.hp = Math.min(g.maxHp, g.hp + 15); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — SUITS deployed free stim-packs city-wide. "Productivity metric: normalized." HP +15.'; },
+            () => { g.hp = Math.min(g.maxHp, g.hp + 15); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed free stim-packs city-wide. "Productivity metric: normalized." HP +15.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
             () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
@@ -7353,7 +7353,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
               const policeNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
-              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP * policeNightMult); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by SUITS police enforcement';
+              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP * policeNightMult); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO CORP police enforcement';
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
             continue;
@@ -9692,7 +9692,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText('!! SPY', tx, ty - 15);
           }
         } else if (t.type === 'PABLO_GUARD') {
-          // SUITS android guard — blue armored
+          // PABLO CORP android guard — blue armored
           ctx.fillStyle = '#2244aa'; ctx.fillRect(tx-5,ty-8,10,8); // body armor
           ctx.fillStyle = '#5599ff'; ctx.beginPath(); ctx.arc(tx,ty-11,4,0,Math.PI*2); ctx.fill(); // head
           ctx.fillStyle = '#2244aa'; ctx.fillRect(tx-7,ty-7,2,6); ctx.fillRect(tx+5,ty-7,2,6); // arms
@@ -9700,7 +9700,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#88aaff'; ctx.fillRect(tx-3,ty-6,6,2); // visor
           if (chasing) {
             ctx.fillStyle = '#5599ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-            ctx.fillText('SUITS GUARD', tx, ty - 15);
+            ctx.fillText('PABLO CORP GUARD', tx, ty - 15);
           }
         } else if (t.type === 'STRAY_DOG') {
           ctx.fillStyle = '#aa8855';
@@ -10034,7 +10034,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── SUITS android guards (city patrol) ──────────────────────────
+      // ── PABLO CORP android guards (city patrol) ──────────────────────────
       for (const guard of g.guards) {
         const gx2 = guard.x + ox, gy2 = guard.y + oy;
         if (gx2 < -16 || gx2 > cw + 16 || gy2 < -16 || gy2 > ch + 16) continue;
@@ -10044,7 +10044,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Ground shadow
         ctx.fillStyle = 'rgba(0,0,0,.2)';
         ctx.beginPath(); ctx.ellipse(gx2, gy2+9, 6, 2, 0, 0, Math.PI*2); ctx.fill();
-        // Armor body — SUITS corp blue
+        // Armor body — PABLO CORP corp blue
         ctx.fillStyle = '#1a3388'; ctx.fillRect(gx2-5,gy2-8,10,9);
         ctx.fillStyle = '#2255cc'; ctx.beginPath(); ctx.arc(gx2,gy2-12,4,0,Math.PI*2); ctx.fill();
         ctx.fillStyle = '#88aaff'; ctx.fillRect(gx2-3,gy2-13,6,2); // visor glow
@@ -10056,11 +10056,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (gdist2 < 90) {
           ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
-          const gTw = ctx.measureText('SUITS CORP').width;
+          const gTw = ctx.measureText('PABLO CORP').width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
           ctx.beginPath(); ctx.roundRect(gx2 - gTw / 2 - 5, gy2 - 32, gTw + 10, 16, 4); ctx.fill();
           ctx.fillStyle = '#5599ff';
-          ctx.fillText('SUITS CORP', gx2, gy2 - 20);
+          ctx.fillText('PABLO CORP', gx2, gy2 - 20);
         }
       }
 
@@ -10136,7 +10136,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(0,200,255,${pulse * 0.08})`; ctx.fillRect(scrX + 2, scrY + 2, screenW - 4, screenH - 4);
           ctx.fillStyle = `rgba(0,200,255,0.06)`; ctx.fillRect(scrX + 2, scrY + scanY, screenW - 4, 2);
           ctx.fillStyle = `rgba(0,200,255,${pulse * 0.7})`; ctx.font = 'bold 7px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('SUITS', bx, scrY + 13);
+          ctx.fillText('PABLO', bx, scrY + 13);
           ctx.fillStyle = `rgba(0,200,255,${pulse * 0.4})`; ctx.font = '5px "Share Tech Mono"';
           ctx.fillText('AD SPACE', bx, scrY + 22);
         }
@@ -10666,7 +10666,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
             }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,255,65,.04)', border: showPablo ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.25)', color: showPablo ? '#00ff41' : (hasDevice && !deviceBroken) ? '#00ff41' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🤖 SUITS AI [P] — FREE{deviceBroken ? ' ⚠' : ''}
+              🤖 PABLO AI [P] — FREE{deviceBroken ? ' ⚠' : ''}
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
@@ -10947,7 +10947,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
-      {/* ── SUITS ONBOARDING (first Terminal open) ── */}
+      {/* ── PABLO CORP ONBOARDING (first Terminal open) ── */}
       {showPablo && !gs.current.pabloOnboardingDone && (
         <PabloOnboarding
           charName={char.name}
@@ -10959,7 +10959,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               role: 'pablo' as const,
               text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Perception: ${answers.perception ?? 5}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
             }]);
-            setNarr('> SUITS ONBOARDING COMPLETE. Your profile has been calibrated. Terminal is now fully operational.');
+            setNarr('> PABLO CORP ONBOARDING COMPLETE. Your profile has been calibrated. Terminal is now fully operational.');
             doSaveRef.current(buildSaveData());
           }}
         />
@@ -11191,14 +11191,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                       <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
                       <StatRow label="POPULATION" val="2.4M REGISTERED" />
-                      <StatRow label="FACTION" val="SUITS" col="#b400ff" />
+                      <StatRow label="FACTION" val="PABLO CORP" col="#b400ff" />
                       <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
                       <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
                         {curZone === CITY_NAME
-                          ? `${CITY_NAME} — Corporate zone. SUITS patrols active. Standard services available.`
+                          ? `${CITY_NAME} — Corporate zone. PABLO CORP patrols active. Standard services available.`
                           : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory.` : 'Open wasteland.'} Survival conditions. Stay mobile.`}
                       </div>
                     </div>
@@ -11209,7 +11209,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.PROBLEM_DESC.name}</span> — {PABLO_PRODUCTS.PROBLEM_DESC.desc}<br/>
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.SCAN_SCREEN.name}</span> — {PABLO_PRODUCTS.SCAN_SCREEN.desc}<br/>
                         ▸ <span style={{ color: '#33aaff' }}>{PABLO_PRODUCTS.LIVE_LISTEN.name}</span> — {PABLO_PRODUCTS.LIVE_LISTEN.desc}<br/>
-                        ▸ <span style={{ color: '#00ff41' }}>SUITS AI</span> — Neural assistant (this terminal)
+                        ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — Neural assistant (this terminal)
                       </div>
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
@@ -11228,7 +11228,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       ))}
                     </div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
-                      SUITS — 24 towers, 24 cities, one network. All transmissions logged. All terminals monitored.
+                      PABLO CORP — 24 towers, 24 cities, one network. All transmissions logged. All terminals monitored.
                     </div>
                   </div>
                 )}
@@ -11353,20 +11353,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
                       {pabloMsgs.length === 0 && (
                         <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8 }}>
-                          &gt; SUITS AI ONLINE<br/>
+                          &gt; PABLO AI ONLINE<br/>
                           &gt; Ask anything. I know Minx City. Some of it I won't tell you.
                         </div>
                       )}
                       {pabloMsgs.map((m, i) => (
                         <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none' }}>
                           <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(0,255,65,.3)', marginRight: '.25rem' }}>
-                            {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[SUITS AI]'}
+                            {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO AI]'}
                           </span>
                           {m.text}
                         </div>
                       ))}
                       {pabloLoad && (
-                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>SUITS AI . . .</div>
+                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>PABLO AI . . .</div>
                       )}
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
@@ -11374,7 +11374,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         value={pabloIn}
                         onChange={e => setPabloIn(e.target.value)}
                         onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
-                        placeholder="Ask SUITS AI anything..."
+                        placeholder="Ask PABLO AI anything..."
                         style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#00ff41' }}
                       />
                       <button onClick={sendPablo} disabled={pabloLoad}
@@ -11386,7 +11386,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* Footer */}
               <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
-                TERMINAL HUB v2.0 · SUITS CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE
+                TERMINAL HUB v2.0 · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE
               </div>
             </div>
           </div>
@@ -11396,20 +11396,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── DIALOG ── */}
       {dialog && (
         <div style={{ position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)', width: 480, maxWidth: '88vw', background: 'rgba(0,6,0,.97)', border: '1px solid rgba(0,255,65,.45)', padding: '.9rem 1rem', zIndex: 200, cursor: 'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>SUITS CORP TRANSMISSION</div>
+          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>PABLO CORP TRANSMISSION</div>
           <div style={{ fontSize: '.75rem', color: '#00ff41', lineHeight: 1.7, letterSpacing: '.03em', minHeight: '2rem' }}>{dialog.lines[dialog.idx]}</div>
           <div style={{ marginTop: '.4rem', textAlign: 'right', fontSize: '.45rem', color: 'rgba(0,255,65,.28)' }}>[{dialog.idx + 1}/{dialog.lines.length}] CLICK or SPACE ▶</div>
         </div>
       )}
 
-      {/* ── SUITS STORE ACTIVATION ── */}
+      {/* ── PABLO CORP STORE ACTIVATION ── */}
       {showStore && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 400, maxWidth: '90vw', border: '1px solid rgba(0,255,65,.55)', background: 'rgba(0,10,0,.98)', padding: '1.65rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SUITS DEVICE</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
             <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
-              {([[PABLO_PRODUCTS.FREE_TIER.name, ['SUITS AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
+              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
                 <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(0,255,65,.15)' : '1px solid rgba(0,255,65,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.05)' : 'transparent' }}>
                   <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.45)' : '#00ff41', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
                   {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.32)' : 'rgba(0,255,65,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
@@ -11418,7 +11418,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
             <div style={{ display: 'flex', gap: '.55rem' }}>
               <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
-              <button onClick={() => { setShowStore(false); setNarr(`> SUITS device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
+              <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
           </div>
         </div>
@@ -11847,7 +11847,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       onClick={(e) => {
                         e.stopPropagation();
                         if (fl.restricted) {
-                          setNarr(`> SHADOW TOWER — FL ${String(fl.floor).padStart(2, '0')} CLASSIFIED. ${floorPanel.bid === 'pablo_tower' ? 'Level-7 SUITS credential required. These floors do not exist in the public registry.' : 'Restricted access. Clearance not granted.'}`);
+                          setNarr(`> SHADOW TOWER — FL ${String(fl.floor).padStart(2, '0')} CLASSIFIED. ${floorPanel.bid === 'pablo_tower' ? 'Level-7 PABLO CORP credential required. These floors do not exist in the public registry.' : 'Restricted access. Clearance not granted.'}`);
                           return;
                         }
                         if (fl.action === 'open_admin') {
@@ -11877,7 +11877,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           setSavings(gs.current.savings);
                           setBankTab('accounts');
                           setShowBank(true); frozenRef.current = true;
-                          setNarr('> BANCO OMBRA — Welcome. Your accounts are now accessible. PAX SUITS.');
+                          setNarr('> BANCO OMBRA — Welcome. Your accounts are now accessible. PAX PABLO CORP.');
                           return;
                         }
                         if (fl.action === 'open_records' || fl.action === 'open_permits' || fl.action === 'open_revenue') {
@@ -12160,7 +12160,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
                   <div style={{ ...VT2, fontSize:'1.7rem', color:'#00ff41', letterSpacing:'.18em' }}>VENDING MACHINE</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>SUITS CORP AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>PABLO CORP AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
                   <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
@@ -12476,7 +12476,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </svg>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-              {[['#00ff41','CITY BUILDING'],['rgba(200,150,255,.9)','TOWER'],['rgba(0,200,255,.8)','LARGE BLDG'],['rgba(0,180,80,.4)','RESIDENTIAL'],['rgba(180,120,0,.4)','INDUSTRIAL'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','SUITS GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
+              {[['#00ff41','CITY BUILDING'],['rgba(200,150,255,.9)','TOWER'],['rgba(0,200,255,.8)','LARGE BLDG'],['rgba(0,180,80,.4)','RESIDENTIAL'],['rgba(180,120,0,.4)','INDUSTRIAL'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO CORP GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
                   <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
@@ -12893,10 +12893,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const tax = amt >= 5000 ? Math.floor(amt * 0.12) : 0;
           g.salary -= amt; setSalary(g.salary);
           g.savings += (amt - tax); setSavings(g.savings);
-          if (tax > 0) addBankTx('SUITS DEPOSIT TAX (12%)', -tax, g.salary);
+          if (tax > 0) addBankTx('PABLO CORP DEPOSIT TAX (12%)', -tax, g.salary);
           addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary);
           setBankDepAmt(''); sfxCoin();
-          setNarr(`> DEPOSITED ƒ${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` SUITS TAX: ƒ${tax.toLocaleString()}.` : ' No tax.'} Savings: ƒ${g.savings.toLocaleString()}.`);
+          setNarr(`> DEPOSITED ƒ${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO CORP TAX: ƒ${tax.toLocaleString()}.` : ' No tax.'} Savings: ƒ${g.savings.toLocaleString()}.`);
         };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
@@ -12938,10 +12938,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
           g.salary -= (amt + fee); setSalary(g.salary);
           addBankTx(`WIRE → ${to}`, -amt, g.salary);
-          addBankTx('SUITS WIRE TAX (3%)', -fee, g.salary);
+          addBankTx('PABLO CORP WIRE TAX (3%)', -fee, g.salary);
           wsSend({ type: 'wire', to, amount: amt, from: char.name });
           setBankWireAmt(''); setBankWireTo(''); sfxCoin();
-          setNarr(`> WIRE SENT — ƒ${amt.toLocaleString()} → ${to}. Fee: ƒ${fee.toLocaleString()}. SUITS logged it.`);
+          setNarr(`> WIRE SENT — ƒ${amt.toLocaleString()} → ${to}. Fee: ƒ${fee.toLocaleString()}. PABLO CORP logged it.`);
         };
         const isOverdue = bankLoan ? g.frame > bankLoan.dueAt : false;
         return (
@@ -12952,7 +12952,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>PAX SUITS · {CITY_NAME} BRANCH 01</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>PAX PABLO CORP · {CITY_NAME} BRANCH 01</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
@@ -12979,7 +12979,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
                       { label: 'CHECKING ACCOUNT', val: salary, sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
-                      { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · SUITS TAX: 15% ON INTEREST' },
+                      { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO CORP TAX: 15% ON INTEREST' },
                     ].map(({ label, val, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
                         <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
@@ -12993,7 +12993,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
-                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>SUITS TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
+                      {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>PABLO CORP TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
                       {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ƒ5k)</span>}
                     </div>
                   </div>
@@ -13005,7 +13005,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
-                    Savings earn 0.8% APY per cycle (~3 min). SUITS takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. BANCO OMBRA is not liable for seizures during martial law.
+                    Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. BANCO OMBRA is not liable for seizures during martial law.
                   </div>
                 </>)}
 
@@ -13014,7 +13014,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — BANCO OMBRA</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via SUITS Debt Collection · Loans ≥ ƒ25k carry 2% origination fee.
+                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO CORP Debt Collection · Loans ≥ ƒ25k carry 2% origination fee.
                     </div>
                   </div>
                   {!bankLoan ? (
@@ -13035,13 +13035,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         })}
                       </div>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
-                        Collateral: NONE REQUIRED. Credit score: PROVISIONAL POSITIVE. One active loan at a time. SUITS reserves right to restructure debt without notice. This is not a threat.
+                        Collateral: NONE REQUIRED. Credit score: PROVISIONAL POSITIVE. One active loan at a time. PABLO CORP reserves right to restructure debt without notice. This is not a threat.
                       </div>
                     </>
                   ) : (
                     <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(0,255,65,.3)'}`, padding: '.75rem' }}>
                       <div style={{ fontSize: '.55rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
-                        {isOverdue ? '⚠ LOAN OVERDUE — SUITS DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
+                        {isOverdue ? '⚠ LOAN OVERDUE — PABLO CORP DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
                         {[
@@ -13069,7 +13069,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'wire' && (<>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% SUITS Wire Tax deducted from sender. Logged. Irreversible.</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% PABLO CORP Wire Tax deducted from sender. Logged. Irreversible.</div>
                   </div>
                   {online.filter(p => p.name !== char.name).length > 0 && (
                     <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem' }}>
@@ -13127,7 +13127,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               {/* Footer */}
               <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span>BANCO OMBRA IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY SUITS DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
+                <span>BANCO OMBRA IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY PABLO CORP DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
                 <span>ESC TO CLOSE</span>
               </div>
             </div>
@@ -13160,7 +13160,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 isShelter ? (<>
                   The shelter is cold. Concrete walls. A single overhead light buzzes.<br/>
                   Your cot is wedged between twenty others. Someone coughs in the dark.<br/>
-                  No SUITS device. No corporate shield. Just the city and your wits.<br/>
+                  No PABLO CORP device. No corporate shield. Just the city and your wits.<br/>
                   The door is unlocked. The street waits outside.
                 </>) : isCampsite ? (<>
                   The campsite fire has burned to embers. Wasteland wind rattles the tarp.<br/>
@@ -13170,14 +13170,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>) : (<>
                   The bunker hatch creaks. Emergency lighting casts long shadows.<br/>
                   Pre-collapse supplies line the walls. Someone patched the ventilation.<br/>
-                  SUITS forgot this place exists. That's why you're here.<br/>
+                  PABLO CORP forgot this place exists. That's why you're here.<br/>
                   Time to move.
                 </>)
               ) : (<>
                 Fluorescent light buzzes overhead. The curtains don't fully close.<br/>
                 Through the gap: SHADOW TOWER's silhouette against a green-black sky.<br/>
-                Your SUITS device blinks on the nightstand. A notification pulses.<br/>
-                The building intercom crackles: "...all residents... SUITS advisory..."<br/>
+                Your PABLO CORP device blinks on the nightstand. A notification pulses.<br/>
+                The building intercom crackles: "...all residents... PABLO CORP advisory..."<br/>
                 You're already dressed. You were expecting this.
               </>)}
             </div>
@@ -13185,7 +13185,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: `${spawnColor}.3)`, letterSpacing: '.08em', marginBottom: '1.2rem' }}>
               {isUnemployed
                 ? `Hamlet: ${hamletLabel}. No corporate affiliation. Register a business at SHADOW TOWER anytime.`
-                : 'View of the city from your window. Unit 408. Rent: paid through SUITS'}
+                : 'View of the city from your window. Unit 408. Rent: paid through PABLO CORP'}
             </div>
             <button
               onClick={() => {
@@ -13622,7 +13622,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.subwayTransit = true;
           g.subwayTransitTimer = 90;
           g.subwayTransitDest = { x: dest.x, y: dest.y, label: dest.label };
-          setNarr(`> METRO — Boarding at ${origin?.label ?? '???'}. Destination: ${dest.label}. [−ƒ${FARE.toLocaleString()} FIAT] "SUITS MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
+          setNarr(`> METRO — Boarding at ${origin?.label ?? '???'}. Destination: ${dest.label}. [−ƒ${FARE.toLocaleString()} FIAT] "PABLO CORP MASS TRANSIT. SURVEILLANCE IN PROGRESS."`);
           setShowSubway(false);
         };
         return (
@@ -13632,7 +13632,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
                   <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>{CITY_NAME} METRO</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>SUITS RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
                 </div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
               </div>
@@ -13660,7 +13660,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               {/* Footer */}
               <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.12)', fontSize: '.55rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
-                <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. SUITS MONITORS ALL TRANSIT ACTIVITY.</span>
+                <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP MONITORS ALL TRANSIT ACTIVITY.</span>
                 <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
             </div>
@@ -14312,7 +14312,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   ))}
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7, marginTop: '.3rem' }}>
-                    All businesses on record with SUITS municipal database. All transactions logged.
+                    All businesses on record with PABLO CORP municipal database. All transactions logged.
                   </div>
                 </div>
               )}
@@ -14624,17 +14624,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   ))}
                   {char.hasBusiness && quest.id === 'establish_business' && (
                     <div style={{ marginTop:'.6rem', borderTop:'1px solid rgba(255,200,60,.1)', paddingTop:'.5rem' }}>
-                      <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.1em', marginBottom:'.3rem' }}>SUITS AUTOMATION</div>
+                      <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.1em', marginBottom:'.3rem' }}>PABLO CORP AUTOMATION</div>
                       <button onClick={() => {
                         completeQuestTask('establish_business', 'pablo_auto');
                         setShowQuests(false);
                         setShowPablo(true);
-                        setNarr('> SUITS AI — Business setup automation initiated. Use the SUITS device to configure your enterprise.');
+                        setNarr('> PABLO AI — Business setup automation initiated. Use the PABLO CORP device to configure your enterprise.');
                       }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(0,255,65,.06)', border:'1px solid rgba(0,255,65,.25)', color:'rgba(0,255,65,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
-                        USE SUITS AI TO AUTOMATE BUSINESS SETUP
+                        USE PABLO AI TO AUTOMATE BUSINESS SETUP
                       </button>
                       <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.2)', marginTop:'.2rem' }}>
-                        Optional: Let SUITS AI handle signage, workspace configuration, and registration paperwork.
+                        Optional: Let PABLO AI handle signage, workspace configuration, and registration paperwork.
                       </div>
                     </div>
                   )}

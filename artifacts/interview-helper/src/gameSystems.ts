@@ -188,7 +188,7 @@ export interface TreasureChest {
 
 export const TREASURE_CHESTS: TreasureChest[] = [
   { id: 'tc_nw_1', x: 1500, y: 2000, opened: false, loot: { fiat: 400, items: [{ name: 'ANCIENT BLADE', desc: 'Pre-collapse weapon. Still sharp.' }] }, requiresMap: false },
-  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 500, items: [{ name: 'DATA CORE', desc: 'SUITS classified data.' }] }, requiresMap: false },
+  { id: 'tc_ne_1', x: 11500, y: 1800, opened: false, loot: { fiat: 500, items: [{ name: 'DATA CORE', desc: 'PABLO CORP classified data.' }] }, requiresMap: false },
   { id: 'tc_sw_1', x: 2500, y: 10000, opened: false, loot: { fiat: 650, items: [{ name: 'GOLD INGOT', desc: 'Pure gold. Worth 1 gold unit.' }] }, requiresMap: true },
   { id: 'tc_se_1', x: 10000, y: 10500, opened: false, loot: { fiat: 750, items: [{ name: 'REACTOR SHARD', desc: 'Glowing with residual energy.' }] }, requiresMap: true },
   { id: 'tc_mid_1', x: 6000, y: 8500, opened: false, loot: { fiat: 300, items: [{ name: 'SUPPLY CRATE', desc: 'Food and medical supplies.' }] }, requiresMap: false },
@@ -290,7 +290,7 @@ export const STORY_DIALOGUES: Record<string, DialogueTree> = {
         { text: 'What do you know about Senior Pablo?', nextId: 'pablo_info' },
         { text: 'Nothing. Goodbye.', nextId: null },
       ]},
-      bank_info: { id: 'bank_info', speaker: 'MARCUS VELL', portrait: 'npc', text: 'Iron Trust Bank. EST. 1989. Every fiat in this city passes through these doors. SUITS takes 12% of everything above 5,000. That\'s not banking. That\'s tribute.', choices: [
+      bank_info: { id: 'bank_info', speaker: 'MARCUS VELL', portrait: 'npc', text: 'Iron Trust Bank. EST. 1989. Every fiat in this city passes through these doors. PABLO CORP takes 12% of everything above 5,000. That\'s not banking. That\'s tribute.', choices: [
         { text: 'That seems unfair.', nextId: 'unfair' },
         { text: 'Thanks for the info.', nextId: null },
       ]},
@@ -364,7 +364,7 @@ const GENERIC_TEMPLATES: Record<GenericNpcRole, GenericTemplate> = {
     ],
     branches: [
       { playerText: 'I\'m just passing through.', npcReply: 'Everyone\'s just passing through. Not everyone makes it.', mood: 'dismissive' },
-      { playerText: 'Who do you work for?', npcReply: 'SUITS contracted security. Beyond that — classified.', mood: 'dismissive' },
+      { playerText: 'Who do you work for?', npcReply: 'PABLO CORP contracted security. Beyond that — classified.', mood: 'dismissive' },
       { playerText: 'Tough assignment?', npcReply: 'All assignments are tough if you\'re paying attention.', mood: 'cryptic' },
       { playerText: 'What\'s behind that door?', npcReply: 'Nothing you need to know about. Keep walking.', mood: 'dismissive' },
     ],
@@ -391,7 +391,7 @@ const GENERIC_TEMPLATES: Record<GenericNpcRole, GenericTemplate> = {
       'They took everything in the consolidation. Everything.',
     ],
     branches: [
-      { playerText: 'What happened to you?', npcReply: 'SUITS buyout, \'91. Lost the job, lost the flat. City doesn\'t have a reset button.', mood: 'cryptic' },
+      { playerText: 'What happened to you?', npcReply: 'PABLO CORP buyout, \'91. Lost the job, lost the flat. City doesn\'t have a reset button.', mood: 'cryptic' },
       { playerText: 'Can I help?', npcReply: 'Already past helping. But it\'s kind of you to ask. Rare quality these days.', mood: 'friendly' },
       { playerText: 'Know any good spots?', npcReply: 'Under the east bridge if it\'s dry. Watch out for the Rust boys after midnight.', mood: 'friendly' },
       { playerText: 'Stay warm out here.', npcReply: 'Warmth is a luxury, friend. But thank you. Genuinely.', mood: 'friendly' },
@@ -414,7 +414,7 @@ const GENERIC_TEMPLATES: Record<GenericNpcRole, GenericTemplate> = {
   },
   dealer_papers: {
     opening: [
-      'Fresh papers. Current issue. Don\'t let SUITS see you reading it.',
+      'Fresh papers. Current issue. Don\'t let PABLO CORP see you reading it.',
       'News from the underground. Actual news. Not the sanctioned kind.',
       'You want the truth? I\'ve got it right here. For a price.',
     ],
@@ -434,7 +434,7 @@ const GENERIC_TEMPLATES: Record<GenericNpcRole, GenericTemplate> = {
     ],
     branches: [
       { playerText: 'What do you recommend?', npcReply: 'Depends on what you\'re up against. Gangs? Go heavy. Corpo patrols? Go quiet.', mood: 'friendly' },
-      { playerText: 'Is this stuff legal?', npcReply: 'SUITS Decree 12 says no. My price list says yes. You decide.', mood: 'dismissive' },
+      { playerText: 'Is this stuff legal?', npcReply: 'PABLO CORP Decree 12 says no. My price list says yes. You decide.', mood: 'dismissive' },
       { playerText: 'Where do you get this?', npcReply: 'East bloc surplus, mostly. Some corp black market overflow. Don\'t worry about it.', mood: 'dismissive' },
       { playerText: 'Just browsing.', npcReply: 'Browsing\'s free. Buying\'s where it gets interesting. Come back when you\'re ready.', mood: 'friendly' },
     ],
@@ -548,7 +548,7 @@ export function getGenericDialogueTree(npcName: string, role: string | undefined
 export const RUMORS: string[] = [
   'Someone saw lights on Floor 62 last night...',
   'The Iron Rats are planning a push into Void Dogs territory.',
-  'SUITS raised water prices again. Third time this month.',
+  'PABLO CORP raised water prices again. Third time this month.',
   'A courier disappeared near the eastern ruins. Nobody\'s talking.',
   'The clinic is running low on med kits. Stock up.',
   'Someone found a pre-collapse bunker under the scrap yard.',
@@ -556,7 +556,7 @@ export const RUMORS: string[] = [
   'Static Monks are recruiting. Something big is coming.',
   'A trader at the black market is selling fake passports.',
   'The subway tunnels connect to something deeper...',
-  'SUITS is hiring contractors. Nobody knows for what.',
+  'PABLO CORP is hiring contractors. Nobody knows for what.',
   'An android in the east district developed emotions. They\'re hiding.',
   'The Noodle Bar has the best ramen in Minx City. Fight me.',
   'Eastern Bloc found old military tech. Weapon parts everywhere.',

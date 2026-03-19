@@ -47,7 +47,7 @@ export const PABLO_PRODUCTS = {
   PRO_TIER: {
     name: "OPERATOR CLEARANCE",
     short: "OPERATOR",
-    desc: "Full augmentation package. All Suits Corp implants and modules unlocked. No rate limits. Priority neural bandwidth.",
+    desc: "Full augmentation package. All Pablo Corp implants and modules unlocked. No rate limits. Priority neural bandwidth.",
   },
   FREE_TIER: {
     name: "CIVILIAN ACCESS",

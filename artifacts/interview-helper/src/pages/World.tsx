@@ -44,7 +44,7 @@ const CITY_BOTTOM = 793;
 
 // PABLO store lines
 const STORE_LINES = [
-  '> SUITS DEVICE',
+  '> PABLO CORP DEVICE',
   '> The city is burning. The wasteland is worse.',
   '> A PABLO device is the only edge you have.',
   '> Register one and stay connected.',
@@ -194,7 +194,7 @@ export default function World() {
 
   // UI
   const [dialog,  setDialog]  = useState<{lines:string[];idx:number;bid:string}|null>(null);
-  const [msg,     setMsg]     = useState('SUITS v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
+  const [msg,     setMsg]     = useState('PABLO CORP v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
   const [near,    setNear]    = useState<string|null>(null);
   const [hp,      setHp]      = useState(100);
   const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; });
@@ -811,7 +811,7 @@ export default function World() {
       {/* DIALOG */}
       {dialog&&(
         <div style={{ position:'absolute',bottom:'4rem',left:'50%',transform:'translateX(-50%)',width:520,maxWidth:'90vw',background:'rgba(0,8,0,.97)',border:'1px solid rgba(0,255,65,.5)',padding:'1rem',zIndex:200,cursor:'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>SUITS</div>
+          <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>PABLO CORP</div>
           <div style={{ fontSize:'.8rem',color:'#00ff41',lineHeight:1.7,letterSpacing:'.03em',minHeight:'2rem' }}>{dialog.lines[dialog.idx]}</div>
           <div style={{ marginTop:'.5rem',textAlign:'right',fontSize:'.5rem',color:'rgba(0,255,65,.3)',letterSpacing:'.1em' }}>[{dialog.idx+1}/{dialog.lines.length}] SPACE ▶</div>
         </div>
@@ -846,7 +846,7 @@ export default function World() {
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.25rem' }}>
               <div>
                 <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#00ff41',letterSpacing:'.14em' }}>OFFICE TOWER</div>
-                <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>SUITS MANAGED — SHARED COMMERCIAL SPACE</div>
+                <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>PABLO CORP MANAGED — SHARED COMMERCIAL SPACE</div>
               </div>
               <div style={{ display:'flex',gap:'.4rem',alignItems:'center' }}>
                 {rentedOffice&&(

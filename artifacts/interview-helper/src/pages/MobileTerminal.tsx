@@ -502,7 +502,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
                 <StatRow label="SERVER" val={`${CITY_NAME} · PST`} col="#00ff41" />
-                <StatRow label="FACTION" val="SUITS" col="#b400ff" />
+                <StatRow label="FACTION" val="PABLO CORP" col="#b400ff" />
                 <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
               </div>
 

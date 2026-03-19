@@ -72,7 +72,7 @@ export default function Upgrade() {
               PRODUCT CATALOG
             </h1>
             <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
-              Browse Suits Corp augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
+              Browse Pablo Corp augmentation modules. {PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access.
               {PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.
             </p>
           </motion.div>
