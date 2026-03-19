@@ -13,6 +13,7 @@ import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { CITY_NAME } from '@/gameSystems';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -238,7 +239,7 @@ export default function Home() {
           <div className="flex items-center gap-2 shrink-0">
             <Terminal className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)' }} />
             <div>
-              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(0,255,65,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>MINX CITY</div>
+              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(0,255,65,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
               <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}</div>
             </div>
           </div>

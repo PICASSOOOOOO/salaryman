@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { CITY_NAME } from '../gameSystems';
 
 export interface OnboardingAnswers {
   combatStyle: string;
@@ -313,7 +314,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 cursor: 'pointer',
               }}
             >
-              ENTER MINX CITY ▸
+              ENTER {CITY_NAME} ▸
             </button>
           ) : (
             <button

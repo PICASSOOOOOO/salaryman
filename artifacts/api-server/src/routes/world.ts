@@ -32,10 +32,11 @@ router.post("/world/register", async (req, res) => {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
     }
-    const validTypes = ["fictitious", "real", "unemployed"];
-    const finalBizType = validTypes.includes(businessType) ? businessType : "fictitious";
+    const validTypes = ["minx", "real", "unemployed"];
+    const incomingType = businessType === "fictitious" ? "minx" : businessType;
+    const finalBizType = validTypes.includes(incomingType) ? incomingType : "minx";
 
-    if (finalBizType === "fictitious" && companyName) {
+    if (finalBizType === "minx" && companyName) {
       const normalized = String(companyName).trim().toUpperCase();
       if (normalized) {
         const existing = await db

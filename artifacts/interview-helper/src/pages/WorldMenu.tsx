@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useIsMobile, getDefaultBoomerMode } from '../hooks/use-mobile';
-import { boomerize } from '../gameSystems';
+import { boomerize, CITY_NAME } from '../gameSystems';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 
 type CharClass = 'corporate' | 'outlaw' | 'replicant';
@@ -121,8 +121,8 @@ const WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot
   { match: /REAL ESTATE|E-COMMERCE|RETAIL|FOOD|BEVERAGE/i,             bid: 'east_market', label: 'EAST BAZAAR',   slot: 'BED 11 · DESK 3 · TRADE TERMINAL' },
   { match: /NON-PROFIT|GOVERN|PUBLIC/i,                                bid: 'arcade',      label: 'PIXEL ARCADE',  slot: 'BED 1 · DESK 1 · PUBLIC TERMINAL' },
 ];
-function getWorkstation(bType: 'fictitious'|'real', ind: string, fictInd: string) {
-  const q = bType === 'real' ? ind : fictInd;
+function getWorkstation(bType: 'minx'|'real', ind: string, minxInd: string) {
+  const q = bType === 'real' ? ind : minxInd;
   return WORKSTATION_ASSIGNMENTS.find(w => w.match.test(q)) ?? WORKSTATION_ASSIGNMENTS[0];
 }
 
@@ -143,7 +143,7 @@ const FLAVOR = [
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
-  { id: 'world',       label: 'MINX CITY',   col: '#00ff41' },
+  { id: 'world',       label: CITY_NAME,   col: '#00ff41' },
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
@@ -548,11 +548,11 @@ export default function WorldMenu() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   // Business registration
-  const [bizType, setBizType] = useState<'fictitious' | 'real' | 'unemployed'>('fictitious');
+  const [bizType, setBizType] = useState<'minx' | 'real' | 'unemployed'>('minx');
   const [company, setCompany] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
-  const [fictitiousCompany, setFictitiousCompany] = useState('');
-  const [fictitiousError, setFictitiousError] = useState('');
+  const [minxCompany, setMinxCompany] = useState('');
+  const [minxError, setMinxError] = useState('');
   const [bizSize, setBizSize] = useState('SOLO OPERATOR');
   const [bizEmail, setBizEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -610,7 +610,7 @@ export default function WorldMenu() {
       sy: num('py') ?? 5620,
       salary: save.salary,
       hasBusiness: bool('hasBusiness'),
-      bizType: str('bizType') ?? (bool('hasBusiness') ? 'fictitious' : 'unemployed'),
+      bizType: (() => { const bt = str('bizType'); if (bt === 'fictitious') return 'minx'; return bt ?? (bool('hasBusiness') ? 'minx' : 'unemployed'); })(),
       workstation: str('workstation'),
       workstationLabel: str('workstationLabel'),
       workstationSlot: num('workstationSlot') ?? null,
@@ -670,20 +670,20 @@ export default function WorldMenu() {
   };
 
   const handleEnterWorld = async () => {
-    if (bizType === 'fictitious') {
-      const trimmed = fictitiousCompany.trim().toUpperCase();
+    if (bizType === 'minx') {
+      const trimmed = minxCompany.trim().toUpperCase();
       if (!trimmed) {
-        setFictitiousError('COMPANY NAME REQUIRED — Invent a front corporation.');
+        setMinxError('COMPANY NAME REQUIRED — Invent a front corporation.');
         return;
       }
       setCheckingName(true);
-      setFictitiousError('');
+      setMinxError('');
       try {
         const resp = await fetch(`/api/world/check-company?name=${encodeURIComponent(trimmed)}`, { credentials: 'include' });
         if (resp.ok) {
           const data = await resp.json();
           if (data.taken) {
-            setFictitiousError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
+            setMinxError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
             setCheckingName(false);
             return;
           }
@@ -696,12 +696,12 @@ export default function WorldMenu() {
     const hasBusiness = bizType !== 'unemployed';
     const finalCompany = bizType === 'real' && company.trim()
       ? company.trim().toUpperCase()
-      : bizType === 'fictitious' && fictitiousCompany.trim()
-        ? fictitiousCompany.trim().toUpperCase()
+      : bizType === 'minx' && minxCompany.trim()
+        ? minxCompany.trim().toUpperCase()
         : bizType === 'unemployed'
           ? null
           : name.trim().toUpperCase() + ' OPS';
-    const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN') : null;
+    const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'minx', industry, minxCompany.trim().toUpperCase() || 'UNKNOWN') : null;
     const startSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : 15000;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const char = {
@@ -735,8 +735,8 @@ export default function WorldMenu() {
           isPaid: false,
         }),
       });
-      if (registerResp.status === 409 && bizType === 'fictitious') {
-        setFictitiousError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
+      if (registerResp.status === 409 && bizType === 'minx') {
+        setMinxError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
         setSubmitting(false);
         return;
       }
@@ -752,7 +752,7 @@ export default function WorldMenu() {
             charClass: char.class,
             level: 1,
             salary: startSalary,
-            lastZone: 'MINX CITY',
+            lastZone: CITY_NAME,
             playtime: 0,
             data: { ...char },
           }),
@@ -975,7 +975,7 @@ export default function WorldMenu() {
                       if (!latest) return 'GO TO WORK';
                       const bType = latest.bizType as string | undefined;
                       if (bType === 'real') return 'COME ON IN, BIG SHOT';
-                      if (bType === 'fictitious' || latest.hasBusiness) return "YOU'RE LATE TO WORK";
+                      if (bType === 'minx' || bType === 'fictitious' || latest.hasBusiness) return "YOU'RE LATE TO WORK";
                       return 'FIND A JOB';
                     })()}</div>
                     <div style={{ fontSize: '.48rem', color: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.45)' : !isAuthenticated ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
@@ -984,7 +984,7 @@ export default function WorldMenu() {
                           const latest = cloudSaves[0]?.data as Record<string, unknown> | undefined;
                           const bType = latest?.bizType as string | undefined;
                           if (bType === 'real') return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. The corner office is waiting.`;
-                          if (bType === 'fictitious' || latest?.hasBusiness) return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. Clock's ticking.`;
+                          if (bType === 'minx' || bType === 'fictitious' || latest?.hasBusiness) return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. Clock's ticking.`;
                           return `${cloudSaves.length} save${cloudSaves.length !== 1 ? 's' : ''} on file. The city doesn't wait.`;
                         })()
                         : !isAuthenticated ? 'Sign in to access your saves.' : 'No saves found. Start a new story first.'}
@@ -1344,11 +1344,11 @@ export default function WorldMenu() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                   {([
-                    { id: 'fictitious' as const, label: 'FICTITIOUS FRONT', desc: 'Anonymous. Low profile. No paper trail. Invent your own company name.' },
+                    { id: 'minx' as const, label: 'MINX CITY BUSINESS', desc: 'Anonymous. Low profile. No paper trail. Invent your own company name.' },
                     { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Real company. Stake territory. Data stored on our servers for paid members. Your brand in-world.' },
                     { id: 'unemployed' as const, label: 'UNEMPLOYED / NO AFFILIATION', desc: 'No company. No cover. You walk Minx City alone. Skip the paperwork.' },
                   ]).map(t => (
-                    <button key={t.id} onClick={() => { setBizType(t.id); setFictitiousError(''); }} style={{ padding: '.9rem', border: bizType === t.id ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: bizType === t.id ? 'rgba(0,255,65,.07)' : 'transparent', color: bizType === t.id ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
+                    <button key={t.id} onClick={() => { setBizType(t.id); setMinxError(''); }} style={{ padding: '.9rem', border: bizType === t.id ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: bizType === t.id ? 'rgba(0,255,65,.07)' : 'transparent', color: bizType === t.id ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
                       <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', marginBottom: '.25rem' }}>
                         {t.label}
                       </div>
@@ -1359,21 +1359,21 @@ export default function WorldMenu() {
                   ))}
                 </div>
 
-                {bizType === 'fictitious' && (
+                {bizType === 'minx' && (
                   <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — NAME YOUR FRONT CORPORATION</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
                       Invent a company name. Your operative will be listed under this corporate shell. SUITS cannot trace it. Rival operatives will see this name above your head.
                     </div>
                     <input
-                      value={fictitiousCompany}
-                      onChange={e => { setFictitiousCompany(e.target.value); setFictitiousError(''); }}
+                      value={minxCompany}
+                      onChange={e => { setMinxCompany(e.target.value); setMinxError(''); }}
                       maxLength={60}
                       placeholder="e.g. NEON CAPITAL SOLUTIONS, PHANTOM FREIGHT CO."
-                      style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${fictitiousError ? 'rgba(255,60,60,.6)' : fictitiousCompany ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.3)'}`, color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box', letterSpacing: '.06em' }}
+                      style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${minxError ? 'rgba(255,60,60,.6)' : minxCompany ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.3)'}`, color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box', letterSpacing: '.06em' }}
                     />
-                    {fictitiousError && (
-                      <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', ...VT }}>⚠ {fictitiousError}</div>
+                    {minxError && (
+                      <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', ...VT }}>⚠ {minxError}</div>
                     )}
                   </div>
                 )}
@@ -1419,7 +1419,7 @@ export default function WorldMenu() {
                 )}
 
                 {bizType !== 'unemployed' && (() => {
-                  const ws = getWorkstation(bizType === 'real' ? 'real' : 'fictitious', industry, fictitiousCompany.trim().toUpperCase() || 'UNKNOWN');
+                  const ws = getWorkstation(bizType === 'real' ? 'real' : 'minx', industry, minxCompany.trim().toUpperCase() || 'UNKNOWN');
                   return (
                     <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.85rem' }}>
                       <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>

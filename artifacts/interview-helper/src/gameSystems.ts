@@ -1,3 +1,5 @@
+export const CITY_NAME = 'MINX CITY';
+
 // ── World Clock & Calendar ────────────────────────────────────────────────────
 // 1 real hour = 1 in-game day. 13 months × 28 days = 364 days/year.
 // Each season = 91 game days (3 months × 28 days + 7 bonus days). 4 seasons × 91 = 364 days/year.
@@ -215,7 +217,7 @@ export const BOOMER_MAP: Record<string, string> = {
   'ENERGY': 'STAMINA',
   'LEVEL UP': 'PROMOTION',
   'WASTELAND': 'FIELD TERRITORY',
-  'MINX CITY': 'HEADQUARTERS',
+  [CITY_NAME]: 'HEADQUARTERS',
   'MELEE': 'CLOSE COMBAT',
   'RANGED': 'LONG RANGE',
   'LOOT': 'ACQUISITION',
@@ -584,7 +586,7 @@ export const COSTUMES = CLOTHES;
 
 // ── Time Zone Cities ─────────────────────────────────────────────────────────
 export const TIMEZONE_CITIES = [
-  { id: 'pst', label: 'MINX CITY (PST)', offset: -8 },
+  { id: 'pst', label: `${CITY_NAME} (PST)`, offset: -8 },
   { id: 'est', label: 'NEW EDEN (EST)', offset: -5 },
   { id: 'cst', label: 'IRON FALLS (CST)', offset: -6 },
   { id: 'mst', label: 'DUST VALLEY (MST)', offset: -7 },

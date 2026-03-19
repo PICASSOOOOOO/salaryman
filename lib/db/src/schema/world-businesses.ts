@@ -5,7 +5,7 @@ import { z } from "zod/v4";
 export const worldBusinessesTable = pgTable("world_businesses", {
   id: serial("id").primaryKey(),
   playerName: varchar("player_name", { length: 32 }).notNull(),
-  businessType: varchar("business_type", { length: 16 }).notNull().default("fictitious"), // 'fictitious' | 'real'
+  businessType: varchar("business_type", { length: 16 }).notNull().default("minx"), // 'minx' | 'real'
   companyName: varchar("company_name", { length: 80 }),
   industry: varchar("industry", { length: 60 }),
   companySize: varchar("company_size", { length: 30 }),

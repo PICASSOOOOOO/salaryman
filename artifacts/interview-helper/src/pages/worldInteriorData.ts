@@ -1,3 +1,5 @@
+import { CITY_NAME } from '../gameSystems';
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -483,7 +485,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ],
   },
   realestate_office: {
-    id: 'realestate_office', label: 'MINX CITY REAL ESTATE — LISTINGS FLOOR',
+    id: 'realestate_office', label: `${CITY_NAME} REAL ESTATE — LISTINGS FLOOR`,
     width: 340, height: 260,
     wallColor: 'rgba(22,18,28,.95)', floorColor: 'rgba(10,8,16,.9)', accentColor: 'rgba(200,100,255,.25)',
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
@@ -1377,10 +1379,10 @@ export const AMBIENT_RADIO_SPOTS = [
 export const REAL_ESTATE_LISTINGS = [
   { id: 'lot_wasteland_north', name: 'Wasteland Lot — North Perimeter', desc: 'Open terrain near the northern border. No utilities. Suitable for outpost.', price: 5, zone: 'WASTELAND', income: 2000, sqft: 800 },
   { id: 'lot_wasteland_south', name: 'Wasteland Lot — Southern Ridge', desc: 'Elevated position. Natural defense advantage. Remote.', price: 5, zone: 'WASTELAND', income: 2000, sqft: 650 },
-  { id: 'studio_sector_3', name: 'Studio — Sector 3', desc: 'Single room. Shared bathroom. Close to Iron Dojo.', price: 10, zone: 'MINX CITY', income: 5000, sqft: 350 },
-  { id: 'studio_sector_7', name: 'Studio — Sector 7', desc: 'Ground floor. Street-facing window. Near market.', price: 10, zone: 'MINX CITY', income: 5000, sqft: 400 },
+  { id: 'studio_sector_3', name: 'Studio — Sector 3', desc: 'Single room. Shared bathroom. Close to Iron Dojo.', price: 10, zone: CITY_NAME, income: 5000, sqft: 350 },
+  { id: 'studio_sector_7', name: 'Studio — Sector 7', desc: 'Ground floor. Street-facing window. Near market.', price: 10, zone: CITY_NAME, income: 5000, sqft: 400 },
   { id: 'office_tower_12', name: 'Corporate Office — Floor 12', desc: 'Shadow Tower sublease. Premium address. Climate control included.', price: 25, zone: 'SHADOW TOWER', income: 15000, sqft: 1200 },
   { id: 'office_tower_8', name: 'Corporate Office — Floor 8', desc: 'Mid-level Shadow Tower space. Meeting room access.', price: 25, zone: 'SHADOW TOWER', income: 15000, sqft: 950 },
-  { id: 'penthouse_pinnacle', name: 'Penthouse — The Pinnacle', desc: 'Top floor. Panoramic views. High security.', price: 50, zone: 'MINX CITY', income: 30000, sqft: 2500 },
+  { id: 'penthouse_pinnacle', name: 'Penthouse — The Pinnacle', desc: 'Top floor. Panoramic views. High security.', price: 50, zone: CITY_NAME, income: 30000, sqft: 2500 },
   { id: 'warehouse_east', name: 'Warehouse — East Industrial', desc: 'Large floorplan. Loading dock. Former shipping facility.', price: 15, zone: 'INDUSTRIAL', income: 8000, sqft: 3000 },
 ];

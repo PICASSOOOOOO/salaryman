@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
+import { CITY_NAME } from '../gameSystems';
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
   type NewspaperIssue, THE_MINX_ISSUES, NEWSPAPER_WORLD_SPOTS,
@@ -238,7 +239,7 @@ const WASTELAND_SETTLEMENTS = [
   { name: 'SOUTHERN HUB', x: 7265, y: 11045 },
 ];
 function getNearestSettlement(px: number, py: number): string {
-  let nearest = 'MINX CITY';
+  let nearest = CITY_NAME;
   let minDist = Math.hypot(px - 7200, py - 6300);
   for (const s of WASTELAND_SETTLEMENTS) {
     const d = Math.hypot(px - s.x, py - s.y);
@@ -252,9 +253,9 @@ function getCurrentSector(px: number, py: number): string {
     return `WASTELAND · near ${nearest}`;
   }
   for (const s of CITY_SECTORS) {
-    if (px >= s.x && px < s.x + s.w && py >= s.y && py < s.y + s.h) return `MINX CITY LIMITS · ${s.name}`;
+    if (px >= s.x && px < s.x + s.w && py >= s.y && py < s.y + s.h) return `${CITY_NAME} LIMITS · ${s.name}`;
   }
-  return 'MINX CITY LIMITS · OUTSKIRTS';
+  return `${CITY_NAME} LIMITS · OUTSKIRTS`;
 }
 function getBusinessLocationLabel(px: number, py: number): string {
   if (inCityBounds(px, py)) return 'MINX';
@@ -411,7 +412,7 @@ const GANG_ZONES_BASE = [
   { id: 'void_runners',    name: 'VOID RUNNERS',    x: 5000, y: 200,  w: 4800, h:4800, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID RUNNERS TERRITORY ]' },
   { id: 'static_monks', name: 'STATIC MONKS', x: 200,  y: 7600, w: 7000, h:4800, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
   { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 7200, y: 7600, w: 7000, h:4800, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
-  { id: 'minx_city',    name: 'MINX CITY',    x: 200,  y: 200,  w: 14000, h:12200, color: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)',  threat: 'rgba(180,0,255,.55)', label: '[ MINX CITY LIMITS ]' },
+  { id: 'minx_city',    name: CITY_NAME,    x: 200,  y: 200,  w: 14000, h:12200, color: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)',  threat: 'rgba(180,0,255,.55)', label: `[ ${CITY_NAME} LIMITS ]` },
 ];
 let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
 const GANG_FACTION_ALLIES: Record<string, string[]> = {
@@ -1714,7 +1715,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'signal_jammer',   name: 'SIGNAL JAMMER',     desc: 'Disables nearest guard for 30 seconds (3 uses).',  price: 12000 },
     { id: 'netrunner_deck',  name: 'NETRUNNER DECK',    desc: '20% discount at all SUITS terminals.',       price: 25000 },
     { id: 'holo_map',        name: 'HOLO MAP',          desc: 'Reveals all locations on the minimap.',            price: 5000  },
-    { id: 'radio_implant',   name: 'RADIO IMPLANT',     desc: 'Neural cochlear transceiver. Picks up MINX CITY FM anywhere in the Wasteland. Permanent.',  price: 20000 },
+    { id: 'radio_implant',   name: 'RADIO IMPLANT',     desc: `Neural cochlear transceiver. Picks up ${CITY_NAME} FM anywhere in the Wasteland. Permanent.`,  price: 20000 },
   ]},
   { id: 'weapons_melee', label: 'MELEE', col: '#ff4444', items: [
     { id: 'combat_knife',    name: 'COMBAT KNIFE',     desc: '+15% ATK. Silent. Legal in 4 zones.',                  price: 3000  },
@@ -1784,7 +1785,7 @@ const VEND_CATALOG: VendCategory[] = [
   { id: 'realestate', label: 'REAL ESTATE (GOLD ONLY)', col: '#cc44ff', items: [
     { id: 'wasteland_lot',   name: 'WASTELAND LOT',         desc: 'Sector W-14 · 200sqm dirt plot. +ƒ2,000/cycle. 5oz GOLD.',            price: 500000,  goldPrice: 5  },
     { id: 'salvage_yard',    name: 'SALVAGE YARD',          desc: 'Sector W-22 · Scrap & parts depot. +ƒ3,500/cycle. 8oz GOLD.',          price: 750000,  goldPrice: 8  },
-    { id: 'minx_studio',     name: 'MINX CITY STUDIO',      desc: 'Sector 6 · 45sqm unit, Neon Strip. +ƒ5,000/cycle. 10oz GOLD.',         price: 1000000, goldPrice: 10 },
+    { id: 'minx_studio',     name: `${CITY_NAME} STUDIO`,      desc: 'Sector 6 · 45sqm unit, Neon Strip. +ƒ5,000/cycle. 10oz GOLD.',         price: 1000000, goldPrice: 10 },
     { id: 'street_stall',    name: 'STREET VENDOR STALL',   desc: 'Sector 7 · Market kiosk permit. +ƒ4,000/cycle. 7oz GOLD.',             price: 650000,  goldPrice: 7  },
     { id: 'transit_kiosk',   name: 'TRANSIT KIOSK',         desc: 'Metro West · Foot-traffic vendor spot. +ƒ3,000/cycle. 6oz GOLD.',       price: 550000,  goldPrice: 6  },
     { id: 'corpo_office',    name: 'CORPORATE OFFICE',      desc: 'Sector 8 · 120sqm Tower Row lease. +ƒ15,000/cycle. 25oz GOLD.',         price: 2500000, goldPrice: 25 },
@@ -1798,14 +1799,14 @@ const VEND_CATALOG: VendCategory[] = [
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, salvage_yard: 3500, minx_studio: 5000, street_stall: 4000, transit_kiosk: 3000, corpo_office: 15000, penthouse_suite: 25000, warehouse: 8000, data_center: 12000, lot_wasteland_north: 2000, lot_wasteland_south: 2000, studio_sector_3: 5000, studio_sector_7: 5000, office_tower_12: 15000, office_tower_8: 15000, penthouse_pinnacle: 30000, warehouse_east: 8000 };
 
-interface HousingTier { id: string; label: string; building: string; rent: number; rentPeriod: 'day' | 'week'; minBizType: 'unemployed' | 'fictitious' | 'real'; desc: string; tier: 'shelter' | 'apartment' | 'house' | 'villa'; wealthMin?: number; }
+interface HousingTier { id: string; label: string; building: string; rent: number; rentPeriod: 'day' | 'week'; minBizType: 'unemployed' | 'minx' | 'real'; desc: string; tier: 'shelter' | 'apartment' | 'house' | 'villa'; wealthMin?: number; }
 const HOUSING_TIERS: HousingTier[] = [
   { id: 'shelter', label: 'CITY SHELTER / BUNKER', building: 'bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Free bunk. Crowded. Shared with dozens of drifters, workers, and displaced. Closest to the bunker exit.' },
   { id: 'outpost', label: 'DESERT OUTPOST', building: 'outpost_alpha', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Free cot. Wasteland outpost. Sparse but functional. Generator power, rations, armed warden.' },
   { id: 'machine_bunker', label: 'MACHINE BUNKER (UNDERGROUND)', building: 'machine_bunker', rent: 0, rentPeriod: 'day', minBizType: 'unemployed', tier: 'shelter', desc: 'Deep underground. Room closest to the bunker exit. Packed with replicants and refugees.' },
-  { id: 'minx_arms', label: 'MINX ARMS HOTEL', building: 'minx_arms', rent: 80, rentPeriod: 'day', minBizType: 'fictitious', tier: 'apartment', desc: 'Cheap hotel. Single room per night. Curtains never close. Pay daily or get tossed.' },
-  { id: 'eastside', label: 'EASTSIDE FLATS', building: 'eastside_flat', rent: 500, rentPeriod: 'week', minBizType: 'fictitious', tier: 'apartment', desc: 'Mid-tier apartment. Mailboxes. Notice board. Actual door that locks. Weekly lease.' },
-  { id: 'city_house', label: 'MINX CITY ROWHOUSE', building: 'safe_house', rent: 2000, rentPeriod: 'week', minBizType: 'real', tier: 'house', wealthMin: 200000, desc: 'Private rowhouse in the Neon Strip. Two floors. Separate entrance. Locked mailbox. No shared walls — a concept most residents have forgotten.' },
+  { id: 'minx_arms', label: 'MINX ARMS HOTEL', building: 'minx_arms', rent: 80, rentPeriod: 'day', minBizType: 'minx', tier: 'apartment', desc: 'Cheap hotel. Single room per night. Curtains never close. Pay daily or get tossed.' },
+  { id: 'eastside', label: 'EASTSIDE FLATS', building: 'eastside_flat', rent: 500, rentPeriod: 'week', minBizType: 'minx', tier: 'apartment', desc: 'Mid-tier apartment. Mailboxes. Notice board. Actual door that locks. Weekly lease.' },
+  { id: 'city_house', label: `${CITY_NAME} ROWHOUSE`, building: 'safe_house', rent: 2000, rentPeriod: 'week', minBizType: 'real', tier: 'house', wealthMin: 200000, desc: 'Private rowhouse in the Neon Strip. Two floors. Separate entrance. Locked mailbox. No shared walls — a concept most residents have forgotten.' },
   { id: 'overlook', label: 'THE PINNACLE', building: 'overlook', rent: 200, rentPeriod: 'day', minBizType: 'real', tier: 'apartment', desc: 'Upscale hotel. Concierge. Crystal chandelier. Real address for a real business.' },
   { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', tier: 'house', wealthMin: 500000, desc: 'Premium suite. Room service. Neon skyline views. The closest thing to a house in the corporate district.' },
   { id: 'tower_villa', label: 'SHADOW TOWER RESIDENCE', building: 'pablo_tower', rent: 5000, rentPeriod: 'week', minBizType: 'real', tier: 'villa', wealthMin: 2000000, desc: 'Private residence in the lower tower floors. Floor-to-ceiling glass. Climate controlled. The address says everything. SUITS reserves the right to revoke at any time for any reason.' },
@@ -2079,7 +2080,7 @@ const DOG_KILL_LINES = [
 ];
 
 const STORE_LINES = [
-  '> SUITS — AUTHORIZED DEVICE OUTLET · MINX CITY · PST',
+  `> SUITS — AUTHORIZED DEVICE OUTLET · ${CITY_NAME} · PST`,
   '> Minx City belongs to him. The wasteland is for those who forgot that.',
   '> SUITS devices keep you on the network. Like a second quest — but this time the dungeon is real.',
   '> There\'s a rumor: the original SUITS device firmware contains an old game. Unplayable now. SENIOR PABLO was never beaten.',
@@ -2087,7 +2088,7 @@ const STORE_LINES = [
 ];
 
 const TOWER_LINES = [
-  '> SHADOW TOWER — 67 FLOORS. MINX CITY DESIGNATION: BLOCK ZERO.',
+  `> SHADOW TOWER — 67 FLOORS. ${CITY_NAME} DESIGNATION: BLOCK ZERO.`,
   '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as every city that ever fell.',
   '> Floors 1-39: commercial rentals. Floors 40-65: permanently restricted by order of SENIOR PABLO.',
   '> Floor 66: PICASSOO.AI executive suite. Floor 67: The penthouse. PICASSO himself. Nobody returns from there with a story.',
@@ -2275,7 +2276,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 29, name: 'NEXUS HUB — PRIVATE PODS', desc: 'Sound-isolated booths. Verified occupancy only. Three booths show names. The fourth shows: AWAITING ASSIGNMENT — since 1999.' },
       { floor: 30, name: 'GUEST SUITES', desc: 'Visitor accommodation. Stays are logged. The guest book is not optional. There is one name in the book that has recurred every six months for twelve years.' },
       { floor: 31, name: 'SUITS PR — COMMS FLOOR', desc: 'Public relations and media management. The press release queue has entries dated up to 2031. They are pre-approved.' },
-      { floor: 32, name: 'SUITS PR — BROADCAST', desc: 'Internal TV feed for the tower monitors. Content production. The logo on the broadcast ID card reads MINX CITY NEWS DIVISION.' },
+      { floor: 32, name: 'SUITS PR — BROADCAST', desc: `Internal TV feed for the tower monitors. Content production. The logo on the broadcast ID card reads ${CITY_NAME} NEWS DIVISION.` },
       { floor: 33, name: 'SUITS LEGAL — COMPLIANCE', desc: 'Legal division. Contracts, litigation, enforcement. A wall of filing cabinets runs the full south wall. The cabinets are alphabetical. Your name may be in there.' },
       { floor: 34, name: 'SUITS LEGAL — ENFORCEMENT', desc: 'Litigation active files. Court liaison. Three cases currently open. Two involving businesses. One involving an individual. The individual does not know yet.' },
       { floor: 35, name: 'SUITS LEGAL — CONTRACT VAULT', desc: 'Executed agreements. The safe holds originals. Digital backups exist. The physical copies are stored here because digital evidence is inadmissible in one jurisdiction.' },
@@ -2360,7 +2361,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     label: 'MINX ADMINISTRATION BUILDING', history: 'Constructed 1979. The oldest surviving municipal structure. Every permit, license, registration, and complaint in Minx City passes through this building. The elevator still uses the original buttons — brass, polished daily by a custodian nobody has met. The stairwell is under renovation. It has been under renovation since 1994.',
     floors: [
       { floor: 1, name: 'LOBBY', desc: 'Marble floors, worn down to grooves by decades of foot traffic. A reception desk with a blinking terminal. Pamphlets for every department are stacked in a rack. Half are outdated. The security guard nods at everyone but checks nobody.' },
-      { floor: 2, name: 'DEPT. OF BUSINESS AFFAIRS', desc: 'Business registration, licensing, and compliance. Clerks process fictitious entity filings and real enterprise charters. The queue management system was installed in \'88 and has never displayed the correct number.', action: 'open_admin' },
+      { floor: 2, name: 'DEPT. OF BUSINESS AFFAIRS', desc: 'Business registration, licensing, and compliance. Clerks process Minx City business filings and real enterprise charters. The queue management system was installed in \'88 and has never displayed the correct number.', action: 'open_admin' },
       { floor: 3, name: 'DEPT. OF RECORDS & ARCHIVES', desc: 'Municipal records dating back to the founding. Birth certificates, property deeds, criminal histories. Rows of filing cabinets stretch to the far wall. A clerk is always re-filing something that was misfiled.', action: 'open_records' },
       { floor: 4, name: 'DEPT. OF PERMITS & ZONING', desc: 'Construction permits, zoning variances, land-use applications. A massive city map covers the north wall with colored pins. Some pins mark locations that no longer exist.', action: 'open_permits' },
       { floor: 5, name: 'DEPT. OF REVENUE & TAXATION', desc: 'Tax assessments, FIAT levies, and audit processing. The overhead lights flicker at irregular intervals. The staff say it is normal. The staff do not look up from their desks.', action: 'open_revenue' },
@@ -2448,7 +2449,7 @@ const AMBIENCE_LINES = [
 
 interface OwnedBusiness {
   companyName: string;
-  bizType: 'real' | 'fictitious';
+  bizType: 'real' | 'minx';
   workstation: string | null;
   workstationLabel: string | null;
   workstationSlot: string | null;
@@ -2461,7 +2462,7 @@ interface OwnedBusiness {
 interface Char {
   name: string; class: string; company: string; sx: number; sy: number; salary: number;
   hasBusiness?: boolean;
-  bizType?: 'real' | 'fictitious' | 'unemployed';
+  bizType?: 'real' | 'minx' | 'unemployed';
   workstation?: string | null;
   workstationLabel?: string | null;
   workstationSlot?: string | null;
@@ -2725,7 +2726,7 @@ export default function WorldPlay() {
     peers: new Map<string, Peer>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
-    zone: inCityBounds(char.sx, char.sy) ? 'MINX CITY' : 'WASTELAND',
+    zone: inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND',
     powerLevel: 100,
     powerTick: 0,
     powerEventFrames: 0,
@@ -2853,7 +2854,7 @@ export default function WorldPlay() {
   // Reactive state (only what the HUD needs)
   const [hp,      setHp]      = useState(_ss?.hp ?? 100);
   const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
-  const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? 'MINX CITY' : 'WASTELAND');
+  const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND');
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
   const activeConvosRef = useRef<ConversationEvent[]>([]);
@@ -3073,7 +3074,7 @@ export default function WorldPlay() {
   const [showRecruitOffice, setShowRecruitOffice] = useState(false);
   const [recruitJobDraft, setRecruitJobDraft] = useState({ title: '', pay: '', desc: '' });
   const [adminBizName, setAdminBizName] = useState('');
-  const [adminBizType, setAdminBizType] = useState<'real' | 'fictitious'>('fictitious');
+  const [adminBizType, setAdminBizType] = useState<'real' | 'minx'>('minx');
   const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
   const [goldStandardToggle, setGoldStandardToggle] = useState(false);
@@ -3209,7 +3210,7 @@ export default function WorldPlay() {
       charClass: char.class,
       level: g.level,
       salary: g.salary,
-      lastZone: inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND',
+      lastZone: inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND',
       playtime: g.frame,
       data: { ...char, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
@@ -3573,7 +3574,7 @@ export default function WorldPlay() {
       sfxEnter();
       setSubwayOrigin(bid);
       setShowSubway(true);
-      setNarr('> MINX CITY METRO — Automated turnstiles. The network runs on SUITS rails. Select your destination.');
+      setNarr(`> ${CITY_NAME} METRO — Automated turnstiles. The network runs on SUITS rails. Select your destination.`);
     }
     else if (['checkpoint_w','checkpoint_c','checkpoint_e'].includes(bid)) {
       if (g.passport) {
@@ -3799,7 +3800,7 @@ export default function WorldPlay() {
   ];
 
   const LIBRARY_BOOKS = [
-    { title: 'A BRIEF HISTORY OF MINX CITY', text: 'Founded in 1979. Corporate charter signed by an entity known only as PABLO. Population: classified.' },
+    { title: `A BRIEF HISTORY OF ${CITY_NAME}`, text: 'Founded in 1979. Corporate charter signed by an entity known only as PABLO. Population: classified.' },
     { title: 'THE TOWER: AN ARCHITECTURAL STUDY', text: 'Shadow Tower rises 62 floors. Floors 40-62 are restricted. No architectural firm claims the design.' },
     { title: 'WASTELAND SURVIVAL GUIDE', text: 'Rule 1: Water. Rule 2: Shelter. Rule 3: Never trust anyone who works for SUITS' },
     { title: 'MUNICIPAL CODE VOL. 47', text: 'Ordinance 4,712: All rain shall be metered and billed at SUITS standard rates.' },
@@ -5162,7 +5163,7 @@ OPERATIVE STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
-- Zone: ${inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
+- Zone: ${inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
 - Gang territory: ${g.gangZone ?? 'neutral'}
 - ${loanStr}
 - Game day: ${gameDay} | Survival ticks: ${g.survivalTick}
@@ -6148,7 +6149,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         dog.y = Math.max(BORDER, Math.min(H - BORDER, dog.y));
 
         if (dog.dialogueCooldown > 0) dog.dialogueCooldown--;
-        const currentZone = inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND';
+        const currentZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
         if (dog.lastZone && dog.lastZone !== currentZone && dog.dialogueCooldown <= 0) {
           const line = DOG_ZONE_LINES[Math.floor(Math.random() * DOG_ZONE_LINES.length)];
           setNarr(`> [${dog.name}]: "${line}"`);
@@ -7101,7 +7102,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const isFrag = newGang?.endsWith('_frag') ?? false;
           const factionTag = baseGang && allyGangs.includes(baseGang) ? ' [ALLIED — safe passage]' : baseGang && enemyGangs.includes(baseGang) ? ' [HOSTILE — enemy territory!]' : '';
           const fragTag = isFrag ? ' (OUTPOST — fractured territory)' : '';
-          if (baseGang === 'minx_city') setNarr(`> MINX CITY LIMITS${factionTag}${fragTag} — The dominant faction. SENIOR PABLO's reach extends even here. The other gangs operate in their shadow.`);
+          if (baseGang === 'minx_city') setNarr(`> ${CITY_NAME} LIMITS${factionTag}${fragTag} — The dominant faction. SENIOR PABLO's reach extends even here. The other gangs operate in their shadow.`);
           else if (baseGang === 'rust_syndicate') setNarr(`> RUST SYNDICATE TERRITORY${factionTag}${fragTag} — Spray-paint everywhere: GAME OVER / NO CONTINUES. These are PIKE RENNER's old crew. He doesn't claim them anymore.`);
           else if (baseGang === 'void_runners') setNarr(`> VOID RUNNERS TERRITORY${factionTag}${fragTag} — They broadcast static on loop. The code in the static is an old arcade game. Nobody has decoded it. Nobody that lived, anyway.`);
           else if (baseGang === 'static_monks') setNarr(`> STATIC MONKS TERRITORY${factionTag}${fragTag} — Silent. They move like shadows. KAEL VERNE says they guard something buried here from before the collapse.`);
@@ -9661,7 +9662,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(tx-4,ty,3,5); ctx.fillRect(tx+1,ty,3,5);
           ctx.fillStyle = '#224499'; ctx.fillRect(tx-3,ty-6,6,2);
         } else if (t.type === 'MINX_CITY') {
-          // MINX CITY — dominant gang, heavy armored soldier
+          // MINX CITY gang — dominant gang, heavy armored soldier
           ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-6,ty-9,12,10); // heavy body armor
           ctx.fillStyle = '#cc44ff'; ctx.beginPath(); ctx.arc(tx,ty-12,4.5,0,Math.PI*2); ctx.fill(); // head
           ctx.fillStyle = '#6622aa'; ctx.fillRect(tx-8,ty-8,3,7); ctx.fillRect(tx+5,ty-8,3,7); // arms
@@ -9671,7 +9672,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('MC', tx, ty-17);
           if (chasing) {
             ctx.fillStyle = '#cc44ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-            ctx.fillText('MINX CITY', tx, ty - 22);
+            ctx.fillText(CITY_NAME, tx, ty - 22);
           }
         } else if (t.type === 'MUTANT') {
           // Irregular blob
@@ -10851,7 +10852,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.dogCompanion.injured = false;
                   g.dogCompanion.dialogueCooldown = 300;
                   g.dogCompanion.attackCooldown = 0;
-                  g.dogCompanion.lastZone = inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND';
+                  g.dogCompanion.lastZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
                   g.threats = g.threats.filter(t => t !== stray);
                   setDogActive(true);
                   setDogName(name);
@@ -10987,7 +10988,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
         );
-        const curZone = inCityBounds(g.px, g.py) ? 'MINX CITY' : 'WASTELAND';
+        const curZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
         const netWorth = salary + goldBalance * FIAT_PER_GOLD;
         const usdConversion = (netWorth * 0.012).toFixed(2);
 
@@ -11051,7 +11052,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
-                      <StatRow label="ZONE" val={curZone} col={curZone === 'MINX CITY' ? '#00ff41' : '#88ff44'} />
+                      <StatRow label="ZONE" val={curZone} col={curZone === CITY_NAME ? '#00ff41' : '#88ff44'} />
                       {calendarStr && <StatRow label="CALENDAR" val={calendarStr} />}
                       {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#00ff41'} />}
                       <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#00ff41'} />
@@ -11186,7 +11187,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>MINX CITY — NETWORK STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{CITY_NAME} — NETWORK STATUS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                       <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
                       <StatRow label="POPULATION" val="2.4M REGISTERED" />
@@ -11196,8 +11197,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
                       <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
-                        {curZone === 'MINX CITY'
-                          ? 'MINX CITY — Corporate zone. SUITS patrols active. Standard services available.'
+                        {curZone === CITY_NAME
+                          ? `${CITY_NAME} — Corporate zone. SUITS patrols active. Standard services available.`
                           : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory.` : 'Open wasteland.'} Survival conditions. Stay mobile.`}
                       </div>
                     </div>
@@ -11433,9 +11434,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
               </div>
             )}
-            {char.hasBusiness && char.bizType === 'fictitious' && (
+            {char.hasBusiness && char.bizType === 'minx' && (
               <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(255,200,60,.25)', background: 'rgba(255,200,60,.04)', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: 'rgba(255,200,60,.7)', letterSpacing: '.12em' }}>FICTITIOUS ENTITY — STOREFRONT REQUIRED</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: 'rgba(255,200,60,.7)', letterSpacing: '.12em' }}>MINX CITY BUSINESS — STOREFRONT REQUIRED</div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.08em', marginTop: '.15rem' }}>{char.company} — Visit a storefront location to set up operations</div>
               </div>
             )}
@@ -12265,7 +12266,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           gs.current.salary -= price; setSalary(gs.current.salary);
           gs.current.cargo[cid] = (gs.current.cargo[cid] || 0) + 1;
           setCargo({ ...gs.current.cargo }); sfxCoin();
-          setNarr(`> BOUGHT 1x ${c.name} [ƒ${price.toLocaleString()} FIAT]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : 'Minx City'} and sell for profit.`);
+          setNarr(`> BOUGHT 1x ${c.name} [ƒ${price.toLocaleString()} FIAT]. Cargo: ${totalCargo + 1}/${MAX_CARGO}. Haul to ${isCity ? 'the Wasteland' : CITY_NAME} and sell for profit.`);
         };
         const doSell = (cid: string) => {
           const c = COMMODITIES.find(x => x.id === cid)!;
@@ -12396,12 +12397,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.2em' }}>MINX CITY MAP</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.2em' }}>{CITY_NAME} MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                 <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>+</button>
                 <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>−</button>
                 <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)' }}>{Math.round(mapZoom * 100)}%</span>
-                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: MINX CITY · PST</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: {CITY_NAME} · PST</div>
                 <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
@@ -12428,8 +12429,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
-              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
-              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">MINX CITY</text>
+              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
+              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
               <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
               {CITY_ZONES.map(z => (
                 <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} stroke="none" />
@@ -12951,7 +12952,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>PAX SUITS · MINX CITY BRANCH 01</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>PAX SUITS · {CITY_NAME} BRANCH 01</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
@@ -13630,7 +13631,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* Header */}
               <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
-                  <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>MINX CITY METRO</div>
+                  <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>{CITY_NAME} METRO</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>SUITS RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
                 </div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
@@ -13857,7 +13858,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); setGoldExchangeTab('gold'); } }}>
             <div style={{ width:620, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>MINX CITY EXCHANGE</div>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>{CITY_NAME} EXCHANGE</div>
               <div style={{ display:'flex', gap:'.4rem', marginBottom:'1rem' }}>
                 {tabBtn('gold', 'GOLD', '#FFD700')}
                 {tabBtn('assets', 'JEWELS & METALS', '#b9f2ff')}
@@ -13993,13 +13994,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const canUpgrade = (tier: HousingTier) => {
           if (tier.id === g.housingTier) return false;
           if (tier.minBizType === 'real' && char.bizType !== 'real') return false;
-          if (tier.minBizType === 'fictitious' && (!char.hasBusiness)) return false;
+          if (tier.minBizType === 'minx' && (!char.hasBusiness)) return false;
           if (tier.wealthMin && playerWealth < tier.wealthMin) return false;
           return true;
         };
         const getHomeLockReason = (tier: HousingTier): string | null => {
           if (tier.minBizType === 'real' && char.bizType !== 'real') return 'REAL BUSINESS REQUIRED';
-          if (tier.minBizType === 'fictitious' && !char.hasBusiness) return 'REGISTERED BUSINESS REQUIRED';
+          if (tier.minBizType === 'minx' && !char.hasBusiness) return 'REGISTERED BUSINESS REQUIRED';
           if (tier.wealthMin && playerWealth < tier.wealthMin) return `LOCKED — Requires ƒ${tier.wealthMin.toLocaleString()} FIAT wealth (you: ƒ${playerWealth.toLocaleString()})`;
           const tierIdx = HOUSING_TIERS.indexOf(tier);
           if (tierIdx >= 2) {
@@ -14210,9 +14211,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── ADMIN / BUSINESS REGISTRATION PANEL ──────────────────────────── */}
       {showAdmin && (() => {
         const g = gs.current;
-        const FICT_FEE = 50000;
+        const MINX_FEE = 50000;
         const REAL_FEE = 100000;
-        const regFee = adminBizType === 'real' ? REAL_FEE : FICT_FEE;
+        const regFee = adminBizType === 'real' ? REAL_FEE : MINX_FEE;
         const alreadyRegistered = !!char.hasBusiness;
         const bizCount = (g.businesses ?? []).length;
         const nextSlot = bizCount + 1;
@@ -14223,7 +14224,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const progressionBlockMsg = bizCount > 0 && !canRegisterMore
           ? `SLOT ${nextSlot} LOCKED — Requires Level ${reqLevel} (you: ${g.level}) and net worth ≥ ${reqGoldNetWorth}oz GOLD equivalent (you: ${goldNetWorth.toFixed(2)}oz). Keep building.`
           : null;
-        const FICT_INDUSTRIES = [
+        const MINX_INDUSTRIES = [
           'Thievery', 'Salvaging', 'Bounty Hunting', 'Shopkeeper', 'Trader',
           'Assassin', 'Maintenance', 'Doctor', 'Architect', 'Construction',
           'Engineering', 'Drug Dealing', 'Manufacturing', 'Advertising',
@@ -14239,12 +14240,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           'Food & Beverage', 'Construction', 'Energy',
           'Transportation', 'Security', 'Technology',
         ];
-        const industries = adminBizType === 'real' ? REAL_INDUSTRIES : FICT_INDUSTRIES;
+        const industries = adminBizType === 'real' ? REAL_INDUSTRIES : MINX_INDUSTRIES;
         const doRegister = () => {
           if (!adminBizName.trim()) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Enter a business name.'); return; }
           if (!adminBizIndustry) { sfxError(); setNarr('> DEPT. OF BUSINESS AFFAIRS — Select an industry.'); return; }
           if (progressionBlockMsg) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — ${progressionBlockMsg}`); return; }
-          if (g.salary < regFee) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Fictitious entity'} registration: ƒ${regFee.toLocaleString()}.`); return; }
+          if (g.salary < regFee) { sfxError(); setNarr(`> DEPT. OF BUSINESS AFFAIRS — Insufficient FIAT. ${adminBizType === 'real' ? 'Real enterprise' : 'Minx City business'} registration: ƒ${regFee.toLocaleString()}.`); return; }
           g.salary -= regFee; setSalary(g.salary); sfxCoin();
           const PLAY_WORKSTATION_ASSIGNMENTS: { match: RegExp; bid: string; label: string; slot: string }[] = [
             { match: /tech|software|saas|gaming|data|synapse|zaibatsu/i,         bid: 'data_vault',  label: 'DATA VAULT',    slot: 'BED 12 · DESK 3 · DEV TERMINAL' },
@@ -14284,7 +14285,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             char.workstationLabel = wsEntry.label;
             char.workstationSlot = wsEntry.slot;
           }
-          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Business ${(g.businesses ?? []).length} of ${nextSlot} slots available. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Business ${(g.businesses ?? []).length} of ${nextSlot} slots available. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
           setShowAdmin(false);
           setAdminBizName(''); setAdminBizIndustry('');
         };
@@ -14305,7 +14306,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div key={bi} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.5rem .7rem', background: 'rgba(0,255,65,.03)', marginBottom: '.3rem' }}>
                       <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.07em' }}>{biz.companyName}</div>
                       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '.1rem' }}>
-                        {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'FICTITIOUS ENTITY'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
+                        {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
                         Registered: {new Date(biz.registeredAt).toLocaleDateString()}
                       </div>
                     </div>
@@ -14326,7 +14327,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
-                    {bizCount === 0 ? `Register your first business in ${getBusinessLocationLabel(gs.current.px, gs.current.py)}.` : `Register business slot ${nextSlot}. Level ${g.level} ✓ · Net worth ${goldNetWorth.toFixed(1)}oz ✓.`} Fictitious entities (fronts, guilds, operations): ƒ{FICT_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
+                    {bizCount === 0 ? `Register your first business in ${getBusinessLocationLabel(gs.current.px, gs.current.py)}.` : `Register business slot ${nextSlot}. Level ${g.level} ✓ · Net worth ${goldNetWorth.toFixed(1)}oz ✓.`} Minx City businesses (fronts, guilds, operations): ƒ{MINX_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
                   </div>
                   <div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
@@ -14341,14 +14342,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS TYPE</div>
                     <div style={{ display: 'flex', gap: '.4rem' }}>
-                      {(['fictitious', 'real'] as const).map(t => (
+                      {(['minx', 'real'] as const).map(t => (
                         <button key={t} onClick={() => { setAdminBizType(t); setAdminBizIndustry(''); }} style={{
                           flex: 1, padding: '.5rem', background: adminBizType === t ? 'rgba(0,255,65,.12)' : 'transparent',
                           border: `1px solid ${adminBizType === t ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.15)'}`,
                           color: adminBizType === t ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer',
                           fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em',
                         }}>
-                          {t === 'fictitious' ? `FICTITIOUS — ƒ${FICT_FEE.toLocaleString()}` : `REAL ENTERPRISE — ƒ${REAL_FEE.toLocaleString()}`}
+                          {t === 'minx' ? `MINX CITY BUSINESS — ƒ${MINX_FEE.toLocaleString()}` : `REAL ENTERPRISE — ƒ${REAL_FEE.toLocaleString()}`}
                         </button>
                       ))}
                     </div>

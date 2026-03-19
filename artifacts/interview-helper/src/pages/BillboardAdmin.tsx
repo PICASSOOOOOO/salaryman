@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
+import { CITY_NAME } from '../gameSystems';
 
 interface BillboardRow {
   id: number; locationId: string; label: string;
@@ -127,7 +128,7 @@ export default function BillboardAdmin() {
           </div>
         )}
         <div style={{ marginTop: '1.5rem', fontSize: '.4rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.08em' }}>
-          MINX CITY BILLBOARD ADMINISTRATION · {boards.length} slots configured
+          {CITY_NAME} BILLBOARD ADMINISTRATION · {boards.length} slots configured
         </div>
       </div>
     </div>

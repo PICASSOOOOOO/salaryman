@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
+import { CITY_NAME } from '../gameSystems';
 
 interface CargoItem {
   id: string;
@@ -369,7 +370,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>LOCATION & TIME</div>
-                <StatRow label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === 'MINX CITY' ? '#00ff41' : '#88ff44'} />
+                <StatRow label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === CITY_NAME ? '#00ff41' : '#88ff44'} />
                 <StatRow label="PLAYTIME" val={fmtPlaytime(activeSave.playtime)} />
                 <StatRow label="LAST SAVE" val={fmtTime(activeSave.lastSavedAt)} />
                 {sd.passport && <StatRow label="PASSPORT" val="ACTIVE" col="#33ffaa" />}
@@ -500,7 +501,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
-                <StatRow label="SERVER" val="MINX CITY · PST" col="#00ff41" />
+                <StatRow label="SERVER" val={`${CITY_NAME} · PST`} col="#00ff41" />
                 <StatRow label="FACTION" val="SUITS" col="#b400ff" />
                 <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
               </div>
