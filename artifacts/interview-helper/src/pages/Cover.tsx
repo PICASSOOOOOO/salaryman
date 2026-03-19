@@ -121,28 +121,36 @@ export default function Cover() {
           </motion.button>
         </motion.div>
 
-        <motion.p
+        <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.45 }}
+          animate={{ opacity: 0.55 }}
           transition={{ duration: 0.6, delay: 0.7 }}
           style={{
-            fontSize: '0.7rem',
-            color: 'rgba(0,255,65,0.7)',
-            letterSpacing: '0.18em',
             marginTop: '2.5rem',
-            maxWidth: '34rem',
-            lineHeight: 1.9,
-            textTransform: 'uppercase',
-            textAlign: 'center',
-            textShadow: '0 0 12px rgba(0,255,65,0.3)',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '0.4rem 0.6rem',
+            flexWrap: 'wrap',
+            maxWidth: '30rem',
           }}
         >
-          BUILT ON CLAUDE SONNET &middot; GPT-4o &middot; OPENCLAW &middot; REACT &middot; NODE &middot; POSTGRES
-          <br />
-          <span style={{ fontSize: '0.6rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.22em' }}>
-            TWILIO &middot; RESEND &middot; WEB AUDIO API &middot; STRIPE &middot; CANVAS ENGINE
-          </span>
-        </motion.p>
+          {['CLAUDE SONNET', 'GPT-4o', 'OPENCLAW', 'REACT', 'NODE', 'POSTGRES', 'TWILIO', 'STRIPE'].map((t) => (
+            <span
+              key={t}
+              style={{
+                fontSize: '0.5rem',
+                letterSpacing: '0.16em',
+                color: 'rgba(0,255,65,0.55)',
+                border: '1px solid rgba(0,255,65,0.15)',
+                padding: '0.25rem 0.6rem',
+                textTransform: 'uppercase',
+                fontFamily: "'Share Tech Mono', monospace",
+              }}
+            >
+              {t}
+            </span>
+          ))}
+        </motion.div>
       </div>
     </div>
   );
