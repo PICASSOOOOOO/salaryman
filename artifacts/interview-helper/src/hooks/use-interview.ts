@@ -19,7 +19,7 @@ async function streamSSE(
     signal,
   });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP_${res.status}`);
 
   const reader = res.body?.getReader();
   const decoder = new TextDecoder();
@@ -475,7 +475,7 @@ function loadBusinessMemoryLocal(): string {
 
 async function fetchBusinessMemory(): Promise<string> {
   try {
-    const res = await fetch('/api/tools/memory');
+    const res = await fetch(`${import.meta.env.BASE_URL}api/tools/memory`);
     if (!res.ok) return loadBusinessMemoryLocal();
     const data = await res.json();
     return data.memory ?? loadBusinessMemoryLocal();
@@ -487,7 +487,7 @@ async function fetchBusinessMemory(): Promise<string> {
 async function saveBusinessMemory(mem: string) {
   try { localStorage.setItem(MEMORY_STORAGE_KEY, mem); } catch {}
   try {
-    await fetch('/api/tools/memory', {
+    await fetch(`${import.meta.env.BASE_URL}api/tools/memory`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ memory: mem }),
@@ -512,7 +512,7 @@ async function extractBusinessContext(
   existingContext: string
 ): Promise<string> {
   try {
-    const res = await fetch('/api/interview/extract-context', {
+    const res = await fetch(`${import.meta.env.BASE_URL}api/interview/extract-context`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -554,9 +554,28 @@ export function useAdvisorChat() {
 
     let fullText = '';
 
+    const advisorUrl = `${import.meta.env.BASE_URL}api/interview/advisor`;
+
+    const friendlyError = (raw: string): string => {
+      if (raw.includes('HTTP_401') || raw.includes('HTTP_403')) return 'AI service is not configured — contact support';
+      if (raw.includes('HTTP_429')) return 'rate limit reached — please wait a moment and try again';
+      if (raw.includes('HTTP_5')) return 'AI service is temporarily unavailable — please try again shortly';
+      if (raw === 'Failed to get response') return 'AI service is temporarily unavailable — please try again shortly';
+      if (raw === 'No stream') return 'connection dropped — please try again';
+      return 'connection error — please try again';
+    };
+
+    const handleError = (reason: string) => {
+      const errMsg: ChatMessage = { role: 'assistant', content: `⚠️ ${friendlyError(reason)}` };
+      const finalHistory = [...history, errMsg];
+      setMessages(finalHistory);
+      saveChatHistory(finalHistory);
+      setIsStreaming(false);
+    };
+
     try {
       await streamSSE(
-        '/api/interview/advisor',
+        advisorUrl,
         {
           messages: history.map(m => ({ role: m.role, content: m.content })),
           businessMemory,
@@ -588,16 +607,14 @@ export function useAdvisorChat() {
             }
           });
         },
-        (err) => {
-          const errMsg: ChatMessage = { role: 'assistant', content: `Something went wrong — ${err}` };
-          const finalHistory = [...history, errMsg];
-          setMessages(finalHistory);
-          saveChatHistory(finalHistory);
-          setIsStreaming(false);
-        }
+        (err) => handleError(err)
       );
-    } catch {
-      setIsStreaming(false);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setIsStreaming(false);
+      } else {
+        handleError(err instanceof Error ? err.message : 'unknown error');
+      }
     }
   }, [messages, isStreaming, businessMemory]);
 

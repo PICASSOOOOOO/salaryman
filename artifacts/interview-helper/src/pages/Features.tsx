@@ -127,11 +127,11 @@ const MODULES = [
   },
   {
     id: 'salaryman',
-    label: 'SALARYMAN WORLD',
+    label: 'SALARYMAN',
     codename: 'Social Environment',
     tagline: 'The corner office was always about who you knew. This is where you know them.',
     description:
-      'SALARYMAN World is an immersive social environment for business professionals — a place that feels like the old days, when deals were made over drinks, mentors were found in the next office, and your network was something you actually built in person. It\'s a digital space with the warmth and texture of a world you remember: the trading floors, the late nights, the handshakes that meant something. Here, you meet peers, build your reputation, and find your people.',
+      'SALARYMAN is an immersive social environment for business professionals — a place that feels like the old days, when deals were made over drinks, mentors were found in the next office, and your network was something you actually built in person. It\'s a digital space with the warmth and texture of a world you remember: the trading floors, the late nights, the handshakes that meant something. Here, you meet peers, build your reputation, and find your people.',
     features: [
       { name: 'Professional Social Hub', detail: 'Meet other SALARYMAN users in a shared environment. Find peers in your industry, connect with mentors, and build relationships that extend beyond the platform.' },
       { name: 'Factions', detail: 'Align with communities that share your professional values and interests. Find your tribe, build your standing, and operate within a network that actually means something.' },
