@@ -105,7 +105,7 @@ function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>voi
           <div style={{ marginBottom:'1rem', padding:'.75rem', border:'1px solid rgba(0,255,65,.2)', background:'rgba(0,12,0,.95)', fontSize:'.6rem', color:'rgba(0,255,65,.55)', lineHeight:1.7, letterSpacing:'.04em' }}>
             <div style={{ fontFamily:"'VT323',monospace", fontSize:'1rem', color:'#00ff41', marginBottom:'.5rem' }}>WELCOME TO SALARYMAN</div>
             <div>This is a multiplayer cyberpunk city simulation. You play as a worker in {CITY_NAME}, a corporate dystopia run by PABLO CORP.</div>
-            <div style={{ marginTop:'.4rem' }}><span style={{ color:'#ffaa00' }}>PLAIN MODE</span> replaces gaming terms (HP, XP, NPC, etc.) with everyday business language so everything makes sense even if you have never played a game before.</div>
+            <div style={{ marginTop:'.4rem' }}><span style={{ color:'#ffaa00' }}>BOOMER MODE</span> replaces gaming terms (HP, XP, NPC, etc.) with everyday business language so everything makes sense even if you have never played a game before.</div>
             <div style={{ marginTop:'.5rem', fontSize:'.55rem', color:'rgba(0,255,65,.35)' }}>
               <div><b>WASD</b> = Move your character</div>
               <div><b>E</b> = Interact with buildings and people</div>
@@ -632,7 +632,7 @@ export default function World() {
         </div>
         <div style={{ display:'flex',gap:'.5rem',alignItems:'center' }}>
           <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ fontSize:'.48rem',color:boomerMode?'#ffaa00':'rgba(0,255,65,.28)',border:boomerMode?'1px solid rgba(255,170,0,.4)':'1px solid rgba(0,255,65,.12)',background:boomerMode?'rgba(255,170,0,.08)':'transparent',padding:'2px 7px',cursor:'pointer' }}>
-            {boomerMode ? '🎮 PLAIN MODE ON' : '🎮 PLAIN MODE'}
+            {boomerMode ? '🎮 BOOMER MODE ON' : '🎮 BOOMER MODE'}
           </button>
           <button onClick={()=>{localStorage.removeItem('sm_char');setChar(null);gs.current.threats=THREATS_INIT.map(t=>({...t}));setIsDead(false);}} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>NEW GAME</button>
           <button onClick={()=>navigate('/')} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>← EXIT</button>

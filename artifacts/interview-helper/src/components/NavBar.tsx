@@ -74,9 +74,9 @@ export function NavBar() {
                   ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
                   : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
               }`}
-              title={boomerMode ? 'Plain Mode ON — click to disable' : 'Plain Mode: simpler labels'}
+              title={boomerMode ? 'Boomer Mode ON — click to disable' : 'Boomer Mode: simpler labels'}
             >
-              {boomerMode ? 'PLAIN ✓' : 'PLAIN'}
+              {boomerMode ? 'BOOMER ✓' : 'BOOMER'}
             </button>
           )}
         </div>
