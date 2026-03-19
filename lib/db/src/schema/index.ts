@@ -35,3 +35,4 @@ export * from "./zapier-webhooks";
 export * from "./appointments";
 export * from "./call-history";
 export * from "./subscribers";
+export * from "./campaigns";

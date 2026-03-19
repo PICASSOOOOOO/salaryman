@@ -26,6 +26,7 @@ const Reporting = lazy(() => import("@/pages/Reporting"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
 const Features = lazy(() => import("@/pages/Features"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
+const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -136,6 +137,7 @@ function AppShell() {
             <Route path="/reporting" component={Reporting} />
             <Route path="/mobile" component={MobileTerminal} />
             <Route path="/agents" component={AgentTeam} />
+            <Route path="/campaigns" component={Campaigns} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>

@@ -29,6 +29,13 @@
       "when": 1742342400000,
       "tag": "0003_salaryman_created_at",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773914617588,
+      "tag": "0004_salty_alex_wilder",
+      "breakpoints": true
     }
   ]
 }
