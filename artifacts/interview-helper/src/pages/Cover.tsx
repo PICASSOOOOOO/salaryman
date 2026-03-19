@@ -134,7 +134,7 @@ export default function Cover() {
             maxWidth: '30rem',
           }}
         >
-          {['CLAUDE SONNET', 'GPT-4o', 'OPENCLAW', 'KARPATHY GPT', 'REACT', 'NODE', 'POSTGRES', 'TWILIO', 'STRIPE'].map((t) => (
+          {['CLAUDE SONNET', 'GPT-4o', 'OPENCLAW', 'CLAUDE CODE', 'KARPATHY 243-LINE GPT', 'REACT', 'NODE', 'POSTGRES', 'STRIPE'].map((t) => (
             <span
               key={t}
               style={{
