@@ -79,6 +79,11 @@ export const PABLO_PRODUCTS = {
     short: "RECRUIT-8",
     desc: "Tactical personnel acquisition module. Post positions, track candidates through the pipeline, and manage your operational roster.",
   },
+  REPORTING: {
+    name: "INTEL-9 COMMAND BRIEF",
+    short: "INTEL-9",
+    desc: "Business intelligence module. Real-time stats on hiring pipeline, contacts, projects, and Zapier automation hooks.",
+  },
   TRANSLATOR: {
     name: "BABEL-3 LINGUAL CORTEX",
     short: "BABEL-3",

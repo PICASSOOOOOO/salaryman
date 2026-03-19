@@ -12,6 +12,7 @@ import worldRouter from "./world";
 import salarymanSavesRouter from "./salaryman-saves";
 import billboardRouter from "./billboards";
 import hiringRouter from "./hiring";
+import reportingRouter from "./reporting";
 import versionRouter from "./version";
 import studioRouter from "./studio";
 import storageRouter from "./storage";
@@ -36,5 +37,6 @@ router.use(hiringRouter);
 router.use(studioRouter);
 router.use(storageRouter);
 router.use(documentsRouter);
+router.use(reportingRouter);
 
 export default router;

@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import app from "./app";
 import { attachWorldServer } from './worldServer';
+import { dispatchWeeklySummaries } from './routes/reporting';
 
 const rawPort = process.env["PORT"];
 
@@ -20,3 +21,10 @@ attachWorldServer(httpServer);
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+setInterval(() => {
+  dispatchWeeklySummaries().catch(err => {
+    console.error("[Reporting] Weekly summary scheduler error:", err);
+  });
+}, WEEK_MS);

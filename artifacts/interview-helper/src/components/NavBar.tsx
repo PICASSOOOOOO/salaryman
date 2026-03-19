@@ -1,4 +1,4 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase, Code2, Archive, Layers } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase, Code2, Archive, Layers, BarChart2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -54,6 +54,7 @@ export function NavBar() {
     { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, pro: true, mobileShow: false },
     { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true, mobileShow: false },
     { path: '/studio', label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, icon: Layers, pro: true, mobileShow: false },
+    { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, pro: true, mobileShow: false },
   ];
 
   return (

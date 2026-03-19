@@ -31,3 +31,4 @@ export * from "./salaryman-saves";
 export * from "./billboards";
 export * from "./hiring";
 export * from "./documents";
+export * from "./zapier-webhooks";

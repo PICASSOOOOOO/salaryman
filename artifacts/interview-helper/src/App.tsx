@@ -22,6 +22,7 @@ const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const Hiring = lazy(() => import("@/pages/Hiring"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const Documents = lazy(() => import("@/pages/Documents"));
+const Reporting = lazy(() => import("@/pages/Reporting"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -113,6 +114,7 @@ function AppShell() {
             <Route path="/admin/billboards" component={BillboardAdmin} />
             <Route path="/studio" component={ContentStudio} />
             <Route path="/documents" component={Documents} />
+            <Route path="/reporting" component={Reporting} />
             <Route path="/mobile" component={MobileTerminal} />
             <Route component={NotFound} />
           </Switch>

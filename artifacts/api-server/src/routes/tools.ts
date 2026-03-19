@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { db, contactsTable, userMemoryTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { fireWebhook } from "../lib/webhook";
 
 const router: IRouter = Router();
 
@@ -254,6 +255,11 @@ router.post("/tools/contacts", async (req, res) => {
     .insert(contactsTable)
     .values({ userId: req.user.id, name, email, phone, address, age, ethnicity, hometown, timezone, kids, bio })
     .returning();
+
+  void fireWebhook(req.user.id, "new_contact", {
+    contact: { id: record.id, name: record.name, email: record.email },
+  });
+
   res.status(201).json({ contact: record });
 });
 

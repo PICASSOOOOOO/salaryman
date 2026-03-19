@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
+import { fireWebhook } from "../lib/webhook";
 
 const router: IRouter = Router();
 
@@ -126,6 +127,11 @@ router.post("/tools/hiring/applicants", async (req, res) => {
     source: body.source ?? "",
     stage: "applied",
   }).returning();
+
+  void fireWebhook(req.user!.id, "new_applicant", {
+    applicant: { id: record.id, name: record.name, email: record.email, jobId: record.jobId },
+  });
+
   res.status(201).json({ applicant: record });
 });
 
@@ -173,6 +179,10 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
         salary: job?.salaryMin ?? null,
         status: "active",
         startDate: new Date(),
+      });
+
+      void fireWebhook(req.user!.id, "new_hire", {
+        hire: { name: updated.name, role: job?.title ?? "", email: updated.email },
       });
     }
   }
