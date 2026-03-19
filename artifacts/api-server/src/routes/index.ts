@@ -13,6 +13,7 @@ import salarymanSavesRouter from "./salaryman-saves";
 import billboardRouter from "./billboards";
 import hiringRouter from "./hiring";
 import reportingRouter from "./reporting";
+import twilioRouter from "./twilio";
 import versionRouter from "./version";
 import studioRouter from "./studio";
 import storageRouter from "./storage";
@@ -40,5 +41,6 @@ router.use(storageRouter);
 router.use(documentsRouter);
 router.use(reportingRouter);
 router.use(calendarRouter);
+router.use(twilioRouter);
 
 export default router;

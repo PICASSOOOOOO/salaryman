@@ -23,6 +23,7 @@
     "openid-client": "^6.8.2",
     "resend": "4.0.0",
     "stripe": "^20.4.1",
+    "twilio": "^5.13.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

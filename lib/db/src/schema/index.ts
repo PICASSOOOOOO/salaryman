@@ -33,3 +33,4 @@ export * from "./hiring";
 export * from "./documents";
 export * from "./zapier-webhooks";
 export * from "./appointments";
+export * from "./call-history";

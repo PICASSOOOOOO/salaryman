@@ -26,6 +26,7 @@ import {
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
+import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
 import { PABLO_PRODUCTS } from '../lib/product-names';
@@ -2820,6 +2821,8 @@ const BUILDING_COST_LABEL: Record<string, string> = {
 
 const IS_PUBLIC_TERMINAL = (id: string) => id.startsWith('term_') || id.startsWith('van_');
 const IS_VAN = (id: string) => id.startsWith('van_');
+
+// ── World PSTN Phone Dialer (compact, for HUD) ──────────────────────────────
 
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
@@ -11324,7 +11327,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* PHONE CALL TAB */}
                 {pabloTab === 'call' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>PHONE SYSTEM</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>CALLL HOME</div>
                     {phoneCall.status === 'incoming' && (
                       <div style={{ border: '1px solid rgba(255,100,100,.5)', background: 'rgba(255,50,50,.08)', padding: '.5rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
                         <div style={{ ...VT, fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em' }}>INCOMING CALL</div>
@@ -11366,8 +11369,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         )}
                       </>
                     )}
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.15)', paddingTop: '.4rem', marginTop: '.3rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.3rem' }}>CALLL HOME · POWER DIALER</div>
+                      <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
+                    </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
-                      PHONE SYSTEM v1.0 · In-game voice calls only · Real telephony integration coming soon
+                      CALLL HOME v2.0 · CRM Power Dialer + PSTN via Twilio
                     </div>
                   </div>
                 )}

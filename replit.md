@@ -22,7 +22,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Terminal Hub** — The in-game menu is called "Terminal" (not "Menu"). The Terminal Hub is the main management interface containing Pablo AI (front and center, free-forever), player stats with net worth/USD conversion, missions, save/load, costume, and premium module listings. Accessible via top-right "☰ TERMINAL" button or [P] key. HUD is compact and positioned bottom-left showing only: HP hearts (Zelda-style), Gold, Fiat, zone, and weather indicator. Proximity notification bar at top of screen replaces the old news ticker. Chat is at bottom center.
 - **Mobile Terminal** — Terminal Hub mobile web view at `/mobile` route. Pablo AI tab is default (front and center). Provides remote access to character stats, Pablo AI chat, and business overview without 3D rendering. Connects to same cloud save data via `/api/salaryman/saves`. Accessible via links in Terminal footer and Profile page. Mobile-optimized with `100dvh`, max-width 480px, touch-friendly controls.
 - **PABLO** — in-world mega-corporation that manufactures all the tools (AI assistant, devices, software)
-- **Calll Home** — PABLO's CRM + dialer product, lives inside the suite (insurance industry, needs API connection)
+- **Calll Home** — PABLO's CRM power dialer product. Pulls contacts with phone numbers from the CRM database, supports multi-select batch calling (blast mode — fires multiple Twilio calls concurrently via `/twilio/batch-call`), individual dialing via manual dial pad or contact list, live call monitoring with per-call hangup or hang-up-all, and full call history log. Available on Home page (floating phone button, authenticated users) and World game screen (PHONE tab in Terminal Hub HUD). Backend: `artifacts/api-server/src/routes/twilio.ts`. Frontend: `artifacts/interview-helper/src/components/PhoneDialer.tsx`. DB: `lib/db/src/schema/call-history.ts`. Requires env vars: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`.
 - **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home)
 
 ### UI Theme
@@ -54,6 +54,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Email**: Resend connected via Replit integration connector (`connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`, connection `conn_resend_01KKJY7ZSMG96FN06W6BZEYYZV`). Uses `getUncachableResendClient()` from `artifacts/api-server/src/lib/resend.ts`. Do NOT use RESEND_API_KEY env var — use the connector.
 - **AI**: OpenAI via Replit integration (`@workspace/integrations-openai-ai-server`)
 - **Auth**: Replit Auth (OIDC) — session stored in PostgreSQL `sessions` table
+- **Twilio**: PSTN phone calls via Twilio SDK. Credentials stored as secrets: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (user account: alexduong@yourmedicareclub.com). NOT using the Replit Twilio connector — using direct secrets. Routes: `artifacts/api-server/src/routes/twilio.ts`. Schema: `call_history` table in `lib/db/src/schema/call-history.ts`. Frontend: `PhoneDialer` component on Home page (floating button), `WorldPhoneDialer` inline component in WorldPlay phone tab.
 
 ## Stack
 
