@@ -3157,6 +3157,7 @@ export default function WorldPlay() {
   const [secondaryWeapon, setSecondaryWeapon] = useState(_ss?.secondaryWeapon ?? 'REVOLVER');
   const secondaryWeaponRef = useRef(_ss?.secondaryWeapon ?? 'REVOLVER');
   const [showTopMenu, setShowTopMenu] = useState(false);
+  const topMenuRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const fogGridRef = useRef<Set<string>>(new Set());
   const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => {
@@ -3288,6 +3289,16 @@ export default function WorldPlay() {
     window.addEventListener('storage', sync);
     return () => { clearInterval(t); window.removeEventListener('storage', sync); };
   }, []);
+  useEffect(() => {
+    if (!showTopMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (topMenuRef.current && !topMenuRef.current.contains(e.target as Node)) {
+        setShowTopMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showTopMenu]);
   const [hudExpanded, setHudExpanded] = useState(false);
   const [showCostume, setShowCostume] = useState(false);
   const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
@@ -10817,6 +10828,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           })()}
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(255,255,255,.4)', marginLeft: '4px' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
         </div>
+        {/* Survival stats row — Hunger / Thirst / Energy */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {[
+            { label: 'HNG', value: hunger, color: '#ff8844', border: 'rgba(255,136,68,.35)' },
+            { label: 'THR', value: thirst, color: '#44aaff', border: 'rgba(68,170,255,.35)' },
+            { label: 'NRG', value: energy, color: '#ffdd22', border: 'rgba(255,221,34,.35)' },
+          ].map(({ label, value, color, border }) => (
+            <div key={label} style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${border}`, padding: '.2rem .4rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', color: 'rgba(255,255,255,.35)', letterSpacing: '.06em' }}>{label}</span>
+              <div style={{ width: 36, height: 5, background: 'rgba(255,255,255,.08)', position: 'relative', borderRadius: 1 }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.max(0, Math.min(100, value))}%`, background: color, borderRadius: 1, opacity: 0.85, transition: 'width .4s' }} />
+              </div>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color, minWidth: 22, textAlign: 'right' }}>{Math.floor(value)}</span>
+            </div>
+          ))}
+        </div>
         {/* Gold + Fiat + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
@@ -10855,8 +10882,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           )}
         </div>
         {/* Gold Standard toggle */}
-        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(255,215,0,.2)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(255,215,0,.5)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
-          {goldStandardToggle ? '⊕ CURRENCY: GOLD' : '⊕ CURRENCY: FIAT'}
+        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(0,255,65,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(0,255,65,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
+          ⊕
         </button>
       </div>
 
@@ -10875,7 +10902,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* TOP-RIGHT — Pause / Chat / Menu / Pablo AI dropdown */}
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '4px', position: 'relative' }} ref={topMenuRef}>
           <button
             onClick={() => {
               setGamePaused(true);
@@ -10934,9 +10961,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           >
             🌐 TRANSLATE
           </button>
-        </div>
-        {showTopMenu && (
-          <div style={{ width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem' }}>
+          {showTopMenu && (
+          <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem', zIndex: 200 }}>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
             <button onClick={() => {
               const g = gs.current;
@@ -10985,21 +11011,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO</div>
             </div>
-            <button onClick={toggleVoice} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
             </button>
             {voice && (
-              <button onClick={toggleMicMute} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { toggleMicMute(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
               </button>
             )}
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
-            <button onClick={() => { const m = toggleMuteMusic(); setMusicMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: musicMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { const m = toggleMuteMusic(); setMusicMuted(m); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: musicMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {musicMuted ? '🔇 MUTE SCORE' : '🎵 SCORE'}
             </button>
-            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
             </button>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
@@ -11049,6 +11075,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             )}
           </div>
         )}
+        </div>
         {showTranslatorOverlay && (
           <div style={{ width: 260, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(236,72,153,.35)', padding: '.5rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ec4899', letterSpacing: '.12em', marginBottom: '.4rem' }}>{PABLO_PRODUCTS.TRANSLATOR.short}</div>
