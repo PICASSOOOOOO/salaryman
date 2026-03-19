@@ -26,8 +26,9 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Picassoo.ai** — company umbrella (3 products: Salaryman, Calll Home)
 
 ### UI Theme
-- CRT/Pip-Boy aesthetic: phosphor green (#00ff41) on black, scan lines, VT323 + Share Tech Mono fonts
-- All borders square (no border-radius), terminal language (UPPERCASE labels, monospace)
+- **Non-game pages** (Cover, Features, NavBar, and all app pages): Modern dark SaaS aesthetic (Linear/Vercel inspired). Dark zinc base (#09090b background), emerald green accent (hsl 142 71% 45%), Inter font for body/UI copy, Share Tech Mono for brand headings and nav labels. Slight border-radius (4-12px), frosted/muted card backgrounds, CRT scanlines **disabled** on these pages.
+- **Game pages** (WorldPlay, WorldMenu, MobileTerminal): CRT/Pip-Boy aesthetic retained — phosphor green (#00ff41) on black, scan lines (via `body.game-route::before/after`), VT323 + Share Tech Mono fonts, square borders. App.tsx adds `game-route` class to `<body>` when on game routes.
+- CRT utility classes (`.crt-text`, `.crt-panel`, `.crt-btn`, etc.) preserved in index.css for game components.
 - Multiple skins planned (same features, different look)
 
 ## Freemium Model
@@ -40,6 +41,7 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - **Webhook endpoint**: `POST /api/plan/activate` — protected by `WEBHOOK_SECRET` env var for legacy/manual callbacks
 - **Stripe payment**: Stripe Checkout integration for Pro tier subscriptions. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`. Endpoints: `POST /api/stripe/create-checkout-session` (creates Checkout session, requires auth), `POST /api/stripe/webhook` (handles `checkout.session.completed` → upgrade to pro, `customer.subscription.deleted` → downgrade to free). Raw body parsing is skipped for webhook route in `app.ts`. Upgrade page handles `?checkout=success` and `?checkout=cancel` query params. `usePlan` hook invalidates cache on `?checkout=success`.
 - **DB table**: `user_tiers` — stores tier assignments; auto-created by `ensureTables()` in `plan.ts`
+- **Email Subscribers**: `subscribers` DB table (`id`, `email` unique, `source`, `created_at`). `POST /api/subscribers` endpoint in `artifacts/api-server/src/routes/subscribers.ts`. Sends a welcome email via Resend on first subscribe. Gracefully returns `{ alreadySubscribed: true }` for duplicate emails. Subscribe form lives on the Cover (landing) page.
 - **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/api-server/src/routes/stripe.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
 
 ## Documents / ARCHIVE-X / INK-6 (Pro feature at `/documents`)

@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo } from "react";
+import { Suspense, lazy, memo, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,6 +38,7 @@ const queryClient = new QueryClient({
 });
 
 const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards"];
+const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
   return (
@@ -47,8 +48,8 @@ function CRTFallback() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#030803",
-        color: "rgba(0,255,65,0.7)",
+        background: "#09090b",
+        color: "rgba(34,197,94,0.7)",
         fontFamily: "monospace",
         fontSize: "0.85rem",
         letterSpacing: "0.1em",
@@ -84,6 +85,19 @@ function AppShell() {
   const isConsole = pathname === "/console" || pathname.startsWith("/console/");
   const isHiring = pathname === "/hiring" || pathname.startsWith("/hiring/");
   const isKeepAliveActive = isHome || isConsole || isHiring;
+
+  const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+
+  useEffect(() => {
+    if (isGameRoute) {
+      document.body.classList.add("game-route");
+    } else {
+      document.body.classList.remove("game-route");
+    }
+    return () => {
+      document.body.classList.remove("game-route");
+    };
+  }, [isGameRoute]);
 
   return (
     <>

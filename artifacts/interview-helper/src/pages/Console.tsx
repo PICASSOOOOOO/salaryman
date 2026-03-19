@@ -142,20 +142,20 @@ export default function Console() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative z-20 px-4 py-2 flex items-center gap-3"
-        style={{ background: 'rgba(0,255,65,0.03)', borderBottom: '1px solid rgba(0,255,65,0.08)' }}>
+        style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(34,197,94,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
           <button onClick={() => setConsoleView('terminal')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(0,255,65,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(0,255,65,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(0,255,65,0.7)' : 'rgba(0,255,65,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(34,197,94,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(34,197,94,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Terminal className="w-3.5 h-3.5 shrink-0" />
             {boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short}
           </button>
           <button onClick={() => setConsoleView('lab')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(0,200,255,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(0,200,255,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(0,200,255,0.7)' : 'rgba(0,255,65,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Music2 className="w-3.5 h-3.5 shrink-0" />
             {boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short}
           </button>
         </div>
-        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.06em' }}>
           {consoleView === 'terminal'
             ? (boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.')
             : (boomerMode ? 'DAW 1999 — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
@@ -164,7 +164,7 @@ export default function Console() {
 
       {consoleView === 'lab' ? (
         <div className="flex-1 relative z-10 min-h-0 overflow-auto">
-          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#22c55e', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
             <SoundLab />
           </Suspense>
         </div>

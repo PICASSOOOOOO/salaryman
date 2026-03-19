@@ -20,6 +20,7 @@ import storageRouter from "./storage";
 import documentsRouter from "./documents";
 import calendarRouter from "./calendar";
 import aiAgentsRouter from "./ai-agents";
+import subscribersRouter from "./subscribers";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(reportingRouter);
 router.use(calendarRouter);
 router.use(twilioRouter);
 router.use(aiAgentsRouter);
+router.use(subscribersRouter);
 
 export default router;

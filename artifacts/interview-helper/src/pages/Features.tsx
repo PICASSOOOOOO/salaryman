@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
-import { ChevronRight, ArrowLeft, Terminal } from 'lucide-react';
+import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
-import { CITY_NAME } from '@/gameSystems';
 
 const MODULES = [
   {
@@ -40,7 +38,7 @@ const MODULES = [
     codename: 'Recall-6 Registry',
     tagline: 'Your professional network, organized the way your brain actually works.',
     description:
-      'The old Rolodex is gone. Your LinkedIn is a crowded mess. Contacts is the relationship intelligence layer that serious professionals have always needed. It\'s not just a list of names — it\'s a living record of every connection you\'ve made, every meeting you\'ve had, and every follow-up you\'ve promised. The platform you build your career on should remember everything so you don\'t have to.',
+      'The old Rolodex is gone. Your LinkedIn is a crowded mess. Contacts is the relationship intelligence layer that serious professionals have always needed. It\'s not just a list of names — it\'s a living record of every connection you\'ve made, every meeting you\'ve had, and every follow-up you\'ve promised.',
     features: [
       { name: 'Contact Registry', detail: 'Store and organize professional contacts with rich context: where you met, what industry they\'re in, what you talked about, and what you need to follow up on.' },
       { name: 'Meeting Logs', detail: 'Every meeting, documented. Add notes, tag attendees, link to action items. When you need to remember the details of a conversation from six months ago, it\'s right there.' },
@@ -52,13 +50,13 @@ const MODULES = [
     codename: 'Recruit-8 Field Ops',
     tagline: 'Run your entire talent operation from a single terminal.',
     description:
-      'Whether you\'re a founder hiring your first ten people or an operator managing a growing team, Hiring gives you the full stack. Post roles, evaluate candidates, conduct structured interviews, manage your staff, and present your company like you mean it — all in one place. The old days of juggling spreadsheets and inboxes are over.',
+      'Whether you\'re a founder hiring your first ten people or an operator managing a growing team, Hiring gives you the full stack. Post roles, evaluate candidates, conduct structured interviews, manage your staff, and present your company like you mean it — all in one place.',
     features: [
       { name: 'Job Board', detail: 'Post and manage open positions. Control visibility, application requirements, and pipeline stages from a unified dashboard.' },
       { name: 'Applicant Pipeline', detail: 'Track every candidate through every stage. Move them forward, flag them, leave notes, share feedback with your team.' },
       { name: 'Staff Management', detail: 'Manage your existing team alongside your hiring pipeline. Headcount planning, role tracking, and org visibility in one view.' },
-      { name: 'Interview Conductor', detail: 'Run structured, repeatable interviews with built-in question sets, scoring rubrics, and note-taking — so every candidate gets a fair and thorough evaluation.' },
-      { name: 'Presentations', detail: 'Build and deliver polished pitch decks and company presentations directly inside the platform. Close candidates the same way you close clients.' },
+      { name: 'Interview Conductor', detail: 'Run structured, repeatable interviews with built-in question sets, scoring rubrics, and note-taking.' },
+      { name: 'Presentations', detail: 'Build and deliver polished pitch decks and company presentations directly inside the platform.' },
     ],
   },
   {
@@ -67,11 +65,11 @@ const MODULES = [
     codename: 'Ink-6 Phantom Printer',
     tagline: 'Contracts, invoices, and files — professional-grade paperwork without the paperwork.',
     description:
-      'The back-office work that nobody talks about — invoicing clients, drafting contracts, storing critical files — has always been a friction point for serious professionals. Documents eliminates that friction. Everything is templated, versioned, and stored securely. Send an invoice in under two minutes. Have a contract ready before the other side blinks.',
+      'The back-office work that nobody talks about — invoicing clients, drafting contracts, storing critical files — has always been a friction point for serious professionals. Documents eliminates that friction. Everything is templated, versioned, and stored securely.',
     features: [
       { name: 'Invoices', detail: 'Generate clean, professional invoices in seconds. Customize for your brand, send directly from the platform, and track payment status.' },
       { name: 'Contracts', detail: 'Draft and manage agreements using proven templates. Capture signatures, store signed copies, and maintain a full audit trail.' },
-      { name: 'File Storage', detail: 'A secure, organized home for every critical business document. Version history, access control, and instant retrieval — no more hunting through email threads.' },
+      { name: 'File Storage', detail: 'A secure, organized home for every critical business document. Version history, access control, and instant retrieval.' },
     ],
   },
   {
@@ -80,7 +78,7 @@ const MODULES = [
     codename: 'Chrono-4 Array',
     tagline: 'Time is your only non-renewable resource. Manage it like one.',
     description:
-      'Calendar is built for professionals who treat time with respect. It\'s not a scheduling widget bolted onto the side — it\'s a central part of how SALARYMAN thinks about your workday. See everything, schedule with precision, and never miss a commitment. Integrated reminders mean your calendar reaches out to you, not the other way around.',
+      'Calendar is built for professionals who treat time with respect. It\'s not a scheduling widget bolted onto the side — it\'s a central part of how SALARYMAN thinks about your workday. See everything, schedule with precision, and never miss a commitment.',
     features: [
       { name: 'Month / Week / Day Views', detail: 'Switch between macro and micro perspectives instantly. Plan the quarter or optimize tomorrow — the view adapts to how you\'re thinking.' },
       { name: 'Appointments', detail: 'Create, edit, and manage appointments with full context: location, attendees, agenda, linked contacts, and follow-up notes.' },
@@ -93,7 +91,7 @@ const MODULES = [
     codename: 'Command Deck v4.0',
     tagline: 'Your command center. Everything you\'re building, in one view.',
     description:
-      'Dashboard is where you orient yourself at the start of every day. It pulls together your projects, your knowledge, and your brand into a single, coherent view of what you\'re working on and why it matters. For professionals who build things — companies, careers, reputations — Dashboard is the home base.',
+      'Dashboard is where you orient yourself at the start of every day. It pulls together your projects, your knowledge, and your brand into a single, coherent view of what you\'re working on and why it matters.',
     features: [
       { name: 'Projects', detail: 'Track every active initiative with status, milestones, and linked resources. See what\'s moving and what\'s stalled at a glance.' },
       { name: 'Knowledge Vault', detail: 'A private, searchable repository for everything you\'ve learned. Notes, frameworks, lessons from experience — externalize your thinking so you can build on it.' },
@@ -106,11 +104,11 @@ const MODULES = [
     codename: 'Forge-7 Content Matrix',
     tagline: 'Create like a creative director. Ship like a machine.',
     description:
-      'Studio is the content production arm of SALARYMAN. In the old days you needed an agency, a freelancer, or a lot of patience to produce professional-grade visuals and copy. Studio puts that capability directly in your hands. Design graphics, generate images, write compelling copy — all without leaving your workflow.',
+      'Studio is the content production arm of SALARYMAN. Design graphics, generate images, write compelling copy — all without leaving your workflow.',
     features: [
-      { name: 'Graphics Studio', detail: 'A professional design environment for creating visual assets — social posts, presentations, marketing materials, pitch decks. Polished output, no design background required.' },
+      { name: 'Graphics Studio', detail: 'A professional design environment for creating visual assets — social posts, presentations, marketing materials, pitch decks.' },
       { name: 'AI Image Generation', detail: 'Describe what you need and Studio renders it. Product mockups, concept illustrations, branded imagery — on demand, on brand.' },
-      { name: 'Copywriting Studio', detail: 'Write better, faster. Generate first drafts, refine messaging, adapt tone for different audiences. The words that represent your business deserve to be sharp.' },
+      { name: 'Copywriting Studio', detail: 'Write better, faster. Generate first drafts, refine messaging, adapt tone for different audiences.' },
     ],
   },
   {
@@ -119,7 +117,7 @@ const MODULES = [
     codename: 'Intel-9 Command Brief',
     tagline: 'Turn your business data into decisions.',
     description:
-      'Reports is the intelligence layer — the part of SALARYMAN that helps you understand what\'s actually happening in your business. Connect your data sources, build views that matter, and integrate with the tools you already use. In the old days you needed a data analyst to pull these insights. Now you pull them yourself.',
+      'Reports is the intelligence layer — the part of SALARYMAN that helps you understand what\'s actually happening in your business. Connect your data sources, build views that matter, and integrate with the tools you already use.',
     features: [
       { name: 'Business Intelligence', detail: 'Dashboards, charts, and reports built around your actual business metrics. Revenue, pipeline, activity, performance — visualized clearly so you can act on what you see.' },
       { name: 'Zapier Integration', detail: 'Connect SALARYMAN to hundreds of external tools through Zapier. Automate workflows, sync data, and build the integrations your business actually needs.' },
@@ -131,301 +129,50 @@ const MODULES = [
     codename: 'Social Environment',
     tagline: 'The corner office was always about who you knew. This is where you know them.',
     description:
-      'SALARYMAN is an immersive social environment for business professionals — a place that feels like the old days, when deals were made over drinks, mentors were found in the next office, and your network was something you actually built in person. It\'s a digital space with the warmth and texture of a world you remember: the trading floors, the late nights, the handshakes that meant something. Here, you meet peers, build your reputation, and find your people.',
+      'SALARYMAN is an immersive social environment for business professionals — a place that feels like the old days, when deals were made over drinks, mentors were found in the next office, and your network was something you actually built in person.',
     features: [
       { name: 'Professional Social Hub', detail: 'Meet other SALARYMAN users in a shared environment. Find peers in your industry, connect with mentors, and build relationships that extend beyond the platform.' },
       { name: 'Factions', detail: 'Align with communities that share your professional values and interests. Find your tribe, build your standing, and operate within a network that actually means something.' },
-      { name: 'Economy', detail: 'A functional in-world economy that reflects real professional dynamics. Resources, reputation, and relationships have value here — the same way they do in the real world.' },
-      { name: 'ƒ FIAT Currency', detail: 'Every worker earns a weekly salary paid in ƒ FIAT — the standard currency of MINX CITY. Spend it on rent, upgrades, equipment, and market goods. Your salary grows as your career advances.' },
-      { name: 'Gold (oz)', detail: 'Gold is the hard reserve asset of the world. Scarce, valuable, and untethered from inflation. Smart players hedge FIAT earnings into gold to protect and grow long-term net worth.' },
-      { name: 'Net Worth', detail: 'Your standing in the world is measured by net worth: FIAT holdings plus the gold-equivalent value of your assets. It\'s a number that tells the room who you are before you say a word.' },
-      { name: 'Savings & Spending', detail: 'Disciplined players build savings that convert to real-world value — a system that rewards consistency and forward thinking over reckless spending.' },
     ],
   },
 ];
 
-function LiveServerStatus() {
-  const [serverOnline, setServerOnline] = useState<number | null>(null);
-  const [serverMax, setServerMax] = useState(50);
-  const [fetchFailed, setFetchFailed] = useState(false);
-  const [blinkOn, setBlinkOn] = useState(true);
-
-  useEffect(() => {
-    const load = () => {
-      fetch(`${import.meta.env.BASE_URL}api/world/server-status`)
-        .then(r => r.json())
-        .then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); setFetchFailed(false); })
-        .catch(() => { setFetchFailed(true); });
-    };
-    load();
-    const id = setInterval(load, 15000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => setBlinkOn(b => !b), 800);
-    return () => clearInterval(id);
-  }, []);
-
-  const isOnline = !fetchFailed && serverOnline !== null;
-  const pct = serverOnline !== null ? Math.round((serverOnline / serverMax) * 100) : 0;
-
-  const ECONOMY_STATS = [
-    { label: 'ƒ MIN SALARY', value: 'ƒ 15,000', color: 'rgba(0,255,65,0.65)' },
-    { label: 'ƒ MAX SALARY', value: 'ƒ 250,000', color: 'rgba(180,255,100,0.75)' },
-    { label: 'GOLD RATE', value: '1 oz = ƒ100K', color: 'rgba(255,204,0,0.8)' },
-    { label: 'CURRENCY', value: 'ƒ FIAT', color: 'rgba(0,255,65,0.65)' },
-    { label: 'SAVINGS APY', value: '1.2%', color: 'rgba(100,200,255,0.75)' },
-  ];
-
+function ModuleCard({ module, index }: { module: typeof MODULES[number]; index: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
-      style={{
-        border: '1px solid rgba(0,255,65,0.22)',
-        background: 'linear-gradient(135deg, rgba(0,255,65,0.03), rgba(0,180,50,0.015))',
-        marginBottom: '2.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
+      transition={{ duration: 0.35, delay: 0.04 + index * 0.03 }}
+      className="rounded-xl border border-white/8 bg-white/[0.025] p-6 flex flex-col"
     >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px)',
-          pointerEvents: 'none',
-        }}
-      />
-
-      <div
-        style={{
-          borderBottom: '1px solid rgba(0,255,65,0.12)',
-          padding: '0.65rem 1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem',
-          position: 'relative',
-        }}
-      >
-        <Terminal size={13} style={{ color: 'rgba(0,255,65,0.45)' }} />
-        <span
-          style={{
-            fontFamily: "'VT323', monospace",
-            fontSize: '1.05rem',
-            color: 'rgba(0,255,65,0.85)',
-            letterSpacing: '0.2em',
-          }}
-        >
-          {CITY_NAME}
-        </span>
-        <span
-          style={{
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '0.48rem',
-            color: 'rgba(0,255,65,0.3)',
-            letterSpacing: '0.1em',
-          }}
-        >
-          SERVER: PST · LIVE SERVER STATUS
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <span
-            style={{
-              display: 'inline-block',
-              width: '5px',
-              height: '5px',
-              borderRadius: '50%',
-              background: isOnline ? '#00ff41' : 'rgba(0,255,65,0.2)',
-              boxShadow: isOnline && blinkOn ? '0 0 6px #00ff41' : 'none',
-              transition: 'box-shadow 0.2s',
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.45rem',
-              letterSpacing: '0.12em',
-              color: isOnline ? 'rgba(0,255,65,0.65)' : 'rgba(0,255,65,0.25)',
-            }}
-          >
-            {fetchFailed ? 'OFFLINE' : isOnline ? 'ONLINE' : 'CONNECTING...'}
-          </span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          padding: '0.75rem 1.25rem',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.5rem 2.5rem',
-          fontFamily: "'Share Tech Mono', monospace",
-          position: 'relative',
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>POPULATION</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>
-            {serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>CAPACITY</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>
-            {serverOnline !== null ? `${pct}%` : '—'}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>SERVER</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>PST · MINX CITY</div>
-        </div>
-        {ECONOMY_STATS.map(stat => (
-          <div key={stat.label}>
-            <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.22)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>{stat.label}</div>
-            <div style={{ fontSize: '0.68rem', color: stat.color }}>{stat.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {serverOnline !== null && (
-        <div style={{ padding: '0 1.25rem 0.75rem', position: 'relative' }}>
-          <div
-            style={{
-              height: '2px',
-              background: 'rgba(0,255,65,0.08)',
-              borderRadius: '1px',
-              overflow: 'hidden',
-            }}
-          >
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-              style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, rgba(0,255,65,0.35), rgba(0,255,65,0.6))',
-                boxShadow: '0 0 6px rgba(0,255,65,0.3)',
-              }}
-            />
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function ModuleCard({ module, index }: { module: typeof MODULES[number]; index: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.05 + index * 0.04 }}
-      style={{
-        border: '1px solid rgba(0,255,65,0.18)',
-        background: 'rgba(0,255,65,0.02)',
-        padding: '1.75rem 1.5rem',
-        position: 'relative',
-      }}
-    >
-      <div
-        style={{
-          fontSize: '0.55rem',
-          letterSpacing: '0.22em',
-          color: 'rgba(0,255,65,0.3)',
-          marginBottom: '0.25rem',
-          textTransform: 'uppercase',
-        }}
-      >
+      <div className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest mb-1.5">
         {module.codename}
       </div>
-      <div
-        style={{
-          fontSize: '1rem',
-          letterSpacing: '0.16em',
-          color: '#00ff41',
-          fontWeight: 'bold',
-          marginBottom: '0.35rem',
-          textTransform: 'uppercase',
-          textShadow: '0 0 12px rgba(0,255,65,0.2)',
-        }}
-      >
+      <div className="font-['Share_Tech_Mono',monospace] text-sm text-zinc-100 tracking-widest uppercase mb-1.5">
         {module.label}
       </div>
-      <div
-        style={{
-          fontSize: '0.65rem',
-          letterSpacing: '0.06em',
-          color: 'rgba(0,255,65,0.55)',
-          marginBottom: '1rem',
-          fontStyle: 'italic',
-        }}
-      >
+      <p className="text-xs text-zinc-500 italic mb-4 leading-relaxed">
         {module.tagline}
-      </div>
-      <div
-        style={{
-          width: '100%',
-          height: '1px',
-          background: 'rgba(0,255,65,0.1)',
-          marginBottom: '1rem',
-        }}
-      />
-      <p
-        style={{
-          fontSize: '0.65rem',
-          color: 'rgba(0,255,65,0.45)',
-          letterSpacing: '0.04em',
-          lineHeight: 1.75,
-          marginBottom: '1.25rem',
-        }}
-      >
+      </p>
+
+      <div className="w-full h-px bg-white/6 mb-4" />
+
+      <p className="text-xs text-zinc-600 leading-relaxed mb-5">
         {module.description}
       </p>
-      <div
-        style={{
-          width: '100%',
-          height: '1px',
-          background: 'rgba(0,255,65,0.07)',
-          marginBottom: '0.9rem',
-        }}
-      />
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+
+      <div className="w-full h-px bg-white/4 mb-4" />
+
+      <ul className="flex flex-col gap-3 mt-auto">
         {module.features.map((f) => (
           <li key={f.name}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: '0.4rem',
-                marginBottom: '0.2rem',
-              }}
-            >
-              <span style={{ color: 'rgba(0,255,65,0.3)', fontSize: '0.5rem' }}>▸</span>
-              <span
-                style={{
-                  fontSize: '0.63rem',
-                  color: 'rgba(0,255,65,0.75)',
-                  letterSpacing: '0.08em',
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                }}
-              >
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-emerald-500/50 text-[10px]">▸</span>
+              <span className="text-[11px] font-mono text-zinc-300 uppercase tracking-wider">
                 {f.name}
               </span>
             </div>
-            <p
-              style={{
-                fontSize: '0.6rem',
-                color: 'rgba(0,255,65,0.38)',
-                letterSpacing: '0.04em',
-                lineHeight: 1.65,
-                marginLeft: '0.9rem',
-                margin: '0 0 0 0.9rem',
-              }}
-            >
+            <p className="text-[11px] text-zinc-600 leading-relaxed ml-4">
               {f.detail}
             </p>
           </li>
@@ -440,217 +187,78 @@ export default function Features() {
   const { login } = useAuth();
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#030803',
-        fontFamily: "'Share Tech Mono', monospace",
-        position: 'relative',
-        overflowX: 'hidden',
-      }}
-    >
+    <div className="min-h-screen bg-[#09090b] relative overflow-x-hidden">
       <style>{`
         .features-grid { grid-template-columns: repeat(3, 1fr); }
         @media (max-width: 1100px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 680px) { .features-grid { grid-template-columns: 1fr; } }
       `}</style>
 
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 50,
-          background:
-            'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)',
-        }}
-      />
+      {/* Ambient glow */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
+      </div>
 
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '3rem 1.5rem 5rem',
-        }}
-      >
+      <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-12 pb-20">
+
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '1rem',
-            marginBottom: '3.5rem',
-          }}
+          transition={{ duration: 0.35 }}
+          className="flex items-center justify-between mb-10"
         >
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              background: 'none',
-              border: '1px solid rgba(0,255,65,0.2)',
-              color: 'rgba(0,255,65,0.5)',
-              cursor: 'pointer',
-              padding: '0.5rem 0.85rem',
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.65rem',
-              letterSpacing: '0.12em',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
-          >
-            <ArrowLeft size={12} /> BACK
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-sm transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <div className="w-px h-5 bg-white/8" />
+            <div>
+              <h1 className="font-['Share_Tech_Mono',monospace] text-lg text-zinc-100 tracking-widest uppercase">Platform Overview</h1>
+              <p className="text-[11px] font-mono text-zinc-600 tracking-widest mt-0.5">{MODULES.length} modules · full feature breakdown</p>
+            </div>
+          </div>
 
           <motion.button
             onClick={login}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              fontSize: '0.75rem',
-              letterSpacing: '0.14em',
-              color: '#030803',
-              background: '#00ff41',
-              border: 'none',
-              padding: '0.6rem 1.5rem',
-              cursor: 'pointer',
-              fontFamily: "'Share Tech Mono', monospace",
-              boxShadow: '0 0 20px rgba(0,255,65,0.25)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors"
           >
-            GET STARTED FREE <ChevronRight size={13} />
+            Get started free <ChevronRight className="w-4 h-4" />
           </motion.button>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.05 }}
-          style={{ marginBottom: '0.5rem' }}
-        >
-          <div
-            style={{
-              fontSize: '0.55rem',
-              letterSpacing: '0.22em',
-              color: 'rgba(0,255,65,0.3)',
-              marginBottom: '0.5rem',
-            }}
-          >
-            SYSTEM MANIFEST
-          </div>
-          <h1
-            style={{
-              fontSize: 'clamp(1.6rem, 4vw, 2.5rem)',
-              letterSpacing: '0.12em',
-              color: '#00ff41',
-              textShadow: '0 0 28px rgba(0,255,65,0.35)',
-              marginBottom: '0.6rem',
-              lineHeight: 1.1,
-            }}
-          >
-            EVERY APP IN ONE
-          </h1>
-          <p
-            style={{
-              fontSize: '0.72rem',
-              color: 'rgba(0,255,65,0.45)',
-              letterSpacing: '0.06em',
-              maxWidth: '44rem',
-              lineHeight: 1.75,
-              marginBottom: '2.5rem',
-            }}
-          >
-            SALARYMAN is the platform built for professionals who remember when work meant something — when your
-            tools were sharp, your network was real, and getting things done didn't require ten different subscriptions.
-            Everything you need to run your professional life, in one place.
-          </p>
-        </motion.div>
-
-        <LiveServerStatus />
-
-        <div
-          className="features-grid"
-          style={{
-            display: 'grid',
-            gap: '1rem',
-          }}
-        >
-          {MODULES.map((mod, i) => (
-            <ModuleCard key={mod.id} module={mod} index={i} />
+        {/* Module grid */}
+        <div className="grid features-grid gap-4">
+          {MODULES.map((module, index) => (
+            <ModuleCard key={module.id} module={module} index={index} />
           ))}
         </div>
 
+        {/* CTA footer */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          style={{
-            marginTop: '4rem',
-            borderTop: '1px solid rgba(0,255,65,0.1)',
-            paddingTop: '2.5rem',
-            textAlign: 'center',
-          }}
+          className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-4 text-center"
         >
-          <div
-            style={{
-              fontSize: '0.55rem',
-              letterSpacing: '0.2em',
-              color: 'rgba(0,255,65,0.3)',
-              marginBottom: '0.75rem',
-            }}
-          >
-            READY TO BEGIN?
-          </div>
-          <h2
-            style={{
-              fontSize: '1.1rem',
-              letterSpacing: '0.1em',
-              color: '#00ff41',
-              marginBottom: '0.6rem',
-              textShadow: '0 0 16px rgba(0,255,65,0.25)',
-            }}
-          >
-            ATTENTION IS ALL YOU NEED
-          </h2>
-          <p
-            style={{
-              fontSize: '0.62rem',
-              color: 'rgba(0,255,65,0.35)',
-              letterSpacing: '0.06em',
-              marginBottom: '1.75rem',
-            }}
-          >
-            Join the professionals who still do things the right way.
-          </p>
-          <motion.button
+          <button
             onClick={login}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              fontSize: '0.8rem',
-              letterSpacing: '0.14em',
-              color: '#030803',
-              background: '#00ff41',
-              border: 'none',
-              padding: '0.8rem 2.5rem',
-              cursor: 'pointer',
-              fontFamily: "'Share Tech Mono', monospace",
-              boxShadow: '0 0 28px rgba(0,255,65,0.3)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
+            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/15"
           >
-            GET STARTED FREE <ChevronRight size={14} />
-          </motion.button>
+            Get started free <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+          >
+            Back to home
+          </button>
         </motion.div>
       </div>
     </div>

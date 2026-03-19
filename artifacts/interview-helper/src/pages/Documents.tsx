@@ -95,21 +95,20 @@ function CrtInput({ label, value, onChange, type = 'text', placeholder = '', tex
   type?: string; placeholder?: string; textarea?: boolean; readOnly?: boolean;
 }) {
   const baseStyle: React.CSSProperties = {
-    background: 'rgba(0,255,65,0.04)',
-    border: '1px solid rgba(0,255,65,0.2)',
-    color: '#00ff41',
-    fontFamily: "'Share Tech Mono', monospace",
-    fontSize: '0.75rem',
-    letterSpacing: '0.05em',
-    padding: '6px 10px',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    color: 'rgba(228,228,231,0.9)',
+    fontFamily: 'inherit',
+    fontSize: '0.8rem',
+    padding: '7px 10px',
     outline: 'none',
     width: '100%',
-    borderRadius: '0',
+    borderRadius: '6px',
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-      <label style={{ fontSize: '0.6rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: "'Share Tech Mono', monospace" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <label style={{ fontSize: '0.65rem', color: 'rgba(161,161,170,0.7)', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'monospace' }}>
         {label}
       </label>
       {textarea ? (
@@ -264,43 +263,43 @@ function InvoiceSection() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
+        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.1em' }}>
           {invoices.length} INVOICE{invoices.length !== 1 ? 'S' : ''} ON FILE
         </div>
         <button
           onClick={() => { setShowForm(true); setEditingId(null); setForm({ clientName: '', clientEmail: '', clientAddress: '', invoiceNumber: `INV-${Date.now().toString().slice(-6)}`, issueDate: new Date().toISOString().slice(0, 10), dueDate: '', taxRate: 0, notes: '', terms: 'Payment due within 30 days of invoice date.' }); setLineItems([{ description: '', quantity: 1, rate: 0 }]); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer' }}
         >
           <Plus className="w-3 h-3" /> NEW INVOICE
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
           <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> LOADING...
         </div>
       ) : invoices.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(0,255,65,0.15)' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(34,197,94,0.15)' }}>
           NO INVOICES. CREATE ONE TO BEGIN.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {invoices.map(inv => (
             <motion.div key={inv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              style={{ border: '1px solid rgba(0,255,65,0.15)', background: 'rgba(0,255,65,0.03)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FileText className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)', flexShrink: 0 }} />
+              style={{ border: '1px solid rgba(34,197,94,0.15)', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <FileText className="w-4 h-4" style={{ color: 'rgba(34,197,94,0.5)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#00ff41' }}>{inv.clientName}</div>
-                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)' }}>
-                  #{inv.invoiceNumber} · Due {inv.dueDate || 'N/A'} · <span style={{ color: inv.status === 'paid' ? 'rgba(0,255,65,0.8)' : inv.status === 'overdue' ? 'rgba(255,80,80,0.8)' : 'rgba(255,165,0,0.8)' }}>{inv.status.toUpperCase()}</span>
+                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e' }}>{inv.clientName}</div>
+                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(34,197,94,0.4)' }}>
+                  #{inv.invoiceNumber} · Due {inv.dueDate || 'N/A'} · <span style={{ color: inv.status === 'paid' ? 'rgba(34,197,94,0.8)' : inv.status === 'overdue' ? 'rgba(255,80,80,0.8)' : 'rgba(255,165,0,0.8)' }}>{inv.status.toUpperCase()}</span>
                 </div>
               </div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#00ff41' }}>
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e' }}>
                 ${((inv.lineItems as LineItem[]).reduce((s, i) => s + i.quantity * i.rate, 0) * (1 + (inv.taxRate || 0) / 100)).toFixed(2)}
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button onClick={() => setPreviewId(inv.id)} title="Preview" style={{ padding: '4px 6px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.6)', cursor: 'pointer' }}><Eye className="w-3 h-3" /></button>
-                <button onClick={() => handleGeneratePdf(inv)} title="Download PDF" style={{ padding: '4px 6px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.6)', cursor: 'pointer' }}><Download className="w-3 h-3" /></button>
+                <button onClick={() => setPreviewId(inv.id)} title="Preview" style={{ padding: '4px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.6)', cursor: 'pointer' }}><Eye className="w-3 h-3" /></button>
+                <button onClick={() => handleGeneratePdf(inv)} title="Download PDF" style={{ padding: '4px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.6)', cursor: 'pointer' }}><Download className="w-3 h-3" /></button>
                 <button onClick={() => handleDelete(inv.id)} title="Delete" style={{ padding: '4px 6px', background: 'rgba(255,50,50,0.06)', border: '1px solid rgba(255,50,50,0.2)', color: 'rgba(255,80,80,0.6)', cursor: 'pointer' }}><Trash2 className="w-3 h-3" /></button>
               </div>
             </motion.div>
@@ -313,24 +312,24 @@ function InvoiceSection() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ background: '#030803', border: '1px solid rgba(0,255,65,0.3)', padding: '32px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto', position: 'relative' }}>
-              <button onClick={() => setPreviewId(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
+              style={{ background: '#09090b', border: '1px solid rgba(34,197,94,0.3)', padding: '32px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto', position: 'relative' }}>
+              <button onClick={() => setPreviewId(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
               <div style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                <div style={{ fontSize: '1.2rem', color: '#00ff41', marginBottom: '4px' }}>INVOICE #{previewInvoice.invoiceNumber}</div>
-                <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.4)', marginBottom: '20px' }}>Issued: {previewInvoice.issueDate} · Due: {previewInvoice.dueDate}</div>
-                <div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.6)', marginBottom: '2px' }}>BILL TO:</div>
-                <div style={{ fontSize: '0.8rem', color: '#00ff41', marginBottom: '2px' }}>{previewInvoice.clientName}</div>
-                {previewInvoice.clientEmail && <div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)' }}>{previewInvoice.clientEmail}</div>}
-                <div style={{ margin: '20px 0', borderTop: '1px solid rgba(0,255,65,0.15)' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '8px', fontSize: '0.65rem', color: 'rgba(0,255,65,0.5)', marginBottom: '8px' }}>
+                <div style={{ fontSize: '1.2rem', color: '#22c55e', marginBottom: '4px' }}>INVOICE #{previewInvoice.invoiceNumber}</div>
+                <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.4)', marginBottom: '20px' }}>Issued: {previewInvoice.issueDate} · Due: {previewInvoice.dueDate}</div>
+                <div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.6)', marginBottom: '2px' }}>BILL TO:</div>
+                <div style={{ fontSize: '0.8rem', color: '#22c55e', marginBottom: '2px' }}>{previewInvoice.clientName}</div>
+                {previewInvoice.clientEmail && <div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)' }}>{previewInvoice.clientEmail}</div>}
+                <div style={{ margin: '20px 0', borderTop: '1px solid rgba(34,197,94,0.15)' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '8px', fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', marginBottom: '8px' }}>
                   <span>DESCRIPTION</span><span>QTY</span><span>RATE</span><span>AMT</span>
                 </div>
                 {(previewInvoice.lineItems as LineItem[]).map((item, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '8px', fontSize: '0.75rem', color: '#00ff41', marginBottom: '4px', alignItems: 'center' }}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '8px', fontSize: '0.75rem', color: '#22c55e', marginBottom: '4px', alignItems: 'center' }}>
                     <span>{item.description}</span><span>{item.quantity}</span><span>${item.rate.toFixed(2)}</span><span>${(item.quantity * item.rate).toFixed(2)}</span>
                   </div>
                 ))}
-                <div style={{ marginTop: '16px', borderTop: '1px solid rgba(0,255,65,0.15)', paddingTop: '12px', fontSize: '0.75rem', color: '#00ff41', textAlign: 'right' }}>
+                <div style={{ marginTop: '16px', borderTop: '1px solid rgba(34,197,94,0.15)', paddingTop: '12px', fontSize: '0.75rem', color: '#22c55e', textAlign: 'right' }}>
                   {(() => {
                     const sub = (previewInvoice.lineItems as LineItem[]).reduce((s, i) => s + i.quantity * i.rate, 0);
                     const tx = sub * ((previewInvoice.taxRate || 0) / 100);
@@ -341,10 +340,10 @@ function InvoiceSection() {
                     </>;
                   })()}
                 </div>
-                {previewInvoice.terms && <div style={{ marginTop: '16px', fontSize: '0.65rem', color: 'rgba(0,255,65,0.4)' }}>TERMS: {previewInvoice.terms}</div>}
+                {previewInvoice.terms && <div style={{ marginTop: '16px', fontSize: '0.65rem', color: 'rgba(34,197,94,0.4)' }}>TERMS: {previewInvoice.terms}</div>}
                 <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button onClick={() => handleGeneratePdf(previewInvoice)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>
                     <Download className="w-3 h-3" /> DOWNLOAD PDF
                   </button>
                 </div>
@@ -359,12 +358,12 @@ function InvoiceSection() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ background: '#030803', border: '1px solid rgba(0,255,65,0.3)', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+              style={{ background: '#09090b', border: '1px solid rgba(34,197,94,0.3)', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: '#00ff41' }}>
+                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: '#22c55e' }}>
                   {editingId ? 'EDIT INVOICE' : 'NEW INVOICE'}
                 </span>
-                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
+                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <CrtInput label="Client Name *" value={form.clientName} onChange={v => setForm(f => ({ ...f, clientName: v }))} />
@@ -379,7 +378,7 @@ function InvoiceSection() {
               </div>
 
               <div style={{ marginTop: '20px', marginBottom: '10px' }}>
-                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.12em', marginBottom: '8px' }}>LINE ITEMS</div>
+                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.12em', marginBottom: '8px' }}>LINE ITEMS</div>
                 {lineItems.map((item, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 80px auto', gap: '8px', marginBottom: '6px', alignItems: 'end' }}>
                     <CrtInput label={idx === 0 ? 'Description' : ''} value={item.description} onChange={v => setLineItems(li => li.map((x, i) => i === idx ? { ...x, description: v } : x))} placeholder="Service or product" />
@@ -392,10 +391,10 @@ function InvoiceSection() {
                   </div>
                 ))}
                 <button onClick={() => setLineItems(li => [...li, { description: '', quantity: 1, rate: 0 }])}
-                  style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: 'rgba(0,255,65,0.05)', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer', marginTop: '4px' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer', marginTop: '4px' }}>
                   <Plus className="w-3 h-3" /> ADD LINE
                 </button>
-                <div style={{ textAlign: 'right', marginTop: '10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#00ff41' }}>
+                <div style={{ textAlign: 'right', marginTop: '10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e' }}>
                   Subtotal: ${subtotal.toFixed(2)}{form.taxRate > 0 && ` · Tax: $${tax.toFixed(2)}`} · <strong>TOTAL: ${total.toFixed(2)}</strong>
                 </div>
               </div>
@@ -406,9 +405,9 @@ function InvoiceSection() {
               </div>
 
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CANCEL</button>
                 <button onClick={handleSave} disabled={saving}
-                  style={{ padding: '8px 20px', background: 'rgba(0,255,65,0.15)', border: '1px solid rgba(0,255,65,0.5)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  style={{ padding: '8px 20px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.5)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {saving ? <><Loader2 className="w-3 h-3 animate-spin" /> SAVING...</> : 'SAVE INVOICE'}
                 </button>
               </div>
@@ -541,21 +540,21 @@ function ContractSection() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
+        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.1em' }}>
           {contracts.length} CONTRACT{contracts.length !== 1 ? 'S' : ''} ON FILE
         </div>
         <button onClick={() => { setShowForm(true); setForm({ templateType: 'nda', partyA: '', partyB: '', startDate: new Date().toISOString().slice(0, 10), endDate: '', scope: '', compensation: '', jurisdiction: '', extraClauses: '', terms: defaultTerms.nda }); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer' }}>
           <Plus className="w-3 h-3" /> NEW CONTRACT
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
           <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> LOADING...
         </div>
       ) : contracts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(0,255,65,0.15)' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(34,197,94,0.15)' }}>
           NO CONTRACTS. GENERATE ONE FROM A TEMPLATE.
         </div>
       ) : (
@@ -564,17 +563,17 @@ function ContractSection() {
             const tmpl = CONTRACT_TEMPLATES.find(t => t.id === c.templateType);
             return (
               <motion.div key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                style={{ border: '1px solid rgba(0,255,65,0.15)', background: 'rgba(0,255,65,0.03)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <ScrollText className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)', flexShrink: 0 }} />
+                style={{ border: '1px solid rgba(34,197,94,0.15)', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ScrollText className="w-4 h-4" style={{ color: 'rgba(34,197,94,0.5)', flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#00ff41' }}>{tmpl?.desc || c.templateType}</div>
-                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.4)' }}>
+                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e' }}>{tmpl?.desc || c.templateType}</div>
+                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(34,197,94,0.4)' }}>
                     {c.partyA} ↔ {c.partyB} · {c.startDate}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => setPreviewId(c.id)} title="Preview" style={{ padding: '4px 6px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.6)', cursor: 'pointer' }}><Eye className="w-3 h-3" /></button>
-                  <button onClick={() => handleGeneratePdf(c)} title="Download PDF" style={{ padding: '4px 6px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.6)', cursor: 'pointer' }}><Download className="w-3 h-3" /></button>
+                  <button onClick={() => setPreviewId(c.id)} title="Preview" style={{ padding: '4px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.6)', cursor: 'pointer' }}><Eye className="w-3 h-3" /></button>
+                  <button onClick={() => handleGeneratePdf(c)} title="Download PDF" style={{ padding: '4px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.6)', cursor: 'pointer' }}><Download className="w-3 h-3" /></button>
                   <button onClick={() => handleDelete(c.id)} title="Delete" style={{ padding: '4px 6px', background: 'rgba(255,50,50,0.06)', border: '1px solid rgba(255,50,50,0.2)', color: 'rgba(255,80,80,0.6)', cursor: 'pointer' }}><Trash2 className="w-3 h-3" /></button>
                 </div>
               </motion.div>
@@ -588,20 +587,20 @@ function ContractSection() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ background: '#030803', border: '1px solid rgba(0,255,65,0.3)', padding: '32px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto', position: 'relative', fontFamily: "'Share Tech Mono', monospace" }}>
-              <button onClick={() => setPreviewId(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
-              <div style={{ fontSize: '1rem', color: '#00ff41', marginBottom: '4px' }}>
+              style={{ background: '#09090b', border: '1px solid rgba(34,197,94,0.3)', padding: '32px', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto', position: 'relative', fontFamily: "'Share Tech Mono', monospace" }}>
+              <button onClick={() => setPreviewId(null)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
+              <div style={{ fontSize: '1rem', color: '#22c55e', marginBottom: '4px' }}>
                 {CONTRACT_TEMPLATES.find(t => t.id === previewContract.templateType)?.desc || previewContract.templateType.toUpperCase()}
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.4)', marginBottom: '20px' }}>Effective: {previewContract.startDate}</div>
-              <div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)', marginBottom: '4px' }}>PARTIES:</div>
-              <div style={{ fontSize: '0.75rem', color: '#00ff41', marginBottom: '2px' }}>Party A: {previewContract.partyA}</div>
-              <div style={{ fontSize: '0.75rem', color: '#00ff41', marginBottom: '16px' }}>Party B: {previewContract.partyB}</div>
-              {previewContract.scope && <><div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)' }}>SCOPE:</div><div style={{ fontSize: '0.75rem', color: '#00ff41', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{previewContract.scope}</div></>}
-              {previewContract.compensation && <><div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)' }}>COMPENSATION:</div><div style={{ fontSize: '0.75rem', color: '#00ff41', marginBottom: '12px' }}>{previewContract.compensation}</div></>}
-              {previewContract.terms && <><div style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.5)' }}>TERMS:</div><div style={{ fontSize: '0.75rem', color: '#00ff41', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{previewContract.terms}</div></>}
+              <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.4)', marginBottom: '20px' }}>Effective: {previewContract.startDate}</div>
+              <div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)', marginBottom: '4px' }}>PARTIES:</div>
+              <div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '2px' }}>Party A: {previewContract.partyA}</div>
+              <div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '16px' }}>Party B: {previewContract.partyB}</div>
+              {previewContract.scope && <><div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)' }}>SCOPE:</div><div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{previewContract.scope}</div></>}
+              {previewContract.compensation && <><div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)' }}>COMPENSATION:</div><div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '12px' }}>{previewContract.compensation}</div></>}
+              {previewContract.terms && <><div style={{ fontSize: '0.7rem', color: 'rgba(34,197,94,0.5)' }}>TERMS:</div><div style={{ fontSize: '0.75rem', color: '#22c55e', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{previewContract.terms}</div></>}
               <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                <button onClick={() => handleGeneratePdf(previewContract)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>
+                <button onClick={() => handleGeneratePdf(previewContract)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>
                   <Download className="w-3 h-3" /> DOWNLOAD PDF
                 </button>
               </div>
@@ -615,18 +614,18 @@ function ContractSection() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ background: '#030803', border: '1px solid rgba(0,255,65,0.3)', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+              style={{ background: '#09090b', border: '1px solid rgba(34,197,94,0.3)', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: '#00ff41' }}>NEW CONTRACT</span>
-                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
+                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: '#22c55e' }}>NEW CONTRACT</span>
+                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}><X className="w-4 h-4" /></button>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.12em', marginBottom: '8px' }}>TEMPLATE TYPE</div>
+                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.12em', marginBottom: '8px' }}>TEMPLATE TYPE</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {CONTRACT_TEMPLATES.map(t => (
                     <button key={t.id} onClick={() => handleTemplateChange(t.id)}
-                      style={{ flex: 1, padding: '8px', background: form.templateType === t.id ? 'rgba(0,255,65,0.15)' : 'rgba(0,255,65,0.04)', border: `1px solid ${form.templateType === t.id ? 'rgba(0,255,65,0.5)' : 'rgba(0,255,65,0.15)'}`, color: form.templateType === t.id ? '#00ff41' : 'rgba(0,255,65,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', textAlign: 'center' }}>
+                      style={{ flex: 1, padding: '8px', background: form.templateType === t.id ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.templateType === t.id ? 'rgba(34,197,94,0.5)' : 'rgba(34,197,94,0.15)'}`, color: form.templateType === t.id ? '#22c55e' : 'rgba(34,197,94,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', textAlign: 'center' }}>
                       <div>{t.label}</div>
                       <div style={{ fontSize: '0.55rem', opacity: 0.7 }}>{t.desc}</div>
                     </button>
@@ -653,9 +652,9 @@ function ContractSection() {
               </div>
 
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CANCEL</button>
+                <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid rgba(34,197,94,0.2)', color: 'rgba(34,197,94,0.5)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CANCEL</button>
                 <button onClick={handleSave} disabled={saving}
-                  style={{ padding: '8px 20px', background: 'rgba(0,255,65,0.15)', border: '1px solid rgba(0,255,65,0.5)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  style={{ padding: '8px 20px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.5)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {saving ? <><Loader2 className="w-3 h-3 animate-spin" /> SAVING...</> : 'SAVE CONTRACT'}
                 </button>
               </div>
@@ -683,7 +682,7 @@ function FileManagerSection() {
 
   const { uploadFile: doUpload, isUploading, progress } = useUpload({
     basePath: '/api/tools/documents',
-    onSuccess: async (result) => {
+    onSuccess: async (result: { uploadURL: string; objectPath: string; metadata: { name?: string; contentType?: string; size?: number } }) => {
       const name = pendingFile?.name || result.metadata?.name || 'unknown';
       const r = await fetch('/api/tools/documents/files/register', {
         method: 'POST',
@@ -776,12 +775,12 @@ function FileManagerSection() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(0,255,65,0.5)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)' }}>
           {breadcrumb.map((crumb, idx) => (
             <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               {idx > 0 && <ChevronRight className="w-3 h-3" style={{ opacity: 0.4 }} />}
               <button onClick={() => navigateTo(idx)}
-                style={{ background: 'none', border: 'none', color: idx === breadcrumb.length - 1 ? '#00ff41' : 'rgba(0,255,65,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', letterSpacing: '0.1em' }}>
+                style={{ background: 'none', border: 'none', color: idx === breadcrumb.length - 1 ? '#22c55e' : 'rgba(34,197,94,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer', letterSpacing: '0.1em' }}>
                 {crumb.name}
               </button>
             </span>
@@ -789,15 +788,15 @@ function FileManagerSection() {
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={() => setShowNewFolder(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.25)', color: 'rgba(0,255,65,0.7)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.25)', color: 'rgba(34,197,94,0.7)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer' }}>
             <FolderPlus className="w-3 h-3" /> NEW FOLDER
           </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={isUploading}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', cursor: 'pointer' }}>
             {isUploading ? <><Loader2 className="w-3 h-3 animate-spin" /> {Math.round(progress)}%</> : <><Upload className="w-3 h-3" /> UPLOAD</>}
           </button>
           <button onClick={fetchItems}
-            style={{ padding: '5px 8px', background: 'rgba(0,255,65,0.05)', border: '1px solid rgba(0,255,65,0.15)', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}>
+            style={{ padding: '5px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.15)', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}>
             <RefreshCw className="w-3 h-3" />
           </button>
         </div>
@@ -813,19 +812,19 @@ function FileManagerSection() {
             onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setShowNewFolder(false); setNewFolderName(''); } }}
             placeholder="Folder name..."
             autoFocus
-            style={{ flex: 1, background: 'rgba(0,255,65,0.04)', border: '1px solid rgba(0,255,65,0.3)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', padding: '6px 10px', outline: 'none' }}
+            style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', padding: '6px 10px', outline: 'none' }}
           />
-          <button onClick={handleCreateFolder} style={{ padding: '6px 14px', background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.4)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CREATE</button>
-          <button onClick={() => { setShowNewFolder(false); setNewFolderName(''); }} style={{ padding: '6px 8px', background: 'none', border: '1px solid rgba(0,255,65,0.15)', color: 'rgba(0,255,65,0.4)', cursor: 'pointer' }}><X className="w-3 h-3" /></button>
+          <button onClick={handleCreateFolder} style={{ padding: '6px 14px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', cursor: 'pointer' }}>CREATE</button>
+          <button onClick={() => { setShowNewFolder(false); setNewFolderName(''); }} style={{ padding: '6px 8px', background: 'none', border: '1px solid rgba(34,197,94,0.15)', color: 'rgba(34,197,94,0.4)', cursor: 'pointer' }}><X className="w-3 h-3" /></button>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.4)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem' }}>
           <Loader2 className="w-5 h-5 animate-spin inline-block mr-2" /> LOADING...
         </div>
       ) : items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0,255,65,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(0,255,65,0.15)' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(34,197,94,0.25)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', border: '1px dashed rgba(34,197,94,0.15)' }}>
           EMPTY. UPLOAD FILES OR CREATE A FOLDER.
         </div>
       ) : (
@@ -834,26 +833,26 @@ function FileManagerSection() {
             const Icon = getFileIcon(item.mimeType, item.isFolder);
             return (
               <motion.div key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', border: '1px solid rgba(0,255,65,0.1)', background: 'rgba(0,255,65,0.02)', cursor: item.isFolder ? 'pointer' : 'default' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', border: '1px solid rgba(34,197,94,0.1)', background: 'rgba(255,255,255,0.02)', cursor: item.isFolder ? 'pointer' : 'default' }}
                 onClick={() => { if (item.isFolder) navigateInto(item); }}>
-                <Icon className="w-4 h-4" style={{ color: item.isFolder ? 'rgba(0,200,255,0.6)' : 'rgba(0,255,65,0.5)', flexShrink: 0 }} />
+                <Icon className="w-4 h-4" style={{ color: item.isFolder ? 'rgba(236,72,153,0.6)' : 'rgba(34,197,94,0.5)', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#00ff41', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#22c55e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
                   {!item.isFolder && (
-                    <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(0,255,65,0.35)' }}>
+                    <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(34,197,94,0.35)' }}>
                       {item.mimeType || 'unknown'} · {formatBytes(item.fileSize)}
-                      {item.isPublic && <span style={{ marginLeft: '8px', color: 'rgba(0,200,255,0.6)' }}>◉ SHARED</span>}
+                      {item.isPublic && <span style={{ marginLeft: '8px', color: 'rgba(236,72,153,0.6)' }}>◉ SHARED</span>}
                     </div>
                   )}
                 </div>
                 {!item.isFolder && (
                   <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => handleDownload(item)} title="Download"
-                      style={{ padding: '3px 6px', background: 'rgba(0,255,65,0.06)', border: '1px solid rgba(0,255,65,0.15)', color: 'rgba(0,255,65,0.5)', cursor: 'pointer' }}>
+                      style={{ padding: '3px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(34,197,94,0.15)', color: 'rgba(34,197,94,0.5)', cursor: 'pointer' }}>
                       <Download className="w-3 h-3" />
                     </button>
                     <button onClick={() => item.isPublic ? handleUnshare(item) : handleShare(item)} title={item.isPublic ? 'Remove share link' : 'Get share link'}
-                      style={{ padding: '3px 6px', background: copiedToken === item.id ? 'rgba(0,200,255,0.1)' : 'rgba(0,255,65,0.06)', border: `1px solid ${item.isPublic ? 'rgba(0,200,255,0.3)' : 'rgba(0,255,65,0.15)'}`, color: copiedToken === item.id ? 'rgba(0,200,255,0.8)' : item.isPublic ? 'rgba(0,200,255,0.5)' : 'rgba(0,255,65,0.5)', cursor: 'pointer' }}>
+                      style={{ padding: '3px 6px', background: copiedToken === item.id ? 'rgba(236,72,153,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${item.isPublic ? 'rgba(236,72,153,0.3)' : 'rgba(34,197,94,0.15)'}`, color: copiedToken === item.id ? 'rgba(236,72,153,0.8)' : item.isPublic ? 'rgba(236,72,153,0.5)' : 'rgba(34,197,94,0.5)', cursor: 'pointer' }}>
                       {copiedToken === item.id ? <Check className="w-3 h-3" /> : item.isPublic ? <Copy className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
                     </button>
                     <button onClick={() => handleDelete(item)} title="Delete"
@@ -864,7 +863,7 @@ function FileManagerSection() {
                 )}
                 {item.isFolder && (
                   <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
-                    <ChevronRight className="w-3 h-3" style={{ color: 'rgba(0,255,65,0.3)' }} />
+                    <ChevronRight className="w-3 h-3" style={{ color: 'rgba(34,197,94,0.3)' }} />
                     <button onClick={() => handleDelete(item)} title="Delete folder"
                       style={{ padding: '3px 6px', background: 'rgba(255,50,50,0.06)', border: '1px solid rgba(255,50,50,0.15)', color: 'rgba(255,80,80,0.5)', cursor: 'pointer' }}>
                       <Trash2 className="w-3 h-3" />
@@ -904,10 +903,10 @@ export default function Documents() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', background: '#030803', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(0,255,65,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', textAlign: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>ACCESS DENIED</div>
-          <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.3)' }}>AUTHENTICATION REQUIRED</div>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)' }}>AUTHENTICATION REQUIRED</div>
         </div>
       </div>
     );
@@ -923,28 +922,28 @@ export default function Documents() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ minHeight: '100vh', background: '#030803', padding: '24px', paddingTop: '16px' }}
+      style={{ minHeight: '100vh', background: '#09090b', padding: '24px', paddingTop: '16px' }}
     >
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <div style={{ marginBottom: '20px' }}>
-          <h1 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '0.12em', marginBottom: '2px', textShadow: '0 0 10px rgba(0,255,65,0.4)' }}>
+          <h1 style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '1.1rem', color: '#22c55e', letterSpacing: '0.12em', marginBottom: '2px', textShadow: '0 0 10px rgba(34,197,94,0.4)' }}>
             {pageTitle}
           </h1>
-          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(0,255,65,0.35)', letterSpacing: '0.1em' }}>
+          <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(34,197,94,0.35)', letterSpacing: '0.1em' }}>
             {pageSubtitle}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid rgba(0,255,65,0.1)', paddingBottom: '0' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid rgba(34,197,94,0.1)', paddingBottom: '0' }}>
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
                 fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em',
-                background: tab === id ? 'rgba(0,255,65,0.1)' : 'transparent',
-                border: tab === id ? '1px solid rgba(0,255,65,0.35)' : '1px solid transparent',
-                borderBottom: tab === id ? '1px solid #030803' : '1px solid transparent',
-                color: tab === id ? '#00ff41' : 'rgba(0,255,65,0.4)',
+                background: tab === id ? 'rgba(34,197,94,0.1)' : 'transparent',
+                border: tab === id ? '1px solid rgba(34,197,94,0.35)' : '1px solid transparent',
+                borderBottom: tab === id ? '1px solid #09090b' : '1px solid transparent',
+                color: tab === id ? '#22c55e' : 'rgba(34,197,94,0.4)',
                 cursor: 'pointer',
                 position: 'relative', bottom: '-1px',
               }}>
@@ -954,7 +953,7 @@ export default function Documents() {
           ))}
         </div>
 
-        <div style={{ border: '1px solid rgba(0,255,65,0.12)', background: 'rgba(0,255,65,0.01)', padding: '20px' }}>
+        <div style={{ border: '1px solid rgba(34,197,94,0.1)', background: 'rgba(255,255,255,0.02)', padding: '20px' }}>
           <AnimatePresence mode="wait">
             {tab === 'invoices' && (
               <motion.div key="invoices" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>

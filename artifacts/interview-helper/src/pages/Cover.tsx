@@ -1,182 +1,84 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { motion } from 'framer-motion';
-import { ChevronRight, Terminal } from 'lucide-react';
+import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { CITY_NAME } from '@/gameSystems';
 
-function LiveServerStatus() {
-  const [serverOnline, setServerOnline] = useState<number | null>(null);
-  const [serverMax, setServerMax] = useState(50);
-  const [fetchFailed, setFetchFailed] = useState(false);
-  const [blinkOn, setBlinkOn] = useState(true);
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
+function apiUrl(path: string) {
+  return `/${BASE ? BASE + "/" : ""}api/${path}`.replace(/\/+/g, "/");
+}
 
-  useEffect(() => {
-    const load = () => {
-      fetch(`${import.meta.env.BASE_URL}api/world/server-status`)
-        .then(r => r.json())
-        .then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); setFetchFailed(false); })
-        .catch(() => { setFetchFailed(true); });
-    };
-    load();
-    const id = setInterval(load, 15000);
-    return () => clearInterval(id);
-  }, []);
+function EmailSubscribeForm() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle');
+  const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const id = setInterval(() => setBlinkOn(b => !b), 800);
-    return () => clearInterval(id);
-  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || status === 'loading') return;
+    setStatus('loading');
+    try {
+      const res = await fetch(apiUrl('subscribers'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), source: 'cover' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatus('error');
+        setMessage(data.error ?? 'Something went wrong. Try again.');
+      } else if (data.alreadySubscribed) {
+        setStatus('duplicate');
+        setMessage("You're already on the list.");
+      } else {
+        setStatus('success');
+        setMessage("You're on the list.");
+      }
+    } catch {
+      setStatus('error');
+      setMessage('Network error. Please try again.');
+    }
+  };
 
-  const isOnline = !fetchFailed && serverOnline !== null;
-  const pct = serverOnline !== null ? Math.round((serverOnline / serverMax) * 100) : 0;
-
-  const ECONOMY_STATS = [
-    { label: 'ƒ MIN SALARY', value: 'ƒ 15,000', color: 'rgba(0,255,65,0.65)' },
-    { label: 'ƒ MAX SALARY', value: 'ƒ 250,000', color: 'rgba(180,255,100,0.75)' },
-    { label: 'GOLD RATE', value: '1 oz = ƒ100K', color: 'rgba(255,204,0,0.8)' },
-    { label: 'CURRENCY', value: 'ƒ FIAT', color: 'rgba(0,255,65,0.65)' },
-    { label: 'SAVINGS APY', value: '1.2%', color: 'rgba(100,200,255,0.75)' },
-  ];
+  if (status === 'success' || status === 'duplicate') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-2 px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm"
+      >
+        <Check className="w-4 h-4 shrink-0" />
+        {message}
+      </motion.div>
+    );
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
-      style={{
-        border: '1px solid rgba(0,255,65,0.22)',
-        background: 'linear-gradient(135deg, rgba(0,255,65,0.03), rgba(0,180,50,0.015))',
-        marginTop: '2.5rem',
-        position: 'relative',
-        overflow: 'hidden',
-        maxWidth: '36rem',
-        width: '100%',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px)',
-          pointerEvents: 'none',
-        }}
+    <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-sm">
+      <input
+        type="email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="you@company.com"
+        required
+        className="flex-1 min-w-0 bg-white/4 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
       />
-
-      <div
-        style={{
-          borderBottom: '1px solid rgba(0,255,65,0.12)',
-          padding: '0.65rem 1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem',
-          position: 'relative',
-        }}
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-all disabled:opacity-50"
       >
-        <Terminal size={13} style={{ color: 'rgba(0,255,65,0.45)' }} />
-        <span
-          style={{
-            fontFamily: "'VT323', monospace",
-            fontSize: '1.05rem',
-            color: 'rgba(0,255,65,0.85)',
-            letterSpacing: '0.2em',
-          }}
-        >
-          {CITY_NAME}
-        </span>
-        <span
-          style={{
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '0.48rem',
-            color: 'rgba(0,255,65,0.3)',
-            letterSpacing: '0.1em',
-          }}
-        >
-          SERVER: PST · LIVE SERVER STATUS
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <span
-            style={{
-              display: 'inline-block',
-              width: '5px',
-              height: '5px',
-              borderRadius: '50%',
-              background: isOnline ? '#00ff41' : 'rgba(0,255,65,0.2)',
-              boxShadow: isOnline && blinkOn ? '0 0 6px #00ff41' : 'none',
-              transition: 'box-shadow 0.2s',
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.45rem',
-              letterSpacing: '0.12em',
-              color: isOnline ? 'rgba(0,255,65,0.65)' : 'rgba(0,255,65,0.25)',
-            }}
-          >
-            {fetchFailed ? 'OFFLINE' : isOnline ? 'ONLINE' : 'CONNECTING...'}
-          </span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          padding: '0.75rem 1.25rem',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.5rem 2.5rem',
-          fontFamily: "'Share Tech Mono', monospace",
-          position: 'relative',
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>POPULATION</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>
-            {serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>CAPACITY</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>
-            {serverOnline !== null ? `${pct}%` : '—'}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>SERVER</div>
-          <div style={{ fontSize: '0.68rem', color: 'rgba(0,255,65,0.65)' }}>PST · MINX CITY</div>
-        </div>
-        {ECONOMY_STATS.map(stat => (
-          <div key={stat.label}>
-            <div style={{ fontSize: '0.43rem', color: 'rgba(0,255,65,0.22)', letterSpacing: '0.12em', marginBottom: '0.15rem' }}>{stat.label}</div>
-            <div style={{ fontSize: '0.68rem', color: stat.color }}>{stat.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {serverOnline !== null && (
-        <div style={{ padding: '0 1.25rem 0.75rem', position: 'relative' }}>
-          <div
-            style={{
-              height: '2px',
-              background: 'rgba(0,255,65,0.08)',
-              borderRadius: '1px',
-              overflow: 'hidden',
-            }}
-          >
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-              style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, rgba(0,255,65,0.35), rgba(0,255,65,0.6))',
-                boxShadow: '0 0 6px rgba(0,255,65,0.3)',
-              }}
-            />
-          </div>
-        </div>
+        {status === 'loading' ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <>Notify me <ArrowRight className="w-3.5 h-3.5" /></>
+        )}
+      </button>
+      {status === 'error' && (
+        <p className="absolute bottom-0 translate-y-full pt-1 text-xs text-red-400">{message}</p>
       )}
-    </motion.div>
+    </form>
   );
 }
 
@@ -185,137 +87,150 @@ export default function Cover() {
   const [, navigate] = useLocation();
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#030803',
-        fontFamily: "'Share Tech Mono', monospace",
-        position: 'relative',
-        overflowX: 'hidden',
-        padding: '5rem 1.5rem 2rem',
-      }}
-    >
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 50,
-          background:
-            'repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px)',
-        }}
-      />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#09090b] relative overflow-x-hidden px-6 py-16">
 
-      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Subtle ambient glow */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-emerald-500/4 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
+
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="inline-flex items-center gap-2.5 mb-8 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          Early Access
+        </motion.div>
+
+        {/* Headline */}
+        <style>{`
+          @keyframes gradient-shift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .animated-title {
+            background: linear-gradient(
+              270deg,
+              #22c55e, #ec4899, #22c55e
+            );
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-shift 30s ease-in-out infinite;
+          }
+          .animated-title-glow {
+            background: linear-gradient(
+              270deg,
+              #22c55e, #ec4899, #22c55e
+            );
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-shift 30s ease-in-out infinite;
+            filter: blur(20px);
+            opacity: 0.35;
+          }
+        `}</style>
         <motion.h1
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          style={{
-            fontSize: 'clamp(2.5rem, 7vw, 4.5rem)',
-            letterSpacing: '0.08em',
-            color: '#00ff41',
-            textShadow: '0 0 30px rgba(0,255,65,0.4)',
-            marginBottom: '1rem',
-            lineHeight: 1,
-          }}
+          transition={{ duration: 0.5, delay: 0.08 }}
+          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.02em] leading-none mb-5"
+          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
         >
-          SALARYMAN
+          <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
+            SALARYMAN
+          </span>
+          <span className="relative animated-title">
+            SALARYMAN
+          </span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.18 }}
+          className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-2 max-w-xl"
+        >
+          The professional intelligence platform — AI advisor, contacts, calendar, documents, hiring, and more. Built for people who take their career seriously.
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.25 }}
-          style={{
-            fontSize: '0.8rem',
-            color: 'rgba(0,255,65,0.5)',
-            letterSpacing: '0.18em',
-            marginBottom: '2.5rem',
-            maxWidth: '28rem',
-            textTransform: 'uppercase',
-          }}
+          className="text-emerald-500/60 text-sm mb-10 font-mono tracking-widest uppercase"
         >
           Attention is All You Need
         </motion.p>
 
+        {/* CTAs */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            gap: '1rem',
-          }}
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="flex flex-wrap justify-center gap-3 mb-10"
         >
           <motion.button
             onClick={login}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              fontSize: '0.8rem',
-              letterSpacing: '0.14em',
-              color: '#030803',
-              background: '#00ff41',
-              border: 'none',
-              padding: '0.7rem 2rem',
-              cursor: 'pointer',
-              fontFamily: "'Share Tech Mono', monospace",
-              boxShadow: '0 0 24px rgba(0,255,65,0.3)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/15"
           >
-            GET STARTED FREE <ChevronRight size={14} />
+            Get started free <ChevronRight className="w-4 h-4" />
           </motion.button>
 
           <motion.button
             onClick={() => navigate('/features')}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            style={{
-              fontSize: '0.75rem',
-              letterSpacing: '0.12em',
-              color: 'rgba(0,255,65,0.7)',
-              background: 'none',
-              border: '1px solid rgba(0,255,65,0.35)',
-              padding: '0.7rem 1.5rem',
-              cursor: 'pointer',
-              fontFamily: "'Share Tech Mono', monospace",
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-2 px-6 py-3 rounded-lg border border-white/10 text-zinc-300 text-sm hover:bg-white/5 hover:border-white/15 transition-colors"
           >
-            EVERY APP IN ONE <ChevronRight size={13} />
+            See all features <ChevronRight className="w-4 h-4" />
           </motion.button>
         </motion.div>
 
-        <LiveServerStatus />
-
+        {/* Email subscribe */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.55 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          style={{
-            marginTop: '2.5rem',
-            fontSize: '0.5rem',
-            letterSpacing: '0.16em',
-            color: 'rgba(0,255,65,0.55)',
-            textTransform: 'uppercase',
-            fontFamily: "'Share Tech Mono', monospace",
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-          }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="w-full flex flex-col items-center gap-3"
         >
-          POWERED BY CLAUDE SONNET · GPT-4O · OPENCLAW · CLAUDE CODE · KARPATHY 243-LINE GPT · REACT · NODE · POSTGRES · STRIPE
+          <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Every App in One</p>
+          <div className="relative">
+            <EmailSubscribeForm />
+          </div>
+          <p className="text-zinc-700 text-xs">No spam. Unsubscribe anytime.</p>
+        </motion.div>
+
+        {/* Powered by */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="mt-14 flex flex-col items-center gap-3"
+        >
+          <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">Powered by</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {['Claude Sonnet', 'GPT-4o', 'OpenClaw', 'React', 'Node', 'Postgres', 'Stripe', 'Resend'].map((t) => (
+              <span
+                key={t}
+                className="text-[10px] font-mono text-zinc-600 border border-zinc-800 px-2.5 py-1 rounded-md uppercase tracking-wider"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
         </motion.div>
       </div>
     </div>

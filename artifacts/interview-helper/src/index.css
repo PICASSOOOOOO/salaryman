@@ -1,52 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: 'Share Tech Mono', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Fira Code', monospace;
   --font-display: 'VT323', monospace;
 
-  /* PABLO Device — Phosphor Green CRT Theme */
-  --color-background: hsl(120 60% 2%);
-  --color-foreground: hsl(120 100% 75%);
+  /* Modern dark SaaS — dark zinc base, emerald green accent */
+  --color-background: hsl(240 6% 4%);
+  --color-foreground: hsl(0 0% 92%);
 
-  --color-card: hsl(120 50% 4%);
-  --color-card-foreground: hsl(120 100% 75%);
+  --color-card: hsl(240 5% 6%);
+  --color-card-foreground: hsl(0 0% 92%);
 
-  --color-popover: hsl(120 50% 4%);
-  --color-popover-foreground: hsl(120 100% 75%);
+  --color-popover: hsl(240 5% 7%);
+  --color-popover-foreground: hsl(0 0% 92%);
 
-  --color-border: hsl(120 60% 14%);
-  --color-input: hsl(120 50% 6%);
-  --color-ring: hsl(120 100% 50%);
+  --color-border: hsl(240 4% 13%);
+  --color-input: hsl(240 5% 8%);
+  --color-ring: hsl(142 71% 45%);
 
-  --color-primary: hsl(120 100% 50%);
-  --color-primary-foreground: hsl(120 60% 2%);
+  --color-primary: hsl(142 71% 45%);
+  --color-primary-foreground: hsl(240 6% 4%);
 
-  --color-secondary: hsl(120 50% 7%);
-  --color-secondary-foreground: hsl(120 100% 65%);
+  --color-secondary: hsl(240 4% 11%);
+  --color-secondary-foreground: hsl(0 0% 75%);
 
-  --color-muted: hsl(120 40% 6%);
-  --color-muted-foreground: hsl(120 60% 40%);
+  --color-muted: hsl(240 4% 9%);
+  --color-muted-foreground: hsl(240 5% 50%);
 
-  --color-accent: hsl(120 100% 50%);
-  --color-accent-foreground: hsl(120 60% 2%);
+  --color-accent: hsl(142 71% 45%);
+  --color-accent-foreground: hsl(240 6% 4%);
 
-  --color-destructive: hsl(0 100% 50%);
+  --color-destructive: hsl(0 72% 51%);
   --color-destructive-foreground: hsl(0 0% 100%);
 
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 1px;
-  --radius-xl: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
 }
 
 :root {
   color-scheme: dark;
 }
 
-/* ─── CRT Scan Lines Overlay ─── */
-body::before {
+/* ─── CRT Scanlines — GAME ROUTES ONLY ─── */
+body.game-route::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -61,8 +61,8 @@ body::before {
   z-index: 9998;
 }
 
-/* ─── CRT Vignette Overlay ─── */
-body::after {
+/* ─── CRT Vignette — GAME ROUTES ONLY ─── */
+body.game-route::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -78,73 +78,69 @@ body::after {
 @layer base {
   body {
     @apply bg-background text-foreground font-sans min-h-screen;
-    background-color: #030803;
-    background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(0, 255, 65, 0.04) 0%, transparent 60%);
-    animation: crt-flicker 10s infinite;
+    background-color: hsl(240 6% 4%);
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(34, 197, 94, 0.04) 0%, transparent 65%);
   }
 
   /* ─── Scrollbar ─── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.25); border-radius: 0; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,65,0.5); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
   .scrollbar-hide::-webkit-scrollbar { display: none; }
 
   /* ─── Selection ─── */
-  ::selection { background: rgba(0,255,65,0.3); color: #00ff41; }
+  ::selection { background: rgba(34, 197, 94, 0.25); color: hsl(0 0% 92%); }
 
   /* ─── Markdown prose ─── */
   .prose { @apply text-foreground max-w-none; }
-  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(0,255,65,0.8); }
-  .prose strong { @apply font-bold; color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.6); }
-  .prose em { color: rgba(0,255,65,0.7); font-style: normal; }
-  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(0,255,65,0.8); }
+  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(228, 228, 231, 0.8); }
+  .prose strong { @apply font-bold; color: hsl(0 0% 92%); }
+  .prose em { color: rgba(228, 228, 231, 0.7); font-style: italic; }
+  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(228, 228, 231, 0.8); }
   .prose li { @apply mb-1 text-sm; }
-  .prose li::marker { color: #00ff41; }
+  .prose li::marker { color: hsl(142 71% 45%); }
   .prose h1, .prose h2, .prose h3 {
-    color: #00ff41;
-    text-shadow: 0 0 12px rgba(0,255,65,0.7);
-    font-family: 'VT323', monospace;
-    letter-spacing: 0.05em;
-    @apply font-normal mb-3 mt-5;
+    color: hsl(0 0% 92%);
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.03em;
+    @apply font-bold mb-3 mt-5;
   }
-  .prose h1 { font-size: 2rem; }
-  .prose h2 { font-size: 1.6rem; }
-  .prose h3 { font-size: 1.3rem; }
+  .prose h1 { font-size: 1.5rem; }
+  .prose h2 { font-size: 1.25rem; }
+  .prose h3 { font-size: 1.1rem; }
   .prose code {
     font-family: 'Fira Code', monospace;
-    background: rgba(0,255,65,0.08);
-    border: 1px solid rgba(0,255,65,0.2);
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
     padding: 0.1em 0.4em;
-    color: #00ff41;
-    text-shadow: 0 0 6px rgba(0,255,65,0.4);
-    border-radius: 0;
+    color: hsl(142 71% 55%);
+    border-radius: 4px;
   }
   .prose pre {
-    background: rgba(0,255,65,0.04) !important;
-    border: 1px solid rgba(0,255,65,0.2) !important;
-    border-radius: 0 !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 6px !important;
   }
   .prose pre code {
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
   }
-  .prose a { color: #00ff41; text-decoration: underline; text-underline-offset: 3px; }
+  .prose a { color: hsl(142 71% 55%); text-decoration: underline; text-underline-offset: 3px; }
   .prose blockquote {
-    border-left: 2px solid rgba(0,255,65,0.4);
+    border-left: 2px solid rgba(34, 197, 94, 0.35);
     padding-left: 1rem;
-    color: rgba(0,255,65,0.6);
+    color: rgba(228, 228, 231, 0.6);
     margin-left: 0;
-    font-style: normal;
+    font-style: italic;
   }
-  .prose hr { border-color: rgba(0,255,65,0.2); }
+  .prose hr { border-color: rgba(255,255,255,0.08); }
   .prose table { width: 100%; }
-  .prose th { color: #00ff41; border-bottom: 1px solid rgba(0,255,65,0.3); text-align: left; padding: 0.5rem; }
-  .prose td { border-bottom: 1px solid rgba(0,255,65,0.1); padding: 0.5rem; color: rgba(0,255,65,0.7); }
+  .prose th { color: hsl(0 0% 92%); border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; padding: 0.5rem; }
+  .prose td { border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0.5rem; color: rgba(228, 228, 231, 0.7); }
 
   /* Syntax highlighter override */
   .shiki, .shiki span { background: transparent !important; }
@@ -196,7 +192,12 @@ body::after {
   98% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 2px); }
 }
 
-/* ─── Utility Classes ─── */
+@keyframes smfade {
+  from { opacity: 1; }
+  to   { opacity: 0.5; }
+}
+
+/* ─── CRT Utility Classes (for game pages) ─── */
 .crt-text {
   color: #00ff41;
   text-shadow: 0 0 8px rgba(0,255,65,0.6), 0 0 16px rgba(0,255,65,0.3);
@@ -323,24 +324,24 @@ body::after {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #00ff41;
-  box-shadow: 0 0 6px #00ff41;
-  animation: phosphor-pulse 2s ease-in-out infinite;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: none;
   display: inline-block;
 }
 
 .status-dot.offline {
-  background: rgba(0,255,65,0.2);
+  background: rgba(255,255,255,0.15);
   box-shadow: none;
   animation: none;
 }
 
 .status-dot.warning {
-  background: #ffaa00;
-  box-shadow: 0 0 6px #ffaa00;
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
 }
 
-/* ─── VT323 Display Text ─── */
+/* ─── VT323 Display Text (game) ─── */
 .display-text {
   font-family: 'VT323', monospace;
   letter-spacing: 0.05em;
@@ -399,11 +400,10 @@ body::after {
 }
 
 /* ─── App Header — NavBar cut-off prevention ─── */
-/* Uses element selector so the fix persists even if NavBar.tsx is overwritten */
 header {
   position: relative;
   z-index: 20;
-  padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
   flex-shrink: 0;
   visibility: visible !important;
 }
@@ -415,13 +415,13 @@ header {
 
 /* ─── Code block override ─── */
 pre {
-  background: rgba(0, 15, 0, 0.9) !important;
-  border: 1px solid rgba(0,255,65,0.2) !important;
-  border-radius: 0 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 6px !important;
   padding: 1rem !important;
 }
 
 code {
   font-family: 'Fira Code', monospace !important;
-  color: #00ff41 !important;
+  color: hsl(142 71% 55%) !important;
 }

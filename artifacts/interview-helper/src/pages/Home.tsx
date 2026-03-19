@@ -226,23 +226,23 @@ export default function Home() {
 
       {/* City Info Bar */}
       <div className="relative z-20 px-4 py-3"
-        style={{ background: 'linear-gradient(135deg, rgba(0,255,65,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(0,255,65,0.12)' }}>
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(34,197,94,0.1)' }}>
         <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
-            <Terminal className="w-4 h-4" style={{ color: 'rgba(0,255,65,0.5)' }} />
+            <Terminal className="w-4 h-4" style={{ color: 'rgba(34,197,94,0.5)' }} />
             <div>
-              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(0,255,65,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}</div>
+              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(34,197,94,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}</div>
             </div>
           </div>
           <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.6)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
@@ -294,10 +294,10 @@ export default function Home() {
 
           {/* Translator — FREE */}
           <div className="lg:w-80 shrink-0 space-y-3">
-            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-cyan-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR — FREE' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR — FREE' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
               </div>
               <div className="flex items-center gap-1.5 mb-2">
                 <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
@@ -306,7 +306,7 @@ export default function Home() {
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
                 <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }}
-                  className="px-1.5 py-1 text-[10px] font-bold rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors shrink-0"
+                  className="px-1.5 py-1 text-[10px] font-bold rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors shrink-0"
                   title="Swap languages">⇄</button>
                 <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)}
                   className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
@@ -333,7 +333,7 @@ export default function Home() {
                   rec.start();
                 }}
                   className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md border transition-colors shrink-0
-                    ${translatorListening ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20'}`}>
+                    ${translatorListening ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-pink-500/10 text-pink-400 border-pink-500/30 hover:bg-pink-500/20'}`}>
                   <Mic className="w-3 h-3" />
                   {translatorListening ? 'Stop' : 'Speak'}
                 </button>
@@ -351,13 +351,13 @@ export default function Home() {
                   setTranslatorResult(data.responseData?.translatedText ?? 'Translation unavailable.');
                 } catch { setTranslatorResult('Translation service unavailable. Try again.'); }
               }}
-                className={`w-full flex items-center justify-center gap-2 px-3 ${boomerMode ? 'py-2.5 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors mb-2`}
+                className={`w-full flex items-center justify-center gap-2 px-3 ${boomerMode ? 'py-2.5 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors mb-2`}
                 style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                 <ArrowRight className="w-3 h-3" /> TRANSLATE
               </button>
               {translatorResult && translatorResult !== 'Translating...' && (
-                <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 flex items-start gap-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-cyan-300 flex-1`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 flex items-start gap-2">
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300 flex-1`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
                   <button onClick={() => {
                     const u = new SpeechSynthesisUtterance(translatorResult);
                     const langMap: Record<string,string> = { en:'en-US',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-BR',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',vi:'vi-VN',th:'th-TH',tl:'fil-PH',id:'id-ID',ms:'ms-MY',ar:'ar-SA',ru:'ru-RU',hi:'hi-IN',it:'it-IT',nl:'nl-NL',sv:'sv-SE',pl:'pl-PL',tr:'tr-TR' };
@@ -366,15 +366,15 @@ export default function Home() {
                     window.speechSynthesis.cancel();
                     window.speechSynthesis.speak(u);
                   }}
-                    className="shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                    className="shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors"
                     title="Hear translation">
                     🔊 {boomerMode ? 'HEAR IT' : 'PLAY'}
                   </button>
                 </div>
               )}
               {translatorResult === 'Translating...' && (
-                <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 px-3 py-2">
-                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-cyan-300`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
                 </div>
               )}
             </div>
@@ -583,11 +583,11 @@ export default function Home() {
               position: 'fixed', bottom: 20, right: 20, zIndex: 50,
               width: 48, height: 48, borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: showPhone ? 'rgba(255,40,40,0.2)' : 'rgba(0,255,65,0.12)',
-              border: showPhone ? '1px solid rgba(255,40,40,0.5)' : '1px solid rgba(0,255,65,0.4)',
-              color: showPhone ? 'rgba(255,60,60,0.9)' : 'rgba(0,255,65,0.9)',
+              background: showPhone ? 'rgba(255,40,40,0.2)' : 'rgba(34,197,94,0.1)',
+              border: showPhone ? '1px solid rgba(255,40,40,0.5)' : '1px solid rgba(34,197,94,0.4)',
+              color: showPhone ? 'rgba(255,60,60,0.9)' : 'rgba(34,197,94,0.9)',
               cursor: 'pointer',
-              boxShadow: showPhone ? '0 0 20px rgba(255,40,40,0.2)' : '0 0 20px rgba(0,255,65,0.15)',
+              boxShadow: showPhone ? '0 0 20px rgba(255,40,40,0.2)' : '0 0 20px rgba(34,197,94,0.15)',
             }}
             title={showPhone ? 'Close Calll Home' : 'Calll Home'}
           >

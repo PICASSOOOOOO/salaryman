@@ -1,35 +1,11 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Radio, Globe, Clock, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Globe, Clock, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
-
-function BlinkingClock() {
-  const [display, setDisplay] = useState('');
-  const colonRef = useRef(true);
-
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      colonRef.current = !colonRef.current;
-      setDisplay(`${h}${colonRef.current ? ':' : ' '}${m}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <span className="display-text text-sm crt-text opacity-60 tabular-nums w-12 inline-block">
-      {display}
-    </span>
-  );
-}
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -59,41 +35,29 @@ export function NavBar() {
   ];
 
   return (
-    <header
-      className="app-header shrink-0"
-      style={{
-        background: 'rgba(0, 10, 0, 0.97)',
-        borderBottom: '1px solid rgba(0,255,65,0.25)',
-        boxShadow: '0 2px 20px rgba(0,255,65,0.08), inset 0 -1px 0 rgba(0,255,65,0.1)',
-      }}
-    >
-      {/* Top strip — device info bar */}
-      <div
-        className="flex items-center justify-between px-2 sm:px-4 py-0.5 gap-2 flex-wrap"
-        style={{
-          borderBottom: '1px solid rgba(0,255,65,0.1)',
-          background: 'rgba(0,255,65,0.02)',
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.12em' }}>
+    <header className="app-header shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
+
+      {/* Top strip — plan / trial info */}
+      <div className="flex items-center justify-between px-4 py-0.5 border-b border-white/[0.04] bg-white/[0.01]">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-zinc-600 tracking-widest uppercase">
             {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
           </span>
-          <span style={{ color: 'rgba(0,255,65,0.15)', fontSize: '0.65rem' }}>◆</span>
-          <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>
+          <span className="text-zinc-700 text-[9px]">◆</span>
+          <span className="font-mono text-[10px] text-zinc-700 tracking-widest">
             {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className="status-dot" style={{ width: '5px', height: '5px', background: isTrial ? 'rgba(255,165,0,0.8)' : undefined }} />
+            <span className={`w-1.5 h-1.5 rounded-full ${isTrial ? 'bg-amber-500' : 'bg-emerald-500'}`} />
             {isTrial ? (
-              <span className="display-text text-xs flex items-center gap-1" style={{ color: 'rgba(255,165,0,0.75)', letterSpacing: '0.08em' }}>
+              <span className="font-mono text-[10px] text-amber-500/80 tracking-wide flex items-center gap-1">
                 <Clock className="w-2.5 h-2.5" />
-                TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft} DAYS LEFT` : `${trialHoursLeft}H LEFT`}
+                TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft}D LEFT` : `${trialHoursLeft}H LEFT`}
               </span>
             ) : (
-              <span className="display-text text-xs" style={{ color: 'rgba(0,255,65,0.35)', letterSpacing: '0.08em' }}>
+              <span className="font-mono text-[10px] text-zinc-600 tracking-wide">
                 {isPro ? (boomerMode ? 'PRO PLAN' : PABLO_PRODUCTS.PRO_TIER.name) : (boomerMode ? 'FREE PLAN' : PABLO_PRODUCTS.FREE_TIER.name)}
               </span>
             )}
@@ -105,21 +69,16 @@ export function NavBar() {
                 setBoomerMode(nb);
                 try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
               }}
-              className="display-text text-xs transition-all"
-              style={{
-                letterSpacing: '0.08em',
-                color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(0,255,65,0.5)',
-                cursor: 'pointer',
-                background: boomerMode ? 'rgba(255,170,0,0.08)' : 'rgba(0,255,65,0.04)',
-                border: boomerMode ? '1px solid rgba(255,170,0,0.35)' : '1px solid rgba(0,255,65,0.2)',
-                padding: '1px 6px',
-              }}
-              title={boomerMode ? 'Boomer Mode ON — plain labels & bigger fonts. Click to disable.' : 'Boomer Mode: plain labels, no jargon. Click to enable.'}
+              className={`font-mono text-[10px] tracking-wide px-1.5 py-0.5 rounded border transition-colors ${
+                boomerMode
+                  ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
+                  : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
+              }`}
+              title={boomerMode ? 'Plain Mode ON — click to disable' : 'Plain Mode: simpler labels'}
             >
-              {boomerMode ? '🔶 PLAIN MODE ✓' : 'PLAIN MODE'}
+              {boomerMode ? 'PLAIN ✓' : 'PLAIN'}
             </button>
           )}
-          <BlinkingClock />
         </div>
       </div>
 
@@ -128,51 +87,26 @@ export function NavBar() {
 
         {/* Brand / Logo */}
         <div
-          className="flex items-center gap-2 group/logo cursor-pointer"
+          className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
           onClick={() => navigate('/')}
         >
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: '28px',
-              height: '28px',
-              border: '1px solid rgba(0,255,65,0.5)',
-              background: 'rgba(0,255,65,0.08)',
-              boxShadow: '0 0 8px rgba(0,255,65,0.15)',
-            }}
-          >
-            <Radio className="w-3.5 h-3.5" style={{ color: '#00ff41' }} />
+          <div className="w-7 h-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div>
-            <h1
-              className="display-text leading-none"
-              style={{
-                fontSize: '1.25rem',
-                color: '#00ff41',
-                textShadow: '0 0 10px rgba(0,255,65,0.7), 0 0 20px rgba(0,255,65,0.3)',
-                letterSpacing: '0.12em',
-              }}
-            >
+            <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
               {config.name}
             </h1>
-            <p
-              className="display-text leading-none mt-0.5"
-              style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.4)', letterSpacing: '0.1em' }}
-            >
+            <p className="font-mono text-[9px] text-zinc-600 tracking-widest leading-none mt-0.5">
               {config.sub}
             </p>
           </div>
-
           <button
             onClick={e => { e.stopPropagation(); toggleMode(); }}
             title={isDiscreet ? 'Show real name' : 'Discreet mode'}
-            className="p-1 transition-all"
-            style={{ color: 'rgba(0,255,65,0.3)', display: 'inline-flex' }}
+            className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
           >
-            {isDiscreet
-              ? <Eye className="w-3 h-3" />
-              : <EyeOff className="w-3 h-3" />
-            }
+            {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
           </button>
         </div>
 
@@ -185,48 +119,18 @@ export function NavBar() {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-3 py-2 transition-all`}
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: active
-                    ? '#00ff41'
+                className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
+                  active
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : locked
-                      ? 'rgba(0,255,65,0.25)'
-                      : 'rgba(0,255,65,0.5)',
-                  background: active ? 'rgba(0,255,65,0.1)' : 'transparent',
-                  border: active ? '1px solid rgba(0,255,65,0.35)' : '1px solid transparent',
-                  textShadow: active ? '0 0 8px rgba(0,255,65,0.5)' : 'none',
-                  boxShadow: active ? '0 0 10px rgba(0,255,65,0.1)' : 'none',
-                }}
-                onMouseEnter={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,65,0.8)';
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.05)';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLButtonElement).style.color = locked ? 'rgba(0,255,65,0.25)' : 'rgba(0,255,65,0.5)';
-                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                  }
-                }}
+                      ? 'text-zinc-700 border border-transparent'
+                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                }`}
               >
-                <Icon className="w-3 h-3" />
+                <Icon className="w-3 h-3 shrink-0" />
                 {label}
                 {locked && (
-                  <span
-                    style={{
-                      fontSize: '0.55rem',
-                      fontFamily: "'VT323', monospace",
-                      color: 'rgba(0,255,65,0.4)',
-                      border: '1px solid rgba(0,255,65,0.2)',
-                      padding: '0 3px',
-                      letterSpacing: '0.1em',
-                    }}
-                  >
+                  <span className="text-[9px] font-mono text-zinc-700 border border-zinc-800 px-1 py-px rounded">
                     {boomerMode ? 'PRO' : PABLO_PRODUCTS.PRO_TIER.short}
                   </span>
                 )}
@@ -234,41 +138,23 @@ export function NavBar() {
             );
           })}
 
-
           <button
             onClick={e => { if (isMobile || window.innerWidth < 768) { e.preventDefault(); return; } navigate('/world'); }}
             aria-disabled={isMobile ? true : undefined}
             title={isMobile ? 'Desktop only' : undefined}
             disabled={isMobile}
-            className="flex items-center gap-1.5 px-3 py-2 transition-all flex-col"
-            style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.65rem',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: isMobile ? 'rgba(0,255,65,0.25)' : 'rgba(0,255,65,0.7)',
-              border: isMobile ? '1px solid rgba(0,255,65,0.12)' : '1px solid rgba(0,255,65,0.35)',
-              background: isMobile ? 'rgba(0,255,65,0.02)' : 'rgba(0,255,65,0.06)',
-              cursor: isMobile ? 'default' : 'pointer',
-              opacity: isMobile ? 0.5 : 1,
-            }}
-            onMouseEnter={isMobile ? undefined : e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.12)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.6)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#00ff41';
-            }}
-            onMouseLeave={isMobile ? undefined : e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,65,0.06)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,65,0.35)';
-              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,65,0.7)';
-            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors flex-col ${
+              isMobile
+                ? 'text-zinc-700 border border-zinc-800/50 opacity-50 cursor-default'
+                : 'text-emerald-500/70 border border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-400'
+            }`}
           >
             <span className="flex items-center gap-1.5">
               <Globe className="w-3 h-3" />
               EXPLORE
             </span>
             {isMobile && (
-              <span style={{ fontSize: '0.5rem', letterSpacing: '0.08em', opacity: 0.7, lineHeight: 1 }}>
+              <span className="text-[8px] tracking-wide opacity-70 leading-none">
                 DESKTOP ONLY
               </span>
             )}
@@ -277,18 +163,8 @@ export function NavBar() {
           {isTrial ? (
             <button
               onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-3 py-2 ml-3 transition-all"
-              style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '0.6rem',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'rgba(255,165,0,0.9)',
-                border: '1px solid rgba(255,165,0,0.45)',
-                background: 'rgba(255,165,0,0.08)',
-                boxShadow: '0 0 10px rgba(255,165,0,0.08)',
-                animation: trialDaysLeft <= 2 ? 'smfade 1.2s steps(1) infinite alternate' : 'none',
-              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-md text-[11px] font-mono tracking-widest uppercase text-amber-400 border border-amber-500/30 bg-amber-500/6 hover:bg-amber-500/12 transition-colors"
+              style={{ animation: trialDaysLeft <= 2 ? 'smfade 1.2s steps(1) infinite alternate' : 'none' }}
             >
               <Clock className="w-3 h-3" />
               {trialDaysLeft > 1 ? `${trialDaysLeft}D TRIAL` : `${trialHoursLeft}H LEFT`} · UPGRADE
@@ -296,18 +172,7 @@ export function NavBar() {
           ) : !isPro && (
             <button
               onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-3 py-2 ml-3 transition-all"
-              style={{
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '0.65rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#00ff41',
-                border: '1px solid rgba(0,255,65,0.5)',
-                background: 'rgba(0,255,65,0.1)',
-                boxShadow: '0 0 10px rgba(0,255,65,0.1)',
-                textShadow: '0 0 8px rgba(0,255,65,0.5)',
-              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-md text-[11px] font-mono tracking-widest uppercase text-emerald-400 border border-emerald-500/30 bg-emerald-500/8 hover:bg-emerald-500/15 transition-colors"
             >
               <Zap className="w-3 h-3" />
               UPGRADE
@@ -315,54 +180,33 @@ export function NavBar() {
           )}
 
           {/* Auth */}
-          <div
-            className="ml-2 pl-2 flex items-center gap-2"
-            style={{ borderLeft: '1px solid rgba(0,255,65,0.15)' }}
-          >
+          <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
             {isLoading ? (
-              <div
-                className="w-7 h-7 animate-pulse"
-                style={{ background: 'rgba(0,255,65,0.1)', border: '1px solid rgba(0,255,65,0.2)' }}
-              />
+              <div className="w-7 h-7 rounded-md bg-white/4 animate-pulse" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => navigate('/profile')}
-                  className="flex items-center gap-2 transition-opacity hover:opacity-80"
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                   title="My account"
                 >
                   {user.profileImageUrl ? (
                     <img
                       src={user.profileImageUrl}
                       alt={user.firstName ?? 'User'}
-                      className="w-7 h-7 object-cover"
-                      style={{ border: '1px solid rgba(0,255,65,0.4)' }}
+                      className="w-7 h-7 rounded-md object-cover border border-white/10"
                     />
                   ) : (
-                    <div
-                      className="w-7 h-7 flex items-center justify-center display-text text-sm"
-                      style={{
-                        border: '1px solid rgba(0,255,65,0.4)',
-                        background: 'rgba(0,255,65,0.08)',
-                        color: '#00ff41',
-                        textShadow: '0 0 8px rgba(0,255,65,0.5)',
-                      }}
-                    >
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                       {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                     </div>
                   )}
                   <div className="hidden sm:block text-right">
-                    <p
-                      className="leading-none"
-                      style={{ fontSize: '0.7rem', color: 'rgba(0,255,65,0.8)', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.05em' }}
-                    >
+                    <p className="text-[11px] font-mono text-zinc-300 leading-none">
                       {user.firstName ?? user.email?.split('@')[0] ?? 'USER'}
                     </p>
                     {user.email && (
-                      <p
-                        className="leading-none mt-0.5"
-                        style={{ fontSize: '0.6rem', color: 'rgba(0,255,65,0.35)', fontFamily: "'Share Tech Mono', monospace" }}
-                      >
+                      <p className="text-[9px] font-mono text-zinc-600 leading-none mt-0.5">
                         {user.email}
                       </p>
                     )}
@@ -370,11 +214,8 @@ export function NavBar() {
                 </button>
                 <button
                   onClick={logout}
-                  title="Disconnect"
-                  className="flex items-center gap-1 px-2 py-1.5 transition-all"
-                  style={{ color: 'rgba(0,255,65,0.3)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,50,50,0.8)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,65,0.3)'; }}
+                  title="Sign out"
+                  className="p-1.5 text-zinc-600 hover:text-red-400 transition-colors rounded-md hover:bg-red-500/8"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
@@ -382,16 +223,7 @@ export function NavBar() {
             ) : (
               <button
                 onClick={login}
-                className="flex items-center gap-1.5 px-3 py-1.5 transition-all"
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '0.65rem',
-                  letterSpacing: '0.1em',
-                  color: '#00ff41',
-                  border: '1px solid rgba(0,255,65,0.4)',
-                  background: 'rgba(0,255,65,0.08)',
-                  textTransform: 'uppercase',
-                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 LOG IN

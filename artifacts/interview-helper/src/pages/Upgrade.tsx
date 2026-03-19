@@ -87,14 +87,14 @@ export default function Upgrade() {
         {/* Header */}
         <div className="text-center mb-10 mt-6">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 crt-border" style={{ background: 'rgba(0,255,65,0.06)' }}>
-              <Star className="w-3 h-3" style={{ color: '#00ff41' }} />
-              <span className="display-text" style={{ fontSize: '0.85rem', color: '#00ff41', letterSpacing: '0.12em' }}>PABLO CORP — SALARYMAN</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 mb-4 rounded-full border border-primary/25 bg-primary/8">
+              <Star className="w-3 h-3 text-primary" />
+              <span className="text-xs font-mono tracking-widest text-primary uppercase">PABLO CORP — SALARYMAN</span>
             </div>
-            <h1 className="display-text mb-3" style={{ fontSize: '2.5rem', color: '#00ff41', textShadow: '0 0 20px rgba(0,255,65,0.5)', letterSpacing: '0.1em' }}>
-              {boomerMode ? 'PLANS & PRICING' : 'PRODUCT CATALOG'}
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-3">
+              {boomerMode ? 'Plans & Pricing' : 'Product Catalog'}
             </h1>
-            <p className="max-w-md mx-auto" style={{ color: 'rgba(0,255,65,0.6)', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', letterSpacing: '0.05em' }}>
+            <p className="max-w-md mx-auto text-sm text-muted-foreground">
               {boomerMode ? `Choose the plan that works for you. Free gets you started. Pro unlocks everything.` : `Browse Pablo Corp augmentation modules. ${PABLO_PRODUCTS.FREE_TIER.name} grants basic terminal access. ${PABLO_PRODUCTS.PRO_TIER.name} unlocks the full implant suite.`}
             </p>
           </motion.div>
@@ -102,16 +102,15 @@ export default function Upgrade() {
 
         {checkoutResult === "success" && !loading && isPro && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-            style={{ border: '1px solid rgba(0,255,65,0.35)', background: 'rgba(0,255,65,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(0,255,65,0.4)', background: 'rgba(0,255,65,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Check className="w-5 h-5" style={{ color: 'rgba(0,255,65,0.85)' }} />
+            className="mb-6 rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-6 py-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl border border-emerald-500/30 bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <Check className="w-5 h-5 text-emerald-400" />
             </div>
             <div className="flex-1">
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(0,255,65,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
-                PAYMENT CONFIRMED — {PABLO_PRODUCTS.PRO_TIER.name} ACTIVATED
+              <p className="text-sm font-bold text-emerald-300 mb-0.5">
+                Payment confirmed — {PABLO_PRODUCTS.PRO_TIER.name} activated
               </p>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '0.06em' }}>
+              <p className="text-xs text-emerald-400/60">
                 All augmentation modules are now unlocked. Welcome to the full suite, salaryman.
               </p>
             </div>
@@ -120,16 +119,15 @@ export default function Upgrade() {
 
         {checkoutResult === "cancel" && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-            style={{ border: '1px solid rgba(255,165,0,0.35)', background: 'rgba(255,165,0,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(255,165,0,0.4)', background: 'rgba(255,165,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Lock className="w-5 h-5" style={{ color: 'rgba(255,165,0,0.85)' }} />
+            className="mb-6 rounded-2xl border border-amber-500/25 bg-amber-500/8 px-6 py-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl border border-amber-500/30 bg-amber-500/15 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5 text-amber-400" />
             </div>
             <div className="flex-1">
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(255,165,0,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
-                CHECKOUT CANCELLED — NO CHANGES MADE
+              <p className="text-sm font-bold text-amber-300 mb-0.5">
+                Checkout cancelled — no changes made
               </p>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.5)', letterSpacing: '0.06em' }}>
+              <p className="text-xs text-amber-400/60">
                 Your account remains unchanged. You can try again anytime.
               </p>
             </div>
@@ -139,21 +137,20 @@ export default function Upgrade() {
         {/* Trial status banner */}
         {!loading && isTrial && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-            style={{ border: '1px solid rgba(255,165,0,0.35)', background: 'rgba(255,165,0,0.06)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: '40px', height: '40px', border: '1px solid rgba(255,165,0,0.4)', background: 'rgba(255,165,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Clock className="w-5 h-5" style={{ color: 'rgba(255,165,0,0.85)' }} />
+            className="mb-6 rounded-2xl border border-amber-500/25 bg-amber-500/8 px-6 py-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl border border-amber-500/30 bg-amber-500/15 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-400" />
             </div>
             <div className="flex-1">
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.8rem', color: 'rgba(255,165,0,0.9)', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
-                7-DAY FREE TRIAL ACTIVE — {trialDaysLeft > 1 ? `${trialDaysLeft} DAYS REMAINING` : `${trialHoursLeft} HOURS REMAINING`}
+              <p className="text-sm font-bold text-amber-300 mb-0.5">
+                7-day free trial active — {trialDaysLeft > 1 ? `${trialDaysLeft} days remaining` : `${trialHoursLeft} hours remaining`}
               </p>
-              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.5)', letterSpacing: '0.06em' }}>
+              <p className="text-xs text-amber-400/60">
                 All augmentation modules active. No payment required during trial. Upgrade before it ends to maintain clearance.
               </p>
             </div>
-            <div style={{ width: '120px', height: '6px', background: 'rgba(255,165,0,0.15)', flexShrink: 0, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'rgba(255,165,0,0.6)', width: `${(trialDaysLeft / 7) * 100}%`, transition: 'width 0.3s ease' }} />
+            <div className="w-[120px] h-1.5 bg-amber-500/15 rounded-full shrink-0 overflow-hidden">
+              <div className="h-full bg-amber-500/60 rounded-full transition-all duration-300" style={{ width: `${(trialDaysLeft / 7) * 100}%` }} />
             </div>
           </motion.div>
         )}

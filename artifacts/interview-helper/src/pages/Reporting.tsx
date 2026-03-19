@@ -8,17 +8,10 @@ import {
   Zap, CheckCircle, AlertCircle, RefreshCw, Trash2, Send, DollarSign, TrendingUp,
 } from 'lucide-react';
 import { ProGate } from '@/components/ProGate';
-import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
-const GREEN = '#00ff41';
-const GREEN_DIM = 'rgba(0,255,65,0.5)';
-const GREEN_MID = 'rgba(0,255,65,0.3)';
-const BG = 'rgba(0,10,0,0.97)';
-
-function crt(opacity = 1) {
-  return { color: `rgba(0,255,65,${opacity})`, fontFamily: "'Share Tech Mono', monospace" };
-}
+const ACCENT = '#22c55e';
+const ACCENT_DIM = 'rgba(34,197,94,0.5)';
 
 interface Summary {
   openPositions: number;
@@ -58,45 +51,35 @@ interface WebhookConfig {
 
 const STAGE_ORDER = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
 const STAGE_COLORS: Record<string, string> = {
-  applied: 'rgba(0,255,65,0.8)',
-  screening: 'rgba(0,200,80,0.8)',
-  interview: 'rgba(0,180,120,0.8)',
-  offer: 'rgba(0,220,100,0.8)',
-  hired: '#00ff41',
-  rejected: 'rgba(255,50,50,0.5)',
+  applied: 'rgba(34,197,94,0.7)',
+  screening: 'rgba(34,197,94,0.7)',
+  interview: 'rgba(34,197,94,0.7)',
+  offer: 'rgba(34,197,94,0.7)',
+  hired: '#22c55e',
+  rejected: 'rgba(239,68,68,0.5)',
 };
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: number; icon: React.FC<any>; sub?: string }) {
   return (
-    <div
-      style={{
-        background: 'rgba(0,255,65,0.04)',
-        border: '1px solid rgba(0,255,65,0.2)',
-        padding: '16px 20px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Icon style={{ width: 14, height: 14, color: GREEN_DIM }} />
-        <span style={{ ...crt(0.45), fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
+    <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-3.5 h-3.5 text-zinc-500" />
+        <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{label}</span>
       </div>
-      <div style={{ ...crt(1), fontSize: '2rem', letterSpacing: '0.08em', lineHeight: 1, textShadow: `0 0 20px rgba(0,255,65,0.4)` }}>
-        {value}
-      </div>
-      {sub && <div style={{ ...crt(0.3), fontSize: '0.55rem', letterSpacing: '0.1em', marginTop: 4 }}>{sub}</div>}
+      <div className="text-2xl font-bold text-zinc-100 leading-none">{value}</div>
+      {sub && <div className="text-[10px] font-mono text-zinc-700 tracking-wide mt-1">{sub}</div>}
     </div>
   );
 }
 
-function CRTTooltip({ active, payload, label }: any) {
+function ModernTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'rgba(0,10,0,0.95)', border: '1px solid rgba(0,255,65,0.35)', padding: '8px 14px' }}>
-      <div style={{ ...crt(0.5), fontSize: '0.6rem', letterSpacing: '0.1em', marginBottom: 4 }}>{label}</div>
+    <div className="bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+      <div className="text-[10px] font-mono text-zinc-500 mb-1">{label}</div>
       {payload.map((p: any, i: number) => (
-        <div key={i} style={{ ...crt(0.9), fontSize: '0.75rem' }}>
-          {p.name}: <span style={{ color: GREEN }}>{p.value}</span>
+        <div key={i} className="text-xs font-mono text-zinc-300">
+          {p.name}: <span className="text-emerald-400">{p.value}</span>
         </div>
       ))}
     </div>
@@ -114,16 +97,16 @@ function HiringPipelineChart({ data }: { data: StageCount[] }) {
     .map(s => ({ stage: s.toUpperCase(), count: data.find(d => d.stage === s)?.count ?? 0 }));
 
   return (
-    <div style={{ border: '1px solid rgba(0,255,65,0.15)', padding: 20, background: 'rgba(0,255,65,0.02)' }}>
-      <div style={{ ...crt(0.5), fontSize: '0.6rem', letterSpacing: '0.12em', marginBottom: 16, textTransform: 'uppercase' }}>
-        HIRING PIPELINE · APPLICANTS BY STAGE
+    <div className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+      <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-4">
+        Hiring Pipeline · Applicants by Stage
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={sorted} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-          <XAxis dataKey="stage" tick={{ fill: 'rgba(0,255,65,0.4)', fontSize: 9, fontFamily: "'Share Tech Mono', monospace" }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fill: 'rgba(0,255,65,0.4)', fontSize: 9, fontFamily: "'Share Tech Mono', monospace" }} tickLine={false} axisLine={false} allowDecimals={false} />
-          <Tooltip content={<CRTTooltip />} cursor={{ fill: 'rgba(0,255,65,0.04)' }} />
-          <Bar dataKey="count" name="Applicants" fill={GREEN} opacity={0.7} radius={[2, 2, 0, 0]} />
+          <XAxis dataKey="stage" tick={{ fill: 'rgba(161,161,170,0.5)', fontSize: 9, fontFamily: 'monospace' }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fill: 'rgba(161,161,170,0.5)', fontSize: 9, fontFamily: 'monospace' }} tickLine={false} axisLine={false} allowDecimals={false} />
+          <Tooltip content={<ModernTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <Bar dataKey="count" name="Applicants" fill={ACCENT} opacity={0.7} radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -142,19 +125,19 @@ function ActivityChart({ hiresPerMonth, applicantsPerMonth }: { hiresPerMonth: M
   }));
 
   return (
-    <div style={{ border: '1px solid rgba(0,255,65,0.15)', padding: 20, background: 'rgba(0,255,65,0.02)' }}>
-      <div style={{ ...crt(0.5), fontSize: '0.6rem', letterSpacing: '0.12em', marginBottom: 16, textTransform: 'uppercase' }}>
-        ACTIVITY TREND · LAST 6 MONTHS
+    <div className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+      <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-4">
+        Activity Trend · Last 6 Months
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,255,65,0.07)" />
-          <XAxis dataKey="month" tick={{ fill: 'rgba(0,255,65,0.4)', fontSize: 9, fontFamily: "'Share Tech Mono', monospace" }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fill: 'rgba(0,255,65,0.4)', fontSize: 9, fontFamily: "'Share Tech Mono', monospace" }} tickLine={false} axisLine={false} allowDecimals={false} />
-          <Tooltip content={<CRTTooltip />} />
-          <Legend wrapperStyle={{ ...crt(0.4), fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }} />
-          <Line type="monotone" dataKey="applicants" stroke="rgba(0,255,65,0.6)" strokeWidth={2} dot={{ fill: GREEN, r: 3 }} activeDot={{ r: 4 }} name="Applicants" />
-          <Line type="monotone" dataKey="hires" stroke={GREEN} strokeWidth={2} dot={{ fill: GREEN, r: 3 }} activeDot={{ r: 4 }} name="Hires" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <XAxis dataKey="month" tick={{ fill: 'rgba(161,161,170,0.5)', fontSize: 9, fontFamily: 'monospace' }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fill: 'rgba(161,161,170,0.5)', fontSize: 9, fontFamily: 'monospace' }} tickLine={false} axisLine={false} allowDecimals={false} />
+          <Tooltip content={<ModernTooltip />} />
+          <Legend wrapperStyle={{ fontSize: '0.6rem', fontFamily: 'monospace', textTransform: 'uppercase', color: 'rgba(161,161,170,0.6)' }} />
+          <Line type="monotone" dataKey="applicants" stroke="rgba(34,197,94,0.5)" strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} activeDot={{ r: 4 }} name="Applicants" />
+          <Line type="monotone" dataKey="hires" stroke={ACCENT} strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} activeDot={{ r: 4 }} name="Hires" />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -215,7 +198,7 @@ function ZapierSection() {
       const r = await fetch('/api/reporting/webhook/test', { method: 'POST' });
       const d = await r.json();
       if (r.ok) {
-        setTestResult({ ok: true, msg: `SIGNAL DELIVERED · HTTP ${d.status}` });
+        setTestResult({ ok: true, msg: `Delivered · HTTP ${d.status}` });
       } else {
         setTestResult({ ok: false, msg: d.error ?? 'Unknown error' });
       }
@@ -233,158 +216,88 @@ function ZapierSection() {
   };
 
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+    <label className="flex items-center gap-3 cursor-pointer">
       <div
         onClick={() => onChange(!checked)}
-        style={{
-          width: 32,
-          height: 18,
-          background: checked ? 'rgba(0,255,65,0.2)' : 'rgba(0,255,65,0.05)',
-          border: `1px solid ${checked ? 'rgba(0,255,65,0.6)' : 'rgba(0,255,65,0.2)'}`,
-          borderRadius: 2,
-          position: 'relative',
-          transition: 'all 0.2s',
-          flexShrink: 0,
-        }}
+        className={`relative w-8 h-[18px] rounded-full border transition-all ${checked ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-white/4 border-white/10'}`}
       >
-        <div style={{
-          width: 12,
-          height: 12,
-          background: checked ? GREEN : 'rgba(0,255,65,0.25)',
-          position: 'absolute',
-          top: 2,
-          left: checked ? 16 : 2,
-          transition: 'left 0.2s',
-          boxShadow: checked ? `0 0 6px rgba(0,255,65,0.5)` : 'none',
-        }} />
+        <div className={`absolute top-[2px] w-3 h-3 rounded-full transition-all ${checked ? 'left-[16px] bg-emerald-400' : 'left-[2px] bg-zinc-600'}`} />
       </div>
-      <span style={{ ...crt(checked ? 0.8 : 0.4), fontSize: '0.65rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+      <span className={`text-xs font-mono uppercase tracking-wide ${checked ? 'text-zinc-300' : 'text-zinc-600'}`}>{label}</span>
     </label>
   );
 
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Loader2 style={{ width: 16, height: 16, color: GREEN_DIM, animation: 'spin 1s linear infinite' }} /></div>;
+    return <div className="flex justify-center p-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>;
   }
 
   return (
-    <div style={{ border: '1px solid rgba(0,255,65,0.2)', background: 'rgba(0,255,65,0.02)', padding: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-        <Zap style={{ width: 14, height: 14, color: GREEN_DIM }} />
-        <span style={{ ...crt(0.9), fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 'bold' }}>
-          ZAPIER WEBHOOK
-        </span>
+    <div className="rounded-xl border border-white/8 bg-white/[0.025] p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Zap className="w-3.5 h-3.5 text-zinc-500" />
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-widest font-mono">Zapier Webhook</span>
       </div>
-      <p style={{ ...crt(0.35), fontSize: '0.6rem', letterSpacing: '0.08em', marginBottom: 20, lineHeight: 1.6 }}>
-        Paste your Zapier webhook URL to push events from PABLO CORP to Slack, Sheets, email, or any automation.
-        Create a Zap with "Webhooks by Zapier" as the trigger to get your URL.
+      <p className="text-xs text-zinc-600 mb-5 leading-relaxed">
+        Paste your Zapier webhook URL to push events to Slack, Sheets, email, or any automation.
       </p>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ ...crt(0.4), fontSize: '0.55rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>
-          WEBHOOK URL
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div className="mb-4">
+        <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-2">Webhook URL</div>
+        <div className="flex gap-2">
           <input
             value={config.webhookUrl}
             onChange={e => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
             placeholder="https://hooks.zapier.com/hooks/catch/..."
-            style={{
-              flex: 1,
-              background: 'rgba(0,255,65,0.04)',
-              border: '1px solid rgba(0,255,65,0.2)',
-              color: GREEN,
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.65rem',
-              padding: '8px 12px',
-              outline: 'none',
-              letterSpacing: '0.05em',
-            }}
+            className="flex-1 bg-white/4 border border-white/8 rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-emerald-500/30 font-mono transition-colors"
           />
           {config.webhookUrl && (
             <button
               onClick={clearWebhook}
               title="Clear webhook"
-              style={{
-                background: 'rgba(255,50,50,0.06)',
-                border: '1px solid rgba(255,50,50,0.2)',
-                color: 'rgba(255,50,50,0.6)',
-                padding: '8px 10px',
-                cursor: 'pointer',
-              }}
+              className="px-3 py-2 rounded-lg bg-red-500/6 border border-red-500/15 text-red-400/60 hover:text-red-400 transition-colors"
             >
-              <Trash2 style={{ width: 12, height: 12 }} />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ ...crt(0.4), fontSize: '0.55rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
-        TRIGGER EVENTS
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
+      <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Trigger Events</div>
+      <div className="grid grid-cols-2 gap-3 mb-5">
         <Toggle label="New Hire" checked={config.eventNewHire} onChange={v => setConfig(p => ({ ...p, eventNewHire: v }))} />
         <Toggle label="New Applicant" checked={config.eventNewApplicant} onChange={v => setConfig(p => ({ ...p, eventNewApplicant: v }))} />
         <Toggle label="New Contact Added" checked={config.eventNewContact} onChange={v => setConfig(p => ({ ...p, eventNewContact: v }))} />
         <Toggle label="Weekly Summary" checked={config.eventWeeklySummary} onChange={v => setConfig(p => ({ ...p, eventWeeklySummary: v }))} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={save}
           disabled={saving}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(0,255,65,0.1)',
-            border: '1px solid rgba(0,255,65,0.4)',
-            color: GREEN,
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '0.65rem',
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            padding: '8px 16px',
-            cursor: saving ? 'not-allowed' : 'pointer',
-            opacity: saving ? 0.6 : 1,
-          }}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-mono uppercase tracking-wide hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
         >
-          {saving ? <Loader2 style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }} /> : <CheckCircle style={{ width: 12, height: 12 }} />}
-          {saved ? 'SAVED' : 'SAVE CONFIG'}
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+          {saved ? 'Saved' : 'Save Config'}
         </button>
 
         {config.webhookUrl && (
           <button
             onClick={testWebhook}
             disabled={testing}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(0,255,65,0.04)',
-              border: '1px solid rgba(0,255,65,0.2)',
-              color: GREEN_DIM,
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.65rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              padding: '8px 16px',
-              cursor: testing ? 'not-allowed' : 'pointer',
-              opacity: testing ? 0.6 : 1,
-            }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/4 border border-white/8 text-zinc-400 text-xs font-mono uppercase tracking-wide hover:bg-white/8 transition-colors disabled:opacity-50"
           >
-            {testing ? <Loader2 style={{ width: 12, height: 12, animation: 'spin 1s linear infinite' }} /> : <Send style={{ width: 12, height: 12 }} />}
-            SEND TEST SIGNAL
+            {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            Send Test
           </button>
         )}
 
         {testResult && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="flex items-center gap-2">
             {testResult.ok
-              ? <CheckCircle style={{ width: 12, height: 12, color: GREEN }} />
-              : <AlertCircle style={{ width: 12, height: 12, color: 'rgba(255,80,80,0.8)' }} />
+              ? <CheckCircle className="w-3 h-3 text-emerald-400" />
+              : <AlertCircle className="w-3 h-3 text-red-400/70" />
             }
-            <span style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.6rem',
-              letterSpacing: '0.08em',
-              color: testResult.ok ? GREEN : 'rgba(255,80,80,0.8)',
-            }}>
+            <span className={`text-xs font-mono ${testResult.ok ? 'text-emerald-400' : 'text-red-400/70'}`}>
               {testResult.msg}
             </span>
           </div>
@@ -418,102 +331,75 @@ function ReportingContent() {
   useEffect(() => { loadStats(); }, [loadStats]);
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, padding: '32px 24px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="min-h-screen bg-[#09090b] px-6 py-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-          <BarChart2 style={{ width: 18, height: 18, color: GREEN }} />
-          <h1 style={{
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '1.1rem',
-            color: GREEN,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            textShadow: '0 0 15px rgba(0,255,65,0.5)',
-          }}>
-            {boomerMode ? 'REPORTING' : 'INTEL-9 COMMAND BRIEF'}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <BarChart2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <h1 className="font-['Share_Tech_Mono',monospace] text-base text-zinc-100 tracking-widest uppercase">
+            {boomerMode ? 'Reporting' : 'Intel-9 Command Brief'}
           </h1>
           <button
             onClick={loadStats}
             disabled={loading}
             title="Refresh"
-            style={{
-              marginLeft: 'auto',
-              background: 'transparent',
-              border: '1px solid rgba(0,255,65,0.2)',
-              color: GREEN_DIM,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              padding: '4px 8px',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-zinc-300 text-xs font-mono transition-colors disabled:opacity-50"
           >
-            <RefreshCw style={{ width: 12, height: 12, animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.1em' }}>REFRESH</span>
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
         </div>
-        <p style={{ ...crt(0.3), fontSize: '0.6rem', letterSpacing: '0.1em' }}>
-          {boomerMode ? 'Business stats — hiring, contacts, projects' : 'TACTICAL OVERVIEW · BUSINESS INTELLIGENCE FEED'}
+        <p className="text-xs text-zinc-600 font-mono ml-11">
+          {boomerMode ? 'Business stats — hiring, contacts, projects' : 'Tactical overview · business intelligence feed'}
         </p>
       </div>
 
       {error && (
-        <div style={{
-          border: '1px solid rgba(255,80,80,0.3)',
-          background: 'rgba(255,50,50,0.05)',
-          padding: '12px 16px',
-          marginBottom: 24,
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <AlertCircle style={{ width: 14, height: 14, color: 'rgba(255,80,80,0.7)' }} />
-          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,80,80,0.7)' }}>{error}</span>
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 mb-6 flex items-center gap-2">
+          <AlertCircle className="w-3.5 h-3.5 text-red-400/70" />
+          <span className="text-xs font-mono text-red-400/70">{error}</span>
         </div>
       )}
 
       {loading && !stats ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-          <div style={{ textAlign: 'center' }}>
-            <Loader2 style={{ width: 24, height: 24, color: GREEN_DIM, animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
-            <div style={{ ...crt(0.3), fontSize: '0.6rem', letterSpacing: '0.15em' }}>PULLING INTEL...</div>
+        <div className="flex justify-center py-16">
+          <div className="text-center">
+            <Loader2 className="w-6 h-6 animate-spin text-zinc-600 mx-auto mb-3" />
+            <div className="text-xs font-mono text-zinc-700 uppercase tracking-widest">Loading...</div>
           </div>
         </div>
       ) : stats ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div className="flex flex-col gap-6">
           {/* Hiring & Operations Stat Cards */}
           <div>
-            <div style={{ ...crt(0.35), fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
-              HIRING &amp; OPERATIONS
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+            <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Hiring & Operations</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <StatCard label="Open Positions" value={stats.summary.openPositions} icon={Briefcase} />
-              <StatCard label="Total Applicants" value={stats.summary.totalApplicants} icon={Users} sub="ALL TIME" />
+              <StatCard label="Total Applicants" value={stats.summary.totalApplicants} icon={Users} sub="All time" />
               <StatCard label="Active Staff" value={stats.summary.activeStaff} icon={UserCheck} />
-              <StatCard label="Hires This Month" value={stats.summary.hiresThisMonth} icon={UserCheck} sub="CURRENT MONTH" />
-              <StatCard label="Contacts" value={stats.summary.totalContacts} icon={Users} sub="IN RECALL-6" />
-              <StatCard label="Projects" value={stats.summary.activeProjects} icon={FolderOpen} sub="IN CMD DECK" />
+              <StatCard label="Hires This Month" value={stats.summary.hiresThisMonth} icon={UserCheck} sub="Current month" />
+              <StatCard label="Contacts" value={stats.summary.totalContacts} icon={Users} />
+              <StatCard label="Projects" value={stats.summary.activeProjects} icon={FolderOpen} />
             </div>
           </div>
 
           {/* Revenue / Billing Summary */}
           <div>
-            <div style={{ ...crt(0.35), fontSize: '0.55rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
-              REVENUE &amp; SUBSCRIPTIONS
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-              <StatCard label="Est. MRR" value={stats.billing.estimatedMRR} icon={DollarSign} sub={`$${stats.billing.pricePerMonth}/USER/MO`} />
-              <StatCard label="Pro Subscribers" value={stats.billing.totalProSubscribers} icon={TrendingUp} sub="ACTIVE OPERATORS" />
-              <StatCard label="Free Users" value={stats.billing.totalFreeUsers} icon={Users} sub="CIVILIAN ACCESS" />
-              <StatCard label="Upgrades This Mo." value={stats.billing.proUpgradesThisMonth} icon={TrendingUp} sub="NEW OPERATORS" />
+            <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Revenue & Subscriptions</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard label="Est. MRR" value={stats.billing.estimatedMRR} icon={DollarSign} sub={`$${stats.billing.pricePerMonth}/user/mo`} />
+              <StatCard label="Pro Subscribers" value={stats.billing.totalProSubscribers} icon={TrendingUp} />
+              <StatCard label="Free Users" value={stats.billing.totalFreeUsers} icon={Users} />
+              <StatCard label="Upgrades This Mo." value={stats.billing.proUpgradesThisMonth} icon={TrendingUp} />
             </div>
           </div>
 
-          {/* Charts */}
           <HiringPipelineChart data={stats.applicantsByStage} />
           <ActivityChart hiresPerMonth={stats.hiresPerMonth} applicantsPerMonth={stats.applicantsPerMonth} />
 
-          {/* Zapier Section */}
-          <div>
-            <ZapierSection />
-          </div>
+          <ZapierSection />
         </div>
       ) : null}
     </div>
