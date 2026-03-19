@@ -29,11 +29,11 @@ export function NavBar() {
     { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, mobileShow: false },
     { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, mobileShow: false },
     { path: '/calendar', label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, icon: CalendarDays, mobileShow: false },
-    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, mobileShow: false },
     { path: '/studio', label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, icon: Layers, mobileShow: false },
     { path: '/lab', label: boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short, icon: Music2, mobileShow: false },
     { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, mobileShow: false },
     { path: '/campaigns', label: boomerMode ? 'CAMPAIGNS' : 'CAMPAIGNS', icon: Megaphone, mobileShow: false },
+    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, mobileShow: false },
   ];
 
   return (
