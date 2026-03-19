@@ -6,8 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
+import { useAuth } from "@workspace/replit-auth-web";
 
 const Home = lazy(() => import("@/pages/Home"));
+const Cover = lazy(() => import("@/pages/Cover"));
 const ContactCollector = lazy(() => import("@/pages/ContactCollector"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
@@ -56,13 +58,22 @@ const MemoHome = memo(Home as React.ComponentType);
 const MemoConsole = memo(Console as React.ComponentType);
 const MemoHiring = memo(Hiring as React.ComponentType);
 
+function HomeOrCover() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <CRTFallback />;
+  if (!isAuthenticated) return <Cover />;
+  return <MemoHome />;
+}
+
 function AppShell() {
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
+  const { isAuthenticated } = useAuth();
 
   const pathname = location.split("?")[0];
+  const isRootRoute = pathname === "/";
   const isFullscreenRoute = FULLSCREEN_ROUTES.includes(pathname);
-  const showNavBar = !isFullscreenRoute && !hideNavBar;
+  const showNavBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
 
   const isHome = pathname === "/";
   const isConsole = pathname === "/console" || pathname.startsWith("/console/");
@@ -75,7 +86,7 @@ function AppShell() {
       {/* Keep-alive panels: each gets own Suspense; hidden panels show nothing while loading */}
       <Suspense fallback={isHome ? <CRTFallback /> : null}>
         <div style={{ display: isHome ? "block" : "none" }}>
-          <MemoHome />
+          {isAuthenticated ? <MemoHome /> : <Cover />}
         </div>
       </Suspense>
       <Suspense fallback={isConsole ? <CRTFallback /> : null}>
