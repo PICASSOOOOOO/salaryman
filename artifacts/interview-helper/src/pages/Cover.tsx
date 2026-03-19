@@ -127,29 +127,16 @@ export default function Cover() {
           transition={{ duration: 0.6, delay: 0.7 }}
           style={{
             marginTop: '2.5rem',
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '0.4rem 0.6rem',
-            flexWrap: 'wrap',
-            maxWidth: '30rem',
+            fontSize: '0.5rem',
+            letterSpacing: '0.16em',
+            color: 'rgba(0,255,65,0.55)',
+            textTransform: 'uppercase',
+            fontFamily: "'Share Tech Mono', monospace",
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
           }}
         >
-          {['CLAUDE SONNET', 'GPT-4o', 'OPENCLAW', 'CLAUDE CODE', 'KARPATHY 243-LINE GPT', 'REACT', 'NODE', 'POSTGRES', 'STRIPE'].map((t) => (
-            <span
-              key={t}
-              style={{
-                fontSize: '0.5rem',
-                letterSpacing: '0.16em',
-                color: 'rgba(0,255,65,0.55)',
-                border: '1px solid rgba(0,255,65,0.15)',
-                padding: '0.25rem 0.6rem',
-                textTransform: 'uppercase',
-                fontFamily: "'Share Tech Mono', monospace",
-              }}
-            >
-              {t}
-            </span>
-          ))}
+          POWERED BY CLAUDE SONNET · GPT-4O · OPENCLAW · CLAUDE CODE · KARPATHY 243-LINE GPT · REACT · NODE · POSTGRES · STRIPE
         </motion.div>
       </div>
     </div>
