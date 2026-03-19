@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Clock, Loader2 } from "lucide-react";
+import { Zap, Check, Lock, MessageSquare, Mic, Monitor, Presentation, Users, LayoutDashboard, Star, Code2, Lightbulb, Loader2 } from "lucide-react";
 
 import { usePlan } from "@/hooks/use-plan";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -40,7 +40,7 @@ const PRO_ITEMS_BOOMER = [
 ];
 
 export default function Upgrade() {
-  const { isPro, isOwner, isTrial, trialDaysLeft, trialHoursLeft, loading } = usePlan();
+  const { isPro, isOwner, isTrial, loading } = usePlan();
   const { isAuthenticated, login } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -134,26 +134,6 @@ export default function Upgrade() {
           </motion.div>
         )}
 
-        {/* Trial status banner */}
-        {!loading && isTrial && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-6 rounded-2xl border border-amber-500/25 bg-amber-500/8 px-6 py-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl border border-amber-500/30 bg-amber-500/15 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-amber-300 mb-0.5">
-                7-day free trial active — {trialDaysLeft > 1 ? `${trialDaysLeft} days remaining` : `${trialHoursLeft} hours remaining`}
-              </p>
-              <p className="text-xs text-amber-400/60">
-                All augmentation modules active. No payment required during trial. Upgrade before it ends to maintain clearance.
-              </p>
-            </div>
-            <div className="w-[120px] h-1.5 bg-amber-500/15 rounded-full shrink-0 overflow-hidden">
-              <div className="h-full bg-amber-500/60 rounded-full transition-all duration-300" style={{ width: `${(trialDaysLeft / 7) * 100}%` }} />
-            </div>
-          </motion.div>
-        )}
 
         {/* Already pro banner */}
         {!loading && isPro && !isTrial && (

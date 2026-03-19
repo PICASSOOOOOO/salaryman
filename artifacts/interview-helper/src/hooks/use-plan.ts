@@ -7,10 +7,9 @@ const TRIAL_KEY     = "sm_trial_start";
 const TRIAL_MS      = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getTrialInfo(): { isTrial: boolean; trialDaysLeft: number; trialHoursLeft: number; trialStart: number } {
-  let start = parseInt(localStorage.getItem(TRIAL_KEY) ?? "0", 10);
+  const start = parseInt(localStorage.getItem(TRIAL_KEY) ?? "0", 10);
   if (!start) {
-    start = Date.now();
-    localStorage.setItem(TRIAL_KEY, String(start));
+    return { isTrial: false, trialDaysLeft: 0, trialHoursLeft: 0, trialStart: 0 };
   }
   const elapsed   = Date.now() - start;
   const remaining = Math.max(0, TRIAL_MS - elapsed);
@@ -41,14 +40,13 @@ export function invalidatePlanCache() {
 export function usePlan(): PlanData {
   const { isAuthenticated } = useAuth();
 
-  const trialInit = getTrialInfo();
   const [plan, setPlan] = useState<PlanData>({
     tier: "free",
     isOwner: false,
-    isPro: trialInit.isTrial,
-    isTrial: trialInit.isTrial,
-    trialDaysLeft: trialInit.trialDaysLeft,
-    trialHoursLeft: trialInit.trialHoursLeft,
+    isPro: false,
+    isTrial: false,
+    trialDaysLeft: 0,
+    trialHoursLeft: 0,
     loading: true,
   });
 
@@ -63,15 +61,14 @@ export function usePlan(): PlanData {
   }, [checkoutResult]);
 
   useEffect(() => {
-    const trial = getTrialInfo();
     if (!isAuthenticated) {
       setPlan({
         tier: "free",
         isOwner: false,
-        isPro: trial.isTrial,
-        isTrial: trial.isTrial,
-        trialDaysLeft: trial.trialDaysLeft,
-        trialHoursLeft: trial.trialHoursLeft,
+        isPro: false,
+        isTrial: false,
+        trialDaysLeft: 0,
+        trialHoursLeft: 0,
         loading: false,
       });
       return;
@@ -80,15 +77,7 @@ export function usePlan(): PlanData {
     const skipCache = checkoutResult === "success";
     const now = Date.now();
     if (!skipCache && cache.data && now - cache.fetchedAt < CACHE_TTL) {
-      const cached = cache.data;
-      setPlan({
-        ...cached,
-        isPro: cached.tier === "pro" || cached.isOwner || trial.isTrial,
-        isTrial: trial.isTrial && cached.tier !== "pro" && !cached.isOwner,
-        trialDaysLeft: trial.trialDaysLeft,
-        trialHoursLeft: trial.trialHoursLeft,
-        loading: false,
-      });
+      setPlan({ ...cache.data, loading: false });
       return;
     }
     fetch("/api/plan")
@@ -96,14 +85,14 @@ export function usePlan(): PlanData {
       .then(d => {
         const tier: Tier    = d.tier ?? "free";
         const isOwner: boolean = d.isOwner ?? false;
-        const alreadyPro    = tier === "pro" || isOwner;
+        const isPro = tier === "pro" || isOwner;
         const data: PlanData = {
           tier,
           isOwner,
-          isPro: alreadyPro || trial.isTrial,
-          isTrial: trial.isTrial && !alreadyPro,
-          trialDaysLeft: trial.trialDaysLeft,
-          trialHoursLeft: trial.trialHoursLeft,
+          isPro,
+          isTrial: false,
+          trialDaysLeft: 0,
+          trialHoursLeft: 0,
           loading: false,
         };
         cache.data = data;
@@ -111,13 +100,12 @@ export function usePlan(): PlanData {
         setPlan(data);
       })
       .catch(() => {
-        const trial2 = getTrialInfo();
         setPlan({
           tier: "free", isOwner: false,
-          isPro: trial2.isTrial,
-          isTrial: trial2.isTrial,
-          trialDaysLeft: trial2.trialDaysLeft,
-          trialHoursLeft: trial2.trialHoursLeft,
+          isPro: false,
+          isTrial: false,
+          trialDaysLeft: 0,
+          trialHoursLeft: 0,
           loading: false,
         });
       });

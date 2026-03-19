@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Bot, ArrowRight, Clock, X, Zap, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone } from 'lucide-react';
+import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAdvisorChat } from '@/hooks/use-interview';
@@ -114,11 +114,14 @@ function usePabloVoice() {
 export default function Home() {
   const [, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
-  const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
-  const [trialBanner, setTrialBanner] = useState(() => {
-    return isTrial && !localStorage.getItem(TRIAL_SEEN_KEY);
-  });
-  const dismissTrialBanner = () => { localStorage.setItem(TRIAL_SEEN_KEY, '1'); setTrialBanner(false); };
+  const { isPro, loading: planLoading } = usePlan();
+  const [trialPopup, setTrialPopup] = useState(false);
+  useEffect(() => {
+    if (!planLoading && !isPro && !localStorage.getItem(TRIAL_SEEN_KEY)) {
+      setTrialPopup(true);
+    }
+  }, [planLoading, isPro]);
+  const dismissTrialPopup = () => { localStorage.setItem(TRIAL_SEEN_KEY, '1'); setTrialPopup(false); };
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -337,25 +340,48 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Trial Banner */}
+      {/* Trial Unavailable Popup */}
       <AnimatePresence>
-        {trialBanner && (
+        {trialPopup && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="relative z-20 flex items-center gap-3 px-4 py-2.5"
-            style={{ background: 'rgba(255,165,0,0.07)', borderBottom: '1px solid rgba(255,165,0,0.25)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
           >
-            <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(255,165,0,0.8)' }} />
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,165,0,0.75)', letterSpacing: '0.08em', flex: 1 }}>
-              <strong style={{ color: 'rgba(255,165,0,0.95)' }}>7-DAY FREE TRIAL STARTED.</strong>
-              {' '}All augmentation modules active for {trialDaysLeft > 1 ? `${trialDaysLeft} more days` : `${trialHoursLeft} more hours`}. No card required.
-            </span>
-            <a href="/upgrade" style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(255,165,0,0.8)', letterSpacing: '0.08em', textDecoration: 'underline', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <Zap className="w-3 h-3" /> Upgrade early →
-            </a>
-            <button onClick={dismissTrialBanner} style={{ color: 'rgba(255,165,0,0.4)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 0.2rem', lineHeight: 1 }}>
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              className="relative w-full max-w-sm rounded-2xl border p-6"
+              style={{ background: '#0f0f0f', borderColor: 'rgba(255,165,0,0.2)' }}
+            >
+              <button
+                onClick={dismissTrialPopup}
+                className="absolute top-3 right-3"
+                style={{ color: 'rgba(255,165,0,0.4)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.2rem', lineHeight: 1 }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 shrink-0" style={{ color: 'rgba(255,165,0,0.7)' }} />
+                <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', color: 'rgba(255,165,0,0.5)', textTransform: 'uppercase' }}>
+                  PROGRAM STATUS UPDATE
+                </span>
+              </div>
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: 'rgba(255,165,0,0.95)', letterSpacing: '0.04em', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                FREE TRIAL PROGRAM — SUSPENDED
+              </p>
+              <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', lineHeight: 1.7, marginBottom: '1.25rem' }}>
+                The 7-day free trial has been temporarily suspended. Pablo Corp's payment infrastructure is not yet operational — subscriptions will be made available once the billing system clears compliance review.
+                <br /><br />
+                In the meantime, free-tier access remains fully functional. Pro augmentation modules will be unlocked upon subscription launch. Thank you for your patience and continued commitment to corporate excellence.
+              </p>
+              <button
+                onClick={dismissTrialPopup}
+                className="w-full rounded-lg py-2.5"
+                style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.3)', color: 'rgba(255,165,0,0.9)', cursor: 'pointer', textTransform: 'uppercase' }}
+              >
+                Understood. Proceed.
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
