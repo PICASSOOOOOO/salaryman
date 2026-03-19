@@ -73,7 +73,7 @@ export const MODULES: Module[] = [
     defaultPath: '/creative/studio',
     subs: [
       { id: 'studio', path: '/creative/studio', label: 'STUDIO', boomerLabel: 'STUDIO', codename: 'FORGE-7', icon: Layers },
-      { id: 'lab', path: '/creative/lab', label: 'SOUND LAB', boomerLabel: 'SOUND LAB', codename: 'THE LAB', icon: Music2 },
+      { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: 'THE LAB', codename: '1999', icon: Music2 },
       { id: 'campaigns', path: '/creative/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
     ],

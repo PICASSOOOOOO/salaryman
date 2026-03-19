@@ -131,9 +131,9 @@ export const PABLO_PRODUCTS = {
     desc: "Precision scheduling module. Track appointments, set alarms, and sync events across the field.",
   },
   SOUND_LAB: {
-    name: "THE LAB 1999",
-    short: "THE LAB",
-    desc: "THE LAB 1999 — Sub-basement audio forge. Beat machines, oscillators, and sample banks wired into the neural core. Password-protected.",
+    name: "1999",
+    short: "1999",
+    desc: "1999 — Sub-basement audio forge. Beat machines, oscillators, and sample banks wired into the neural core. Password-protected.",
   },
   AI_AGENTS: {
     name: "PABLO AI NETWORK",
@@ -163,7 +163,7 @@ export const PABLO_PRODUCTS = {
   CREATIVE_MODULE: {
     name: "FORGE MATRIX v3.0",
     short: "FORGE MATRIX",
-    desc: "Creative fabrication suite. Content studio, sound lab, campaign engine, and brand identity matrix.",
+    desc: "Creative fabrication suite. Content studio, The Lab, campaign engine, and brand identity matrix.",
   },
   INTEL_MODULE: {
     name: "COMMAND NET v1.0",

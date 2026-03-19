@@ -13619,7 +13619,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {showSoundLab && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 620, background: 'rgba(0,0,0,.0)' }}>
-          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>LOADING SOUND LAB...</div>}>
+          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>{`LOADING ${boomerMode ? 'THE LAB' : '1999'}...`}</div>}>
             <SoundLabOverlay onClose={() => { setShowSoundLab(false); gameRef.current?.focus(); }} />
           </Suspense>
         </div>

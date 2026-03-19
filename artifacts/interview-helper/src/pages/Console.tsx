@@ -152,13 +152,13 @@ export default function Console() {
           <button onClick={() => setConsoleView('lab')}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Music2 className="w-3.5 h-3.5 shrink-0" />
-            {boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short}
+            {boomerMode ? 'THE LAB' : PABLO_PRODUCTS.SOUND_LAB.short}
           </button>
         </div>
         <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.06em' }}>
           {consoleView === 'terminal'
             ? (boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.')
-            : (boomerMode ? 'DAW 1999 — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
+            : (boomerMode ? 'THE LAB — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
         </span>
         <button
           onClick={() => {
