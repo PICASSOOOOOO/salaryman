@@ -113,7 +113,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 
 export default function Hiring() {
   const { isAuthenticated } = useAuth();
-  const { isPro, loading: planLoading } = usePlan();
+  usePlan();
   const [tab, setTab] = useState<ActiveTab>(() => {
     try {
       const raw = localStorage.getItem('devdocs_action_prefill');
@@ -323,7 +323,6 @@ export default function Hiring() {
   const getJobTitle = (jobId: number) => jobs.find(j => j.id === jobId)?.title ?? 'Unknown Position';
   const departments = [...new Set(staff.map(s => s.department).filter(Boolean))];
   const filteredStaff = staffDeptFilter ? staff.filter(s => s.department === staffDeptFilter) : staff;
-  const isProTab = tab === 'jobs' || tab === 'applicants' || tab === 'staff';
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -386,10 +385,8 @@ export default function Hiring() {
           </div>
         )}
 
-        {!planLoading && !isPro && isProTab && <ProGate feature={PABLO_PRODUCTS.HIRING.name} />}
-
         {/* ── Jobs Tab ── */}
-        {!loading && isAuthenticated && isPro && tab === 'jobs' && (
+        {!loading && isAuthenticated && tab === 'jobs' && (
           <div>
             <div className="flex justify-end mb-4">
               <button onClick={() => { setEditingJob(null); setJobForm({ title: '', description: '', requirements: '', salaryMin: '', salaryMax: '', status: 'open' }); setShowJobForm(v => !v); }}
@@ -499,7 +496,7 @@ export default function Hiring() {
         )}
 
         {/* ── Applicants Tab ── */}
-        {!loading && isAuthenticated && isPro && tab === 'applicants' && (
+        {!loading && isAuthenticated && tab === 'applicants' && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -629,7 +626,7 @@ export default function Hiring() {
         )}
 
         {/* ── Staff / HR Tab ── */}
-        {!loading && isAuthenticated && isPro && tab === 'staff' && (
+        {!loading && isAuthenticated && tab === 'staff' && (
           <div className="flex gap-4">
             {/* Left: directory list */}
             <div className={`${selectedStaff ? 'w-64 flex-shrink-0' : 'flex-1'}`}>

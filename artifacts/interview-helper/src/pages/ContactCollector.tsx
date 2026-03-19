@@ -109,7 +109,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '' }
 export default function ContactCollector() {
   const { user, isAuthenticated } = useAuth();
   const { config } = useAppMode();
-  const { isPro, loading: planLoading } = usePlan();
+  usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -396,14 +396,6 @@ export default function ContactCollector() {
     });
 
   const f = (k: keyof typeof EMPTY_FORM) => (v: string) => setForm(prev => ({ ...prev, [k]: v }));
-
-  if (!planLoading && !isPro) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <ProGate feature={PABLO_PRODUCTS.CONTACTS.name} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

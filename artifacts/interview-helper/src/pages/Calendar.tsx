@@ -849,7 +849,7 @@ function useNotificationAlarms(appointments: Appointment[]) {
 
 export default function Calendar() {
   const { user } = useAuth();
-  const { isPro } = usePlan();
+  usePlan();
   const { toast } = useToast();
   const [boomerMode] = useState(() => getDefaultBoomerMode());
 

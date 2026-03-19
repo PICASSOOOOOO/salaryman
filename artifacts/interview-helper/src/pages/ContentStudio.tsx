@@ -899,7 +899,7 @@ const TABS: { id: StudioTab; label: string; boomerLabel: string; icon: React.FC<
 
 export default function ContentStudio() {
   const { isAuthenticated } = useAuth();
-  const { isPro, loading: planLoading } = usePlan();
+  usePlan();
   const [tab, setTab] = useState<StudioTab>('graphics');
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
 
@@ -914,14 +914,6 @@ export default function ContentStudio() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030803' }}>
         <p style={{ fontFamily: "'Share Tech Mono', monospace", color: CRT_DIM, letterSpacing: '0.1em' }}>AUTHENTICATION REQUIRED</p>
-      </div>
-    );
-  }
-
-  if (!planLoading && !isPro) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <ProGate feature={boomerMode ? 'Content Studio' : PABLO_PRODUCTS.STUDIO.name} />
       </div>
     );
   }

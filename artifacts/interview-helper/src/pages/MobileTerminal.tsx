@@ -123,7 +123,7 @@ type TabId = 'chat' | 'stats' | 'overview';
 export default function MobileTerminal() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const { isPro, isTrial, trialDaysLeft } = usePlan();
+  const { isTrial, trialDaysLeft } = usePlan();
   const [saves, setSaves] = useState<CloudSave[]>([]);
   const [activeSave, setActiveSave] = useState<CloudSave | null>(null);
   const [loading, setLoading] = useState(true);
@@ -329,8 +329,8 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
           {([
             { id: 'chat' as TabId, label: '🤖 PABLO AI', boomerLabel: '🤖 AI CHAT', locked: false },
-            { id: 'stats' as TabId, label: `📊 STATS ${!isPro ? '🔒' : ''}`, boomerLabel: `📊 MY STATS ${!isPro ? '🔒' : ''}`, locked: false },
-            { id: 'overview' as TabId, label: `🏙 OVERVIEW ${!isPro ? '🔒' : ''}`, boomerLabel: `🏙 OVERVIEW ${!isPro ? '🔒' : ''}`, locked: false },
+            { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
+            { id: 'overview' as TabId, label: `🏙 OVERVIEW`, boomerLabel: `🏙 OVERVIEW`, locked: false },
           ]).map(t => (
             <button
               key={t.id}
@@ -348,17 +348,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {tab === 'stats' && !isPro && (
-            <div style={{ padding: '2rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem' }}>
-              <div style={{ fontSize: '2rem' }}>🔒</div>
-              <div style={{ ...VT, fontSize: '1.2rem', color: '#ffcc44', letterSpacing: '.12em' }}>SUBSCRIPTION REQUIRED</div>
-              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.45)', textAlign: 'center', lineHeight: 1.8, maxWidth: 280 }}>
-                Stats and management features require a Terminal subscription. Start your 7-day free trial to unlock everything.
-              </div>
-              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', marginTop: '.3rem' }}>PABLO AI chat remains free — forever.</div>
-            </div>
-          )}
-          {tab === 'stats' && isPro && (
+          {tab === 'stats' && (
             <div style={{ padding: '1rem' }}>
               {isTrial && (
                 <div style={{ border: '1px solid rgba(255,165,0,.35)', background: 'rgba(255,165,0,.06)', padding: '.3rem .5rem', fontSize: '.55rem', color: 'rgba(255,165,0,.7)', letterSpacing: '.08em', marginBottom: '.5rem' }}>
@@ -456,17 +446,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
             </div>
           )}
 
-          {tab === 'overview' && !isPro && (
-            <div style={{ padding: '2rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem' }}>
-              <div style={{ fontSize: '2rem' }}>🔒</div>
-              <div style={{ ...VT, fontSize: '1.2rem', color: '#ffcc44', letterSpacing: '.12em' }}>SUBSCRIPTION REQUIRED</div>
-              <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.45)', textAlign: 'center', lineHeight: 1.8, maxWidth: 280 }}>
-                Business overview and management features require a Terminal subscription. Start your 7-day free trial to unlock everything.
-              </div>
-              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', marginTop: '.3rem' }}>PABLO AI chat remains free — forever.</div>
-            </div>
-          )}
-          {tab === 'overview' && isPro && (
+          {tab === 'overview' && (
             <div style={{ padding: '1rem' }}>
               {isTrial && (
                 <div style={{ border: '1px solid rgba(255,165,0,.35)', background: 'rgba(255,165,0,.06)', padding: '.3rem .5rem', fontSize: '.55rem', color: 'rgba(255,165,0,.7)', letterSpacing: '.08em', marginBottom: '.5rem' }}>

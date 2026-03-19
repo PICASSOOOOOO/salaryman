@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play, Lock } from 'lucide-react';
+import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play } from 'lucide-react';
 import type { InterviewMode } from '@/hooks/use-interview';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
   isStreaming: boolean;
-  isPro: boolean;
+  isPro?: boolean;
   boomerMode?: boolean;
 }
 
@@ -70,58 +70,29 @@ const sayItAction = {
   icon: Mic,
 };
 
-function ProLockBadge() {
-  return (
-    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[9px] font-bold border border-primary/30 leading-none">
-      <Lock className="w-2 h-2" /> {PABLO_PRODUCTS.PRO_TIER.short}
-    </span>
-  );
-}
-
-export function ActionPanel({ onAction, isStreaming, isPro, boomerMode = false }: ActionPanelProps) {
-  const handleClick = (mode: InterviewMode) => {
-    if (!isPro) {
-      window.location.href = '/upgrade';
-      return;
-    }
-    onAction(mode);
-  };
-
+export function ActionPanel({ onAction, isStreaming, boomerMode = false }: ActionPanelProps) {
   return (
     <div className="flex flex-col gap-3 mt-6">
       <motion.button
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0 }}
-        onClick={() => handleClick(sayItAction.id)}
-        disabled={isPro && isStreaming}
-        className={`
-          relative flex items-center gap-4 p-4 text-left w-full
-          rounded-xl border transition-all duration-300 group overflow-hidden
-          ${isPro
-            ? 'border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 hover:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed'
-            : 'border-primary/25 bg-primary/10 hover:bg-primary/15 hover:border-primary/40 cursor-pointer'
-          }
-        `}
+        onClick={() => onAction(sayItAction.id)}
+        disabled={isStreaming}
+        className="relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 hover:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <div className={`p-2 rounded-lg border shrink-0 group-hover:scale-110 transition-transform duration-300 ${isPro ? 'bg-rose-500/20 border-rose-500/40' : 'bg-primary/15 border-primary/30'}`}>
-          {isPro ? <Mic className="w-5 h-5 text-rose-400" /> : <Lock className="w-5 h-5 text-primary/70" />}
+        <div className="p-2 rounded-lg border shrink-0 group-hover:scale-110 transition-transform duration-300 bg-rose-500/20 border-rose-500/40">
+          <Mic className="w-5 h-5 text-rose-400" />
         </div>
         <div className="flex-1">
-          <h3 className={`font-bold ${boomerMode ? 'text-lg' : 'text-base'} leading-none mb-1 flex items-center gap-2 ${isPro ? 'text-white' : 'text-foreground/70'}`}>
+          <h3 className={`font-bold ${boomerMode ? 'text-lg' : 'text-base'} leading-none mb-1 flex items-center gap-2 text-white`}>
             {boomerMode ? sayItAction.boomerLabel : sayItAction.label}
-            {isPro
-              ? <span className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-mono bg-rose-500/30 text-rose-300 px-1.5 py-0.5 rounded`}>QUICK READ</span>
-              : <ProLockBadge />
-            }
+            <span className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-mono bg-rose-500/30 text-rose-300 px-1.5 py-0.5 rounded`}>QUICK READ</span>
           </h3>
-          <p className={`${boomerMode ? 'text-sm' : 'text-xs'} leading-relaxed ${isPro ? 'text-rose-300/80' : 'text-muted-foreground/60'}`}>
+          <p className={`${boomerMode ? 'text-sm' : 'text-xs'} leading-relaxed text-rose-300/80`}>
             {boomerMode ? sayItAction.boomerDesc : sayItAction.description}
           </p>
         </div>
-        {!isPro && (
-          <span className="text-[10px] text-primary font-semibold shrink-0">Upgrade →</span>
-        )}
       </motion.button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -133,55 +104,31 @@ export function ActionPanel({ onAction, isStreaming, isPro, boomerMode = false }
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: (i + 1) * 0.08 }}
-              onClick={() => handleClick(action.id)}
-              disabled={isPro && isStreaming}
+              onClick={() => onAction(action.id)}
+              disabled={isStreaming}
               className={`
                 relative flex flex-col items-start p-4 text-left
                 rounded-xl border transition-all duration-300 group overflow-hidden
-                ${isPro
-                  ? `${action.border} ${action.bg} ${action.hover} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[initial] disabled:hover:bg-[initial]`
-                  : 'border-border/50 bg-muted/20 hover:bg-primary/8 hover:border-primary/25 cursor-pointer'
-                }
+                ${action.border} ${action.bg} ${action.hover} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[initial] disabled:hover:bg-[initial]
               `}
             >
-              <div className={`p-2 rounded-lg border mb-3 group-hover:scale-110 transition-transform duration-300 ${isPro ? `bg-background/50 ${action.border}` : 'bg-muted/30 border-border/40'}`}>
-                {isPro
-                  ? <Icon className={`w-5 h-5 ${action.color}`} />
-                  : <Lock className="w-5 h-5 text-muted-foreground/40" />
-                }
+              <div className={`p-2 rounded-lg border mb-3 group-hover:scale-110 transition-transform duration-300 bg-background/50 ${action.border}`}>
+                <Icon className={`w-5 h-5 ${action.color}`} />
               </div>
-              <h3 className={`${boomerMode ? 'text-base' : 'text-sm'} font-semibold mb-1 flex items-center gap-2 ${isPro ? 'text-foreground' : 'text-muted-foreground/60'}`}>
+              <h3 className={`${boomerMode ? 'text-base' : 'text-sm'} font-semibold mb-1 flex items-center gap-2 text-foreground`}>
                 {boomerMode ? action.boomerLabel : action.label}
-                {isPro
-                  ? <Play className="w-3 h-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-                  : <ProLockBadge />
-                }
+                <Play className="w-3 h-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
               </h3>
               <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-muted-foreground/50 leading-relaxed`}>
                 {boomerMode ? action.boomerDesc : action.description}
               </p>
-              {isPro && (
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
-                </div>
-              )}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
+              </div>
             </motion.button>
           );
         })}
       </div>
-
-      {!isPro && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className={`text-center ${boomerMode ? 'text-xs' : 'text-[11px]'} text-muted-foreground/50 mt-1`}
-        >
-          These modules require{' '}
-          <a href="/upgrade" className="text-primary font-semibold hover:underline">{boomerMode ? 'PRO UPGRADE' : PABLO_PRODUCTS.PRO_TIER.name}</a>.
-          {' '}PABLO chat is always free.
-        </motion.p>
-      )}
     </div>
   );
 }

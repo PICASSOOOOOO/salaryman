@@ -115,14 +115,9 @@ function usePabloVoice() {
 export default function Home() {
   const [, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
-  const { isPro, loading: planLoading } = usePlan();
-  const [trialPopup, setTrialPopup] = useState(false);
-  useEffect(() => {
-    if (!planLoading && !isPro && !localStorage.getItem(TRIAL_SEEN_KEY)) {
-      setTrialPopup(true);
-    }
-  }, [planLoading, isPro]);
-  const dismissTrialPopup = () => { localStorage.setItem(TRIAL_SEEN_KEY, '1'); setTrialPopup(false); };
+  usePlan();
+  const [trialPopup] = useState(false);
+  const dismissTrialPopup = () => {};
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -371,7 +366,7 @@ export default function Home() {
   const voice = usePabloVoice();
 
   useEffect(() => {
-    if (!autoSpeakEnabled || !isPro) return;
+    if (!autoSpeakEnabled) return;
     const lastMsg = chatMessages[chatMessages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || chatStreaming) return;
     const idx = chatMessages.length - 1;
@@ -379,7 +374,7 @@ export default function Home() {
       lastSpokenRef.current = idx;
       voice.speakResponse(lastMsg.content);
     }
-  }, [chatMessages, chatStreaming, autoSpeakEnabled, isPro, voice]);
+  }, [chatMessages, chatStreaming, autoSpeakEnabled, voice]);
 
   const handleSendChat = (text?: string) => {
     const msg = text ?? chatInput;
@@ -930,22 +925,20 @@ export default function Home() {
                     </button>
                   </ProGate>
 
-                  {/* Auto-speak toggle — PRO */}
-                  {isPro && (
-                    <button
-                      onClick={() => {
-                        if (voice.isSpeaking) { voice.stopSpeaking(); }
-                        setAutoSpeakEnabled(p => !p);
-                      }}
-                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-colors
-                        ${autoSpeakEnabled
-                          ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                          : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
-                      title={autoSpeakEnabled ? 'Auto-speak ON — PABLO reads responses aloud' : 'Auto-speak OFF'}
-                    >
-                      {voice.isSpeaking ? <MicOff className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    </button>
-                  )}
+                  {/* Auto-speak toggle */}
+                  <button
+                    onClick={() => {
+                      if (voice.isSpeaking) { voice.stopSpeaking(); }
+                      setAutoSpeakEnabled(p => !p);
+                    }}
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-colors
+                      ${autoSpeakEnabled
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                        : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
+                    title={autoSpeakEnabled ? 'Auto-speak ON — PABLO reads responses aloud' : 'Auto-speak OFF'}
+                  >
+                    {voice.isSpeaking ? <MicOff className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
 
                   <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming}
                     className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">

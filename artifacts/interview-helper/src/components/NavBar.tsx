@@ -1,4 +1,4 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Zap, Globe, Clock, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -11,7 +11,7 @@ export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
-  const { isPro, isTrial, trialDaysLeft, trialHoursLeft } = usePlan();
+  usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
 
@@ -23,15 +23,15 @@ export function NavBar() {
   }, []);
 
   const NAV = [
-    { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, pro: false, mobileShow: true },
-    { path: '/console', label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, icon: Code2, pro: true, mobileShow: false },
-    { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, pro: true, mobileShow: false },
-    { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, pro: true, mobileShow: false },
-    { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, pro: true, mobileShow: false },
-    { path: '/calendar', label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, icon: CalendarDays, pro: true, mobileShow: false },
-    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, pro: true, mobileShow: false },
-    { path: '/studio', label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, icon: Layers, pro: true, mobileShow: false },
-    { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, pro: true, mobileShow: false },
+    { path: '/', label: boomerMode ? 'PABLO' : config.navLabel, icon: Terminal, mobileShow: true },
+    { path: '/console', label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, icon: Code2, mobileShow: false },
+    { path: '/contacts', label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, icon: Users, mobileShow: false },
+    { path: '/hiring', label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, icon: Briefcase, mobileShow: false },
+    { path: '/documents', label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, icon: Archive, mobileShow: false },
+    { path: '/calendar', label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, icon: CalendarDays, mobileShow: false },
+    { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, mobileShow: false },
+    { path: '/studio', label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, icon: Layers, mobileShow: false },
+    { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, mobileShow: false },
   ];
 
   return (
@@ -50,17 +50,10 @@ export function NavBar() {
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${isTrial ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-            {isTrial ? (
-              <span className="font-mono text-[10px] text-amber-500/80 tracking-wide flex items-center gap-1">
-                <Clock className="w-2.5 h-2.5" />
-                TRIAL · {trialDaysLeft > 1 ? `${trialDaysLeft}D LEFT` : `${trialHoursLeft}H LEFT`}
-              </span>
-            ) : (
-              <span className="font-mono text-[10px] text-zinc-600 tracking-wide">
-                {isPro ? (boomerMode ? 'PRO PLAN' : PABLO_PRODUCTS.PRO_TIER.name) : (boomerMode ? 'FREE PLAN' : PABLO_PRODUCTS.FREE_TIER.name)}
-              </span>
-            )}
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="font-mono text-[10px] text-zinc-600 tracking-wide">
+              {boomerMode ? 'FREE FOREVER' : 'ALL FEATURES FREE'}
+            </span>
           </span>
           {!location.startsWith('/world') && (
             <button
@@ -112,9 +105,8 @@ export function NavBar() {
 
         {/* Nav Items */}
         <nav className="flex items-center gap-0.5 shrink-0">
-          {NAV.map(({ path, label, icon: Icon, pro, mobileShow }) => {
+          {NAV.map(({ path, label, icon: Icon, mobileShow }) => {
             const active = location === path || (path !== '/' && location.startsWith(path));
-            const locked = pro && !isPro;
             return (
               <button
                 key={path}
@@ -122,18 +114,11 @@ export function NavBar() {
                 className={`${mobileShow ? 'flex' : 'hidden sm:flex'} items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
                   active
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : locked
-                      ? 'text-zinc-700 border border-transparent'
-                      : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >
                 <Icon className="w-3 h-3 shrink-0" />
                 {label}
-                {locked && (
-                  <span className="text-[9px] font-mono text-zinc-700 border border-zinc-800 px-1 py-px rounded">
-                    {boomerMode ? 'PRO' : PABLO_PRODUCTS.PRO_TIER.short}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -160,24 +145,6 @@ export function NavBar() {
             )}
           </button>
 
-          {isTrial ? (
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-md text-[11px] font-mono tracking-widest uppercase text-amber-400 border border-amber-500/30 bg-amber-500/6 hover:bg-amber-500/12 transition-colors"
-              style={{ animation: trialDaysLeft <= 2 ? 'smfade 1.2s steps(1) infinite alternate' : 'none' }}
-            >
-              <Clock className="w-3 h-3" />
-              {trialDaysLeft > 1 ? `${trialDaysLeft}D TRIAL` : `${trialHoursLeft}H LEFT`} · UPGRADE
-            </button>
-          ) : !isPro && (
-            <button
-              onClick={() => navigate('/upgrade')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-md text-[11px] font-mono tracking-widest uppercase text-emerald-400 border border-emerald-500/30 bg-emerald-500/8 hover:bg-emerald-500/15 transition-colors"
-            >
-              <Zap className="w-3 h-3" />
-              UPGRADE
-            </button>
-          )}
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">

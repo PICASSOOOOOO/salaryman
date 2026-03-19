@@ -11457,13 +11457,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PREMIUM MODULES</div>
                       {Object.entries(SUBSCRIPTION_PRICING).map(([key, tier]) => (
-                        <div key={key} style={{ border: `1px solid ${isPro ? 'rgba(0,255,65,.2)' : 'rgba(255,200,60,.15)'}`, padding: '.4rem .5rem', marginBottom: '.3rem', background: isPro ? 'rgba(0,255,65,.04)' : 'rgba(255,200,60,.03)', opacity: isPro ? 1 : 0.5 }}>
+                        <div key={key} style={{ border: 'rgba(0,255,65,.2)', padding: '.4rem .5rem', marginBottom: '.3rem', background: 'rgba(0,255,65,.04)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ ...VT, fontSize: '.8rem', color: isPro ? '#00ff41' : '#ffcc44', letterSpacing: '.06em' }}>
-                              {isPro ? '✓ ' : '🔒 '}{tier.name}
+                            <span style={{ ...VT, fontSize: '.8rem', color: '#00ff41', letterSpacing: '.06em' }}>
+                              {'✓ '}{tier.name}
                             </span>
-                            <span style={{ fontSize: '.5rem', color: isPro ? 'rgba(0,255,65,.4)' : 'rgba(255,200,60,.5)' }}>
-                              {isPro ? (isTrial ? 'TRIAL ACTIVE' : 'UNLOCKED') : `ƒ${tier.monthlyFiat}/mo · ${tier.trialDays}d FREE TRIAL`}
+                            <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)' }}>
+                              {'UNLOCKED'}
                             </span>
                           </div>
                         </div>

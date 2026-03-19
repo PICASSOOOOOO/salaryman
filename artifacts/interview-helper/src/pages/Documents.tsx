@@ -881,7 +881,7 @@ function FileManagerSection() {
 
 export default function Documents() {
   const { isAuthenticated } = useAuth();
-  const { isPro, loading: planLoading } = usePlan();
+  usePlan();
   const [tab, setTab] = useState<ActiveTab>('invoices');
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
 
@@ -909,12 +909,6 @@ export default function Documents() {
           <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)' }}>AUTHENTICATION REQUIRED</div>
         </div>
       </div>
-    );
-  }
-
-  if (!planLoading && !isPro) {
-    return (
-      <ProGate feature={boomerMode ? 'Documents' : PABLO_PRODUCTS.PRINTER.name} />
     );
   }
 
