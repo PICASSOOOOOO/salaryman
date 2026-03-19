@@ -18,6 +18,7 @@ interface CloudSave {
   lastZone: string;
   playtime: number;
   data: Record<string, unknown>;
+  createdAt?: string;
   lastSavedAt: string;
 }
 
@@ -615,6 +616,7 @@ export default function WorldMenu() {
       workstationLabel: str('workstationLabel'),
       workstationSlot: num('workstationSlot') ?? null,
       bizRegisteredAt: str('bizRegisteredAt'),
+      createdAt: save.createdAt ?? str('createdAt') ?? null,
       _savedState: save.data,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
@@ -704,6 +706,7 @@ export default function WorldMenu() {
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'minx', industry, minxCompany.trim().toUpperCase() || 'UNKNOWN') : null;
     const startSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : 15000;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
+    const signupTimestamp = new Date().toISOString();
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
@@ -711,12 +714,14 @@ export default function WorldMenu() {
       sx: spawnPos.x,
       sy: spawnPos.y,
       salary: startSalary,
+      governmentBaseSalary: startSalary,
       hasBusiness,
       bizType: bizType,
       workstation: ws?.bid ?? null,
       workstationLabel: ws?.label ?? null,
       workstationSlot: ws?.slot ?? null,
       bizRegisteredAt: hasBusiness ? Date.now() : null,
+      createdAt: signupTimestamp,
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
     localStorage.setItem('sm_slot', String(selectedSlot));

@@ -16,6 +16,14 @@ import { ProGate } from '@/components/ProGate';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
+function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
+  if (!createdAt || !governmentBaseSalary) return governmentBaseSalary;
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const weeksElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / WEEK_MS);
+  if (weeksElapsed <= 0) return governmentBaseSalary;
+  return Math.round(governmentBaseSalary * Math.pow(0.99, weeksElapsed));
+}
+
 const CHAT_STARTERS = [
   'hey i\'m conducting an interview — what tools should i use and can you set it up?',
   'i have a zoom call in 10 minutes, what should i prepare?',
@@ -123,7 +131,7 @@ export default function Home() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [serverOnline, setServerOnline] = useState<number | null>(null);
   const [serverMax, setServerMax] = useState(50);
-  const [gameSave, setGameSave] = useState<{ salary: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number } | null>(null);
+  const [gameSave, setGameSave] = useState<{ salary: number; governmentBaseSalary?: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number; createdAt?: string } | null>(null);
 
   const [translatorText, setTranslatorText] = useState('');
   const [translatorFrom, setTranslatorFrom] = useState('vi');
@@ -145,18 +153,41 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const parseFields = (s: Record<string, unknown>) => ({
-      salary: Number(s.salary ?? 0),
-      goldBalance: Number(s.goldBalance ?? 0),
-      level: Number(s.level ?? 1),
-      hp: Number(s.hp ?? 100),
-      maxHp: Number(s.maxHp ?? 100),
-      savings: Number(s.savings ?? 0),
-    });
+    const parseFields = (s: Record<string, unknown>, fallbackCreatedAt?: string) => {
+      const dataCreatedAt = s.createdAt as string | undefined;
+      return {
+        salary: Number(s.salary ?? 0),
+        governmentBaseSalary: s.governmentBaseSalary !== undefined ? Number(s.governmentBaseSalary) : undefined,
+        goldBalance: Number(s.goldBalance ?? 0),
+        level: Number(s.level ?? 1),
+        hp: Number(s.hp ?? 100),
+        maxHp: Number(s.maxHp ?? 100),
+        savings: Number(s.savings ?? 0),
+        createdAt: dataCreatedAt ?? fallbackCreatedAt,
+      };
+    };
     let localLevel = 0;
     try {
       const raw = localStorage.getItem('sm_save');
-      if (raw) { const p = parseFields(JSON.parse(raw)); localLevel = p.level; setGameSave(p); }
+      if (raw) {
+        let localCreatedAt: string | undefined;
+        let localGovSalary: number | undefined;
+        try {
+          const ch = localStorage.getItem('sm_char');
+          if (ch) {
+            const charData = JSON.parse(ch);
+            localCreatedAt = charData.createdAt;
+            localGovSalary = charData.governmentBaseSalary ?? charData.salary;
+          }
+        } catch {}
+        const parsed = JSON.parse(raw);
+        if (localGovSalary !== undefined && parsed.governmentBaseSalary === undefined) {
+          parsed.governmentBaseSalary = localGovSalary;
+        }
+        const p = parseFields(parsed, localCreatedAt);
+        localLevel = p.level;
+        setGameSave(p);
+      }
     } catch {}
     if (isAuthenticated) {
       fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
@@ -166,7 +197,12 @@ export default function Home() {
           const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
             new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
           if (newest?.data) {
-            const cloud = parseFields(newest.data as Record<string, unknown>);
+            const dataObj = newest.data as Record<string, unknown>;
+            if (dataObj.governmentBaseSalary === undefined) {
+              const cls = (newest.charClass ?? dataObj.class) as string | undefined;
+              dataObj.governmentBaseSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : undefined;
+            }
+            const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
             if (cloud.level >= localLevel) setGameSave(cloud);
           }
         })
@@ -241,12 +277,12 @@ export default function Home() {
               <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.6)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt).toLocaleString()}` : '—'}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${(gameSave.salary + gameSave.goldBalance * 100000).toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${(computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt) + gameSave.goldBalance * 100000).toLocaleString()}` : '—'}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(255,204,0,0.25)', letterSpacing: '0.1em' }}>GOLD</div>

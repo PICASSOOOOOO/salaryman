@@ -22,6 +22,13 @@
       "when": 1773909615481,
       "tag": "0002_huge_pet_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1742342400000,
+      "tag": "0003_salaryman_created_at",
+      "breakpoints": true
     }
   ]
 }

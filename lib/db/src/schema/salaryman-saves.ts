@@ -11,6 +11,7 @@ export const salarymanSavesTable = pgTable("salaryman_saves", {
   lastZone: varchar("last_zone", { length: 64 }).default("MINX CITY"),
   playtime: integer("playtime").notNull().default(0),
   data: jsonb("data").notNull().$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastSavedAt: timestamp("last_saved_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [unique("salaryman_saves_user_slot").on(t.userId, t.slotIndex)]);
 

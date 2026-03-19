@@ -49,6 +49,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
         lastZone: String(lastZone || "MINX CITY").slice(0, 64),
         playtime: Number(playtime) || 0,
         data: data as Record<string, unknown>,
+        createdAt: new Date(),
       })
       .onConflictDoUpdate({
         target: [salarymanSavesTable.userId, salarymanSavesTable.slotIndex],

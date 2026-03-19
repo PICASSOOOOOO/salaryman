@@ -52,7 +52,8 @@ interface CloudSave {
   salary: number;
   lastZone: string;
   playtime: number;
-  data: SaveData;
+  data: SaveData & { governmentBaseSalary?: number; createdAt?: string };
+  createdAt?: string;
   lastSavedAt: string;
 }
 
@@ -63,6 +64,14 @@ interface PabloMsg {
 
 const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+
+function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
+  if (!createdAt || !governmentBaseSalary) return governmentBaseSalary;
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const weeksElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / WEEK_MS);
+  if (weeksElapsed <= 0) return governmentBaseSalary;
+  return Math.round(governmentBaseSalary * Math.pow(0.99, weeksElapsed));
+}
 
 const CLASS_COLOR: Record<string, string> = {
   corporate: '#00ff41',
@@ -173,7 +182,7 @@ DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's i
 
 OPERATIVE STATUS:
 - Name: ${activeSave.charName} | Class: ${activeSave.charClass.toUpperCase()} | Level: ${activeSave.level}
-- FIAT: ƒ${activeSave.salary.toLocaleString()}
+- FIAT: ƒ${computeDecayedSalary(sd.governmentBaseSalary ?? (activeSave.charClass === 'corporate' ? 25000 : activeSave.charClass === 'replicant' ? 18000 : activeSave.charClass === 'outlaw' ? 10000 : activeSave.salary), sd.createdAt ?? activeSave.createdAt).toLocaleString()}
 - Zone: ${activeSave.lastZone}
 - HP: ${sd.hp ?? '?'}/${sd.maxHp ?? '?'}
 - Hunger: ${Math.floor(sd.hunger ?? 0)}% | Thirst: ${Math.floor(sd.thirst ?? 0)}% | Energy: ${Math.floor(sd.energy ?? 0)}%
@@ -257,6 +266,9 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
   const sd = activeSave.data;
   const charColor = CLASS_COLOR[activeSave.charClass] ?? '#00ff41';
+  const govBaseSalary = sd.governmentBaseSalary ??
+    (activeSave.charClass === 'corporate' ? 25000 : activeSave.charClass === 'replicant' ? 18000 : activeSave.charClass === 'outlaw' ? 10000 : activeSave.salary);
+  const signupTime = sd.createdAt ?? activeSave.createdAt;
 
   return (
     <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', ...ST, WebkitTapHighlightColor: 'transparent' }}>
@@ -362,7 +374,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
               <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL STATUS</div>
-                <StatRow label="FIAT (ƒ)" val={`ƒ${(activeSave.salary ?? 0).toLocaleString()}`} col="#ffcc00" />
+                <StatRow label="FIAT (ƒ)" val={`ƒ${computeDecayedSalary(govBaseSalary, signupTime).toLocaleString()}`} col="#ffcc00" />
                 <StatRow label="SAVINGS" val={`ƒ${(sd.savings ?? 0).toLocaleString()}`} col="#ffcc00" />
                 {(sd.goldBalance ?? 0) > 0 && <StatRow label="GOLD" val={`${sd.goldBalance} oz`} col="#ffaa00" />}
               </div>
