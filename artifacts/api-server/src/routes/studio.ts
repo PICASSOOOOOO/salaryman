@@ -3,7 +3,6 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImageBuffer, type GptImageSize } from "@workspace/integrations-openai-ai-server/image";
 import { db, brandKitTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { getUserTier } from "../lib/plan";
 import type { BrandKit } from "@workspace/db/schema";
 
 const router: IRouter = Router();
@@ -13,18 +12,6 @@ const VALID_IMAGE_SIZES: GptImageSize[] = ["1024x1024", "1024x1536", "1536x1024"
 function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return null; }
   return (req.user as { id: string } | undefined)?.id ?? null;
-}
-
-async function requirePro(req: Request, res: Response): Promise<string | null> {
-  const userId = requireAuth(req, res);
-  if (!userId) return null;
-  const user = req.user as { id: string; email?: string } | undefined;
-  const tier = await getUserTier(userId, user?.email);
-  if (tier !== "pro") {
-    res.status(403).json({ error: "Pro plan required to access Content Studio" });
-    return null;
-  }
-  return userId;
 }
 
 async function getBrandKit(userId: string): Promise<BrandKit | null> {
@@ -49,7 +36,7 @@ function buildBrandContext(kit: BrandKit | null): string {
 }
 
 router.post("/studio/generate-image", async (req: Request, res: Response) => {
-  const userId = await requirePro(req, res); if (!userId) return;
+  const userId = requireAuth(req, res); if (!userId) return;
   const { prompt, size = "1024x1024" } = req.body as { prompt?: string; size?: string };
   if (!prompt?.trim()) { res.status(400).json({ error: "Prompt required" }); return; }
 
@@ -69,7 +56,7 @@ router.post("/studio/generate-image", async (req: Request, res: Response) => {
 });
 
 router.post("/studio/generate-copy", async (req: Request, res: Response) => {
-  const userId = await requirePro(req, res); if (!userId) return;
+  const userId = requireAuth(req, res); if (!userId) return;
   const { type, tone = "professional", context = "", platform } = req.body as {
     type?: string; tone?: string; context?: string; platform?: string;
   };
@@ -137,7 +124,7 @@ Label each as Variation A, B, C.`,
 });
 
 router.post("/studio/generate-social", async (req: Request, res: Response) => {
-  const userId = await requirePro(req, res); if (!userId) return;
+  const userId = requireAuth(req, res); if (!userId) return;
   const { template, topic = "" } = req.body as { template?: string; topic?: string };
 
   if (!template) { res.status(400).json({ error: "Template required" }); return; }
