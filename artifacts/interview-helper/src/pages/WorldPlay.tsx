@@ -10755,9 +10755,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG')) proximityEvents.push('⚔ HOSTILES NEARBY');
         if (dogActive && dogInjured) proximityEvents.push(`🐾 ${dogName} INJURED`);
         return proximityEvents.length > 0 ? (
-          <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '6px', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '8px', pointerEvents: 'none' }}>
             {proximityEvents.map((evt, i) => (
-              <div key={i} style={{ background: 'rgba(0,0,0,.85)', border: '1px solid rgba(255,80,80,.5)', padding: '.25rem .6rem', fontFamily: "'VT323',monospace", fontSize: '.95rem', color: '#ff6644', letterSpacing: '.08em', textShadow: '0 0 8px rgba(255,80,0,.4)', whiteSpace: 'nowrap' }}>
+              <div key={i} style={{ background: 'rgba(0,0,0,.92)', border: '1px solid rgba(255,80,80,.7)', padding: '.4rem .9rem', fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6644', letterSpacing: '.1em', textShadow: '0 0 12px rgba(255,80,0,.6)', whiteSpace: 'nowrap', boxShadow: '0 0 10px rgba(255,60,0,.2)' }}>
                 {evt}
               </div>
             ))}
@@ -11006,19 +11006,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         )}
       </div>
 
-      {/* TOP-CENTER — narration bar (no ticker, static text) */}
-      <div style={{ position: 'absolute', top: 10, left: 350, right: 350, zIndex: 100, pointerEvents: 'none' }}>
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem .7rem', overflow: 'hidden' }}>
-          {nearB && (
-            <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.55)', letterSpacing: '.1em', marginBottom: '.15rem' }}>
-              NEARBY: {nearB.label}
-            </div>
-          )}
-          <div style={{ fontSize: '.9rem', color: 'rgba(0,255,65,.85)', letterSpacing: '.03em', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {narration}
-          </div>
-        </div>
-      </div>
       {/* BOTTOM-CENTER — controls hint (compact) */}
       <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 90, pointerEvents: 'none' }}>
         <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
