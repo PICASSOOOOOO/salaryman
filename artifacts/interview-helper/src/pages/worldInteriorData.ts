@@ -1247,60 +1247,60 @@ export const mkDoorW = (bx: number, by: number, _bw: number, bh: number): Door[]
 export const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x: bx + bw - 4, y: by + (bh - DOOR_W) / 2, w: 8, h: DOOR_W }];
 
 export const BUILDINGS = [
-  // ═══ BLOCK A — NORTH-WEST (Shadow District) ═══════════════════════════════
-  { id: 'minx_arms',    x: 5620, y: 5280, w: 130, h: 120, label: 'MINX ARMS HOTEL',        bright: false, doors: mkDoorS(5620,5280,130,120) },
-  { id: 'clinic',       x: 5780, y: 5280, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5780,5280,120,80) },
-  { id: 'nexus_hub',    x: 5620, y: 5440, w: 140, h: 90,  label: 'NEXUS HUB',        bright: true,  doors: mkDoorS(5620,5440,140,90) },
-  // ═══ BLOCK B — NORTH CENTER (Tower Quarter) ════════════════════════════════
+  // ═══ BLOCK A — NORTH-WEST (Shadow District) — U-shaped courtyard cluster ══
+  { id: 'minx_arms',    x: 5620, y: 5260, w: 130, h: 120, label: 'MINX ARMS HOTEL',        bright: false, doors: mkDoorS(5620,5260,130,120) },
+  { id: 'clinic',       x: 5760, y: 5260, w: 120, h: 80,  label: 'CITY CLINIC',      bright: false, doors: mkDoorS(5760,5260,120,80) },
+  { id: 'nexus_hub',    x: 5620, y: 5395, w: 140, h: 90,  label: 'NEXUS HUB',        bright: true,  doors: mkDoorS(5620,5395,140,90) },
+  // ═══ BLOCK B — NORTH CENTER (Tower Quarter) — tight L-shape ═══════════════
   { id: 'pablo_tower',  x: 6100, y: 5200, w: 260, h: 220, label: 'SHADOW TOWER',     bright: true,  doors: mkDoorS(6100,5200,260,220) },
-  { id: 'hotel',        x: 6400, y: 5280, w: 120, h: 130, label: 'HOTEL NEON',        bright: false, doors: mkDoorS(6400,5280,120,130), radio: true },
-  // ═══ BLOCK C — NORTH-EAST (Iron Row) ═══════════════════════════════════════
-  { id: 'dojo',         x: 6720, y: 5280, w: 130, h: 100, label: 'IRON DOJO',         bright: false, doors: mkDoorS(6720,5280,130,100) },
-  { id: 'data_vault',   x: 6880, y: 5280, w: 130, h: 90,  label: 'DATA VAULT',        bright: true,  doors: mkDoorS(6880,5280,130,90) },
-  { id: 'nightclub',    x: 6720, y: 5420, w: 130, h: 100, label: 'CLUB NEON',         bright: true,  doors: mkDoorS(6720,5420,130,100), radio: true },
-  // ═══ BLOCK D — FAR NORTH-EAST (Military/Gate) ═════════════════════════════
-  { id: 'police_hq',    x: 7200, y: 5280, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7200,5280,150,100) },
-  { id: 'armory',       x: 7380, y: 5280, w: 130, h: 90,  label: 'ARMORY',            bright: false, doors: mkDoorS(7380,5280,130,90) },
-  { id: 'north_gate',   x: 7550, y: 5280, w: 100, h: 70,  label: 'NORTH GATE',        bright: false, doors: [...mkDoorN(7550,5280,100), ...mkDoorS(7550,5280,100,70)] },
-  { id: 'sub_north',    x: 7700, y: 5280, w: 90,  h: 65,  label: 'METRO NORTH',       bright: true,  doors: mkDoorS(7700,5280,90,65) },
-  // ═══ BLOCK E — MID-WEST (Market Row) ══════════════════════════════════════
-  { id: 'pablo_store',  x: 5620, y: 5700, w: 140, h: 80,  label: 'PABLO',             bright: true,  doors: mkDoorS(5620,5700,140,80) },
-  { id: 'megabank',     x: 5790, y: 5700, w: 140, h: 90,  label: 'BANCO OMBRA',        bright: false, doors: mkDoorS(5790,5700,140,90) },
-  { id: 'vend',         x: 5960, y: 5700, w: 70,  h: 70,  label: 'VENDING MACHINE',   bright: true,  doors: mkDoorS(5960,5700,70,70) },
-  // ═══ BLOCK F — MID-CENTER (Commerce Hub) ══════════════════════════════════
-  { id: 'market',       x: 6200, y: 5700, w: 130, h: 80,  label: 'BLACK MARKET',      bright: false, doors: mkDoorS(6200,5700,130,80) },
-  { id: 'food_court',   x: 6360, y: 5700, w: 140, h: 90,  label: 'FOOD COURT',        bright: true,  doors: mkDoorS(6360,5700,140,90) },
-  { id: 'gold_exchange',x: 6530, y: 5700, w: 120, h: 80,  label: 'GOLD EXCHANGE',     bright: true,  doors: mkDoorS(6530,5700,120,80) },
-  { id: 'crystal',      x: 6680, y: 5750, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
-  { id: 'public_office',x: 6620, y: 5870, w: 170, h: 100, label: 'PUBLIC OFFICE',     bright: true,  doors: mkDoorS(6620,5870,170,100) },
-  // ═══ BLOCK G — MID-EAST (Corporate Row) ═══════════════════════════════════
-  { id: 'call_home',    x: 6900, y: 5700, w: 130, h: 80,  label: 'CALL HOME',         bright: true,  doors: mkDoorS(6900,5700,130,80) },
-  { id: 'noodle_bar',   x: 7060, y: 5700, w: 120, h: 80,  label: 'NOODLE BAR',        bright: true,  doors: mkDoorS(7060,5700,120,80) },
-  { id: 'admin_bureau', x: 7210, y: 5700, w: 130, h: 90,  label: 'MINX ADMIN BUILDING', bright: true,  doors: mkDoorS(7210,5700,130,90) },
-  { id: 'plaza_market', x: 7370, y: 5700, w: 120, h: 80,  label: 'CENTRAL PLAZA',     bright: true,  doors: mkDoorS(7370,5700,120,80) },
-  { id: 'eastside_flat',x: 7520, y: 5700, w: 130, h: 120, label: 'EASTSIDE FLATS',    bright: false, doors: mkDoorS(7520,5700,130,120) },
-  // ═══ BLOCK H — SOUTH-WEST (Industrial) ════════════════════════════════════
-  { id: 'arcade',       x: 5620, y: 6100, w: 130, h: 85,  label: 'PIXEL ARCADE',      bright: true,  doors: mkDoorE(5620,6100,130,85), radio: true },
-  { id: 'bunker',       x: 5780, y: 6100, w: 130, h: 90,  label: 'BUNKER-09',         bright: false, doors: mkDoorE(5780,6100,130,90), radio: true },
-  { id: 'scrap',        x: 5940, y: 6100, w: 150, h: 80,  label: 'SCRAP YARD',        bright: false, doors: mkDoorN(5940,6100,150) },
-  { id: 'machine_bunker',x: 5620, y: 6230, w: 100, h: 60, label: 'MACHINE BUNKER',    bright: false, doors: mkDoorN(5620,6230,100), radio: true },
-  // ═══ BLOCK I — SOUTH-CENTER (Neon Strip) ══════════════════════════════════
-  { id: 'safe_house',   x: 6200, y: 6100, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6200,6100,110), radio: true },
-  { id: 'radio',        x: 6340, y: 6100, w: 120, h: 100, label: 'PIRATE RADIO',      bright: false, doors: mkDoorW(6340,6100,120,100) },
-  { id: 'oxide_labs',   x: 6490, y: 6100, w: 110, h: 80,  label: 'OXIDE LABS',        bright: false, doors: mkDoorW(6490,6100,110,80) },
-  { id: 'crystal2',     x: 6630, y: 6130, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
-  // ═══ BLOCK J — SOUTH-EAST (Transit & Commerce) ════════════════════════════
-  { id: 'realestate_office', x: 6900, y: 6100, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(6900,6100,130,80) },
-  { id: 'print_shop',   x: 7060, y: 6100, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7060,6100,120) },
-  { id: 'pawn_shop',    x: 7210, y: 6100, w: 120, h: 80,  label: 'PAWN SHOP',         bright: false, doors: mkDoorW(7210,6100,120,80) },
-  { id: 'vehicle_dealer',x: 7360, y: 6100, w: 130, h: 80, label: 'MOTOR DEPOT',       bright: true,  doors: mkDoorS(7360,6100,130,80) },
-  { id: 'terminal_shop',x: 7520, y: 6100, w: 130, h: 80,  label: 'PABLO CORP TERMINAL',    bright: true,  doors: mkDoorS(7520,6100,130,80) },
-  // ═══ SOUTH ROW — Bunkers, depots, metro ═══════════════════════════════════
-  { id: 'overlook',     x: 5620, y: 6450, w: 120, h: 85,  label: 'THE PINNACLE',      bright: true,  doors: mkDoorN(5620,6450,120), radio: true },
-  { id: 'depot_south',  x: 5770, y: 6450, w: 120, h: 85,  label: 'TRANSIT DEPOT',     bright: false, doors: mkDoorN(5770,6450,120) },
-  { id: 'east_bunker',  x: 5920, y: 6450, w: 130, h: 85,  label: 'EAST BUNKER',       bright: false, doors: mkDoorN(5920,6450,130) },
-  { id: 'north_bunker', x: 6080, y: 6450, w: 130, h: 85,  label: 'NORTH BUNKER',      bright: false, doors: mkDoorS(6080,6450,130,85), radio: true },
-  { id: 'crystal4',     x: 6240, y: 6480, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  { id: 'hotel',        x: 6370, y: 5260, w: 120, h: 130, label: 'HOTEL NEON',        bright: false, doors: mkDoorS(6370,5260,120,130), radio: true },
+  // ═══ BLOCK C — NORTH-EAST (Iron Row) — dense alley cluster ════════════════
+  { id: 'dojo',         x: 6720, y: 5270, w: 130, h: 100, label: 'IRON DOJO',         bright: false, doors: mkDoorS(6720,5270,130,100) },
+  { id: 'data_vault',   x: 6860, y: 5270, w: 130, h: 90,  label: 'DATA VAULT',        bright: true,  doors: mkDoorS(6860,5270,130,90) },
+  { id: 'nightclub',    x: 6720, y: 5380, w: 130, h: 100, label: 'CLUB NEON',         bright: true,  doors: mkDoorS(6720,5380,130,100), radio: true },
+  // ═══ BLOCK D — FAR NORTH-EAST (Military/Gate) — tight compound ════════════
+  { id: 'police_hq',    x: 7200, y: 5270, w: 150, h: 100, label: 'POLICE HQ',         bright: false, doors: mkDoorS(7200,5270,150,100) },
+  { id: 'armory',       x: 7360, y: 5270, w: 130, h: 90,  label: 'ARMORY',            bright: false, doors: mkDoorS(7360,5270,130,90) },
+  { id: 'north_gate',   x: 7500, y: 5270, w: 100, h: 70,  label: 'NORTH GATE',        bright: false, doors: [...mkDoorN(7500,5270,100), ...mkDoorS(7500,5270,100,70)] },
+  { id: 'sub_north',    x: 7610, y: 5270, w: 90,  h: 65,  label: 'METRO NORTH',       bright: true,  doors: mkDoorS(7610,5270,90,65) },
+  // ═══ BLOCK E — MID-WEST (Market Row) — plaza-surrounding cluster ══════════
+  { id: 'pablo_store',  x: 5620, y: 5680, w: 140, h: 80,  label: 'PABLO',             bright: true,  doors: mkDoorS(5620,5680,140,80) },
+  { id: 'megabank',     x: 5770, y: 5680, w: 140, h: 90,  label: 'BANCO OMBRA',        bright: false, doors: mkDoorS(5770,5680,140,90) },
+  { id: 'vend',         x: 5920, y: 5700, w: 70,  h: 70,  label: 'VENDING MACHINE',   bright: true,  doors: mkDoorS(5920,5700,70,70) },
+  // ═══ BLOCK F — MID-CENTER (Commerce Hub) — courtyard around save crystal ══
+  { id: 'market',       x: 6200, y: 5690, w: 130, h: 80,  label: 'BLACK MARKET',      bright: false, doors: mkDoorS(6200,5690,130,80) },
+  { id: 'food_court',   x: 6340, y: 5690, w: 140, h: 90,  label: 'FOOD COURT',        bright: true,  doors: mkDoorS(6340,5690,140,90) },
+  { id: 'gold_exchange',x: 6490, y: 5690, w: 120, h: 80,  label: 'GOLD EXCHANGE',     bright: true,  doors: mkDoorS(6490,5690,120,80) },
+  { id: 'crystal',      x: 6350, y: 5790, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  { id: 'public_office',x: 6200, y: 5830, w: 170, h: 100, label: 'PUBLIC OFFICE',     bright: true,  doors: mkDoorS(6200,5830,170,100) },
+  // ═══ BLOCK G — MID-EAST (Corporate Row) — dense L-shape with alley ════════
+  { id: 'call_home',    x: 6900, y: 5690, w: 130, h: 80,  label: 'CALL HOME',         bright: true,  doors: mkDoorS(6900,5690,130,80) },
+  { id: 'noodle_bar',   x: 7040, y: 5690, w: 120, h: 80,  label: 'NOODLE BAR',        bright: true,  doors: mkDoorS(7040,5690,120,80) },
+  { id: 'admin_bureau', x: 7170, y: 5690, w: 130, h: 90,  label: 'MINX ADMIN BUILDING', bright: true,  doors: mkDoorS(7170,5690,130,90) },
+  { id: 'plaza_market', x: 6900, y: 5780, w: 120, h: 80,  label: 'CENTRAL PLAZA',     bright: true,  doors: mkDoorS(6900,5780,120,80) },
+  { id: 'eastside_flat',x: 7040, y: 5780, w: 130, h: 120, label: 'EASTSIDE FLATS',    bright: false, doors: mkDoorS(7040,5780,130,120) },
+  // ═══ BLOCK H — SOUTH-WEST (Industrial) — tight compound with inner alley ══
+  { id: 'arcade',       x: 5620, y: 6080, w: 130, h: 85,  label: 'PIXEL ARCADE',      bright: true,  doors: mkDoorE(5620,6080,130,85), radio: true },
+  { id: 'bunker',       x: 5760, y: 6080, w: 130, h: 90,  label: 'BUNKER-09',         bright: false, doors: mkDoorE(5760,6080,130,90), radio: true },
+  { id: 'scrap',        x: 5900, y: 6080, w: 150, h: 80,  label: 'SCRAP YARD',        bright: false, doors: mkDoorN(5900,6080,150) },
+  { id: 'machine_bunker',x: 5620, y: 6175, w: 100, h: 60, label: 'MACHINE BUNKER',    bright: false, doors: mkDoorN(5620,6175,100), radio: true },
+  // ═══ BLOCK I — SOUTH-CENTER (Neon Strip) — U-shaped around save point ═════
+  { id: 'safe_house',   x: 6200, y: 6080, w: 110, h: 75,  label: 'SAFE HOUSE',        bright: true,  doors: mkDoorN(6200,6080,110), radio: true },
+  { id: 'radio',        x: 6320, y: 6080, w: 120, h: 100, label: 'PIRATE RADIO',      bright: false, doors: mkDoorW(6320,6080,120,100) },
+  { id: 'oxide_labs',   x: 6450, y: 6080, w: 110, h: 80,  label: 'OXIDE LABS',        bright: false, doors: mkDoorW(6450,6080,110,80) },
+  { id: 'crystal2',     x: 6350, y: 6170, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
+  // ═══ BLOCK J — SOUTH-EAST (Transit & Commerce) — courtyard cluster ════════
+  { id: 'realestate_office', x: 6900, y: 6080, w: 130, h: 80, label: 'REAL ESTATE OFFICE', bright: true, doors: mkDoorS(6900,6080,130,80) },
+  { id: 'print_shop',   x: 7040, y: 6080, w: 120, h: 70,  label: 'PRINT SHOP & LIBRARY', bright: false, doors: mkDoorN(7040,6080,120) },
+  { id: 'pawn_shop',    x: 7170, y: 6080, w: 120, h: 80,  label: 'PAWN SHOP',         bright: false, doors: mkDoorW(7170,6080,120,80) },
+  { id: 'vehicle_dealer',x: 6900, y: 6170, w: 130, h: 80, label: 'MOTOR DEPOT',       bright: true,  doors: mkDoorS(6900,6170,130,80) },
+  { id: 'terminal_shop',x: 7040, y: 6170, w: 130, h: 80,  label: 'PABLO CORP TERMINAL',    bright: true,  doors: mkDoorS(7040,6170,130,80) },
+  // ═══ SOUTH ROW — Bunkers around shared plaza ═════════════════════════════
+  { id: 'overlook',     x: 5620, y: 6400, w: 120, h: 85,  label: 'THE PINNACLE',      bright: true,  doors: mkDoorN(5620,6400,120), radio: true },
+  { id: 'depot_south',  x: 5750, y: 6400, w: 120, h: 85,  label: 'TRANSIT DEPOT',     bright: false, doors: mkDoorN(5750,6400,120) },
+  { id: 'east_bunker',  x: 5880, y: 6400, w: 130, h: 85,  label: 'EAST BUNKER',       bright: false, doors: mkDoorN(5880,6400,130) },
+  { id: 'north_bunker', x: 6020, y: 6400, w: 130, h: 85,  label: 'NORTH BUNKER',      bright: false, doors: mkDoorS(6020,6400,130,85), radio: true },
+  { id: 'crystal4',     x: 5840, y: 6500, w: 28,  h: 28,  label: 'SAVE POINT',        bright: true,  doors: [] as Door[] },
   // ═══ METRO STATIONS (along south road) ════════════════════════════════════
   { id: 'sub_west',     x: 5700, y: 6650, w: 90,  h: 65,  label: 'METRO WEST',        bright: true,  doors: mkDoorS(5700,6650,90,65) },
   { id: 'sub_central',  x: 6500, y: 6650, w: 90,  h: 65,  label: 'METRO CENTRAL',     bright: true,  doors: mkDoorS(6500,6650,90,65) },

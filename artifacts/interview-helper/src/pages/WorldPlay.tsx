@@ -56,7 +56,7 @@ const CITY_THREAT_SCAN_Y = CITY_BOTTOM + 200;
 const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_RIGHT && py >= CITY_TOP && py <= CITY_BOTTOM;
 
 // ── 2.5D depth constant for building perspective ─────────────────────────────
-const BUILDING_DEPTH = 18;
+const BUILDING_DEPTH = 28;
 
 // ── Billboard locations ─────────────────────────────────────────────────────
 interface BillboardDef {
@@ -308,14 +308,18 @@ interface TrafficVehicle {
   routeIdx: number; wpIdx: number;
 }
 const TRAFFIC_ROUTES: { x: number; y: number }[][] = [
-  [{ x: 5500, y: 5400 }, { x: 8800, y: 5400 }, { x: 8800, y: 5450 }, { x: 5500, y: 5450 }],
-  [{ x: 5500, y: 5850 }, { x: 8800, y: 5850 }, { x: 8800, y: 5900 }, { x: 5500, y: 5900 }],
-  [{ x: 5500, y: 6300 }, { x: 8800, y: 6300 }, { x: 8800, y: 6350 }, { x: 5500, y: 6350 }],
-  [{ x: 5500, y: 6750 }, { x: 8800, y: 6750 }, { x: 8800, y: 6800 }, { x: 5500, y: 6800 }],
-  [{ x: 5700, y: 5200 }, { x: 5700, y: 7400 }, { x: 5750, y: 7400 }, { x: 5750, y: 5200 }],
-  [{ x: 6700, y: 5200 }, { x: 6700, y: 7400 }, { x: 6750, y: 7400 }, { x: 6750, y: 5200 }],
-  [{ x: 7700, y: 5200 }, { x: 7700, y: 7400 }, { x: 7750, y: 7400 }, { x: 7750, y: 5200 }],
-  [{ x: 8700, y: 5200 }, { x: 8700, y: 7400 }, { x: 8750, y: 7400 }, { x: 8750, y: 5200 }],
+  // E-W main boulevard
+  [{ x: CITY_LEFT - 100, y: 6300 }, { x: CITY_RIGHT + 100, y: 6300 }, { x: CITY_RIGHT + 100, y: 6340 }, { x: CITY_LEFT - 100, y: 6340 }],
+  // E-W secondary north
+  [{ x: CITY_LEFT, y: 5980 }, { x: CITY_RIGHT, y: 5980 }, { x: CITY_RIGHT, y: 6010 }, { x: CITY_LEFT, y: 6010 }],
+  // E-W secondary south
+  [{ x: CITY_LEFT, y: 6560 }, { x: CITY_RIGHT, y: 6560 }, { x: CITY_RIGHT, y: 6590 }, { x: CITY_LEFT, y: 6590 }],
+  // N-S main avenue
+  [{ x: 6800, y: CITY_TOP - 100 }, { x: 6800, y: CITY_BOTTOM + 100 }, { x: 6840, y: CITY_BOTTOM + 100 }, { x: 6840, y: CITY_TOP - 100 }],
+  // N-S secondary west
+  [{ x: 6480, y: CITY_TOP }, { x: 6480, y: CITY_BOTTOM }, { x: 6510, y: CITY_BOTTOM }, { x: 6510, y: CITY_TOP }],
+  // N-S secondary east
+  [{ x: 7180, y: CITY_TOP }, { x: 7180, y: CITY_BOTTOM }, { x: 7210, y: CITY_BOTTOM }, { x: 7210, y: CITY_TOP }],
 ];
 const TRAFFIC_COLORS = ['#445566', '#554433', '#334455', '#665544', '#443355', '#335544', '#553344', '#444455'];
 function initTrafficVehicles(): TrafficVehicle[] {
@@ -394,12 +398,31 @@ const MAX_DEBRIS = 20;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 30;
-const CITY_ROADS_H = [6000, 6300, 6550];
-const CITY_ROADS_V = [6400, 6800, 7100];
+const CITY_ROADS_H = [5980, 6300, 6560];
+const CITY_ROADS_V = [6480, 6800, 7180];
+// Diagonal/spur road segments defined as [x1,y1,x2,y2]
+const CITY_ROADS_DIAG: [number,number,number,number][] = [
+  [CITY_LEFT + 20, CITY_TOP + 60, 6800, 6300],   // NW diagonal
+  [CITY_RIGHT - 20, CITY_TOP + 80, 6800, 6300],  // NE diagonal
+  [CITY_LEFT + 40, 6560, 6480, 6560],             // SW cross-alley (horiz, handled by H but listed for clarity)
+  [6150, 6300, 6150, CITY_BOTTOM],                // SW vertical spur
+  [7180, 5980, 7380, 5780],                       // NE diagonal spur
+  [CITY_RIGHT - 60, 6300, CITY_RIGHT - 60, 6560],// East vertical spur
+];
+function pointToSegDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 function isOnRoad(px: number, py: number): boolean {
   if (!inCityBounds(px, py)) return false;
   for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
   for (const rx of CITY_ROADS_V) { if (Math.abs(px - rx) < ROAD_HALF_W) return true; }
+  for (const [x1,y1,x2,y2] of CITY_ROADS_DIAG) {
+    if (pointToSegDist(px, py, x1, y1, x2, y2) < ROAD_HALF_W) return true;
+  }
   return false;
 }
 
@@ -5632,10 +5655,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Poison tick
+      // Poison tick — lasts 10 seconds (600 frames), 0.5 HP per tick
       if (g.poisoned) {
         g.poisonTick++;
-        if (g.poisonTick % 60 === 0 && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 1.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
+        if (g.poisonTick >= 600) { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+        if (g.poisonTick % 60 === 0 && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 0.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
       }
 
       // ── Interior fade transition ──
@@ -5869,49 +5893,55 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (g.frame % 180 === 0) setNarr('> SOUTHERN FOOTHILLS — The ground rises sharply. The mountains are impassable.');
           }
         }
-        // ── River collision — blocked unless near a bridge crossing ──────────
-        // Bridge crossings: road/river intersections (world coords)
-        // River 1 (NW): x≈2124, y≈1800  |  x≈2000, y≈2011
-        // River 2 (NE): x≈11000, y≈1893  |  x≈12822, y≈3200
-        // River 3 (SW): x≈2826, y≈10500  |  x≈2000, y≈9958
-        // River 4 (SE): x≈12377, y≈10500  |  x≈11000, y≈11320
-        const RIVER_BRIDGES = [
-          { wx: 2100, wy: 1820 }, { wx: 2020, wy: 2010 },
-          { wx: 11000, wy: 1900 }, { wx: 12800, wy: 3200 },
-          { wx: 2820, wy: 10500 }, { wx: 2020, wy: 9960 },
-          { wx: 12370, wy: 10500 }, { wx: 11000, wy: 11320 },
+        // ── River collision — bezier-based, blocked unless near a bridge ────
+        const COLLISION_RIVERS = [
+          { sx: 3200, sy: BORDER + 80,      ex: BORDER + 60,      ey: 5000,
+            cp1x: 2600, cp1y: 1800, cp2x: 800,  cp2y: 3800 },
+          { sx: 8500, sy: BORDER + 100,     ex: W - BORDER - 80,  ey: 4200,
+            cp1x: 9200, cp1y: 1600, cp2x: 12600, cp2y: 3000 },
+          { sx: 5800, sy: H - BORDER - 90,  ex: BORDER + 80,      ey: 8800,
+            cp1x: 5000, cp1y: 10800, cp2x: 1200, cp2y: 9600 },
+          { sx: 9200, sy: H - BORDER - 110, ex: W - BORDER - 70,  ey: 9400,
+            cp1x: 10000, cp1y: 11400, cp2x: 12800, cp2y: 10200 },
         ];
-        const RIVER_HALF = 10; // half-width of river body that blocks movement
-        const BRIDGE_RADIUS = 55; // passable radius around bridge centre
-        // River 1: from (3200,BORDER+80) to (BORDER+60,5000) — approximate spine
-        const river1Blocked = (px: number, py: number) => {
-          const t = (px - (BORDER + 60)) / (3200 - (BORDER + 60));
-          if (t < 0 || t > 1) return false;
-          const ry = (BORDER + 80) + t * (5000 - (BORDER + 80));
-          return Math.abs(py - ry) < RIVER_HALF;
+        const RIVER_BRIDGES = [
+          { wx: 2369, wy: 1800 }, { wx: 2000, wy: 2329 },
+          { wx: 11000, wy: 2347 }, { wx: 12257, wy: 3200 },
+          { wx: 3742, wy: 10500 }, { wx: 2000, wy: 9737 },
+          { wx: 11802, wy: 10500 }, { wx: 11000, wy: 10920 },
+        ];
+        const RIVER_HALF = 22;
+        const BRIDGE_RADIUS = 55;
+        const bezPt = (t: number, p0: number, p1: number, p2: number, p3: number) => {
+          const mt = 1-t, mt2 = mt*mt, mt3 = mt2*mt;
+          return mt3*p0 + 3*mt2*t*p1 + 3*mt*t*t*p2 + t*t*t*p3;
         };
-        const river2Blocked = (px: number, py: number) => {
-          const t = (px - 8500) / ((W - BORDER - 80) - 8500);
-          if (t < 0 || t > 1) return false;
-          const ry = (BORDER + 100) + t * (4200 - (BORDER + 100));
-          return Math.abs(py - ry) < RIVER_HALF;
-        };
-        const river3Blocked = (px: number, py: number) => {
-          const t = (px - (BORDER + 80)) / (5800 - (BORDER + 80));
-          if (t < 0 || t > 1) return false;
-          const ry = (H - BORDER - 90) + t * (8800 - (H - BORDER - 90));
-          return Math.abs(py - ry) < RIVER_HALF;
-        };
-        const river4Blocked = (px: number, py: number) => {
-          const t = (px - 9200) / ((W - BORDER - 70) - 9200);
-          if (t < 0 || t > 1) return false;
-          const ry = (H - BORDER - 110) + t * (9400 - (H - BORDER - 110));
-          return Math.abs(py - ry) < RIVER_HALF;
+        const RIVER_SEG_COUNT = 200;
+        const riverPolylines = COLLISION_RIVERS.map(rv => {
+          const pts: { x: number; y: number }[] = [];
+          for (let i = 0; i <= RIVER_SEG_COUNT; i++) {
+            const t = i / RIVER_SEG_COUNT;
+            pts.push({ x: bezPt(t, rv.sx, rv.cp1x, rv.cp2x, rv.ex), y: bezPt(t, rv.sy, rv.cp1y, rv.cp2y, rv.ey) });
+          }
+          return pts;
+        });
+        const pointNearPolyline = (px: number, py: number, pts: { x: number; y: number }[], halfW: number) => {
+          for (let i = 0; i < pts.length - 1; i++) {
+            const ax = pts[i].x, ay = pts[i].y, bx2 = pts[i+1].x, by2 = pts[i+1].y;
+            if (Math.abs(px - ax) > halfW * 3 && Math.abs(px - bx2) > halfW * 3) continue;
+            if (Math.abs(py - ay) > halfW * 3 && Math.abs(py - by2) > halfW * 3) continue;
+            const dx = bx2 - ax, dy = by2 - ay;
+            const lenSq = dx*dx + dy*dy;
+            const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax)*dx + (py - ay)*dy) / lenSq));
+            const dist = Math.hypot(px - (ax + t*dx), py - (ay + t*dy));
+            if (dist < halfW) return true;
+          }
+          return false;
         };
         const nearBridge = (px: number, py: number) =>
           RIVER_BRIDGES.some(b => Math.hypot(px - b.wx, py - b.wy) < BRIDGE_RADIUS);
         const checkRiverCollision = (px: number, py: number) =>
-          !nearBridge(px, py) && (river1Blocked(px, py) || river2Blocked(px, py) || river3Blocked(px, py) || river4Blocked(px, py));
+          !nearBridge(px, py) && riverPolylines.some(pts => pointNearPolyline(px, py, pts, RIVER_HALF));
         if (checkRiverCollision(nx, ny)) {
           if (!checkRiverCollision(g.px, ny)) nx = g.px;
           else if (!checkRiverCollision(nx, g.py)) ny = g.py;
@@ -6360,18 +6390,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return false;
       });
 
-      // ── HP regen when idle (not in combat) — scaled by location ──
-      if (g.hp > 0 && g.hp < g.maxHp && g.frame % 180 === 0) {
-        const idleMs = Date.now() - g.lastMoveTime;
-        const hasHostileNearby = g.threats.some((t: Threat) => t.behavior === 'HOSTILE' && Math.hypot(g.px - t.x, g.py - t.y) < 200);
-        if (!hasHostileNearby && idleMs > 3000) {
-          const isIndoorsRegen = !!g.interior;
-          const nearBldRegen = g.interior?.bid ?? '';
-          const isRestLocRegen = REST_LOCATION_IDS.has(nearBldRegen);
-          const regenAmount = isRestLocRegen ? 4 : isIndoorsRegen ? 2 : 1;
-          g.hp = Math.min(g.maxHp, g.hp + regenAmount);
-          setHp(Math.floor(g.hp));
-        }
+      // ── HP regen (passive, always active) — scaled by location ──
+      if (g.hp > 0 && g.hp < g.maxHp && g.frame % 90 === 0) {
+        const isIndoorsRegen = !!g.interior;
+        const nearBldRegen = g.interior?.bid ?? '';
+        const isRestLocRegen = REST_LOCATION_IDS.has(nearBldRegen);
+        const regenAmount = isRestLocRegen ? 6 : isIndoorsRegen ? 3 : 2;
+        g.hp = Math.min(g.maxHp, g.hp + regenAmount);
+        setHp(Math.floor(g.hp));
       }
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
@@ -8439,56 +8465,69 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── RIVERS: from mountains toward coast ───────────────────────────────
+        // Wide bezier-curve rivers — gentle bends, no sine-wave snake
         const RIVERS = [
-          { startX: 3200, startY: BORDER + 80, endX: BORDER + 60, endY: 5000 },
-          { startX: 8500, startY: BORDER + 100, endX: W - BORDER - 80, endY: 4200 },
-          { startX: 5800, startY: H - BORDER - 90, endX: BORDER + 80, endY: 8800 },
-          { startX: 9200, startY: H - BORDER - 110, endX: W - BORDER - 70, endY: 9400 },
+          { sx: 3200, sy: BORDER + 80,      ex: BORDER + 60,      ey: 5000,
+            cp1x: 2600, cp1y: 1800, cp2x: 800,  cp2y: 3800 },
+          { sx: 8500, sy: BORDER + 100,     ex: W - BORDER - 80,  ey: 4200,
+            cp1x: 9200, cp1y: 1600, cp2x: 12600, cp2y: 3000 },
+          { sx: 5800, sy: H - BORDER - 90,  ex: BORDER + 80,      ey: 8800,
+            cp1x: 5000, cp1y: 10800, cp2x: 1200, cp2y: 9600 },
+          { sx: 9200, sy: H - BORDER - 110, ex: W - BORDER - 70,  ey: 9400,
+            cp1x: 10000, cp1y: 11400, cp2x: 12800, cp2y: 10200 },
         ];
-        const riverT = g.frame * 0.018;
+        const riverT = g.frame * 0.012;
         for (const rv of RIVERS) {
-          const rx1 = rv.startX + ox, ry1 = rv.startY + oy;
-          const rx2 = rv.endX + ox, ry2 = rv.endY + oy;
-          const rBounds = Math.max(rx1, rx2) > -20 && Math.min(rx1, rx2) < cw + 20 && Math.max(ry1, ry2) > -20 && Math.min(ry1, ry2) < ch + 20;
-          if (!rBounds) continue;
-          const steps = 60;
-          ctx.lineWidth = 3.5;
-          for (let rs = 0; rs < steps - 1; rs++) {
-            const t1 = rs / steps, t2 = (rs + 1) / steps;
-            const mx1 = rx1 + (rx2 - rx1) * t1 + Math.sin(t1 * 8 + riverT) * 18;
-            const my1 = ry1 + (ry2 - ry1) * t1 + Math.cos(t1 * 6 + riverT * 0.7) * 12;
-            const mx2 = rx1 + (rx2 - rx1) * t2 + Math.sin(t2 * 8 + riverT) * 18;
-            const my2 = ry1 + (ry2 - ry1) * t2 + Math.cos(t2 * 6 + riverT * 0.7) * 12;
-            const riverBr = isNight ? 0.35 : mtnBr;
-            const flowBright = 0.7 + Math.sin(t1 * 12 + riverT * 1.5) * 0.3;
-            ctx.strokeStyle = `rgb(${Math.floor(35 * flowBright * riverBr)},${Math.floor(100 * flowBright * riverBr)},${Math.floor(170 * flowBright * riverBr)})`;
-            ctx.beginPath(); ctx.moveTo(mx1, my1); ctx.lineTo(mx2, my2); ctx.stroke();
+          const sx = rv.sx + ox, sy = rv.sy + oy;
+          const ex = rv.ex + ox, ey = rv.ey + oy;
+          const c1x = rv.cp1x + ox, c1y = rv.cp1y + oy;
+          const c2x = rv.cp2x + ox, c2y = rv.cp2y + oy;
+          const bbox = [sx, ex, c1x, c2x];
+          const bboxY = [sy, ey, c1y, c2y];
+          if (Math.max(...bbox) < -80 || Math.min(...bbox) > cw + 80) continue;
+          if (Math.max(...bboxY) < -80 || Math.min(...bboxY) > ch + 80) continue;
+          const riverBr = isNight ? 0.35 : mtnBr;
+          // Draw wide river body
+          ctx.lineWidth = 42;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = `rgb(${Math.floor(20 * riverBr)},${Math.floor(70 * riverBr)},${Math.floor(140 * riverBr)})`;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.bezierCurveTo(c1x, c1y, c2x, c2y, ex, ey); ctx.stroke();
+          // Lighter inner water
+          ctx.lineWidth = 28;
+          ctx.strokeStyle = `rgb(${Math.floor(35 * riverBr)},${Math.floor(100 * riverBr)},${Math.floor(180 * riverBr)})`;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.bezierCurveTo(c1x, c1y, c2x, c2y, ex, ey); ctx.stroke();
+          // Animated flow lines along the river
+          for (let fi = 0; fi < 3; fi++) {
+            const fOff = (riverT * 0.4 + fi / 3) % 1;
+            const t = fOff;
+            const t2 = t * t, t3 = t2 * t;
+            const mt = 1 - t, mt2 = mt * mt, mt3 = mt2 * mt;
+            const fx = mt3 * sx + 3 * mt2 * t * c1x + 3 * mt * t2 * c2x + t3 * ex;
+            const fy = mt3 * sy + 3 * mt2 * t * c1y + 3 * mt * t2 * c2y + t3 * ey;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(160,210,255,${0.25 * riverBr})`;
+            ctx.fill();
           }
-          ctx.lineWidth = 1.5;
-          for (let rs = 0; rs < steps - 1; rs++) {
-            const t1 = rs / steps;
-            const mx1 = rx1 + (rx2 - rx1) * t1 + Math.sin(t1 * 8 + riverT) * 18;
-            const my1 = ry1 + (ry2 - ry1) * t1 + Math.cos(t1 * 6 + riverT * 0.7) * 12;
-            const flowFoam = Math.sin(t1 * 20 + riverT * 2) > 0.5;
-            if (flowFoam) {
-              ctx.strokeStyle = `rgba(180,220,255,0.3)`;
-              ctx.beginPath(); ctx.moveTo(mx1 - 1, my1); ctx.lineTo(mx1 + 2, my1 + 2); ctx.stroke();
-            }
-          }
+          // Shore highlight
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = `rgba(180,230,255,${0.15 * riverBr})`;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.bezierCurveTo(c1x, c1y, c2x, c2y, ex, ey); ctx.stroke();
+          ctx.lineCap = 'butt';
         }
 
         // ── Bridge structures at river/road crossings ────────────────────────
         // Each bridge is drawn as a short set of wooden planks over the river,
         // oriented along the road direction (H=horizontal road, V=vertical road).
         const BRIDGE_CROSSINGS = [
-          { wx: 2100, wy: 1820, dir: 'H' }, // River 1 × road y=1800
-          { wx: 2020, wy: 2010, dir: 'V' }, // River 1 × road x=2000
-          { wx: 11000, wy: 1900, dir: 'V' }, // River 2 × road x=11000
-          { wx: 12800, wy: 3200, dir: 'H' }, // River 2 × road y=3200
-          { wx: 2820, wy: 10500, dir: 'H' }, // River 3 × road y=10500
-          { wx: 2020, wy: 9960, dir: 'V' }, // River 3 × road x=2000
-          { wx: 12370, wy: 10500, dir: 'H' }, // River 4 × road y=10500
-          { wx: 11000, wy: 11320, dir: 'V' }, // River 4 × road x=11000
+          { wx: 2369,  wy: 1800,  dir: 'H' }, // River 1 × road y=1800
+          { wx: 2000,  wy: 2329,  dir: 'V' }, // River 1 × road x=2000
+          { wx: 11000, wy: 2347,  dir: 'V' }, // River 2 × road x=11000
+          { wx: 12257, wy: 3200,  dir: 'H' }, // River 2 × road y=3200
+          { wx: 3742,  wy: 10500, dir: 'H' }, // River 3 × road y=10500
+          { wx: 2000,  wy: 9737,  dir: 'V' }, // River 3 × road x=2000
+          { wx: 11802, wy: 10500, dir: 'H' }, // River 4 × road y=10500
+          { wx: 11000, wy: 10920, dir: 'V' }, // River 4 × road x=11000
         ];
         for (const br2 of BRIDGE_CROSSINGS) {
           const bsx = br2.wx + ox, bsy = br2.wy + oy;
@@ -8496,7 +8535,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const deckBr = isNight ? 0.28 : dayBright;
           if (br2.dir === 'H') {
             // Horizontal road crossing — planks run left–right over the river
-            const bW = 48, bH = 18;
+            const bW = 64, bH = 24;
             // River water fill beneath bridge
             ctx.fillStyle = `rgba(20,80,150,${0.55 * waterBr})`;
             ctx.fillRect(bsx - bW / 2, bsy - 5, bW, 10);
@@ -8516,7 +8555,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.beginPath(); ctx.moveTo(bsx - bW / 2, bsy + bH / 2 + 1); ctx.lineTo(bsx + bW / 2, bsy + bH / 2 + 1); ctx.stroke();
           } else {
             // Vertical road crossing — planks run top–bottom
-            const bW2 = 18, bH2 = 48;
+            const bW2 = 24, bH2 = 64;
             ctx.fillStyle = `rgba(20,80,150,${0.55 * waterBr})`;
             ctx.fillRect(bsx - 5, bsy - bH2 / 2, 10, bH2);
             ctx.fillStyle = `rgb(${Math.floor(140 * deckBr)},${Math.floor(100 * deckBr)},${Math.floor(50 * deckBr)})`;
@@ -8814,32 +8853,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
         } else {
-          ctx.fillStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
-          const horiz = Math.abs(y1 - y2) < 2;
-          if (horiz) { ctx.fillRect(x1+ox, y1+oy - w/2, x2-x1, w); }
-          else { ctx.fillRect(x1+ox - w/2, y1+oy, w, y2-y1); }
+          ctx.lineCap = 'round';
+          // Asphalt body — use stroke for all orientations (handles diagonal roads)
+          ctx.lineWidth = w;
+          ctx.strokeStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
+          ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
+          // Center line
           ctx.setLineDash([12,8]); ctx.lineWidth = 1.5;
           ctx.strokeStyle = `rgb(${Math.floor(220 * roadBr)},${Math.floor(200 * roadBr)},${Math.floor(60 * roadBr)})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
+          // Edge highlight
           ctx.strokeStyle = `rgba(255,255,255,${0.08 * roadBr})`;
           ctx.lineWidth = w;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
+          ctx.lineCap = 'butt';
         }
       };
-      // Main crossroads — one E-W avenue + one N-S boulevard
-      drawRoad(CITY_LEFT - 80,6300,CITY_RIGHT + 80,6300,36,.14);
-      drawRoad(6800,CITY_TOP - 80,6800,CITY_BOTTOM + 80,36,.14);
-      // Secondary streets — one per quadrant edge
-      drawRoad(CITY_LEFT,6000,CITY_RIGHT,6000,22,.08);
-      drawRoad(CITY_LEFT,6550,CITY_RIGHT,6550,22,.08);
-      drawRoad(6400,CITY_TOP,6400,CITY_BOTTOM,20,.07);
-      drawRoad(7100,CITY_TOP,7100,CITY_BOTTOM,20,.07);
-      // City perimeter road
-      drawRoad(CITY_LEFT,CITY_TOP,CITY_RIGHT,CITY_TOP,18,.06);
-      drawRoad(CITY_LEFT,CITY_BOTTOM,CITY_RIGHT,CITY_BOTTOM,18,.06);
-      drawRoad(CITY_LEFT,CITY_TOP,CITY_LEFT,CITY_BOTTOM,18,.06);
-      drawRoad(CITY_RIGHT,CITY_TOP,CITY_RIGHT,CITY_BOTTOM,18,.06);
+      // ── Main boulevard (E-W) and avenue (N-S) — wide arterials ──
+      drawRoad(CITY_LEFT - 100, 6300, CITY_RIGHT + 100, 6300, 56, .14);
+      drawRoad(6800, CITY_TOP - 100, 6800, CITY_BOTTOM + 100, 56, .14);
+      // ── Secondary E-W streets ──
+      drawRoad(CITY_LEFT, 5980, CITY_RIGHT, 5980, 38, .09);
+      drawRoad(CITY_LEFT, 6560, CITY_RIGHT, 6560, 38, .09);
+      // ── Secondary N-S streets ──
+      drawRoad(6480, CITY_TOP, 6480, CITY_BOTTOM, 36, .08);
+      drawRoad(7180, CITY_TOP, 7180, CITY_BOTTOM, 36, .08);
+      // ── Diagonal connector — NW to SE across north quarter ──
+      drawRoad(CITY_LEFT + 20, CITY_TOP + 60, 6800, 6300, 28, .07);
+      // ── Diagonal connector — NE corner to main boulevard ──
+      drawRoad(CITY_RIGHT - 20, CITY_TOP + 80, 6800, 6300, 26, .07);
+      // ── Short cross-alley in SW block ──
+      drawRoad(CITY_LEFT + 40, 6560, 6480, 6560, 24, .06);
+      drawRoad(6150, 6300, 6150, CITY_BOTTOM, 24, .06);
+      // ── T-intersection spur roads ──
+      drawRoad(7180, 5980, 7380, 5780, 22, .06);
+      drawRoad(CITY_RIGHT - 60, 6300, CITY_RIGHT - 60, 6560, 22, .06);
+      // ── City perimeter ring road ──
+      drawRoad(CITY_LEFT, CITY_TOP, CITY_RIGHT, CITY_TOP, 22, .07);
+      drawRoad(CITY_LEFT, CITY_BOTTOM, CITY_RIGHT, CITY_BOTTOM, 22, .07);
+      drawRoad(CITY_LEFT, CITY_TOP, CITY_LEFT, CITY_BOTTOM, 22, .07);
+      drawRoad(CITY_RIGHT, CITY_TOP, CITY_RIGHT, CITY_BOTTOM, 22, .07);
       // North wasteland trails (dashed, dimmer)
       drawRoad(0,1800,W,1800,10,.04,true);
       drawRoad(0,3200,W,3200,8,.03,true);
@@ -8861,12 +8915,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 6300, from: CITY_LEFT - 80, to: CITY_RIGHT + 80 },
-        { horiz: true,  coord: 6000, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6550, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: false, coord: 6800, from: CITY_TOP - 80, to: CITY_BOTTOM + 80 },
-        { horiz: false, coord: 6400, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7100, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: true,  coord: 6300, from: CITY_LEFT - 100, to: CITY_RIGHT + 100 },
+        { horiz: true,  coord: 5980, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6560, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: false, coord: 6800, from: CITY_TOP - 100, to: CITY_BOTTOM + 100 },
+        { horiz: false, coord: 6480, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 7180, from: CITY_TOP, to: CITY_BOTTOM },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
@@ -9073,7 +9127,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
         ctx.fillRect(bx - 2, by - 3, b.w + 4, 5);
-        const bldgWallH = Math.max(16, Math.min(50, Math.floor(Math.max(b.w, b.h) * 0.3)));
+        const isTower = b.w >= 50 || b.h >= 50;
+        const wallHBase = Math.max(28, Math.floor(Math.max(b.w, b.h) * (isTower ? 0.9 : 0.55)));
+        const bldgWallH = Math.min(isTower ? 160 : 90, wallHBase);
         ctx.fillStyle = `rgb(${Math.floor((wallR * 0.7) * bBr)},${Math.floor((wallG * 0.7) * bBr)},${Math.floor((wallB * 0.7) * bBr)})`;
         ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bldgWallH);
         ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bldgWallH); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
