@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -154,6 +155,11 @@ export default function Home() {
     try { return JSON.parse(localStorage.getItem('sm_notes') ?? '[]'); } catch { return []; }
   });
   const [noteInput, setNoteInput] = useState('');
+  const [spellMatches, setSpellMatches] = useState<SpellMatch[]>([]);
+  const [spellPopup, setSpellPopup] = useState<{ match: SpellMatch; x: number; y: number } | null>(null);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const noteWrapperRef = useRef<HTMLDivElement>(null);
+  const spellCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { localStorage.setItem('sm_xlat_from', translatorFrom); }, [translatorFrom]);
   useEffect(() => { localStorage.setItem('sm_xlat_to', translatorTo); }, [translatorTo]);
@@ -222,9 +228,60 @@ export default function Home() {
     if (!text) return;
     setNotes(prev => [{ id: Date.now(), text, ts: Date.now() }, ...prev]);
     setNoteInput('');
+    setSpellMatches([]);
+    setSpellPopup(null);
   };
 
   const deleteNote = (id: number) => setNotes(prev => prev.filter(n => n.id !== id));
+
+  const handleNoteInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNoteInput(val);
+    setSpellPopup(null);
+    if (spellCheckTimerRef.current) clearTimeout(spellCheckTimerRef.current);
+    if (!val.trim()) { setSpellMatches([]); return; }
+    spellCheckTimerRef.current = setTimeout(async () => {
+      const matches = await checkSpelling(val);
+      setSpellMatches(matches);
+    }, 800);
+  };
+
+  const applySpellCorrection = (match: SpellMatch, suggestion: string) => {
+    const before = noteInput.slice(0, match.offset);
+    const after = noteInput.slice(match.offset + match.length);
+    const newText = before + suggestion + after;
+    setNoteInput(newText);
+    setSpellPopup(null);
+    setSpellMatches(prev => prev.filter(m => m.offset !== match.offset));
+    noteTextareaRef.current?.focus();
+  };
+
+  const handleNoteClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (!spellMatches.length) return;
+    const ta = e.currentTarget;
+    const pos = ta.selectionStart ?? 0;
+    const hit = spellMatches.find(m => pos >= m.offset && pos <= m.offset + m.length);
+    if (!hit) { setSpellPopup(null); return; }
+    const rect = ta.getBoundingClientRect();
+    const wrapRect = noteWrapperRef.current?.getBoundingClientRect() ?? rect;
+    setSpellPopup({ match: hit, x: e.clientX - wrapRect.left, y: rect.bottom - wrapRect.top + 4 });
+  };
+
+  const noteHighlightHtml = useMemo(() => {
+    if (!spellMatches.length) return null;
+    let result = '';
+    let last = 0;
+    const sorted = [...spellMatches].sort((a, b) => a.offset - b.offset);
+    for (const m of sorted) {
+      if (m.offset < last) continue;
+      result += noteInput.slice(last, m.offset).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br/>');
+      const word = noteInput.slice(m.offset, m.offset + m.length).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      result += `<span style="border-bottom:2px solid #f472b6;cursor:pointer;">${word}</span>`;
+      last = m.offset + m.length;
+    }
+    result += noteInput.slice(last).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+    return result;
+  }, [noteInput, spellMatches]);
 
   const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false);
   const lastSpokenRef = useRef(-1);
@@ -634,11 +691,61 @@ export default function Home() {
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES — FREE' : PABLO_PRODUCTS.NOTES.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
-                <textarea value={noteInput} onChange={e => setNoteInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); } }}
-                  placeholder="Jot a note..."
-                  className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none resize-none`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 36 }} />
+                <div ref={noteWrapperRef} className="flex-1 relative bg-background border border-border rounded-md">
+                  {noteHighlightHtml && (
+                    <div
+                      aria-hidden
+                      className={`absolute inset-0 px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} rounded-md pointer-events-none whitespace-pre-wrap break-words overflow-hidden text-foreground`}
+                      style={{ fontFamily: "'Share Tech Mono', monospace", minHeight: 36, lineHeight: 1.5 }}
+                      dangerouslySetInnerHTML={{ __html: noteHighlightHtml }}
+                    />
+                  )}
+                  <textarea
+                    ref={noteTextareaRef}
+                    value={noteInput}
+                    onChange={handleNoteInputChange}
+                    onClick={handleNoteClick}
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') { setSpellPopup(null); return; }
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); }
+                    }}
+                    placeholder="Jot a note..."
+                    className={`w-full bg-transparent rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} placeholder:text-muted-foreground/50 outline-none resize-none relative`}
+                    style={{
+                      fontFamily: "'Share Tech Mono', monospace",
+                      minHeight: 36,
+                      lineHeight: 1.5,
+                      color: noteHighlightHtml ? 'transparent' : undefined,
+                      caretColor: noteHighlightHtml ? 'hsl(var(--foreground))' : undefined,
+                    }}
+                  />
+                  {spellMatches.length > 0 && (
+                    <div className="absolute top-1 right-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-pink-500/10 text-pink-400 border border-pink-500/20 pointer-events-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      {spellMatches.length} TYPO{spellMatches.length !== 1 ? 'S' : ''}
+                    </div>
+                  )}
+                  {spellPopup && (
+                    <div
+                      className="absolute z-50 rounded-md border border-pink-500/30 bg-card shadow-lg p-1.5 min-w-[120px]"
+                      style={{ left: spellPopup.x, top: spellPopup.y, fontFamily: "'Share Tech Mono', monospace" }}
+                    >
+                      <div className="text-[9px] text-pink-400/60 px-1 pb-1 border-b border-pink-500/20 mb-1">
+                        SUGGESTIONS FOR &quot;{spellPopup.match.word}&quot;
+                      </div>
+                      {spellPopup.match.suggestions.length === 0 ? (
+                        <div className="text-[10px] text-muted-foreground px-1 py-0.5">No suggestions</div>
+                      ) : spellPopup.match.suggestions.map(s => (
+                        <button
+                          key={s}
+                          onClick={() => applySpellCorrection(spellPopup.match, s)}
+                          className="w-full text-left text-[11px] text-foreground px-2 py-1 rounded hover:bg-pink-500/10 hover:text-pink-300 transition-colors block"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button onClick={addNote}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0 self-end`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
