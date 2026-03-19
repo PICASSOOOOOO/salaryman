@@ -120,6 +120,26 @@ export default function Cover() {
             EVERY APP IN ONE <ChevronRight size={13} />
           </motion.button>
         </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.45 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          style={{
+            fontSize: '0.55rem',
+            color: 'rgba(0,255,65,0.4)',
+            letterSpacing: '0.22em',
+            marginTop: '2rem',
+            maxWidth: '32rem',
+            lineHeight: 1.7,
+            textTransform: 'uppercase',
+            textAlign: 'center',
+          }}
+        >
+          POWERED BY CLAUDE SONNET + GPT-4o &mdash; YOUR ENTIRE OFFICE, ONE TERMINAL.
+          <br />
+          AI CHAT &middot; CRM &middot; INVOICES &middot; CALENDAR &middot; PHONE &middot; DAW &middot; HIRING &middot; REPORTS
+        </motion.p>
       </div>
     </div>
   );
