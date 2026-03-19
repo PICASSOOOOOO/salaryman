@@ -110,12 +110,10 @@ interface RadioHudProps {
   onNextStation: () => void;
   onPrevStation: () => void;
   musicMuted: boolean;
-  scoreMuted: boolean;
   onToggleMusicMute: () => void;
-  onToggleScoreMute: () => void;
 }
 
-export function RadioHud({ visible, on, fading, topOffset, onToggle, stationId, onNextStation, onPrevStation, musicMuted, scoreMuted, onToggleMusicMute, onToggleScoreMute }: RadioHudProps) {
+export function RadioHud({ visible, on, fading, topOffset, onToggle, stationId, onNextStation, onPrevStation, musicMuted, onToggleMusicMute }: RadioHudProps) {
   if (!visible) return null;
   const station = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
   return (
@@ -158,13 +156,61 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle, stationId, 
       )}
       <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem' }}>
         <button onClick={e => { e.stopPropagation(); onToggleMusicMute(); }} style={{ flex: 1, background: musicMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${musicMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,255,65,.12)'}`, color: musicMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,255,65,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
-          {musicMuted ? '🔇 MUSIC' : '🔊 MUSIC'}
-        </button>
-        <button onClick={e => { e.stopPropagation(); onToggleScoreMute(); }} style={{ flex: 1, background: scoreMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${scoreMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,255,65,.12)'}`, color: scoreMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,255,65,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
-          {scoreMuted ? '🔇 SCORE' : '🔊 SCORE'}
+          {musicMuted ? '🔇 MUTE' : '🔊 MUTE'}
         </button>
       </div>
       <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', marginTop: '3px' }}>[R] TOGGLE · [&lt;/&gt;] STATION · {on ? 'ON AIR' : 'OFF'}</div>
+    </div>
+  );
+}
+
+interface ScoreHudProps {
+  visible: boolean;
+  topOffset: string;
+  scoreOn: boolean;
+  scoreMuted: boolean;
+  onToggleScore: () => void;
+  onToggleScoreMute: () => void;
+}
+
+export function ScoreHud({ visible, topOffset, scoreOn, scoreMuted, onToggleScore, onToggleScoreMute }: ScoreHudProps) {
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: 'absolute', top: topOffset, right: '.8rem', zIndex: 209,
+      fontFamily: "'VT323',monospace", background: 'rgba(0,6,2,.92)',
+      border: `1px solid ${scoreOn ? 'rgba(0,200,255,.45)' : 'rgba(0,200,255,.15)'}`,
+      padding: '.4rem .7rem', minWidth: 200,
+      boxShadow: scoreOn ? '0 0 10px rgba(0,200,255,.1)' : 'none',
+      transition: 'border-color .3s, box-shadow .3s',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', cursor: 'pointer' }} onClick={onToggleScore}>
+        <div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.4)', letterSpacing: '.15em', marginBottom: '2px' }}>AMBIENT SCORE</div>
+          <div style={{ fontSize: '1rem', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.28)', letterSpacing: '.12em', lineHeight: 1 }}>SYNTHWAVE</div>
+          <div style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.22)', letterSpacing: '.1em', marginTop: '2px' }}>PROCEDURAL</div>
+        </div>
+        <div style={{
+          width: 28, height: 14, borderRadius: 7,
+          background: scoreOn ? 'rgba(0,200,255,.2)' : 'rgba(0,200,255,.06)',
+          border: `1px solid ${scoreOn ? 'rgba(0,200,255,.45)' : 'rgba(0,200,255,.12)'}`,
+          position: 'relative', transition: 'all .2s',
+        }}>
+          <div style={{
+            width: 10, height: 10, borderRadius: '50%',
+            background: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.18)',
+            position: 'absolute', top: 1, left: scoreOn ? 15 : 2,
+            transition: 'all .2s',
+            boxShadow: scoreOn ? '0 0 6px rgba(0,200,255,.5)' : 'none',
+          }} />
+        </div>
+      </div>
+      <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem' }}>
+        <button onClick={e => { e.stopPropagation(); onToggleScoreMute(); }} style={{ flex: 1, background: scoreMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${scoreMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,200,255,.1)'}`, color: scoreMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,200,255,.28)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+          {scoreMuted ? '🔇 MUTE' : '🔊 MUTE'}
+        </button>
+      </div>
+      <div style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.18)', letterSpacing: '.08em', marginTop: '3px' }}>AMBIENT SOUNDTRACK · {scoreOn ? 'PLAYING' : 'STOPPED'}</div>
     </div>
   );
 }

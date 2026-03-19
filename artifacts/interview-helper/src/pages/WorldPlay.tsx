@@ -17,7 +17,7 @@ import {
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteMusic, toggleMuteAll, getMusicMuted, getMuted, resumeAudioContext,
   setMusicVolume, setSfxVolume,
-  toggleMusicMute, toggleScoreMute, sfxAmbientRadio, 
+  toggleMusicMute, toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
   startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur, sfxNpcMurmur,
@@ -25,7 +25,7 @@ import {
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
-import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
+import { RadioPlayer, RadioHud, ScoreHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
@@ -3242,7 +3242,7 @@ export default function WorldPlay() {
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
-  const [scoreMuted, setScoreMuted] = useState(false);
+  const [scoreOn, setScoreOn] = useState(() => !getScoreMuted());
   const [campsitePos, setCampsitePos] = useState<{x:number;y:number}|null>(null);
   const [campsiteTurret, setCampsiteTurret] = useState(false);
   const [translatorText, setTranslatorText] = useState('');
@@ -3304,6 +3304,7 @@ export default function WorldPlay() {
   const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [musicMuted, setMusicMuted] = useState(() => getMusicMuted());
+  const [radioMuted, setRadioMuted] = useState(false);
   const [allMuted, setAllMuted] = useState(() => getMuted());
   const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
   const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
@@ -11019,11 +11020,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
               </button>
             )}
+            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 4, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>RADIO</div>
+            </div>
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
-            <button onClick={() => { const m = toggleMuteMusic(); setMusicMuted(m); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: musicMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {musicMuted ? '🔇 MUTE SCORE' : '🎵 SCORE'}
+            <button onClick={() => { setRadioMuted(m => !m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 1, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {radioMuted ? '🔇 MUTE RADIO' : '🔊 MUTE RADIO'}
+            </button>
+            <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 4, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>SCORE</div>
+            </div>
+            <button onClick={() => { toggleScoreMute(); setScoreOn(v => !v); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.07)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.35)' : '1px solid rgba(0,200,255,.12)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.4)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎵 SCORE {scoreOn ? '— ON' : '— OFF'}
+            </button>
+            <button onClick={() => { const m = toggleMusicMute(); setMusicMuted(m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: musicMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {musicMuted ? '🔇 MUTE SCORE' : '🔊 MUTE SCORE'}
             </button>
             <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
@@ -12357,8 +12370,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* ── RADIO HUD + HIDDEN PLAYER ── */}
-      <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={musicMuted} scoreMuted={scoreMuted} onToggleMusicMute={() => { const m = toggleMusicMute(); setMusicMuted(m); }} onToggleScoreMute={() => { const m = toggleScoreMute(); setScoreMuted(m); }} />
-      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted} stationId={stationId} volume={radioVolume} />
+      <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={radioMuted} onToggleMusicMute={() => { setRadioMuted(m => !m); }} />
+      <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || radioMuted} stationId={stationId} volume={radioVolume} />
+
+      {/* ── SCORE HUD ── (always visible, independent of radio zone) */}
+      <ScoreHud visible={true} topOffset={radioVisible ? (powerPct < 100 ? (radioOn ? '14.2rem' : '10.8rem') : (radioOn ? '12.5rem' : '9.1rem')) : (powerPct < 100 ? '5.2rem' : '3.5rem')} scoreOn={scoreOn} scoreMuted={musicMuted} onToggleScore={() => { toggleScoreMute(); setScoreOn(v => !v); }} onToggleScoreMute={() => { const m = toggleMusicMute(); setMusicMuted(m); }} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
