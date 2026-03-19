@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
-import { db, contactsTable, userMemoryTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
 
 const router: IRouter = Router();
@@ -234,7 +234,7 @@ Make questions feel natural, not corporate. Like something a smart CEO would gen
   res.end();
 });
 
-// ── Contacts CRUD (DB-backed, requires auth) ───────────────────────────────────
+// ── Contacts CRM (DB-backed, requires auth) ────────────────────────────────────
 
 router.get("/tools/contacts", async (req, res) => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
@@ -242,18 +242,18 @@ router.get("/tools/contacts", async (req, res) => {
     .select()
     .from(contactsTable)
     .where(eq(contactsTable.userId, req.user.id))
-    .orderBy(contactsTable.createdAt);
-  res.json({ contacts: rows.reverse() });
+    .orderBy(sql`${contactsTable.createdAt} DESC`);
+  res.json({ contacts: rows });
 });
 
 router.post("/tools/contacts", async (req, res) => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
-  const { name, email = "", phone = "", address = "", age = "", ethnicity = "", hometown = "", timezone = "", kids = "", bio = "" } =
-    req.body as Record<string, string>;
+  const { name, email = "", phone = "", address = "", age = "", ethnicity = "", hometown = "", timezone = "", kids = "", bio = "", tag = "", dealStage = "", dealValue, company = "" } =
+    req.body as Record<string, string> & { dealValue?: number };
   if (!name?.trim()) { res.status(400).json({ error: "Name required" }); return; }
   const [record] = await db
     .insert(contactsTable)
-    .values({ userId: req.user.id, name, email, phone, address, age, ethnicity, hometown, timezone, kids, bio })
+    .values({ userId: req.user.id, name, email, phone, address, age, ethnicity, hometown, timezone, kids, bio, tag, dealStage, dealValue: dealValue != null ? Number(dealValue) : null, company })
     .returning();
 
   void fireWebhook(req.user.id, "new_contact", {
@@ -263,14 +263,33 @@ router.post("/tools/contacts", async (req, res) => {
   res.status(201).json({ contact: record });
 });
 
+router.put("/tools/contacts/:id", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const id = Number(req.params.id);
+  const body = req.body as Record<string, unknown>;
+  const updates: Record<string, unknown> = {};
+  const allowed = ["name","email","phone","address","age","ethnicity","hometown","timezone","kids","bio","tag","dealStage","dealValue","company"];
+  for (const k of allowed) {
+    if (body[k] !== undefined) updates[k] = body[k];
+  }
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
+  const [updated] = await db
+    .update(contactsTable)
+    .set(updates)
+    .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, req.user.id)))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ contact: updated });
+});
+
 router.delete("/tools/contacts/:id", async (req, res) => {
   if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
   const id = Number(req.params.id);
   const deleted = await db
     .delete(contactsTable)
-    .where(eq(contactsTable.id, id))
+    .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, req.user.id)))
     .returning();
-  if (deleted.length === 0 || deleted[0].userId !== req.user.id) {
+  if (deleted.length === 0) {
     res.status(404).json({ error: "Not found" }); return;
   }
   res.json({ ok: true });
@@ -283,7 +302,7 @@ router.get("/tools/contacts/export", async (req, res) => {
     .from(contactsTable)
     .where(eq(contactsTable.userId, req.user.id))
     .orderBy(contactsTable.createdAt);
-  const fields = ["name", "email", "phone", "address", "age", "ethnicity", "hometown", "timezone", "kids", "bio", "createdAt"] as const;
+  const fields = ["name", "email", "phone", "company", "tag", "dealStage", "dealValue", "address", "age", "hometown", "timezone", "bio", "createdAt"] as const;
   const header = fields.join(",");
   const csvRows = rows.map((c) =>
     fields.map((f) => `"${String(c[f] ?? "").replace(/"/g, '""')}"`).join(",")
@@ -291,6 +310,47 @@ router.get("/tools/contacts/export", async (req, res) => {
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", 'attachment; filename="contacts.csv"');
   res.send([header, ...csvRows].join("\n"));
+});
+
+// ── Contact Interactions ───────────────────────────────────────────────────────
+
+router.get("/tools/contacts/:id/interactions", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const contactId = Number(req.params.id);
+  const [contact] = await db.select().from(contactsTable)
+    .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, req.user.id)));
+  if (!contact) { res.status(404).json({ error: "Not found" }); return; }
+  const rows = await db.select().from(contactInteractionsTable)
+    .where(eq(contactInteractionsTable.contactId, contactId))
+    .orderBy(sql`${contactInteractionsTable.createdAt} DESC`);
+  res.json({ interactions: rows });
+});
+
+router.post("/tools/contacts/:id/interactions", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const contactId = Number(req.params.id);
+  const [contact] = await db.select().from(contactsTable)
+    .where(and(eq(contactsTable.id, contactId), eq(contactsTable.userId, req.user.id)));
+  if (!contact) { res.status(404).json({ error: "Not found" }); return; }
+  const { type = "note", note } = req.body as { type?: string; note?: string };
+  if (!note?.trim()) { res.status(400).json({ error: "Note required" }); return; }
+  const [record] = await db.insert(contactInteractionsTable).values({
+    contactId,
+    userId: req.user.id,
+    type,
+    note: note.trim(),
+  }).returning();
+  res.status(201).json({ interaction: record });
+});
+
+router.delete("/tools/contacts/interactions/:interactionId", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+  const id = Number(req.params.interactionId);
+  const deleted = await db.delete(contactInteractionsTable)
+    .where(and(eq(contactInteractionsTable.id, id), eq(contactInteractionsTable.userId, req.user.id)))
+    .returning();
+  if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ok: true });
 });
 
 // ── User Memory (PABLO context, DB-backed, requires auth) ───────────────────────

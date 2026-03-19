@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, integer, timestamp, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -49,9 +49,12 @@ export const staffTable = pgTable("staff_members", {
   applicantId: integer("applicant_id").references(() => applicantsTable.id, { onDelete: "set null" }),
   name: varchar("name", { length: 200 }).notNull(),
   role: varchar("role", { length: 200 }).notNull().default(""),
+  department: varchar("department", { length: 100 }).notNull().default(""),
   salary: integer("salary"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   startDate: timestamp("start_date", { withTimezone: true }).notNull().defaultNow(),
+  endDate: timestamp("end_date", { withTimezone: true }),
+  offboardingNotes: text("offboarding_notes").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
@@ -75,3 +78,36 @@ export const stageTransitionsTable = pgTable("stage_transitions", {
 ]);
 
 export type StageTransition = typeof stageTransitionsTable.$inferSelect;
+
+export const employeePerformanceNotesTable = pgTable("employee_performance_notes", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull().references(() => staffTable.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull(),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("perf_notes_staff_id_idx").on(table.staffId),
+  index("perf_notes_user_id_idx").on(table.userId),
+]);
+
+export const insertEmployeePerformanceNoteSchema = createInsertSchema(employeePerformanceNotesTable).omit({ id: true, createdAt: true });
+export type InsertEmployeePerformanceNote = z.infer<typeof insertEmployeePerformanceNoteSchema>;
+export type EmployeePerformanceNote = typeof employeePerformanceNotesTable.$inferSelect;
+
+export const onboardingChecklistsTable = pgTable("onboarding_checklists", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull().references(() => staffTable.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull(),
+  item: varchar("item", { length: 300 }).notNull(),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("onboarding_staff_id_idx").on(table.staffId),
+  index("onboarding_user_id_idx").on(table.userId),
+]);
+
+export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklistsTable).omit({ id: true, createdAt: true });
+export type InsertOnboardingChecklist = z.infer<typeof insertOnboardingChecklistSchema>;
+export type OnboardingChecklist = typeof onboardingChecklistsTable.$inferSelect;

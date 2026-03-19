@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable } from "@workspace/db";
+import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
 import { fireWebhook } from "../lib/webhook";
@@ -8,7 +8,7 @@ const router: IRouter = Router();
 
 const VALID_JOB_STATUSES = ["open", "closed", "filled"] as const;
 const VALID_APPLICANT_STAGES = ["applied", "screening", "interview", "offer", "hired", "rejected"] as const;
-const VALID_STAFF_STATUSES = ["active", "on leave", "terminated"] as const;
+const VALID_STAFF_STATUSES = ["active", "on leave", "terminated", "departed"] as const;
 
 async function requirePro(req: Request, res: Response): Promise<boolean> {
   if (!req.isAuthenticated() || !req.user) {
@@ -211,17 +211,140 @@ router.get("/tools/hiring/staff", async (req, res) => {
 router.put("/tools/hiring/staff/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const id = Number(req.params.id);
-  const body = req.body as { status?: string; role?: string; salary?: number | null };
+  const body = req.body as { status?: string; role?: string; salary?: number | null; department?: string; endDate?: string | null; offboardingNotes?: string };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.status !== undefined && (VALID_STAFF_STATUSES as readonly string[]).includes(body.status)) updates.status = body.status;
   if (body.role !== undefined) updates.role = body.role;
   if (body.salary !== undefined) updates.salary = body.salary != null ? Number(body.salary) : null;
+  if (body.department !== undefined) updates.department = body.department;
+  if (body.offboardingNotes !== undefined) updates.offboardingNotes = body.offboardingNotes;
+  if (body.endDate !== undefined) updates.endDate = body.endDate ? new Date(body.endDate) : null;
   const [updated] = await db.update(staffTable)
     .set(updates)
     .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user!.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ staff: updated });
+});
+
+router.delete("/tools/hiring/staff/:id", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const id = Number(req.params.id);
+  const deleted = await db.delete(staffTable)
+    .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user!.id)))
+    .returning();
+  if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ok: true });
+});
+
+// ── Performance Notes ─────────────────────────────────────────────────────────
+
+router.get("/tools/hiring/staff/:id/performance-notes", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const staffId = Number(req.params.id);
+  const [member] = await db.select().from(staffTable)
+    .where(and(eq(staffTable.id, staffId), eq(staffTable.userId, req.user!.id)));
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  const rows = await db.select().from(employeePerformanceNotesTable)
+    .where(eq(employeePerformanceNotesTable.staffId, staffId))
+    .orderBy(sql`${employeePerformanceNotesTable.createdAt} DESC`);
+  res.json({ notes: rows });
+});
+
+router.post("/tools/hiring/staff/:id/performance-notes", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const staffId = Number(req.params.id);
+  const [member] = await db.select().from(staffTable)
+    .where(and(eq(staffTable.id, staffId), eq(staffTable.userId, req.user!.id)));
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  const { note } = req.body as { note?: string };
+  if (!note?.trim()) { res.status(400).json({ error: "Note required" }); return; }
+  const [record] = await db.insert(employeePerformanceNotesTable).values({
+    staffId,
+    userId: req.user!.id,
+    note: note.trim(),
+  }).returning();
+  res.status(201).json({ note: record });
+});
+
+router.delete("/tools/hiring/performance-notes/:noteId", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const id = Number(req.params.noteId);
+  const deleted = await db.delete(employeePerformanceNotesTable)
+    .where(and(eq(employeePerformanceNotesTable.id, id), eq(employeePerformanceNotesTable.userId, req.user!.id)))
+    .returning();
+  if (deleted.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ok: true });
+});
+
+// ── Onboarding Checklists ─────────────────────────────────────────────────────
+
+const DEFAULT_CHECKLIST_ITEMS = [
+  "Send welcome email",
+  "Set up workstation / equipment",
+  "Create system accounts (email, Slack, etc.)",
+  "Complete I-9 / tax paperwork",
+  "Introduce to team",
+  "Review company handbook",
+  "Schedule first week 1-on-1",
+  "Assign first tasks or projects",
+];
+
+router.get("/tools/hiring/staff/:id/onboarding", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const staffId = Number(req.params.id);
+  const [member] = await db.select().from(staffTable)
+    .where(and(eq(staffTable.id, staffId), eq(staffTable.userId, req.user!.id)));
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  let rows = await db.select().from(onboardingChecklistsTable)
+    .where(eq(onboardingChecklistsTable.staffId, staffId))
+    .orderBy(onboardingChecklistsTable.sortOrder);
+  if (rows.length === 0) {
+    const defaults = DEFAULT_CHECKLIST_ITEMS.map((item, i) => ({
+      staffId,
+      userId: req.user!.id,
+      item,
+      completed: false,
+      sortOrder: i,
+    }));
+    rows = await db.insert(onboardingChecklistsTable).values(defaults).returning();
+    rows.sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+  res.json({ items: rows });
+});
+
+router.put("/tools/hiring/onboarding/:itemId", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const id = Number(req.params.itemId);
+  const { completed } = req.body as { completed?: boolean };
+  const updates: Record<string, unknown> = {};
+  if (completed !== undefined) {
+    updates.completed = completed;
+    updates.completedAt = completed ? new Date() : null;
+  }
+  const [updated] = await db.update(onboardingChecklistsTable)
+    .set(updates)
+    .where(and(eq(onboardingChecklistsTable.id, id), eq(onboardingChecklistsTable.userId, req.user!.id)))
+    .returning();
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ item: updated });
+});
+
+router.post("/tools/hiring/staff/:id/onboarding", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const staffId = Number(req.params.id);
+  const [member] = await db.select().from(staffTable)
+    .where(and(eq(staffTable.id, staffId), eq(staffTable.userId, req.user!.id)));
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  const { item } = req.body as { item?: string };
+  if (!item?.trim()) { res.status(400).json({ error: "Item text required" }); return; }
+  const [record] = await db.insert(onboardingChecklistsTable).values({
+    staffId,
+    userId: req.user!.id,
+    item: item.trim(),
+    sortOrder: 999,
+  }).returning();
+  res.status(201).json({ item: record });
 });
 
 router.get("/tools/hiring/employees", async (req, res) => {

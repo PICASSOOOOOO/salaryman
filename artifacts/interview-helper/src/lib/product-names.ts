@@ -32,6 +32,8 @@ export const PABLO_PRODUCTS = {
   CONTACTS: {
     name: "RECALL-6 FACIAL REGISTRY",
     short: "RECALL-6",
+    boomerName: "CRM",
+    boomerShort: "Contacts",
     desc: "Identity database implant. Logs every contact, meeting, and interaction for instant recall.",
   },
   WORKSPACE: {
@@ -77,6 +79,8 @@ export const PABLO_PRODUCTS = {
   HIRING: {
     name: "RECRUIT-8 FIELD OPS",
     short: "RECRUIT-8",
+    boomerName: "Hiring & HR",
+    boomerShort: "HR",
     desc: "Tactical personnel acquisition module. Post positions, track candidates through the pipeline, and manage your operational roster.",
   },
   REPORTING: {
