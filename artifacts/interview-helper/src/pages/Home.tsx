@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone } from 'lucide-react';
+import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone, Layers } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAdvisorChat } from '@/hooks/use-interview';
@@ -392,7 +392,7 @@ export default function Home() {
   const LANGUAGES = [['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+    <div className="flex flex-col bg-background relative">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
@@ -484,7 +484,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 flex flex-col p-4 md:p-6 relative z-10 min-h-0 gap-6">
+      <main className="flex flex-col p-4 md:p-6 relative z-10 gap-6">
 
         {/* ── ROW 1: Translator (left) + PABLO Chat (right) ── */}
         <div className="flex flex-col lg:flex-row gap-6 min-h-0">
@@ -763,10 +763,44 @@ export default function Home() {
                 <p className="text-[10px] text-pink-400/30 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>No notes yet. Your notes persist locally.</p>
               )}
             </div>
+
+            {/* Feature Module Quick-Access Tiles */}
+            <div className="rounded-xl border border-green-500/15 bg-green-500/3 p-3">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Layers className="w-3.5 h-3.5" style={{ color: 'rgba(34,197,94,0.5)' }} />
+                <span className="text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em', color: 'rgba(34,197,94,0.6)' }}>MODULES</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, desc: 'Interview solver & screen scan', path: '/console', color: 'rgba(34,197,94,0.5)', bg: 'rgba(34,197,94,0.05)', border: 'rgba(34,197,94,0.15)', icon: '⌥' },
+                  { label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, desc: 'CRM & relationship intel', path: '/contacts', color: 'rgba(100,180,255,0.6)', bg: 'rgba(100,180,255,0.05)', border: 'rgba(100,180,255,0.15)', icon: '◈' },
+                  { label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, desc: 'Recruit & manage staff', path: '/hiring', color: 'rgba(255,160,50,0.6)', bg: 'rgba(255,160,50,0.05)', border: 'rgba(255,160,50,0.15)', icon: '▣' },
+                  { label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, desc: 'Invoices, contracts & files', path: '/documents', color: 'rgba(180,100,255,0.6)', bg: 'rgba(180,100,255,0.05)', border: 'rgba(180,100,255,0.15)', icon: '◻' },
+                  { label: boomerMode ? 'CALENDAR' : PABLO_PRODUCTS.CALENDAR.short, desc: 'Schedule & appointments', path: '/calendar', color: 'rgba(255,220,50,0.6)', bg: 'rgba(255,220,50,0.05)', border: 'rgba(255,220,50,0.15)', icon: '◆' },
+                  { label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, desc: 'Projects & brand kit', path: '/dashboard', color: 'rgba(80,220,200,0.6)', bg: 'rgba(80,220,200,0.05)', border: 'rgba(80,220,200,0.15)', icon: '⊞' },
+                  { label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, desc: 'Content & asset forge', path: '/studio', color: 'rgba(255,100,180,0.6)', bg: 'rgba(255,100,180,0.05)', border: 'rgba(255,100,180,0.15)', icon: '◈' },
+                  { label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, desc: 'Pipeline & analytics', path: '/reporting', color: 'rgba(255,140,80,0.6)', bg: 'rgba(255,140,80,0.05)', border: 'rgba(255,140,80,0.15)', icon: '▥' },
+                  { label: boomerMode ? 'AI AGENTS' : PABLO_PRODUCTS.AI_AGENTS.short, desc: 'Multi-agent network', path: '/agents', color: 'rgba(200,140,255,0.6)', bg: 'rgba(200,140,255,0.05)', border: 'rgba(200,140,255,0.15)', icon: '⋈' },
+                ] as { label: string; desc: string; path: string; color: string; bg: string; border: string; icon: string }[]).map(mod => (
+                  <button
+                    key={mod.path}
+                    onClick={() => navigate(mod.path)}
+                    className="flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: mod.bg, border: `1px solid ${mod.border}` }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px]" style={{ color: mod.color }}>{mod.icon}</span>
+                      <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
+                    </div>
+                    <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* PABLO AI Chat — FREE */}
-          <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden max-h-[60vh] lg:max-h-[calc(100vh-260px)]">
+          <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ minHeight: '400px', maxHeight: '70vh' }}>
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO AI' : 'PABLO NEURAL CORE'}
