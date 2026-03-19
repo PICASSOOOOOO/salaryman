@@ -147,6 +147,8 @@ export default function Home() {
   const [dictResult, setDictResult] = useState<{ word: string; phonetic?: string; meanings: { partOfSpeech: string; definitions: { definition: string; synonyms?: string[] }[] }[] } | null>(null);
   const [dictLoading, setDictLoading] = useState(false);
   const [dictError, setDictError] = useState('');
+  const [dictSuggestions, setDictSuggestions] = useState<string[]>([]);
+  const [dictThesaurus, setDictThesaurus] = useState<{ synonymsByPos: Record<string, string[]>; antonyms: string[] } | null>(null);
 
   const [notes, setNotes] = useState<{ id: number; text: string; ts: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('sm_notes') ?? '[]'); } catch { return []; }
@@ -160,13 +162,57 @@ export default function Home() {
   const lookupWord = async (word: string) => {
     const w = word.trim().toLowerCase();
     if (!w) return;
-    setDictLoading(true); setDictError(''); setDictResult(null);
+    setDictLoading(true); setDictError(''); setDictResult(null); setDictSuggestions([]); setDictThesaurus(null);
     try {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`);
-      if (!res.ok) { setDictError(`No definition found for "${w}".`); setDictLoading(false); return; }
+      if (!res.ok) {
+        try {
+          const [spellRes, soundsRes] = await Promise.all([
+            fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(w)}&max=5`),
+            fetch(`https://api.datamuse.com/words?sl=${encodeURIComponent(w)}&max=3`),
+          ]);
+          const spellData: { word: string }[] = spellRes.ok ? await spellRes.json() : [];
+          const soundsData: { word: string }[] = soundsRes.ok ? await soundsRes.json() : [];
+          const seen = new Set<string>();
+          const suggestions: string[] = [];
+          for (const item of [...spellData, ...soundsData]) {
+            if (!seen.has(item.word) && item.word !== w) { seen.add(item.word); suggestions.push(item.word); }
+          }
+          if (suggestions.length > 0) {
+            setDictSuggestions(suggestions.slice(0, 5));
+            setDictError(`No definition found for "${w}".`);
+          } else {
+            setDictError(`No definition found for "${w}".`);
+          }
+        } catch {
+          setDictError(`No definition found for "${w}".`);
+        }
+        setDictLoading(false);
+        return;
+      }
       const data = await res.json();
       const entry = data[0];
       setDictResult({ word: entry.word, phonetic: entry.phonetic ?? entry.phonetics?.find((p: { text?: string }) => p.text)?.text, meanings: entry.meanings ?? [] });
+      try {
+        const [synRes, antRes] = await Promise.all([
+          fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(w)}&max=20&md=p`),
+          fetch(`https://api.datamuse.com/words?rel_ant=${encodeURIComponent(w)}&max=10&md=p`),
+        ]);
+        const synData: { word: string; tags?: string[] }[] = synRes.ok ? await synRes.json() : [];
+        const antData: { word: string; tags?: string[] }[] = antRes.ok ? await antRes.json() : [];
+        const POS_LABELS: Record<string, string> = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb' };
+        const synonymsByPos: Record<string, string[]> = {};
+        for (const item of synData) {
+          const posTag = item.tags?.find(t => t in POS_LABELS) ?? 'other';
+          const posLabel = POS_LABELS[posTag] ?? posTag;
+          if (!synonymsByPos[posLabel]) synonymsByPos[posLabel] = [];
+          if (synonymsByPos[posLabel].length < 6) synonymsByPos[posLabel].push(item.word);
+        }
+        const antonyms = antData.map(d => d.word);
+        if (Object.keys(synonymsByPos).length > 0 || antonyms.length > 0) {
+          setDictThesaurus({ synonymsByPos, antonyms });
+        }
+      } catch { }
     } catch { setDictError('Dictionary service unavailable.'); }
     setDictLoading(false);
   };
@@ -503,26 +549,80 @@ export default function Home() {
               )}
               {dictError && (
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
-                  <p className="text-xs text-pink-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictError}</p>
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictError}</p>
+                  {dictSuggestions.length > 0 && (
+                    <div className="mt-1.5">
+                      <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>DID YOU MEAN:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {dictSuggestions.map(s => (
+                          <button key={s} onClick={() => { setDictWord(s); lookupWord(s); }}
+                            className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/25 transition-colors`}
+                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {dictResult && (
-                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-bold text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.word.toUpperCase()}</span>
-                    {dictResult.phonetic && <span className="text-[10px] text-pink-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.phonetic}</span>}
+                <div className="space-y-2">
+                  <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
+                    <div className="flex items-baseline gap-2">
+                      <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.word.toUpperCase()}</span>
+                      {dictResult.phonetic && <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/60`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{dictResult.phonetic}</span>}
+                    </div>
+                    {dictResult.meanings.slice(0, 3).map((m, mi) => (
+                      <div key={mi}>
+                        <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/50 uppercase`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{m.partOfSpeech}</span>
+                        {m.definitions.slice(0, 2).map((d, di) => (
+                          <p key={di} className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/80 ml-2`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>• {d.definition}</p>
+                        ))}
+                        {m.definitions[0]?.synonyms && m.definitions[0].synonyms.length > 0 && (
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/40 ml-2 mt-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>syn: {m.definitions[0].synonyms.slice(0, 4).join(', ')}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {dictResult.meanings.slice(0, 3).map((m, mi) => (
-                    <div key={mi}>
-                      <span className="text-[10px] font-bold text-pink-400/50 uppercase" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{m.partOfSpeech}</span>
-                      {m.definitions.slice(0, 2).map((d, di) => (
-                        <p key={di} className="text-xs text-pink-300/80 ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.5 }}>• {d.definition}</p>
-                      ))}
-                      {m.definitions[0]?.synonyms && m.definitions[0].synonyms.length > 0 && (
-                        <p className="text-[10px] text-pink-400/40 ml-2 mt-0.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>syn: {m.definitions[0].synonyms.slice(0, 4).join(', ')}</p>
+                  {dictThesaurus && (Object.keys(dictThesaurus.synonymsByPos).length > 0 || dictThesaurus.antonyms.length > 0) && (
+                    <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
+                      <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/70 uppercase`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>THESAURUS</span>
+                      {Object.keys(dictThesaurus.synonymsByPos).length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>SYNONYMS</p>
+                          {Object.entries(dictThesaurus.synonymsByPos).map(([pos, words]) => (
+                            <div key={pos}>
+                              <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{pos}</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {words.map(s => (
+                                  <button key={s} onClick={() => { setDictWord(s); lookupWord(s); }}
+                                    className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/20 bg-pink-500/5 text-pink-300/80 hover:bg-pink-500/20 hover:text-pink-300 transition-colors`}
+                                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {dictThesaurus.antonyms.length > 0 && (
+                        <div>
+                          <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>ANTONYMS</p>
+                          <div className="flex flex-wrap gap-1">
+                            {dictThesaurus.antonyms.map(a => (
+                              <button key={a} onClick={() => { setDictWord(a); lookupWord(a); }}
+                                className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-400/20 bg-pink-400/5 text-pink-400/70 hover:bg-pink-400/15 hover:text-pink-400 transition-colors`}
+                                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                {a}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
