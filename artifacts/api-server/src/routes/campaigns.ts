@@ -193,7 +193,7 @@ router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => 
         subject: `[TEST] ${campaign.subject}`,
         html: campaign.htmlBody,
         text: campaign.textBody || undefined,
-        reply_to: campaign.replyTo || undefined,
+        replyTo: campaign.replyTo || undefined,
       });
       res.json({ ok: true, message: `Test email sent to ${email}` });
       return;
@@ -243,7 +243,7 @@ router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => 
             subject: campaign.subject,
             html,
             text: campaign.textBody || undefined,
-            reply_to: campaign.replyTo || undefined,
+            replyTo: campaign.replyTo || undefined,
           });
           await db.insert(emailCampaignRecipientsTable).values({
             campaignId: campaign.id,

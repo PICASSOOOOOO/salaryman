@@ -12,6 +12,7 @@ import {
   appointmentsTable,
   contactInteractionsTable,
   usersTable,
+  type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -120,7 +121,7 @@ async function sendMissedCallEmail(userId: string, fromNumber: string, fromName?
 
 router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
   try {
-    const userId = getAuthUserId(req) || req.params.userId;
+    const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
     if (!userId) {
       res.status(400).json({ error: "userId required" });
       return;
@@ -196,7 +197,7 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
 router.post("/twilio/call/:callSid/mute", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     const { muted } = req.body;
     if (!(await verifyCallOwnership(userId, callSid))) {
       res.status(403).json({ error: "Not authorized to control this call" });
@@ -233,7 +234,7 @@ router.post("/twilio/call/:callSid/mute", requireAuth, async (req, res) => {
 router.post("/twilio/call/:callSid/hold", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     const { hold } = req.body;
     if (!(await verifyCallOwnership(userId, callSid))) {
       res.status(403).json({ error: "Not authorized to control this call" });
@@ -270,7 +271,7 @@ router.post("/twilio/call/:callSid/hold", requireAuth, async (req, res) => {
 router.post("/twilio/call/:callSid/transfer", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     const { transferTo } = req.body;
     if (!(await verifyCallOwnership(userId, callSid))) {
       res.status(403).json({ error: "Not authorized to control this call" });
@@ -323,7 +324,7 @@ router.post("/twilio/conference/create", requireAuth, async (req, res) => {
 router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { roomName } = req.params;
+    const roomName = Array.isArray(req.params.roomName) ? req.params.roomName[0] : req.params.roomName;
     const rooms = await db
       .select({ id: conferenceRoomsTable.id })
       .from(conferenceRoomsTable)
@@ -387,7 +388,7 @@ router.get("/twilio/conference/list", requireAuth, async (req, res) => {
 
 router.post("/twilio/conference/:roomName/end", requireAuth, async (req, res) => {
   try {
-    const { roomName } = req.params;
+    const roomName = req.params.roomName as string;
     const userId = getAuthUserId(req);
     await db
       .update(conferenceRoomsTable)
@@ -901,7 +902,7 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
 
     const existing = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
 
-    const values: Record<string, unknown> = {
+    const values: Partial<InsertSecretaryConfig> = {
       userId,
       updatedAt: new Date(),
       ...(isEnabled !== undefined && { isEnabled }),
@@ -920,7 +921,7 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
     if (existing.length > 0) {
       [record] = await db.update(secretaryConfigTable).set(values).where(eq(secretaryConfigTable.userId, userId)).returning();
     } else {
-      [record] = await db.insert(secretaryConfigTable).values(values).returning();
+      [record] = await db.insert(secretaryConfigTable).values(values as InsertSecretaryConfig).returning();
     }
 
     res.json({ ok: true, config: record });
@@ -1026,7 +1027,7 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, async (req, res) => {
 router.post("/twilio/call/:callSid/schedule-followup", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     const { title, startAt, endAt, reminderMinutes, contactId } = req.body;
     if (!title || !startAt || !endAt) {
       res.status(400).json({ error: "title, startAt, endAt required" });
@@ -1147,7 +1148,7 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
 router.get("/twilio/call-status/:callSid", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     if (!callSid) {
       res.status(400).json({ error: "callSid required" });
       return;
@@ -1176,7 +1177,7 @@ router.get("/twilio/call-status/:callSid", requireAuth, async (req, res) => {
 
 router.post("/twilio/hangup/:callSid", requireAuth, async (req, res) => {
   try {
-    const { callSid } = req.params;
+    const callSid = req.params.callSid as string;
     const userId = getAuthUserId(req);
     if (!callSid) {
       res.status(400).json({ error: "callSid required" });
@@ -1230,7 +1231,7 @@ router.post("/twilio/hangup-all", requireAuth, async (req, res) => {
 
 router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
   try {
-    const userId = getAuthUserId(req) || req.params.userId;
+    const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
     if (!userId) {
       res.status(400).json({ error: "userId required" });
       return;
