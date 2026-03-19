@@ -2673,34 +2673,36 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
 
 function createFirstMission(char: Char): Quest | null {
   const towerB = BUILDINGS.find(b => b.id === 'pablo_tower');
+  const towerFallback = towerB ?? { x: 1400, y: 400, w: 200, h: 200 };
   return {
     id: 'report_to_terminal',
     title: 'REPORT TO TERMINAL FOR INTAKE',
     description: 'New operative detected. Report to SHADOW TOWER (PABLO CORP HQ) for mandatory intake processing. NOTE: Personal arm-terminals are issued post-intake only. Until processed, all operatives must use the public terminal at HQ. No exceptions.',
     completed: false,
     tasks: [
-      { id: 'visit_tower_intake', label: 'Report to SHADOW TOWER for intake', done: false, mapMarker: towerB ? { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER — INTAKE' } : undefined },
+      { id: 'visit_tower_intake', label: 'Report to SHADOW TOWER for intake', done: false, mapMarker: { x: towerFallback.x + towerFallback.w / 2, y: towerFallback.y + towerFallback.h / 2, label: 'SHADOW TOWER — INTAKE' } },
     ],
   };
 }
 
 function createEstablishBusinessMission(char: Char): Quest | null {
   if (char.bizType === 'unemployed' || !char.hasBusiness) return null;
-  const towerB = BUILDINGS.find(b => b.id === 'pablo_tower')!;
-  const storeB = BUILDINGS.find(b => b.id === 'pablo_store')!;
+  const towerB = BUILDINGS.find(b => b.id === 'pablo_tower') ?? { id: 'pablo_tower', x: 1400, y: 400, w: 200, h: 200, label: 'SHADOW TOWER' } as (typeof BUILDINGS)[0];
+  const storeB = BUILDINGS.find(b => b.id === 'pablo_store') ?? towerB;
   const wsB = char.workstation ? BUILDINGS.find(b => b.id === char.workstation) : null;
+  const wsFallback = wsB ?? towerB;
   return {
     id: 'establish_business',
     title: 'ESTABLISH YOUR BUSINESS',
     description: `Set up your ${char.company} operation in Minx City. Customize your workspace, get signage, and prepare for business.`,
     completed: false,
     tasks: [
-      { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'WORKSTATION' } : undefined },
+      { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'WORKSTATION' : 'SHADOW TOWER' } },
       { id: 'visit_tower', label: 'Register at SHADOW TOWER (PABLO CORP HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'get_device', label: 'Pick up your PABLO CORP device from the PABLO CORP store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
-      { id: 'customize_costume', label: 'Customize your operative appearance', done: false },
-      { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: wsB ? { x: wsB.x + wsB.w / 2, y: wsB.y + wsB.h / 2, label: 'SIGNAGE' } : undefined },
-      { id: 'pablo_auto', label: '(Optional) Use PABLO AI to automate business setup', done: false },
+      { id: 'customize_costume', label: 'Customize your operative appearance', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
+      { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'SIGNAGE' : 'SHADOW TOWER' } },
+      { id: 'pablo_auto', label: '(Optional) Use PABLO AI to automate business setup', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
     ],
   };
 }
