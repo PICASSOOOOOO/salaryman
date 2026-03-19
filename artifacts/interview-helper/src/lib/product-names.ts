@@ -118,6 +118,13 @@ export const PABLO_PRODUCTS = {
     short: "FORGE-7",
     desc: "AI-powered content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
   },
+  SEO: {
+    name: "SPIDER-X SEARCH CRAWLER",
+    short: "SPIDER-X",
+    boomerName: "SEO Tools",
+    boomerShort: "SEO",
+    desc: "AI-powered SEO intelligence module. Site audits, keyword research, content optimization, and competitor gap analysis.",
+  },
   CALENDAR: {
     name: "CHRONO-4 TEMPORAL ARRAY",
     short: "CHRONO-4",

@@ -1,4 +1,4 @@
-import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays, Megaphone, Music2 } from 'lucide-react';
+import { Terminal, Users, LogIn, LogOut, Eye, EyeOff, LayoutDashboard, Globe, Briefcase, Code2, Archive, Layers, BarChart2, CalendarDays, Megaphone, Music2, Search } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -33,6 +33,7 @@ export function NavBar() {
     { path: '/lab', label: boomerMode ? 'DAW' : PABLO_PRODUCTS.SOUND_LAB.short, icon: Music2, mobileShow: false },
     { path: '/reporting', label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, icon: BarChart2, mobileShow: false },
     { path: '/campaigns', label: boomerMode ? 'CAMPAIGNS' : 'CAMPAIGNS', icon: Megaphone, mobileShow: false },
+    { path: '/seo', label: boomerMode ? 'SEO' : PABLO_PRODUCTS.SEO.short, icon: Search, mobileShow: false },
     { path: '/dashboard', label: boomerMode ? 'DASHBOARD' : PABLO_PRODUCTS.WORKSPACE.short, icon: LayoutDashboard, mobileShow: false },
   ];
 
