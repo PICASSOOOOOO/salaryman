@@ -14,6 +14,8 @@ interface PlanData {
   tier: Tier;
   isOwner: boolean;
   isPro: boolean;
+  isTrial?: boolean;
+  trialDaysLeft?: number;
   features: Set<FeatureKey>;
   trials: TrialInfo[];
   loading: boolean;
