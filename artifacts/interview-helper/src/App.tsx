@@ -48,6 +48,7 @@ const LegalReturns = lazy(() => import("@/pages/legal/ReturnPolicy"));
 const LegalCancellation = lazy(() => import("@/pages/legal/CancellationPolicy"));
 const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
+const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
 const PhoneDialerPage = lazy(() => import("@/pages/phone/PhoneDialerPage"));
 const PhoneContactsPage = lazy(() => import("@/pages/phone/PhoneContactsPage"));
@@ -220,6 +221,7 @@ function AppShell() {
             <Route path="/legal/cancellation" component={LegalCancellation} />
             <Route path="/legal/promotions" component={LegalPromotions} />
             <Route path="/legal/restrictions" component={LegalRestrictions} />
+            <Route path="/legal/investors" component={LegalInvestors} />
 
             <Route component={NotFound} />
           </Switch>

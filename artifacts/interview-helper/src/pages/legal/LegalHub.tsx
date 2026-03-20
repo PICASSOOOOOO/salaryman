@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Scale, FileText, Shield, Package, XCircle, Gift, Globe, Mail, Lock } from "lucide-react";
+import { Scale, FileText, Shield, Package, XCircle, Gift, Globe, Mail, Lock, TrendingUp } from "lucide-react";
 
 const PAGES = [
   { path: "/legal/terms", label: "Terms of Service", icon: FileText, desc: "Rules governing use of the SALARYMAN platform." },
@@ -53,6 +53,17 @@ export default function LegalHub() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => navigate("/legal/investors")}
+          className="group w-full text-left border border-zinc-800 rounded-lg p-5 bg-zinc-900/30 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all mb-8"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-emerald-400/60 group-hover:text-emerald-400 transition-colors" />
+            <span className="text-sm font-semibold text-zinc-200 group-hover:text-zinc-100 transition-colors">About & Investors</span>
+          </div>
+          <p className="text-xs text-zinc-600 group-hover:text-zinc-500 transition-colors leading-relaxed">Project overview, current stage, roadmap, and investor contact information.</p>
+        </button>
 
         <div className="border border-zinc-800 rounded-lg p-6 bg-zinc-900/20">
           <p className="text-xs text-zinc-600 leading-relaxed">

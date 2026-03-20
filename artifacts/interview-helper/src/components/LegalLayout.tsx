@@ -12,6 +12,7 @@ const LEGAL_LINKS = [
   { path: "/legal/cancellation", label: "Cancellation Policy" },
   { path: "/legal/promotions", label: "Promotions T&C" },
   { path: "/legal/restrictions", label: "Legal & Export Restrictions" },
+  { path: "/legal/investors", label: "About & Investors" },
 ];
 
 interface LegalLayoutProps {

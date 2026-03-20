@@ -465,6 +465,12 @@ export default function Upgrade() {
               </div>
             )}
 
+            <div className="mb-4 text-center">
+              <span className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase border border-zinc-800 px-3 py-1 rounded-full">
+                Alpha pricing — early supporter rates
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
               {FEATURE_CARDS.map((card, i) => {
                 const Icon = card.icon;

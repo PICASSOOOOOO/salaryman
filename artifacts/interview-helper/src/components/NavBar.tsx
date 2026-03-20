@@ -71,6 +71,9 @@ export function NavBar() {
           <span className="font-mono text-[10px] text-zinc-700 tracking-widest">
             {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
           </span>
+          <span className="font-mono text-[9px] text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
+            ALPHA
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
@@ -143,6 +146,11 @@ export function NavBar() {
           >
             {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
           </button>
+          {isMobile && (
+            <span className="font-mono text-[8px] text-emerald-500/60 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
+              ALPHA
+            </span>
+          )}
         </div>
 
         {/* Module Tabs — hidden on mobile (shown in bottom bar instead) */}

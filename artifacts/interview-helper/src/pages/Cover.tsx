@@ -116,7 +116,7 @@ export default function Cover() {
           className="inline-flex items-center gap-2.5 mb-8 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Early Access
+          ALPHA
         </motion.div>
 
         {/* Headline */}
@@ -219,6 +219,16 @@ export default function Cover() {
           </motion.button>
         </motion.div>
 
+        {/* Alpha note */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.42 }}
+          className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mb-2"
+        >
+          Current pricing reflects early alpha access
+        </motion.p>
+
         {/* Email subscribe */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -283,6 +293,7 @@ export default function Cover() {
             { label: "Privacy", path: "/legal/privacy" },
             { label: "Refunds", path: "/legal/refunds" },
             { label: "Contact", path: "/legal/contact" },
+            { label: "Investors", path: "/legal/investors" },
             { label: "Legal", path: "/legal" },
           ].map(({ label, path }) => (
             <button
