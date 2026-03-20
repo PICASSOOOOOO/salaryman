@@ -1,0 +1,566 @@
+import { Router, type Request, type Response } from "express";
+import { randomBytes } from "crypto";
+import {
+  db,
+  organizationsTable,
+  orgMembersTable,
+  orgFeatureGrantsTable,
+  orgInvitesTable,
+  FEATURE_KEYS,
+  type FeatureKey,
+  type OrgMember,
+} from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { grantFeature } from "../lib/plan";
+import { getStripe } from "./stripe";
+
+const router = Router();
+
+function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return false;
+  }
+  return true;
+}
+
+async function getUserOrg(userId: string) {
+  const members = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+  if (members.length === 0) return null;
+  const member = members[0];
+  const orgs = await db
+    .select()
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, member.orgId));
+  if (orgs.length === 0) return null;
+  return { org: orgs[0], member };
+}
+
+async function getCallerMembership(userId: string, orgId: number): Promise<OrgMember | null> {
+  const rows = await db
+    .select()
+    .from(orgMembersTable)
+    .where(
+      and(
+        eq(orgMembersTable.orgId, orgId),
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.status, "active")
+      )
+    );
+  return rows[0] ?? null;
+}
+
+router.get("/orgs/me", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const result = await getUserOrg(userId);
+  if (!result) {
+    res.json({ org: null, member: null });
+    return;
+  }
+
+  const featureGrants = await db
+    .select()
+    .from(orgFeatureGrantsTable)
+    .where(eq(orgFeatureGrantsTable.orgId, result.org.id));
+
+  const isManager = result.member.role === "owner" || result.member.role === "manager";
+
+  let members: OrgMember[] = [];
+  if (isManager) {
+    members = await db
+      .select()
+      .from(orgMembersTable)
+      .where(eq(orgMembersTable.orgId, result.org.id));
+  }
+
+  res.json({
+    org: result.org,
+    member: result.member,
+    members,
+    featureGrants,
+  });
+});
+
+router.post("/orgs", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const existingMembership = await getUserOrg(userId);
+  if (existingMembership) {
+    res.status(400).json({ error: "You are already a member of an organization" });
+    return;
+  }
+
+  const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
+  if (!name || typeof name !== "string" || name.trim().length < 2) {
+    res.status(400).json({ error: "Organization name is required (min 2 characters)" });
+    return;
+  }
+
+  const [org] = await db
+    .insert(organizationsTable)
+    .values({
+      name: name.trim().toUpperCase(),
+      industry: industry ? String(industry).trim() : null,
+      size: size ? String(size).trim() : null,
+      ownerUserId: userId,
+    })
+    .returning();
+
+  await db.insert(orgMembersTable).values({
+    orgId: org.id,
+    userId,
+    role: "owner",
+    featureBilling: "individual",
+    status: "active",
+    joinedAt: new Date(),
+  });
+
+  res.json({ org });
+});
+
+router.get("/orgs/:orgId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+
+  const members = await db.select().from(orgMembersTable).where(eq(orgMembersTable.orgId, orgId));
+  const featureGrants = await db.select().from(orgFeatureGrantsTable).where(eq(orgFeatureGrantsTable.orgId, orgId));
+
+  res.json({ org, members, featureGrants });
+});
+
+router.put("/orgs/:orgId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
+  const updates: { name?: string; industry?: string | null; size?: string | null } = {};
+  if (name && typeof name === "string") updates.name = name.trim().toUpperCase();
+  if (industry !== undefined) updates.industry = industry ? String(industry).trim() : null;
+  if (size !== undefined) updates.size = size ? String(size).trim() : null;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(organizationsTable)
+    .set(updates)
+    .where(eq(organizationsTable.id, orgId))
+    .returning();
+
+  res.json({ org: updated });
+});
+
+router.post("/orgs/:orgId/invite", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const { email, username } = (req.body ?? {}) as { email?: string; username?: string };
+  if (!email && !username) {
+    res.status(400).json({ error: "email or username required" });
+    return;
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  const [invite] = await db
+    .insert(orgInvitesTable)
+    .values({
+      orgId,
+      invitedByUserId: userId,
+      inviteEmail: email ? String(email).toLowerCase().trim() : null,
+      inviteUsername: username ? String(username).trim() : null,
+      token,
+      status: "pending",
+      expiresAt,
+    })
+    .returning();
+
+  const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  res.json({ invite, inviteUrl: `${baseUrl}/world?org_invite=${token}` });
+});
+
+router.post("/orgs/invite/accept", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const user = req.user;
+
+  const { token } = (req.body ?? {}) as { token?: string };
+  if (!token) { res.status(400).json({ error: "Token required" }); return; }
+
+  const now = new Date();
+  const invites = await db
+    .select()
+    .from(orgInvitesTable)
+    .where(eq(orgInvitesTable.token, String(token)));
+
+  if (invites.length === 0) { res.status(404).json({ error: "Invite not found" }); return; }
+  const invite = invites[0];
+
+  if (invite.status !== "pending") {
+    res.status(400).json({ error: "Invite already used or expired" });
+    return;
+  }
+  if (invite.expiresAt < now) {
+    res.status(400).json({ error: "Invite has expired" });
+    return;
+  }
+
+  if (invite.inviteEmail || invite.inviteUsername) {
+    const userEmail = (user.email ?? "").toLowerCase();
+    const userFirstName = (user.firstName ?? "").toLowerCase();
+    const emailMatch = invite.inviteEmail
+      ? userEmail === invite.inviteEmail.toLowerCase()
+      : false;
+    const usernameMatch = invite.inviteUsername
+      ? userFirstName === invite.inviteUsername.toLowerCase() || userId === invite.inviteUsername
+      : false;
+    if (!emailMatch && !usernameMatch) {
+      res.status(403).json({ error: "This invite was sent to a different account" });
+      return;
+    }
+  }
+
+  const existingMembership = await getUserOrg(userId);
+  if (existingMembership) {
+    res.status(400).json({ error: "You are already a member of an organization" });
+    return;
+  }
+
+  const existingMember = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
+
+  if (existingMember.length > 0) {
+    await db
+      .update(orgMembersTable)
+      .set({ status: "active", joinedAt: new Date() })
+      .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
+  } else {
+    await db.insert(orgMembersTable).values({
+      orgId: invite.orgId,
+      userId,
+      role: "employee",
+      featureBilling: "individual",
+      status: "active",
+      invitedByUserId: invite.invitedByUserId,
+      inviteEmail: invite.inviteEmail,
+      joinedAt: new Date(),
+    });
+  }
+
+  await db
+    .update(orgInvitesTable)
+    .set({ status: "accepted" })
+    .where(eq(orgInvitesTable.id, invite.id));
+
+  const grants = await db
+    .select()
+    .from(orgFeatureGrantsTable)
+    .where(eq(orgFeatureGrantsTable.orgId, invite.orgId));
+
+  const [member] = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
+
+  if (member?.featureBilling === "company" && grants.length > 0) {
+    for (const grant of grants) {
+      await grantFeature(userId, grant.featureKey as FeatureKey, `org:${invite.orgId}`, grant.stripeSubscriptionId ?? undefined);
+    }
+  }
+
+  res.json({ ok: true, orgId: invite.orgId });
+});
+
+router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  const memberId = req.params.memberId;
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const targetRows = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  if (targetRows.length === 0) { res.status(404).json({ error: "Member not found" }); return; }
+  const target = targetRows[0];
+
+  if (target.role === "owner") {
+    res.status(403).json({ error: "Cannot modify the owner record" });
+    return;
+  }
+  if (caller.role === "manager" && target.role === "manager" && callerId !== memberId) {
+    res.status(403).json({ error: "Managers cannot modify other managers" });
+    return;
+  }
+
+  const { role, department, spawnLocation, featureBilling } = (req.body ?? {}) as {
+    role?: string;
+    department?: string | null;
+    spawnLocation?: string | null;
+    featureBilling?: string;
+  };
+
+  const updates: {
+    role?: string;
+    department?: string | null;
+    spawnLocation?: string | null;
+    featureBilling?: string;
+  } = {};
+
+  if (role && ["manager", "employee"].includes(role)) updates.role = role;
+  if (department !== undefined) updates.department = department ? String(department).trim() : null;
+  if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
+  if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No valid fields to update" });
+    return;
+  }
+
+  await db
+    .update(orgMembersTable)
+    .set(updates)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  if (updates.featureBilling === "company") {
+    const grants = await db.select().from(orgFeatureGrantsTable).where(eq(orgFeatureGrantsTable.orgId, orgId));
+    for (const grant of grants) {
+      await grantFeature(memberId, grant.featureKey as FeatureKey, `org:${orgId}`, grant.stripeSubscriptionId ?? undefined);
+    }
+  }
+
+  const [updated] = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  res.json({ member: updated });
+});
+
+router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  const memberId = req.params.memberId;
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller) { res.status(403).json({ error: "Not authorized" }); return; }
+
+  const isSelf = callerId === memberId;
+
+  if (!isSelf && caller.role !== "owner" && caller.role !== "manager") {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const targetRows = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  if (targetRows.length === 0) { res.status(404).json({ error: "Member not found" }); return; }
+  const target = targetRows[0];
+
+  if (target.role === "owner" && !isSelf) {
+    res.status(400).json({ error: "Cannot remove org owner" });
+    return;
+  }
+
+  if (caller.role === "manager" && target.role === "manager" && !isSelf) {
+    res.status(403).json({ error: "Managers cannot remove other managers" });
+    return;
+  }
+
+  await db
+    .update(orgMembersTable)
+    .set({ status: "removed" })
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  res.json({ ok: true });
+});
+
+router.post("/orgs/:orgId/features", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+    res.status(403).json({ error: "Not authorized" }); return;
+  }
+
+  const { featureKey, stripeSubscriptionId } = (req.body ?? {}) as { featureKey?: string; stripeSubscriptionId?: string };
+  if (!featureKey || !FEATURE_KEYS.includes(featureKey as FeatureKey)) {
+    res.status(400).json({ error: "Valid featureKey required" });
+    return;
+  }
+
+  await db
+    .insert(orgFeatureGrantsTable)
+    .values({ orgId, featureKey, stripeSubscriptionId: stripeSubscriptionId ?? null })
+    .onConflictDoUpdate({
+      target: [orgFeatureGrantsTable.orgId, orgFeatureGrantsTable.featureKey],
+      set: { stripeSubscriptionId: stripeSubscriptionId ?? null, grantedAt: new Date() },
+    });
+
+  const members = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active"), eq(orgMembersTable.featureBilling, "company")));
+
+  for (const m of members) {
+    await grantFeature(m.userId, featureKey as FeatureKey, `org:${orgId}`, stripeSubscriptionId ?? undefined);
+  }
+
+  res.json({ ok: true });
+});
+
+router.post("/orgs/:orgId/stripe-customer", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || caller.role !== "owner") {
+    res.status(403).json({ error: "Only org owner can manage billing" }); return;
+  }
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+
+  if (org.stripeCustomerId) {
+    res.json({ stripeCustomerId: org.stripeCustomerId });
+    return;
+  }
+
+  const stripe = getStripe();
+  const customer = await stripe.customers.create({
+    name: org.name,
+    metadata: {
+      orgId: String(orgId),
+      ownerUserId: org.ownerUserId,
+      product_line: "SALARYMAN",
+    },
+  });
+
+  await db
+    .update(organizationsTable)
+    .set({ stripeCustomerId: customer.id })
+    .where(eq(organizationsTable.id, orgId));
+
+  res.json({ stripeCustomerId: customer.id });
+});
+
+router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || caller.role !== "owner") {
+    res.status(403).json({ error: "Only org owner can initiate company billing" }); return;
+  }
+
+  const { feature } = (req.body ?? {}) as { feature?: string };
+  if (!feature || !FEATURE_KEYS.includes(feature as FeatureKey)) {
+    res.status(400).json({ error: "Valid feature required" });
+    return;
+  }
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+
+  const stripe = getStripe();
+  const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
+
+  let stripeCustomerId = org.stripeCustomerId;
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      name: org.name,
+      metadata: { orgId: String(orgId), ownerUserId: org.ownerUserId, product_line: "SALARYMAN" },
+    });
+    stripeCustomerId = customer.id;
+    await db.update(organizationsTable).set({ stripeCustomerId }).where(eq(organizationsTable.id, orgId));
+  }
+
+  const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
+    live_listen: "STRIPE_PRICE_LIVE_LISTEN",
+    screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
+    say_this: "STRIPE_PRICE_SAY_THIS",
+    phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
+  };
+  const priceId = process.env[FEATURE_PRICE_ENV[feature as FeatureKey] ?? ""];
+  if (!priceId) {
+    res.status(500).json({ error: `Pricing for ${feature} not configured` });
+    return;
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: stripeCustomerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/world?org_billing_success=1&feature=${feature}`,
+    cancel_url: `${baseUrl}/world?org_billing_cancel=1`,
+    client_reference_id: callerId,
+    metadata: {
+      userId: callerId,
+      feature,
+      orgId: String(orgId),
+      grantedBy: `org:${orgId}`,
+      brand: "Picassoo.AI",
+      product_line: "SALARYMAN",
+    },
+    subscription_data: {
+      metadata: { feature, orgId: String(orgId), grantedBy: `org:${orgId}` },
+    },
+  });
+
+  res.json({ url: session.url });
+});
+
+export default router;

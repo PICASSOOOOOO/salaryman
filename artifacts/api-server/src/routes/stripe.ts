@@ -1,8 +1,8 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
-import { FEATURE_KEYS, type FeatureKey, db, donationsTable } from "@workspace/db";
-import { eq, sum, desc } from "drizzle-orm";
+import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable } from "@workspace/db";
+import { eq, sum, desc, and } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 
@@ -15,7 +15,7 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
 };
 
-function getStripe() {
+export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not set");
   return new Stripe(key);
@@ -70,7 +70,32 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
 
   const featureName = FEATURE_CATALOG[feature].name;
 
-  const session = await stripe.checkout.sessions.create({
+  // Check if user is in an org with company billing enabled
+  const billingMode = req.body?.billingMode as "company" | "individual" | undefined;
+  let orgStripeCustomerId: string | null = null;
+  let orgId: number | null = null;
+  let grantedByValue = "stripe";
+
+  if (billingMode === "company") {
+    const memberRows = await db
+      .select({ orgId: orgMembersTable.orgId, featureBilling: orgMembersTable.featureBilling })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.userId, user.id), eq(orgMembersTable.status, "active")));
+
+    if (memberRows.length > 0 && memberRows[0].featureBilling === "company") {
+      const orgRows = await db
+        .select()
+        .from(organizationsTable)
+        .where(eq(organizationsTable.id, memberRows[0].orgId));
+      if (orgRows.length > 0 && orgRows[0].stripeCustomerId) {
+        orgStripeCustomerId = orgRows[0].stripeCustomerId;
+        orgId = orgRows[0].id;
+        grantedByValue = `org:${orgId}`;
+      }
+    }
+  }
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${baseUrl}/upgrade?checkout=success&feature=${feature}`,
@@ -81,6 +106,8 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
       feature,
       brand: "Picassoo.AI",
       product_line: "SALARYMAN",
+      grantedBy: grantedByValue,
+      ...(orgId ? { orgId: String(orgId) } : {}),
     },
     // NOTE: The bank statement descriptor "PICASSO AI LLC" must be configured at the
     // account level in the Stripe Dashboard (Settings → Account details → Statement descriptor).
@@ -95,9 +122,16 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
         brand: "Picassoo.AI",
         product_line: "SALARYMAN",
         feature,
+        ...(orgId ? { orgId: String(orgId) } : {}),
       },
     },
-  });
+  };
+
+  if (orgStripeCustomerId) {
+    sessionParams.customer = orgStripeCustomerId;
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
 
   res.json({ url: session.url });
 });
@@ -241,8 +275,41 @@ router.post(
         } else if (type === "season_pass") {
           await handleSeasonPassWebhookEvent(event as any);
         } else if (userId && feature && FEATURE_KEYS.includes(feature)) {
-          await grantFeature(userId, feature, "stripe", subscriptionId);
-          console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
+          const grantedBy = session.metadata?.grantedBy ?? "stripe";
+          const orgIdMeta = session.metadata?.orgId;
+          await grantFeature(userId, feature, grantedBy, subscriptionId);
+          console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId}, grantedBy: ${grantedBy})`);
+
+          if (orgIdMeta) {
+            const parsedOrgId = parseInt(orgIdMeta);
+            if (!isNaN(parsedOrgId)) {
+              await db
+                .insert(orgFeatureGrantsTable)
+                .values({ orgId: parsedOrgId, featureKey: feature, stripeSubscriptionId: subscriptionId ?? null })
+                .onConflictDoUpdate({
+                  target: [orgFeatureGrantsTable.orgId, orgFeatureGrantsTable.featureKey],
+                  set: { stripeSubscriptionId: subscriptionId ?? null, grantedAt: new Date() },
+                });
+
+              const companyMembers = await db
+                .select()
+                .from(orgMembersTable)
+                .where(
+                  and(
+                    eq(orgMembersTable.orgId, parsedOrgId),
+                    eq(orgMembersTable.status, "active"),
+                    eq(orgMembersTable.featureBilling, "company")
+                  )
+                );
+
+              for (const m of companyMembers) {
+                if (m.userId !== userId) {
+                  await grantFeature(m.userId, feature as FeatureKey, grantedBy, subscriptionId ?? undefined);
+                }
+              }
+              console.log(`[Stripe] Org ${parsedOrgId}: granted ${feature} to ${companyMembers.length} company-billing members`);
+            }
+          }
         } else {
           console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
         }

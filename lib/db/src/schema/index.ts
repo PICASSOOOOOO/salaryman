@@ -46,3 +46,4 @@ export * from "./salaryman-season";
 export * from "./meetings";
 export * from "./investor-leads";
 export * from "./feature-trials";
+export * from "./organizations";

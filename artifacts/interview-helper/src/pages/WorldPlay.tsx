@@ -2988,7 +2988,7 @@ const IS_VAN = (id: string) => id.startsWith('van_');
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
-  const { isPro, isTrial, trialDaysLeft } = usePlan();
+  const { isPro, isTrial, trialDaysLeft, features: planFeatures, isOwner: isOwnerPlan } = usePlan();
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const gameRef       = useRef<HTMLDivElement>(null);
   const wsRef         = useRef<WebSocket | null>(null);
@@ -3277,7 +3277,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'merch'>('chat');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'merch'|'plan'|'company'|'audio'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -3505,6 +3505,45 @@ export default function WorldPlay() {
   const [sfxVolState, setSfxVolState] = useState(() => { try { const v = localStorage.getItem('sm_sfx_vol'); return v ? parseFloat(v) : 0.55; } catch { return 0.55; } });
   const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
+
+  // ── Organization state ─────────────────────────────────────────────────────
+  type OrgMemberData = {
+    orgId: number;
+    userId: string;
+    role: 'owner' | 'manager' | 'employee';
+    department: string | null;
+    spawnLocation: string | null;
+    featureBilling: 'company' | 'individual';
+    status: 'active' | 'invited' | 'removed';
+  };
+  type OrgFeatureGrantData = { orgId: number; featureKey: string; stripeSubscriptionId: string | null };
+  type OrgDataShape = {
+    org: { id: number; name: string; industry: string | null; size: string | null; ownerUserId: string; stripeCustomerId: string | null };
+    member: OrgMemberData;
+    members: OrgMemberData[];
+    featureGrants: OrgFeatureGrantData[];
+  };
+  const [orgData, setOrgData] = useState<OrgDataShape | null>(null);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgInviteInput, setOrgInviteInput] = useState('');
+  const [orgInviteResult, setOrgInviteResult] = useState<string | null>(null);
+  const [orgCreateName, setOrgCreateName] = useState('');
+  const [orgCreateIndustry, setOrgCreateIndustry] = useState('');
+  const [orgCreateSize, setOrgCreateSize] = useState('');
+  const [orgCreateError, setOrgCreateError] = useState('');
+
+  const fetchOrgData = async () => {
+    setOrgLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.org) setOrgData(data);
+        else setOrgData(null);
+      }
+    } catch {}
+    setOrgLoading(false);
+  };
 
   // ── Decoration mode state ──────────────────────────────────────────────────
   const [decorMode, setDecorMode] = useState(false);
@@ -5694,6 +5733,24 @@ export default function WorldPlay() {
     if (params.get('crypto_success') === '1' || params.get('store') === '1') {
       window.history.replaceState({}, '', window.location.pathname);
       setShowCosmeticStore(true);
+    }
+    const orgInviteToken = params.get('org_invite');
+    if (orgInviteToken) {
+      window.history.replaceState({}, '', window.location.pathname);
+      fetch(`${import.meta.env.BASE_URL}api/orgs/invite/accept`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: orgInviteToken }),
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          setNarr('> ORGANIZATION INVITE ACCEPTED — You have joined the company. Open the Terminal → COMPANY tab to view your profile.');
+          fetchOrgData();
+        } else {
+          setNarr(`> INVITE ERROR — ${data.error ?? 'Could not accept invite. It may have expired.'}`);
+        }
+      }).catch(() => {
+        setNarr('> INVITE ERROR — Could not connect to server. Try again.');
+      });
     }
     apiFetch('/api/cosmetics/balance', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -12852,9 +12909,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['chat','stats','call','crm','city','share','translate','merch'] as const).map(t => (
-                  <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : t === 'share' ? '📺 SHARE' : t === 'translate' ? '🌐 TRANSLATE' : t === 'merch' ? '🛒 MERCH' : '🏙 INFO'}
+                {(['chat','stats','call','crm','city','share','translate','merch','plan','company','audio'] as const).map(t => (
+                  <button key={t} onClick={() => {
+                    setPabloTab(t);
+                    if (t === 'company') fetchOrgData();
+                  }} style={tabS(pabloTab === t)}>
+                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : t === 'share' ? '📺 SHARE' : t === 'translate' ? '🌐 TRANSLATE' : t === 'merch' ? '🛒 MERCH' : t === 'plan' ? '⭐ PLAN' : t === 'company' ? '🏢 COMPANY' : t === 'audio' ? '🔊 AUDIO' : '🏙 INFO'}
                   </button>
                 ))}
               </div>
@@ -13275,6 +13335,421 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   );
                 })()}
 
+                {/* AUDIO SETTINGS TAB */}
+                {pabloTab === 'audio' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>AUDIO SETTINGS</div>
+
+                    <div style={{ borderBottom: '1px solid rgba(0,255,65,.1)', paddingBottom: '.4rem', marginBottom: '.2rem' }}>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>MASTER</div>
+                      <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        {allMuted ? '🔇 MUTE ALL — ON' : '🔊 MUTE ALL — OFF'}
+                      </button>
+                    </div>
+
+                    <div style={{ borderBottom: '1px solid rgba(0,255,65,.1)', paddingBottom: '.4rem', marginBottom: '.2rem' }}>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.4)', letterSpacing: '.12em', marginBottom: '.3rem' }}>AMBIENT SCORE</div>
+                      <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
+                      </button>
+                      <button onClick={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: scoreMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: scoreMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        {scoreMuted ? '🔇 SCORE MUTED' : '🔊 SCORE ACTIVE'}
+                      </button>
+                      <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <span style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎵 SCORE VOL</span>
+                          <span style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00c8ff', height: 4, cursor: 'pointer' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ borderBottom: '1px solid rgba(0,255,65,.1)', paddingBottom: '.4rem', marginBottom: '.2rem' }}>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>RADIO</div>
+                      <button onClick={() => handleRadioToggle()} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        📻 RADIO — {radioOn ? 'ON' : 'OFF'}
+                      </button>
+                      <button onClick={() => setRadioMuted(m => !m)} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        {radioMuted ? '🔇 RADIO MUTED' : '🔊 RADIO ACTIVE'}
+                      </button>
+                      <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
+                          <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ borderBottom: '1px solid rgba(0,255,65,.1)', paddingBottom: '.4rem', marginBottom: '.2rem' }}>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>SFX & COMMS</div>
+                      <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
+                          <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      </div>
+                      <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
+                          <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      </div>
+                      <button onClick={() => toggleVoice()} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                        🎙 {voice ? (micMuted ? '⊘ MIC MUTED' : speaking ? '● MIC LIVE' : '○ MIC ON') : 'MIC — OFF'}
+                      </button>
+                      {voice && (
+                        <button onClick={() => toggleMicMute()} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                          {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
+                      All audio settings are saved locally and persist across sessions.
+                    </div>
+                  </div>
+                )}
+
+                {/* PLAN / UPGRADE TAB */}
+                {pabloTab === 'plan' && (() => {
+                  const FEATURES_CATALOG = [
+                    { key: 'live_listen', name: 'ECHO-7 NERVE TAP', codename: 'Live Listen', price: '$5/mo', desc: 'Real-time audio intercept — hear what\'s happening live during calls and meetings.' },
+                    { key: 'screen_scan', name: 'OPTIC-9 RETINAL SCANNER', codename: 'Screen Scan', price: '$5/mo', desc: 'Auto-identifies code and content on screen in real time.' },
+                    { key: 'say_this', name: 'VOX-4 LARYNX MODULE', codename: 'Say This', price: '$5/mo', desc: 'Real-time speech coaching — 3 bullet points to read aloud during calls.' },
+                    { key: 'phone_system', name: 'CALLLHOME', codename: 'Phone System', price: '$95/mo', desc: 'Unlimited predictive dialing & text messaging for business and marketing.' },
+                  ];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>PLAN & PREMIUM MODULES</div>
+
+                      <div style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '.6rem .8rem' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>CURRENT STATUS</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: isPro ? '#00ff41' : 'rgba(0,255,65,.5)', letterSpacing: '.1em' }}>
+                            {isPro ? 'PRO OPERATIVE' : 'STANDARD ACCESS'}
+                          </div>
+                          {isTrial && (
+                            <div style={{ fontSize: '.48rem', color: 'rgba(255,165,0,.7)', border: '1px solid rgba(255,165,0,.3)', padding: '.15rem .4rem' }}>
+                              ⏳ TRIAL · {trialDaysLeft}d LEFT
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.1rem' }}>AVAILABLE MODULES</div>
+                      {FEATURES_CATALOG.map(f => {
+                        const hasIt = isOwnerPlan || planFeatures.has(f.key as 'live_listen' | 'screen_scan' | 'say_this' | 'phone_system');
+                        const companyPays = orgData?.featureGrants?.some((g: { featureKey: string }) => g.featureKey === f.key) && orgData?.member?.featureBilling === 'company';
+                        return (
+                          <div key={f.key} style={{ border: `1px solid ${hasIt ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.1)'}`, background: hasIt ? 'rgba(0,255,65,.04)' : 'transparent', padding: '.55rem .7rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ ...VT, fontSize: '.95rem', color: hasIt ? '#00ff41' : 'rgba(0,255,65,.45)', letterSpacing: '.07em' }}>{f.name}</div>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{f.codename}</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                {hasIt ? (
+                                  <div>
+                                    <div style={{ fontSize: '.55rem', color: '#00ff41', letterSpacing: '.06em' }}>✓ ACTIVE</div>
+                                    {companyPays && <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>ORG BILLING</div>}
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.6)', letterSpacing: '.06em' }}>{f.price}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.6 }}>{f.desc}</div>
+                            {!hasIt && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`${import.meta.env.BASE_URL}api/stripe/create-checkout-session`, {
+                                      method: 'POST', credentials: 'include',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ feature: f.key }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.url) window.location.href = data.url;
+                                  } catch {}
+                                }}
+                                style={{ padding: '.3rem .6rem', background: 'rgba(255,200,60,.08)', border: '1px solid rgba(255,200,60,.4)', color: '#ffcc44', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.85rem', letterSpacing: '.1em', alignSelf: 'flex-start' }}>
+                                ACTIVATE →
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.5rem', marginTop: '.2rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY BILLING</div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
+                          If your employer has activated company billing for your account, your premium modules will be funded by your organization. Manage your company in the COMPANY tab.
+                        </div>
+                        <button onClick={() => { setPabloTab('company'); fetchOrgData(); }} style={{ marginTop: '.4rem', padding: '.3rem .6rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.25)', color: 'rgba(0,255,65,.6)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.85rem', letterSpacing: '.1em' }}>
+                          → COMPANY MANAGEMENT
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* COMPANY MANAGEMENT TAB */}
+                {pabloTab === 'company' && (() => {
+                  const isOwnerOrManager = orgData?.member?.role === 'owner' || orgData?.member?.role === 'manager';
+                  const activeMembers = orgData?.members?.filter(m => m.status === 'active') ?? [];
+
+                  const handleCreateOrg = async () => {
+                    setOrgCreateError('');
+                    if (!orgCreateName.trim()) { setOrgCreateError('Company name is required'); return; }
+                    try {
+                      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs`, {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: orgCreateName.trim(), industry: orgCreateIndustry, size: orgCreateSize }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) { fetchOrgData(); setOrgCreateName(''); setOrgCreateIndustry(''); setOrgCreateSize(''); }
+                      else setOrgCreateError(data.error ?? 'Failed to create organization');
+                    } catch { setOrgCreateError('Network error'); }
+                  };
+
+                  const handleInvite = async () => {
+                    setOrgInviteResult(null);
+                    if (!orgInviteInput.trim() || !orgData?.org) return;
+                    const isEmail = orgInviteInput.includes('@');
+                    try {
+                      const res = await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/invite`, {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(isEmail ? { email: orgInviteInput.trim() } : { username: orgInviteInput.trim() }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) { setOrgInviteResult(`✓ Invite link: ${data.inviteUrl}`); setOrgInviteInput(''); }
+                      else setOrgInviteResult(`✗ ${data.error ?? 'Failed to send invite'}`);
+                    } catch { setOrgInviteResult('✗ Network error'); }
+                  };
+
+                  const handleRemoveMember = async (memberId: string) => {
+                    if (!orgData?.org) return;
+                    await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/members/${memberId}`, {
+                      method: 'DELETE', credentials: 'include',
+                    });
+                    fetchOrgData();
+                  };
+
+                  const handleUpdateMember = async (memberId: string, updates: Record<string, string>) => {
+                    if (!orgData?.org) return;
+                    await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/members/${memberId}`, {
+                      method: 'PUT', credentials: 'include',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(updates),
+                    });
+                    fetchOrgData();
+                  };
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>COMPANY MANAGEMENT</div>
+
+                      {orgLoading && (
+                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em' }}>LOADING ▮</div>
+                      )}
+
+                      {!orgLoading && !orgData && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                          <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,255,65,.02)', padding: '.7rem' }}>
+                            <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTER YOUR ORGANIZATION</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7, marginBottom: '.5rem' }}>
+                              Register your company in MINX CITY to onboard employees, manage departments, and enable enterprise billing for premium features.
+                            </div>
+                            <input
+                              value={orgCreateName}
+                              onChange={e => setOrgCreateName(e.target.value)}
+                              onKeyDown={e => e.stopPropagation()}
+                              placeholder="COMPANY NAME..."
+                              maxLength={80}
+                              style={{ width: '100%', padding: '.4rem .6rem', marginBottom: '.3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', outline: 'none', boxSizing: 'border-box', caretColor: '#00ff41' }}
+                            />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.3rem', marginBottom: '.3rem' }}>
+                              <select value={orgCreateIndustry} onChange={e => setOrgCreateIndustry(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                                <option value="">INDUSTRY...</option>
+                                {['Technology','Finance','Healthcare','Media','Legal','Real Estate','Logistics','Manufacturing','Retail','Other'].map(i => <option key={i} value={i}>{i}</option>)}
+                              </select>
+                              <select value={orgCreateSize} onChange={e => setOrgCreateSize(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                                <option value="">SIZE...</option>
+                                {['1-10','11-50','51-200','201-500','500+'].map(s => <option key={s} value={s}>{s} employees</option>)}
+                              </select>
+                            </div>
+                            {orgCreateError && <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', marginBottom: '.3rem' }}>⚠ {orgCreateError}</div>}
+                            <button onClick={handleCreateOrg} style={{ width: '100%', padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.12em' }}>
+                              REGISTER ORGANIZATION →
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                            Already have an invite? Ask your manager for an invite link or code to join their organization.
+                          </div>
+                        </div>
+                      )}
+
+                      {!orgLoading && orgData && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                          <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.7rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ ...VT, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.12em' }}>{orgData.org.name}</div>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.1rem' }}>
+                                  {[orgData.org.industry, orgData.org.size ? `${orgData.org.size} EMPLOYEES` : null].filter(Boolean).join(' · ')}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{orgData.member?.role ?? 'MEMBER'}</div>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginTop: '.1rem' }}>{orgData.member?.department ?? 'NO DEPT'}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
+                            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY FEATURES ({orgData.featureGrants?.length ?? 0} ACTIVE)</div>
+                            {orgData.featureGrants?.length === 0 ? (
+                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.6 }}>No company-wide features activated.</div>
+                            ) : (
+                              orgData.featureGrants.map(g => (
+                                <div key={g.featureKey} style={{ fontSize: '.5rem', color: '#00ff41', lineHeight: 1.8 }}>✓ {g.featureKey.replace(/_/g,' ').toUpperCase()}</div>
+                              ))
+                            )}
+                            {orgData.member?.role === 'owner' && (
+                              <div style={{ marginTop: '.4rem', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', marginBottom: '.3rem' }}>Subscribe on behalf of your organization — all employees set to company billing will gain access.</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem' }}>
+                                  {(['live_listen','screen_scan','say_this','phone_system'] as const).map(fk => {
+                                    const alreadyActive = orgData.featureGrants?.some(g => g.featureKey === fk);
+                                    return (
+                                      <button
+                                        key={fk}
+                                        disabled={alreadyActive}
+                                        onClick={async () => {
+                                          try {
+                                            const r = await fetch(`${import.meta.env.BASE_URL}api/orgs/${orgData.org.id}/stripe-checkout`, {
+                                              method: 'POST', credentials: 'include',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ feature: fk }),
+                                            });
+                                            const d = await r.json();
+                                            if (r.ok && d.url) { window.location.href = d.url; }
+                                            else { alert(d.error ?? 'Billing error'); }
+                                          } catch { alert('Network error'); }
+                                        }}
+                                        style={{ padding: '.2rem .4rem', background: alreadyActive ? 'rgba(0,255,65,.05)' : 'rgba(0,255,65,.12)', border: `1px solid ${alreadyActive ? 'rgba(0,255,65,.2)' : 'rgba(0,255,65,.45)'}`, color: alreadyActive ? 'rgba(0,255,65,.3)' : '#00ff41', cursor: alreadyActive ? 'default' : 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em' }}
+                                      >
+                                        {alreadyActive ? '✓ ' : '+'}{fk.replace(/_/g,' ').toUpperCase()}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {isOwnerOrManager && (
+                            <>
+                              <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INVITE EMPLOYEE</div>
+                                <div style={{ display: 'flex', gap: '.3rem' }}>
+                                  <input
+                                    value={orgInviteInput}
+                                    onChange={e => setOrgInviteInput(e.target.value)}
+                                    onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') handleInvite(); }}
+                                    placeholder="Email or username..."
+                                    style={{ flex: 1, padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', outline: 'none', caretColor: '#00ff41' }}
+                                  />
+                                  <button onClick={handleInvite} style={{ padding: '.3rem .6rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem' }}>INVITE</button>
+                                </div>
+                                {orgInviteResult && (
+                                  <div style={{ marginTop: '.3rem', fontSize: '.45rem', color: orgInviteResult.startsWith('✓') ? '#00ff41' : '#ff4444', lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                    {orgInviteResult}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>EMPLOYEE ROSTER ({activeMembers.length})</div>
+                                {activeMembers.length === 0 ? (
+                                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.6 }}>No active members yet. Invite employees above.</div>
+                                ) : (
+                                  activeMembers.map(m => (
+                                    <div key={m.userId} style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.45rem .5rem', marginBottom: '.3rem', background: 'rgba(0,255,65,.02)' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
+                                        <div>
+                                          <div style={{ fontSize: '.55rem', color: '#00ff41', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{m.userId.slice(0, 12)}{m.userId.length > 12 ? '…' : ''}</div>
+                                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em' }}>
+                                            {m.role.toUpperCase()} · {m.department ?? 'NO DEPT'} · BILLING: {m.featureBilling.toUpperCase()}
+                                          </div>
+                                        </div>
+                                        {m.userId !== orgData.org.ownerUserId && (
+                                          <button onClick={() => handleRemoveMember(m.userId)} style={{ padding: '.2rem .4rem', background: 'rgba(255,34,102,.06)', border: '1px solid rgba(255,34,102,.3)', color: '#ff2266', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem' }}>REMOVE</button>
+                                        )}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
+                                        <select
+                                          value={m.featureBilling}
+                                          onChange={e => handleUpdateMember(m.userId, { featureBilling: e.target.value })}
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          <option value="individual">Individual Billing</option>
+                                          <option value="company">Company Billing</option>
+                                        </select>
+                                        {m.userId !== orgData.org.ownerUserId && (
+                                          <select
+                                            value={m.role}
+                                            onChange={e => handleUpdateMember(m.userId, { role: e.target.value })}
+                                            style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                            <option value="employee">Employee</option>
+                                            <option value="manager">Manager</option>
+                                          </select>
+                                        )}
+                                        <select
+                                          value={m.department ?? ''}
+                                          onChange={e => handleUpdateMember(m.userId, { department: e.target.value || '' })}
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          <option value="">DEPT: NONE</option>
+                                          {['Engineering','Sales','Marketing','Operations','Finance','Legal','HR','Design','Support','Executive'].map(d => (
+                                            <option key={d} value={d}>{d}</option>
+                                          ))}
+                                        </select>
+                                        <select
+                                          value={m.spawnLocation ?? ''}
+                                          onChange={e => handleUpdateMember(m.userId, { spawnLocation: e.target.value || '' })}
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          <option value="">LOCATION: ANY</option>
+                                          {['Downtown','Harbor','Uptown','Financial District','Tech Quarter','Shadow Tower','Research Park'].map(loc => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {!isOwnerOrManager && (
+                            <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem .7rem' }}>
+                              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.2rem' }}>YOUR ASSIGNMENT</div>
+                              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8 }}>
+                                Department: {orgData.member?.department ?? 'Unassigned'}<br/>
+                                Location: {orgData.member?.spawnLocation ?? 'Unassigned'}<br/>
+                                Billing: {orgData.member?.featureBilling === 'company' ? 'Company pays for your features' : 'You pay individually'}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* PABLO AI CHAT TAB */}
                 {pabloTab === 'chat' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
@@ -13386,10 +13861,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '.55rem' }}>
+            <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
               <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
               <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
+            {orgData && (
+              <div style={{ marginTop: '.65rem', padding: '.4rem .6rem', border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,255,65,.03)', fontSize: '.48rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                🏢 Your company <strong style={{ color: '#00ff41' }}>{orgData.org?.name}</strong> may cover this. Ask your manager to enable company billing in the Terminal → COMPANY tab.
+              </div>
+            )}
           </div>
         </div>
       )}

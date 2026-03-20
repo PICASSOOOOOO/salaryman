@@ -2282,24 +2282,48 @@ export default function WorldMenu() {
       </div>
 
       {showWelcomeDialog && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.92)' }}>
-          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.92)', padding: '1rem' }}>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', maxWidth: 560, width: '100%' }}>
             <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.5)', letterSpacing: '.15em' }}>Welcome to Minx City.</div>
             <div style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 500, ...S }}>
               The gates are open. Your record has been filed.<br />PABLO CORP is watching. Stay sharp, operative.
             </div>
-            <button
-              onClick={() => navigate('/world/play')}
-              style={{
-                padding: '.9rem 3rem', background: 'rgba(0,255,65,.12)',
-                border: '1px solid rgba(0,255,65,.7)', color: '#00ff41',
-                ...VT, fontSize: '1.6rem', letterSpacing: '.2em', cursor: 'pointer',
-                textShadow: '0 0 12px rgba(0,255,65,.5)',
-                animation: 'smblink 1.2s step-end infinite',
-              }}
-            >
-              ENTER CITY {tick % 2 === 0 ? '▶' : '▷'}
-            </button>
+
+            {bizType === 'real' && (
+              <div style={{ width: '100%', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+                <div style={{ ...VT, fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.12em' }}>ENTERPRISE UPGRADE AVAILABLE</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, ...S }}>
+                  Your real company is registered. Activate premium modules for your entire team — Live Listen, Screen Scan, Say This, and the Phone System. Company billing routes purchases to your company's payment method.
+                </div>
+                <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => navigate('/upgrade')}
+                    style={{ flex: 1, padding: '.55rem 1rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', ...VT, fontSize: '1rem', letterSpacing: '.12em', cursor: 'pointer' }}>
+                    VIEW PLANS →
+                  </button>
+                  <button
+                    onClick={() => navigate('/world/play')}
+                    style={{ padding: '.55rem 1rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', ...VT, fontSize: '.85rem', letterSpacing: '.1em', cursor: 'pointer' }}>
+                    SKIP FOR NOW
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {bizType !== 'real' && (
+              <button
+                onClick={() => navigate('/world/play')}
+                style={{
+                  padding: '.9rem 3rem', background: 'rgba(0,255,65,.12)',
+                  border: '1px solid rgba(0,255,65,.7)', color: '#00ff41',
+                  ...VT, fontSize: '1.6rem', letterSpacing: '.2em', cursor: 'pointer',
+                  textShadow: '0 0 12px rgba(0,255,65,.5)',
+                  animation: 'smblink 1.2s step-end infinite',
+                }}
+              >
+                ENTER CITY {tick % 2 === 0 ? '▶' : '▷'}
+              </button>
+            )}
           </div>
         </div>
       )}
