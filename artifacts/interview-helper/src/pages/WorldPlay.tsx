@@ -18,9 +18,9 @@ const CosmeticStore = lazy(() => import('./CosmeticStore'));
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
-  sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteMusic, toggleMuteAll, getMusicMuted, getMuted, resumeAudioContext,
+  sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
   setMusicVolume, setSfxVolume,
-  toggleMusicMute, toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
+  toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
   startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur, sfxNpcMurmur,
@@ -3412,6 +3412,7 @@ export default function WorldPlay() {
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
   const [scoreOn, setScoreOn] = useState(() => !getScoreMuted());
+  const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
   const [campsitePos, setCampsitePos] = useState<{x:number;y:number}|null>(null);
   const [campsiteTurret, setCampsiteTurret] = useState(false);
   const [translatorText, setTranslatorText] = useState('');
@@ -3477,7 +3478,6 @@ export default function WorldPlay() {
   const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
   const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
-  const [musicMuted, setMusicMuted] = useState(() => getMusicMuted());
   const [radioMuted, setRadioMuted] = useState(false);
   const [allMuted, setAllMuted] = useState(() => getMuted());
   const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
@@ -12445,13 +12445,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO SETTINGS</div>
             </div>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginBottom: 3 }}>PLAYBACK</div>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginBottom: 3 }}>MASTER</div>
             <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
             </button>
-            <button onClick={() => { const m = toggleMuteMusic(); setMusicMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: musicMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {musicMuted ? '🔇 SCORE' : '🎵 SCORE'}
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.35)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>AMBIENT SCORE</div>
+            <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎵 SCORE {scoreOn ? '— ON' : '— OFF'}
             </button>
+            <button onClick={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: scoreMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: scoreMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {scoreMuted ? '🔇 MUTE SCORE' : '🔊 SCORE'}
+            </button>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>RADIO</div>
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
@@ -13935,7 +13940,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || radioMuted} stationId={stationId} volume={radioVolume} />
 
       {/* ── SCORE HUD ── (always visible, independent of radio zone) */}
-      <ScoreHud visible={true} topOffset={radioVisible ? (powerPct < 100 ? (radioOn ? '14.2rem' : '10.8rem') : (radioOn ? '12.5rem' : '9.1rem')) : (powerPct < 100 ? '5.2rem' : '3.5rem')} scoreOn={scoreOn} scoreMuted={musicMuted} onToggleScore={() => { toggleScoreMute(); setScoreOn(v => !v); }} onToggleScoreMute={() => { const m = toggleMusicMute(); setMusicMuted(m); }} />
+      <ScoreHud visible={true} topOffset={radioVisible ? (powerPct < 100 ? (radioOn ? '14.2rem' : '10.8rem') : (radioOn ? '12.5rem' : '9.1rem')) : (powerPct < 100 ? '5.2rem' : '3.5rem')} scoreOn={scoreOn} scoreMuted={scoreMuted} onToggleScore={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} onToggleScoreMute={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} />
 
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
