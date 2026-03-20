@@ -5102,21 +5102,65 @@ export default function WorldPlay() {
       if (e.key === 'f' || e.key === 'F') {
         if (!chatOpenRef.current) {
           const g = gs.current;
-          if (!g.interior) { setNarr('> DECORATION MODE — Enter your home or rented space first.'); return; }
-          const bid = g.interior.bid;
-          const isOwnedHome = bid === g.hamletBuildingId;
-          const isOwnedBuilding = g.ownedBuildings.has(bid);
-          if (!isOwnedHome && !isOwnedBuilding) {
-            setNarr('> DECORATION MODE — You can only decorate spaces you own or rent.'); return;
+          // Decoration mode only when inside an owned interior
+          if (g.interior) {
+            const bid = g.interior.bid;
+            const isOwnedHome = bid === g.hamletBuildingId;
+            const isOwnedBuilding = g.ownedBuildings.has(bid);
+            if (!isOwnedHome && !isOwnedBuilding) {
+              setNarr('> DECORATION MODE — You can only decorate spaces you own or rent.');
+            } else {
+              const newMode = !decorModeRef.current;
+              setDecorMode(newMode);
+              if (newMode) {
+                setNarr('> DECORATION MODE — [F] toggle mode · [O] open catalog · [R] rotate · [Click] place · [Del] remove · [Esc] exit mode');
+              } else {
+                setDecorSelectedItem(null); setDecorGhostPos(null);
+                setDecorCatalogOpen(false);
+                setNarr('> DECORATION MODE — Exited. Your changes have been saved.');
+              }
+            }
+            return;
           }
-          const newMode = !decorModeRef.current;
-          setDecorMode(newMode);
-          if (newMode) {
-            setNarr('> DECORATION MODE — [F] toggle mode · [O] open catalog · [R] rotate · [Click] place · [Del] remove · [Esc] exit mode');
+          // Outdoors: fire ranged weapon
+          if (frozenRef.current || gamePausedRef.current) return;
+          if (g.attackCooldown > 0) return;
+          const wpn = WEAPONS.find(w => w.id === secondaryWeaponRef.current) ?? WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+          if (wpn.type !== 'ranged') { setNarr('> No ranged weapon equipped in secondary slot.'); return; }
+          g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
+          sfxWeaponDraw(); sfxAttack();
+          const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+          const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+          // Find nearest threat in range, else nearest peer, else fire in facing direction
+          let fireAngle = null;
+          let nearestThreatDist = Infinity;
+          for (const t of g.threats) {
+            const d = Math.hypot(g.px - t.x, g.py - t.y);
+            if (d < wpn.range && d < nearestThreatDist) {
+              nearestThreatDist = d;
+              fireAngle = Math.atan2(t.y - g.py, t.x - g.px);
+            }
+          }
+          if (fireAngle === null) {
+            let nearestPeerDist = Infinity;
+            for (const [, peer] of g.peers) {
+              if (peer.interiorBid) continue;
+              const d = Math.hypot(g.px - peer.x, g.py - peer.y);
+              if (d < wpn.range && d < nearestPeerDist) {
+                nearestPeerDist = d;
+                fireAngle = Math.atan2(peer.y - g.py, peer.x - g.px);
+              }
+            }
+          }
+          if (fireAngle === null) {
+            const facingMap: Record<string, number> = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+            fireAngle = facingMap[g.facing] ?? 0;
+          }
+          const speed = 8;
+          if (wpn.icon === 'bomb') {
+            g.bombs.push({ x: g.px + Math.cos(fireAngle) * 30, y: g.py + Math.sin(fireAngle) * 30, timer: 45, damage: ATK, radius: wpn.range });
           } else {
-            setDecorSelectedItem(null); setDecorGhostPos(null);
-            setDecorCatalogOpen(false);
-            setNarr('> DECORATION MODE — Exited. Your changes have been saved.');
+            g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(fireAngle) * speed, dy: Math.sin(fireAngle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
           }
         }
       }
@@ -5273,24 +5317,44 @@ export default function WorldPlay() {
         }
       }
       const clickedEnemy = g.threats.find(t => Math.hypot(clickWorldX - t.x, clickWorldY - t.y) < 35);
-      if (clickedEnemy) {
+      // Determine if we have a ranged weapon equipped (secondary slot preferred)
+      const rangedWpnClick = (() => {
+        const sw = WEAPONS.find(w => w.id === secondaryWeaponRef.current);
+        if (sw && sw.type === 'ranged') return sw;
+        const aw = WEAPONS.find(w => w.id === activeWeaponRef.current);
+        if (aw && aw.type === 'ranged') return aw;
+        return null;
+      })();
+      // Check if a peer player was clicked on (PvP ranged targeting)
+      const clickedPeer = (!clickedEnemy && rangedWpnClick)
+        ? [...g.peers.values()].find(peer => !peer.interiorBid && Math.hypot(clickWorldX - peer.x, clickWorldY - peer.y) < 35)
+        : null;
+      if (rangedWpnClick) {
+        // Free-fire: fire ranged weapon toward click position (also handles PvP peer targeting)
+        if (g.attackCooldown <= 0) {
+          // Aim-assist: snap to entity center when clicking near an enemy or peer
+          const aimTargetX = clickedEnemy ? clickedEnemy.x : (clickedPeer ? clickedPeer.x : clickWorldX);
+          const aimTargetY = clickedEnemy ? clickedEnemy.y : (clickedPeer ? clickedPeer.y : clickWorldY);
+          const angle = Math.atan2(aimTargetY - g.py, aimTargetX - g.px);
+          const speed = 8;
+          g.attackCooldown = rangedWpnClick.cooldown; g.attackFlash = 4;
+          sfxWeaponDraw(); sfxAttack();
+          const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+          const ATK = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerch;
+          if (rangedWpnClick.icon === 'bomb') {
+            g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: rangedWpnClick.range });
+          } else {
+            g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATK, type: rangedWpnClick.icon });
+          }
+          // Return if clicked on specific target (don't move toward enemy/peer)
+          if (clickedEnemy || clickedPeer) return;
+          // For free-fire at ground/space, still fire but don't block movement commands
+        }
+        // If on cooldown, fall through to movement
+      } else if (clickedEnemy) {
+        // Melee weapon: move toward enemy
         if (g.attackCooldown > 0) return;
-        const wpn = WEAPONS.find(w => w.id === secondaryWeaponRef.current) ?? WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
-        if (wpn.type !== 'ranged') {
-          g.moveTarget = { x: clickedEnemy.x, y: clickedEnemy.y };
-          return;
-        }
-        const angle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
-        const speed = 8;
-        g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
-        sfxWeaponDraw(); sfxAttack();
-        const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-        const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
-        if (wpn.icon === 'bomb') {
-          g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: wpn.range });
-        } else {
-          g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
-        }
+        g.moveTarget = { x: clickedEnemy.x, y: clickedEnemy.y };
         return;
       }
       const rect = canvas.getBoundingClientRect();
@@ -13103,9 +13167,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const wpnId = item.effect.replace('unlock_', '');
             unlockedWeaponsRef.current.add(wpnId);
             setUnlockedWeapons(new Set(unlockedWeaponsRef.current));
-            setActiveWeapon(wpnId); activeWeaponRef.current = wpnId;
+            const purchasedWpnDef = WEAPONS.find(w => w.id === wpnId);
+            if (purchasedWpnDef && purchasedWpnDef.type === 'ranged') {
+              setSecondaryWeapon(wpnId); secondaryWeaponRef.current = wpnId;
+            } else {
+              setActiveWeapon(wpnId); activeWeaponRef.current = wpnId;
+            }
             wsSend({ type: 'weapon_purchase', weaponId: wpnId, cost: item.price });
-            setNarr(`> ${item.name} unlocked! Weapon equipped. ƒ${item.price.toLocaleString()} FIAT spent.`);
+            const slotLabel = purchasedWpnDef && purchasedWpnDef.type === 'ranged' ? 'ranged slot' : 'melee slot';
+            setNarr(`> ${item.name} unlocked! Weapon equipped to ${slotLabel}. ƒ${item.price.toLocaleString()} FIAT spent.`);
           } else if (item.effect === 'maxhp20') {
             g.maxHp += 20; g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp));
             setNarr(`> HP UP — Max HP increased by 20. Current: ${g.maxHp}. ƒ${item.price.toLocaleString()} spent.`);
