@@ -50,6 +50,11 @@ const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
 const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
+const Payroll = lazy(() => import("@/pages/Payroll"));
+const Bills = lazy(() => import("@/pages/Bills"));
+const Expenses = lazy(() => import("@/pages/Expenses"));
+const BalanceSheet = lazy(() => import("@/pages/BalanceSheet"));
+
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
@@ -165,6 +170,9 @@ function AppShell() {
             <Route path="/business/documents" component={Documents} />
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
+            <Route path="/business/payroll" component={Payroll} />
+            <Route path="/business/bills" component={Bills} />
+            <Route path="/business/expenses" component={Expenses} />
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
@@ -180,6 +188,7 @@ function AppShell() {
             <Route path="/intel/agents" component={AgentTeam} />
             <Route path="/intel/goals" component={Goals} />
             <Route path="/intel/seo" component={SeoModule} />
+            <Route path="/intel/balance-sheet" component={BalanceSheet} />
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 
             {/* PHONE module — unified Calll Home hub */}

@@ -113,6 +113,13 @@
       "when": 1774104000000,
       "tag": "0015_business_economy_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1774032753440,
+      "tag": "0016_enterprise_financials",
+      "breakpoints": true
     }
   ]
 }

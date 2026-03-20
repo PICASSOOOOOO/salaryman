@@ -3,7 +3,7 @@ import {
   Users, CalendarDays, Archive, FileText, TrendingUp,
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
-  Voicemail, Hash, Zap, Clock, MessageSquare,
+  Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
 } from 'lucide-react';
 
 export type Module = {
@@ -62,6 +62,9 @@ export const MODULES: Module[] = [
       { id: 'documents', path: '/business/documents', label: 'DOCUMENTS', boomerLabel: 'DOCUMENTS', codename: 'INK-6', icon: Archive },
       { id: 'invoices', path: '/business/invoices', label: 'INVOICES', boomerLabel: 'INVOICES', codename: 'LEDGER-3', icon: FileText },
       { id: 'deals', path: '/business/deals', label: 'DEALS', boomerLabel: 'DEALS', codename: 'PIPELINE-X', icon: TrendingUp },
+      { id: 'payroll', path: '/business/payroll', label: 'PAYROLL', boomerLabel: 'PAYROLL', codename: 'PAYMASTER-7', icon: DollarSign },
+      { id: 'bills', path: '/business/bills', label: 'BILLS', boomerLabel: 'BILLS', codename: 'PAYABLE-X', icon: Receipt },
+      { id: 'expenses', path: '/business/expenses', label: 'EXPENSES', boomerLabel: 'EXPENSES', codename: 'SPEND-TRACK', icon: CreditCard },
     ],
   },
   {
@@ -91,6 +94,7 @@ export const MODULES: Module[] = [
       { id: 'agents', path: '/intel/agents', label: 'AGENT TEAM', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
       { id: 'seo', path: '/intel/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
+      { id: 'balance-sheet', path: '/intel/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
     ],
   },
   {
