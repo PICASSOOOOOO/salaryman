@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone, Layers, Radio } from 'lucide-react';
@@ -214,6 +214,8 @@ export default function Home() {
   const [dictError, setDictError] = useState('');
   const [dictSuggestions, setDictSuggestions] = useState<string[]>([]);
   const [dictThesaurus, setDictThesaurus] = useState<{ synonymsByPos: Record<string, string[]>; antonyms: string[] } | null>(null);
+  const [dictListening, setDictListening] = useState(false);
+  const dictRecRef = useRef<{ stop: () => void } | null>(null);
 
   const [thesWord, setThesWord] = useState('');
   const [thesLoading, setThesLoading] = useState(false);
@@ -222,6 +224,51 @@ export default function Home() {
   const [thesAntonyms, setThesAntonyms] = useState<string[]>([]);
   const [thesRelated, setThesRelated] = useState<string[]>([]);
   const [thesLookedUp, setThesLookedUp] = useState('');
+  const [thesListening, setThesListening] = useState(false);
+  const thesRecRef = useRef<{ stop: () => void } | null>(null);
+
+  const speechSupported = typeof window !== 'undefined' && !!(
+    (window as unknown as Record<string, unknown>).SpeechRecognition ??
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+  );
+
+  const startWordSpeech = useCallback((
+    setWord: (w: string) => void,
+    onWord: (w: string) => void,
+    setListening: (v: boolean) => void,
+    recRef: React.MutableRefObject<{ stop: () => void } | null>
+  ) => {
+    if (recRef.current) {
+      recRef.current.stop();
+      recRef.current = null;
+      setListening(false);
+      return;
+    }
+    const W = window as unknown as Record<string, unknown>;
+    const SRCtor = (W.SpeechRecognition ?? W.webkitSpeechRecognition) as (new () => {
+      continuous: boolean; interimResults: boolean; lang: string;
+      onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+      onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void;
+    }) | undefined;
+    if (!SRCtor) return;
+    setListening(true);
+    const rec = new SRCtor();
+    recRef.current = rec;
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    let finalWord = '';
+    rec.onresult = (ev) => {
+      finalWord = Array.from(ev.results).map(r => r[0].transcript).join('').trim().split(/\s+/)[0] ?? '';
+    };
+    rec.onend = () => {
+      setListening(false);
+      recRef.current = null;
+      if (finalWord) { setWord(finalWord); onWord(finalWord); }
+    };
+    rec.onerror = () => { setListening(false); recRef.current = null; };
+    rec.start();
+  }, []);
 
   const lookupThesaurus = async (word: string) => {
     const w = word.trim().toLowerCase();
@@ -723,6 +770,14 @@ export default function Home() {
                   placeholder="Type a word..."
                   className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                {speechSupported && (
+                  <button
+                    onClick={() => startWordSpeech(setDictWord, lookupWord, setDictListening, dictRecRef)}
+                    className={`flex items-center justify-center ${boomerMode ? 'w-9 h-9' : 'w-7 h-7'} rounded-md border transition-colors shrink-0 ${dictListening ? 'bg-pink-500/30 border-pink-400 text-pink-300 animate-pulse' : 'bg-pink-500/10 border-pink-500/30 text-pink-400 hover:bg-pink-500/20'}`}
+                    title={dictListening ? 'Listening…' : 'Speak a word'}>
+                    {dictListening ? <MicOff className={boomerMode ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : <Mic className={boomerMode ? 'w-4 h-4' : 'w-3.5 h-3.5'} />}
+                  </button>
+                )}
                 <button onClick={() => lookupWord(dictWord)}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
@@ -826,6 +881,14 @@ export default function Home() {
                   placeholder="Type a word..."
                   className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                {speechSupported && (
+                  <button
+                    onClick={() => startWordSpeech(setThesWord, lookupThesaurus, setThesListening, thesRecRef)}
+                    className={`flex items-center justify-center ${boomerMode ? 'w-9 h-9' : 'w-7 h-7'} rounded-md border transition-colors shrink-0 ${thesListening ? 'bg-pink-500/30 border-pink-400 text-pink-300 animate-pulse' : 'bg-pink-500/10 border-pink-500/30 text-pink-400 hover:bg-pink-500/20'}`}
+                    title={thesListening ? 'Listening…' : 'Speak a word'}>
+                    {thesListening ? <MicOff className={boomerMode ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : <Mic className={boomerMode ? 'w-4 h-4' : 'w-3.5 h-3.5'} />}
+                  </button>
+                )}
                 <button onClick={() => lookupThesaurus(thesWord)}
                   className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
