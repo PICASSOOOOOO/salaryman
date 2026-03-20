@@ -10,6 +10,7 @@ function apiUrl(path: string) {
   return `/${BASE ? BASE + "/" : ""}api/${path}`.replace(/\/+/g, "/");
 }
 
+
 function EmailSubscribeForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle');
@@ -88,98 +89,115 @@ export default function Cover() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#09090b] relative overflow-x-hidden px-6 py-16">
+    <div className="min-h-screen flex flex-col items-center bg-[#09090b] relative overflow-x-hidden px-6 py-20 sm:py-28">
 
-      {/* Subtle ambient glow */}
+      <style>{`
+        @keyframes gradient-shift {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animated-title {
+          background: linear-gradient(
+            270deg,
+            #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
+          );
+          background-size: 300% 300%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradient-shift 30s ease-in-out infinite;
+        }
+        .animated-title-glow {
+          background: linear-gradient(
+            270deg,
+            #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
+          );
+          background-size: 300% 300%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradient-shift 30s ease-in-out infinite;
+          filter: blur(20px);
+          opacity: 0.35;
+        }
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 12px 2px rgba(34,197,94,0.18), 0 4px 24px 0 rgba(34,197,94,0.10); }
+          50%       { box-shadow: 0 0 28px 6px rgba(34,197,94,0.38), 0 4px 32px 0 rgba(34,197,94,0.22); }
+        }
+        .cta-primary {
+          animation: glow-pulse 2.8s ease-in-out infinite;
+        }
+        @keyframes float-title {
+          0%, 100% { transform: scaleX(0.85) scaleY(1.1) translateY(0px); }
+          50%       { transform: scaleX(0.85) scaleY(1.1) translateY(-6px); }
+        }
+        .title-float {
+          animation: float-title 6s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-emerald-500/4 blur-[120px]" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
+      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto w-full">
 
         {/* Logo mark */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6"
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="mb-10"
         >
           <PicassoLogo size={36} gap={4} />
         </motion.div>
 
         {/* Badge */}
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05 }}
-          className="inline-flex items-center gap-2.5 mb-8 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="inline-flex items-center gap-2.5 mb-12 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           ALPHA
         </motion.div>
 
         {/* Headline */}
-        <style>{`
-          @keyframes gradient-shift {
-            0%   { background-position: 0% 50%; }
-            50%  { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          .animated-title {
-            background: linear-gradient(
-              270deg,
-              #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
-            );
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradient-shift 30s ease-in-out infinite;
-          }
-          .animated-title-glow {
-            background: linear-gradient(
-              270deg,
-              #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
-            );
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradient-shift 30s ease-in-out infinite;
-            filter: blur(20px);
-            opacity: 0.35;
-          }
-        `}</style>
         <motion.h1
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.08 }}
-          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-3"
-          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
+          transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
+          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-6"
+          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed" }}
         >
-          <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
-            SALARYMAN
-          </span>
-          <span className="relative animated-title">
-            SALARYMAN
+          <span className="title-float block">
+            <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
+              SALARYMAN
+            </span>
+            <span className="relative animated-title">
+              SALARYMAN
+            </span>
           </span>
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 4 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="text-[11px] font-mono tracking-[0.25em] uppercase text-zinc-500 mb-5"
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="text-[11px] font-mono tracking-[0.25em] uppercase text-zinc-500 mb-10"
         >
           by <span className="text-zinc-300">PICASSO.AI</span>
         </motion.p>
 
         <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.18 }}
-          className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-2 max-w-xl"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-6 max-w-xl"
         >
           The professional intelligence platform — live listen, screen scan, ghost typing, AI agents, phone system, CRM, and more. Built for people who take their career seriously.
         </motion.p>
@@ -187,33 +205,33 @@ export default function Cover() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-          className="text-emerald-500/60 text-sm mb-10 font-mono tracking-widest uppercase"
+          transition={{ duration: 0.5, delay: 0.45 }}
+          className="text-emerald-500/60 text-sm mb-14 font-mono tracking-widest uppercase"
         >
           Attention is All You Need
         </motion.p>
 
         {/* CTAs */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="flex flex-wrap justify-center gap-3 mb-2"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.55 }}
+          className="flex flex-wrap justify-center gap-4 mb-5"
         >
           <motion.button
             onClick={login}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/15"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            className="cta-primary flex items-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </motion.button>
 
           <motion.button
             onClick={() => navigate('/features')}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg border border-white/10 text-zinc-300 text-sm hover:bg-white/5 hover:border-white/15 transition-colors"
+            whileHover={{ scale: 1.04, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.07)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-8 py-3.5 rounded-lg border border-white/10 text-zinc-300 text-sm transition-colors"
           >
             See all features <ChevronRight className="w-4 h-4" />
           </motion.button>
@@ -223,18 +241,18 @@ export default function Cover() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.42 }}
-          className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mt-2 mb-10"
+          transition={{ duration: 0.4, delay: 0.65 }}
+          className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mb-16"
         >
           Current pricing reflects early alpha access
         </motion.p>
 
         {/* Email subscribe */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="w-full flex flex-col items-center gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.75 }}
+          className="w-full flex flex-col items-center gap-4 mb-16"
         >
           <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Every App in One</p>
           <div className="relative">
@@ -245,10 +263,10 @@ export default function Cover() {
 
         {/* Teaser video */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="w-full max-w-2xl"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.85 }}
+          className="w-full max-w-2xl mb-16"
         >
           <video
             src="/brand/other/salaryman-teaser.mp4"
@@ -260,20 +278,21 @@ export default function Cover() {
 
         {/* Powered by */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-14 flex flex-col items-center gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.95 }}
+          className="flex flex-col items-center gap-4 pb-12"
         >
           <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">Powered by</p>
           <div className="flex flex-wrap justify-center gap-2">
             {['Claude Sonnet', 'GPT-4o', 'OpenClaw', 'React', 'Node', 'Postgres', 'Stripe', 'Resend'].map((t) => (
-              <span
+              <motion.span
                 key={t}
-                className="text-[10px] font-mono text-zinc-600 border border-zinc-800 px-2.5 py-1 rounded-md uppercase tracking-wider"
+                whileHover={{ borderColor: 'rgba(161,161,170,0.3)', color: 'rgba(161,161,170,0.7)' }}
+                className="text-[10px] font-mono text-zinc-600 border border-zinc-800 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
               >
                 {t}
-              </span>
+              </motion.span>
             ))}
           </div>
         </motion.div>
@@ -281,7 +300,7 @@ export default function Cover() {
       </div>
 
       {/* Legal footer */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+      <div className="relative z-10 mt-8 flex justify-center">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
           {[
             { label: "Terms", path: "/legal/terms" },
