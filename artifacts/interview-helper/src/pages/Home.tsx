@@ -492,13 +492,27 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <main className="flex flex-col p-4 md:p-6 relative z-10 gap-6">
+      <main className="flex flex-col p-4 md:p-6 relative z-10 gap-4 flex-1 min-h-0">
 
-        {/* ── ROW 1: Translator (left) + PABLO Chat (right) ── */}
-        <div className="flex flex-col lg:flex-row gap-6 min-h-0">
+        {/* Free Tools Banner */}
+        <div className="rounded-xl border border-emerald-500/15 px-4 py-2.5 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.04), rgba(56,189,248,0.03))' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Bot className="w-3.5 h-3.5 text-emerald-400/70" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.7)' }}>PABLO FREE TOOLKIT</span>
+              <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI Chat + Translator + Dictionary + Notes — no subscription required</span>
+            </div>
+          </div>
+        </div>
 
-          {/* Translator — FREE */}
-          <div className="lg:w-80 shrink-0 space-y-3">
+        {/* ── Main Layout: Sidebar Tools (left) + PABLO Chat (right) ── */}
+        <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+
+          {/* Sidebar Tools — FREE */}
+          <div className="lg:w-80 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(34,197,94,0.15) transparent' }}>
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
@@ -822,7 +836,7 @@ export default function Home() {
           </div>
 
           {/* PABLO AI Chat — FREE */}
-          <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ minHeight: '400px', maxHeight: '70vh' }}>
+          <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 180px)' }}>
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO AI' : 'PABLO NEURAL CORE'}

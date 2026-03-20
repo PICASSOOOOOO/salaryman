@@ -1,30 +1,78 @@
-import { Globe, Plus, X, Loader2, Clipboard, Type } from 'lucide-react';
+import { useState } from 'react';
+import { Globe, Plus, X, Loader2, ClipboardPaste } from 'lucide-react';
 import { useFeatureState } from '@/hooks/use-feature-state';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
-async function pasteFromClipboard(
-  index: number,
-  urls: string[],
-  setUrls: (urls: string[]) => void,
-) {
-  if (navigator.clipboard && navigator.clipboard.readText) {
+function PasteButton({ onPaste }: { onPaste: (text: string) => void }) {
+  const [showInput, setShowInput] = useState(false);
+  const [tempValue, setTempValue] = useState('');
+
+  const handleClick = async () => {
     try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        const next = [...urls];
-        next[index] = text.trim();
-        setUrls(next);
-        return;
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          onPaste(text.trim());
+          return;
+        }
       }
-    } catch {
-    }
+    } catch {}
+    setTempValue('');
+    setShowInput(true);
+  };
+
+  if (showInput) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          value={tempValue}
+          onChange={e => setTempValue(e.target.value)}
+          onPaste={e => {
+            const text = e.clipboardData.getData('text');
+            if (text) {
+              e.preventDefault();
+              onPaste(text.trim());
+              setShowInput(false);
+              setTempValue('');
+            }
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && tempValue.trim()) {
+              onPaste(tempValue.trim());
+              setShowInput(false);
+              setTempValue('');
+            }
+            if (e.key === 'Escape') {
+              setShowInput(false);
+              setTempValue('');
+            }
+          }}
+          onBlur={() => {
+            if (tempValue.trim()) {
+              onPaste(tempValue.trim());
+            }
+            setShowInput(false);
+            setTempValue('');
+          }}
+          placeholder="Ctrl+V here then Enter"
+          className="w-36 bg-muted/50 border border-sky-500/40 rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-400/60"
+        />
+      </div>
+    );
   }
-  const text = window.prompt('Paste your URL here:');
-  if (text) {
-    const next = [...urls];
-    next[index] = text.trim();
-    setUrls(next);
-  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      title="Paste URL"
+      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-sky-400/70 hover:text-sky-300 hover:bg-sky-500/10 border border-sky-500/20 hover:border-sky-500/30 transition-colors"
+    >
+      <ClipboardPaste className="w-3.5 h-3.5" />
+      <span className="hidden sm:inline text-[10px] font-medium">Paste</span>
+    </button>
+  );
 }
 
 export function WebsiteAnalyzer() {
@@ -35,11 +83,11 @@ export function WebsiteAnalyzer() {
       <div className="w-80 shrink-0 space-y-4">
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <h3 className="font-bold text-sm text-foreground">Analyze Websites</h3>
-          <p className="text-xs text-muted-foreground">Paste up to 5 URLs. AI reads and summarizes each one with key takeaways you can talk through.</p>
+          <p className="text-xs text-muted-foreground">Enter up to 5 URLs. AI reads and summarizes each one with key takeaways you can talk through.</p>
 
           <div className="space-y-2">
             {w.urls.map((url, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex items-center gap-1.5">
                 <input
                   value={url}
                   onChange={e => {
@@ -56,14 +104,11 @@ export function WebsiteAnalyzer() {
                   placeholder="https://example.com"
                   className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
                 />
-                <button
-                  type="button"
-                  onClick={() => pasteFromClipboard(i, w.urls, w.setUrls)}
-                  title="Paste URL from clipboard"
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Clipboard className="w-3.5 h-3.5" />
-                </button>
+                <PasteButton onPaste={(text) => {
+                  const next = [...w.urls];
+                  next[i] = text;
+                  w.setUrls(next);
+                }} />
                 {w.urls.length > 1 && (
                   <button onClick={() => w.setUrls(w.urls.filter((_, j) => j !== i))}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors">
@@ -82,7 +127,7 @@ export function WebsiteAnalyzer() {
 
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Focus (optional)</label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input value={w.analysisFocus} onChange={e => w.setAnalysisFocus(e.target.value)}
                 onPaste={e => {
                   const text = e.clipboardData.getData('text');
@@ -92,17 +137,7 @@ export function WebsiteAnalyzer() {
                 }}
                 placeholder="e.g. pricing, competitors, tech stack"
                 className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
-              <button
-                type="button"
-                onClick={() => {
-                  const text = window.prompt('Enter analysis focus:', w.analysisFocus);
-                  if (text !== null) w.setAnalysisFocus(text.trim());
-                }}
-                title="Type or paste focus text"
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Type className="w-3.5 h-3.5" />
-              </button>
+              <PasteButton onPaste={(text) => w.setAnalysisFocus(text)} />
             </div>
           </div>
 
@@ -127,7 +162,7 @@ export function WebsiteAnalyzer() {
         {!w.analysisResult && !w.analyzing && (
           <div className="bg-card border border-border rounded-2xl h-full min-h-[400px] flex flex-col items-center justify-center gap-3 text-center p-6">
             <Globe className="w-10 h-10 text-muted-foreground/20" />
-            <p className="text-muted-foreground text-sm">Paste some URLs and click Analyze</p>
+            <p className="text-muted-foreground text-sm">Enter URLs above and click Analyze</p>
           </div>
         )}
         {w.analyzing && (
