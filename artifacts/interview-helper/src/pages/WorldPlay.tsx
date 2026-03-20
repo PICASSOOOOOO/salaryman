@@ -29,7 +29,7 @@ import {
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
-import { RadioPlayer, RadioHud, ScoreHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
+import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
@@ -43,8 +43,8 @@ import {
   getTemperatureLevel,
   RADIATION_ZONES, getRadiationLevel,
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
-  ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, CRYPTO_TO_FIAT_RATE, calcAtmFee, cryptoToFiat,
-  GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD, CRYPTO_PER_GOLD, cryptoToGoldRate,
+  ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, calcAtmFee,
+  GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD,
   LOAN_TIERS, calcLoanInterest, calcOriginationFee,
   PROPERTY_TAX_RATE, PROPERTY_RESALE_FEE_RATE, PROPERTY_TAX_CYCLE_FRAMES,
   type PropertyDeed, getPropertyValue, calcPropertyTax, calcResaleFee,
@@ -3018,8 +3018,16 @@ export default function WorldPlay() {
   useEffect(() => { gameRef.current?.focus(); }, []);
 
   const _ss = (char as any)?._savedState;
+  const _spawnPos = (() => {
+    if (_ss) {
+      const ht = (_ss?.housingTier ?? 'shelter') as string;
+      const spawn = getHamletSpawn(char, ht);
+      return { px: spawn.x, py: spawn.y };
+    }
+    return { px: char.sx, py: char.sy };
+  })();
   const gs = useRef({
-    px: char.sx, py: char.sy,
+    px: _spawnPos.px, py: _spawnPos.py,
     cam: { x: 0, y: 0 },
     keys: new Set<string>(),
     frame: 0, blink: 0,
@@ -3416,8 +3424,16 @@ export default function WorldPlay() {
     if (_ss?.diedLastSession) return true;
     try { const flag = localStorage.getItem('sm_died_last_session'); return flag === 'true'; } catch { return false; }
   });
-  const [showIndoorStart, setShowIndoorStart] = useState(!_ss && !(() => { try { return localStorage.getItem('sm_died_last_session') === 'true'; } catch { return false; } })());
-  const [bankTab,      setBankTab]      = useState<'accounts'|'atm'|'loans'|'wire'|'history'>('accounts');
+  // Show indoor start on new game OR when loading a save (always spawn inside home)
+  const [showIndoorStart, setShowIndoorStart] = useState(() => {
+    try {
+      const diedLast = localStorage.getItem('sm_died_last_session') === 'true';
+      if (diedLast) return false;
+    } catch { /* ignore */ }
+    // New game: always start inside home; saved game: also start inside home
+    return true;
+  });
+  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
@@ -3447,7 +3463,7 @@ export default function WorldPlay() {
   const [showSecretLabPrompt, setShowSecretLabPrompt] = useState<'buy' | 'password' | 'setpw' | null>(null);
   const [secretLabPwInput, setSecretLabPwInput] = useState('');
   const [showGoldExchange, setShowGoldExchange] = useState(false);
-  const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks' | 'crypto'>('gold');
+  const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks'>('gold');
   const [showHousingPanel, setShowHousingPanel] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showAdminDept, setShowAdminDept] = useState<string | null>(null);
@@ -3459,7 +3475,7 @@ export default function WorldPlay() {
   const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
   const [goldStandardToggle, setGoldStandardToggle] = useState(false);
-  const [cryptoBalance, setCryptoBalance] = useState(0);
+
   const [showCosmeticStore, setShowCosmeticStore] = useState(false);
   const [equippedCosmetics, setEquippedCosmetics] = useState<Record<string, string>>({});
   useEffect(() => { equippedCosmeticsRef.current = equippedCosmetics; }, [equippedCosmetics]);
@@ -3776,12 +3792,16 @@ export default function WorldPlay() {
   const handleRadioToggle = useCallback(() => {
     const result = toggleRadio();
     if (result.on) {
+      // When radio turns on, pause ambient score to avoid overlap
+      if (scoreOn) { pauseMusic(); }
       const st = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
       setNarr(`> You turn the dial. Static. Then music. RADIO ${st.freq} — ${st.name}. The signal bleeds through the walls. Something familiar. Something human.`);
     } else {
+      // When radio turns off, resume ambient score if it was toggled on
+      if (scoreOn && !scoreMuted) { playMusic(); }
       setNarr('> You switch the radio off. Silence returns. The wasteland hum fills the gap.');
     }
-  }, [toggleRadio, stationId]);
+  }, [toggleRadio, stationId, scoreOn, scoreMuted, pauseMusic, playMusic]);
 
   const executeBuildingLogic = useCallback((bid: string) => {
     const g = gs.current;
@@ -4868,21 +4888,39 @@ export default function WorldPlay() {
     });
   }, []);
 
+  const phoneRingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handlePhoneCallInvite = useCallback((targetId: string) => {
+    // Optimistically set ringing state so caller gets immediate feedback
+    const cs: PhoneCallState = { status: 'ringing', peerId: targetId, peerName: targetId, roomId: null };
+    setPhoneCall(cs); phoneCallRef.current = cs;
     wsSend({ type: 'phone_call_invite', targetId });
+    // Auto-cancel after 30s if no response
+    if (phoneRingTimerRef.current) clearTimeout(phoneRingTimerRef.current);
+    phoneRingTimerRef.current = setTimeout(() => {
+      if (phoneCallRef.current.status === 'ringing') {
+        wsSend({ type: 'phone_call_end', peerId: targetId });
+        setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+        phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+        setNarr('> CALL TIMEOUT — No answer. The line went cold.');
+      }
+    }, 30000);
   }, [wsSend]);
 
   const handlePhoneCallAccept = useCallback((callerId: string) => {
+    if (phoneRingTimerRef.current) { clearTimeout(phoneRingTimerRef.current); phoneRingTimerRef.current = null; }
     wsSend({ type: 'phone_call_accept', callerId });
   }, [wsSend]);
 
   const handlePhoneCallDecline = useCallback((callerId: string) => {
+    if (phoneRingTimerRef.current) { clearTimeout(phoneRingTimerRef.current); phoneRingTimerRef.current = null; }
     wsSend({ type: 'phone_call_decline', callerId });
     setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
     phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
   }, [wsSend]);
 
   const handlePhoneCallEnd = useCallback(() => {
+    if (phoneRingTimerRef.current) { clearTimeout(phoneRingTimerRef.current); phoneRingTimerRef.current = null; }
     const pc = phoneCallRef.current;
     if (pc.peerId) wsSend({ type: 'phone_call_end', peerId: pc.peerId });
     if (pc.roomId) {
@@ -4993,10 +5031,10 @@ export default function WorldPlay() {
     }
   }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode]);
 
-  // ── Ambient soundtrack — start on first interaction ──────────────────────────
+  // ── Ambient soundtrack — only plays when scoreOn is toggled on ───────────────
   useEffect(() => {
     initMusic();
-    const start = () => { resumeAudioContext(); playMusic(); };
+    const start = () => { resumeAudioContext(); };
     window.addEventListener('pointerdown', start, { once: true });
     window.addEventListener('keydown', start, { once: true });
     return () => {
@@ -5812,10 +5850,7 @@ export default function WorldPlay() {
         setNarr('> INVITE ERROR — Could not connect to server. Try again.');
       });
     }
-    apiFetch('/api/cosmetics/balance', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setCryptoBalance(d.balance ?? 0); })
-      .catch(() => {});
+
     apiFetch('/api/cosmetics/inventory', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -9108,22 +9143,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgb(${Math.floor(72 * mtnBr)},${Math.floor(60 * mtnBr)},${Math.floor(45 * mtnBr)})`;
           ctx.fillRect(0, Math.max(0, oy), cw, Math.max(0, northEdge - oy + 40));
 
-          // Foothills gradient band (playable side)
+          // Foothills gradient band (playable side) — smooth gradient fill
           const foothillDepth = 160;
-          for (let fx = 0; fx < cw; fx += 4) {
-            const wPos = (fx - ox + g.cam.x);
-            const fNoise = noiseS(wPos, 0, 1.2);
-            const foothillH = 28 + fNoise * 22;
-            const foothillY = northEdge + foothillH * 0.4;
-            for (let fd = 0; fd < foothillDepth; fd += 4) {
-              const t2 = fd / foothillDepth;
-              const gR = Math.floor((55 + t2 * 35) * mtnBr);
-              const gG = Math.floor((80 + t2 * 45) * mtnBr);
-              const gB = Math.floor((35 + t2 * 20) * mtnBr);
-              ctx.fillStyle = `rgba(${gR},${gG},${gB},0.28)`;
-              ctx.fillRect(fx, foothillY + fd, 4, 4);
-            }
-          }
+          const foothillGrad = ctx.createLinearGradient(0, northEdge, 0, northEdge + foothillDepth);
+          foothillGrad.addColorStop(0, `rgba(${Math.floor(55 * mtnBr)},${Math.floor(80 * mtnBr)},${Math.floor(35 * mtnBr)},0.32)`);
+          foothillGrad.addColorStop(1, `rgba(${Math.floor(90 * mtnBr)},${Math.floor(125 * mtnBr)},${Math.floor(55 * mtnBr)},0)`);
+          ctx.fillStyle = foothillGrad;
+          ctx.fillRect(0, northEdge, cw, foothillDepth);
 
           // Main mountain silhouette — back layer (larger, darker)
           ctx.beginPath();
@@ -9200,22 +9226,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgb(${Math.floor(68 * mtnBr)},${Math.floor(55 * mtnBr)},${Math.floor(42 * mtnBr)})`;
           ctx.fillRect(0, southEdge - 30, cw, ch - southEdge + 260);
 
-          // Foothills on playable side
+          // Foothills on playable side — smooth gradient fill
           const foothillDepth = 160;
-          for (let fx = 0; fx < cw; fx += 4) {
-            const wPos = (fx - ox + g.cam.x);
-            const fNoise = noiseS(wPos, 9999, 1.1);
-            const foothillH = 24 + fNoise * 20;
-            const foothillY = southEdge - foothillH * 0.4;
-            for (let fd = foothillDepth; fd >= 0; fd -= 4) {
-              const t2 = 1 - fd / foothillDepth;
-              const gR = Math.floor((50 + t2 * 30) * mtnBr);
-              const gG = Math.floor((75 + t2 * 40) * mtnBr);
-              const gB = Math.floor((30 + t2 * 15) * mtnBr);
-              ctx.fillStyle = `rgba(${gR},${gG},${gB},0.25)`;
-              ctx.fillRect(fx, foothillY - fd, 4, 4);
-            }
-          }
+          const sfoothillGrad = ctx.createLinearGradient(0, southEdge, 0, southEdge - foothillDepth);
+          sfoothillGrad.addColorStop(0, `rgba(${Math.floor(50 * mtnBr)},${Math.floor(75 * mtnBr)},${Math.floor(30 * mtnBr)},0.28)`);
+          sfoothillGrad.addColorStop(1, `rgba(${Math.floor(80 * mtnBr)},${Math.floor(115 * mtnBr)},${Math.floor(45 * mtnBr)},0)`);
+          ctx.fillStyle = sfoothillGrad;
+          ctx.fillRect(0, southEdge - foothillDepth, cw, foothillDepth);
 
           // Back mountain layer
           ctx.beginPath();
@@ -9654,21 +9671,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(tx - 2, ty - treeH + canopyH * 0.6, 4, treeH - canopyH * 0.6);
             ctx.fillStyle = `rgb(${Math.floor(70 * br)},${Math.floor(50 * br)},${Math.floor(25 * br)})`;
             ctx.fillRect(tx - 2, ty - treeH + canopyH * 0.6, 1, treeH - canopyH * 0.6);
-            const leafShades = [
-              [40, 120 + Math.floor(s * 40), 25],
-              [55, 140 + Math.floor(s * 30), 35],
-              [30, 100 + Math.floor(s * 50), 20],
-            ];
-            for (let ly = 0; ly < canopyH; ly += 4) {
-              const rowW = canopyW * (1 - Math.abs(ly - canopyH * 0.4) / (canopyH * 0.7));
-              if (rowW < 2) continue;
-              for (let lx = -rowW; lx < rowW; lx += 4) {
-                const li = Math.floor(seed(tx + lx, ty + ly) * 3);
-                const shade = leafShades[li];
-                ctx.fillStyle = `rgb(${Math.floor(shade[0] * br)},${Math.floor(shade[1] * br)},${Math.floor(shade[2] * br)})`;
-                ctx.fillRect(tx + lx - 2, ty - treeH + ly, 4, 4);
-              }
-            }
+            // Smooth ellipse canopy layers
+            const g1 = Math.floor((40 + s * 15) * br), g2 = Math.floor((120 + s * 40) * br), g3 = Math.floor(25 * br);
+            ctx.fillStyle = `rgb(${Math.floor(30 * br)},${Math.floor((100 + s * 50) * br)},${Math.floor(20 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.55, canopyW * 0.85, canopyH * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${g1},${g2},${g3})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.35, canopyW * 0.7, canopyH * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(55 * br)},${Math.floor((140 + s * 30) * br)},${Math.floor(35 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.2, canopyW * 0.5, canopyH * 0.4, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
 
@@ -9682,14 +9692,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const by2 = wy + (s - 0.5) * 40 + oy;
             const bushW = 8 + s * 8;
             const bushH = 6 + s * 5;
-            for (let bly = 0; bly < bushH; bly += 3) {
-              for (let blx = -bushW / 2; blx < bushW / 2; blx += 3) {
-                const si = seed(wx + blx, wy + bly);
-                const g2 = 90 + Math.floor(si * 60);
-                ctx.fillStyle = `rgb(${Math.floor(35 * br)},${Math.floor(g2 * br)},${Math.floor(25 * br)})`;
-                ctx.fillRect(bx2 + blx, by2 - bushH + bly, 3, 3);
-              }
-            }
+            const bGreen = 90 + Math.floor(s * 60);
+            ctx.fillStyle = `rgb(${Math.floor(30 * br)},${Math.floor(bGreen * 0.8 * br)},${Math.floor(20 * br)})`;
+            ctx.beginPath(); ctx.ellipse(bx2, by2 - bushH * 0.3, bushW * 0.9, bushH * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(35 * br)},${Math.floor(bGreen * br)},${Math.floor(22 * br)})`;
+            ctx.beginPath(); ctx.ellipse(bx2 - bushW * 0.2, by2 - bushH * 0.5, bushW * 0.6, bushH * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(45 * br)},${Math.floor(Math.min(255, bGreen * 1.1) * br)},${Math.floor(28 * br)})`;
+            ctx.beginPath(); ctx.ellipse(bx2 + bushW * 0.15, by2 - bushH * 0.55, bushW * 0.5, bushH * 0.45, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
 
@@ -9702,19 +9711,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const rx = wx + (s - 0.5) * 100 + ox;
             const ry = wy + (s - 0.5) * 70 + oy;
             const rw = 6 + s * 10, rh = 5 + s * 7;
-            ctx.fillStyle = `rgba(0,0,0,0.1)`;
+            const rockGray = Math.floor((100 + s * 50) * br);
+            const rockBrown = Math.floor(s * 15 * br);
+            ctx.fillStyle = `rgba(0,0,0,0.12)`;
             ctx.beginPath(); ctx.ellipse(rx, ry + 2, rw * 0.8, 2, 0, 0, Math.PI * 2); ctx.fill();
-            for (let ry2 = 0; ry2 < rh; ry2 += 3) {
-              for (let rx2 = -rw; rx2 < rw; rx2 += 3) {
-                const d = Math.sqrt(rx2 * rx2 / (rw * rw) + ry2 * ry2 / (rh * rh));
-                if (d > 1) continue;
-                const si = seed(wx + rx2, wy + ry2);
-                const gray = 100 + Math.floor(si * 50) + Math.floor((1 - d) * 30);
-                const brown = Math.floor(si * 15);
-                ctx.fillStyle = `rgb(${Math.floor(gray * br)},${Math.floor((gray - 10 + brown) * br)},${Math.floor((gray - 25) * br)})`;
-                ctx.fillRect(rx + rx2, ry - rh + ry2, 3, 3);
-              }
-            }
+            ctx.fillStyle = `rgb(${rockGray},${Math.max(0, rockGray - 10 + rockBrown)},${Math.max(0, rockGray - 25)})`;
+            ctx.beginPath(); ctx.ellipse(rx, ry - rh * 0.3, rw, rh * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.min(255, rockGray + 28)},${Math.min(255, rockGray + 15)},${Math.max(0, rockGray - 10)})`;
+            ctx.beginPath(); ctx.ellipse(rx - rw * 0.18, ry - rh * 0.5, rw * 0.55, rh * 0.45, -0.3, 0, Math.PI * 2); ctx.fill();
           }
         }
       };
@@ -9743,20 +9747,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.beginPath(); ctx.ellipse(tx, ty + 2, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = `rgb(${Math.floor(70 * br)},${Math.floor(50 * br)},${Math.floor(25 * br)})`;
             ctx.fillRect(tx - 1, ty - 12, 3, 14);
-            const canopyShades = [
-              [35, 100 + Math.floor(s * 30), 25],
-              [45, 110 + Math.floor(s * 20), 30],
-            ];
-            for (let ly = 0; ly < 10; ly += 3) {
-              const rw = 6 * (1 - Math.abs(ly - 4) / 6);
-              if (rw < 1) continue;
-              for (let lx = -rw; lx < rw; lx += 3) {
-                const ci = Math.floor(seed(tx + lx, ty + ly) * 2);
-                const cs = canopyShades[ci];
-                ctx.fillStyle = `rgb(${Math.floor(cs[0] * br)},${Math.floor(cs[1] * br)},${Math.floor(cs[2] * br)})`;
-                ctx.fillRect(tx + lx - 1, ty - 14 + ly, 3, 3);
-              }
-            }
+            // Smooth ellipse city tree canopy
+            ctx.fillStyle = `rgb(${Math.floor(30 * br)},${Math.floor((95 + s * 30) * br)},${Math.floor(22 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - 8, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(42 * br)},${Math.floor((108 + s * 22) * br)},${Math.floor(28 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - 11, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
 
@@ -11602,245 +11597,245 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       ctx.globalAlpha = bodyAlpha;
       const wf = g.walkFrame;
-      // Enlarged character sprites: ~30px tall with proper proportions
-      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 4.5;
+      // Compact character sprites: ~20px tall with proper proportions
+      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3;
       const rLeg = -lLeg;
-      const lArm = Math.sin(wf / 28 * Math.PI * 2 + Math.PI) * 3.5;
+      const lArm = Math.sin(wf / 28 * Math.PI * 2 + Math.PI) * 2.5;
       const rArm = -lArm;
-      const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1.5;
-      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.6 : bodyBob;
+      const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1;
+      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.4 : bodyBob;
       const facingRight = facingDir === 'right';
       const facingLeft = facingDir === 'left';
       const facingUp = facingDir === 'up';
       const facingDown = facingDir === 'down' || (!facingRight && !facingLeft && !facingUp);
       // Isometric directional offsets — SE/SW/NE/NW
-      const isoArmOff = facingRight ? 2.5 : facingLeft ? -2.5 : 0;
+      const isoArmOff = facingRight ? 1.5 : facingLeft ? -1.5 : 0;
       // Perspective lean for isometric look
-      const isoLeanX = facingRight ? 1.5 : facingLeft ? -1.5 : 0;
-      const isoLeanY = facingDown ? 0.5 : facingUp ? -0.5 : 0;
+      const isoLeanX = facingRight ? 1 : facingLeft ? -1 : 0;
+      const isoLeanY = facingDown ? 0.3 : facingUp ? -0.3 : 0;
 
       if (pCls === 'corporate') {
         // Shoes / feet
         ctx.fillStyle = '#111111';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 7 + lLeg, 3, 4);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 7 + rLeg, 3, 4);
         // Trousers (legs)
         ctx.fillStyle = '#1e1e1e';
-        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        ctx.fillRect(px - 4 + isoLeanX, py2 + 1 + lLeg * 0.6, 3, 7);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 3, 7);
         // Belt
         ctx.fillStyle = '#888877';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Suit jacket body
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // White shirt / tie visible
         ctx.fillStyle = '#e8e8e8';
-        ctx.fillRect(px - 2 + isoLeanX, py2 - 10 + idleBob, 4, 3);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 7 + idleBob, 2, 2);
         ctx.fillStyle = '#cc1111';
-        ctx.fillRect(px - 1 + isoLeanX, py2 - 8 + idleBob, 2, 7);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 6 + idleBob, 2, 5);
         // Jacket lapels
         ctx.fillStyle = '#222222';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 11 + idleBob, 3, 5);
-        ctx.fillRect(px + 4 + isoLeanX, py2 - 11 + idleBob, 3, 5);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 2, 3);
+        ctx.fillRect(px + 3 + isoLeanX, py2 - 8 + idleBob, 2, 3);
         // Shoulder pad detail
         ctx.fillStyle = '#3a3a3a';
-        ctx.fillRect(px - 9 + isoLeanX, py2 - 10 + idleBob, 2, 4);
-        ctx.fillRect(px + 7 + isoLeanX, py2 - 10 + idleBob, 2, 4);
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 1, 3);
+        ctx.fillRect(px + 5 + isoLeanX, py2 - 7 + idleBob, 1, 3);
         // Arms
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands (skin color)
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
         ctx.fillStyle = '#d4906a';
-        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         // Eyes (facing front or sides)
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
-          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 15 + idleBob, 1, 1);
           // Mouth
           ctx.fillStyle = '#c87a55';
-          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
         // Hair — corporate slick cut
         ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 26 + idleBob, 12, 6);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
         // Glasses frames
         ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px - 5 + isoLeanX, py2 - 21 + idleBob, 4, 3);
-        ctx.strokeRect(px + 1 + isoLeanX, py2 - 21 + idleBob, 4, 3);
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(px - 3 + isoLeanX, py2 - 16 + idleBob, 3, 2);
+        ctx.strokeRect(px + 1 + isoLeanX, py2 - 16 + idleBob, 3, 2);
       } else if (pCls === 'outlaw') {
         // Outlaw class — rugged frontier mercenary look
         // Boots — worn leather
         ctx.fillStyle = '#3d2010';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 7);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 7);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 7 + lLeg, 3, 5);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 7 + rLeg, 3, 5);
         ctx.fillStyle = '#552211';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 16 + lLeg, 5, 1);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 16 + rLeg, 5, 1);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 11 + lLeg, 3, 1);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 11 + rLeg, 3, 1);
         // Trousers — rough canvas
         ctx.fillStyle = '#5a4030';
-        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        ctx.fillRect(px - 4 + isoLeanX, py2 + 1 + lLeg * 0.6, 3, 7);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 3, 7);
         // Ammo/belt straps
         ctx.fillStyle = '#7a6040';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         ctx.fillStyle = '#4a3020';
-        ctx.fillRect(px - 3 + isoLeanX, py2 - 0.5 + idleBob, 2, 2);
-        ctx.fillRect(px + 1 + isoLeanX, py2 - 0.5 + idleBob, 2, 2);
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 0.5 + idleBob, 1, 2);
+        ctx.fillRect(px + 1 + isoLeanX, py2 - 0.5 + idleBob, 1, 2);
         // Duster coat body
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Vest on top of duster
         ctx.fillStyle = '#4a3020';
-        ctx.fillRect(px - 5 + isoLeanX, py2 - 10 + idleBob, 10, 9);
+        ctx.fillRect(px - 3 + isoLeanX, py2 - 7 + idleBob, 6, 6);
         // Duster lapel flaps
         ctx.fillStyle = '#7a5a38';
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 3, 8);
-        ctx.fillRect(px + 5 + isoLeanX, py2 - 11 + idleBob, 3, 8);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 2, 5);
+        ctx.fillRect(px + 3 + isoLeanX, py2 - 8 + idleBob, 2, 5);
         // Arms — rough leather sleeves
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
         ctx.fillStyle = '#d4906a';
-        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
-          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 15 + idleBob, 1, 1);
           ctx.fillStyle = '#887744';
-          ctx.fillRect(px - 2 + isoLeanX, py2 - 15 + idleBob, 4, 1);
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
         // Wide-brim hat
         ctx.fillStyle = '#5a3a18';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 27 + idleBob, 14, 8);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 19 + idleBob, 10, 5);
         ctx.fillStyle = '#6a4a25';
-        ctx.fillRect(px - 9 + isoLeanX, py2 - 20 + idleBob, 18, 2);
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 14 + idleBob, 12, 2);
         ctx.fillStyle = '#4a2a10';
-        ctx.fillRect(px - 5 + isoLeanX, py2 - 30 + idleBob, 10, 4);
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 21 + idleBob, 7, 3);
       } else if (pCls === 'replicant') {
         // Replicants look like ordinary civilians — deliberately indistinguishable
         // Sneakers — plain white/grey
         ctx.fillStyle = '#cccccc';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 6, 5);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 10 + rLeg, 6, 5);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 7 + lLeg, 4, 4);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 7 + rLeg, 4, 4);
         ctx.fillStyle = '#aaaaaa';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 14 + lLeg, 6, 1);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 14 + rLeg, 6, 1);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 10 + lLeg, 4, 1);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 10 + rLeg, 4, 1);
         // Jeans — standard blue denim
         ctx.fillStyle = '#2a3d6b';
-        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        ctx.fillRect(px - 4 + isoLeanX, py2 + 1 + lLeg * 0.6, 3, 7);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 3, 7);
         // Belt
         ctx.fillStyle = '#4a3a22';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Casual hoodie / jacket body
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Hood detail / collar
         ctx.fillStyle = g.poisoned ? '#445533' : (costumeColor ? costumeColor : '#2e3d4a');
-        ctx.fillRect(px - 4 + isoLeanX, py2 - 11 + idleBob, 8, 4);
+        ctx.fillRect(px - 3 + isoLeanX, py2 - 8 + idleBob, 6, 3);
         // Pocket detail
         ctx.fillStyle = 'rgba(0,0,0,0.18)';
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 4, 4);
-        ctx.fillRect(px + 2 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 5 + idleBob, 3, 3);
+        ctx.fillRect(px + 1 + isoLeanX, py2 - 5 + idleBob, 3, 3);
         // Arms — hoodie sleeves
         ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands — normal skin tone
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck — normal skin
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head — normal human skin tone
         ctx.fillStyle = '#d4906a';
-        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           // Normal dark eyes — no glow
           ctx.fillStyle = '#1a0a00';
-          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 15 + idleBob, 1, 1);
           // Neutral mouth
           ctx.fillStyle = '#c87a55';
-          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
         // Plain hair — short, natural dark brown
         ctx.fillStyle = '#2a1800';
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 26 + idleBob, 12, 6);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
       } else {
-        // Default generic / outlaw class — enlarged + isometric
+        // Default generic / outlaw class — compact + isometric
         // Boots
         ctx.fillStyle = '#3a2510';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
+        ctx.fillRect(px - 5 + isoLeanX, py2 + 7 + lLeg, 3, 4);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 7 + rLeg, 3, 4);
         // Jeans
         ctx.fillStyle = '#2a3555';
-        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        ctx.fillRect(px - 4 + isoLeanX, py2 + 1 + lLeg * 0.6, 3, 7);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 3, 7);
         // Belt
         ctx.fillStyle = '#665533';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Jacket body
         const defCol = g.poisoned ? '#557722' : (costumeColor ?? (isFlash ? '#446644' : '#556644'));
         ctx.fillStyle = defCol;
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Jacket collar / scarf
         ctx.fillStyle = '#334422';
-        ctx.fillRect(px - 3 + isoLeanX, py2 - 11 + idleBob, 6, 4);
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 8 + idleBob, 4, 3);
         // Pocket detail
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(px + 2 + isoLeanX, py2 - 7 + idleBob, 4, 4);
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        ctx.fillRect(px + 1 + isoLeanX, py2 - 5 + idleBob, 3, 3);
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 5 + idleBob, 3, 3);
         // Arms
         ctx.fillStyle = defCol;
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
-        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
+        ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
         ctx.fillStyle = '#d4906a';
-        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
         ctx.fillStyle = '#d4906a';
-        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
-          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 15 + idleBob, 1, 1);
           ctx.fillStyle = '#c87a55';
-          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
         // Hair — shaggy/outlaw
         ctx.fillStyle = '#332211';
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 27 + idleBob, 12, 7);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
         // Headband
         ctx.fillStyle = '#665533';
-        ctx.fillRect(px - 7 + isoLeanX, py2 - 19 + idleBob, 14, 2);
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 14 + idleBob, 10, 2);
       }
 
       // ── Visible weapon on player sprite ──
@@ -12559,24 +12554,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* TOP-LEFT — hearts, gold, fiat, zone, character class */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 340 }}>
         {/* Hearts row — Zelda-style HP */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.35rem .6rem', display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap', maxWidth: 240 }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 220 }}>
           {(() => {
             const maxHp = gs.current.maxHp || 100;
-            const hpPerHeart = maxHp / Math.max(1, Math.ceil(maxHp / 20));
-            const totalHearts = Math.ceil(maxHp / hpPerHeart);
+            const displayHearts = Math.min(10, Math.ceil(maxHp / 10));
+            const hpPerHeart = maxHp / displayHearts;
             const fullHearts = Math.floor(hp / hpPerHeart);
             const partialFill = (hp % hpPerHeart) / hpPerHeart;
-            return Array.from({ length: totalHearts }, (_, i) => {
+            return Array.from({ length: displayHearts }, (_, i) => {
               const isFull = i < fullHearts;
-              const isPartial = i === fullHearts && partialFill > 0;
+              const isPartial = i === fullHearts && partialFill > 0.05;
               const heartColor = hpRatio > 0.6 ? '#ff2255' : hpRatio > 0.3 ? '#ff8800' : '#ff2222';
               const emptyColor = 'rgba(255,34,85,.18)';
               return (
-                <span key={i} style={{ fontSize: '1.25rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.3, textShadow: isFull ? `0 0 6px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
+                <span key={i} style={{ fontSize: '.75rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.28, textShadow: isFull ? `0 0 4px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
               );
             });
           })()}
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(255,255,255,.4)', marginLeft: '4px' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: 'rgba(255,255,255,.4)', marginLeft: '3px' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
         </div>
         {/* Survival stats row — Hunger / Thirst / Energy */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -12594,7 +12589,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           ))}
         </div>
-        {/* Gold + Fiat + CRYPTO + Class row */}
+        {/* Gold + Fiat + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
@@ -12602,13 +12597,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
-          <button
-            onClick={() => setShowCosmeticStore(true)}
-            style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(180,100,255,.4)', padding: '.25rem .5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-            title="Open Cosmetic Store"
-          >
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#bb88ff', letterSpacing: '.04em' }}>₿{cryptoBalance.toLocaleString()}</span>
-          </button>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>
               {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
@@ -12790,8 +12778,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
             </button>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.35)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>AMBIENT SCORE</div>
-            <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn && !radioOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎵 SCORE {scoreOn ? '— ON' : '— OFF'}
             </button>
             <button onClick={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: scoreMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: scoreMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -13603,8 +13590,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
 
                     <div style={{ borderBottom: '1px solid rgba(0,255,65,.1)', paddingBottom: '.4rem', marginBottom: '.2rem' }}>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.4)', letterSpacing: '.12em', marginBottom: '.3rem' }}>AMBIENT SCORE</div>
-                      <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                      <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn && !radioOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                         🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
                       </button>
                       <button onClick={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: scoreMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: scoreMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -14728,9 +14714,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <RadioHud visible={radioVisible} on={radioOn} fading={radioFading} topOffset={powerPct < 100 ? '5.2rem' : '3.5rem'} onToggle={handleRadioToggle} stationId={stationId} onNextStation={nextStation} onPrevStation={prevStation} musicMuted={radioMuted} onToggleMusicMute={() => { setRadioMuted(m => !m); }} />
       <RadioPlayer playing={radioOn} mounted={playerEverMounted} muted={allMuted || radioMuted} stationId={stationId} volume={radioVolume} />
 
-      {/* ── SCORE HUD ── (always visible, independent of radio zone) */}
-      <ScoreHud visible={true} topOffset={radioVisible ? (powerPct < 100 ? (radioOn ? '14.2rem' : '10.8rem') : (radioOn ? '12.5rem' : '9.1rem')) : (powerPct < 100 ? '5.2rem' : '3.5rem')} scoreOn={scoreOn} scoreMuted={scoreMuted} onToggleScore={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn) { playMusic(); } else { pauseMusic(); } }} onToggleScoreMute={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} />
-
       {/* City event ticker removed — replaced by proximity notification bar at top */}
 
       {/* ── LEVEL UP OVERLAY ── */}
@@ -15619,16 +15602,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setBankWithAmt(''); sfxCoin();
           setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS. ATM Fee: ƒ${fee.toLocaleString()} (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${net.toLocaleString()}.`);
         };
-        const doConvertCrypto = (cryptoAmt: number) => {
-          if (cryptoAmt <= 0 || cryptoBalance < cryptoAmt) { sfxError(); setNarr('> ATM — Insufficient CRYPTO balance.'); return; }
-          const { fiatGross, fee, fiatNet } = cryptoToFiat(cryptoAmt);
-          setCryptoBalance(prev => prev - cryptoAmt);
-          g.salary += fiatNet; setSalary(g.salary);
-          addBankTx(`CRYPTO → FIAT (${cryptoAmt} CRYPTO)`, fiatNet, g.salary, 'general');
-          addBankTx(`ATM CONVERSION FEE (${(ATM_FEE_RATE * 100).toFixed(0)}%)`, -fee, g.salary, 'atm_fee');
-          sfxCoin();
-          setNarr(`> ATM — Converted ${cryptoAmt} CRYPTO → ƒ${fiatGross.toLocaleString()} FIAT. Fee: ƒ${fee.toLocaleString()} (${(ATM_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${fiatNet.toLocaleString()}.`);
-        };
+
         const doLoan = (tier: typeof LOAN_TIERS[number]) => {
           if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
           const interest = calcLoanInterest(tier);
@@ -15693,9 +15667,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['accounts','atm','loans','wire','history'] as const).map(t => (
+                {(['accounts','loans','wire','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
-                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'atm' ? '[ ATM ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
@@ -15709,7 +15683,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {[
                       { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#00ff41', sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
                       { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#00ff41', sub: 'APY: 0.8% / CYCLE' },
-                      { label: 'CRYPTO', val: `₿${cryptoBalance.toLocaleString()}`, color: '#bb88ff', sub: `1 CRYPTO = ƒ${CRYPTO_TO_FIAT_RATE} FIAT` },
+
                     ].map(({ label, val, color, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.55rem' }}>
                         <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
@@ -15737,49 +15711,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
                     Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. All withdrawals incur a {(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}% ATM processing fee. BANCO OMBRA is not liable for seizures during martial law.
-                  </div>
-                </>)}
-
-                {bankTab === 'atm' && (<>
-                  <div style={{ border: '1px solid rgba(187,136,255,.25)', padding: '.65rem', background: 'rgba(187,136,255,.03)' }}>
-                    <div style={{ ...VTB, fontSize: '1.3rem', color: '#bb88ff', letterSpacing: '.15em', marginBottom: '.3rem' }}>CRYPTO ATM TERMINAL</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(187,136,255,.45)', lineHeight: 1.8 }}>
-                      Convert CRYPTO premium currency to FIAT. Rate: 1 CRYPTO = ƒ{CRYPTO_TO_FIAT_RATE} FIAT. Transaction fee: {(ATM_FEE_RATE * 100).toFixed(0)}% deducted before disbursement. All conversions are final.
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
-                    <div style={{ border: '1px solid rgba(187,136,255,.2)', padding: '.55rem' }}>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(187,136,255,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>CRYPTO BALANCE</div>
-                      <div style={{ ...VTB, fontSize: '1.8rem', color: '#bb88ff' }}>₿{cryptoBalance.toLocaleString()}</div>
-                    </div>
-                    <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.55rem' }}>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>FIAT BALANCE</div>
-                      <div style={{ ...VTB, fontSize: '1.8rem', color: '#00ff41' }}>ƒ{salary.toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(187,136,255,.3)', letterSpacing: '.1em', marginBottom: '.2rem' }}>SELECT CONVERSION AMOUNT</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.5rem' }}>
-                    {[50, 100, 250, 500].map(amt => {
-                      const { fiatGross, fee, fiatNet } = cryptoToFiat(amt);
-                      const canAfford = cryptoBalance >= amt;
-                      return (
-                        <button key={amt} onClick={() => doConvertCrypto(amt)} disabled={!canAfford}
-                          style={{ padding: '.65rem .4rem', border: `1px solid ${canAfford ? 'rgba(187,136,255,.4)' : 'rgba(187,136,255,.1)'}`, background: 'rgba(187,136,255,.04)', cursor: canAfford ? 'pointer' : 'default', textAlign: 'center' }}>
-                          <div style={{ ...VTB, fontSize: '1.2rem', color: canAfford ? '#bb88ff' : 'rgba(187,136,255,.25)' }}>₿{amt}</div>
-                          <div style={{ fontSize: '.45rem', color: canAfford ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', marginTop: '.1rem' }}>→ ƒ{fiatNet.toLocaleString()}</div>
-                          <div style={{ fontSize: '.4rem', color: '#ffaa44', marginTop: '.05rem' }}>FEE: ƒ{fee.toLocaleString()}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {cryptoBalance <= 0 && (
-                    <div style={{ border: '1px solid rgba(187,136,255,.15)', padding: '.55rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(187,136,255,.4)', marginBottom: '.3rem' }}>NO CRYPTO AVAILABLE</div>
-                      <div style={{ fontSize: '.42rem', color: 'rgba(187,136,255,.25)' }}>Purchase CRYPTO bundles from the Cosmetic Store to convert to in-game FIAT.</div>
-                    </div>
-                  )}
-                  <div style={{ fontSize: '.42rem', color: 'rgba(187,136,255,.2)', lineHeight: 1.7 }}>
-                    CRYPTO is a one-way premium currency. Purchase with real money via the store. Convert to FIAT at any ATM terminal. {(ATM_FEE_RATE * 100).toFixed(0)}% processing fee applies to all conversions. PABLO CORP does not offer refunds on CRYPTO purchases.
                   </div>
                 </>)}
 
@@ -16130,10 +16061,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             onClose={() => { setShowCosmeticStore(false); gameRef.current?.focus(); }}
             onEquipChange={(equipped) => {
               setEquippedCosmetics(equipped);
-              apiFetch('/api/cosmetics/balance', { credentials: 'include' })
-                .then(r => r.ok ? r.json() : null)
-                .then(d => { if (d) setCryptoBalance(d.balance ?? 0); })
-                .catch(() => {});
+
             }}
           />
         </Suspense>
@@ -16734,28 +16662,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
           setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${netGain.toLocaleString()} FIAT. Spread: ƒ${spreadFee.toLocaleString()} (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%).`);
         };
-        const doBuyGoldWithCrypto = (goldAmt: number) => {
-          const { cost, fee } = cryptoToGoldRate(goldAmt, 'buy');
-          if (cryptoBalance < cost) { sfxError(); setNarr(`> EXCHANGE — Insufficient CRYPTO. Need ₿${cost.toLocaleString()}.`); return; }
-          setCryptoBalance(prev => prev - cost);
-          g.goldBalance += goldAmt;
-          setGoldBalance(g.goldBalance); sfxCoin();
-          const feeValueFiat = Math.ceil(fee * CRYPTO_TO_FIAT_RATE);
-          addBankTx(`CRYPTO → GOLD ${goldAmt}oz (₿${cost - fee} base)`, 0, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%) ₿${fee}`, -feeValueFiat, g.salary, 'exchange_spread');
-          setNarr(`> EXCHANGE — Purchased ${goldAmt}oz GOLD for ₿${cost.toLocaleString()} CRYPTO. Spread: ₿${fee.toLocaleString()} (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%).`);
-        };
-        const doSellGoldForCrypto = (goldAmt: number) => {
-          if (g.goldBalance < goldAmt) { sfxError(); setNarr('> EXCHANGE — Insufficient GOLD.'); return; }
-          const { fee, received } = cryptoToGoldRate(goldAmt, 'sell');
-          g.goldBalance -= goldAmt;
-          setCryptoBalance(prev => prev + received);
-          setGoldBalance(g.goldBalance); sfxCoin();
-          const feeValueFiat = Math.ceil(fee * CRYPTO_TO_FIAT_RATE);
-          addBankTx(`GOLD → CRYPTO ${goldAmt}oz (₿${received} received)`, 0, g.salary, 'general');
-          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%) ₿${fee}`, -feeValueFiat, g.salary, 'exchange_spread');
-          setNarr(`> EXCHANGE — Sold ${goldAmt}oz GOLD for ₿${received.toLocaleString()} CRYPTO. Spread: ₿${fee.toLocaleString()} (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%).`);
-        };
         const doBuyAsset = (asset: AssetDef) => {
           const price = getAssetPrice(asset, frame);
           if (g.salary < price) { sfxError(); setNarr(`> EXCHANGE — Insufficient FIAT. ${asset.label} costs ƒ${price.toLocaleString()}.`); return; }
@@ -16788,7 +16694,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.salary += gain; setSalary(g.salary); sfxCoin();
           setNarr(`> WORLD STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
         };
-        type ExchangeTab = 'gold' | 'assets' | 'stocks' | 'crypto';
+        type ExchangeTab = 'gold' | 'assets' | 'stocks';
         const tabBtn = (tab: ExchangeTab, label: string, col: string) => (
           <button key={tab} onClick={() => setGoldExchangeTab(tab)}
             style={{ flex:1, padding:'.4rem', background: goldExchangeTab === tab ? `${col}22` : 'transparent', border: `1px solid ${goldExchangeTab === tab ? col : 'rgba(255,255,255,.1)'}`, color: goldExchangeTab === tab ? col : 'rgba(255,255,255,.3)', cursor:'pointer', ...VT2, fontSize:'.85rem' }}>
@@ -16804,7 +16710,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {tabBtn('gold', 'GOLD', '#FFD700')}
                 {tabBtn('assets', 'JEWELS & METALS', '#b9f2ff')}
                 {tabBtn('stocks', 'STOCKS', '#44aaff')}
-                {tabBtn('crypto', 'CRYPTO', '#bb88ff')}
               </div>
               <div style={{ display:'flex', gap:'.8rem', marginBottom:'1rem' }}>
                 <div style={{ flex:1, textAlign:'center' }}>
@@ -16815,10 +16720,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize:'.45rem', color:'rgba(255,215,0,.4)', marginBottom:'.2rem' }}>GOLD</div>
                   <div style={{ ...VT2, fontSize:'1.2rem', color:'#FFD700' }}>{goldBalance}oz</div>
                 </div>
-                <div style={{ flex:1, textAlign:'center' }}>
-                  <div style={{ fontSize:'.45rem', color:'rgba(187,136,255,.4)', marginBottom:'.2rem' }}>CRYPTO</div>
-                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#bb88ff' }}>₿{cryptoBalance.toLocaleString()}</div>
-                </div>
+
               </div>
 
               {goldExchangeTab === 'gold' && (<div>
@@ -16918,46 +16820,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 )}
               </div>)}
-
-              {goldExchangeTab === 'crypto' && (<div>
-                <div style={{ fontSize:'.42rem', color:'rgba(187,136,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>
-                  CRYPTO ↔ GOLD DIRECT EXCHANGE · RATE: 1oz GOLD = ₿{CRYPTO_PER_GOLD.toLocaleString()} CRYPTO · {(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}% BUY SPREAD / {(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}% SELL SPREAD
-                </div>
-                <div style={{ fontSize:'.48rem', color:'rgba(187,136,255,.3)', letterSpacing:'.08em', marginBottom:'.5rem' }}>BUY GOLD WITH CRYPTO</div>
-                <div style={{ display:'flex', gap:'.6rem', marginBottom:'.8rem' }}>
-                  {[1, 5, 10].map(amt => {
-                    const { cost, fee } = cryptoToGoldRate(amt, 'buy');
-                    const canAfford = cryptoBalance >= cost;
-                    return (
-                      <button key={`cbuy${amt}`} onClick={() => doBuyGoldWithCrypto(amt)} disabled={!canAfford}
-                        style={{ flex:1, padding:'.55rem .4rem', background:'rgba(187,136,255,.05)', border:`1px solid ${canAfford ? 'rgba(187,136,255,.4)' : 'rgba(187,136,255,.1)'}`, cursor: canAfford ? 'pointer' : 'default', textAlign:'center' }}>
-                        <div style={{ ...VT2, fontSize:'1.1rem', color: canAfford ? '#FFD700' : 'rgba(255,215,0,.3)' }}>{amt}oz GOLD</div>
-                        <div style={{ fontSize:'.42rem', color: canAfford ? '#bb88ff' : 'rgba(187,136,255,.25)', marginTop:'.1rem' }}>₿{cost.toLocaleString()}</div>
-                        <div style={{ fontSize:'.38rem', color:'#ffaa44', marginTop:'.05rem' }}>SPREAD: ₿{fee.toLocaleString()}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize:'.48rem', color:'rgba(187,136,255,.3)', letterSpacing:'.08em', marginBottom:'.5rem' }}>SELL GOLD FOR CRYPTO</div>
-                <div style={{ display:'flex', gap:'.6rem', marginBottom:'.8rem' }}>
-                  {[1, 5, 10].map(amt => {
-                    const { fee, received } = cryptoToGoldRate(amt, 'sell');
-                    const canSell = goldBalance >= amt;
-                    return (
-                      <button key={`csell${amt}`} onClick={() => doSellGoldForCrypto(amt)} disabled={!canSell}
-                        style={{ flex:1, padding:'.55rem .4rem', background:'rgba(0,255,65,.03)', border:`1px solid ${canSell ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.1)'}`, cursor: canSell ? 'pointer' : 'default', textAlign:'center' }}>
-                        <div style={{ ...VT2, fontSize:'1.1rem', color: canSell ? '#00ff41' : 'rgba(0,255,65,.3)' }}>{amt}oz GOLD</div>
-                        <div style={{ fontSize:'.42rem', color: canSell ? '#bb88ff' : 'rgba(187,136,255,.25)', marginTop:'.1rem' }}>→ ₿{received.toLocaleString()}</div>
-                        <div style={{ fontSize:'.38rem', color:'#ffaa44', marginTop:'.05rem' }}>SPREAD: ₿{fee.toLocaleString()}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize:'.4rem', color:'rgba(187,136,255,.2)', lineHeight:1.7 }}>
-                  CRYPTO is a premium currency purchased with real money. Gold-CRYPTO conversions carry exchange spread. All transactions are final and logged by PABLO CORP.
-                </div>
-              </div>)}
-
               <button onClick={() => { setShowGoldExchange(false); setGoldExchangeTab('gold'); }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,215,0,.2)', color:'rgba(255,215,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>

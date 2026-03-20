@@ -182,34 +182,14 @@ export function fiatToGold(fiat: number, year: number): { gold: number; tax: num
 // ── ATM Fee System ──────────────────────────────────────────────────────────
 export const ATM_FEE_RATE = 0.04;
 export const ATM_WITHDRAW_FEE_RATE = 0.03;
-export const CRYPTO_TO_FIAT_RATE = 100;
-
 export function calcAtmFee(amount: number, feeRate: number): { fee: number; net: number } {
   const fee = Math.ceil(amount * feeRate);
   return { fee, net: amount - fee };
 }
 
-export function cryptoToFiat(crypto: number): { fiatGross: number; fee: number; fiatNet: number } {
-  const fiatGross = crypto * CRYPTO_TO_FIAT_RATE;
-  const fee = Math.ceil(fiatGross * ATM_FEE_RATE);
-  return { fiatGross, fee, fiatNet: fiatGross - fee };
-}
-
-// ── Gold Exchange CRYPTO Spread ─────────────────────────────────────────────
+// ── Gold Exchange Spread ─────────────────────────────────────────────────────
 export const GOLD_EXCHANGE_BUY_SPREAD = 0.05;
 export const GOLD_EXCHANGE_SELL_SPREAD = 0.05;
-export const CRYPTO_PER_GOLD = 1000;
-
-export function cryptoToGoldRate(amount: number, direction: 'buy' | 'sell'): { cost: number; fee: number; received: number } {
-  if (direction === 'buy') {
-    const baseCost = amount * CRYPTO_PER_GOLD;
-    const fee = Math.ceil(baseCost * GOLD_EXCHANGE_BUY_SPREAD);
-    return { cost: baseCost + fee, fee, received: amount };
-  }
-  const baseValue = amount * CRYPTO_PER_GOLD;
-  const fee = Math.ceil(baseValue * GOLD_EXCHANGE_SELL_SPREAD);
-  return { cost: amount, fee, received: baseValue - fee };
-}
 
 // ── Expanded Loan System ────────────────────────────────────────────────────
 export interface LoanTier {
