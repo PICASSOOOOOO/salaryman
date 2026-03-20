@@ -1,11 +1,14 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { execSync } from "child_process";
 import { build as esbuild } from "esbuild";
 import { rm, readFile } from "fs/promises";
+import { createRequire } from "module";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const _require = createRequire(import.meta.url);
+const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times without risking some
@@ -41,20 +44,11 @@ const allowlist = [
   "zod-validation-error",
 ];
 
-function getVersionStamp(): string {
-  let gitHash = "unknown";
-  try {
-    gitHash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
-  } catch {}
-  const buildTime = new Date().toISOString().replace("T", " ").slice(0, 16);
-  return `${gitHash} · ${buildTime}`;
-}
-
 async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
   await rm(distDir, { recursive: true, force: true });
 
-  const versionStamp = getVersionStamp();
+  const versionStamp = getFormattedVersion();
   console.log(`building server... version: ${versionStamp}`);
   const pkgPath = path.resolve(__dirname, "package.json");
   const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
