@@ -1,0 +1,348 @@
+2026-03-20T14:00:38Z info: Deployment: a647a8d8-8e08-46f4-91e6-39d6cd551990
+2026-03-20T14:00:38Z info: Build: b079e88d-4e1a-4336-a0c7-62ec22e033fc
+2026-03-20T14:00:38Z info: Running Security Scan
+2026-03-20T14:00:58Z info: Security Scan Complete
+2026-03-20T14:00:58Z info: Connecting to builder
+2026-03-20T14:00:59Z info: Builder connected
+2026-03-20T14:01:00Z info: Installing packages
+--> pnpm install
+
+Scope: all 14 workspace projects
+
+Lockfile is up to date, resolution step is skipped
+
+Already up to date
+
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.26.1 → 10.32.1.   │
+   │   Changelog: https://pnpm.io/v/10.32.1   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @whiskeysockets/baileys@7.0.0-rc.9,                 │
+│   core-js@3.49.0, koffi@2.15.2, protobufjs@6.8.8, protobufjs@7.5.4,          │
+│   sharp@0.34.5.                                                              │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 3.7s using pnpm v10.26.1
+
+2026-03-20T14:01:04Z info: Starting Build
+
+> workspace@0.0.0 prebuild /home/runner/workspace
+> pnpm --filter @workspace/scripts run bump-version
+
+
+
+> @workspace/scripts@0.0.0 bump-version /home/runner/workspace/scripts
+> tsx ./src/bump-version.ts
+
+
+Version bumped → v.1.1a
+
+
+> workspace@0.0.0 build /home/runner/workspace
+> pnpm run typecheck && pnpm -r --if-present run build
+
+
+
+> workspace@0.0.0 typecheck /home/runner/workspace
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+
+
+
+> workspace@0.0.0 typecheck:libs /home/runner/workspace
+> tsc --build
+
+
+Scope: 4 of 14 workspace projects
+
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+
+artifacts/interview-helper typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck: Done
+
+artifacts/mockup-sandbox typecheck: Done
+
+artifacts/api-server typecheck: Done
+
+artifacts/interview-helper typecheck: Done
+
+Scope: 13 of 14 workspace projects
+
+artifacts/mockup-sandbox build$ vite build
+
+artifacts/mockup-sandbox build: vite v7.3.1 building client environment for production...
+
+artifacts/mockup-sandbox build: transforming...
+
+artifacts/mockup-sandbox build: ✓ 30 modules transformed.
+
+artifacts/mockup-sandbox build: rendering chunks...
+
+artifacts/mockup-sandbox build: computing gzip size...
+
+artifacts/mockup-sandbox build: ✓ built in 878ms
+
+artifacts/mockup-sandbox build: Done
+
+artifacts/api-server build$ tsx ./build.ts
+
+artifacts/api-server build: building server... version: v.1.1a
+
+artifacts/api-server build: ▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+artifacts/api-server build:     src/routes/version.ts:8:33:
+artifacts/api-server build:       8 │ const __filename = fileURLToPath(import.meta.url);
+artifacts/api-server build:         ╵                                  ~~~~~~~~~~~
+artifacts/api-server build:   You need to set the output format to "esm" for "import.meta" to work correctly.
+
+artifacts/api-server build: 1 warning
+
+artifacts/api-server build: ⚡ Done in 312ms
+
+artifacts/api-server build: Done
+
+artifacts/interview-helper build$ vite build --config vite.config.ts
+
+artifacts/interview-helper build: vite v7.3.1 building client environment for production...
+
+artifacts/interview-helper build: transforming...
+
+artifacts/interview-helper build: src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+artifacts/interview-helper build: ✓ 4364 modules transformed.
+
+artifacts/interview-helper build: rendering chunks...
+
+artifacts/interview-helper build: computing gzip size...
+
+artifacts/interview-helper build: dist/public/assets/phone-off-Pt3-p9wB.js                 0.45 kB │ gzip:   0.28 kB
+
+artifacts/interview-helper build: dist/public/assets/sparkles-Dq_fuIva.js                  0.50 kB │ gzip:   0.28 kB
+
+artifacts/interview-helper build: dist/public/assets/index.es-F-McLCGm.js                158.13 kB │ gzip:  52.69 kB
+artifacts/interview-helper build: dist/public/assets/vendor-markdown-zPZ7i_2W.js         159.83 kB │ gzip:  48.49 kB
+artifacts/interview-helper build: dist/public/assets/html2canvas.esm-DXEQVQnt.js         201.04 kB │ gzip:  47.07 kB
+artifacts/interview-helper build: dist/public/assets/vendor-react-C3DdKlqP.js            212.62 kB │ gzip:  68.64 kB
+artifacts/interview-helper build: dist/public/assets/jspdf.es.min-B_fcKemV.js            385.44 kB │ gzip: 124.65 kB
+artifacts/interview-helper build: dist/public/assets/vendor-charts-b09I09uG.js           389.67 kB │ gzip: 106.26 kB
+artifacts/interview-helper build: dist/public/assets/WorldPlay-Cl6D7sTK.js               869.06 kB │ gzip: 241.06 kB
+artifacts/interview-helper build: (!) Some chunks are larger than 500 kB after minification. Consider:
+artifacts/interview-helper build: - Using dynamic import() to code-split the application
+artifacts/interview-helper build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+artifacts/interview-helper build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+artifacts/interview-helper build: ✓ built in 9.81s
+
+artifacts/interview-helper build: Done
+
+
+> @workspace/api-server@0.0.0 build /home/runner/workspace/artifacts/api-server
+> tsx ./build.ts
+
+
+building server... version: v.1.1a
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/routes/version.ts:8:33:
+      8 │ const __filename = fileURLToPath(import.meta.url);
+        ╵                                  ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+
+1 warning
+
+
+> @workspace/interview-helper@0.0.0 build /home/runner/workspace/artifacts/interview-helper
+> vite build --config vite.config.ts
+
+
+vite v7.3.1 building client environment for production...
+
+transforming...
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+✓ 4364 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/public/index.html                                   2.35 kB │ gzip:   0.93 kB
+
+dist/public/assets/CalllHomePage-A2Azemff.js            11.21 kB │ gzip:   4.05 kB
+dist/public/assets/MeetPage-Bj8b01yQ.js                 11.31 kB │ gzip:   3.86 kB
+dist/public/assets/PhoneCoachPage-CBDt1hhM.js           11.50 kB │ gzip:   3.90 kB
+dist/public/assets/PhoneActivePage-RPg5MzXO.js          11.59 kB │ gzip:   3.99 kB
+dist/public/assets/PhoneHistoryPage-DdkLy7-h.js         11.65 kB │ gzip:   3.90 kB
+dist/public/assets/PhoneSecretaryPage-BCa2aHCW.js       11.70 kB │ gzip:   3.78 kB
+dist/public/assets/BrandKit-YNkvoG88.js                 12.05 kB │ gzip:   3.23 kB
+dist/public/assets/ArcadeGames-CCG6alto.js              12.55 kB │ gzip:   4.54 kB
+dist/public/assets/Reporting-BV18wTyi.js                12.76 kB │ gzip:   4.05 kB
+dist/public/assets/MarkdownRenderer-CskrpqEW.js         13.91 kB │ gzip:   5.20 kB
+
+dist/public/assets/CosmeticStore-BZzm1o2l.js            13.98 kB │ gzip:   4.12 kB
+dist/public/assets/Deals-DY73EHcK.js                    14.03 kB │ gzip:   3.86 kB
+dist/public/assets/Goals-BVf85SWa.js                    15.22 kB │ gzip:   4.28 kB
+dist/public/assets/SeoModule-D2SH5iiy.js                15.60 kB │ gzip:   4.46 kB
+dist/public/assets/InvestorsPage-CpI8p2gK.js            18.56 kB │ gzip:   5.46 kB
+dist/public/assets/gameSystems-CfPF7p-r.js              20.30 kB │ gzip:   8.28 kB
+dist/public/assets/MobileTerminal-c8Kr-uEH.js           20.67 kB │ gzip:   5.86 kB
+dist/public/assets/Invoices-BLbSE9_e.js                 20.94 kB │ gzip:   5.88 kB
+dist/public/assets/Dashboard-D4Y00v90.js                21.70 kB │ gzip:   5.54 kB
+dist/public/assets/purify.es-CovBOfck.js                22.58 kB │ gzip:   8.63 kB
+dist/public/assets/Upgrade-D_N31BRK.js                  22.82 kB │ gzip:   6.88 kB
+dist/public/assets/vendor-tanstack-B5Pj3BGV.js          24.21 kB │ gzip:   7.28 kB
+
+✓ built in 9.12s
+
+
+> @workspace/db@0.0.0 push /home/runner/workspace/lib/db
+> drizzle-kit push --config ./drizzle.config.ts
+
+
+Reading config file '/home/runner/workspace/lib/db/drizzle.config.ts'
+
+Using 'pg' driver for database querying
+
+[⣷] Pulling schema from database...
+
+(node:504) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[⣽] Pulling schema from database...
+
+[⣷] Pulling schema from database...
+
+[⣯] Pulling schema from database...
+
+[⣟] Pulling schema from database...
+
+[⡿] Pulling schema from database...
+
+[⢿] Pulling schema from database...
+
+[⣻] Pulling schema from database...
+
+[✓] Pulling schema from database...
+
+[✓] Changes applied
+
+2026-03-20T14:01:56Z info: Pushing pid1 binary layer...
+2026-03-20T14:01:57Z info: Pushing Repl layer...
+2026-03-20T14:01:57Z info: Pushing hosting layer...
+2026-03-20T14:01:58Z info: Created hosting layer
+2026-03-20T14:01:58Z info: Created pid1 binary layer
+2026-03-20T14:03:31Z info: Created Repl layer
+2026-03-20T14:03:36Z info: Creating Autoscale service
+
+    ^
+TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of URL. Received undefined
+    throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], path);
+a port configuration was specified but the required port was never opened
+not all artifact ports opened within timeout expected=[8080] detected=0
+2026-03-20T14:06:16Z error: The deployment failed because the application failed to open a port in time. This can happen because the application takes to long to open a server, or doesn't open one at all on the expected port. Note that this doesn't mean that the application is crashing, only that it's not opening a port in time. The application must serve traffic on the first port specified as 'localPort' in the port configuration specified in the .replit file. Make sure that the application opens a port quickly and that there are no operations taking too long on startup. Check the logs for more information.
