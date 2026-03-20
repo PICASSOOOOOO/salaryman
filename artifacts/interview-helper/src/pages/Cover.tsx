@@ -181,7 +181,7 @@ export default function Cover() {
           transition={{ duration: 0.4, delay: 0.25 }}
           className="text-[11px] font-mono tracking-[0.25em] uppercase text-zinc-500 mb-10"
         >
-          by <span className="text-zinc-300">PICASSO.AI</span>
+          by <a href="https://picassoo.ai" target="_blank" rel="noopener noreferrer" className="text-zinc-300" style={{ textDecoration: 'none' }}>PICASSO.AI</a>
         </motion.p>
 
         <motion.p
