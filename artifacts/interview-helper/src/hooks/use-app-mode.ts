@@ -6,7 +6,7 @@ const buildVersion = __BUILD_VERSION__;
 
 export const BRANDED_CONFIG = {
   name: 'SALARYMAN' as const,
-  sub: `PABLO TERMINAL MX-75 · ${buildVersion}`,
+  sub: `PABLO TERMINAL MX-75 · ALPHA ${buildVersion}`,
   navLabel: 'PABLO' as const,
   emailSender: 'Salaryman' as const,
   description: 'PABLO AI — Executive Field Unit' as const,
