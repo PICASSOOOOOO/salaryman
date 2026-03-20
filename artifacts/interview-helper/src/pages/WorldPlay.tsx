@@ -2649,6 +2649,8 @@ interface Char {
   workstationLabel?: string | null;
   workstationSlot?: string | null;
   bizRegisteredAt?: number | null;
+  activeCostume?: string;
+  ownedClothes?: string[];
 }
 
 interface QuestTask {
@@ -3131,11 +3133,27 @@ export default function WorldPlay() {
     rentReminded: (_ss?.rentReminded ?? 0) as number,
     openedChests: new Set<string>(Array.isArray(_ss?.openedChests) ? _ss.openedChests : []),
     boomerMode: (() => { try { return localStorage.getItem('sm_boomer') === '1'; } catch { return false; } })(),
-    activeCostume: (_ss?.activeCostume ?? 'default') as string,
+    activeCostume: (() => {
+      if (_ss?.activeCostume) return _ss.activeCostume as string;
+      if (char.activeCostume) return char.activeCostume;
+      const cls = char.class?.toLowerCase();
+      if (cls === 'corporate') return 'corpo_suit';
+      if (cls === 'outlaw') return 'wasteland_gear';
+      if (cls === 'replicant') return 'replicant_civvies';
+      return 'default';
+    })(),
     ownedClothes: (() => {
-      const base = Array.isArray(_ss?.ownedClothes) ? _ss.ownedClothes : ['default'];
+      const savedOwned = _ss?.ownedClothes ?? char.ownedClothes;
+      const base = Array.isArray(savedOwned) ? savedOwned : ['default'];
       const s = new Set<string>(base);
-      if (_ss?.activeCostume && !s.has(_ss.activeCostume)) s.add(_ss.activeCostume);
+      const activeToAdd = _ss?.activeCostume ?? char.activeCostume;
+      if (activeToAdd && !s.has(activeToAdd)) s.add(activeToAdd);
+      const cls = char.class?.toLowerCase();
+      if (!_ss?.activeCostume && !char.activeCostume) {
+        if (cls === 'corporate') s.add('corpo_suit');
+        else if (cls === 'outlaw') s.add('wasteland_gear');
+        else if (cls === 'replicant') s.add('replicant_civvies');
+      }
       return s;
     })(),
     weatherParticles: [] as WeatherParticle[],
@@ -3476,7 +3494,7 @@ export default function WorldPlay() {
   }, [showTopMenu]);
   const [hudExpanded, setHudExpanded] = useState(false);
   const [showCostume, setShowCostume] = useState(false);
-  const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
+  const [activeCostume, setActiveCostume] = useState(gs.current.activeCostume);
   const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [radioMuted, setRadioMuted] = useState(false);
@@ -10709,58 +10727,62 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const headR = 2.5 + nv.s3 * 0.8;
         ctx.fillStyle = 'rgba(0,0,0,.25)';
         ctx.beginPath(); ctx.ellipse(nx2, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+        // Faction-aware clothing colors (computed once, used in all idle branches)
+        const npcNType = n.type ?? 'human';
+        const npcIsCorpType = npcNType === 'corp' || n.role === 'corpo_worker' || n.role === 'corpo_military';
+        const npcIsOutlawType = n.role === 'gang_patrol' || n.role === 'homeless' || npcNType === 'mutant';
+        const npcBodyCol = npcIsCorpType ? '#1e1e2e' : npcIsOutlawType ? (nv.s2 > 0.5 ? '#6b4a28' : '#5a3d22') : (nv.s3 > 0.5 ? '#3a4a5a' : (nv.s3 > 0.25 ? '#4a3a55' : '#2e3a2e'));
+        const npcLegCol = npcIsCorpType ? '#111111' : npcIsOutlawType ? '#3d2010' : (nv.s2 > 0.6 ? '#2a3d6b' : '#334466');
         if (idle === 'SITTING' && !isFleeing) {
           ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 4, headR, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = nCol; ctx.fillRect(nx2 - 3, ny2 - 1, 6, 4);
-          ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 3, 8, 3);
-          ctx.fillStyle = '#443322'; ctx.fillRect(nx2 - 6, ny2 + 2, 12, 3);
+          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 3, ny2 - 1, 6, 4);
+          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 3, 8, 3);
+          ctx.fillStyle = npcIsCorpType ? '#888877' : '#443322'; ctx.fillRect(nx2 - 6, ny2 + 2, 12, 3);
+          if (npcIsCorpType) { ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 3); }
         } else if (idle === 'EATING' && !isFleeing) {
           ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          if (isFemale) {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
-          } else {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          }
+          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
+          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
+          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           ctx.fillStyle = '#ffcc88'; ctx.fillRect(nx2 + 4, ny2 - 4, 4, 3);
         } else if (idle === 'BROWSING' && !isFleeing) {
           ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          if (isFemale) {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
-          } else {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          }
+          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
+          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
+          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           const browseBob = Math.sin(g.frame * 0.05 + ni) * 2;
           ctx.fillStyle = skinTone; ctx.fillRect(nx2 + 5, ny2 - 3 + browseBob, 2, 4);
         } else if (idle === 'TALKING' && !isFleeing) {
           ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7, headR, 0, Math.PI * 2); ctx.fill();
-          if (isFemale) {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
-          } else {
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
-            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
-          }
+          ctx.fillStyle = npcBodyCol; ctx.fillRect(nx2 - 4, ny2 - 4, bodyW, 6);
+          if (npcIsCorpType) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3, 2, 2); ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1, 2, 4); }
+          ctx.fillStyle = npcLegCol; ctx.fillRect(nx2 - 4, ny2 + 2, 3, 5); ctx.fillRect(nx2 + 1, ny2 + 2, 3, 5);
           if (g.frame % 60 < 30) {
             ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('...', nx2 + 8, ny2 - 12);
           }
         } else {
-          // Walking or default — multi-frame animated legs
-          if (isFemale) {
-            // Skirt silhouette
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - 2, ny2 - 3, 5, 5);
-            ctx.fillStyle = nCol; ctx.beginPath(); ctx.moveTo(nx2 - 4, ny2 + 2); ctx.lineTo(nx2 + 5, ny2 + 2); ctx.lineTo(nx2 + 6, ny2 + 8); ctx.lineTo(nx2 - 5, ny2 + 8); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = skinTone; ctx.fillRect(nx2 - 1, ny2 + 8 + nLLeg, 2, 3); ctx.fillRect(nx2 + 2, ny2 + 8 + nRLeg, 2, 3);
+          // Walking or default — faction-aware clothing (android/replicant NPCs look civilian)
+          if (npcIsCorpType) {
+            // Corporate suit — dark jacket, dress trousers — same for all genders
+            ctx.fillStyle = '#111111'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
+            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
+            ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx2 - 1, ny2 - 3 + nBob, 2, 2);
+            ctx.fillStyle = '#cc1111'; ctx.fillRect(nx2 - 1, ny2 - 1 + nBob, 2, 4);
+            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
+          } else if (npcIsOutlawType) {
+            // Wasteland rags — dusty canvas/leather, same for all genders
+            const ragCol = nv.s2 > 0.5 ? '#6b4a28' : '#5a3d22';
+            ctx.fillStyle = '#3d2010'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
+            ctx.fillStyle = ragCol; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
+            ctx.fillStyle = '#4a3020'; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
           } else {
-            // Trousers with animated legs
-            ctx.fillStyle = '#223322'; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
-            // Arms swing opposite to legs
-            ctx.fillStyle = nCol; ctx.fillRect(nx2 - bodyW / 2 - 3, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
+            // Civilian clothes — hoodie/top + jeans — same for all genders (humans and replicant NPCs)
+            const civJeans = nv.s2 > 0.6 ? '#2a3d6b' : (nv.s2 > 0.3 ? '#334466' : '#3a3a4a');
+            const civTop = nv.s3 > 0.5 ? '#3a4a5a' : (nv.s3 > 0.25 ? '#4a3a55' : '#2e3a2e');
+            ctx.fillStyle = civJeans; ctx.fillRect(nx2 - 4, ny2 + 2 + nLLeg, 3, 6); ctx.fillRect(nx2 + 1, ny2 + 2 + nRLeg, 3, 6);
+            ctx.fillStyle = civTop; ctx.fillRect(nx2 - Math.floor(bodyW / 2), ny2 - 4 + nBob, bodyW, 6);
+            ctx.fillStyle = civTop; ctx.fillRect(nx2 - bodyW / 2 - 2, ny2 - 2 + nRLeg * 0.5, 2, 5); ctx.fillRect(nx2 + bodyW / 2 + 1, ny2 - 2 + nLLeg * 0.5, 2, 5);
           }
           // Head
           ctx.fillStyle = skinTone; ctx.beginPath(); ctx.arc(nx2, ny2 - 7 + nBob, headR, 0, Math.PI * 2); ctx.fill();
@@ -10793,6 +10815,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         } else if (n.role === 'homeless') {
           // Ragged outer layer
           ctx.fillStyle = '#887755'; ctx.fillRect(nx2 - 6, ny2 - 4, 1, 8); ctx.fillRect(nx2 + 5, ny2 - 4, 1, 8);
+        } else if (npcIsCorpType) {
+          // Corporate ID badge clipped to lapel
+          ctx.fillStyle = '#ccddee'; ctx.fillRect(nx2 + 2, ny2 - 7, 3, 4);
+          ctx.fillStyle = '#3366ff'; ctx.fillRect(nx2 + 3, ny2 - 6, 1, 2);
+          // Briefcase detail (carried low, varies by seed)
+          if (nv.s2 > 0.5) { ctx.fillStyle = '#1a1a2a'; ctx.fillRect(nx2 - 9, ny2 + 1, 5, 4); ctx.fillStyle = '#888877'; ctx.fillRect(nx2 - 8, ny2 + 2, 3, 1); }
+        } else if (npcIsOutlawType) {
+          // Goggles or head wrap based on seed
+          if (nv.s1 > 0.5) {
+            ctx.fillStyle = '#3a2808'; ctx.fillRect(nx2 - 4, ny2 - 10, 8, 2);
+            ctx.fillStyle = '#886622'; ctx.fillRect(nx2 - 3, ny2 - 11, 6, 1);
+          } else {
+            ctx.fillStyle = '#cc8800'; ctx.fillRect(nx2 - 3, ny2 - 9, 6, 2);
+            ctx.fillStyle = '#000'; ctx.fillRect(nx2 - 2, ny2 - 8, 2, 1); ctx.fillRect(nx2 + 1, ny2 - 8, 2, 1);
+          }
         } else if (nv.s1 > 0.7) {
           // Random accessory: hat
           ctx.fillStyle = nv.s2 > 0.5 ? '#334455' : '#553322';
@@ -10884,7 +10921,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
         const opCls = (op.class ?? '').toLowerCase();
-        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#33ffaa' : '#44aaff'; // Suits/Outlaws/Replicants
+        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#aaaacc' : '#44aaff';
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -10899,10 +10936,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#8a7744'; ctx.fillRect(px2 - 7, py2 - 8, 14, 3);
           ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
         } else if (opCls === 'replicant') {
-          ctx.fillStyle = '#224455'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
-          ctx.fillStyle = '#2a5566'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
-          ctx.fillStyle = '#33ffaa'; ctx.fillRect(px2 - 3, py2 - 3, 6, 1);
-          ctx.fillStyle = '#aacccc'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#2a3d6b'; ctx.fillRect(px2 - 4, py2 + 2, 3, 4); ctx.fillRect(px2 + 1, py2 + 2, 3, 4);
+          ctx.fillStyle = '#3a4a5a'; ctx.fillRect(px2 - 6, py2 - 7, 12, 8);
+          ctx.fillStyle = '#2e3d4a'; ctx.fillRect(px2 - 3, py2 - 7, 6, 3);
+          ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px2, py2 - 12, 4, 0, Math.PI * 2); ctx.fill();
         } else {
           ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
           ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
@@ -11420,74 +11457,58 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#4a2a10';
         ctx.fillRect(px - 5 + isoLeanX, py2 - 30 + idleBob, 10, 4);
       } else if (pCls === 'replicant') {
-        // Boots — dark metallic
-        ctx.fillStyle = '#0f1f2a';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
-        // Cyan boot trim
-        ctx.fillStyle = '#33ffaa';
-        ctx.fillRect(px - 7 + isoLeanX, py2 + 15 + lLeg, 5, 1);
-        ctx.fillRect(px + 2 + isoLeanX, py2 + 15 + rLeg, 5, 1);
-        // Tech-pants
-        ctx.fillStyle = '#1a3344';
+        // Replicants look like ordinary civilians — deliberately indistinguishable
+        // Sneakers — plain white/grey
+        ctx.fillStyle = '#cccccc';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 6, 5);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 10 + rLeg, 6, 5);
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 14 + lLeg, 6, 1);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 14 + rLeg, 6, 1);
+        // Jeans — standard blue denim
+        ctx.fillStyle = '#2a3d6b';
         ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
         ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
-        // Knee armor plate
-        ctx.fillStyle = '#224466';
-        ctx.fillRect(px - 6 + isoLeanX, py2 + 5 + lLeg * 0.4, 5, 3);
-        ctx.fillRect(px + 1 + isoLeanX, py2 + 5 + rLeg * 0.4, 5, 3);
-        // Body suit
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#1e4a5a');
+        // Belt
+        ctx.fillStyle = '#4a3a22';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        // Casual hoodie / jacket body
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
         ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
-        // Tech armor chest panel
-        ctx.fillStyle = '#224466';
-        ctx.fillRect(px - 5 + isoLeanX, py2 - 10 + idleBob, 10, 6);
-        // Chest LED stripe
-        ctx.fillStyle = '#33ffaa';
-        ctx.fillRect(px - 4 + isoLeanX, py2 - 5 + idleBob, 8, 1);
-        // Side accent lines (neon)
-        ctx.fillStyle = '#33ffaa88';
-        ctx.fillRect(px - 8 + isoLeanX, py2 - 8 + idleBob, 1, 8);
-        ctx.fillRect(px + 7 + isoLeanX, py2 - 8 + idleBob, 1, 8);
-        // Arms — armored
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#1e4a5a');
+        // Hood detail / collar
+        ctx.fillStyle = g.poisoned ? '#445533' : (costumeColor ? costumeColor : '#2e3d4a');
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 11 + idleBob, 8, 4);
+        // Pocket detail
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        ctx.fillRect(px + 2 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        // Arms — hoodie sleeves
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
         ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
         ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
-        // Arm stripe neon
-        ctx.fillStyle = '#33ffaa66';
-        ctx.fillRect(px - 11 + isoArmOff + isoLeanX, py2 - 4 + lArm + idleBob, 2, 1);
-        ctx.fillRect(px + 9 + isoArmOff + isoLeanX, py2 - 4 + rArm + idleBob, 2, 1);
-        // Hands — pale synthetic
-        ctx.fillStyle = '#aacccc';
+        // Hands — normal skin tone
+        ctx.fillStyle = '#d4906a';
         ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
         ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
-        // Neck
-        ctx.fillStyle = '#aacccc';
+        // Neck — normal skin
+        ctx.fillStyle = '#d4906a';
         ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
-        // Head — synthetic skin (pale blue-grey)
-        ctx.fillStyle = '#aacccc';
+        // Head — normal human skin tone
+        ctx.fillStyle = '#d4906a';
         ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
-          // Eyes — glowing cyan
-          ctx.fillStyle = '#33ffaa';
+          // Normal dark eyes — no glow
+          ctx.fillStyle = '#1a0a00';
           ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
           ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.shadowColor = '#33ffaa'; ctx.shadowBlur = 3;
-          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
-          ctx.shadowBlur = 0;
-          // Slight smile line
-          ctx.fillStyle = '#33ffaa88';
+          // Neutral mouth
+          ctx.fillStyle = '#c87a55';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
         }
-        // Helmet / visor band
-        ctx.fillStyle = '#33ffaa';
-        ctx.fillRect(px - 6 + isoLeanX, py2 - 22 + idleBob, 12, 2);
-        ctx.fillStyle = '#0f2233';
-        ctx.fillRect(px - 5 + isoLeanX, py2 - 25 + idleBob, 10, 5);
-        // Antenna
-        ctx.fillStyle = '#33ffaa';
-        ctx.fillRect(px + 3 + isoLeanX, py2 - 28 + idleBob, 1, 4);
+        // Plain hair — short, natural dark brown
+        ctx.fillStyle = '#2a1800';
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 26 + idleBob, 12, 6);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
       } else {
         // Default generic / outlaw class — enlarged + isometric
         // Boots

@@ -690,6 +690,7 @@ export const CLOTHES: Clothing[] = [
   { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#00ff41' },
   { id: 'corpo_suit', name: 'CORPO SUIT', desc: 'Sharp. Professional. PABLO-approved.', price: 15000, color: '#3366ff' },
   { id: 'wasteland_gear', name: 'WASTELAND GEAR', desc: 'Reinforced. Dusty. Functional.', price: 12000, color: '#aa8844' },
+  { id: 'replicant_civvies', name: 'CIVVIES', desc: 'Plain hoodie. Jeans. Nothing to see here.', price: 0, color: '#3a4a5a' },
   { id: 'stealth_black', name: 'STEALTH BLACK', desc: 'Matte black. Night operations.', price: 20000, color: '#333344' },
   { id: 'neon_runner', name: 'NEON RUNNER', desc: 'Glowing trim. Fast look. No speed bonus.', price: 18000, color: '#ff00ff' },
   { id: 'medic_whites', name: 'MEDIC WHITES', desc: 'Clinic uniform. Enemies hesitate.', price: 10000, color: '#ffffff' },

@@ -837,6 +837,7 @@ export default function WorldMenu() {
     const startSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : 15000;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const signupTimestamp = new Date().toISOString();
+    const factionStartOutfit = cls === 'corporate' ? 'corpo_suit' : cls === 'outlaw' ? 'wasteland_gear' : cls === 'replicant' ? 'replicant_civvies' : 'default';
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
@@ -852,6 +853,8 @@ export default function WorldMenu() {
       workstationSlot: ws?.slot ?? null,
       bizRegisteredAt: hasBusiness ? Date.now() : null,
       createdAt: signupTimestamp,
+      activeCostume: factionStartOutfit,
+      ownedClothes: ['default', factionStartOutfit],
     };
     localStorage.setItem('sm_char', JSON.stringify(char));
     localStorage.setItem('sm_slot', String(selectedSlot));
