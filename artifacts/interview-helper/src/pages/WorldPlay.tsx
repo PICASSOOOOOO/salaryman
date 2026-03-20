@@ -5263,7 +5263,7 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'vending_machine') {
-              sfxEnter(); setShowPablo(true); frozenRef.current = true;
+              sfxEnter(); setShowVend(true); frozenRef.current = true;
               setNarr('> VENDING MACHINE — Browse available items.');
               return;
             }
@@ -5641,11 +5641,14 @@ export default function WorldPlay() {
       if (e.key === ',' && radioVisibleRef.current && radioOn && !frozenRef.current) { prevStation(); }
       if (e.key === '.' && radioVisibleRef.current && radioOn && !frozenRef.current) { nextStation(); }
       if ((e.key === ' ' || e.key === 'Enter') && dialog) advDialog();
-      // [Space] melee attack (or ranged if active weapon is ranged)
+      // [Space] melee attack (or ranged if active/secondary weapon is ranged)
       if (e.key === ' ' && !frozenRef.current && !dialog && !gamePausedRef.current) {
         const g = gs.current;
         if (g.attackCooldown > 0) return;
-        const wpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+        const activeWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+        const secondaryWpn = WEAPONS.find(w => w.id === secondaryWeaponRef.current);
+        // Prefer secondary ranged weapon if active slot is melee
+        const wpn = (activeWpn.type !== 'ranged' && secondaryWpn?.type === 'ranged') ? secondaryWpn : activeWpn;
         // If active weapon is ranged, fire projectile instead of melee
         if (wpn.type === 'ranged' && !g.interior) {
           g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
@@ -13443,24 +13446,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO SETTINGS</div>
             </div>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginBottom: 3 }}>MASTER</div>
             <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
+              {allMuted ? '🔇 MUTE ALL — ON' : '🔊 MUTE ALL — OFF'}
             </button>
             <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn && !radioOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🎵 SCORE {scoreOn ? '— ON' : '— OFF'}
+              🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
             </button>
-            <button onClick={() => { const m = toggleScoreMute(); setScoreMuted(m); if (!m && !scoreOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: scoreMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: scoreMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {scoreMuted ? '🔇 MUTE SCORE' : '🔊 SCORE'}
-            </button>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>RADIO</div>
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              📻 RADIO {radioOn ? '— ON' : '— OFF'}
+              📻 RADIO — {radioOn ? 'ON' : 'OFF'}
             </button>
-            <button onClick={() => { setRadioMuted(m => !m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {radioMuted ? '🔇 MUTE RADIO' : '🔊 RADIO'}
-            </button>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>VOLUMES</div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                 <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎵 SCORE VOL</span>
@@ -13489,7 +13483,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
             </div>
-            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>COMMS</div>
             <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
             </button>
