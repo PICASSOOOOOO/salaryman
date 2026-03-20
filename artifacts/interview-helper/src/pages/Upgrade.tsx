@@ -66,9 +66,9 @@ const FEATURE_CARDS: FeatureCard[] = [
   {
     key: "phone_system",
     icon: Phone,
-    label: "CALLL HOME",
+    label: "TTC",
     boomerLabel: "Phone System",
-    codename: "CALLLHOME",
+    codename: "TTC",
     desc: "Unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, and conference calling for business and marketing partners.",
     boomerDesc: "Unlimited predictive dialing and text messaging for your business. AI call coaching, voicemail, SMS campaigns, and conference calling included.",
     price: 95,

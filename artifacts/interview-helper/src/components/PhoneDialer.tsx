@@ -625,7 +625,7 @@ export function PhoneDialer({
 
       <div style={{ padding: '8px 14px', borderBottom: `1px solid ${crt(0.15)}`, background: crt(0.03), display: 'flex', alignItems: 'center', gap: 8 }}>
         <Phone size={14} style={{ color: crt(0.7) }} />
-        <span style={{ fontSize: '0.75rem', color: crt(0.8), letterSpacing: '0.15em', fontWeight: 'bold' }}>CALLL HOME</span>
+        <span style={{ fontSize: '0.75rem', color: crt(0.8), letterSpacing: '0.15em', fontWeight: 'bold' }}>TTC</span>
         <span style={{ fontSize: '0.4rem', color: crt(0.25), marginLeft: 'auto', letterSpacing: '0.08em' }}>PRO v3.0</span>
       </div>
 
@@ -1161,7 +1161,7 @@ export function PhoneDialer({
       </div>
 
       <div style={{ padding: '3px 8px', borderTop: `1px solid ${crt(0.1)}`, display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.15), letterSpacing: '0.06em' }}>
-        <span>CALLL HOME v3.0 PRO</span>
+        <span>TTC v3.0 PRO</span>
         <span>TWILIO PSTN · AI POWERED</span>
       </div>
     </div>

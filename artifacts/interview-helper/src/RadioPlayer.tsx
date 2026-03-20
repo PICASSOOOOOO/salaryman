@@ -16,7 +16,7 @@ const CALL_HOME_TRACKS: string[] = Array.from({ length: 31 }, (_, i) => {
 });
 
 export const RADIO_STATIONS: RadioStation[] = [
-  { id: 'call_home_fm', name: 'CALL HOME FM', freq: '107.3', genre: 'OFFICIAL OST', tracks: CALL_HOME_TRACKS },
+  { id: 'ttc_fm', name: 'TTC FM', freq: '107.3', genre: 'OFFICIAL OST', tracks: CALL_HOME_TRACKS },
 ];
 
 interface RadioPlayerProps {

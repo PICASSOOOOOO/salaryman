@@ -221,7 +221,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Divider />
       <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
-      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
+      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
       <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything." col="#ffcc00" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
@@ -309,7 +309,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         fid: 'static_monks', id: 'STATIC MONKS', col: '#aaff22', zone: 'Eastern wasteland',
         entry: '"STATIC MONKS zone. Your signal is their noise."',
         enemies: 'STATIC_MONKS — HP 50 · EXP 35 · slow, tough, can POISON',
-        lore: 'Former telecom engineers. They worship dead frequencies. They believe the collapse was a signal. They jam everything. They can poison you — something in the static.',
+        lore: 'Former TTC line engineers and switchboard operators. Expelled after TTC automated the relay grid. They worship dead frequencies. They believe the collapse was a signal. They jam everything. They can poison you — something in the static.',
       },
       {
         fid: 'eastern_bloc', id: 'EASTERN BLOC', col: '#ff66ff', zone: 'Southern wasteland',

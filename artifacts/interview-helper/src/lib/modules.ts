@@ -97,7 +97,7 @@ export const MODULES: Module[] = [
     id: 'phone',
     path: '/phone',
     label: 'PHONE',
-    codename: 'CALLL HOME',
+    codename: 'TTC',
     icon: Phone,
     defaultPath: '/phone/dialer',
     subs: [

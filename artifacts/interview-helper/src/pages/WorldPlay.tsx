@@ -116,7 +116,7 @@ function initCommodityPrices(): Record<string,CargoPrices> {
 }
 const MAX_CARGO = 5;
 
-const ELEVATOR_BUILDINGS = new Set(['print_shop', 'call_home', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub']);
+const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub']);
 
 const FLOOR_PASSWORDS: Map<string, Map<number, string>> = new Map();
 const HOME_PASSWORDS: Map<string, string> = new Map();
@@ -914,8 +914,8 @@ const NPCS: NpcDef[] = [
     whisper: 'The metro is always late.', backstory: 'Heading to the Metro West station.' },
   { name: 'COMMUTER', x: 6720, y: 7050, type: 'corp', gender: 'm', job: 'Commuter', home: 'eastside_flat', workplace: 'megabank', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Fare went up again.', backstory: 'Heading to Metro Central.' },
-  { name: 'COMMUTER', x: 7200, y: 6100, type: 'human', gender: 'f', job: 'Commuter', home: 'hotel', workplace: 'call_home', role: 'pedestrian', idleBehavior: 'WALKING',
-    whisper: 'Third shift this week.', backstory: 'Walking to Metro East.' },
+  { name: 'COMMUTER', x: 7200, y: 6100, type: 'human', gender: 'f', job: 'Line Engineer', home: 'hotel', workplace: 'ttc', role: 'pedestrian', idleBehavior: 'WALKING',
+    whisper: 'Third shift at TTC again.', backstory: 'Walking to the TTC building — switchboard ops run around the clock.' },
   { name: 'WORKER', x: 6350, y: 6300, type: 'human', gender: 'm', job: 'Janitor', home: 'bunker', workplace: 'arcade', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Someone has to clean up after PABLO.', backstory: 'City maintenance worker.' },
   { name: 'WORKER', x: 7600, y: 6300, type: 'human', gender: 'f', job: 'Courier', home: 'hotel', workplace: 'pawn_shop', role: 'pedestrian', idleBehavior: 'WALKING',
@@ -2850,14 +2850,14 @@ const BUILDING_COST: Record<string, number> = {
   clinic: 10000, 
   overlook: 8000,
   rust_porch: 4000, ashfield_hostel: 0, terminus: 0, bastion_keep: 0,
-  call_home: 5000, noodle_bar: 1200,
+  ttc: 5000, noodle_bar: 1200,
   terminal_shop: 12000,
 };
 const BUILDING_COST_LABEL: Record<string, string> = {
   clinic: 'ƒ10K',
   overlook: 'ƒ8K',
   rust_porch: 'ƒ4K', ashfield_hostel: 'FREE', terminus: 'FREE', bastion_keep: 'FREE',
-  call_home: 'ƒ5K', noodle_bar: 'ƒ1.2K',
+  ttc: 'ƒ5K', noodle_bar: 'ƒ1.2K',
   terminal_shop: 'ƒ12K',
   crystal: 'FREE', crystal2: 'FREE', crystal3: 'FREE', crystal4: 'FREE',
   crystal5: 'FREE', crystal6: 'FREE', crystal7: 'FREE',
@@ -3849,11 +3849,11 @@ export default function WorldPlay() {
         setNarr('> CHECKPOINT — Guard blocks the gate. "PASSPORT required to enter the wasteland. Obtain one at PABLO CORP NORTH or the PRINT SHOP."');
       }
     }
-    else if (bid === 'call_home') {
+    else if (bid === 'ttc') {
       sfxEnter();
       const cost = 5000;
-      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> CALL HOME — Encrypted long-range signal. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ƒ${cost.toLocaleString()} FIAT]`); }
-      else { sfxError(); setNarr(`> CALL HOME — ƒ${cost.toLocaleString()} FIAT for a call. "Nothing\'s free in Minx City. Not even a voice."`);}
+      if (g.salary >= cost) { g.salary -= cost; setSalary(g.salary); sfxCoin(); setNarr(`> TTC — THE TELEPHONE COMPANY — Encrypted long-range signal routed through TTC\'s relay grid. You get through. Static, then a voice. "Stay safe. We saw what happened to Neo-Tokyo. Don\'t let Minx City be next." [−ƒ${cost.toLocaleString()} FIAT]`); }
+      else { sfxError(); setNarr(`> TTC — THE TELEPHONE COMPANY — ƒ${cost.toLocaleString()} FIAT for a long-range call. TTC controls every line in Minx City. "Nothing\'s free. Not even a voice."`);}
     }
     else if (bid === 'noodle_bar') {
       sfxEnter();
@@ -11692,7 +11692,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* PHONE CALL TAB */}
                 {pabloTab === 'call' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>CALLL HOME</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>TTC · THE TELEPHONE COMPANY</div>
                     {phoneCall.status === 'incoming' && (
                       <div style={{ border: '1px solid rgba(255,100,100,.5)', background: 'rgba(255,50,50,.08)', padding: '.5rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
                         <div style={{ ...VT, fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em' }}>INCOMING CALL</div>
@@ -11735,11 +11735,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </>
                     )}
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.15)', paddingTop: '.4rem', marginTop: '.3rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.3rem' }}>CALLL HOME · POWER DIALER</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.3rem' }}>TTC · POWER DIALER</div>
                       <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
-                      CALLL HOME v2.0 · CRM Power Dialer + PSTN via Twilio
+                      TTC v2.0 · CRM Power Dialer + PSTN via Twilio
                     </div>
                   </div>
                 )}

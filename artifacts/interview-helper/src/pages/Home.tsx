@@ -1022,7 +1022,7 @@ export default function Home() {
               cursor: 'pointer',
               boxShadow: showPhone ? '0 0 20px rgba(255,40,40,0.2)' : '0 0 20px rgba(34,197,94,0.15)',
             }}
-            title={showPhone ? 'Close Calll Home' : 'Calll Home'}
+            title={showPhone ? 'Close TTC' : 'TTC Phone'}
           >
             <Phone className="w-5 h-5" />
           </button>
