@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2 } from 'lucide-react';
-import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, type InterviewMode } from '@/hooks/use-interview';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2, Radio } from 'lucide-react';
+import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
+import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -37,9 +38,21 @@ export default function Console() {
   const { listenStatus, answer: listenAnswer, startListening, stopListening, reset: resetListen, isRecording, isProcessing: isListenProcessing } = useVoiceListen();
   const { scanStatus, answer: scanAnswer, autoPilot, countdown, lastScanMode, intervalSecs, setIntervalSecs, scanOnce, scanChat, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
+  const { messages: convMessages, sendVoice: sendConsoleVoice, isStreaming: convStreaming } = useAdvisorChat();
 
-  const displayResponse = activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
-  const displayStatus = activePanel === 'listen' ? listenStatus : activePanel === 'scan' ? scanStatus : status;
+  const consoleConv = useVoiceConversation({
+    onSend: sendConsoleVoice,
+    silenceTimeoutMs: 3000,
+  });
+
+  const lastConvResponse = consoleConv.isConvMode || convMessages.length > 0
+    ? convMessages.filter(m => m.role === 'assistant' && m.content).map(m => m.content).join('\n\n---\n\n')
+    : '';
+
+  const displayResponse = consoleConv.isConvMode ? lastConvResponse : activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
+  const displayStatus = consoleConv.isConvMode
+    ? (consoleConv.convState === 'processing' || convStreaming ? 'streaming' : consoleConv.convState === 'idle' && !lastConvResponse ? 'idle' : 'done')
+    : activePanel === 'listen' ? listenStatus : activePanel === 'scan' ? scanStatus : status;
   const canTypeMode = !!displayResponse && (displayStatus === 'done' || displayStatus === 'ready');
 
   const toSolverStatus = (s: typeof displayStatus): import('@/hooks/use-interview').SolverStatus => {
@@ -235,28 +248,65 @@ export default function Console() {
                 <Mic className="w-3.5 h-3.5 text-green-400" />
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'LIVE LISTEN' : PABLO_PRODUCTS.LIVE_LISTEN.short}</span>
               </div>
-              <button
-                onClick={handleListen}
-                disabled={(isAnyBusy && !isRecording) || isListenProcessing}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
-                  ${isRecording
-                    ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
-                    : isListenProcessing
-                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/20'
-                      : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'}`}
-              >
-                {isRecording ? (
-                  <><StopCircle className="w-3 h-3" /> {boomerMode ? 'Stop Recording' : 'Stop'}</>
-                ) : isListenProcessing ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> {boomerMode ? 'Processing...' : 'Processing'}</>
-                ) : (
-                  <><Mic className="w-3 h-3" /> {boomerMode ? 'Start Recording' : 'Listen'}</>
+              <div className="flex items-center gap-1.5">
+                {consoleConv.isSupported && (
+                  <button
+                    onClick={() => consoleConv.isConvMode ? consoleConv.stopConversation() : consoleConv.startConversation()}
+                    disabled={(isAnyBusy && !consoleConv.isConvMode)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                      ${consoleConv.isConvMode
+                        ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/40 animate-pulse'
+                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'}`}
+                  >
+                    <Radio className="w-3 h-3" />
+                    {consoleConv.isConvMode ? 'End Conv' : (boomerMode ? 'Voice Chat' : 'Conv Mode')}
+                  </button>
                 )}
-              </button>
+                <button
+                  onClick={handleListen}
+                  disabled={(isAnyBusy && !isRecording) || isListenProcessing || consoleConv.isConvMode}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                    ${isRecording
+                      ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
+                      : isListenProcessing
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/20'
+                        : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'}`}
+                >
+                  {isRecording ? (
+                    <><StopCircle className="w-3 h-3" /> {boomerMode ? 'Stop Recording' : 'Stop'}</>
+                  ) : isListenProcessing ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> {boomerMode ? 'Processing...' : 'Processing'}</>
+                  ) : (
+                    <><Mic className="w-3 h-3" /> {boomerMode ? 'Start Recording' : 'Listen'}</>
+                  )}
+                </button>
+              </div>
             </div>
-            <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {boomerMode ? 'Record audio from your microphone and get AI answers.' : PABLO_PRODUCTS.LIVE_LISTEN.desc}
-            </p>
+            {consoleConv.isConvMode ? (
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                  consoleConv.convState === 'listening' ? 'bg-emerald-400 animate-pulse' :
+                  consoleConv.convState === 'processing' ? 'bg-amber-400 animate-pulse' :
+                  consoleConv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
+                  'bg-gray-400'
+                }`} />
+                <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold`} style={{ fontFamily: "'Share Tech Mono', monospace",
+                  color: consoleConv.convState === 'listening' ? 'rgba(52,211,153,0.9)' :
+                         consoleConv.convState === 'processing' ? 'rgba(251,191,36,0.9)' :
+                         consoleConv.convState === 'speaking' ? 'rgba(192,132,252,0.9)' :
+                         'rgba(156,163,175,0.6)',
+                }}>
+                  {consoleConv.convState === 'listening' ? 'Listening... speak now' :
+                   consoleConv.convState === 'processing' ? 'Pablo is thinking...' :
+                   consoleConv.convState === 'speaking' ? 'Pablo is speaking...' :
+                   'Voice conversation active'}
+                </p>
+              </div>
+            ) : (
+              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                {boomerMode ? 'Record audio from your microphone and get AI answers.' : PABLO_PRODUCTS.LIVE_LISTEN.desc}
+              </p>
+            )}
           </div>
           </ProGate>
 

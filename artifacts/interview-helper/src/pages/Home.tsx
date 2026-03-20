@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone, Layers } from 'lucide-react';
+import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone, Layers, Radio } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAdvisorChat } from '@/hooks/use-interview';
+import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { usePlan } from '@/hooks/use-plan';
@@ -348,7 +349,7 @@ export default function Home() {
     }
   }, [isAuthenticated]);
 
-  const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, currentAgent, send: sendChat, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
+  const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, currentAgent, send: sendChat, sendVoice: sendChatVoice, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
 
   const handlePABLOAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
     if (action.autoFill || action.tab) {
@@ -368,8 +369,14 @@ export default function Home() {
 
   const voice = usePabloVoice();
 
+  const conv = useVoiceConversation({
+    onSend: sendChatVoice,
+    silenceTimeoutMs: 3000,
+  });
+
   useEffect(() => {
     if (!autoSpeakEnabled) return;
+    if (conv.isConvMode) return;
     const lastMsg = chatMessages[chatMessages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || chatStreaming) return;
     const idx = chatMessages.length - 1;
@@ -377,7 +384,7 @@ export default function Home() {
       lastSpokenRef.current = idx;
       voice.speakResponse(lastMsg.content);
     }
-  }, [chatMessages, chatStreaming, autoSpeakEnabled, voice]);
+  }, [chatMessages, chatStreaming, autoSpeakEnabled, voice, conv.isConvMode]);
 
   const handleSendChat = (text?: string) => {
     const msg = text ?? chatInput;
@@ -936,6 +943,38 @@ export default function Home() {
                 )}
               </div>
 
+              {conv.isConvMode && (
+                <div className="border-t border-emerald-500/20 px-3 py-2 shrink-0">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      conv.convState === 'listening' ? 'bg-emerald-400 animate-pulse' :
+                      conv.convState === 'processing' ? 'bg-amber-400 animate-pulse' :
+                      conv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
+                      'bg-gray-400'
+                    }`} />
+                    <span className="text-xs flex-1" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em',
+                      color: conv.convState === 'listening' ? 'rgba(52,211,153,0.8)' :
+                             conv.convState === 'processing' ? 'rgba(251,191,36,0.8)' :
+                             conv.convState === 'speaking' ? 'rgba(192,132,252,0.8)' :
+                             'rgba(156,163,175,0.6)'
+                    }}>
+                      {conv.convState === 'listening' ? 'Listening... speak now' :
+                       conv.convState === 'processing' ? 'Pablo is thinking...' :
+                       conv.convState === 'speaking' ? 'Pablo is speaking...' :
+                       'Voice conversation active'}
+                    </span>
+                    <button onClick={conv.stopConversation}
+                      className="shrink-0 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 transition-colors"
+                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      END
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground/25 mt-1 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    Say "goodbye Pablo" to end · All exchanges saved to chat
+                  </p>
+                </div>
+              )}
+
               {/* Chat input + Voice PABLO */}
               <div className="border-t border-border p-3 shrink-0">
                 <div className="flex items-end gap-2 bg-muted/30 rounded-xl border border-border focus-within:border-emerald-500/40 transition-colors px-3 py-2">
@@ -945,12 +984,28 @@ export default function Home() {
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
                     placeholder="tell me what you're doing, I'll set it up..."
                     rows={1}
-                    disabled={chatStreaming}
+                    disabled={chatStreaming || conv.isConvMode}
                     className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 disabled:opacity-50 max-h-32 overflow-y-auto"
                     style={{ fieldSizing: 'content' } as React.CSSProperties}
                   />
 
+                  {/* Conversation Mode Button */}
+                  {conv.isSupported && (
+                    <button
+                      onClick={() => conv.isConvMode ? conv.stopConversation() : conv.startConversation()}
+                      disabled={chatStreaming && !conv.isConvMode}
+                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40 disabled:cursor-not-allowed
+                        ${conv.isConvMode
+                          ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400 animate-pulse'
+                          : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-400'}`}
+                      title={conv.isConvMode ? 'End conversation mode' : (boomerMode ? 'Start Voice Conversation' : 'CONV MODE — Hands-free talk with PABLO')}
+                    >
+                      <Radio className="w-4 h-4" />
+                    </button>
+                  )}
+
                   {/* Voice Hold Button — PRO */}
+                  {!conv.isConvMode && (
                     <button
                       onMouseDown={() => voice.startHold(handleVoiceSend)}
                       onMouseUp={() => voice.stopHold()}
@@ -971,28 +1026,33 @@ export default function Home() {
                        voice.isSpeaking ? <Volume2 className="w-4 h-4" /> :
                        <Mic className="w-4 h-4" />}
                     </button>
+                  )}
 
                   {/* Auto-speak toggle */}
-                  <button
-                    onClick={() => {
-                      if (voice.isSpeaking) { voice.stopSpeaking(); }
-                      setAutoSpeakEnabled(p => !p);
-                    }}
-                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-colors
-                      ${autoSpeakEnabled
-                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                        : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
-                    title={autoSpeakEnabled ? 'Auto-speak ON — PABLO reads responses aloud' : 'Auto-speak OFF'}
-                  >
-                    {voice.isSpeaking ? <MicOff className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
+                  {!conv.isConvMode && (
+                    <button
+                      onClick={() => {
+                        if (voice.isSpeaking) { voice.stopSpeaking(); }
+                        setAutoSpeakEnabled(p => !p);
+                      }}
+                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-colors
+                        ${autoSpeakEnabled
+                          ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                          : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
+                      title={autoSpeakEnabled ? 'Auto-speak ON — PABLO reads responses aloud' : 'Auto-speak OFF'}
+                    >
+                      {voice.isSpeaking ? <MicOff className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    </button>
+                  )}
 
-                  <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming}
+                  <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming || conv.isConvMode}
                     className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     {chatStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center">Enter to send · Shift+Enter for new line · Hold mic to speak</p>
+                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center">
+                  {conv.isConvMode ? 'Voice conversation active — speak naturally' : 'Enter to send · Shift+Enter for new line · Hold mic or tap radio for conversation'}
+                </p>
               </div>
             </div>
           </div>

@@ -661,6 +661,80 @@ export function useAdvisorChat() {
     }
   }, [messages, isStreaming, businessMemory]);
 
+  const sendVoice = useCallback(async (transcript: string): Promise<string> => {
+    if (!transcript.trim()) return '';
+    const userMsg: ChatMessage = { role: 'user', content: transcript.trim() };
+    setIsStreaming(true);
+
+    let snapshotHistory: ChatMessage[] = [];
+    setMessages(prev => {
+      snapshotHistory = [...prev, userMsg];
+      return [...snapshotHistory, { role: 'assistant', content: '' }];
+    });
+
+    const advisorUrl = `${import.meta.env.BASE_URL}api/interview/advisor`;
+    let fullText = '';
+    let detectedAgent: AgentInfo | null = null;
+
+    try {
+      const res = await fetch(advisorUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: snapshotHistory.map(m => ({ role: m.role, content: m.content })),
+          businessMemory,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP_${res.status}`);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No stream');
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim().startsWith('data:')) continue;
+          const jsonStr = line.replace(/^data:\s*/, '').trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.agent) detectedAgent = data.agent as AgentInfo;
+            if (data.content) {
+              fullText += data.content;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: fullText, agent: detectedAgent ?? undefined };
+                return updated;
+              });
+            }
+            if (data.done) {
+              const { clean, action } = parseAction(fullText);
+              const finalMsg: ChatMessage = { role: 'assistant', content: clean, action, agent: detectedAgent ?? undefined };
+              const finalHistory = [...snapshotHistory, finalMsg];
+              setMessages(finalHistory);
+              saveChatHistory(finalHistory);
+              fullText = clean;
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      const errMsg: ChatMessage = { role: 'assistant', content: 'Connection error — please try again' };
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = errMsg;
+        return updated;
+      });
+      fullText = '';
+    }
+    setIsStreaming(false);
+    return fullText;
+  }, [businessMemory]);
+
   const clear = useCallback(() => {
     abortRef.current?.abort();
     setMessages([]);
@@ -679,7 +753,7 @@ export function useAdvisorChat() {
     saveBusinessMemory(mem);
   }, []);
 
-  return { messages, businessMemory, isStreaming, currentAgent, send, clear, clearMemory, updateMemory };
+  return { messages, businessMemory, isStreaming, currentAgent, send, sendVoice, clear, clearMemory, updateMemory };
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
