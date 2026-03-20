@@ -9536,22 +9536,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
           ctx.fill();
 
-          // Edge highlight (lighter top-left edge, darker bottom-right)
-          if (isHighDetail) {
-            ctx.beginPath();
-            ctx.moveTo(tcx, tcy - hh2);
-            ctx.lineTo(tcx + hw2, tcy);
-            ctx.strokeStyle = `rgba(255,255,255,0.07)`;
-            ctx.lineWidth = 0.7;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(tcx + hw2, tcy);
-            ctx.lineTo(tcx, tcy + hh2);
-            ctx.lineTo(tcx - hw2, tcy);
-            ctx.strokeStyle = `rgba(0,0,0,0.10)`;
-            ctx.lineWidth = 0.7;
-            ctx.stroke();
-          }
 
           // ── Zone-specific surface detail (only in high-detail sectors) ──
           if (isHighDetail) {
