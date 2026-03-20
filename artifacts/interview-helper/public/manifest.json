@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/nine-square-favicon.png",
+      "src": "/picasso-favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/nine-square-logo.png",
+      "src": "/picasso-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { PhoneDialer } from '../components/PhoneDialer';
-import { NineSquareLogo } from '../components/NineSquareLogo';
+import { PicassoLogo } from '../components/PicassoLogo';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -107,7 +107,7 @@ export default function Cover() {
           transition={{ duration: 0.4 }}
           className="mb-6"
         >
-          <NineSquareLogo size={36} color="#34d399" gap={4} />
+          <PicassoLogo size={36} gap={4} />
         </motion.div>
 
         {/* Badge */}

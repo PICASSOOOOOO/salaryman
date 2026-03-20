@@ -1,5 +1,5 @@
 import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap } from 'lucide-react';
-import { NineSquareLogo } from './NineSquareLogo';
+import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -123,8 +123,8 @@ export function NavBar() {
           className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
           onClick={() => navigate('/')}
         >
-          <div className="w-7 h-7 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <NineSquareLogo size={18} color="rgb(52 211 153)" gap={2} />
+          <div className="w-7 h-7 rounded-md flex items-center justify-center">
+            <PicassoLogo size={18} gap={2} />
           </div>
           {!isMobile && (
             <div>

@@ -252,3 +252,21 @@ id = "AH7eTvr6iMtUgJ_ScSOOY"
 uri = "file://attached_assets/generated_images/frontman-sil-v10.png"
 type = "image"
 title = "V10 — Rounded Bubbly"
+
+[[outputs]]
+id = "c_CtQl4JDA5ZIprmLfYdu"
+uri = "file://artifacts/interview-helper/public/picasso-favicon.png"
+type = "image"
+title = "Picasso Favicon (192x192)"
+
+[[outputs]]
+id = "ZLMi178H4aVzgjyKK723f"
+uri = "file://artifacts/interview-helper/public/picasso-logo.png"
+type = "image"
+title = "Picasso Logo / App Icon (512x512)"
+
+[[outputs]]
+id = "G1-CbcNj-_VFv2_zLJJwh"
+uri = "file://artifacts/interview-helper/public/picasso-social.png"
+type = "image"
+title = "Picasso Social / OG Image"

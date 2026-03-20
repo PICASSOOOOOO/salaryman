@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { NineSquareLogo } from "@/components/NineSquareLogo";
+import { PicassoLogo } from "@/components/PicassoLogo";
 import {
   Zap, CreditCard, Check, Lock, Phone,
   ChevronRight, Loader2, AlertCircle, Mic, Monitor,
@@ -362,7 +362,7 @@ export default function Upgrade() {
                 : "Each module is independently activated. Browse the full Pablo Corp product catalog below."}
             </p>
             <div className="mt-3 flex items-center justify-center gap-1.5 text-muted-foreground/40">
-              <NineSquareLogo size={10} color="currentColor" gap={1} />
+              <PicassoLogo size={10} gap={1} />
               <span className="text-[10px] font-mono tracking-widest uppercase">by PICASSO AI</span>
             </div>
           </motion.div>
@@ -706,7 +706,7 @@ export default function Upgrade() {
         )}
 
         <div className="mt-8 mb-4 flex items-center justify-center gap-1.5 text-muted-foreground/35">
-          <NineSquareLogo size={10} color="currentColor" gap={1} />
+          <PicassoLogo size={10} gap={1} />
           <span className="text-[10px] font-mono tracking-widest uppercase">A PICASSO AI Product</span>
         </div>
       </main>
