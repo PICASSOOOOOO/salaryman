@@ -785,10 +785,24 @@ export default function Home() {
                   { label: boomerMode ? 'STUDIO' : PABLO_PRODUCTS.STUDIO.short, desc: 'Content & asset forge', path: '/studio', color: 'rgba(255,100,180,0.6)', bg: 'rgba(255,100,180,0.05)', border: 'rgba(255,100,180,0.15)', icon: '◈' },
                   { label: boomerMode ? 'REPORTS' : PABLO_PRODUCTS.REPORTING.short, desc: 'Pipeline & analytics', path: '/reporting', color: 'rgba(255,140,80,0.6)', bg: 'rgba(255,140,80,0.05)', border: 'rgba(255,140,80,0.15)', icon: '▥' },
                   { label: boomerMode ? 'AI AGENTS' : PABLO_PRODUCTS.AI_AGENTS.short, desc: 'Multi-agent network', path: '/agents', color: 'rgba(200,140,255,0.6)', bg: 'rgba(200,140,255,0.05)', border: 'rgba(200,140,255,0.15)', icon: '⋈' },
+                  { label: boomerMode ? 'DEALS' : PABLO_PRODUCTS.DEALS.short, desc: 'Track deal pipeline', path: '/business/deals', color: 'rgba(50,220,130,0.6)', bg: 'rgba(50,220,130,0.05)', border: 'rgba(50,220,130,0.15)', icon: '⇅' },
+                  { label: boomerMode ? 'INVOICES' : PABLO_PRODUCTS.INVOICES.short, desc: 'Billing & invoices', path: '/business/invoices', color: 'rgba(120,200,255,0.6)', bg: 'rgba(120,200,255,0.05)', border: 'rgba(120,200,255,0.15)', icon: '⊟' },
+                  { label: boomerMode ? 'CAMPAIGNS' : PABLO_PRODUCTS.STUDIO.short.replace('FORGE-7','SIGNAL-5'), desc: 'Email & outreach', path: '/creative/campaigns', color: 'rgba(255,120,200,0.6)', bg: 'rgba(255,120,200,0.05)', border: 'rgba(255,120,200,0.15)', icon: '⊛' },
+                  { label: boomerMode ? 'BRAND KIT' : PABLO_PRODUCTS.BRAND_KIT.short, desc: 'Brand identity', path: '/creative/brand', color: 'rgba(255,180,100,0.6)', bg: 'rgba(255,180,100,0.05)', border: 'rgba(255,180,100,0.15)', icon: '◉' },
+                  { label: boomerMode ? 'SOUND LAB' : PABLO_PRODUCTS.SOUND_LAB.short, desc: 'Audio production', path: '/creative/lab', color: 'rgba(160,120,255,0.6)', bg: 'rgba(160,120,255,0.05)', border: 'rgba(160,120,255,0.15)', icon: '♫' },
+                  { label: boomerMode ? 'GOALS' : PABLO_PRODUCTS.GOALS.short, desc: 'Mission tracker', path: '/intel/goals', color: 'rgba(255,200,60,0.6)', bg: 'rgba(255,200,60,0.05)', border: 'rgba(255,200,60,0.15)', icon: '⊕' },
+                  { label: boomerMode ? 'SEO' : PABLO_PRODUCTS.SEO.short, desc: 'Search optimization', path: '/intel/seo', color: 'rgba(100,255,180,0.6)', bg: 'rgba(100,255,180,0.05)', border: 'rgba(100,255,180,0.15)', icon: '⊜' },
+                  { label: boomerMode ? 'WEB ANALYZER' : 'RECON-5', desc: 'Analyze any URL', path: '#web-analyzer', color: 'rgba(56,189,248,0.6)', bg: 'rgba(56,189,248,0.05)', border: 'rgba(56,189,248,0.15)', icon: '⊞' },
                 ] as { label: string; desc: string; path: string; color: string; bg: string; border: string; icon: string }[]).map(mod => (
                   <button
                     key={mod.path}
-                    onClick={() => navigate(mod.path)}
+                    onClick={() => {
+                      if (mod.path.startsWith('#')) {
+                        document.getElementById(mod.path.slice(1))?.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        navigate(mod.path);
+                      }
+                    }}
                     className="flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
                     style={{ background: mod.bg, border: `1px solid ${mod.border}` }}
                   >
@@ -990,7 +1004,7 @@ export default function Home() {
         </div>
 
         {/* ── ROW 2: Web Analyzer — FREE ── */}
-        <div className="w-full">
+        <div id="web-analyzer" className="w-full">
           <WebsiteAnalyzer />
         </div>
 

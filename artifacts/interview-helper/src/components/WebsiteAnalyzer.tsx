@@ -1,6 +1,31 @@
-import { Globe, Plus, X, Loader2 } from 'lucide-react';
+import { Globe, Plus, X, Loader2, Clipboard, Type } from 'lucide-react';
 import { useFeatureState } from '@/hooks/use-feature-state';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+
+async function pasteFromClipboard(
+  index: number,
+  urls: string[],
+  setUrls: (urls: string[]) => void,
+) {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const next = [...urls];
+        next[index] = text.trim();
+        setUrls(next);
+        return;
+      }
+    } catch {
+    }
+  }
+  const text = window.prompt('Paste your URL here:');
+  if (text) {
+    const next = [...urls];
+    next[index] = text.trim();
+    setUrls(next);
+  }
+}
 
 export function WebsiteAnalyzer() {
   const { webAnalyzer: w } = useFeatureState();
@@ -15,11 +40,30 @@ export function WebsiteAnalyzer() {
           <div className="space-y-2">
             {w.urls.map((url, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input value={url} onChange={e => {
-                  const next = [...w.urls]; next[i] = e.target.value; w.setUrls(next);
-                }}
+                <input
+                  value={url}
+                  onChange={e => {
+                    const next = [...w.urls]; next[i] = e.target.value; w.setUrls(next);
+                  }}
+                  onPaste={e => {
+                    const text = e.clipboardData.getData('text');
+                    if (!text) return;
+                    e.preventDefault();
+                    const next = [...w.urls];
+                    next[i] = text.trim();
+                    w.setUrls(next);
+                  }}
                   placeholder="https://example.com"
-                  className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
+                  className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => pasteFromClipboard(i, w.urls, w.setUrls)}
+                  title="Paste URL from clipboard"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Clipboard className="w-3.5 h-3.5" />
+                </button>
                 {w.urls.length > 1 && (
                   <button onClick={() => w.setUrls(w.urls.filter((_, j) => j !== i))}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors">
@@ -38,9 +82,28 @@ export function WebsiteAnalyzer() {
 
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Focus (optional)</label>
-            <input value={w.analysisFocus} onChange={e => w.setAnalysisFocus(e.target.value)}
-              placeholder="e.g. pricing, competitors, tech stack"
-              className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
+            <div className="flex items-center gap-2">
+              <input value={w.analysisFocus} onChange={e => w.setAnalysisFocus(e.target.value)}
+                onPaste={e => {
+                  const text = e.clipboardData.getData('text');
+                  if (!text) return;
+                  e.preventDefault();
+                  w.setAnalysisFocus(text.trim());
+                }}
+                placeholder="e.g. pricing, competitors, tech stack"
+                className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50" />
+              <button
+                type="button"
+                onClick={() => {
+                  const text = window.prompt('Enter analysis focus:', w.analysisFocus);
+                  if (text !== null) w.setAnalysisFocus(text.trim());
+                }}
+                title="Type or paste focus text"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Type className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <button onClick={w.analyze} disabled={w.urls.every(u => !u.trim()) || w.analyzing}
