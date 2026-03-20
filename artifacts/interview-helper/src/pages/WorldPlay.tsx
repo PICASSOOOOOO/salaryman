@@ -2940,6 +2940,9 @@ export default function WorldPlay() {
     policeAlertTimer: 0,
     policeAlertX: 0,
     policeAlertY: 0,
+    pendingPoliceAlert: 0,
+    pendingPoliceAlertX: 0,
+    pendingPoliceAlertY: 0,
     subwayTransit: false,
     subwayTransitTimer: 0,
     subwayTransitDest: null as null | { x: number; y: number; label: string },
@@ -7624,6 +7627,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── LIVING WORLD: Police patrol movement + player aggro response ──
       if (g.policeAlertTimer > 0) g.policeAlertTimer--;
+
+      // ── Pending delayed police alert (civilian witness called it in) ──
+      if (g.pendingPoliceAlert > 0) {
+        g.pendingPoliceAlert--;
+        if (g.pendingPoliceAlert === 0) {
+          g.policeAlertTimer = 300;
+          g.policeAlertX = g.pendingPoliceAlertX;
+          g.policeAlertY = g.pendingPoliceAlertY;
+          setNarr('> POLICE ALERT — The tip came in. All units dispatched to your last location.');
+          g.floaters.push({ x: g.px, y: g.py - 20, text: 'POLICE DISPATCHED', color: '#ff4444', life: 80, maxLife: 80 });
+        }
+      }
       for (let pi = 0; pi < g.police.length; pi++) {
         const p = g.police[pi];
         if (!g.policeCooldowns[pi]) g.policeCooldowns[pi] = 0;
@@ -7957,9 +7972,78 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.vehicle = pv.type;
                 if (!g.ownedVehicles.includes(pv.type)) g.ownedVehicles.push(pv.type);
                 g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace(/_/g,' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
-                setNarr(`> POLICE ALERT — You hotwired a ${pv.type.replace(/_/g,' ')}. All units converging.`);
-                g.policeAlertTimer = 300;
-                g.policeAlertX = g.px; g.policeAlertY = g.py;
+
+                // ── Witness detection ─────────────────────────────────────────
+                const WITNESS_RADIUS = 175;
+                const vxT = g.px, vyT = g.py;
+
+                // Check police-role NPC witnesses using schedule-aware positions
+                // Includes 'police', 'guard', and 'corpo_military' roles
+                const wt = g.worldTime ?? 0;
+                const isPoliceRole = (r?: string) => r === 'police' || r === 'guard' || r === 'corpo_military';
+                const policeNpcWitness = NPCS.some(npc => {
+                  if (!isPoliceRole(npc.role)) return false;
+                  const sp = getNpcSchedulePos(npc, wt);
+                  return Math.hypot(sp.x - vxT, sp.y - vyT) < WITNESS_RADIUS;
+                });
+
+                // Check police patrol units (PoliceUnit array)
+                const policeUnitWitness = g.police.some(p =>
+                  Math.hypot(p.x - vxT, p.y - vyT) < WITNESS_RADIUS
+                );
+
+                // Check POLICE-type band members
+                const policeBandWitness = g.bands.some(band =>
+                  band.type === 'POLICE' && band.members.some(m => !m.dead && Math.hypot(m.x - vxT, m.y - vyT) < WITNESS_RADIUS)
+                );
+
+                const policeWitness = policeNpcWitness || policeUnitWitness || policeBandWitness;
+
+                // Check civilian NPC witnesses using schedule-aware positions
+                const civilianNpcWitness = !policeWitness && NPCS.some(npc => {
+                  if (isPoliceRole(npc.role)) return false;
+                  const sp = getNpcSchedulePos(npc, wt);
+                  return Math.hypot(sp.x - vxT, sp.y - vyT) < WITNESS_RADIUS;
+                });
+
+                // Trigger NPC reactions for all nearby NPCs using schedule-aware positions
+                for (const npc of NPCS) {
+                  const sp = getNpcSchedulePos(npc, wt);
+                  const npcWitDist = Math.hypot(sp.x - vxT, sp.y - vyT);
+                  if (npcWitDist < WITNESS_RADIUS) {
+                    if (!npc.origX) { npc.origX = sp.x; npc.origY = sp.y; }
+                    if (!npc.reactTimer) npc.reactTimer = 0;
+                    if (isPoliceRole(npc.role)) {
+                      // Police-role NPCs move toward the scene (SPECTATING = approach behavior)
+                      npc.x = sp.x; npc.y = sp.y;
+                      npc.reactState = 'SPECTATING';
+                      npc.reactTimer = 400;
+                    } else if (npc.reactState !== 'FLEEING' && npc.reactState !== 'SPECTATING') {
+                      npc.x = sp.x; npc.y = sp.y;
+                      const willFlee = Math.random() < 0.65 || npc.role === 'pedestrian';
+                      npc.reactState = willFlee ? 'FLEEING' : 'SPECTATING';
+                      npc.reactTimer = 300;
+                    }
+                  }
+                }
+
+                if (policeWitness) {
+                  // Police saw it — immediate alert, longer timer for stronger response
+                  g.policeAlertTimer = 450;
+                  g.policeAlertX = vxT; g.policeAlertY = vyT;
+                  g.pendingPoliceAlert = 0;
+                  setNarr(`> POLICE ALERT — A police unit witnessed the theft! All units converging.`);
+                } else if (civilianNpcWitness) {
+                  // Civilian witness — delayed alert (4 seconds = 240 frames at 60fps)
+                  g.pendingPoliceAlert = 240;
+                  g.pendingPoliceAlertX = vxT; g.pendingPoliceAlertY = vyT;
+                  g.floaters.push({ x: g.px, y: g.py - 28, text: 'WITNESS CALLING POLICE!', color: '#ff8800', life: 80, maxLife: 80 });
+                  setNarr(`> A witness is calling the police! You have a few seconds to disappear.`);
+                } else {
+                  // No witnesses — silent theft
+                  g.pendingPoliceAlert = 0;
+                  setNarr(`> You hotwired the ${pv.type.replace(/_/g,' ')} unnoticed. No witnesses.`);
+                }
               } else {
                 g.floaters.push({ x: g.px, y: g.py - 16, text: 'STEAL FAILED', color: '#ff4444', life: 40, maxLife: 40 });
                 setNarr('> Hotwire attempt failed. The alarm triggered briefly.');
