@@ -50,7 +50,7 @@ export function MobileSubNav() {
   );
 }
 
-export function MobileBottomBar() {
+export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
 
@@ -70,33 +70,35 @@ export function MobileBottomBar() {
   };
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-[#0a0a0b] border-t border-white/[0.06] sm:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', height: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
-    >
-      {MODULES.filter(mod => mod.id !== 'phone').map(mod => {
-        const active = isModuleActive(mod);
-        const Icon = mod.icon;
-        const label = boomerMode ? mod.label : mod.codename.split(' ')[0];
-        return (
-          <button
-            key={mod.id}
-            onClick={() => navigate(mod.defaultPath)}
-            className={`flex flex-col items-center justify-center flex-1 h-14 gap-0.5 transition-colors ${
-              active ? 'text-emerald-400' : 'text-zinc-600 hover:text-zinc-400'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-              active ? 'bg-emerald-500/15 border border-emerald-500/25' : 'border border-transparent'
-            }`}>
-              <Icon className="w-4 h-4" />
-            </div>
-            <span className="font-mono text-[8px] tracking-widest uppercase leading-none">
+    <div className="sm:hidden bg-[#0a0a0b] border-b border-white/[0.06] overflow-hidden">
+      <div
+        className="flex items-center gap-1 px-3 py-2 overflow-x-auto scrollbar-hide"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {MODULES.filter(mod => mod.id !== 'phone').map(mod => {
+          const active = isModuleActive(mod);
+          const Icon = mod.icon;
+          const label = boomerMode ? mod.label : mod.codename.split(' ')[0];
+          return (
+            <button
+              key={mod.id}
+              onClick={() => navigate(mod.defaultPath)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+                active
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                  : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
+              }`}
+            >
+              <Icon className="w-3 h-3 shrink-0" />
               {label}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
+}
+
+export function MobileBottomBar() {
+  return null;
 }

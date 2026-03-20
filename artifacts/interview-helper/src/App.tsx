@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
-import { MobileBottomBar, MobileSubNav } from "@/components/MobileBottomBar";
+import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -123,12 +123,15 @@ function AppShell() {
     };
   }, [isGameRoute]);
 
-  const showMobileBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
-
   return (
     <>
-      {showNavBar && <NavBar />}
-      {showNavBar && <MobileSubNav />}
+      {showNavBar && (
+        <div className="sticky top-0 z-50 sm:static sm:z-auto">
+          <NavBar />
+          <MobileModuleNav />
+          <MobileSubNav />
+        </div>
+      )}
       {/* Keep-alive panels */}
       <Suspense fallback={isHome ? <CRTFallback /> : null}>
         <div style={{ display: isHome ? "block" : "none" }}>
@@ -224,8 +227,6 @@ function AppShell() {
           </Switch>
         </Suspense>
       )}
-      {/* Mobile bottom tab bar */}
-      {showMobileBar && <MobileBottomBar />}
       {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
       {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
         <div
