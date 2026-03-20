@@ -53,7 +53,7 @@ export function PhonePageLayout({
           fontSize: '0.45rem', color: crt(0.2), letterSpacing: '0.2em',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span>TTC PHONE SYSTEM</span>
+            <img src="/brand/callhome/calll-home-brush.png" alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
             <span style={{ color: crt(0.12) }}>│</span>
             <span>v3.0 PRO</span>
             <span style={{ color: crt(0.12) }}>│</span>

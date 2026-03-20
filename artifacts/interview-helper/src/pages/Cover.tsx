@@ -99,11 +99,29 @@ export default function Cover() {
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
 
+        {/* Picasso brand mark */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-3 mb-6"
+        >
+          <img
+            src="/brand/picasso/picasso-favicon.png"
+            alt="Picassoo.AI"
+            className="w-10 h-10 rounded-lg"
+            style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+          />
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+            Picasso<span style={{ color: 'rgba(255,255,255,0.35)' }}>o.AI</span>
+          </div>
+        </motion.div>
+
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
           className="inline-flex items-center gap-2.5 mb-8 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -233,6 +251,27 @@ export default function Cover() {
               </span>
             ))}
           </div>
+        </motion.div>
+
+        {/* SALARYMAN Teaser Video */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="mt-12 w-full max-w-xl flex flex-col items-center gap-3"
+        >
+          <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.25em]">Spring 2024 — Official Teaser</p>
+          <div className="w-full rounded-xl overflow-hidden border border-white/8 shadow-2xl shadow-black/40">
+            <video
+              src="/brand/other/salaryman-teaser.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full"
+              style={{ display: 'block', background: '#000' }}
+            />
+          </div>
+          <p className="text-[9px] font-mono text-zinc-700 tracking-widest uppercase">A PICASSOO.AI PRODUCTION</p>
         </motion.div>
       </div>
 

@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/salaryman-logo.png",
+      "src": "/picasso-favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/salaryman-logo.png",
+      "src": "/picasso-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

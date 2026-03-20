@@ -623,9 +623,8 @@ export function PhoneDialer({
         </button>
       )}
 
-      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${crt(0.15)}`, background: crt(0.03), display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Phone size={14} style={{ color: crt(0.7) }} />
-        <span style={{ fontSize: '0.75rem', color: crt(0.8), letterSpacing: '0.15em', fontWeight: 'bold' }}>TTC</span>
+      <div style={{ padding: '6px 14px', borderBottom: `1px solid ${crt(0.15)}`, background: 'rgba(0,4,0,0.8)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <img src="/brand/callhome/calll-home-brush.png" alt="CALLL HOME" style={{ height: 28, width: 'auto', opacity: 0.9, filter: 'brightness(1.4) saturate(0)' }} />
         <span style={{ fontSize: '0.4rem', color: crt(0.25), marginLeft: 'auto', letterSpacing: '0.08em' }}>PRO v3.0</span>
       </div>
 

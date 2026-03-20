@@ -817,6 +817,13 @@ export default function WorldMenu() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#030803', ...S, position: 'relative', overflow: 'hidden' }}>
+      {/* Pixel Office background art — subtle, low opacity */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+        backgroundImage: 'url(/brand/other/pixel-office.png)',
+        backgroundSize: 'cover', backgroundPosition: 'center bottom',
+        opacity: 0.06, filter: 'sepia(1) hue-rotate(80deg) saturate(3)',
+      }} />
       <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents: 'none', zIndex: 99 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(0,255,65,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 0 }} />
 
@@ -849,7 +856,10 @@ export default function WorldMenu() {
         {/* Title */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSOO.AI — PABLO CORP WORLD</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', marginTop: '.5rem' }}>
+            <img src="/brand/picasso/picasso-favicon.png" alt="Picassoo.AI" style={{ width: 20, height: 20, borderRadius: 3, border: '1px solid rgba(0,255,65,.2)' }} />
+            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', ...VT }}>BY PICASSOO.AI — PABLO CORP WORLD</div>
+          </div>
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
           <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP IMMIGRATION INTERFACE v1.0</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
