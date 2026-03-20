@@ -1655,6 +1655,7 @@ export default function WorldMenu() {
         </span>
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
+          <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>₿ CRYPTO STORE</button>
           <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', background: 'transparent', border: '1px solid rgba(0,255,65,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
 const SoundLabOverlay = lazy(() => import('./SoundLab'));
+const CosmeticStore = lazy(() => import('./CosmeticStore'));
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
@@ -3323,6 +3324,10 @@ export default function WorldPlay() {
   const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
   const [goldStandardToggle, setGoldStandardToggle] = useState(false);
+  const [cryptoBalance, setCryptoBalance] = useState(0);
+  const [showCosmeticStore, setShowCosmeticStore] = useState(false);
+  const [equippedCosmetics, setEquippedCosmetics] = useState<Record<string, string>>({});
+  useEffect(() => { equippedCosmeticsRef.current = equippedCosmetics; }, [equippedCosmetics]);
   const [temperatureDisplay, setTemperatureDisplay] = useState<TemperatureLevel>('MILD');
   const [showCrafting, setShowCrafting] = useState(false);
   const [showMerchantShop, setShowMerchantShop] = useState<MerchantDef | null>(null);
@@ -3357,6 +3362,7 @@ export default function WorldPlay() {
   const [hudExpanded, setHudExpanded] = useState(false);
   const [showCostume, setShowCostume] = useState(false);
   const [activeCostume, setActiveCostume] = useState(_ss?.activeCostume ?? 'default');
+  const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [musicMuted, setMusicMuted] = useState(() => getMusicMuted());
   const [radioMuted, setRadioMuted] = useState(false);
@@ -5462,6 +5468,32 @@ export default function WorldPlay() {
     } catch { /* silent */ }
   }, []);
   useEffect(() => { fetchBillboards(); const iv = setInterval(fetchBillboards, 30000); return () => clearInterval(iv); }, [fetchBillboards]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('crypto_success') === '1' || params.get('store') === '1') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setShowCosmeticStore(true);
+    }
+    apiFetch('/api/cosmetics/balance', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCryptoBalance(d.balance ?? 0); })
+      .catch(() => {});
+    apiFetch('/api/cosmetics/inventory', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.inventory) {
+          const inv = d.inventory as Array<{ cosmeticId: string; equipped: boolean }>;
+          const map: Record<string, string> = {};
+          inv.filter(i => i.equipped).forEach(i => {
+            const cat = i.cosmeticId.split('_')[0];
+            map[cat] = i.cosmeticId;
+          });
+          setEquippedCosmetics(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const purchaseBillboard = useCallback(async (bbId: number) => {
     try {
@@ -10308,7 +10340,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const px = g.px + ox, py2 = g.py + oy;
       const isFlash = g.invincible % 4 < 2;
       const pCls = char.class.toLowerCase();
-      const costumeColor = (() => { const ac = g.activeCostume; if (ac === 'default') return null; const c = CLOTHES.find(cl => cl.id === ac); return c ? c.color : null; })();
+      const costumeColor = (() => {
+        const skinCosmeticId = equippedCosmeticsRef.current['skin'];
+        if (skinCosmeticId) {
+          const skinColors: Record<string, string> = {
+            skin_neon_runner: '#00ccff', skin_void_ghost: '#220033', skin_chrome_executive: '#cccccc',
+            skin_toxic_waste: '#44ff00', skin_bloodrush: '#cc1122', skin_gold_corp: '#ffaa00',
+          };
+          if (skinColors[skinCosmeticId]) return skinColors[skinCosmeticId];
+        }
+        const ac = g.activeCostume; if (ac === 'default') return null; const c = CLOTHES.find(cl => cl.id === ac); return c ? c.color : null;
+      })();
       const factionGlow = costumeColor ?? (pCls === 'corporate' ? '#00ff41' : pCls === 'outlaw' ? '#88ff44' : pCls === 'replicant' ? '#33ffaa' : '#00ff41');
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
@@ -11077,7 +11119,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           ))}
         </div>
-        {/* Gold + Fiat + Class row */}
+        {/* Gold + Fiat + CRYPTO + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
@@ -11085,6 +11127,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
+          <button
+            onClick={() => setShowCosmeticStore(true)}
+            style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(180,100,255,.4)', padding: '.25rem .5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+            title="Open Cosmetic Store"
+          >
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#bb88ff', letterSpacing: '.04em' }}>₿{cryptoBalance.toLocaleString()}</span>
+          </button>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>
               {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
@@ -14015,6 +14064,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <SoundLabOverlay onClose={() => { setShowSoundLab(false); gameRef.current?.focus(); }} />
           </Suspense>
         </div>
+      )}
+
+      {showCosmeticStore && (
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING STORE...</div>}>
+          <CosmeticStore
+            onClose={() => { setShowCosmeticStore(false); gameRef.current?.focus(); }}
+            onEquipChange={(equipped) => {
+              setEquippedCosmetics(equipped);
+              apiFetch('/api/cosmetics/balance', { credentials: 'include' })
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d) setCryptoBalance(d.balance ?? 0); })
+                .catch(() => {});
+            }}
+          />
+        </Suspense>
       )}
 
       {showSecretLabPrompt && (

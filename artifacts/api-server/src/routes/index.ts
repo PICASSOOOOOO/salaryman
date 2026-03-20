@@ -26,6 +26,7 @@ import seoRouter from "./seo";
 import dealsRouter from "./deals";
 import goalsRouter from "./goals";
 import merchRouter from "./merch";
+import cosmeticsRouter from "./cosmetics";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(seoRouter);
 router.use(dealsRouter);
 router.use(goalsRouter);
 router.use(merchRouter);
+router.use(cosmeticsRouter);
 
 export default router;

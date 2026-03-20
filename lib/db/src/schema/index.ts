@@ -40,3 +40,4 @@ export * from "./campaigns";
 export * from "./deals";
 export * from "./goals";
 export * from "./merch";
+export * from "./cosmetics";
