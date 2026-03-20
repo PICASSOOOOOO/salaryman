@@ -18,6 +18,15 @@ if (Number.isNaN(port) || port <= 0) {
 const httpServer = createServer(app);
 attachWorldServer(httpServer);
 
+httpServer.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`[FATAL] Port ${port} is already in use. Another process may still be running. Exiting.`);
+  } else {
+    console.error("[FATAL] Server error:", err);
+  }
+  process.exit(1);
+});
+
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });

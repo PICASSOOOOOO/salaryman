@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -155,7 +156,7 @@ export default function ContactCollector() {
   const loadContacts = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
-      const res = await fetch('/api/tools/contacts');
+      const res = await apiFetch('/api/tools/contacts');
       if (res.ok) { const data = await res.json(); setContacts(data.contacts ?? []); }
     } catch {}
     setLoading(false);
@@ -166,7 +167,7 @@ export default function ContactCollector() {
   const loadInteractions = async (contactId: number) => {
     if (interactions[contactId]) return;
     try {
-      const res = await fetch(`/api/tools/contacts/${contactId}/interactions`);
+      const res = await apiFetch(`/api/tools/contacts/${contactId}/interactions`);
       if (res.ok) { const data = await res.json(); setInteractions(prev => ({ ...prev, [contactId]: data.interactions ?? [] })); }
     } catch {}
   };
@@ -182,14 +183,14 @@ export default function ContactCollector() {
     const body = { ...form, dealValue: form.dealValue ? Number(form.dealValue) : null };
     if (editingId) {
       try {
-        const res = await fetch(`/api/tools/contacts/${editingId}`, {
+        const res = await apiFetch(`/api/tools/contacts/${editingId}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
         });
         if (res.ok) { const data = await res.json(); setContacts(prev => prev.map(c => c.id === editingId ? data.contact : c)); }
       } catch {}
     } else {
       try {
-        const res = await fetch('/api/tools/contacts', {
+        const res = await apiFetch('/api/tools/contacts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
         });
         if (res.ok) { const data = await res.json(); setContacts(prev => [data.contact, ...prev]); }
@@ -213,7 +214,7 @@ export default function ContactCollector() {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`/api/tools/contacts/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tools/contacts/${id}`, { method: 'DELETE' });
       if (res.ok) setContacts(prev => prev.filter(c => c.id !== id));
     } catch {}
   };
@@ -222,7 +223,7 @@ export default function ContactCollector() {
     if (!interactionNote.trim()) return;
     setAddingInteraction(true);
     try {
-      const res = await fetch(`/api/tools/contacts/${contactId}/interactions`, {
+      const res = await apiFetch(`/api/tools/contacts/${contactId}/interactions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: interactionType, note: interactionNote.trim() }),
       });
@@ -238,14 +239,14 @@ export default function ContactCollector() {
 
   const handleDeleteInteraction = async (contactId: number, interactionId: number) => {
     try {
-      const res = await fetch(`/api/tools/contacts/interactions/${interactionId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tools/contacts/interactions/${interactionId}`, { method: 'DELETE' });
       if (res.ok) setInteractions(prev => ({ ...prev, [contactId]: (prev[contactId] ?? []).filter(i => i.id !== interactionId) }));
     } catch {}
   };
 
   const handleMoveDealStage = async (contactId: number, stage: string) => {
     try {
-      const res = await fetch(`/api/tools/contacts/${contactId}`, {
+      const res = await apiFetch(`/api/tools/contacts/${contactId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dealStage: stage }),
       });
@@ -305,7 +306,7 @@ export default function ContactCollector() {
     const noteTitle = followUpNote || `Follow up with ${followUpContact.name}`;
     try {
       const [apptRes] = await Promise.all([
-        fetch('/api/calendar/appointments', {
+        apiFetch('/api/calendar/appointments', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: noteTitle,
@@ -319,7 +320,7 @@ export default function ContactCollector() {
       if (apptRes.ok) {
         const logNote = `Scheduled follow-up: "${noteTitle}" on ${startAt.toLocaleDateString()} at ${startAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
         try {
-          const iRes = await fetch(`/api/tools/contacts/${followUpContact.id}/interactions`, {
+          const iRes = await apiFetch(`/api/tools/contacts/${followUpContact.id}/interactions`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'note', note: logNote }),
           });
@@ -370,7 +371,7 @@ export default function ContactCollector() {
       </table>
     `;
     try {
-      await fetch('/api/tools/send-email', {
+      await apiFetch('/api/tools/send-email', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: user.email, subject: `Your ${appName} CRM — ${new Date().toLocaleDateString()}`, html }),
       });

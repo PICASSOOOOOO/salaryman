@@ -41,8 +41,11 @@ function typeIcon(type: ProjectType) {
   return <t.icon className={`w-4 h-4 ${t.color}`} />;
 }
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 function api(path: string, opts?: RequestInit) {
-  return fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const fullPath = path.startsWith('/api/') ? `${BASE_URL}${path.slice(1)}` : path;
+  return fetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

@@ -37,7 +37,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     const dismissed = localStorage.getItem(ONBOARDING_KEY);
     if (dismissed) return;
 
-    fetch('/api/tools/memory')
+    fetch(`${import.meta.env.BASE_URL}api/tools/memory`)
       .then(r => r.json())
       .then(data => {
         if (!data.memory || data.memory.trim() === '') {
@@ -77,7 +77,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     ].filter(Boolean).join('\n');
 
     try {
-      await fetch('/api/tools/memory', {
+      await fetch(`${import.meta.env.BASE_URL}api/tools/memory`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memory }),

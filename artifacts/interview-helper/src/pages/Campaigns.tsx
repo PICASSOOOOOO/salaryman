@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,8 +7,6 @@ import {
   Zap, Filter, RefreshCw, Check, Copy, ArrowLeft, Megaphone, Inbox,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
-import { ProGate } from '@/components/ProGate';
-import { usePlan } from '@/hooks/use-plan';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,8 +81,11 @@ type SmsView = 'list' | 'compose' | 'detail';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 function api(path: string, opts?: RequestInit) {
-  return fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const fullPath = path.startsWith('/api/') ? `${BASE_URL}${path.slice(1)}` : path;
+  return fetch(fullPath, { headers: { 'Content-Type': 'application/json' }, ...opts });
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -216,7 +218,7 @@ function EmailCompose({
     setAiGenerating(true);
     setHtmlBody('');
     try {
-      const r = await fetch('/api/studio/generate-copy', {
+      const r = await apiFetch('/api/studio/generate-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'email', tone: aiTone, context: aiGoal }),
@@ -543,7 +545,7 @@ function SmsCompose({
     setAiGenerating(true);
     setAiOutput('');
     try {
-      const r = await fetch('/api/campaigns/generate-sms', {
+      const r = await apiFetch('/api/campaigns/generate-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal: aiGoal, tone: aiTone }),
@@ -948,8 +950,6 @@ function SmsInbox({ contacts }: { contacts: Contact[] }) {
 
 export default function Campaigns() {
   const { isAuthenticated } = useAuth();
-  const { isPro, loading: planLoading } = usePlan();
-
   const [tab, setTab] = useState<Tab>('dashboard');
   const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
   const [smsCampaigns, setSmsCampaigns] = useState<SmsCampaign[]>([]);
@@ -989,9 +989,6 @@ export default function Campaigns() {
     setSmsCampaigns(prev => prev.filter(c => c.id !== id));
   }
 
-  if (!planLoading && !isPro) {
-    return <div className="min-h-screen flex flex-col bg-background"><ProGate feature="Campaign Manager" /></div>;
-  }
 
   const totalEmailSent = emailCampaigns.reduce((a, c) => a + c.totalSent, 0);
   const totalSmsSent = smsCampaigns.reduce((a, c) => a + c.totalSent, 0);

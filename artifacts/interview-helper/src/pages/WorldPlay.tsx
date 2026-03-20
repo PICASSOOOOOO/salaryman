@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { CITY_NAME } from '../gameSystems';
@@ -3466,7 +3467,7 @@ export default function WorldPlay() {
       playtime: g.frame,
       data: { ...char, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
-    fetch(`/api/salaryman/saves/${slot}`, {
+    apiFetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -4317,7 +4318,7 @@ export default function WorldPlay() {
       }
     }, 120);
     const fetchEmployees = () => {
-      fetch('/api/tools/hiring/employees')
+      apiFetch('/api/tools/hiring/employees')
         .then(r => r.ok ? r.json() : { employeesByOwner: {} })
         .then(data => {
           const emps: EmployeeNpcDef[] = [];
@@ -5452,7 +5453,7 @@ export default function WorldPlay() {
   // ── Billboard data fetch ──────────────────────────────────────────────────
   const fetchBillboards = useCallback(async () => {
     try {
-      const r = await fetch('/api/billboards', { credentials: 'include' });
+      const r = await apiFetch('/api/billboards', { credentials: 'include' });
       if (r.ok) { const data = await r.json(); setBillboardsData(data); }
     } catch { /* silent */ }
   }, []);
@@ -5460,7 +5461,7 @@ export default function WorldPlay() {
 
   const purchaseBillboard = useCallback(async (bbId: number) => {
     try {
-      const r = await fetch(`/api/billboards/${bbId}/purchase`, {
+      const r = await apiFetch(`/api/billboards/${bbId}/purchase`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ durationDays: 7, currentBalance: gs.current.salary }),
         credentials: 'include',
@@ -5485,7 +5486,7 @@ export default function WorldPlay() {
 
   const updateBillboardContent = useCallback(async (bbId: number) => {
     try {
-      const r = await fetch(`/api/billboards/${bbId}/update-content`, {
+      const r = await apiFetch(`/api/billboards/${bbId}/update-content`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adText: bbAdText || null, adImageUrl: bbAdUrl || null }),
         credentials: 'include',
@@ -5537,7 +5538,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     setPabloLoad(true);
     try {
       const context = buildPabloContext();
-      const r = await fetch('/api/advisor/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: txt, context }), credentials: 'include' });
+      const r = await apiFetch('/api/advisor/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: txt, context }), credentials: 'include' });
       const d = r.ok ? await r.json() : {};
       setPabloMsgs(m => [...m, { role: 'pablo', text: d.response ?? 'Signal lost. Try again.' }]);
     } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network dead. Move to higher ground.' }]); }

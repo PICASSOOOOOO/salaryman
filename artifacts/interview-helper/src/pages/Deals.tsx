@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -77,8 +78,8 @@ export default function Deals() {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
       const [dealsRes, contactsRes] = await Promise.all([
-        fetch('/api/tools/deals'),
-        fetch('/api/tools/contacts'),
+        apiFetch('/api/tools/deals'),
+        apiFetch('/api/tools/contacts'),
       ]);
       if (dealsRes.ok) { const d = await dealsRes.json(); setDeals(d.deals ?? []); }
       if (contactsRes.ok) { const d = await contactsRes.json(); setContacts(d.contacts ?? []); }
@@ -133,14 +134,14 @@ export default function Deals() {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`/api/tools/deals/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tools/deals/${id}`, { method: 'DELETE' });
       if (res.ok) setDeals(prev => prev.filter(d => d.id !== id));
     } catch {}
   };
 
   const handleMoveStage = async (deal: Deal, newStage: string) => {
     try {
-      const res = await fetch(`/api/tools/deals/${deal.id}`, {
+      const res = await apiFetch(`/api/tools/deals/${deal.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stage: newStage }),
       });

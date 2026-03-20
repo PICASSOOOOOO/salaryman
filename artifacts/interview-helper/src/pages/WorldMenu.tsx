@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -582,7 +583,7 @@ export default function WorldMenu() {
     if (!isAuthenticated) return;
     setSavesLoading(true);
     try {
-      const res = await fetch('/api/salaryman/saves', { credentials: 'include' });
+      const res = await apiFetch('/api/salaryman/saves', { credentials: 'include' });
       if (res.ok) { const j = await res.json(); setCloudSaves(j.saves ?? []); }
     } catch { /* ignore */ }
     setSavesLoading(false);
@@ -627,7 +628,7 @@ export default function WorldMenu() {
   // ── Delete a save ───────────────────────────────────────────────────────────
   const handleDelete = async (slot: number) => {
     try {
-      await fetch(`/api/salaryman/saves/${slot}`, { method: 'DELETE', credentials: 'include' });
+      await apiFetch(`/api/salaryman/saves/${slot}`, { method: 'DELETE', credentials: 'include' });
       setCloudSaves(prev => prev.filter(s => s.slotIndex !== slot));
     } catch { /* ignore */ }
     setDeleteConfirm(null);
@@ -681,7 +682,7 @@ export default function WorldMenu() {
       setCheckingName(true);
       setMinxError('');
       try {
-        const resp = await fetch(`/api/world/check-company?name=${encodeURIComponent(trimmed)}`, { credentials: 'include' });
+        const resp = await apiFetch(`/api/world/check-company?name=${encodeURIComponent(trimmed)}`, { credentials: 'include' });
         if (resp.ok) {
           const data = await resp.json();
           if (data.taken) {
@@ -726,7 +727,7 @@ export default function WorldMenu() {
     localStorage.setItem('sm_char', JSON.stringify(char));
     localStorage.setItem('sm_slot', String(selectedSlot));
     try {
-      const registerResp = await fetch('/api/world/register', {
+      const registerResp = await apiFetch('/api/world/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -748,7 +749,7 @@ export default function WorldMenu() {
     } catch { /* ignore */ }
     if (isAuthenticated) {
       try {
-        await fetch(`/api/salaryman/saves/${selectedSlot}`, {
+        await apiFetch(`/api/salaryman/saves/${selectedSlot}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

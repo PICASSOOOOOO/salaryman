@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
@@ -397,7 +398,7 @@ export default function World() {
     if(!gs.current.hasDevice){ setPabloMsgs(m=>[...m,{role:'pablo',text:'> Device not activated. Visit the PABLO STORE.'}]); return; }
     setPabloLoad(true);
     try {
-      const r=await fetch('/api/advisor/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:txt,context:`You are PABLO, a gritty in-world AI. The user is ${char?.name}, a ${char?.class}. Be brief.`}),credentials:'include'});
+      const r=await apiFetch('/api/advisor/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:txt,context:`You are PABLO, a gritty in-world AI. The user is ${char?.name}, a ${char?.class}. Be brief.`}),credentials:'include'});
       const d=r.ok?await r.json():{};
       setPabloMsgs(m=>[...m,{role:'pablo',text:d.response??'> Signal lost.'}]);
     } catch { setPabloMsgs(m=>[...m,{role:'pablo',text:'> Network dead.'}]); }

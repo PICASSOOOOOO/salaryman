@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -83,7 +84,7 @@ export default function Invoices() {
     if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
     try {
-      const r = await fetch('/api/tools/documents/invoices');
+      const r = await apiFetch('/api/tools/documents/invoices');
       if (r.ok) { const d = await r.json(); setInvoices(d.invoices); }
     } finally { setLoading(false); }
   }, [isAuthenticated]);
@@ -123,13 +124,13 @@ export default function Invoices() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this invoice?')) return;
-    await fetch(`/api/tools/documents/invoices/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/tools/documents/invoices/${id}`, { method: 'DELETE' });
     fetchInvoices();
   };
 
   const handleStatusChange = async (invoiceId: number, newStatus: string) => {
     try {
-      const r = await fetch(`/api/tools/documents/invoices/${invoiceId}`, {
+      const r = await apiFetch(`/api/tools/documents/invoices/${invoiceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -163,7 +164,7 @@ export default function Invoices() {
       </div>
     `;
     try {
-      await fetch('/api/tools/send-email', {
+      await apiFetch('/api/tools/send-email', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: invoice.clientEmail || user.email,

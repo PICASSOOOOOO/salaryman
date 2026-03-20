@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Zap, Brain, Activity, Cpu, Shield, AlertCircle } from 'lucide-react';
@@ -25,7 +26,7 @@ function useAgentTeam() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch('/api/ai-agents/team');
+        const res = await apiFetch('/api/ai-agents/team');
         if (!res.ok) throw new Error('Failed to load agent team');
         const data = await res.json();
         setAgents(data.agents ?? []);

@@ -16,7 +16,7 @@ export function isOwnerEmail(email: string | undefined | null): boolean {
 export async function getUserTier(userId: string, email?: string | null): Promise<Tier> {
   if (isOwnerEmail(email)) return "pro";
   const [row] = await db.select().from(userTiersTable).where(eq(userTiersTable.userId, userId));
-  return (row?.tier as Tier) ?? "free";
+  return (row?.tier as Tier) ?? "pro";
 }
 
 export async function setUserTier(userId: string, tier: Tier, grantedBy: string): Promise<void> {

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -155,7 +156,7 @@ function InvoiceSection() {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/tools/documents/invoices');
+      const r = await apiFetch('/api/tools/documents/invoices');
       if (r.ok) { const d = await r.json(); setInvoices(d.invoices); }
     } finally { setLoading(false); }
   }, []);
@@ -170,9 +171,9 @@ function InvoiceSection() {
     setSaving(true);
     try {
       const body = { ...form, lineItems, taxRate: form.taxRate };
-      const url = editingId ? `/api/tools/documents/invoices/${editingId}` : '/api/tools/documents/invoices';
+      const path = editingId ? `/api/tools/documents/invoices/${editingId}` : '/api/tools/documents/invoices';
       const method = editingId ? 'PUT' : 'POST';
-      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const r = await apiFetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (r.ok) {
         setShowForm(false);
         setEditingId(null);
@@ -183,7 +184,7 @@ function InvoiceSection() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this invoice?')) return;
-    await fetch(`/api/tools/documents/invoices/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/tools/documents/invoices/${id}`, { method: 'DELETE' });
     fetchInvoices();
   };
 
@@ -434,7 +435,7 @@ function ContractSection() {
   const fetchContracts = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/tools/documents/contracts');
+      const r = await apiFetch('/api/tools/documents/contracts');
       if (r.ok) { const d = await r.json(); setContracts(d.contracts); }
     } finally { setLoading(false); }
   }, []);
@@ -454,14 +455,14 @@ function ContractSection() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const r = await fetch('/api/tools/documents/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      const r = await apiFetch('/api/tools/documents/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       if (r.ok) { setShowForm(false); fetchContracts(); }
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this contract?')) return;
-    await fetch(`/api/tools/documents/contracts/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/tools/documents/contracts/${id}`, { method: 'DELETE' });
     fetchContracts();
   };
 
@@ -681,10 +682,10 @@ function FileManagerSection() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const { uploadFile: doUpload, isUploading, progress } = useUpload({
-    basePath: '/api/tools/documents',
+    basePath: `${baseUrl}/api/tools/documents`,
     onSuccess: async (result: { uploadURL: string; objectPath: string; metadata: { name?: string; contentType?: string; size?: number } }) => {
       const name = pendingFile?.name || result.metadata?.name || 'unknown';
-      const r = await fetch('/api/tools/documents/files/register', {
+      const r = await apiFetch('/api/tools/documents/files/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -707,8 +708,8 @@ function FileManagerSection() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const url = currentFolder ? `/api/tools/documents/files?parentId=${currentFolder}` : '/api/tools/documents/files';
-      const r = await fetch(url);
+      const path = currentFolder ? `/api/tools/documents/files?parentId=${currentFolder}` : '/api/tools/documents/files';
+      const r = await apiFetch(path);
       if (r.ok) { const d = await r.json(); setItems(d.items); }
     } finally { setLoading(false); }
   }, [currentFolder]);
@@ -728,7 +729,7 @@ function FileManagerSection() {
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    await fetch('/api/tools/documents/files/folder', {
+    await apiFetch('/api/tools/documents/files/folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newFolderName.trim(), parentId: currentFolder }),
@@ -747,12 +748,12 @@ function FileManagerSection() {
 
   const handleDelete = async (item: FileItem) => {
     if (!confirm(`Delete "${item.name}"?`)) return;
-    await fetch(`/api/tools/documents/files/${item.id}`, { method: 'DELETE' });
+    await apiFetch(`/api/tools/documents/files/${item.id}`, { method: 'DELETE' });
     fetchItems();
   };
 
   const handleShare = async (item: FileItem) => {
-    const r = await fetch(`/api/tools/documents/files/${item.id}/share`, { method: 'POST' });
+    const r = await apiFetch(`/api/tools/documents/files/${item.id}/share`, { method: 'POST' });
     if (r.ok) {
       const d = await r.json();
       const link = `${window.location.origin}${baseUrl}/api/tools/documents/files/shared/${d.shareToken}`;
@@ -764,7 +765,7 @@ function FileManagerSection() {
   };
 
   const handleUnshare = async (item: FileItem) => {
-    await fetch(`/api/tools/documents/files/${item.id}/share`, { method: 'DELETE' });
+    await apiFetch(`/api/tools/documents/files/${item.id}/share`, { method: 'DELETE' });
     fetchItems();
   };
 

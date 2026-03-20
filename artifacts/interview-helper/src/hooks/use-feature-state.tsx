@@ -135,7 +135,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     setGenerating(true);
     setPres(null);
     presCtrl.current = streamSSESimple(
-      '/api/tools/generate-presentation',
+      `${import.meta.env.BASE_URL}api/tools/generate-presentation`,
       { topic, context, slideCount },
       () => {},
       (data) => { setPres(data); setCurrentSlide(0); },
@@ -165,7 +165,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     setAnalyzing(true);
     setAnalysisResult('');
     analyzeCtrl.current = streamSSESimple(
-      '/api/tools/analyze-urls',
+      `${import.meta.env.BASE_URL}api/tools/analyze-urls`,
       { urls: validUrls, focus: analysisFocus },
       (chunk) => setAnalysisResult(prev => prev + chunk),
       () => {},
@@ -198,7 +198,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     setQuestions([]);
     setCurrentQ(0);
     conductCtrl.current = streamSSESimple(
-      '/api/tools/conduct-interview',
+      `${import.meta.env.BASE_URL}api/tools/conduct-interview`,
       { subject, role, style, count: questionCount },
       () => {},
       () => {},

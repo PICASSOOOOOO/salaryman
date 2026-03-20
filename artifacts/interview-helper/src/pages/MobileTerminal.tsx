@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -146,7 +147,7 @@ export default function MobileTerminal() {
     if (!isAuthenticated) return;
     (async () => {
       try {
-        const r = await fetch('/api/salaryman/saves', { credentials: 'include' });
+        const r = await apiFetch('/api/salaryman/saves', { credentials: 'include' });
         if (r.ok) {
           const d = await r.json();
           setSaves(d.saves ?? []);
@@ -189,7 +190,7 @@ OPERATIVE STATUS:
 
 The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 short lines. Be useful. Be lore-accurate. Stay in character.`;
 
-      const r = await fetch('/api/advisor/chat', {
+      const r = await apiFetch('/api/advisor/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: txt, context }),

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -72,7 +73,7 @@ export default function BrandKit() {
   const loadKit = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
-      const res = await fetch('/api/workspace/brand-kit');
+      const res = await apiFetch('/api/workspace/brand-kit');
       if (res.ok) {
         const data = await res.json();
         setKit({ ...DEFAULT_KIT, ...data });
@@ -87,7 +88,7 @@ export default function BrandKit() {
     if (saving) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/workspace/brand-kit', {
+      const res = await apiFetch('/api/workspace/brand-kit', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(kit),

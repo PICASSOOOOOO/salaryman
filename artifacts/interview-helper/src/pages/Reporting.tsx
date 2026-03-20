@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -158,7 +159,7 @@ function ZapierSection() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch('/api/reporting/webhook')
+    apiFetch('/api/reporting/webhook')
       .then(r => r.json())
       .then(d => {
         if (d.webhook) {
@@ -178,7 +179,7 @@ function ZapierSection() {
     setSaving(true);
     setSaved(false);
     try {
-      await fetch('/api/reporting/webhook', {
+      await apiFetch('/api/reporting/webhook', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -194,7 +195,7 @@ function ZapierSection() {
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await fetch('/api/reporting/webhook/test', { method: 'POST' });
+      const r = await apiFetch('/api/reporting/webhook/test', { method: 'POST' });
       const d = await r.json();
       if (r.ok) {
         setTestResult({ ok: true, msg: `Delivered · HTTP ${d.status}` });
@@ -210,7 +211,7 @@ function ZapierSection() {
   };
 
   const clearWebhook = async () => {
-    await fetch('/api/reporting/webhook', { method: 'DELETE' });
+    await apiFetch('/api/reporting/webhook', { method: 'DELETE' });
     setConfig({ webhookUrl: '', eventNewHire: true, eventNewContact: false, eventWeeklySummary: false, eventNewApplicant: false });
   };
 
@@ -316,7 +317,7 @@ function ReportingContent() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch('/api/reporting/stats');
+      const r = await apiFetch('/api/reporting/stats');
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
       setStats(data);

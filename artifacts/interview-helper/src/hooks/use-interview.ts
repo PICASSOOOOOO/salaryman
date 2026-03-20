@@ -4,6 +4,8 @@ export type InterviewMode = 'hint' | 'solution' | 'explain' | 'complexity' | 'sa
 export type SolverStatus = 'idle' | 'thinking' | 'streaming' | 'done' | 'error';
 export type ListenStatus = 'idle' | 'recording' | 'transcribing' | 'done' | 'error';
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 async function streamSSE(
   url: string,
   body: object,
@@ -12,7 +14,8 @@ async function streamSSE(
   onDone: () => void,
   onError: (msg: string) => void
 ) {
-  const res = await fetch(url, {
+  const resolvedUrl = url.startsWith('/api/') ? `${BASE_URL}${url.slice(1)}` : url;
+  const res = await fetch(resolvedUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

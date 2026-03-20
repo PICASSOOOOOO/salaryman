@@ -4,6 +4,7 @@ import { getUncachableResendClient } from "../lib/resend";
 import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
+import { safeFetch, SafeFetchError } from "../lib/safe-fetch";
 
 const router: IRouter = Router();
 
@@ -36,19 +37,25 @@ router.post("/tools/analyze-urls", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   try {
-    const pageTexts: string[] = [];
-    for (const url of urls.slice(0, 5)) {
-      try {
-        const r = await fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; DevDocsBot/1.0)" },
-          signal: AbortSignal.timeout(8000),
-        });
+    const targetUrls = urls.slice(0, 5);
+    const results = await Promise.allSettled(
+      targetUrls.map(async (url) => {
+        const r = await safeFetch(url, { timeoutMs: 8000, maxResponseBytes: 512 * 1024 });
+        const contentType = r.headers.get("content-type") ?? "";
+        if (!contentType.includes("text/html") && !contentType.includes("text/plain") && !contentType.includes("application/xhtml")) {
+          return `## ${url}\n[Skipped — not an HTML page (content-type: ${contentType})]`;
+        }
         const html = await r.text();
-        pageTexts.push(`## ${url}\n${htmlToText(html)}`);
-      } catch {
-        pageTexts.push(`## ${url}\n[Could not fetch — site may block bots or require login]`);
-      }
-    }
+        return `## ${url}\n${htmlToText(html)}`;
+      })
+    );
+    const pageTexts = results.map((result, i) => {
+      if (result.status === "fulfilled") return result.value;
+      const reason = result.reason instanceof SafeFetchError
+        ? result.reason.message
+        : "site may block bots or require login";
+      return `## ${targetUrls[i]}\n[Could not fetch — ${reason}]`;
+    });
 
     const prompt = `You have been given content from ${pageTexts.length} webpage(s). ${focus ? `Focus specifically on: ${focus}.` : "Give a general analysis."}
 

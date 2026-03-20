@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2 } from 'lucide-react';
@@ -170,7 +171,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
-    fetch('/api/account')
+    apiFetch('/api/account')
       .then(r => r.json())
       .then((d: AccountData) => {
         setData(d);
@@ -183,7 +184,7 @@ export default function Profile() {
   const saveMemory = async () => {
     setSavingMemory(true);
     try {
-      await fetch('/api/account/memory', {
+      await apiFetch('/api/account/memory', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memory: memoryDraft }),
@@ -199,7 +200,7 @@ export default function Profile() {
     setDeleting(true);
     try {
       const s = scope === 'all' ? '' : scope;
-      await fetch(`/api/account/data${s ? `?scope=${s}` : ''}`, { method: 'DELETE' });
+      await apiFetch(`/api/account/data${s ? `?scope=${s}` : ''}`, { method: 'DELETE' });
       setDeleted(scope);
       if (scope === 'memory' || scope === 'all') {
         setMemoryDraft('');

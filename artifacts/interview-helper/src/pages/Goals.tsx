@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -77,7 +78,7 @@ export default function Goals() {
   const loadGoals = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
-      const res = await fetch('/api/tools/goals');
+      const res = await apiFetch('/api/tools/goals');
       if (res.ok) { const d = await res.json(); setGoals(d.goals ?? []); }
     } catch {}
     setLoading(false);
@@ -89,7 +90,7 @@ export default function Goals() {
     const existing = goals.find(g => g.id === goalId);
     if (existing?.milestones) return;
     try {
-      const res = await fetch(`/api/tools/goals/${goalId}/milestones`);
+      const res = await apiFetch(`/api/tools/goals/${goalId}/milestones`);
       if (res.ok) {
         const d = await res.json();
         setGoals(prev => prev.map(g => g.id === goalId ? { ...g, milestones: d.milestones ?? [] } : g));
@@ -152,14 +153,14 @@ export default function Goals() {
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`/api/tools/goals/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tools/goals/${id}`, { method: 'DELETE' });
       if (res.ok) setGoals(prev => prev.filter(g => g.id !== id));
     } catch {}
   };
 
   const handleUpdateProgress = async (goal: Goal, value: number) => {
     try {
-      const res = await fetch(`/api/tools/goals/${goal.id}`, {
+      const res = await apiFetch(`/api/tools/goals/${goal.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentValue: value }),
       });
@@ -174,7 +175,7 @@ export default function Goals() {
     const text = milestoneInputs[goalId]?.trim();
     if (!text) return;
     try {
-      const res = await fetch(`/api/tools/goals/${goalId}/milestones`, {
+      const res = await apiFetch(`/api/tools/goals/${goalId}/milestones`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });
@@ -188,7 +189,7 @@ export default function Goals() {
 
   const handleToggleMilestone = async (goalId: number, milestone: Milestone) => {
     try {
-      const res = await fetch(`/api/tools/goals/milestones/${milestone.id}`, {
+      const res = await apiFetch(`/api/tools/goals/milestones/${milestone.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: !milestone.completed }),
       });
@@ -204,7 +205,7 @@ export default function Goals() {
 
   const handleDeleteMilestone = async (goalId: number, milestoneId: number) => {
     try {
-      const res = await fetch(`/api/tools/goals/milestones/${milestoneId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tools/goals/milestones/${milestoneId}`, { method: 'DELETE' });
       if (res.ok) setGoals(prev => prev.map(g => g.id === goalId ? {
         ...g, milestones: (g.milestones ?? []).filter(m => m.id !== milestoneId),
       } : g));

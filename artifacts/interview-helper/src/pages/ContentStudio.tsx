@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -148,7 +149,7 @@ function GraphicsStudio() {
     setGenerating(true);
     setError('');
     try {
-      const res = await fetch('/api/studio/generate-image', {
+      const res = await apiFetch('/api/studio/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, size: aspect }),
@@ -454,7 +455,7 @@ function CopyStudio() {
     setGenerating(true);
     setOutput('');
     try {
-      const res = await fetch('/api/studio/generate-copy', {
+      const res = await apiFetch('/api/studio/generate-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, tone, context }),
@@ -661,7 +662,7 @@ function SocialStudio() {
     setResult(null);
     setGeneratedImage(null);
     try {
-      const res = await fetch('/api/studio/generate-social', {
+      const res = await apiFetch('/api/studio/generate-social', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template, topic }),
@@ -691,7 +692,7 @@ function SocialStudio() {
         tiktok_vertical: '1024x1536',
         facebook_feed: '1536x1024',
       };
-      const res = await fetch('/api/studio/generate-image', {
+      const res = await apiFetch('/api/studio/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: result.image_prompt, size: sizeMap[template] }),

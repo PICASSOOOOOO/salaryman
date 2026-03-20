@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -163,10 +164,10 @@ export default function Hiring() {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
       const [statsRes, jobsRes, applicantsRes, staffRes] = await Promise.all([
-        fetch('/api/tools/hiring/stats'),
-        fetch('/api/tools/hiring/jobs'),
-        fetch('/api/tools/hiring/applicants'),
-        fetch('/api/tools/hiring/staff'),
+        apiFetch('/api/tools/hiring/stats'),
+        apiFetch('/api/tools/hiring/jobs'),
+        apiFetch('/api/tools/hiring/applicants'),
+        apiFetch('/api/tools/hiring/staff'),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (jobsRes.ok) { const d = await jobsRes.json(); setJobs(d.jobs ?? []); }
@@ -201,10 +202,10 @@ export default function Hiring() {
       status: jobForm.status,
     };
     if (editingJob) {
-      const res = await fetch(`/api/tools/hiring/jobs/${editingJob.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await apiFetch(`/api/tools/hiring/jobs/${editingJob.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (res.ok) { const d = await res.json(); setJobs(prev => prev.map(j => j.id === editingJob.id ? d.job : j)); }
     } else {
-      const res = await fetch('/api/tools/hiring/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await apiFetch('/api/tools/hiring/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (res.ok) { const d = await res.json(); setJobs(prev => [d.job, ...prev]); }
     }
     setJobForm({ title: '', description: '', requirements: '', salaryMin: '', salaryMax: '', status: 'open' });
@@ -213,13 +214,13 @@ export default function Hiring() {
   };
 
   const deleteJob = async (id: number) => {
-    const res = await fetch(`/api/tools/hiring/jobs/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/tools/hiring/jobs/${id}`, { method: 'DELETE' });
     if (res.ok) { setJobs(prev => prev.filter(j => j.id !== id)); setApplicants(prev => prev.filter(a => a.jobId !== id)); loadAll(); }
   };
 
   const saveApplicant = async () => {
     if (!applicantForm.name.trim() || !applicantForm.jobId) return;
-    const res = await fetch('/api/tools/hiring/applicants', {
+    const res = await apiFetch('/api/tools/hiring/applicants', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(applicantForm),
     });
@@ -230,7 +231,7 @@ export default function Hiring() {
   };
 
   const updateApplicantStage = async (id: number, stage: string) => {
-    const res = await fetch(`/api/tools/hiring/applicants/${id}`, {
+    const res = await apiFetch(`/api/tools/hiring/applicants/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage }),
     });
@@ -239,12 +240,12 @@ export default function Hiring() {
   };
 
   const deleteApplicant = async (id: number) => {
-    const res = await fetch(`/api/tools/hiring/applicants/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/tools/hiring/applicants/${id}`, { method: 'DELETE' });
     if (res.ok) { setApplicants(prev => prev.filter(a => a.id !== id)); loadAll(); }
   };
 
   const updateStaffStatus = async (id: number, status: string) => {
-    const res = await fetch(`/api/tools/hiring/staff/${id}`, {
+    const res = await apiFetch(`/api/tools/hiring/staff/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
@@ -268,14 +269,14 @@ export default function Hiring() {
     setOffboardNotes(member.offboardingNotes ?? '');
     setShowOffboardConfirm(false);
     await Promise.all([
-      fetch(`/api/tools/hiring/staff/${member.id}/performance-notes`).then(r => r.ok ? r.json() : null).then(d => { if (d) setPerformanceNotes(d.notes ?? []); }),
-      fetch(`/api/tools/hiring/staff/${member.id}/onboarding`).then(r => r.ok ? r.json() : null).then(d => { if (d) setOnboardingItems(d.items ?? []); }),
+      apiFetch(`/api/tools/hiring/staff/${member.id}/performance-notes`).then(r => r.ok ? r.json() : null).then(d => { if (d) setPerformanceNotes(d.notes ?? []); }),
+      apiFetch(`/api/tools/hiring/staff/${member.id}/onboarding`).then(r => r.ok ? r.json() : null).then(d => { if (d) setOnboardingItems(d.items ?? []); }),
     ]);
   };
 
   const addPerfNote = async () => {
     if (!selectedStaff || !perfNoteInput.trim()) return;
-    const res = await fetch(`/api/tools/hiring/staff/${selectedStaff.id}/performance-notes`, {
+    const res = await apiFetch(`/api/tools/hiring/staff/${selectedStaff.id}/performance-notes`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ note: perfNoteInput.trim() }),
     });
@@ -283,12 +284,12 @@ export default function Hiring() {
   };
 
   const deletePerfNote = async (noteId: number) => {
-    const res = await fetch(`/api/tools/hiring/performance-notes/${noteId}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/tools/hiring/performance-notes/${noteId}`, { method: 'DELETE' });
     if (res.ok) setPerformanceNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
   const toggleOnboardingItem = async (item: OnboardingItem) => {
-    const res = await fetch(`/api/tools/hiring/onboarding/${item.id}`, {
+    const res = await apiFetch(`/api/tools/hiring/onboarding/${item.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ completed: !item.completed }),
     });
@@ -297,7 +298,7 @@ export default function Hiring() {
 
   const addOnboardingItem = async () => {
     if (!selectedStaff || !onboardingInput.trim()) return;
-    const res = await fetch(`/api/tools/hiring/staff/${selectedStaff.id}/onboarding`, {
+    const res = await apiFetch(`/api/tools/hiring/staff/${selectedStaff.id}/onboarding`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item: onboardingInput.trim() }),
     });
@@ -306,7 +307,7 @@ export default function Hiring() {
 
   const handleOffboard = async () => {
     if (!selectedStaff) return;
-    const res = await fetch(`/api/tools/hiring/staff/${selectedStaff.id}`, {
+    const res = await apiFetch(`/api/tools/hiring/staff/${selectedStaff.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'departed', endDate: new Date().toISOString(), offboardingNotes: offboardNotes }),
     });

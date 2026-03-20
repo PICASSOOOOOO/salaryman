@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -19,7 +20,7 @@ export default function BillboardAdmin() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const r = await fetch('/api/billboards', { credentials: 'include' });
+      const r = await apiFetch('/api/billboards', { credentials: 'include' });
       if (r.ok) setBoards(await r.json());
     } catch { /* silent */ }
     setLoading(false);
@@ -29,7 +30,7 @@ export default function BillboardAdmin() {
 
   const resetSlot = async (id: number) => {
     try {
-      const r = await fetch(`/api/billboards/${id}/release`, {
+      const r = await apiFetch(`/api/billboards/${id}/release`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}), credentials: 'include',
       });
@@ -41,7 +42,7 @@ export default function BillboardAdmin() {
 
   const updatePrice = async (id: number, price: number) => {
     try {
-      const r = await fetch(`/api/billboards/${id}/set-price`, {
+      const r = await apiFetch(`/api/billboards/${id}/set-price`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ priceFlorin: price }), credentials: 'include',
       });
