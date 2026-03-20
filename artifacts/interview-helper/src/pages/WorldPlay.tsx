@@ -6707,7 +6707,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
               if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) foundWC = true;
             }
-            if (obj.type !== 'plant' && obj.type !== 'window') {
+            {
               const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
               const d = Math.hypot(itr.px - ocx, itr.py - ocy);
               if (d < closestDist) { closestDist = d; closestObj = obj; }
@@ -7494,25 +7494,59 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + obj.w / 2 - 0.5, osy, 1, obj.h);
             ctx.fillRect(osx, osy + obj.h / 2 - 0.5, obj.w, 1);
           } else if (obj.type === 'medical_bed') {
-            ctx.fillStyle = 'rgb(200,210,220)';
+            // Frame
+            ctx.fillStyle = 'rgb(160,170,185)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgb(220,230,240)';
-            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 6);
-            ctx.fillStyle = 'rgb(180,200,210)';
-            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, 6);
+            // Side rails (metal)
+            ctx.fillStyle = 'rgb(190,200,215)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            // Mattress
+            ctx.fillStyle = 'rgb(230,235,240)';
+            ctx.fillRect(osx + 3, osy + 4, obj.w - 6, obj.h - 10);
+            // Pillow
+            ctx.fillStyle = 'rgb(245,245,250)';
+            ctx.fillRect(osx + 3, osy + 4, obj.w - 6, 7);
+            ctx.fillStyle = 'rgba(180,190,200,0.5)';
+            ctx.fillRect(osx + 4, osy + 5, obj.w - 8, 5);
+            // IV drip pole (right side)
+            ctx.fillStyle = 'rgb(150,155,165)';
+            ctx.fillRect(osx + obj.w - 4, osy + 2, 3, obj.h - 4);
+            // IV bag
+            ctx.fillStyle = 'rgb(180,220,255)';
+            ctx.fillRect(osx + obj.w - 6, osy + 2, 5, 5);
+            ctx.fillStyle = 'rgba(150,200,255,0.6)';
+            ctx.fillRect(osx + obj.w - 5, osy + 3, 3, 3);
+            // Vital monitor blink
             const blink = Math.sin(g.frame * 0.06 + obj.x * 0.1) > 0.5;
             ctx.fillStyle = blink ? 'rgb(0,220,80)' : 'rgb(0,120,50)';
-            ctx.fillRect(osx + obj.w - 6, osy + 2, 4, 4);
+            ctx.fillRect(osx + obj.w - 9, osy + 2, 4, 4);
+            // Tube from IV
+            ctx.strokeStyle = 'rgba(180,210,255,0.7)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath(); ctx.moveTo(osx + obj.w - 4, osy + 6); ctx.lineTo(osx + obj.w - 8, osy + obj.h * 0.5); ctx.stroke();
           } else if (obj.type === 'bed') {
-            ctx.fillStyle = 'rgb(110,75,45)';
+            // Bed frame (wood)
+            ctx.fillStyle = 'rgb(100,65,35)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgb(90,60,35)';
-            ctx.fillRect(osx, osy, obj.w, 3);
-            ctx.fillRect(osx, osy + obj.h - 3, obj.w, 3);
-            ctx.fillStyle = 'rgb(80,110,140)';
-            ctx.fillRect(osx + 3, osy + 4, obj.w - 6, obj.h - 10);
-            ctx.fillStyle = 'rgb(200,190,170)';
-            ctx.fillRect(osx + 3, osy + 4, obj.w - 6, 5);
+            // Headboard
+            ctx.fillStyle = 'rgb(120,80,45)';
+            ctx.fillRect(osx, osy, obj.w, 5);
+            ctx.fillStyle = 'rgb(90,58,30)';
+            ctx.fillRect(osx + 2, osy + 1, obj.w - 4, 3);
+            // Footboard
+            ctx.fillStyle = 'rgb(110,72,40)';
+            ctx.fillRect(osx, osy + obj.h - 4, obj.w, 4);
+            // Mattress / blanket
+            ctx.fillStyle = 'rgb(70,100,130)';
+            ctx.fillRect(osx + 3, osy + 5, obj.w - 6, obj.h - 12);
+            // Blanket fold highlight
+            ctx.fillStyle = 'rgba(120,160,190,0.4)';
+            ctx.fillRect(osx + 4, osy + 6, obj.w - 8, 4);
+            // Pillow
+            ctx.fillStyle = 'rgb(210,200,185)';
+            ctx.fillRect(osx + 3, osy + 5, obj.w - 6, 6);
+            ctx.fillStyle = 'rgba(240,230,215,0.6)';
+            ctx.fillRect(osx + 5, osy + 6, obj.w - 10, 4);
           } else if (obj.type === 'terminal') {
             ctx.fillStyle = 'rgb(50,50,55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -7545,17 +7579,49 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgb(120,75,40)';
             ctx.fillRect(osx, osy, obj.w, 3);
           } else if (obj.type === 'vending_machine') {
-            ctx.fillStyle = 'rgb(60,70,80)';
+            // Body
+            ctx.fillStyle = 'rgb(45,55,65)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
+            // Outer highlight
+            ctx.fillStyle = 'rgb(65,75,85)';
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 2);
+            ctx.fillRect(osx + 1, osy + 1, 2, obj.h - 2);
+            // Display window
             const vp = Math.sin(g.frame * 0.03 + obj.x * 0.07) * 0.2 + 0.8;
-            ctx.fillStyle = `rgb(0,${Math.floor(180 * vp)},${Math.floor(100 * vp)})`;
-            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h * 0.35);
-            ctx.fillStyle = 'rgb(50,55,60)';
-            ctx.fillRect(osx + 3, osy + obj.h * 0.45, obj.w - 6, obj.h * 0.45);
-            for (let vi = 0; vi < 3; vi++) {
-              ctx.fillStyle = ['rgb(220,50,50)', 'rgb(50,150,220)', 'rgb(50,200,80)'][vi];
-              ctx.fillRect(osx + 5 + vi * ((obj.w - 10) / 3), osy + obj.h * 0.5, (obj.w - 10) / 3 - 2, 6);
+            ctx.fillStyle = 'rgb(15,20,25)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h * 0.5);
+            // Product rows (2 rows of 3)
+            const prodColors = [['rgb(220,50,50)', 'rgb(200,40,40)'], ['rgb(50,150,220)', 'rgb(40,130,190)'], ['rgb(50,200,80)', 'rgb(40,170,65)']];
+            for (let row = 0; row < 2; row++) {
+              for (let col = 0; col < 3; col++) {
+                const pc = prodColors[col];
+                const pw = (obj.w - 10) / 3 - 1;
+                const ph = (obj.h * 0.44) / 2 - 2;
+                const px3 = osx + 4 + col * (pw + 1);
+                const py3 = osy + 4 + row * (ph + 2);
+                ctx.fillStyle = pc[0];
+                ctx.fillRect(px3, py3, pw, ph);
+                ctx.fillStyle = pc[1];
+                ctx.fillRect(px3 + 1, py3 + ph - 2, pw - 2, 2);
+                ctx.fillStyle = `rgba(255,255,255,${0.12 * vp})`;
+                ctx.fillRect(px3 + 1, py3 + 1, pw - 2, 2);
+              }
             }
+            // Coin slot / payment panel
+            ctx.fillStyle = 'rgb(35,40,45)';
+            ctx.fillRect(osx + 2, osy + obj.h * 0.56, obj.w - 4, obj.h * 0.36);
+            ctx.fillStyle = 'rgb(25,30,35)';
+            ctx.fillRect(osx + obj.w * 0.55, osy + obj.h * 0.58, obj.w * 0.35, obj.h * 0.14);
+            ctx.fillStyle = `rgb(0,${Math.floor(180 * vp)},${Math.floor(80 * vp)})`;
+            ctx.fillRect(osx + obj.w * 0.57, osy + obj.h * 0.6, obj.w * 0.3, obj.h * 0.1);
+            // Coin slot
+            ctx.fillStyle = 'rgb(15,15,20)';
+            ctx.fillRect(osx + obj.w * 0.55, osy + obj.h * 0.76, obj.w * 0.35, 2);
+            // Dispenser tray
+            ctx.fillStyle = 'rgb(30,35,40)';
+            ctx.fillRect(osx + 2, osy + obj.h - 6, obj.w - 4, 5);
+            ctx.fillStyle = 'rgb(20,25,30)';
+            ctx.fillRect(osx + 3, osy + obj.h - 5, obj.w - 6, 3);
           } else if (obj.type === 'filing_cabinet') {
             ctx.fillStyle = 'rgb(100,100,110)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -7566,12 +7632,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillRect(osx + obj.w / 2 - 3, osy + 5 + i * (obj.h / 3), 6, 2);
             }
           } else if (obj.type === 'water_cooler') {
-            ctx.fillStyle = 'rgb(200,200,210)';
-            ctx.fillRect(osx, osy + obj.h * 0.4, obj.w, obj.h * 0.6);
-            ctx.fillStyle = 'rgb(100,170,220)';
-            ctx.fillRect(osx + 2, osy, obj.w - 4, obj.h * 0.45);
-            ctx.fillStyle = 'rgba(180,220,255,0.4)';
-            ctx.fillRect(osx + 3, osy + 2, (obj.w - 6) / 3, obj.h * 0.2);
+            // Cabinet base
+            ctx.fillStyle = 'rgb(190,192,200)';
+            ctx.fillRect(osx, osy + obj.h * 0.42, obj.w, obj.h * 0.58);
+            // Base highlight
+            ctx.fillStyle = 'rgb(210,212,220)';
+            ctx.fillRect(osx + 1, osy + obj.h * 0.42, obj.w - 2, 2);
+            // Dispensing tap areas
+            ctx.fillStyle = 'rgb(60,140,200)';
+            ctx.fillRect(osx + 3, osy + obj.h * 0.55, obj.w * 0.3, 4);
+            ctx.fillStyle = 'rgb(200,60,60)';
+            ctx.fillRect(osx + obj.w * 0.6, osy + obj.h * 0.55, obj.w * 0.3, 4);
+            // Water bottle (jug on top)
+            ctx.fillStyle = 'rgb(80,155,215)';
+            ctx.fillRect(osx + 2, osy, obj.w - 4, obj.h * 0.47);
+            // Water level (lighter)
+            ctx.fillStyle = 'rgba(150,200,255,0.55)';
+            ctx.fillRect(osx + 3, osy + 2, obj.w - 6, obj.h * 0.3);
+            // Bottle neck
+            ctx.fillStyle = 'rgb(70,140,200)';
+            ctx.fillRect(osx + obj.w * 0.3, osy + obj.h * 0.4, obj.w * 0.4, 4);
+            // Bubble / highlight
+            ctx.fillStyle = 'rgba(200,235,255,0.4)';
+            ctx.fillRect(osx + 4, osy + 2, (obj.w - 8) / 3, obj.h * 0.18);
           } else if (obj.type === 'whiteboard') {
             ctx.fillStyle = 'rgb(230,230,235)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -7694,32 +7777,65 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillRect(cx2 - 3, osy + obj.h, 6, 4);
             }
           } else if (obj.type === 'desk') {
+            // Desk surface
             ctx.fillStyle = obj.color ?? 'rgba(45,60,85,.55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
+            // Surface highlight (top-left corner light)
             ctx.fillStyle = 'rgba(0,180,255,.12)';
             ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            // Drawer row at bottom
+            ctx.fillStyle = 'rgba(0,0,0,.2)';
+            ctx.fillRect(osx + 2, osy + obj.h - 6, obj.w - 4, 5);
+            ctx.fillStyle = 'rgba(180,160,80,.5)';
+            ctx.fillRect(osx + obj.w / 2 - 3, osy + obj.h - 5, 6, 2);
+            // Top edge accent
+            ctx.fillStyle = 'rgba(0,180,255,.35)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, 2);
             ctx.strokeStyle = 'rgba(0,180,255,.2)';
             ctx.lineWidth = 0.8;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgba(0,180,255,.35)';
-            ctx.fillRect(osx + 3, osy + 2, obj.w - 6, 2);
           } else if (obj.type === 'chair') {
+            // Chair seat
             ctx.fillStyle = obj.color ?? 'rgba(35,45,65,.45)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
+            // Seat padding
             ctx.fillStyle = 'rgba(0,150,200,.2)';
-            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h * 0.55);
+            // Backrest
+            ctx.fillStyle = 'rgba(0,120,170,.35)';
+            ctx.fillRect(osx + 2, osy, obj.w - 4, obj.h * 0.35);
+            // Legs (4 corners as dots)
+            ctx.fillStyle = 'rgba(0,0,0,.4)';
+            ctx.fillRect(osx + 1, osy + obj.h - 3, 3, 3);
+            ctx.fillRect(osx + obj.w - 4, osy + obj.h - 3, 3, 3);
             ctx.strokeStyle = 'rgba(0,150,200,.25)';
             ctx.lineWidth = 0.6;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
           } else if (obj.type === 'plant') {
             const px2 = osx + obj.w / 2, py2 = osy + obj.h;
-            ctx.fillStyle = 'rgba(60,45,30,.8)';
-            ctx.fillRect(px2 - obj.w * 0.2, py2 - obj.h * 0.35, obj.w * 0.4, obj.h * 0.35);
-            ctx.fillStyle = obj.color ?? 'rgba(30,90,45,.85)';
-            ctx.beginPath(); ctx.arc(px2, osy + obj.h * 0.5, obj.w * 0.45, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = 'rgba(40,120,55,.6)';
-            ctx.beginPath(); ctx.arc(px2 - obj.w * 0.18, osy + obj.h * 0.3, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(px2 + obj.w * 0.18, osy + obj.h * 0.3, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
+            // Pot
+            ctx.fillStyle = 'rgba(80,55,30,.9)';
+            ctx.fillRect(px2 - obj.w * 0.22, py2 - obj.h * 0.32, obj.w * 0.44, obj.h * 0.32);
+            ctx.fillStyle = 'rgba(65,42,20,.8)';
+            ctx.fillRect(px2 - obj.w * 0.18, py2 - obj.h * 0.28, obj.w * 0.36, obj.h * 0.24);
+            // Rim of pot
+            ctx.fillStyle = 'rgba(100,70,40,.8)';
+            ctx.fillRect(px2 - obj.w * 0.24, py2 - obj.h * 0.34, obj.w * 0.48, 3);
+            // Soil
+            ctx.fillStyle = 'rgba(40,28,15,.9)';
+            ctx.fillRect(px2 - obj.w * 0.2, py2 - obj.h * 0.32, obj.w * 0.4, 3);
+            // Stem
+            ctx.fillStyle = 'rgba(40,100,30,.9)';
+            ctx.fillRect(px2 - 1, osy + obj.h * 0.38, 2, obj.h * 0.3);
+            // Foliage
+            ctx.fillStyle = obj.color ?? 'rgba(30,100,45,.9)';
+            ctx.beginPath(); ctx.arc(px2, osy + obj.h * 0.42, obj.w * 0.43, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(50,130,55,.7)';
+            ctx.beginPath(); ctx.arc(px2 - obj.w * 0.18, osy + obj.h * 0.28, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px2 + obj.w * 0.18, osy + obj.h * 0.28, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
+            // Highlight on foliage
+            ctx.fillStyle = 'rgba(80,170,60,.25)';
+            ctx.beginPath(); ctx.arc(px2 - obj.w * 0.08, osy + obj.h * 0.35, obj.w * 0.18, 0, Math.PI * 2); ctx.fill();
           } else if (obj.type === 'reception') {
             ctx.fillStyle = obj.color ?? 'rgba(50,70,100,.55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -8244,13 +8360,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (peer.interiorBid !== itr.bid) continue;
           const opx = peer.x, opy = peer.y;
           if (opx < -10 || opx > iDef.width + 10 || opy < -10 || opy > iDef.height + 10) continue;
-          ctx.fillStyle = 'rgba(0,0,0,0.1)';
-          ctx.beginPath(); ctx.ellipse(opx, opy + 4, 4, 1.5, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(80,80,120,.7)'; ctx.fillRect(opx - 3, opy + 1, 3, 4); ctx.fillRect(opx, opy + 1, 3, 4);
-          ctx.fillStyle = 'rgba(100,100,140,.7)'; ctx.fillRect(opx - 4, opy - 5, 8, 6);
-          ctx.fillStyle = 'rgba(200,160,120,.7)'; ctx.beginPath(); ctx.arc(opx, opy - 8, 3, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = 'rgba(0,200,255,.6)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(peer.name, opx, opy - 14);
+          const opCls2 = (peer.class ?? '').toLowerCase();
+          ctx.fillStyle = 'rgba(0,0,0,0.12)';
+          ctx.beginPath(); ctx.ellipse(opx, opy + 6, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+          if (opCls2 === 'corporate') {
+            ctx.fillStyle = '#111111'; ctx.fillRect(opx - 4, opy + 7, 3, 5); ctx.fillRect(opx + 1, opy + 7, 3, 5);
+            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(opx - 5, opy - 1, 10, 8);
+            ctx.fillStyle = '#e8e8e8'; ctx.fillRect(opx - 1, opy, 2, 2);
+            ctx.fillStyle = '#cc1111'; ctx.fillRect(opx, opy + 1, 1, 4);
+            ctx.fillStyle = '#1e1e2e'; ctx.fillRect(opx - 8, opy, 2, 5); ctx.fillRect(opx + 6, opy, 2, 5);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a1a1a'; ctx.fillRect(opx - 4, opy - 13, 8, 5);
+          } else if (opCls2 === 'outlaw') {
+            ctx.fillStyle = '#3d2010'; ctx.fillRect(opx - 4, opy + 7, 3, 5); ctx.fillRect(opx + 1, opy + 7, 3, 5);
+            ctx.fillStyle = '#6b4a28'; ctx.fillRect(opx - 5, opy - 1, 10, 8);
+            ctx.fillStyle = '#4a3020'; ctx.fillRect(opx - 3, opy, 6, 6);
+            ctx.fillStyle = '#6b4a28'; ctx.fillRect(opx - 8, opy, 2, 5); ctx.fillRect(opx + 6, opy, 2, 5);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#5a3a18'; ctx.fillRect(opx - 6, opy - 14, 12, 6);
+            ctx.fillStyle = '#6a4a25'; ctx.fillRect(opx - 7, opy - 9, 14, 2);
+          } else if (opCls2 === 'replicant') {
+            ctx.fillStyle = '#cccccc'; ctx.fillRect(opx - 4, opy + 7, 3, 4); ctx.fillRect(opx + 1, opy + 7, 3, 4);
+            ctx.fillStyle = '#2a3d6b'; ctx.fillRect(opx - 4, opy + 2, 3, 5); ctx.fillRect(opx + 1, opy + 2, 3, 5);
+            ctx.fillStyle = '#3a4a5a'; ctx.fillRect(opx - 5, opy - 1, 10, 8);
+            ctx.fillStyle = '#2e3d4a'; ctx.fillRect(opx - 3, opy - 1, 6, 3);
+            ctx.fillStyle = '#3a4a5a'; ctx.fillRect(opx - 8, opy, 2, 5); ctx.fillRect(opx + 6, opy, 2, 5);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#2a1800'; ctx.fillRect(opx - 4, opy - 13, 8, 5);
+          } else {
+            ctx.fillStyle = '#334466'; ctx.fillRect(opx - 4, opy + 7, 3, 5); ctx.fillRect(opx + 1, opy + 7, 3, 5);
+            ctx.fillStyle = '#3a4a5a'; ctx.fillRect(opx - 5, opy - 1, 10, 8);
+            ctx.fillStyle = '#3a4a5a'; ctx.fillRect(opx - 8, opy, 2, 5); ctx.fillRect(opx + 6, opy, 2, 5);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#222244'; ctx.fillRect(opx - 4, opy - 13, 8, 5);
+          }
+          ctx.shadowColor = opCls2 === 'corporate' ? '#00ff41' : opCls2 === 'outlaw' ? '#88ff44' : opCls2 === 'replicant' ? '#33ffaa' : '#44aaff';
+          ctx.shadowBlur = 3;
+          ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(peer.name, opx, opy - 18);
+          ctx.shadowBlur = 0;
         }
 
         const ppx = itr.px, ppy = itr.py;
