@@ -128,13 +128,6 @@ export default function Cover() {
         .cta-primary {
           animation: glow-pulse 2.8s ease-in-out infinite;
         }
-        @keyframes float-title {
-          0%, 100% { transform: scaleX(0.85) scaleY(1.1) translateY(0px); }
-          50%       { transform: scaleX(0.85) scaleY(1.1) translateY(-6px); }
-        }
-        .title-float {
-          animation: float-title 6s ease-in-out infinite;
-        }
       `}</style>
 
       {/* Ambient glow */}
@@ -168,19 +161,17 @@ export default function Cover() {
 
         {/* Headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-6"
-          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed" }}
+          transition={{ duration: 0.5, delay: 0.08 }}
+          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-3"
+          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
         >
-          <span className="title-float block">
-            <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
-              SALARYMAN
-            </span>
-            <span className="relative animated-title">
-              SALARYMAN
-            </span>
+          <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
+            SALARYMAN
+          </span>
+          <span className="relative animated-title">
+            SALARYMAN
           </span>
         </motion.h1>
 
