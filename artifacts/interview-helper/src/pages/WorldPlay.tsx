@@ -10904,6 +10904,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = spk ? '#00ffcc' : '#44aaff';
           ctx.beginPath(); ctx.moveTo(px2, py2 - 9); ctx.lineTo(px2 + 6, py2 + 5); ctx.lineTo(px2 - 6, py2 + 5); ctx.closePath(); ctx.fill();
         }
+        if (spk) {
+          const t = g.frame * 0.1;
+          for (let ri = 0; ri < 3; ri++) {
+            const phase = (t + ri * 0.7) % 2.1;
+            const radius = 8 + phase * 10;
+            const alpha = Math.max(0, 0.6 - phase * 0.28);
+            ctx.strokeStyle = `rgba(0,255,180,${alpha})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(px2, py2 - 6, radius, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.fillStyle = '#00ffcc';
+          ctx.font = 'bold 9px "Share Tech Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText('\u266A', px2 + 10, py2 - 18);
+        }
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (op.paused) {
           const shieldPulse = 0.3 + Math.sin(g.frame * 0.08) * 0.15;
@@ -11687,7 +11702,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(255,200,0,${0.4})`; ctx.beginPath(); ctx.arc(bmx, bmy, bm.radius, 0, Math.PI * 2); ctx.fill();
         }
       }
-      if (speaking) { ctx.strokeStyle = 'rgba(0,255,180,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py2, 14, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      if (speaking) {
+        const t = g.frame * 0.1;
+        for (let ri = 0; ri < 3; ri++) {
+          const phase = (t + ri * 0.7) % 2.1;
+          const radius = 10 + phase * 12;
+          const alpha = Math.max(0, 0.55 - phase * 0.25);
+          ctx.strokeStyle = `rgba(0,255,180,${alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(px, py2 - 6, radius, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(0,255,180,.7)';
+        ctx.font = 'bold 9px "Share Tech Mono"';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u266A', px + 12, py2 - 20);
+      }
       ctx.font = 'bold 14px "Share Tech Mono"'; ctx.textAlign = 'center';
       const pnTw = ctx.measureText(char.name).width;
       ctx.fillStyle = 'rgba(0,0,0,.55)';
