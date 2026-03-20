@@ -2043,7 +2043,7 @@ export default function SoundLab({ onClose }: { onClose?: () => void }) {
   const BG_FULL = '#0a0d0a';
   if (onClose) {
     if (!isAuthenticated) {
-      return <SignInPage inline context={boomerMode ? 'Sign in to access the music lab.' : 'Operative credentials required. SOUND LAB access locked.'} />;
+      return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Operative credentials required. SOUND LAB access locked.'} />;
     }
     return <SoundLabInner onClose={onClose} />;
   }
