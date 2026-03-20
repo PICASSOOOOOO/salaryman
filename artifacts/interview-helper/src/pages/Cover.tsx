@@ -299,22 +299,24 @@ export default function Cover() {
       </div>
 
       {isAuthenticated && (
-        <button
-          onClick={() => navigate('/phone')}
-          style={{
-            position: 'fixed', bottom: 20, right: 20, zIndex: 50,
-            width: 48, height: 48, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(34,197,94,0.1)',
-            border: '1px solid rgba(34,197,94,0.4)',
-            color: 'rgba(34,197,94,0.9)',
-            cursor: 'pointer',
-            boxShadow: '0 0 20px rgba(34,197,94,0.15)',
-          }}
-          title="Open Phone System"
-        >
-          <Phone className="w-5 h-5" />
-        </button>
+        <div className="hidden sm:block">
+          <button
+            onClick={() => navigate('/phone')}
+            style={{
+              position: 'fixed', bottom: 20, right: 20, zIndex: 50,
+              width: 48, height: 48, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.4)',
+              color: 'rgba(34,197,94,0.9)',
+              cursor: 'pointer',
+              boxShadow: '0 0 20px rgba(34,197,94,0.15)',
+            }}
+            title="Open Phone System"
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+        </div>
       )}
     </div>
   );
