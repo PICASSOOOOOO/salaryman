@@ -11628,12 +11628,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
             <button onClick={() => { setRadioMuted(m => !m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {radioMuted ? '🔇 MUTE RADIO' : '🔊 MUTE RADIO'}
+              {radioMuted ? '🔇 MUTE RADIO' : '🔊 RADIO'}
             </button>
             <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>VOLUMES</div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 OUTPUT VOL</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎵 SCORE VOL</span>
                 <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
               </div>
               <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
