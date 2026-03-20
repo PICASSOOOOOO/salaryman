@@ -575,7 +575,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ],
   },
   picassoo_hq: {
-    id: 'picassoo_hq', label: 'PICASSOO.AI — HEADQUARTERS',
+    id: 'picassoo_hq', label: 'PICASSO AI — HEADQUARTERS',
     width: 340, height: 260,
     wallColor: 'rgba(18,12,28,.95)', floorColor: 'rgba(10,6,18,.9)', accentColor: 'rgba(180,80,255,.25)',
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
@@ -1395,7 +1395,7 @@ export const BUILDINGS = [
   { id: 'van_west',       x: 2200, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
   { id: 'van_central',    x: 5500, y: 8500, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
-  { id: 'picassoo_hq',    x: 7345, y: 6225, w: 130, h: 85,  label: 'PICASSOO.AI HQ',   bright: true,  doors: mkDoorS(7345,6225,130,85) },
+  { id: 'picassoo_hq',    x: 7345, y: 6225, w: 130, h: 85,  label: 'PICASSO AI HQ',   bright: true,  doors: mkDoorS(7345,6225,130,85) },
 ];
 
 export const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));

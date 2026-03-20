@@ -1,5 +1,5 @@
 {
-  "name": "Salaryman by Picassoo.AI",
+  "name": "Salaryman by Picasso AI",
   "short_name": "Salaryman",
   "description": "Executive productivity suite with PABLO AI assistant",
   "start_url": "/",
@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/picasso-favicon.png",
+      "src": "/nine-square-favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/picasso-logo.png",
+      "src": "/nine-square-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

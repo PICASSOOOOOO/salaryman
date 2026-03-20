@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { PhoneDialer } from '../components/PhoneDialer';
+import { NineSquareLogo } from '../components/NineSquareLogo';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -99,22 +100,14 @@ export default function Cover() {
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
 
-        {/* Picasso brand mark */}
+        {/* Logo mark */}
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="flex items-center gap-3 mb-6"
+          className="mb-6"
         >
-          <img
-            src="/brand/picasso/picasso-favicon.png"
-            alt="Picassoo.AI"
-            className="w-10 h-10 rounded-lg"
-            style={{ border: '1px solid rgba(255,255,255,0.12)' }}
-          />
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Arial, sans-serif', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '0.04em' }}>
-            Picasso<span style={{ color: 'rgba(255,255,255,0.35)' }}>o.AI</span>
-          </div>
+          <NineSquareLogo size={36} color="#34d399" gap={4} />
         </motion.div>
 
         {/* Badge */}
@@ -280,7 +273,7 @@ export default function Cover() {
               style={{ display: 'block', background: '#000' }}
             />
           </div>
-          <p className="text-[9px] font-mono text-zinc-700 tracking-widest uppercase">A PICASSOO.AI PRODUCTION</p>
+          <p className="text-[9px] font-mono text-zinc-700 tracking-widest uppercase">A PICASSO AI PRODUCTION</p>
         </motion.div>
       </div>
 

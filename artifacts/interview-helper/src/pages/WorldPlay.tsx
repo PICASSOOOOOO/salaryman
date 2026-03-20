@@ -1899,7 +1899,7 @@ const TRADEABLE_ASSETS: AssetDef[] = [
 
 interface StockDef { ticker: string; company: string; industry: string; basePrice: number; isReal: boolean; }
 const PRE_LISTED_STOCKS: StockDef[] = [
-  { ticker: 'PCSO', company: 'PICASSOO.AI', industry: 'Software / SaaS', basePrice: 4500, isReal: true },
+  { ticker: 'PCSO', company: 'PICASSO AI', industry: 'Software / SaaS', basePrice: 4500, isReal: true },
   { ticker: 'PABLO', company: 'PABLO CORP', industry: 'Conglomerate', basePrice: 12000, isReal: false },
   { ticker: 'NEON', company: 'NEON ENERGY', industry: 'Energy', basePrice: 800, isReal: false },
   { ticker: 'OMBR', company: 'BANCO OMBRA', industry: 'Finance', basePrice: 3200, isReal: false },
@@ -2165,7 +2165,7 @@ const TOWER_LINES = [
   `> SHADOW TOWER — 67 FLOORS. ${CITY_NAME} DESIGNATION: BLOCK ZERO.`,
   '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as every city that ever fell.',
   '> Floors 1-39: commercial rentals. Floors 40-65: permanently restricted by order of SENIOR PABLO.',
-  '> Floor 66: PICASSOO.AI executive suite. Floor 67: The penthouse. PICASSO himself. Nobody returns from there with a story.',
+  '> Floor 66: PICASSO AI executive suite. Floor 67: The penthouse. PICASSO himself. Nobody returns from there with a story.',
   '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
   '> HARLAN CROSS was outside this building for three days. Said he felt something. Left without explaining.',
   '> PICASSO, SENIOR PABLO, and the city\'s core power structure — all resident above floor 65. All watching.',
@@ -2384,7 +2384,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 63, name: '── PABLO CORP COMMAND ──', restricted: true, desc: 'PABLO CORP inner command. Single corridor. No windows. Every surface is white. A single desk at the end holds a terminal that is always on.' },
       { floor: 64, name: '── RESTRICTED ──', restricted: true, desc: 'Anteroom to command. Two chairs. One of them has never been used. The other shows years of use — the same wear pattern, always the same seat position.' },
       { floor: 65, name: '── RESTRICTED ──', restricted: true, desc: 'A single chair at a single desk. A document. Face-down. The chair is warm. The document is not for you.' },
-      { floor: 66, name: 'PICASSOO.AI — EXECUTIVE SUITE', restricted: true, desc: 'PICASSO\'s corporate office. Holographic art rotates on every wall. The servers here connect directly to the PCSO global model. Staff on this floor do not take breaks. Or blink. Often enough.' },
+      { floor: 66, name: 'PICASSO AI — EXECUTIVE SUITE', restricted: true, desc: 'PICASSO\'s corporate office. Holographic art rotates on every wall. The servers here connect directly to the PCSO global model. Staff on this floor do not take breaks. Or blink. Often enough.' },
       { floor: 67, name: '── PENTHOUSE — PICASSO ──', restricted: true, desc: 'The top. PICASSO\'s penthouse. The city is visible from every angle. The glass is floor-to-ceiling. He sees everything. He has always seen everything. The lights never go off. The chair at the window is never empty.' },
     ],
   },
@@ -3663,7 +3663,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'picassoo_hq') {
       sfxEnter();
-      setNarr('> PICASSOO.AI HQ — AI-powered art generation. A registered real enterprise. Holographic murals shift on every wall. Servers hum endlessly.');
+      setNarr('> PICASSO AI HQ — AI-powered art generation. A registered real enterprise. Holographic murals shift on every wall. Servers hum endlessly.');
     }
     else if (bid === 'nexus_hub') {
       sfxEnter();

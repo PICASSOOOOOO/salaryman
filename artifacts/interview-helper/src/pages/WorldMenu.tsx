@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
+import { NineSquareLogo } from '../components/NineSquareLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useIsMobile, getDefaultBoomerMode } from '../hooks/use-mobile';
@@ -855,11 +856,12 @@ export default function WorldMenu() {
 
         {/* Title */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', marginTop: '.5rem' }}>
-            <img src="/brand/picasso/picasso-favicon.png" alt="Picassoo.AI" style={{ width: 20, height: 20, borderRadius: 3, border: '1px solid rgba(0,255,65,.2)' }} />
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', ...VT }}>BY PICASSOO.AI — PABLO CORP WORLD</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '.2rem' }}>
+            <NineSquareLogo size={32} color="#00ff41" gap={3} />
+            <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
+            <NineSquareLogo size={32} color="#00ff41" gap={3} />
           </div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSO AI — PABLO CORP WORLD</div>
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
           <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP IMMIGRATION INTERFACE v1.0</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
