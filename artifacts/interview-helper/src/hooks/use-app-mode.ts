@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export type AppMode = 'branded' | 'discreet';
 
-const buildVersion = typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev';
+const buildVersion = __BUILD_VERSION__;
 
 export const BRANDED_CONFIG = {
   name: 'SALARYMAN' as const,

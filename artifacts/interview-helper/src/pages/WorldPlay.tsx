@@ -13254,7 +13254,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     )}
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.1rem', fontSize: '.42rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.6 }}>
-                      IN-GAME CRM v1.0 · Contacts are stored locally · External CRM sync coming soon
+                      {`IN-GAME CRM ${__BUILD_VERSION__} · Contacts are stored locally · External CRM sync coming soon`}
                     </div>
                   </div>
                 )}

@@ -54,7 +54,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   define: {
-    "__BUILD_VERSION__": JSON.stringify(getFormattedVersion()),
+    "__BUILD_VERSION__": JSON.stringify(isBuild ? getFormattedVersion() : 'dev'),
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
