@@ -179,6 +179,120 @@ export function fiatToGold(fiat: number, year: number): { gold: number; tax: num
   return { gold, tax, totalCost: baseCost + tax };
 }
 
+// ── ATM Fee System ──────────────────────────────────────────────────────────
+export const ATM_FEE_RATE = 0.04;
+export const ATM_WITHDRAW_FEE_RATE = 0.03;
+export const CRYPTO_TO_FIAT_RATE = 100;
+
+export function calcAtmFee(amount: number, feeRate: number): { fee: number; net: number } {
+  const fee = Math.ceil(amount * feeRate);
+  return { fee, net: amount - fee };
+}
+
+export function cryptoToFiat(crypto: number): { fiatGross: number; fee: number; fiatNet: number } {
+  const fiatGross = crypto * CRYPTO_TO_FIAT_RATE;
+  const fee = Math.ceil(fiatGross * ATM_FEE_RATE);
+  return { fiatGross, fee, fiatNet: fiatGross - fee };
+}
+
+// ── Gold Exchange CRYPTO Spread ─────────────────────────────────────────────
+export const GOLD_EXCHANGE_BUY_SPREAD = 0.05;
+export const GOLD_EXCHANGE_SELL_SPREAD = 0.05;
+export const CRYPTO_PER_GOLD = 1000;
+
+export function cryptoToGoldRate(amount: number, direction: 'buy' | 'sell'): { cost: number; fee: number; received: number } {
+  if (direction === 'buy') {
+    const baseCost = amount * CRYPTO_PER_GOLD;
+    const fee = Math.ceil(baseCost * GOLD_EXCHANGE_BUY_SPREAD);
+    return { cost: baseCost + fee, fee, received: amount };
+  }
+  const baseValue = amount * CRYPTO_PER_GOLD;
+  const fee = Math.ceil(baseValue * GOLD_EXCHANGE_SELL_SPREAD);
+  return { cost: amount, fee, received: baseValue - fee };
+}
+
+// ── Expanded Loan System ────────────────────────────────────────────────────
+export interface LoanTier {
+  amount: number; label: string;
+  baseInterestRate: number;
+  originationFeeRate: number;
+  durationFrames: number;
+  compounding: boolean;
+}
+
+export const LOAN_TIERS: LoanTier[] = [
+  { amount: 5000,   label: 'ƒ5K',   baseInterestRate: 0.15, originationFeeRate: 0,    durationFrames: 60 * 360, compounding: false },
+  { amount: 10000,  label: 'ƒ10K',  baseInterestRate: 0.15, originationFeeRate: 0,    durationFrames: 60 * 360, compounding: false },
+  { amount: 25000,  label: 'ƒ25K',  baseInterestRate: 0.18, originationFeeRate: 0.02, durationFrames: 60 * 480, compounding: false },
+  { amount: 50000,  label: 'ƒ50K',  baseInterestRate: 0.20, originationFeeRate: 0.03, durationFrames: 60 * 600, compounding: true },
+  { amount: 100000, label: 'ƒ100K', baseInterestRate: 0.22, originationFeeRate: 0.04, durationFrames: 60 * 720, compounding: true },
+  { amount: 250000, label: 'ƒ250K', baseInterestRate: 0.25, originationFeeRate: 0.05, durationFrames: 60 * 900, compounding: true },
+  { amount: 500000, label: 'ƒ500K', baseInterestRate: 0.28, originationFeeRate: 0.06, durationFrames: 60 * 1200, compounding: true },
+];
+
+export function calcLoanInterest(tier: LoanTier): number {
+  if (tier.compounding) {
+    const periods = 4;
+    const ratePerPeriod = tier.baseInterestRate / periods;
+    return Math.floor(tier.amount * (Math.pow(1 + ratePerPeriod, periods) - 1));
+  }
+  return Math.floor(tier.amount * tier.baseInterestRate);
+}
+
+export function calcOriginationFee(tier: LoanTier): number {
+  return Math.floor(tier.amount * tier.originationFeeRate);
+}
+
+// ── Real Estate Property System ─────────────────────────────────────────────
+export const PROPERTY_TAX_RATE = 0.02;
+export const PROPERTY_RESALE_FEE_RATE = 0.06;
+export const PROPERTY_TAX_CYCLE_FRAMES = 20;
+
+export interface PropertyDeed {
+  id: string;
+  name: string;
+  zone: string;
+  purchasePrice: number;
+  purchasedAt: number;
+  currentValue: number;
+  taxesPaid: number;
+  income: number;
+}
+
+export function getPropertyValue(deed: PropertyDeed): number {
+  const zoneDemand: Record<string, number> = {
+    downtown: 1.3, commercial: 1.15, residential: 1.0, industrial: 0.85, transit: 0.9,
+    'SHADOW TOWER': 1.4, 'WASTELAND': 0.7, 'INDUSTRIAL': 0.8,
+  };
+  const demand = zoneDemand[deed.zone] ?? 1.0;
+  const ageMs = Date.now() - deed.purchasedAt;
+  const ageDays = ageMs / 86400000;
+  const cyclicShift = Math.sin(ageDays * 0.5) * 0.15;
+  const trendShift = Math.min(0.3, ageDays * 0.005);
+  const multiplier = demand + cyclicShift + trendShift;
+  return Math.floor(deed.purchasePrice * Math.max(0.5, multiplier));
+}
+
+export function calcPropertyTax(propertyValue: number): number {
+  return Math.floor(propertyValue * PROPERTY_TAX_RATE);
+}
+
+export function calcResaleFee(salePrice: number): number {
+  return Math.floor(salePrice * PROPERTY_RESALE_FEE_RATE);
+}
+
+// ── Transaction Log Types ───────────────────────────────────────────────────
+export type TransactionCategory = 'atm_fee' | 'loan_interest' | 'loan_origination' | 'property_tax' | 'resale_fee' | 'exchange_spread' | 'deposit_tax' | 'wire_tax' | 'income' | 'general';
+
+export interface TransactionLogEntry {
+  id: number;
+  desc: string;
+  amount: number;
+  bal: number;
+  category: TransactionCategory;
+  timestamp: number;
+}
+
 // ── Treasure System ──────────────────────────────────────────────────────────
 export interface TreasureChest {
   id: string; x: number; y: number; opened: boolean;

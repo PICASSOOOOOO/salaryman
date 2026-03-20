@@ -41,6 +41,12 @@ import {
   getTemperatureLevel,
   RADIATION_ZONES, getRadiationLevel,
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
+  ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, CRYPTO_TO_FIAT_RATE, calcAtmFee, cryptoToFiat,
+  GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD, CRYPTO_PER_GOLD, cryptoToGoldRate,
+  LOAN_TIERS, calcLoanInterest, calcOriginationFee,
+  PROPERTY_TAX_RATE, PROPERTY_RESALE_FEE_RATE, PROPERTY_TAX_CYCLE_FRAMES,
+  type PropertyDeed, getPropertyValue, calcPropertyTax, calcResaleFee,
+  type TransactionCategory, type TransactionLogEntry,
   TREASURE_CHESTS, TREASURE_MAPS,
   LORE_WEAPON_NAMES, CLOTHES,
   RUMORS, STORY_DIALOGUES, getGenericDialogueTree,
@@ -3001,6 +3007,8 @@ export default function WorldPlay() {
     realEstateIncomeTick: 0,
     realEstate: Array.isArray(_ss?.realEstate) ? [..._ss.realEstate] : [] as string[],
     rentalProperties: Array.isArray(_ss?.rentalProperties) ? [..._ss.rentalProperties] : [] as string[],
+    propertyDeeds: (Array.isArray(_ss?.propertyDeeds) ? _ss.propertyDeeds : []) as PropertyDeed[],
+    propertyTaxTick: 0,
     dogCompanion: {
       active: false, name: '', hp: DOG_MAX_HP, maxHp: DOG_MAX_HP,
       x: 0, y: 0, injured: false,
@@ -3283,8 +3291,8 @@ export default function WorldPlay() {
     try { const flag = localStorage.getItem('sm_died_last_session'); return flag === 'true'; } catch { return false; }
   });
   const [showIndoorStart, setShowIndoorStart] = useState(!_ss && !(() => { try { return localStorage.getItem('sm_died_last_session') === 'true'; } catch { return false; } })());
-  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
-  const [bankHistory,  setBankHistory]  = useState<Array<{id:number;desc:string;amount:number;bal:number}>>([]);
+  const [bankTab,      setBankTab]      = useState<'accounts'|'atm'|'loans'|'wire'|'history'>('accounts');
+  const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
@@ -3312,7 +3320,7 @@ export default function WorldPlay() {
   const [showSecretLabPrompt, setShowSecretLabPrompt] = useState<'buy' | 'password' | 'setpw' | null>(null);
   const [secretLabPwInput, setSecretLabPwInput] = useState('');
   const [showGoldExchange, setShowGoldExchange] = useState(false);
-  const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks'>('gold');
+  const [goldExchangeTab, setGoldExchangeTab] = useState<'gold' | 'assets' | 'stocks' | 'crypto'>('gold');
   const [showHousingPanel, setShowHousingPanel] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showAdminDept, setShowAdminDept] = useState<string | null>(null);
@@ -3483,8 +3491,11 @@ export default function WorldPlay() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addBankTx = useCallback((desc: string, amount: number, bal: number) => {
-    setBankHistory(h => [{ id: Date.now(), desc, amount, bal }, ...h].slice(0, 30));
+  const bankTxCounter = useRef(0);
+  const addBankTx = useCallback((desc: string, amount: number, bal: number, category: TransactionCategory = 'general') => {
+    bankTxCounter.current++;
+    const id = Date.now() * 1000 + bankTxCounter.current;
+    setBankHistory(h => [{ id, desc, amount, bal, category, timestamp: Date.now() }, ...h].slice(0, 50));
   }, []);
 
   // Player apartment assignment (persistent per character)
@@ -3547,6 +3558,7 @@ export default function WorldPlay() {
       cargo: { ...g.cargo },
       realEstate: [...g.realEstate],
       rentalProperties: [...(g.rentalProperties ?? [])],
+      propertyDeeds: [...(g.propertyDeeds ?? [])],
       worldTime: g.worldTime,
       diedLastSession: g.diedLastSession,
       quests: g.quests,
@@ -7618,6 +7630,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.salary += reTotal; setSalary(g.salary);
             g.floaters.push({ x: g.px + 30, y: g.py - 50, text: `+ƒ${reTotal.toLocaleString()} RENTAL INCOME`, color: '#cc44ff', life: 80, maxLife: 80 });
             sfxCoin();
+          }
+        }
+
+        g.propertyTaxTick = (g.propertyTaxTick ?? 0) + 1;
+        if (g.propertyTaxTick >= PROPERTY_TAX_CYCLE_FRAMES && (g.propertyDeeds ?? []).length > 0) {
+          g.propertyTaxTick = 0;
+          let totalTax = 0;
+          for (const deed of g.propertyDeeds) {
+            const currentVal = getPropertyValue(deed);
+            deed.currentValue = currentVal;
+            const tax = calcPropertyTax(currentVal);
+            deed.taxesPaid += tax;
+            totalTax += tax;
+          }
+          if (totalTax > 0) {
+            if (g.salary >= totalTax) {
+              g.salary -= totalTax; setSalary(g.salary);
+              addBankTx(`PROPERTY TAX (${g.propertyDeeds.length} properties)`, -totalTax, g.salary, 'property_tax');
+              g.floaters.push({ x: g.px + 30, y: g.py - 30, text: `-ƒ${totalTax.toLocaleString()} PROPERTY TAX`, color: '#ff4488', life: 80, maxLife: 80 });
+            } else {
+              g.floaters.push({ x: g.px + 30, y: g.py - 30, text: `TAX DELINQUENT`, color: '#ff4444', life: 100, maxLife: 100 });
+            }
           }
         }
 
@@ -13651,18 +13685,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── BANCO OMBRA TERMINAL ─────────────────────────────────────────── */}
       {showBank && (() => {
         const g = gs.current;
-        const LOAN_OPTIONS = [
-          { amount: 5000,  label: 'ƒ5K' },
-          { amount: 10000, label: 'ƒ10K' },
-          { amount: 25000, label: 'ƒ25K' },
-          { amount: 50000, label: 'ƒ50K' },
-        ];
         const VTB: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const STB: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const tabBtn = (active: boolean): React.CSSProperties => ({
-          padding: '.4rem 1rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)',
+          padding: '.4rem .75rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)',
           background: active ? 'rgba(0,255,65,.08)' : 'transparent',
-          color: active ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', ...VTB, fontSize: '1.05rem', letterSpacing: '.1em',
+          color: active ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', ...VTB, fontSize: '.95rem', letterSpacing: '.08em',
         });
         const inp: React.CSSProperties = {
           background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41',
@@ -13679,32 +13707,46 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const tax = amt >= 5000 ? Math.floor(amt * 0.12) : 0;
           g.salary -= amt; setSalary(g.salary);
           g.savings += (amt - tax); setSavings(g.savings);
-          if (tax > 0) addBankTx('PABLO CORP DEPOSIT TAX (12%)', -tax, g.salary);
-          addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary);
+          if (tax > 0) addBankTx('PABLO CORP DEPOSIT TAX (12%)', -tax, g.salary, 'deposit_tax');
+          addBankTx('CHECKING → SAVINGS DEPOSIT', -amt, g.salary, 'general');
           setBankDepAmt(''); sfxCoin();
           setNarr(`> DEPOSITED ƒ${amt.toLocaleString()} to SAVINGS.${tax > 0 ? ` PABLO CORP TAX: ƒ${tax.toLocaleString()}.` : ' No tax.'} Savings: ƒ${g.savings.toLocaleString()}.`);
         };
         const doWithdraw = () => {
           const amt = parseInt(bankWithAmt) || 0;
           if (amt <= 0 || amt > g.savings) { sfxError(); setNarr('> BANCO OMBRA — Insufficient savings balance.'); return; }
-          g.savings -= amt; g.salary += amt;
+          const { fee, net } = calcAtmFee(amt, ATM_WITHDRAW_FEE_RATE);
+          g.savings -= amt;
+          g.salary += net;
           setSavings(g.savings); setSalary(g.salary);
-          addBankTx('SAVINGS → CHECKING WITHDRAWAL', amt, g.salary);
+          addBankTx('SAVINGS → CHECKING WITHDRAWAL', net, g.salary, 'general');
+          addBankTx(`ATM WITHDRAWAL FEE (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%)`, -fee, g.salary, 'atm_fee');
           setBankWithAmt(''); sfxCoin();
-          setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS to CHECKING.`);
+          setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS. ATM Fee: ƒ${fee.toLocaleString()} (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${net.toLocaleString()}.`);
         };
-        const doLoan = (amount: number) => {
+        const doConvertCrypto = (cryptoAmt: number) => {
+          if (cryptoAmt <= 0 || cryptoBalance < cryptoAmt) { sfxError(); setNarr('> ATM — Insufficient CRYPTO balance.'); return; }
+          const { fiatGross, fee, fiatNet } = cryptoToFiat(cryptoAmt);
+          setCryptoBalance(prev => prev - cryptoAmt);
+          g.salary += fiatNet; setSalary(g.salary);
+          addBankTx(`CRYPTO → FIAT (${cryptoAmt} CRYPTO)`, fiatNet, g.salary, 'general');
+          addBankTx(`ATM CONVERSION FEE (${(ATM_FEE_RATE * 100).toFixed(0)}%)`, -fee, g.salary, 'atm_fee');
+          sfxCoin();
+          setNarr(`> ATM — Converted ${cryptoAmt} CRYPTO → ƒ${fiatGross.toLocaleString()} FIAT. Fee: ƒ${fee.toLocaleString()} (${(ATM_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${fiatNet.toLocaleString()}.`);
+        };
+        const doLoan = (tier: typeof LOAN_TIERS[number]) => {
           if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
-          const interest = Math.floor(amount * 0.18);
-          const origFee  = amount >= 25000 ? Math.floor(amount * 0.02) : 0;
-          const received  = amount - origFee;
-          const loan = { amount, interest, issuedAt: g.frame, dueAt: g.frame + 60 * 360 };
+          const interest = calcLoanInterest(tier);
+          const origFee  = calcOriginationFee(tier);
+          const received  = tier.amount - origFee;
+          const loan = { amount: tier.amount, interest, issuedAt: g.frame, dueAt: g.frame + tier.durationFrames };
           g.loan = loan; g.salary += received; setSalary(g.salary);
           setBankLoan(loan);
-          if (origFee > 0) addBankTx('ORIGINATION FEE (2%)', -origFee, g.salary);
-          addBankTx(`LOAN ISSUED @ 18% FLAT`, received, g.salary);
+          if (origFee > 0) addBankTx(`ORIGINATION FEE (${(tier.originationFeeRate * 100).toFixed(0)}%)`, -origFee, g.salary, 'loan_origination');
+          addBankTx(`LOAN ISSUED @ ${(tier.baseInterestRate * 100).toFixed(0)}%${tier.compounding ? ' COMPOUND' : ' FLAT'}`, received, g.salary, 'general');
           sfxCoin();
-          setNarr(`> LOAN APPROVED — ƒ${amount.toLocaleString()} · Int: ƒ${interest.toLocaleString()} · Fee: ƒ${origFee.toLocaleString()} · Repay within ~6 min. Late = penalty.`);
+          const durationMin = Math.round(tier.durationFrames / 60 / 60);
+          setNarr(`> LOAN APPROVED — ƒ${tier.amount.toLocaleString()} · Int: ƒ${interest.toLocaleString()}${tier.compounding ? ' (compound)' : ''} · Fee: ƒ${origFee.toLocaleString()} · Repay within ~${durationMin} min. Late = penalty.`);
         };
         const doRepay = () => {
           const loan = g.loan; if (!loan) return;
@@ -13712,7 +13754,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (g.salary < totalDue) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${totalDue.toLocaleString()}.`); return; }
           g.salary -= totalDue; setSalary(g.salary);
           g.loan = null; setBankLoan(null);
-          addBankTx(`LOAN REPAID ƒ${loan.amount.toLocaleString()} + ƒ${loan.interest.toLocaleString()} INT`, -totalDue, g.salary);
+          addBankTx(`LOAN REPAID ƒ${loan.amount.toLocaleString()} + ƒ${loan.interest.toLocaleString()} INT`, -totalDue, g.salary, 'loan_interest');
           sfxCoin();
           setNarr(`> LOAN REPAID — ƒ${totalDue.toLocaleString()} FIAT. Account standing: CLEAR. Debt collectors stand down.`);
         };
@@ -13723,18 +13765,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const fee = Math.ceil(amt * 0.03);
           if (amt + fee > g.salary) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${(amt+fee).toLocaleString()} (inc. 3% tax).`); return; }
           g.salary -= (amt + fee); setSalary(g.salary);
-          addBankTx(`WIRE → ${to}`, -amt, g.salary);
-          addBankTx('PABLO CORP WIRE TAX (3%)', -fee, g.salary);
+          addBankTx(`WIRE → ${to}`, -amt, g.salary, 'general');
+          addBankTx('PABLO CORP WIRE TAX (3%)', -fee, g.salary, 'wire_tax');
           wsSend({ type: 'wire', to, amount: amt, from: char.name });
           setBankWireAmt(''); setBankWireTo(''); sfxCoin();
           setNarr(`> WIRE SENT — ƒ${amt.toLocaleString()} → ${to}. Fee: ƒ${fee.toLocaleString()}. PABLO CORP logged it.`);
         };
         const isOverdue = bankLoan ? g.frame > bankLoan.dueAt : false;
+        const CAT_COLORS: Record<string, string> = {
+          atm_fee: '#ff8844', loan_interest: '#ff6666', loan_origination: '#ffaa44',
+          property_tax: '#ff4488', resale_fee: '#ff88cc', exchange_spread: '#88aaff',
+          deposit_tax: '#ffaa44', wire_tax: '#ffcc44', income: '#44ff88', general: 'rgba(0,255,65,.5)',
+        };
+        const CAT_LABELS: Record<string, string> = {
+          atm_fee: 'ATM', loan_interest: 'LOAN', loan_origination: 'ORIG',
+          property_tax: 'TAX', resale_fee: 'RESALE', exchange_spread: 'SPREAD',
+          deposit_tax: 'TAX', wire_tax: 'WIRE', income: 'INCOME', general: '',
+        };
         return (
           <div onClick={e => { if (e.target === e.currentTarget) { setShowBank(false); frozenRef.current = false; } }}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 310 }}>
             <div style={{ width: '92%', maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.4)', overflow: 'hidden' }}>
-              {/* Header */}
               <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
@@ -13746,31 +13797,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
                 </div>
               </div>
-              {/* Tabs */}
-              <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
-                {(['accounts','loans','wire','history'] as const).map(t => (
+              <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
+                {(['accounts','atm','loans','wire','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
-                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'atm' ? '[ ATM ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
                 <button onClick={() => { setShowBank(false); frozenRef.current = false; }}
                   style={{ ...VTB, fontSize: '1rem', color: 'rgba(0,255,65,.35)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '.3rem .75rem', cursor: 'pointer' }}>ESC ×</button>
               </div>
-              {/* Body */}
               <div style={{ padding: '.75rem 1.1rem', overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
 
-                {/* ── ACCOUNTS ── */}
                 {bankTab === 'accounts' && (<>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING ACCOUNT', val: salary, sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
-                      { label: 'SAVINGS ACCOUNT', val: savings, sub: 'APY: 0.8% / CYCLE · PABLO CORP TAX: 15% ON INTEREST' },
-                    ].map(({ label, val, sub }) => (
-                      <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.65rem' }}>
-                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.25rem' }}>{label}</div>
-                        <div style={{ ...VTB, fontSize: '2.1rem', color: val > 0 ? '#00ff41' : 'rgba(0,255,65,.3)', letterSpacing: '.06em' }}>ƒ{val.toLocaleString()}</div>
-                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
+                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#00ff41', sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
+                      { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#00ff41', sub: 'APY: 0.8% / CYCLE' },
+                      { label: 'CRYPTO', val: `₿${cryptoBalance.toLocaleString()}`, color: '#bb88ff', sub: `1 CRYPTO = ƒ${CRYPTO_TO_FIAT_RATE} FIAT` },
+                    ].map(({ label, val, color, sub }) => (
+                      <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.55rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
+                        <div style={{ ...VTB, fontSize: '1.6rem', color, letterSpacing: '.06em' }}>{val}</div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
                       </div>
                     ))}
                   </div>
@@ -13788,51 +13837,96 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankWithAmt} onChange={e => setBankWithAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doWithdraw} style={actBtn(parseInt(bankWithAmt) > 0 && parseInt(bankWithAmt) <= savings)}>WITHDRAW ↑</button>
+                      {parseInt(bankWithAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>ATM FEE: ƒ{Math.ceil((parseInt(bankWithAmt)||0) * ATM_WITHDRAW_FEE_RATE).toLocaleString()} ({(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}%)</span>}
                     </div>
                   </div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
-                    Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. BANCO OMBRA is not liable for seizures during martial law.
+                    Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. All withdrawals incur a {(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}% ATM processing fee. BANCO OMBRA is not liable for seizures during martial law.
                   </div>
                 </>)}
 
-                {/* ── LOANS ── */}
+                {bankTab === 'atm' && (<>
+                  <div style={{ border: '1px solid rgba(187,136,255,.25)', padding: '.65rem', background: 'rgba(187,136,255,.03)' }}>
+                    <div style={{ ...VTB, fontSize: '1.3rem', color: '#bb88ff', letterSpacing: '.15em', marginBottom: '.3rem' }}>CRYPTO ATM TERMINAL</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(187,136,255,.45)', lineHeight: 1.8 }}>
+                      Convert CRYPTO premium currency to FIAT. Rate: 1 CRYPTO = ƒ{CRYPTO_TO_FIAT_RATE} FIAT. Transaction fee: {(ATM_FEE_RATE * 100).toFixed(0)}% deducted before disbursement. All conversions are final.
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                    <div style={{ border: '1px solid rgba(187,136,255,.2)', padding: '.55rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(187,136,255,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>CRYPTO BALANCE</div>
+                      <div style={{ ...VTB, fontSize: '1.8rem', color: '#bb88ff' }}>₿{cryptoBalance.toLocaleString()}</div>
+                    </div>
+                    <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.55rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginBottom: '.2rem' }}>FIAT BALANCE</div>
+                      <div style={{ ...VTB, fontSize: '1.8rem', color: '#00ff41' }}>ƒ{salary.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(187,136,255,.3)', letterSpacing: '.1em', marginBottom: '.2rem' }}>SELECT CONVERSION AMOUNT</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.5rem' }}>
+                    {[50, 100, 250, 500].map(amt => {
+                      const { fiatGross, fee, fiatNet } = cryptoToFiat(amt);
+                      const canAfford = cryptoBalance >= amt;
+                      return (
+                        <button key={amt} onClick={() => doConvertCrypto(amt)} disabled={!canAfford}
+                          style={{ padding: '.65rem .4rem', border: `1px solid ${canAfford ? 'rgba(187,136,255,.4)' : 'rgba(187,136,255,.1)'}`, background: 'rgba(187,136,255,.04)', cursor: canAfford ? 'pointer' : 'default', textAlign: 'center' }}>
+                          <div style={{ ...VTB, fontSize: '1.2rem', color: canAfford ? '#bb88ff' : 'rgba(187,136,255,.25)' }}>₿{amt}</div>
+                          <div style={{ fontSize: '.45rem', color: canAfford ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', marginTop: '.1rem' }}>→ ƒ{fiatNet.toLocaleString()}</div>
+                          <div style={{ fontSize: '.4rem', color: '#ffaa44', marginTop: '.05rem' }}>FEE: ƒ{fee.toLocaleString()}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {cryptoBalance <= 0 && (
+                    <div style={{ border: '1px solid rgba(187,136,255,.15)', padding: '.55rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(187,136,255,.4)', marginBottom: '.3rem' }}>NO CRYPTO AVAILABLE</div>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(187,136,255,.25)' }}>Purchase CRYPTO bundles from the Cosmetic Store to convert to in-game FIAT.</div>
+                    </div>
+                  )}
+                  <div style={{ fontSize: '.42rem', color: 'rgba(187,136,255,.2)', lineHeight: 1.7 }}>
+                    CRYPTO is a one-way premium currency. Purchase with real money via the store. Convert to FIAT at any ATM terminal. {(ATM_FEE_RATE * 100).toFixed(0)}% processing fee applies to all conversions. PABLO CORP does not offer refunds on CRYPTO purchases.
+                  </div>
+                </>)}
+
                 {bankTab === 'loans' && (<>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — BANCO OMBRA</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
-                      18% flat interest · Repay within 60 game cycles (~6 min) · Late = 5% salary penalty/cycle via PABLO CORP Debt Collection · Loans ≥ ƒ25k carry 2% origination fee.
+                      Tiered lending: 15-28% interest (flat or compounding). Repay before due date or face 5% salary penalty/cycle. Larger loans carry origination fees up to 6%.
                     </div>
                   </div>
                   {!bankLoan ? (
                     <>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.5rem' }}>
-                        {LOAN_OPTIONS.map(opt => {
-                          const int18 = Math.floor(opt.amount * .18);
-                          const fee  = opt.amount >= 25000 ? Math.floor(opt.amount * .02) : 0;
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: '.4rem' }}>
+                        {LOAN_TIERS.map(tier => {
+                          const interest = calcLoanInterest(tier);
+                          const fee = calcOriginationFee(tier);
+                          const durationMin = Math.round(tier.durationFrames / 60 / 60);
                           return (
-                            <button key={opt.amount} onClick={() => doLoan(opt.amount)} style={{ padding: '.75rem .4rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
-                              <div style={{ ...VTB, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.06em' }}>{opt.label}</div>
-                              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', marginTop: '.15rem' }}>+ƒ{int18.toLocaleString()} INT</div>
-                              {fee > 0 && <div style={{ fontSize: '.55rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG</div>}
-                              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', marginTop: '.12rem' }}>DUE ~6 MIN</div>
+                            <button key={tier.amount} onClick={() => doLoan(tier)} style={{ padding: '.6rem .35rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
+                              <div style={{ ...VTB, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.06em' }}>{tier.label}</div>
+                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', marginTop: '.1rem' }}>{(tier.baseInterestRate * 100).toFixed(0)}% {tier.compounding ? 'COMPOUND' : 'FLAT'}</div>
+                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>
+                              {fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
+                              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.22)', marginTop: '.08rem' }}>DUE ~{durationMin} MIN</div>
                             </button>
                           );
                         })}
                       </div>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
-                        Collateral: NONE REQUIRED. Credit score: PROVISIONAL POSITIVE. One active loan at a time. PABLO CORP reserves right to restructure debt without notice. This is not a threat.
+                        Collateral: NONE REQUIRED. One active loan at a time. Larger loans use compounding interest (quarterly). PABLO CORP reserves right to restructure debt without notice.
                       </div>
                     </>
                   ) : (
                     <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(0,255,65,.3)'}`, padding: '.75rem' }}>
                       <div style={{ fontSize: '.55rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
-                        {isOverdue ? '⚠ LOAN OVERDUE — PABLO CORP DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
+                        {isOverdue ? 'LOAN OVERDUE — PABLO CORP DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
                         {[
                           { l: 'PRINCIPAL', v: `ƒ${bankLoan.amount.toLocaleString()}` },
-                          { l: 'INTEREST (18%)', v: `ƒ${bankLoan.interest.toLocaleString()}` },
+                          { l: 'INTEREST', v: `ƒ${bankLoan.interest.toLocaleString()}` },
                           { l: 'TOTAL DUE', v: `ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
                         ].map(({ l, v }) => (
                           <div key={l} style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.45rem' }}>
@@ -13841,7 +13935,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           </div>
                         ))}
                       </div>
-                      {isOverdue && <div style={{ fontSize: '.46rem', color: 'rgba(255,100,100,.6)', lineHeight: 1.7, border: '1px solid rgba(255,60,60,.2)', padding: '.45rem', marginBottom: '.55rem' }}>⚠ OVERDUE — 5% salary penalty per survival cycle until repaid. Repay immediately.</div>}
+                      {isOverdue && <div style={{ fontSize: '.46rem', color: 'rgba(255,100,100,.6)', lineHeight: 1.7, border: '1px solid rgba(255,60,60,.2)', padding: '.45rem', marginBottom: '.55rem' }}>OVERDUE — 5% salary penalty per survival cycle until repaid. Repay immediately.</div>}
                       <button onClick={doRepay} disabled={salary < bankLoan.amount + bankLoan.interest}
                         style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
                         REPAY IN FULL — ƒ{(bankLoan.amount + bankLoan.interest).toLocaleString()}
@@ -13851,7 +13945,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   )}
                 </>)}
 
-                {/* ── WIRE ── */}
                 {bankTab === 'wire' && (<>
                   <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
@@ -13889,19 +13982,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 </>)}
 
-                {/* ── HISTORY ── */}
                 {bankTab === 'history' && (<>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>ACCOUNT HISTORY — LAST 30 TRANSACTIONS</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>TRANSACTION HISTORY — ALL FEES, TAXES & INTEREST</div>
+                  {(() => {
+                    const totalFees = bankHistory.filter(t => ['atm_fee','loan_interest','loan_origination','property_tax','resale_fee','exchange_spread','deposit_tax','wire_tax'].includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+                    return totalFees > 0 ? (
+                      <div style={{ border: '1px solid rgba(255,100,100,.2)', padding: '.45rem', background: 'rgba(255,100,100,.03)' }}>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(255,100,100,.5)', letterSpacing: '.1em' }}>TOTAL FEES & TAXES PAID: <span style={{ ...VTB, fontSize: '.9rem', color: '#ff6666' }}>ƒ{totalFees.toLocaleString()}</span></div>
+                      </div>
+                    ) : null;
+                  })()}
                   {bankHistory.length === 0
                     ? <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', padding: '.8rem', textAlign: 'center' }}>No transactions recorded yet. Deposit, withdraw, take a loan, or send a wire to begin your history.</div>
                     : <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.15)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.15)' }}>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', width: 40 }}>TYPE</div>
                           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
                           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
                           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
                         </div>
                         {bankHistory.map((tx, i) => (
-                          <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
+                          <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
+                            {CAT_LABELS[tx.category] ? (
+                              <div style={{ fontSize: '.38rem', color: CAT_COLORS[tx.category] ?? 'rgba(0,255,65,.5)', border: `1px solid ${CAT_COLORS[tx.category] ?? 'rgba(0,255,65,.2)'}44`, padding: '1px 4px', width: 40, textAlign: 'center' }}>{CAT_LABELS[tx.category]}</div>
+                            ) : <div style={{ width: 40 }} />}
                             <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
                             <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ƒ{Math.abs(tx.amount).toLocaleString()}</div>
                             <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
@@ -14699,18 +14803,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const frame = g.worldTime;
         const doBuyGold = (amt: number) => {
           if (amt <= 0) return;
-          const cost = Math.ceil(amt * rate * (1 + getTransactionTax(amt * rate)));
-          if (g.salary < cost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
-          g.salary -= cost; g.goldBalance += amt;
+          const basePrice = amt * rate;
+          const spreadFee = Math.ceil(basePrice * GOLD_EXCHANGE_BUY_SPREAD);
+          const totalCost = basePrice + spreadFee;
+          if (g.salary < totalCost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
+          g.salary -= totalCost; g.goldBalance += amt;
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          setNarr(`> GOLD EXCHANGE — Purchased ${amt}oz GOLD for ƒ${cost.toLocaleString()} FIAT. Tax: ${(getTransactionTax(cost) * 100).toFixed(1)}%.`);
+          addBankTx(`GOLD BUY ${amt}oz`, -basePrice, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
+          setNarr(`> GOLD EXCHANGE — Purchased ${amt}oz GOLD for ƒ${totalCost.toLocaleString()} FIAT. Spread: ƒ${spreadFee.toLocaleString()} (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%).`);
         };
         const doSellGold = (amt: number) => {
           if (amt <= 0 || g.goldBalance < amt) { sfxError(); return; }
-          const gain = Math.floor(amt * rate * (1 - getTransactionTax(amt * rate)));
-          g.goldBalance -= amt; g.salary += gain;
+          const baseGain = amt * rate;
+          const spreadFee = Math.ceil(baseGain * GOLD_EXCHANGE_SELL_SPREAD);
+          const netGain = Math.max(1, baseGain - spreadFee);
+          g.goldBalance -= amt; g.salary += netGain;
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
-          setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${gain.toLocaleString()} FIAT. Tax: ${(getTransactionTax(gain) * 100).toFixed(1)}%.`);
+          addBankTx(`GOLD SELL ${amt}oz`, netGain, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
+          setNarr(`> GOLD EXCHANGE — Sold ${amt}oz GOLD for ƒ${netGain.toLocaleString()} FIAT. Spread: ƒ${spreadFee.toLocaleString()} (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%).`);
+        };
+        const doBuyGoldWithCrypto = (goldAmt: number) => {
+          const { cost, fee } = cryptoToGoldRate(goldAmt, 'buy');
+          if (cryptoBalance < cost) { sfxError(); setNarr(`> EXCHANGE — Insufficient CRYPTO. Need ₿${cost.toLocaleString()}.`); return; }
+          setCryptoBalance(prev => prev - cost);
+          g.goldBalance += goldAmt;
+          setGoldBalance(g.goldBalance); sfxCoin();
+          const feeValueFiat = Math.ceil(fee * CRYPTO_TO_FIAT_RATE);
+          addBankTx(`CRYPTO → GOLD ${goldAmt}oz (₿${cost - fee} base)`, 0, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%) ₿${fee}`, -feeValueFiat, g.salary, 'exchange_spread');
+          setNarr(`> EXCHANGE — Purchased ${goldAmt}oz GOLD for ₿${cost.toLocaleString()} CRYPTO. Spread: ₿${fee.toLocaleString()} (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%).`);
+        };
+        const doSellGoldForCrypto = (goldAmt: number) => {
+          if (g.goldBalance < goldAmt) { sfxError(); setNarr('> EXCHANGE — Insufficient GOLD.'); return; }
+          const { fee, received } = cryptoToGoldRate(goldAmt, 'sell');
+          g.goldBalance -= goldAmt;
+          setCryptoBalance(prev => prev + received);
+          setGoldBalance(g.goldBalance); sfxCoin();
+          const feeValueFiat = Math.ceil(fee * CRYPTO_TO_FIAT_RATE);
+          addBankTx(`GOLD → CRYPTO ${goldAmt}oz (₿${received} received)`, 0, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%) ₿${fee}`, -feeValueFiat, g.salary, 'exchange_spread');
+          setNarr(`> EXCHANGE — Sold ${goldAmt}oz GOLD for ₿${received.toLocaleString()} CRYPTO. Spread: ₿${fee.toLocaleString()} (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%).`);
         };
         const doBuyAsset = (asset: AssetDef) => {
           const price = getAssetPrice(asset, frame);
@@ -14744,9 +14878,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.salary += gain; setSalary(g.salary); sfxCoin();
           setNarr(`> WORLD STOCK EXCHANGE — Sold 1x ${stock.ticker} @ ƒ${gain.toLocaleString()}. Holdings: ${g.stocks[stock.ticker] ?? 0}.`);
         };
-        const tabBtn = (tab: 'gold' | 'assets' | 'stocks', label: string, col: string) => (
+        type ExchangeTab = 'gold' | 'assets' | 'stocks' | 'crypto';
+        const tabBtn = (tab: ExchangeTab, label: string, col: string) => (
           <button key={tab} onClick={() => setGoldExchangeTab(tab)}
-            style={{ flex:1, padding:'.4rem', background: goldExchangeTab === tab ? `${col}22` : 'transparent', border: `1px solid ${goldExchangeTab === tab ? col : 'rgba(255,255,255,.1)'}`, color: goldExchangeTab === tab ? col : 'rgba(255,255,255,.3)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>
+            style={{ flex:1, padding:'.4rem', background: goldExchangeTab === tab ? `${col}22` : 'transparent', border: `1px solid ${goldExchangeTab === tab ? col : 'rgba(255,255,255,.1)'}`, color: goldExchangeTab === tab ? col : 'rgba(255,255,255,.3)', cursor:'pointer', ...VT2, fontSize:'.85rem' }}>
             {label}
           </button>
         );
@@ -14758,16 +14893,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ display:'flex', gap:'.4rem', marginBottom:'1rem' }}>
                 {tabBtn('gold', 'GOLD', '#FFD700')}
                 {tabBtn('assets', 'JEWELS & METALS', '#b9f2ff')}
-                {tabBtn('stocks', 'STOCK MARKET', '#44aaff')}
+                {tabBtn('stocks', 'STOCKS', '#44aaff')}
+                {tabBtn('crypto', 'CRYPTO', '#bb88ff')}
               </div>
-              <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
+              <div style={{ display:'flex', gap:'.8rem', marginBottom:'1rem' }}>
                 <div style={{ flex:1, textAlign:'center' }}>
-                  <div style={{ fontSize:'.5rem', color:'rgba(0,255,65,.4)', marginBottom:'.3rem' }}>FIAT BALANCE</div>
-                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.4)', marginBottom:'.2rem' }}>FIAT</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
                 </div>
                 <div style={{ flex:1, textAlign:'center' }}>
-                  <div style={{ fontSize:'.5rem', color:'rgba(255,215,0,.4)', marginBottom:'.3rem' }}>GOLD BALANCE</div>
-                  <div style={{ ...VT2, fontSize:'1.3rem', color:'#FFD700' }}>{goldBalance}oz</div>
+                  <div style={{ fontSize:'.45rem', color:'rgba(255,215,0,.4)', marginBottom:'.2rem' }}>GOLD</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#FFD700' }}>{goldBalance}oz</div>
+                </div>
+                <div style={{ flex:1, textAlign:'center' }}>
+                  <div style={{ fontSize:'.45rem', color:'rgba(187,136,255,.4)', marginBottom:'.2rem' }}>CRYPTO</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#bb88ff' }}>₿{cryptoBalance.toLocaleString()}</div>
                 </div>
               </div>
 
@@ -14867,6 +15007,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                 )}
+              </div>)}
+
+              {goldExchangeTab === 'crypto' && (<div>
+                <div style={{ fontSize:'.42rem', color:'rgba(187,136,255,.35)', letterSpacing:'.1em', marginBottom:'.8rem' }}>
+                  CRYPTO ↔ GOLD DIRECT EXCHANGE · RATE: 1oz GOLD = ₿{CRYPTO_PER_GOLD.toLocaleString()} CRYPTO · {(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}% BUY SPREAD / {(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}% SELL SPREAD
+                </div>
+                <div style={{ fontSize:'.48rem', color:'rgba(187,136,255,.3)', letterSpacing:'.08em', marginBottom:'.5rem' }}>BUY GOLD WITH CRYPTO</div>
+                <div style={{ display:'flex', gap:'.6rem', marginBottom:'.8rem' }}>
+                  {[1, 5, 10].map(amt => {
+                    const { cost, fee } = cryptoToGoldRate(amt, 'buy');
+                    const canAfford = cryptoBalance >= cost;
+                    return (
+                      <button key={`cbuy${amt}`} onClick={() => doBuyGoldWithCrypto(amt)} disabled={!canAfford}
+                        style={{ flex:1, padding:'.55rem .4rem', background:'rgba(187,136,255,.05)', border:`1px solid ${canAfford ? 'rgba(187,136,255,.4)' : 'rgba(187,136,255,.1)'}`, cursor: canAfford ? 'pointer' : 'default', textAlign:'center' }}>
+                        <div style={{ ...VT2, fontSize:'1.1rem', color: canAfford ? '#FFD700' : 'rgba(255,215,0,.3)' }}>{amt}oz GOLD</div>
+                        <div style={{ fontSize:'.42rem', color: canAfford ? '#bb88ff' : 'rgba(187,136,255,.25)', marginTop:'.1rem' }}>₿{cost.toLocaleString()}</div>
+                        <div style={{ fontSize:'.38rem', color:'#ffaa44', marginTop:'.05rem' }}>SPREAD: ₿{fee.toLocaleString()}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize:'.48rem', color:'rgba(187,136,255,.3)', letterSpacing:'.08em', marginBottom:'.5rem' }}>SELL GOLD FOR CRYPTO</div>
+                <div style={{ display:'flex', gap:'.6rem', marginBottom:'.8rem' }}>
+                  {[1, 5, 10].map(amt => {
+                    const { fee, received } = cryptoToGoldRate(amt, 'sell');
+                    const canSell = goldBalance >= amt;
+                    return (
+                      <button key={`csell${amt}`} onClick={() => doSellGoldForCrypto(amt)} disabled={!canSell}
+                        style={{ flex:1, padding:'.55rem .4rem', background:'rgba(0,255,65,.03)', border:`1px solid ${canSell ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.1)'}`, cursor: canSell ? 'pointer' : 'default', textAlign:'center' }}>
+                        <div style={{ ...VT2, fontSize:'1.1rem', color: canSell ? '#00ff41' : 'rgba(0,255,65,.3)' }}>{amt}oz GOLD</div>
+                        <div style={{ fontSize:'.42rem', color: canSell ? '#bb88ff' : 'rgba(187,136,255,.25)', marginTop:'.1rem' }}>→ ₿{received.toLocaleString()}</div>
+                        <div style={{ fontSize:'.38rem', color:'#ffaa44', marginTop:'.05rem' }}>SPREAD: ₿{fee.toLocaleString()}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize:'.4rem', color:'rgba(187,136,255,.2)', lineHeight:1.7 }}>
+                  CRYPTO is a premium currency purchased with real money. Gold-CRYPTO conversions carry exchange spread. All transactions are final and logged by PABLO CORP.
+                </div>
               </div>)}
 
               <button onClick={() => { setShowGoldExchange(false); setGoldExchangeTab('gold'); }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(255,215,0,.2)', color:'rgba(255,215,0,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
@@ -15390,56 +15569,115 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── REAL ESTATE OFFICE PANEL ───────────────────────────────────────── */}
       {showRealEstateOffice && (() => {
         const g = gs.current;
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const deeds = g.propertyDeeds ?? [];
+        const doPurchase = (listing: typeof REAL_ESTATE_LISTINGS[0]) => {
+          if ((g.goldBalance ?? 0) < listing.price) { sfxError(); setNarr(`> INSUFFICIENT GOLD — "${listing.name}" costs ${listing.price} GOLD. You have ${(g.goldBalance ?? 0).toFixed(1)}.`); return; }
+          g.goldBalance = (g.goldBalance ?? 0) - listing.price;
+          setGoldBalance(g.goldBalance);
+          g.realEstate.push(listing.id);
+          const deed: PropertyDeed = { id: listing.id, name: listing.name, zone: listing.zone, purchasePrice: listing.price * FIAT_PER_GOLD, purchasedAt: Date.now(), currentValue: listing.price * FIAT_PER_GOLD, taxesPaid: 0, income: listing.income };
+          if (!g.propertyDeeds) g.propertyDeeds = [];
+          g.propertyDeeds.push(deed);
+          addBankTx(`PROPERTY: ${listing.name}`, -(listing.price * FIAT_PER_GOLD), g.salary, 'general');
+          sfxCoin();
+          setNarr(`> PROPERTY ACQUIRED — "${listing.name}" for ${listing.price} GOLD (ƒ${(listing.price * FIAT_PER_GOLD).toLocaleString()}). Tax: ${(PROPERTY_TAX_RATE * 100).toFixed(1)}%/cycle. Income: +ƒ${listing.income.toLocaleString()}/cycle.`);
+        };
+        const doSell = (deed: PropertyDeed) => {
+          const currentVal = getPropertyValue(deed);
+          const fee = calcResaleFee(currentVal);
+          const net = currentVal - fee;
+          const goldReceived = Math.floor(net / FIAT_PER_GOLD * 10) / 10;
+          g.goldBalance = (g.goldBalance ?? 0) + goldReceived;
+          setGoldBalance(g.goldBalance);
+          g.realEstate = g.realEstate.filter((r: string) => r !== deed.id);
+          if (g.rentalProperties) g.rentalProperties = g.rentalProperties.filter((r: string) => r !== deed.id);
+          g.propertyDeeds = (g.propertyDeeds ?? []).filter((d: PropertyDeed) => d.id !== deed.id);
+          addBankTx(`SOLD: ${deed.name}`, net, g.salary, 'income');
+          addBankTx(`RESALE FEE (${(PROPERTY_RESALE_FEE_RATE * 100).toFixed(0)}%)`, -fee, g.salary, 'resale_fee');
+          sfxCoin();
+          setNarr(`> SOLD — "${deed.name}" for ${goldReceived.toFixed(1)} GOLD (ƒ${net.toLocaleString()} after ${(PROPERTY_RESALE_FEE_RATE * 100).toFixed(0)}% resale fee ƒ${fee.toLocaleString()}).`);
+        };
+        const doRegisterRental = (pid: string, listing: typeof REAL_ESTATE_LISTINGS[0] | undefined) => {
+          const regFee = listing ? Math.floor(listing.price * 0.1) : 1;
+          if ((g.goldBalance ?? 0) < regFee) { sfxError(); setNarr(`> INSUFFICIENT GOLD — Rental registration costs ${regFee.toFixed(1)} GOLD.`); return; }
+          g.goldBalance = (g.goldBalance ?? 0) - regFee;
+          setGoldBalance(g.goldBalance);
+          if (!g.rentalProperties) g.rentalProperties = [];
+          g.rentalProperties.push(pid);
+          sfxCoin();
+          setNarr(`> RENTAL REGISTERED — Income +50%. Registration fee: ${regFee.toFixed(1)} GOLD.`);
+        };
+        const totalPortfolioValue = deeds.reduce((s, d) => s + getPropertyValue(d), 0);
+        const totalTaxesPaid = deeds.reduce((s, d) => s + d.taxesPaid, 0);
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowRealEstateOffice(false); frozenRef.current = false; } }}>
-            <div style={{ width:620, maxWidth:'94vw', border:'1px solid rgba(204,68,255,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+            <div style={{ width:650, maxWidth:'94vw', border:'1px solid rgba(204,68,255,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.8rem' }}>
-                <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.6rem', color:'#cc44ff', letterSpacing:'.18em' }}>REAL ESTATE OFFICE</div>
+                <div style={{ ...VT2, fontSize:'1.6rem', color:'#cc44ff', letterSpacing:'.18em' }}>REAL ESTATE OFFICE</div>
                 <button onClick={() => { setShowRealEstateOffice(false); frozenRef.current = false; }} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(204,68,255,.2)', color:'rgba(204,68,255,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
               </div>
               <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(204,68,255,.3),transparent)', marginBottom:'.8rem' }} />
-              <div style={{ fontSize:'.5rem', color:'rgba(204,68,255,.3)', letterSpacing:'.1em', marginBottom:'.6rem' }}>
-                GOLD BALANCE: {(g.goldBalance ?? 0).toFixed(1)} GOLD &nbsp;|&nbsp; OWNED: {g.realEstate.length} PROPERTIES
+              <div style={{ display:'flex', gap:'.8rem', marginBottom:'.8rem' }}>
+                <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>GOLD</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#FFD700' }}>{(g.goldBalance ?? 0).toFixed(1)}</div>
+                </div>
+                <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>PROPERTIES</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#cc44ff' }}>{deeds.length}</div>
+                </div>
+                <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>PORTFOLIO VALUE</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#00ff41' }}>ƒ{totalPortfolioValue.toLocaleString()}</div>
+                </div>
+                <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>TAXES PAID</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#ff4488' }}>ƒ{totalTaxesPaid.toLocaleString()}</div>
+                </div>
               </div>
-              {g.realEstate.length > 0 && (
-                <div style={{ marginBottom:'.8rem', padding:'.5rem', border:'1px solid rgba(204,68,255,.15)', background:'rgba(204,68,255,.03)' }}>
+              <div style={{ fontSize:'.42rem', color:'rgba(204,68,255,.25)', marginBottom:'.6rem', lineHeight:1.7 }}>
+                Property Tax: {(PROPERTY_TAX_RATE * 100).toFixed(1)}% of current value per cycle. Resale Fee: {(PROPERTY_RESALE_FEE_RATE * 100).toFixed(0)}%. Values fluctuate based on zone demand.
+              </div>
+              {deeds.length > 0 && (
+                <div style={{ marginBottom:'.8rem' }}>
                   <div style={{ fontSize:'.45rem', color:'rgba(204,68,255,.3)', letterSpacing:'.12em', marginBottom:'.3rem' }}>YOUR PROPERTIES</div>
-                  {g.realEstate.map((pid: string) => {
-                    const listing = REAL_ESTATE_LISTINGS.find(l => l.id === pid);
-                    const existingListing = listing || { name: pid, income: 0, zone: '?' };
+                  {deeds.map((deed: PropertyDeed) => {
+                    const listing = REAL_ESTATE_LISTINGS.find(l => l.id === deed.id);
+                    const currentVal = getPropertyValue(deed);
+                    const pctChange = deed.purchasePrice > 0 ? ((currentVal - deed.purchasePrice) / deed.purchasePrice * 100) : 0;
+                    const isRented = (g.rentalProperties ?? []).includes(deed.id);
+                    const resaleFee = calcResaleFee(currentVal);
+                    const saleNet = currentVal - resaleFee;
+                    const taxPerCycle = calcPropertyTax(currentVal);
                     return (
-                      <div key={pid} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.3rem .4rem', borderBottom:'1px solid rgba(204,68,255,.08)', fontSize:'.55rem' }}>
-                        <span style={{ color:'#cc44ff' }}>{existingListing.name}</span>
-                        <div style={{ display:'flex', gap:'.4rem', alignItems:'center' }}>
-                          <span style={{ color: (g.rentalProperties ?? []).includes(pid) ? 'rgba(0,255,65,.5)' : 'rgba(204,68,255,.4)', fontSize:'.45rem' }}>
-                            {(g.rentalProperties ?? []).includes(pid) ? '🏠 RENTED' : ''} +ƒ{((g.rentalProperties ?? []).includes(pid) ? Math.floor(existingListing.income * 1.5) : existingListing.income).toLocaleString()}/cycle
-                          </span>
-                          {!(g.rentalProperties ?? []).includes(pid) && (
-                            <button onClick={() => {
-                              const regFee = listing ? Math.floor(listing.price * 0.1) : 1;
-                              if ((g.goldBalance ?? 0) < regFee) { sfxError(); setNarr(`> INSUFFICIENT GOLD — Rental registration costs ${regFee.toFixed(1)} GOLD.`); return; }
-                              g.goldBalance = (g.goldBalance ?? 0) - regFee;
-                              setGoldBalance(g.goldBalance);
-                              if (!g.rentalProperties) g.rentalProperties = [];
-                              g.rentalProperties.push(pid);
-                              sfxCoin();
-                              setNarr(`> RENTAL REGISTERED — "${existingListing.name}" now listed as rental. Income +50%. Registration fee: ${regFee.toFixed(1)} GOLD.`);
-                            }} style={{ padding:'.15rem .4rem', background:'rgba(0,255,65,.06)', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.45rem' }}>
-                              REGISTER RENTAL
+                      <div key={deed.id} style={{ border:'1px solid rgba(204,68,255,.15)', padding:'.5rem', marginBottom:'.3rem', background:'rgba(204,68,255,.02)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.25rem' }}>
+                          <div>
+                            <div style={{ ...VT2, fontSize:'.85rem', color:'#cc44ff', letterSpacing:'.06em' }}>{deed.name}</div>
+                            <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>{deed.zone} · Purchased: ƒ{deed.purchasePrice.toLocaleString()}</div>
+                          </div>
+                          <div style={{ textAlign:'right' }}>
+                            <div style={{ ...VT2, fontSize:'1rem', color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>ƒ{currentVal.toLocaleString()}</div>
+                            <div style={{ fontSize:'.38rem', color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:'.5rem', fontSize:'.38rem', color:'rgba(204,68,255,.3)', marginBottom:'.3rem' }}>
+                          <span>TAX/CYCLE: <span style={{ color:'#ff4488' }}>ƒ{taxPerCycle.toLocaleString()}</span></span>
+                          <span>INCOME: <span style={{ color:'#00ff41' }}>+ƒ{(isRented ? Math.floor(deed.income * 1.5) : deed.income).toLocaleString()}</span>{isRented ? ' (RENTAL)' : ''}</span>
+                          <span>TOTAL TAX PAID: <span style={{ color:'#ff4488' }}>ƒ{deed.taxesPaid.toLocaleString()}</span></span>
+                        </div>
+                        <div style={{ display:'flex', gap:'.3rem' }}>
+                          {!isRented && (
+                            <button onClick={() => doRegisterRental(deed.id, listing)}
+                              style={{ padding:'.15rem .5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
+                              REGISTER RENTAL ({listing ? Math.floor(listing.price * 0.1) : 1} GOLD)
                             </button>
                           )}
-                          <button onClick={() => {
-                            const sellGold = listing ? listing.price * 0.6 : 1;
-                            g.goldBalance = (g.goldBalance ?? 0) + sellGold;
-                            setGoldBalance(g.goldBalance);
-                            g.realEstate = g.realEstate.filter((r: string) => r !== pid);
-                            if (g.rentalProperties) g.rentalProperties = g.rentalProperties.filter((r: string) => r !== pid);
-                            sfxCoin();
-                            setNarr(`> PROPERTY SOLD — "${existingListing.name}" sold for ${sellGold.toFixed(1)} GOLD.`);
-                            setShowRealEstateOffice(false); frozenRef.current = false;
-                          }} style={{ padding:'.15rem .4rem', background:'rgba(255,68,68,.08)', border:'1px solid rgba(255,68,68,.2)', color:'rgba(255,68,68,.6)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.45rem' }}>
-                            SELL
+                          <button onClick={() => doSell(deed)}
+                            style={{ padding:'.15rem .5rem', background:'rgba(255,68,68,.06)', border:'1px solid rgba(255,68,68,.2)', color:'rgba(255,68,68,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
+                            SELL (NET: ƒ{saleNet.toLocaleString()})
                           </button>
                         </div>
                       </div>
@@ -15449,32 +15687,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               <div style={{ fontSize:'.45rem', color:'rgba(204,68,255,.3)', letterSpacing:'.12em', marginBottom:'.4rem' }}>AVAILABLE LISTINGS</div>
               <div style={{ display:'flex', flexDirection:'column', gap:'.4rem' }}>
-                {REAL_ESTATE_LISTINGS.filter(l => !g.realEstate.includes(l.id)).map(listing => (
-                  <div key={listing.id} style={{ border:'1px solid rgba(204,68,255,.15)', padding:'.5rem', background:'rgba(204,68,255,.02)' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.2rem' }}>
-                      <div>
-                        <div style={{ fontSize:'.65rem', color:'#cc44ff', fontFamily:"'VT323',monospace", letterSpacing:'.08em' }}>{listing.name}</div>
-                        <div style={{ fontSize:'.45rem', color:'rgba(204,68,255,.3)', marginTop:'.1rem' }}>{listing.zone} — {listing.sqft} sqft</div>
+                {REAL_ESTATE_LISTINGS.filter(l => !g.realEstate.includes(l.id)).map(listing => {
+                  const fiatPrice = listing.price * FIAT_PER_GOLD;
+                  const taxPerCycle = calcPropertyTax(fiatPrice);
+                  return (
+                    <div key={listing.id} style={{ border:'1px solid rgba(204,68,255,.15)', padding:'.5rem', background:'rgba(204,68,255,.02)' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.2rem' }}>
+                        <div>
+                          <div style={{ ...VT2, fontSize:'.75rem', color:'#cc44ff', letterSpacing:'.06em' }}>{listing.name}</div>
+                          <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)', marginTop:'.08rem' }}>{listing.zone} — {listing.sqft} sqft</div>
+                        </div>
+                        <div style={{ textAlign:'right' }}>
+                          <div style={{ ...VT2, fontSize:'.85rem', color:'#FFD700' }}>{listing.price} GOLD</div>
+                          <div style={{ fontSize:'.38rem', color:'rgba(0,255,65,.3)' }}>+ƒ{listing.income.toLocaleString()}/cycle</div>
+                          <div style={{ fontSize:'.35rem', color:'#ff4488' }}>TAX: ƒ{taxPerCycle.toLocaleString()}/cycle</div>
+                        </div>
                       </div>
-                      <div style={{ textAlign:'right' }}>
-                        <div style={{ fontSize:'.7rem', color:'#FFD700', fontFamily:"'VT323',monospace" }}>{listing.price} GOLD</div>
-                        <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>+ƒ{listing.income.toLocaleString()}/cycle</div>
-                      </div>
+                      <div style={{ fontSize:'.42rem', color:'rgba(204,68,255,.3)', marginBottom:'.3rem', lineHeight:1.5 }}>{listing.desc}</div>
+                      <button onClick={() => doPurchase(listing)} disabled={(g.goldBalance ?? 0) < listing.price}
+                        style={{ width:'100%', padding:'.3rem', background:'rgba(204,68,255,.06)', border: (g.goldBalance ?? 0) >= listing.price ? '1px solid rgba(204,68,255,.4)' : '1px solid rgba(204,68,255,.1)', color: (g.goldBalance ?? 0) >= listing.price ? '#cc44ff' : 'rgba(204,68,255,.2)', cursor: (g.goldBalance ?? 0) >= listing.price ? 'pointer' : 'default', ...VT2, fontSize:'.85rem', letterSpacing:'.06em' }}>
+                        PURCHASE — {listing.price} GOLD
+                      </button>
                     </div>
-                    <div style={{ fontSize:'.5rem', color:'rgba(204,68,255,.35)', marginBottom:'.3rem', lineHeight:1.5 }}>{listing.desc}</div>
-                    <button onClick={() => {
-                      if ((g.goldBalance ?? 0) < listing.price) { sfxError(); setNarr(`> INSUFFICIENT GOLD — "${listing.name}" costs ${listing.price} GOLD. You have ${(g.goldBalance ?? 0).toFixed(1)}.`); return; }
-                      g.goldBalance = (g.goldBalance ?? 0) - listing.price;
-                      setGoldBalance(g.goldBalance);
-                      g.realEstate.push(listing.id);
-                      sfxCoin();
-                      setNarr(`> PROPERTY ACQUIRED — "${listing.name}" purchased for ${listing.price} GOLD. Passive income: +ƒ${listing.income.toLocaleString()}/cycle.`);
-                      setShowRealEstateOffice(false); frozenRef.current = false;
-                    }} style={{ width:'100%', padding:'.35rem', background:'rgba(204,68,255,.07)', border:'1px solid rgba(204,68,255,.3)', color:'#cc44ff', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.9rem', letterSpacing:'.08em' }}>
-                      PURCHASE — {listing.price} GOLD
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
