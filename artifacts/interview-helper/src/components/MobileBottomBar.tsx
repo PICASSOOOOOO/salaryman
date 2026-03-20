@@ -74,7 +74,7 @@ export function MobileBottomBar() {
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-[#0a0a0b] border-t border-white/[0.06] sm:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', height: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
     >
-      {MODULES.map(mod => {
+      {MODULES.filter(mod => mod.id !== 'phone').map(mod => {
         const active = isModuleActive(mod);
         const Icon = mod.icon;
         const label = boomerMode ? mod.label : mod.codename.split(' ')[0];
