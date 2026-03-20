@@ -8,6 +8,7 @@ import {
   addActiveCallsBatch,
   type CRMContact, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 
 type DialMode = 'power' | 'auto' | 'predictive';
 
@@ -21,7 +22,9 @@ interface DialingSession {
 export default function PhoneSessionsPage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
 
   const [contacts, setContacts] = useState<CRMContact[]>([]);

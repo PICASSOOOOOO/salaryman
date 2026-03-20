@@ -8,6 +8,7 @@ import {
   addActiveCall,
   type VoicemailRecord,
 } from '@/lib/phone-utils';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 
 function AudioPlayer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -80,7 +81,9 @@ function AudioPlayer({ src }: { src: string }) {
 export default function PhoneVoicemailPage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
 
   const [voicemails, setVoicemails] = useState<VoicemailRecord[]>([]);
   const [unread, setUnread] = useState(0);

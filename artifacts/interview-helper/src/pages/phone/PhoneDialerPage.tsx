@@ -8,6 +8,7 @@ import {
   addActiveCall,
   type CRMContact, type CallRecord,
 } from '@/lib/phone-utils';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -17,7 +18,9 @@ const DIAL_LETTERS: Record<string, string> = {
 export default function PhoneDialerPage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 

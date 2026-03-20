@@ -598,6 +598,35 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 280, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(60,30,90,.3)' },
     ],
   },
+  calll_home: {
+    id: 'calll_home', label: 'CALLL HOME — TELECOM CENTER',
+    width: 360, height: 270,
+    wallColor: 'rgba(8,16,12,.96)', floorColor: 'rgba(4,10,8,.92)', accentColor: 'rgba(0,200,120,.25)',
+    exitX: 165, exitY: 255, exitW: 30, exitH: 15,
+    ambientText: 'Banks of green-lit switchboards hum behind glass. A giant CRT displays call routing maps. EST. 1987 is etched into a brass plate above the entrance. CALLL HOME — number two in telecom, trying harder since \'87.',
+    workers: [
+      { x: 60, y: 50, name: 'OPERATOR ZHOU', role: 'Senior Operator', hostile: false },
+      { x: 200, y: 50, name: 'TECH PASCAL', role: 'Line Technician', hostile: false },
+      { x: 290, y: 140, name: 'SHIFT LEAD', role: 'Floor Supervisor', hostile: false },
+    ],
+    objects: [
+      { x: 20, y: 20, w: 80, h: 30, type: 'reception', label: 'CALLL HOME FRONT DESK', color: 'rgba(0,120,60,.45)' },
+      { x: 20, y: 65, w: 55, h: 40, type: 'counter', label: 'CALL BOOTH A', color: 'rgba(0,90,50,.4)' },
+      { x: 85, y: 65, w: 55, h: 40, type: 'counter', label: 'CALL BOOTH B', color: 'rgba(0,90,50,.4)' },
+      { x: 150, y: 65, w: 55, h: 40, type: 'counter', label: 'CALL BOOTH C', color: 'rgba(0,90,50,.4)' },
+      { x: 220, y: 65, w: 110, h: 60, type: 'terminal', label: 'PSO ROUTING CONSOLE', color: 'rgba(0,80,45,.5)' },
+      { x: 20, y: 120, w: 55, h: 40, type: 'counter', label: 'CALL BOOTH D', color: 'rgba(0,90,50,.4)' },
+      { x: 85, y: 120, w: 55, h: 40, type: 'counter', label: 'CALL BOOTH E', color: 'rgba(0,90,50,.4)' },
+      { x: 220, y: 140, w: 55, h: 35, type: 'tv_screen', label: 'NETWORK STATUS', color: 'rgba(0,70,40,.45)' },
+      { x: 285, y: 20, w: 50, h: 50, type: 'server', label: 'SWITCH RACK', color: 'rgba(0,60,35,.55)' },
+      { x: 140, y: 20, w: 70, h: 20, type: 'whiteboard', label: 'CALLL POIN AI ROADMAP', color: 'rgba(200,220,200,.12)' },
+      { x: 20, y: 195, w: 60, h: 25, type: 'couch', label: 'CUSTOMER WAITING', color: 'rgba(25,45,35,.4)' },
+      { x: 90, y: 195, w: 40, h: 30, type: 'filing_cabinet', label: 'SUBSCRIBER RECORDS', color: 'rgba(35,50,40,.5)' },
+      { x: 145, y: 195, w: 30, h: 30, type: 'vending_machine', label: 'VENDING', color: 'rgba(25,50,35,.4)' },
+      { x: 20, y: 230, w: 25, h: 20, type: 'plant', color: 'rgba(20,60,30,.3)' },
+      { x: 310, y: 230, w: 25, h: 20, type: 'plant', color: 'rgba(20,60,30,.3)' },
+    ],
+  },
   megabank: {
     id: 'megabank', label: 'BANCO OMBRA — MAIN FLOOR',
     width: 340, height: 260,
@@ -1187,6 +1216,7 @@ export const BUILDING_INTERIOR_MAP: Record<string, string> = {
   ruins_alpha: '_wasteland_shelter',
   southern_hub: '_outpost',
   picassoo_hq: 'picassoo_hq',
+  calll_home: 'calll_home',
 };
 
 export const THE_MINX_ISSUES: NewspaperIssue[] = [
@@ -1234,6 +1264,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'BUNKER-09 — Secure storage. Fortified walls. Ask no questions, hear no lies.',
       'GOLD EXCHANGE — Convert FIAT to GOLD. Hedge against inflation. Walk-in rates posted daily.',
       'TTC — THE TELEPHONE COMPANY — Long-range communication booths. 50 FIAT per minute. Signal not guaranteed.',
+      'CALLL HOME — Three Ls. Triple clarity. EST. 1987. Switch your plan today. PSO routing — calls that actually connect.',
       'MOTOR DEPOT — Vehicles for sale or rent. Hover scooters now in stock.',
     ],
     weather: 'Intermittent acid drizzle. Radiation index: LOW. Temperature: 8°C. Pollen count: EXTREME (mutant ragweed). Wear masks outdoors.',
@@ -1250,6 +1281,8 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
         body: 'City Admin Bureau imposed strict water rationing effective immediately. Each registered citizen receives 2 liters per day from designated distribution points. Unregistered residents — estimated at 30% of the population — receive nothing. The Vending Machine network has been reprogrammed to dispense water at 500 FIAT per bottle.' },
       { title: 'DATA VAULT BREACH SUSPECTED',
         body: 'Data Vault security detected unauthorized access attempts on servers containing citizen biometric records. Vault administrator Juno Vale stated the intrusion was "sophisticated, patient, and originated from inside the city network." PABLO CORP offered to "assist" the investigation by assuming temporary control of the Vault\'s security systems. The offer was declined.' },
+      { title: 'CALLL HOME DEFIES PABLO CORP ACQUISITION BID',
+        body: 'CALLL HOME, the city\'s second-largest telecom provider, has rejected a hostile acquisition offer from PABLO CORP for the third time since 1992. CEO and founder issued a statement: "CALLL HOME was built in 1987 to give this city a choice. We will not be absorbed." PABLO CORP spokesperson UNIT-7 described the rejection as "a temporary misunderstanding of market inevitability." CALLL HOME\'s PSO routing network currently handles an estimated 35% of all private communications in Minx City. TTC, the city\'s other telecom, declined to comment on the rivalry.' },
     ],
     ads: [
       'PAWN SHOP — Cash for your junk. No ID required. East District.',
@@ -1279,6 +1312,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'OXIDE LABS — Custom implants. Experimental procedures. Liability waiver required.',
       'THE PINNACLE — Rooftop bar. Best view in the city. Live music Fridays.',
       'TERMINUS SHELTER — Last stop before the deep waste. Supplies available.',
+      'CALLL HOME — Now with Calll Poin AI. Predictive routing. 40,000 calls/hr capacity. Pablo Corp cannot tap what they cannot find.',
     ],
     weather: 'Overcast. Acid rain probability: 60%. Temperature: 2°C. First frost expected. Radiation index: MODERATE. Stock winter supplies.',
     editorial: 'EDITORIAL — They cancelled the election. They dissolved the bureau. They silenced the protest. But they have not cancelled this newspaper. Not yet. Not ever. — THE MINX EDITORIAL BOARD',
@@ -1396,6 +1430,7 @@ export const BUILDINGS = [
   { id: 'van_central',    x: 5500, y: 8500, w: 40, h: 28, label: 'TERMINAL VAN',      bright: true,  doors: [] as Door[] },
   { id: 'van_east',       x: 11000, y: 2000, w: 40, h: 28, label: 'TERMINAL VAN',     bright: true,  doors: [] as Door[] },
   { id: 'picassoo_hq',    x: 7345, y: 6185, w: 130, h: 58,  label: 'PICASSO AI HQ',   bright: true,  doors: mkDoorS(7345,6185,130,58) },
+  { id: 'calll_home',     x: 6650, y: 6013, w: 130, h: 65,  label: 'CALLL HOME',       bright: true,  doors: mkDoorS(6650,6013,130,65) },
 ];
 
 export const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
@@ -1422,6 +1457,11 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
   ],
   realestate_office: [
     { name: 'BROKER HAYES', role: 'AGENT', x: 45, y: 50, dialogue: ['Property values in Sector 7 are volatile. Good for flippers.', 'Every building has a history. Most of them are bloody.', 'The best investments are the ones nobody else wants.'] },
+  ],
+  calll_home: [
+    { name: 'OPERATOR ZHOU', role: 'SENIOR OPERATOR', x: 55, y: 45, dialogue: ['CALLL HOME has been connecting calls since 1987. Before Pablo Corp even had a switchboard.', 'Three Ls in the name. Marketing insisted. Something about "triple clarity."', 'Our PSO routing system handles 40,000 calls per hour. TTC can barely manage 10,000.'] },
+    { name: 'TECH PASCAL', role: 'LINE TECHNICIAN', x: 200, y: 45, dialogue: ['Pablo Corp keeps cutting our trunk lines. Literally. With bolt cutters.', 'The Calll Poin AI system is our edge. Predictive call routing. TTC has nothing like it.', 'We were the first telecom to survive a hostile takeover from Pablo Corp. Twice.'] },
+    { name: 'SHIFT LEAD MORA', role: 'FLOOR SUPERVISOR', x: 280, y: 130, dialogue: ['Number two in telecom. Number one in reliability. That is the CALLL HOME guarantee.', 'Founded in \'87 when the city still had landlines. We upgraded. TTC did not.', 'Every call booth is shielded against Pablo Corp surveillance. Allegedly.'] },
   ],
 };
 

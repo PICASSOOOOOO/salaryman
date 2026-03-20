@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { crt } from '@/lib/phone-utils';
+import { useInsideCalllHome } from './CalllHomeContext';
 
 export function PhonePageLayout({
   title,
@@ -16,11 +17,45 @@ export function PhonePageLayout({
   actions?: React.ReactNode;
   statusLine?: React.ReactNode;
 }) {
+  const insideHub = useInsideCalllHome();
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   useEffect(() => {
+    if (insideHub) return;
     const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [insideHub]);
+
+  if (insideHub) {
+    return (
+      <div style={{ padding: '16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {icon && (
+              <div style={{
+                width: 36, height: 36, borderRadius: 8,
+                border: `1px solid ${crt(0.2)}`,
+                background: 'linear-gradient(135deg, rgba(0,255,65,0.06) 0%, rgba(0,255,65,0.01) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {icon}
+              </div>
+            )}
+            <div>
+              <h2 style={{ fontSize: '0.9rem', letterSpacing: '0.2em', color: crt(0.85), margin: 0, fontWeight: 'normal', textTransform: 'uppercase' }}>
+                {title}
+              </h2>
+              {subtitle && <p style={{ margin: '3px 0 0', fontSize: '0.45rem', color: crt(0.25), letterSpacing: '0.1em' }}>{subtitle}</p>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {statusLine && <div style={{ fontSize: '0.42rem' }}>{statusLine}</div>}
+            {actions && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
+          </div>
+        </div>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div style={{

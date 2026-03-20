@@ -8,11 +8,14 @@ import {
   addActiveCall, addActiveCallsBatch,
   type CRMContact, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 
 export default function PhoneContactsPage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 
@@ -24,6 +27,7 @@ export default function PhoneContactsPage() {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [sortBy, setSortBy] = useState<'name' | 'company'>('name');
+  const [contactFilter, setContactFilter] = useState<'all' | 'nums'>('all');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -36,6 +40,7 @@ export default function PhoneContactsPage() {
 
   const filtered = useMemo(() => {
     let list = contacts;
+    if (contactFilter === 'nums') list = list.filter(c => c.phone && c.phone.trim() !== '');
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(c =>
@@ -47,7 +52,7 @@ export default function PhoneContactsPage() {
       ? (a.company ?? '').localeCompare(b.company ?? '')
       : a.name.localeCompare(b.name)
     );
-  }, [contacts, search, sortBy]);
+  }, [contacts, search, sortBy, contactFilter]);
 
   const companies = useMemo(() => {
     const map = new Map<string, number>();
@@ -150,6 +155,21 @@ export default function PhoneContactsPage() {
         <StatBlock label="FILTERED" value={filtered.length} sub={search ? `matching "${search}"` : 'showing all'} color={purple} />
       </div>
 
+      <div style={{ display: 'flex', gap: 0, marginBottom: 12, borderBottom: `1px solid ${crt(0.06)}` }}>
+        {([['all', 'SEE'], ['nums', 'NUMS']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setContactFilter(key)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '6px 14px', fontSize: '0.42rem', letterSpacing: '0.15em',
+              color: contactFilter === key ? amber(0.9) : crt(0.3),
+              borderBottom: contactFilter === key ? `2px solid ${amber(0.6)}` : '2px solid transparent',
+            }}
+          >{label}</button>
+        ))}
+      </div>
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
           <Search size={13} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: crt(0.3) }} />
@@ -160,6 +180,7 @@ export default function PhoneContactsPage() {
             style={{ ...INPUT_STYLE, paddingLeft: 34 }}
           />
         </div>
+        <PhoneBtn onClick={() => { setSearch(''); setContactFilter('all'); }} size="sm">ALL</PhoneBtn>
         <PhoneBtn onClick={() => setSortBy(s => s === 'name' ? 'company' : 'name')} size="sm">
           <Filter size={11} /> {sortBy === 'name' ? 'BY NAME' : 'BY COMPANY'}
         </PhoneBtn>

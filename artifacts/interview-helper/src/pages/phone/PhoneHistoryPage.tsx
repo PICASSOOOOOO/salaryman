@@ -8,11 +8,14 @@ import {
   addActiveCall,
   type CallRecord,
 } from '@/lib/phone-utils';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 
 export default function PhoneHistoryPage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
 
   const [history, setHistory] = useState<CallRecord[]>([]);

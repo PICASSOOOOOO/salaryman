@@ -1078,7 +1078,7 @@ export default function Home() {
             cursor: 'pointer',
             boxShadow: '0 0 20px rgba(34,197,94,0.15)',
           }}
-          title="Open Phone System"
+          title="CALLL HOME"
         >
           <Phone className="w-5 h-5" />
         </button>

@@ -50,16 +50,7 @@ const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
 const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
-const PhoneDialerPage = lazy(() => import("@/pages/phone/PhoneDialerPage"));
-const PhoneContactsPage = lazy(() => import("@/pages/phone/PhoneContactsPage"));
-const PhoneActivePage = lazy(() => import("@/pages/phone/PhoneActivePage"));
-const PhoneHistoryPage = lazy(() => import("@/pages/phone/PhoneHistoryPage"));
-const PhoneVoicemailPage = lazy(() => import("@/pages/phone/PhoneVoicemailPage"));
-const PhoneConferencePage = lazy(() => import("@/pages/phone/PhoneConferencePage"));
-const PhoneSessionsPage = lazy(() => import("@/pages/phone/PhoneSessionsPage"));
-const PhoneCoachPage = lazy(() => import("@/pages/phone/PhoneCoachPage"));
-const PhoneSecretaryPage = lazy(() => import("@/pages/phone/PhoneSecretaryPage"));
-const PhoneNumbersPage = lazy(() => import("@/pages/phone/PhoneNumbersPage"));
+const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 
@@ -188,18 +179,17 @@ function AppShell() {
             <Route path="/intel/seo" component={SeoModule} />
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 
-            {/* PHONE module */}
-            <Route path="/phone/dialer" component={PhoneDialerPage} />
-            <Route path="/phone/contacts" component={PhoneContactsPage} />
-            <Route path="/phone/active" component={PhoneActivePage} />
-            <Route path="/phone/history" component={PhoneHistoryPage} />
-            <Route path="/phone/voicemail" component={PhoneVoicemailPage} />
-            <Route path="/phone/conference" component={PhoneConferencePage} />
-            <Route path="/phone/sessions" component={PhoneSessionsPage} />
-            <Route path="/phone/coach" component={PhoneCoachPage} />
-            <Route path="/phone/secretary" component={PhoneSecretaryPage} />
-            <Route path="/phone/numbers" component={PhoneNumbersPage} />
-            <Route path="/phone">{() => <Redirect to="/phone/dialer" />}</Route>
+            {/* PHONE module — unified Calll Home hub */}
+            <Route path="/phone" component={CalllHomePage} />
+            <Route path="/phone/:rest*">{(params: { rest: string }) => {
+              const TAB_MAP: Record<string, string> = {
+                contacts: 'contacts', dialer: 'dial', active: 'live',
+                history: 'log', voicemail: 'vm', conference: 'conf',
+                sessions: 'auto', coach: 'ai', secretary: 'ai', numbers: 'contacts',
+              };
+              const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
+              return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
+            }}</Route>
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/contacts">{() => <Redirect to="/business/contacts" />}</Route>
