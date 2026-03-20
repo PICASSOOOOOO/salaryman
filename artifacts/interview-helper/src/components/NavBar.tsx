@@ -68,11 +68,8 @@ export function NavBar() {
             {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
           </span>
           <span className="text-zinc-700 text-[9px]">◆</span>
-          <span className="font-mono text-[10px] text-zinc-700 tracking-widest">
-            {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
-          </span>
           <span className="font-mono text-[9px] text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
-            ALPHA
+            ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
           </span>
           <button
             onClick={() => navigate('/investors')}
@@ -154,7 +151,7 @@ export function NavBar() {
           </button>
           {isMobile && (
             <span className="font-mono text-[8px] text-emerald-500/60 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
-              ALPHA
+              ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : ''}
             </span>
           )}
         </div>

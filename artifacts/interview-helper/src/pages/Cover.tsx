@@ -156,7 +156,7 @@ export default function Cover() {
           className="inline-flex items-center gap-2.5 mb-12 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          ALPHA
+          ALPHA {typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev'}
         </motion.div>
 
         {/* Headline */}
