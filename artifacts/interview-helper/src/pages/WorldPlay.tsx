@@ -3145,7 +3145,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
-  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'>('chat');
+  const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'merch'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
   const [pabloLoad,setPabloLoad]= useState(false);
@@ -3176,6 +3176,10 @@ export default function WorldPlay() {
   const [whiteboardInput, setWhiteboardInput] = useState('');
   const [showScreenShare, setShowScreenShare] = useState(false);
   const [screenShareUrl, setScreenShareUrl] = useState('');
+  const [merchProducts, setMerchProducts] = useState<any[]>([]);
+  const [merchLoading, setMerchLoading] = useState(false);
+  const [merchSelectedSize, setMerchSelectedSize] = useState<Record<number, string>>({});
+  const [merchBuying, setMerchBuying] = useState<number | null>(null);
   const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' } | null>(null);
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
@@ -11588,9 +11592,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['chat','stats','call','crm','city','share','translate'] as const).map(t => (
+                {(['chat','stats','call','crm','city','share','translate','merch'] as const).map(t => (
                   <button key={t} onClick={() => setPabloTab(t)} style={tabS(pabloTab === t)}>
-                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : t === 'share' ? '📺 SHARE' : t === 'translate' ? '🌐 TRANSLATE' : '🏙 INFO'}
+                    {t === 'chat' ? '🤖 AI' : t === 'stats' ? '📊 STATS' : t === 'call' ? '📞 CALL' : t === 'crm' ? '📇 CRM' : t === 'share' ? '📺 SHARE' : t === 'translate' ? '🌐 TRANSLATE' : t === 'merch' ? '🛒 MERCH' : '🏙 INFO'}
                   </button>
                 ))}
               </div>
@@ -11925,6 +11929,91 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                 )}
+
+                {/* PABLO CORP MERCH TAB */}
+                {pabloTab === 'merch' && (() => {
+                  const loadMerch = () => {
+                    if (merchLoading) return;
+                    setMerchLoading(true);
+                    fetch('/api/merch/products')
+                      .then(r => r.json())
+                      .then(data => { if (Array.isArray(data)) setMerchProducts(data); })
+                      .catch(() => {})
+                      .finally(() => setMerchLoading(false));
+                  };
+                  if (merchProducts.length === 0 && !merchLoading) loadMerch();
+
+                  const handleBuy = async (product: any) => {
+                    const sizes = Array.isArray(product.sizes) ? product.sizes : [];
+                    const size = sizes.length > 0 ? (merchSelectedSize[product.id] || sizes[0]) : undefined;
+                    setMerchBuying(product.id);
+                    try {
+                      const res = await fetch('/api/merch/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId: product.id, size, quantity: 1 }),
+                      });
+                      const data = await res.json();
+                      if (data.url) window.open(data.url, '_blank');
+                    } catch {}
+                    setMerchBuying(null);
+                  };
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
+                      <div>
+                        <div style={{ ...VT, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.2em', marginBottom: '.15rem' }}>PABLO CORP</div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>MERCHANDISE DEPARTMENT · MINX CITY</div>
+                      </div>
+                      <div style={{ height: 1, background: 'rgba(0,255,65,.12)' }} />
+                      {merchLoading && (
+                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em' }}>LOADING CATALOG ▮</div>
+                      )}
+                      {!merchLoading && merchProducts.length === 0 && (
+                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
+                          CATALOG UNAVAILABLE — Try again later or visit pablo-corp.com
+                        </div>
+                      )}
+                      {!merchLoading && merchProducts.map((p: any) => {
+                        const sizes: string[] = Array.isArray(p.sizes) ? p.sizes : [];
+                        const images: string[] = Array.isArray(p.images) ? p.images : [];
+                        const selectedSize = sizes.length > 0 ? (merchSelectedSize[p.id] || sizes[0]) : null;
+                        const priceUSD = ((p.price ?? 0) / 100).toFixed(2);
+                        return (
+                          <div key={p.id} style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '.6rem .7rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                            {images[0] && (
+                              <div style={{ width: '100%', height: 110, overflow: 'hidden', background: '#0a0a0a', borderBottom: '1px solid rgba(0,255,65,.1)' }}>
+                                <img src={images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                              </div>
+                            )}
+                            <div style={{ ...VT, fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.1em' }}>{p.name}</div>
+                            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.65 }}>{p.description}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '.1rem' }}>
+                              <div style={{ ...VT, fontSize: '1.1rem', color: '#ffcc00', letterSpacing: '.1em' }}>${priceUSD}</div>
+                              {sizes.length > 0 && (
+                                <div style={{ display: 'flex', gap: '.2rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {sizes.map((s: string) => (
+                                    <button key={s} onClick={() => setMerchSelectedSize(prev => ({ ...prev, [p.id]: s }))}
+                                      style={{ padding: '.15rem .35rem', background: selectedSize === s ? 'rgba(0,255,65,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.2)', color: selectedSize === s ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', ...VT, fontSize: '.75rem', letterSpacing: '.06em' }}>
+                                      {s}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <button onClick={() => handleBuy(p)} disabled={merchBuying === p.id}
+                              style={{ width: '100%', padding: '.4rem', background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.5)', color: '#ffcc00', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em', opacity: merchBuying === p.id ? 0.5 : 1 }}>
+                              {merchBuying === p.id ? 'REDIRECTING...' : 'BUY NOW →'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7, marginTop: '.2rem' }}>
+                        Purchases are processed via Stripe. Shipping collected at checkout. All transactions logged by PABLO CORP.
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* PABLO AI CHAT TAB */}
                 {pabloTab === 'chat' && (

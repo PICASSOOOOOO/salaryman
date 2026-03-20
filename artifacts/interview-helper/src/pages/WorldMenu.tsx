@@ -529,7 +529,11 @@ export default function WorldMenu() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
   const isMobile = useIsMobile();
-  const [tab, setTab] = useState<'enter' | 'guide'>('enter');
+  const [tab, setTab] = useState<'enter' | 'guide' | 'merch'>('enter');
+  const [wmMerchProducts, setWmMerchProducts] = useState<any[]>([]);
+  const [wmMerchLoading, setWmMerchLoading] = useState(false);
+  const [wmMerchSelectedSize, setWmMerchSelectedSize] = useState<Record<number, string>>({});
+  const [wmMerchBuying, setWmMerchBuying] = useState<number | null>(null);
   // screen: 'saves' shows the save manager (logged in), 'new' shows the character creator
   const [screen, setScreen] = useState<'saves' | 'new'>('saves');
   const [step, setStep] = useState<1 | 2>(1);
@@ -886,15 +890,15 @@ export default function WorldMenu() {
 
         {/* ── TAB BAR ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(0,255,65,.18)', overflow: 'hidden' }}>
-          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE']] as const).map(([id, label]) => (
+          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['merch', 'MERCH DEPT']] as const).map(([id, label]) => (
             <button
               key={id}
-              onClick={() => setTab(id)}
+              onClick={() => setTab(id as 'enter' | 'guide' | 'merch')}
               style={{
                 padding: '.55rem 1.8rem',
                 background: tab === id ? 'rgba(0,255,65,.1)' : 'transparent',
                 border: 'none',
-                borderRight: id === 'enter' ? '1px solid rgba(0,255,65,.18)' : 'none',
+                borderRight: id !== 'merch' ? '1px solid rgba(0,255,65,.18)' : 'none',
                 color: tab === id ? '#00ff41' : 'rgba(0,255,65,.3)',
                 ...VT,
                 fontSize: '1.2rem',
@@ -1524,6 +1528,124 @@ export default function WorldMenu() {
             </div>
           </div>
         )}
+
+        {tab === 'merch' && (() => {
+          const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+          const S: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+
+          const loadMerch = () => {
+            if (wmMerchLoading) return;
+            setWmMerchLoading(true);
+            apiFetch('/api/merch/products')
+              .then(r => r.json())
+              .then(data => { if (Array.isArray(data)) setWmMerchProducts(data); })
+              .catch(() => {})
+              .finally(() => setWmMerchLoading(false));
+          };
+
+          if (wmMerchProducts.length === 0 && !wmMerchLoading) loadMerch();
+
+          const handleBuy = async (product: any) => {
+            const sizes = Array.isArray(product.sizes) ? product.sizes : [];
+            const size = sizes.length > 0 ? (wmMerchSelectedSize[product.id] || sizes[0]) : undefined;
+            setWmMerchBuying(product.id);
+            try {
+              const res = await apiFetch('/api/merch/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId: product.id, size, quantity: 1 }),
+              });
+              const data = await res.json();
+              if (data.url) window.open(data.url, '_blank');
+            } catch {}
+            setWmMerchBuying(null);
+          };
+
+          return (
+            <div style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <div style={{ ...VT, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)', color: '#00ff41', letterSpacing: '.2em', textShadow: '0 0 18px rgba(0,255,65,.3)' }}>PABLO CORP MERCH DEPT</div>
+                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginTop: '.2rem', ...S }}>REAL-WORLD SALARYMAN GOODS · SHIPS WORLDWIDE · STRIPE SECURED</div>
+              </div>
+              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(0,255,65,.3), transparent)' }} />
+
+              {wmMerchLoading && (
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.15em' }}>LOADING CATALOG ▮</div>
+              )}
+
+              {!wmMerchLoading && wmMerchProducts.length === 0 && (
+                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center' }}>
+                  <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>CATALOG UNAVAILABLE</div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
+                    The merch terminal is offline. Try again later.
+                  </div>
+                  <button onClick={loadMerch} style={{ marginTop: '.8rem', padding: '.4rem 1.2rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em' }}>
+                    RETRY CONNECTION
+                  </button>
+                </div>
+              )}
+
+              {!wmMerchLoading && wmMerchProducts.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+                  {wmMerchProducts.map((p: any) => {
+                    const sizes: string[] = Array.isArray(p.sizes) ? p.sizes : [];
+                    const images: string[] = Array.isArray(p.images) ? p.images : [];
+                    const selectedSize = sizes.length > 0 ? (wmMerchSelectedSize[p.id] || sizes[0]) : null;
+                    const priceUSD = ((p.price ?? 0) / 100).toFixed(2);
+                    return (
+                      <div key={p.id} style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,10,0,.8)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        {images[0] && (
+                          <div style={{ width: '100%', height: 200, overflow: 'hidden', background: '#060d06' }}>
+                            <img src={images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88, filter: 'brightness(0.9) saturate(0.8)' }} />
+                          </div>
+                        )}
+                        <div style={{ padding: '.75rem .9rem', display: 'flex', flexDirection: 'column', gap: '.45rem', flex: 1 }}>
+                          <div>
+                            <div style={{ ...VT, fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.1em', lineHeight: 1.2 }}>{p.name}</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em', marginTop: '.1rem', textTransform: 'uppercase' }}>{p.category}</div>
+                          </div>
+                          <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.7 }}>{p.description}</div>
+
+                          {sizes.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>SIZE</div>
+                              <div style={{ display: 'flex', gap: '.2rem', flexWrap: 'wrap' }}>
+                                {sizes.map((s: string) => (
+                                  <button key={s} onClick={() => setWmMerchSelectedSize(prev => ({ ...prev, [p.id]: s }))}
+                                    style={{ padding: '.2rem .45rem', background: selectedSize === s ? 'rgba(0,255,65,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.22)', color: selectedSize === s ? '#00ff41' : 'rgba(0,255,65,.45)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.06em' }}>
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '.4rem', borderTop: '1px solid rgba(0,255,65,.1)' }}>
+                            <div style={{ ...VT, fontSize: '1.35rem', color: '#ffcc00', letterSpacing: '.12em' }}>${priceUSD}</div>
+                            <button onClick={() => handleBuy(p)} disabled={wmMerchBuying === p.id}
+                              style={{ padding: '.35rem .9rem', background: wmMerchBuying === p.id ? 'rgba(255,204,0,.04)' : 'rgba(255,204,0,.1)', border: '1px solid rgba(255,204,0,.55)', color: '#ffcc00', cursor: wmMerchBuying === p.id ? 'default' : 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em', opacity: wmMerchBuying === p.id ? 0.5 : 1, transition: 'all .1s' }}>
+                              {wmMerchBuying === p.id ? 'WAIT...' : 'BUY →'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.75rem', display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', lineHeight: 1.8 }}>
+                  All purchases processed via Stripe. Shipping collected at checkout. Orders are fulfilled manually — allow 2–3 weeks for delivery. No automated fulfillment or inventory tracking. Returns handled through Stripe dashboard.
+                </div>
+                <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.08em' }}>
+                  PABLO CORP MERCHANDISE DIVISION · MINX CITY · ALL TRANSACTIONS LOGGED
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Bottom bar */}

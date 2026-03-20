@@ -50,6 +50,13 @@
       "when": 1773917699580,
       "tag": "0006_conscious_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773991855177,
+      "tag": "0007_ambiguous_shocker",
+      "breakpoints": true
     }
   ]
 }

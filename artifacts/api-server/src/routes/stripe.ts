@@ -2,6 +2,7 @@ import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey } from "@workspace/db";
+import { handleMerchWebhookEvent } from "./merch";
 
 const router = Router();
 
@@ -96,17 +97,22 @@ router.post(
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.client_reference_id || session.metadata?.userId;
-        const feature = session.metadata?.feature as FeatureKey | undefined;
-        const subscriptionId = typeof session.subscription === "string"
-          ? session.subscription
-          : (session.subscription as any)?.id;
 
-        if (userId && feature && FEATURE_KEYS.includes(feature)) {
-          await grantFeature(userId, feature, "stripe", subscriptionId);
-          console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
+        if (session.metadata?.type === "merch") {
+          await handleMerchWebhookEvent(event);
         } else {
-          console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
+          const userId = session.client_reference_id || session.metadata?.userId;
+          const feature = session.metadata?.feature as FeatureKey | undefined;
+          const subscriptionId = typeof session.subscription === "string"
+            ? session.subscription
+            : (session.subscription as any)?.id;
+
+          if (userId && feature && FEATURE_KEYS.includes(feature)) {
+            await grantFeature(userId, feature, "stripe", subscriptionId);
+            console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
+          } else {
+            console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
+          }
         }
         break;
       }

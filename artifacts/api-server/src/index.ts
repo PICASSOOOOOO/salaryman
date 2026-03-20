@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import app from "./app";
 import { attachWorldServer } from './worldServer';
 import { dispatchWeeklySummaries } from './routes/reporting';
+import { seedMerchProducts } from './lib/seed-merch';
 
 const rawPort = process.env["PORT"];
 
@@ -29,6 +30,9 @@ httpServer.on("error", (err: NodeJS.ErrnoException) => {
 
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  seedMerchProducts().catch(err => {
+    console.error("[Merch Seed] Error seeding products:", err);
+  });
 });
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;

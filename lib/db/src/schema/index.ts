@@ -39,3 +39,4 @@ export * from "./subscribers";
 export * from "./campaigns";
 export * from "./deals";
 export * from "./goals";
+export * from "./merch";
