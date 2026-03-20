@@ -263,26 +263,6 @@ export default function Cover() {
           </div>
         </motion.div>
 
-        {/* SALARYMAN Teaser Video */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-12 w-full max-w-xl flex flex-col items-center gap-3"
-        >
-          <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.25em]">Spring 2024 — Official Teaser</p>
-          <div className="w-full rounded-xl overflow-hidden border border-white/8 shadow-2xl shadow-black/40">
-            <video
-              src="/brand/other/salaryman-teaser.mp4"
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full"
-              style={{ display: 'block', background: '#000' }}
-            />
-          </div>
-          <p className="text-[9px] font-mono text-zinc-600 tracking-widest uppercase">Concept art — a vision of what we're building</p>
-        </motion.div>
       </div>
 
       {/* Legal footer */}
