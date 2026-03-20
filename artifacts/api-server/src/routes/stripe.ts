@@ -224,9 +224,9 @@ router.post(
         const userId = session.client_reference_id || session.metadata?.userId;
         const type = session.metadata?.type;
         const feature = session.metadata?.feature as FeatureKey | undefined;
-        const subscriptionId = typeof session.subscription === "string"
-          ? session.subscription
-          : (session.subscription as any)?.id;
+        const subscriptionId = typeof (session as any).subscription === "string"
+          ? (session as any).subscription
+          : (session as any).subscription?.id;
 
         if (type === "merch") {
           await handleMerchWebhookEvent(event);
@@ -263,9 +263,9 @@ router.post(
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subId = typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : (invoice.subscription as any)?.id;
+        const subId = typeof (invoice as any).subscription === "string"
+          ? (invoice as any).subscription
+          : (invoice as any).subscription?.id;
         if (subId && (invoice.billing_reason === "subscription_cycle" || invoice.billing_reason === "subscription_create")) {
           console.log(`[Stripe] Payment succeeded for subscription ${subId}`);
         }

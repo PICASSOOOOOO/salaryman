@@ -1,0 +1,95 @@
+2026-03-20T13:47:10Z info: Deployment: a647a8d8-8e08-46f4-91e6-39d6cd551990
+2026-03-20T13:47:10Z info: Build: ea452ad3-4586-4bb2-b02c-3fb248e47ba5
+2026-03-20T13:47:10Z info: Running Security Scan
+2026-03-20T13:48:15Z info: Security Scan Complete
+2026-03-20T13:48:15Z info: Connecting to builder
+2026-03-20T13:48:15Z info: Builder connected
+2026-03-20T13:48:16Z info: Installing packages
+--> pnpm install
+
+Scope: all 14 workspace projects
+
+Lockfile is up to date, resolution step is skipped
+
+Already up to date
+
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.26.1 → 10.32.1.   │
+   │   Changelog: https://pnpm.io/v/10.32.1   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @whiskeysockets/baileys@7.0.0-rc.9,                 │
+│   core-js@3.49.0, koffi@2.15.2, protobufjs@6.8.8, protobufjs@7.5.4,          │
+│   sharp@0.34.5.                                                              │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 4.5s using pnpm v10.26.1
+
+2026-03-20T13:48:21Z info: Starting Build
+
+> workspace@0.0.0 prebuild /home/runner/workspace
+> pnpm --filter @workspace/scripts run bump-version
+
+
+
+> @workspace/scripts@0.0.0 bump-version /home/runner/workspace/scripts
+> tsx ./src/bump-version.ts
+
+
+Version bumped → v.1.1a
+
+
+> workspace@0.0.0 build /home/runner/workspace
+> pnpm run typecheck && pnpm -r --if-present run build
+
+
+
+> workspace@0.0.0 typecheck /home/runner/workspace
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+
+
+
+> workspace@0.0.0 typecheck:libs /home/runner/workspace
+> tsc --build
+
+
+Scope: 4 of 14 workspace projects
+
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+
+artifacts/interview-helper typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck: Done
+
+artifacts/mockup-sandbox typecheck: Done
+
+artifacts/api-server typecheck: src/routes/merch.ts(276,30): error TS2339: Property 'shipping_details' does not exist on type 'Session'.
+
+artifacts/api-server typecheck: src/routes/stripe.ts(268,22): error TS2339: Property 'subscription' does not exist on type 'Invoice'.
+
+artifacts/api-server typecheck: Failed
+
+/home/runner/workspace/artifacts/api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+
+ ELIFECYCLE  Command failed with exit code 2.
+
+ ELIFECYCLE  Command failed with exit code 2.
+

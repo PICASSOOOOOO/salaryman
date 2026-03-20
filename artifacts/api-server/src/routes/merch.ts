@@ -273,7 +273,7 @@ export async function handleMerchWebhookEvent(event: Stripe.Event): Promise<void
     const productName = session.metadata?.productName ?? "Unknown";
     const size = session.metadata?.size ?? null;
     const userId = session.client_reference_id || session.metadata?.userId || null;
-    const shipping = session.shipping_details;
+    const shipping = (session as any).shipping_details;
 
     await db.insert(merchOrdersTable).values({
       userId: userId ?? undefined,
