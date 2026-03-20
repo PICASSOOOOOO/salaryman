@@ -3,11 +3,24 @@ import { Globe, Plus, X, Loader2, ClipboardPaste } from 'lucide-react';
 import { useFeatureState } from '@/hooks/use-feature-state';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
+function isClipboardReadLikelyBlocked(): boolean {
+  try {
+    return window !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 function PasteButton({ onPaste }: { onPaste: (text: string) => void }) {
   const [showInput, setShowInput] = useState(false);
   const [tempValue, setTempValue] = useState('');
 
   const handleClick = async () => {
+    if (isClipboardReadLikelyBlocked()) {
+      setTempValue('');
+      setShowInput(true);
+      return;
+    }
     try {
       if (navigator.clipboard && navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
