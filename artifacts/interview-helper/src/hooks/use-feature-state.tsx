@@ -90,6 +90,7 @@ interface FeatureState {
     setAnalysisFocus: (v: string) => void;
     analysisResult: string;
     analyzing: boolean;
+    analysisError: string;
     analyze: () => void;
     clear: () => void;
   };
@@ -157,6 +158,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
   const [analysisFocus, setAnalysisFocus] = useState('');
   const [analysisResult, setAnalysisResult] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
 
   const analyzeUrls = useCallback(() => {
     const validUrls = urls.filter(u => u.trim());
@@ -164,6 +166,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     analyzeCtrl.current?.abort();
     setAnalyzing(true);
     setAnalysisResult('');
+    setAnalysisError('');
     analyzeCtrl.current = streamSSESimple(
       `${import.meta.env.BASE_URL}api/tools/analyze-urls`,
       { urls: validUrls, focus: analysisFocus },
@@ -171,7 +174,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
       () => {},
       () => {},
       () => setAnalyzing(false),
-      () => setAnalyzing(false),
+      (msg) => { setAnalyzing(false); setAnalysisError(msg || 'Failed to analyze URLs. The site may be blocked or unavailable.'); },
     );
   }, [urls, analysisFocus]);
 
@@ -181,6 +184,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     setAnalysisFocus('');
     setAnalysisResult('');
     setAnalyzing(false);
+    setAnalysisError('');
   }, []);
 
   const [subject, setSubject] = useState('');
@@ -261,7 +265,7 @@ export function FeatureStateProvider({ children }: { children: ReactNode }) {
     },
     webAnalyzer: {
       urls, setUrls, analysisFocus, setAnalysisFocus,
-      analysisResult, analyzing,
+      analysisResult, analyzing, analysisError,
       analyze: analyzeUrls, clear: clearAnalyzer,
     },
     interviewConductor: {

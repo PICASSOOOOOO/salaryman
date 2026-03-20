@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Globe, Plus, X, Loader2, ClipboardPaste } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Globe, Plus, X, Loader2, ClipboardPaste, AlertCircle } from 'lucide-react';
 import { useFeatureState } from '@/hooks/use-feature-state';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
@@ -14,6 +14,13 @@ function isClipboardReadLikelyBlocked(): boolean {
 function PasteButton({ onPaste }: { onPaste: (text: string) => void }) {
   const [showInput, setShowInput] = useState(false);
   const [tempValue, setTempValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showInput && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showInput]);
 
   const handleClick = async () => {
     if (isClipboardReadLikelyBlocked()) {
@@ -34,43 +41,43 @@ function PasteButton({ onPaste }: { onPaste: (text: string) => void }) {
     setShowInput(true);
   };
 
+  const commit = (val: string) => {
+    if (val.trim()) onPaste(val.trim());
+    setShowInput(false);
+    setTempValue('');
+  };
+
   if (showInput) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         <input
-          autoFocus
+          ref={inputRef}
           value={tempValue}
           onChange={e => setTempValue(e.target.value)}
           onPaste={e => {
             const text = e.clipboardData.getData('text');
             if (text) {
               e.preventDefault();
-              onPaste(text.trim());
-              setShowInput(false);
-              setTempValue('');
+              commit(text.trim());
             }
           }}
           onKeyDown={e => {
-            if (e.key === 'Enter' && tempValue.trim()) {
-              onPaste(tempValue.trim());
-              setShowInput(false);
-              setTempValue('');
-            }
-            if (e.key === 'Escape') {
-              setShowInput(false);
-              setTempValue('');
-            }
+            if (e.key === 'Enter') commit(tempValue);
+            if (e.key === 'Escape') { setShowInput(false); setTempValue(''); }
           }}
-          onBlur={() => {
-            if (tempValue.trim()) {
-              onPaste(tempValue.trim());
-            }
-            setShowInput(false);
-            setTempValue('');
-          }}
-          placeholder="Ctrl+V here then Enter"
-          className="w-36 bg-muted/50 border border-sky-500/40 rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-400/60"
+          onBlur={() => commit(tempValue)}
+          placeholder="Paste URL here"
+          className="w-48 bg-background border border-sky-400/60 rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-sky-400/50 shadow-sm"
         />
+        <button
+          type="button"
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => { setShowInput(false); setTempValue(''); }}
+          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+          title="Cancel"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     );
   }
@@ -158,7 +165,7 @@ export function WebsiteAnalyzer() {
             className="w-full py-2.5 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
             {w.analyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : '✦ Analyze URLs'}
           </button>
-          {w.analysisResult && !w.analyzing && (
+          {(w.analysisResult || w.analysisError) && !w.analyzing && (
             <button onClick={w.clear} className="w-full py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground border border-transparent hover:border-border transition-colors">
               Clear results
             </button>
@@ -172,7 +179,7 @@ export function WebsiteAnalyzer() {
       </div>
 
       <div className="flex-1">
-        {!w.analysisResult && !w.analyzing && (
+        {!w.analysisResult && !w.analyzing && !w.analysisError && (
           <div className="bg-card border border-border rounded-2xl h-full min-h-[400px] flex flex-col items-center justify-center gap-3 text-center p-6">
             <Globe className="w-10 h-10 text-muted-foreground/20" />
             <p className="text-muted-foreground text-sm">Enter URLs above and click Analyze</p>
@@ -181,6 +188,15 @@ export function WebsiteAnalyzer() {
         {w.analyzing && (
           <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-3 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" /> Reading and analyzing pages...
+          </div>
+        )}
+        {w.analysisError && !w.analyzing && (
+          <div className="bg-card border border-destructive/40 rounded-2xl p-6 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-destructive">Analysis failed</p>
+              <p className="text-sm text-muted-foreground">{w.analysisError}</p>
+            </div>
           </div>
         )}
         {w.analysisResult && (
