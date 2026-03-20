@@ -260,7 +260,7 @@ export default function Cover() {
           className="w-full max-w-2xl mt-14 sm:mt-20 mb-16"
         >
           <video
-            src="/brand/other/salaryman-teaser.mp4"
+            src={`${import.meta.env.BASE_URL}brand/other/salaryman-teaser.mp4`}
             controls
             playsInline
             className="w-full rounded-xl border border-zinc-800 shadow-lg"
