@@ -281,7 +281,6 @@ export default function Cover() {
               style={{ display: 'block', background: '#000' }}
             />
           </div>
-          <p className="text-[9px] font-mono text-zinc-700 tracking-widest uppercase">A PICASSO AI PRODUCTION</p>
           <p className="text-[9px] font-mono text-zinc-600 tracking-widest uppercase">Concept art — a vision of what we're building</p>
         </motion.div>
       </div>
