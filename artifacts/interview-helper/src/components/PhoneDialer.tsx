@@ -625,7 +625,7 @@ export function PhoneDialer({
 
       <div style={{ padding: '6px 14px', borderBottom: `1px solid ${crt(0.15)}`, background: 'rgba(0,4,0,0.8)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <img src="/brand/callhome/calll-home-brush.png" alt="CALLL HOME" style={{ height: 28, width: 'auto', opacity: 0.9, filter: 'brightness(1.4) saturate(0)' }} />
-        <span style={{ fontSize: '0.4rem', color: crt(0.25), marginLeft: 'auto', letterSpacing: '0.08em' }}>PRO v3.0</span>
+        <span style={{ fontSize: '0.4rem', color: crt(0.25), marginLeft: 'auto', letterSpacing: '0.08em' }}>PRO {__BUILD_VERSION__}</span>
       </div>
 
       {error && (
@@ -1160,7 +1160,7 @@ export function PhoneDialer({
       </div>
 
       <div style={{ padding: '3px 8px', borderTop: `1px solid ${crt(0.1)}`, display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.15), letterSpacing: '0.06em' }}>
-        <span>TTC v3.0 PRO</span>
+        <span>TTC {__BUILD_VERSION__} PRO</span>
         <span>TWILIO PSTN · AI POWERED</span>
       </div>
     </div>

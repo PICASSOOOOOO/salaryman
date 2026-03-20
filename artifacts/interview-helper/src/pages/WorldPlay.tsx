@@ -13159,7 +13159,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
-                      TTC v2.0 · CRM Power Dialer + PSTN via Twilio
+                      {`TTC ${__BUILD_VERSION__} · CRM Power Dialer + PSTN via Twilio`}
                     </div>
                   </div>
                 )}
@@ -13980,7 +13980,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* Footer */}
               <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
-                TERMINAL HUB v2.0 · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE
+                {`TERMINAL HUB ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
               </div>
             </div>
           </div>

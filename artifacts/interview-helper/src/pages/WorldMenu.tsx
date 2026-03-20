@@ -921,7 +921,7 @@ export default function WorldMenu() {
         <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
           <button onClick={() => navigate('/')} style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.5)', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>← BACK</button>
           &nbsp;·&nbsp;
-          SALARYMAN OS v1.0 &nbsp;·&nbsp;
+          SALARYMAN OS {__BUILD_VERSION__} &nbsp;·&nbsp;
           <select
             value={selectedTimezone}
             onChange={e => setSelectedTimezone(e.target.value)}
@@ -951,7 +951,7 @@ export default function WorldMenu() {
           </div>
           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSO AI — PABLO CORP WORLD</div>
           <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
-          <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP IMMIGRATION INTERFACE v1.0</div>
+          <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP IMMIGRATION INTERFACE {__BUILD_VERSION__}</div>
           <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
         </div>
 

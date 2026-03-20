@@ -319,7 +319,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           flexShrink: 0,
         }}>
           <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.06em' }}>
-            PABLO CORP FIELD CALIBRATION v1.0
+            {`PABLO CORP FIELD CALIBRATION ${__BUILD_VERSION__}`}
           </div>
           {step === 'save' ? (
             <button

@@ -195,7 +195,7 @@ export default function World() {
 
   // UI
   const [dialog,  setDialog]  = useState<{lines:string[];idx:number;bid:string}|null>(null);
-  const [msg,     setMsg]     = useState('PABLO CORP v1.0 — WASD move · E enter · C chat · V voice · P PABLO device');
+  const [msg,     setMsg]     = useState(`PABLO CORP ${__BUILD_VERSION__} — WASD move · E enter · C chat · V voice · P PABLO device`);
   const [near,    setNear]    = useState<string|null>(null);
   const [hp,      setHp]      = useState(100);
   const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; });
