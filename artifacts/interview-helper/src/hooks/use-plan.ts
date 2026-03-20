@@ -49,15 +49,15 @@ export function usePlan(): PlanData {
     }
 
     try {
-      const res = await fetch("/api/plan");
+      const res = await fetch(`${import.meta.env.BASE_URL}api/plan`);
       if (!res.ok) throw new Error("plan fetch failed");
       const data = await res.json();
       const featureSet = new Set<FeatureKey>((data.features ?? []) as FeatureKey[]);
-      const tier: Tier = featureSet.size > 0 ? "pro" : "free";
+      const tier: Tier = (data.tier as Tier) ?? (featureSet.size > 0 ? "pro" : "free");
       const p: PlanData = {
         tier,
         isOwner: !!data.isOwner,
-        isPro: featureSet.size > 0 || !!data.isOwner,
+        isPro: tier === "pro" || !!data.isOwner,
         features: featureSet,
         loading: false,
       };

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserFeatures, isOwnerEmail, FEATURE_CATALOG, FREE_FEATURES, grantFeature } from "../lib/plan";
+import { getUserFeatures, getUserTier, isOwnerEmail, FEATURE_CATALOG, FREE_FEATURES, grantFeature } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey } from "@workspace/db";
 
 const router = Router();
@@ -11,14 +11,15 @@ router.get("/plan", async (req, res) => {
   }
   const user = req.user;
   const features = await getUserFeatures(user.id, user.email);
-  const tier = features.size > 0 ? "pro" : "free";
+  const isOwner = isOwnerEmail(user.email);
+  const tier = await getUserTier(user.id, user.email);
   res.json({
     tier,
-    isOwner: isOwnerEmail(user.email),
+    isOwner,
     features: [...features],
     catalog: FEATURE_CATALOG,
     freeFeatures: FREE_FEATURES,
-    maxSaveSlots: features.size > 0 ? 10 : 2,
+    maxSaveSlots: tier === "pro" ? 10 : 2,
   });
 });
 

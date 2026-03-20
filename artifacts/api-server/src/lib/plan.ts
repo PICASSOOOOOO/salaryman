@@ -84,8 +84,10 @@ export async function revokeFeatureBySubscription(stripeSubscriptionId: string):
 }
 
 export async function getUserTier(userId: string, email?: string | null): Promise<Tier> {
-  const features = await getUserFeatures(userId, email);
-  return features.size > 0 ? "pro" : "free";
+  if (isOwnerEmail(email)) return "pro";
+  const rows = await db.select().from(userTiersTable).where(eq(userTiersTable.userId, userId));
+  if (rows.length > 0) return rows[0].tier as Tier;
+  return "pro";
 }
 
 export async function setUserTier(userId: string, tier: Tier, grantedBy: string): Promise<void> {

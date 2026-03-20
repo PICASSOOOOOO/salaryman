@@ -950,8 +950,6 @@ function SmsInbox({ contacts }: { contacts: Contact[] }) {
 
 export default function Campaigns() {
   const { isAuthenticated } = useAuth();
-  const { features, loading: planLoading } = usePlan();
-  const isPro = features.has('phone_system');
 
   const [tab, setTab] = useState<Tab>('dashboard');
   const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
@@ -990,10 +988,6 @@ export default function Campaigns() {
     if (!confirm('Delete this SMS campaign?')) return;
     await api(`/api/campaigns/sms/${id}`, { method: 'DELETE' });
     setSmsCampaigns(prev => prev.filter(c => c.id !== id));
-  }
-
-  if (!planLoading && !isPro) {
-    return <div className="min-h-screen flex flex-col bg-background"><ProGate featureKey="phone_system" feature="Calll Home — Campaign Manager" /></div>;
   }
 
   const totalEmailSent = emailCampaigns.reduce((a, c) => a + c.totalSent, 0);
