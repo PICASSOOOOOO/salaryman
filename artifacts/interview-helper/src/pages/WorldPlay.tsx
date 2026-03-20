@@ -9,7 +9,7 @@ import {
   type InteriorObject, type InteriorWorker, type InteriorDef,
   INTERIOR_DEFS, BUILDING_INTERIOR_MAP,
   type Door, DOOR_W, mkDoorS, mkDoorN, mkDoorW, mkDoorE,
-  BUILDINGS, RADIO_BUILDINGS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
+  BUILDINGS, RADIO_BUILDINGS, COMPANY_HQ_BUILDING_IDS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
@@ -4354,8 +4354,28 @@ export default function WorldPlay() {
       setDoorLockPwError('');
       return;
     }
+    if (COMPANY_HQ_BUILDING_IDS.has(bid)) {
+      const existingLock = gs.current.locks.get(bid);
+      if (existingLock) {
+        if (existingLock.company && char.company && existingLock.company === char.company) {
+          enterBuilding(bid);
+          return;
+        }
+        const b = BUILDINGS.find(b => b.id === bid);
+        const lockLabel = existingLock.company
+          ? `${existingLock.company} HQ`
+          : (b?.label ?? bid);
+        if (existingLock.message) setNarr(`> ${lockLabel} — "${existingLock.message}"`);
+        setPwPrompt({ bid, label: lockLabel, mode: 'enter' });
+        pendingBidRef.current = bid; setPendingBid(bid);
+        return;
+      }
+      pendingBidRef.current = bid; setPendingBid(bid);
+      wsSend({ type: 'building_lock_query', buildingId: bid });
+      return;
+    }
     enterBuilding(bid);
-  }, [enterBuilding]);
+  }, [enterBuilding, char.company, wsSend]);
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -4415,9 +4435,16 @@ export default function WorldPlay() {
           g.locks.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message });
           setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName ?? '', company: m.company, message: m.message }); return nl; });
           if (pendingBidRef.current === m.buildingId) {
-            const b = BUILDINGS.find(b => b.id === m.buildingId);
-            if (m.message) setNarr(`> ${b?.label ?? m.buildingId} — LOCKED by ${m.ownerName}${m.company ? ' / ' + m.company : ''}: "${m.message}"`);
-            setPwPrompt({ bid: m.buildingId, label: b?.label ?? m.buildingId, mode: 'enter' });
+            const isHQBuilding = COMPANY_HQ_BUILDING_IDS.has(m.buildingId);
+            const playerIsCompanyMember = isHQBuilding && m.company && char.company && m.company === char.company;
+            if (playerIsCompanyMember) {
+              pendingBidRef.current = null; setPendingBid(null); enterBuilding(m.buildingId);
+            } else {
+              const b = BUILDINGS.find(b => b.id === m.buildingId);
+              const lockLabel = isHQBuilding && m.company ? `${m.company} HQ` : (b?.label ?? m.buildingId);
+              if (m.message) setNarr(`> ${lockLabel} — LOCKED by ${m.ownerName}${m.company ? ' / ' + m.company : ''}: "${m.message}"`);
+              setPwPrompt({ bid: m.buildingId, label: lockLabel, mode: 'enter' });
+            }
           }
         } else {
           g.locks.delete(m.buildingId);
@@ -5172,6 +5199,19 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'door_lock') {
               sfxEnter();
+              if (g.interior && COMPANY_HQ_BUILDING_IDS.has(g.interior.bid)) {
+                const hqBid = g.interior.bid;
+                const existingLock = g.locks.get(hqBid);
+                const isOwner = existingLock && existingLock.ownerName === char.name;
+                const hasLock = !!existingLock;
+                if (hasLock && !isOwner) {
+                  setNarr(`> COMPANY ACCESS GATE — This HQ is secured by ${existingLock.company ?? existingLock.ownerName}. Only the building owner can manage this lock.`);
+                  return;
+                }
+                setPwPrompt({ bid: hqBid, label: existingLock?.company ? `${existingLock.company} HQ ACCESS` : 'COMPANY HQ ACCESS', mode: hasLock ? 'enter' : 'set' });
+                setNarr(hasLock ? '> COMPANY ACCESS GATE — Manage your building security.' : '> COMPANY ACCESS GATE — No password set. Register a security code to restrict access to your company.');
+                return;
+              }
               const hasPw = HOME_PASSWORDS.has(g.interior.bid);
               setDoorLockPrompt({ bid: g.interior.bid, mode: hasPw ? 'menu' : 'set_pw' });
               setDoorLockPw('');
@@ -7316,6 +7356,104 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillRect(cx2 - 3, osy - 4, 6, 4);
               ctx.fillRect(cx2 - 3, osy + obj.h, 6, 4);
             }
+          } else if (obj.type === 'desk') {
+            ctx.fillStyle = obj.color ?? 'rgba(45,60,85,.55)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(0,180,255,.12)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgba(0,180,255,.2)';
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(0,180,255,.35)';
+            ctx.fillRect(osx + 3, osy + 2, obj.w - 6, 2);
+          } else if (obj.type === 'chair') {
+            ctx.fillStyle = obj.color ?? 'rgba(35,45,65,.45)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(0,150,200,.2)';
+            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
+            ctx.strokeStyle = 'rgba(0,150,200,.25)';
+            ctx.lineWidth = 0.6;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+          } else if (obj.type === 'plant') {
+            const px2 = osx + obj.w / 2, py2 = osy + obj.h;
+            ctx.fillStyle = 'rgba(60,45,30,.8)';
+            ctx.fillRect(px2 - obj.w * 0.2, py2 - obj.h * 0.35, obj.w * 0.4, obj.h * 0.35);
+            ctx.fillStyle = obj.color ?? 'rgba(30,90,45,.85)';
+            ctx.beginPath(); ctx.arc(px2, osy + obj.h * 0.5, obj.w * 0.45, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(40,120,55,.6)';
+            ctx.beginPath(); ctx.arc(px2 - obj.w * 0.18, osy + obj.h * 0.3, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(px2 + obj.w * 0.18, osy + obj.h * 0.3, obj.w * 0.3, 0, Math.PI * 2); ctx.fill();
+          } else if (obj.type === 'reception') {
+            ctx.fillStyle = obj.color ?? 'rgba(50,70,100,.55)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(0,180,255,.2)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, 5);
+            ctx.fillRect(osx + 2, osy + 2, 3, obj.h - 4);
+            ctx.strokeStyle = 'rgba(0,180,255,.35)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(0,200,255,.3)';
+            ctx.fillRect(osx + obj.w * 0.6, osy + 4, obj.w * 0.32, obj.h - 8);
+          } else if (obj.type === 'server') {
+            ctx.fillStyle = obj.color ?? 'rgba(0,60,100,.55)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            const rackRows = Math.max(2, Math.floor(obj.h / 6));
+            for (let ri = 0; ri < rackRows; ri++) {
+              const ry = osy + 2 + ri * (obj.h - 4) / rackRows;
+              const rh = (obj.h - 4) / rackRows - 1;
+              ctx.fillStyle = ri % 2 === 0 ? 'rgba(0,120,200,.3)' : 'rgba(0,80,140,.25)';
+              ctx.fillRect(osx + 2, ry, obj.w - 4, rh);
+              if (Math.random() > 0.6) {
+                ctx.fillStyle = 'rgba(0,255,65,.7)';
+                ctx.fillRect(osx + obj.w - 5, ry + rh / 2 - 1, 2, 2);
+              }
+            }
+            ctx.strokeStyle = 'rgba(0,180,255,.25)';
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+          } else if (obj.type === 'locker') {
+            ctx.fillStyle = obj.color ?? 'rgba(50,60,80,.5)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            const cols2 = Math.max(2, Math.floor(obj.w / 12));
+            for (let lc = 0; lc < cols2; lc++) {
+              const lx = osx + 1 + lc * (obj.w - 2) / cols2;
+              const lw = (obj.w - 2) / cols2 - 1;
+              ctx.fillStyle = 'rgba(40,55,75,.8)';
+              ctx.fillRect(lx, osy + 2, lw, obj.h - 4);
+              ctx.strokeStyle = 'rgba(0,150,200,.2)';
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(lx, osy + 2, lw, obj.h - 4);
+              ctx.fillStyle = 'rgba(180,160,80,.6)';
+              ctx.fillRect(lx + lw - 3, osy + (obj.h - 4) / 2, 2, 3);
+            }
+          } else if (obj.type === 'counter') {
+            ctx.fillStyle = obj.color ?? 'rgba(55,42,28,.55)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(200,160,80,.2)';
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 4);
+            ctx.strokeStyle = 'rgba(200,160,80,.25)';
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+          } else if (obj.type === 'table') {
+            ctx.fillStyle = obj.color ?? 'rgba(40,48,65,.4)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(200,200,200,.08)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgba(150,150,150,.2)';
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+          } else if (obj.type === 'door_lock') {
+            const dlPulse = 0.5 + Math.sin(g.frame * 0.04) * 0.4;
+            const hqBid2 = g.interior?.bid;
+            const isHQLocked = hqBid2 && COMPANY_HQ_BUILDING_IDS.has(hqBid2) && g.locks.has(hqBid2);
+            ctx.fillStyle = isHQLocked ? `rgba(255,80,40,${0.15 + dlPulse * 0.1})` : `rgba(0,200,120,${0.1 + dlPulse * 0.08})`;
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.strokeStyle = isHQLocked ? `rgba(255,100,60,${0.5 + dlPulse * 0.3})` : `rgba(0,220,130,${0.5 + dlPulse * 0.3})`;
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = isHQLocked ? `rgba(255,100,60,${0.6 + dlPulse * 0.3})` : `rgba(0,220,130,${0.6 + dlPulse * 0.3})`;
+            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(isHQLocked ? '⬤ SECURED' : '⬤ OPEN ACCESS', osx + obj.w / 2, osy + obj.h / 2 + 2);
           } else {
             ctx.fillStyle = obj.color ?? 'rgb(80,70,55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -10274,7 +10412,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Building signage on awning
         ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
         ctx.font = `${b.bright ? 8 : 7}px "Share Tech Mono"`; ctx.textAlign = 'center';
-        ctx.fillText(b.label.length > 14 ? b.label.slice(0, 13) + '…' : b.label, bx + b.w / 2, by + 8);
+        {
+          const isHQ = COMPANY_HQ_BUILDING_IDS.has(b.id);
+          const hqLock = isHQ ? g.locks.get(b.id) : undefined;
+          const hqLabel = isHQ && hqLock?.company ? hqLock.company.toUpperCase() + ' HQ' : b.label;
+          const displayLabel = hqLabel.length > 14 ? hqLabel.slice(0, 13) + '…' : hqLabel;
+          ctx.fillText(displayLabel, bx + b.w / 2, by + 8);
+          if (isHQ && isLocked && !hqLock?.company) {
+            ctx.fillStyle = 'rgba(255,140,60,.7)';
+            ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText('CORP HQ', bx + b.w / 2, by + 17);
+          }
+        }
 
         // ── Rooftop detail ─────────────────────────────────────────────────
         if (isTower) {
