@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ProGate } from '@/components/ProGate';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 
 const C = '#00ff41';
 const C2 = 'rgba(0,255,65,';
@@ -2036,9 +2038,17 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
 }
 
 export default function SoundLab({ onClose }: { onClose?: () => void }) {
+  const { isAuthenticated } = useAuth();
+  const boomerMode = getDefaultBoomerMode();
   const BG_FULL = '#0a0d0a';
   if (onClose) {
+    if (!isAuthenticated) {
+      return <SignInPage inline context={boomerMode ? 'Sign in to access the music lab.' : 'Operative credentials required. SOUND LAB access locked.'} />;
+    }
     return <SoundLabInner onClose={onClose} />;
+  }
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Operative credentials required. SOUND LAB access locked.'} />;
   }
   return (
       <div style={{ minHeight: '100vh', background: BG_FULL }}>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { crt, amber } from '@/lib/phone-utils';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 
@@ -92,6 +93,10 @@ export default function CalllHomePage() {
       })
       .catch(() => setSystemStatus('unconfigured'));
   }, [apiUrl]);
+
+  if (!isAuthenticated) {
+    return <SignInPage context="Operative credentials required. PHONE SYSTEM access locked." />;
+  }
 
   return (
     <div style={{
