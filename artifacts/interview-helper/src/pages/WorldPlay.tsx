@@ -310,18 +310,20 @@ interface TrafficVehicle {
   routeIdx: number; wpIdx: number;
 }
 const TRAFFIC_ROUTES: { x: number; y: number }[][] = [
-  // E-W main boulevard
-  [{ x: CITY_LEFT - 100, y: 6300 }, { x: CITY_RIGHT + 100, y: 6300 }, { x: CITY_RIGHT + 100, y: 6340 }, { x: CITY_LEFT - 100, y: 6340 }],
-  // E-W secondary north
-  [{ x: CITY_LEFT, y: 5980 }, { x: CITY_RIGHT, y: 5980 }, { x: CITY_RIGHT, y: 6010 }, { x: CITY_LEFT, y: 6010 }],
-  // E-W secondary south
-  [{ x: CITY_LEFT, y: 6560 }, { x: CITY_RIGHT, y: 6560 }, { x: CITY_RIGHT, y: 6590 }, { x: CITY_LEFT, y: 6590 }],
-  // N-S main avenue
-  [{ x: 6800, y: CITY_TOP - 100 }, { x: 6800, y: CITY_BOTTOM + 100 }, { x: 6840, y: CITY_BOTTOM + 100 }, { x: 6840, y: CITY_TOP - 100 }],
-  // N-S secondary west
-  [{ x: 6480, y: CITY_TOP }, { x: 6480, y: CITY_BOTTOM }, { x: 6510, y: CITY_BOTTOM }, { x: 6510, y: CITY_TOP }],
-  // N-S secondary east
-  [{ x: 7180, y: CITY_TOP }, { x: 7180, y: CITY_BOTTOM }, { x: 7210, y: CITY_BOTTOM }, { x: 7210, y: CITY_TOP }],
+  // Main boulevard loop — E-W on y=6310, loops via west alley and east alley
+  [{ x: 5680, y: 6310 }, { x: 7330, y: 6310 }, { x: 7330, y: 6510 }, { x: 5680, y: 6510 }, { x: 5680, y: 6310 }],
+  // North belt — E-W on y=5960, full width
+  [{ x: 5960, y: 5960 }, { x: 7010, y: 5960 }, { x: 7010, y: 6100 }, { x: 5960, y: 6100 }, { x: 5960, y: 5960 }],
+  // South loop — E-W on y=6710
+  [{ x: 5680, y: 6710 }, { x: 7010, y: 6710 }, { x: 7010, y: 6510 }, { x: 5680, y: 6510 }, { x: 5680, y: 6710 }],
+  // Main spine — N-S on x=6310 (central avenue)
+  [{ x: 6310, y: 5800 }, { x: 6310, y: 6870 }, { x: 6650, y: 6870 }, { x: 6650, y: 5800 }, { x: 6310, y: 5800 }],
+  // West avenue — N-S on x=5960
+  [{ x: 5960, y: 5800 }, { x: 5960, y: 6870 }, { x: 6310, y: 6870 }, { x: 6310, y: 5800 }, { x: 5960, y: 5800 }],
+  // East avenue — N-S on x=7010 + far-east x=7330
+  [{ x: 7010, y: 5800 }, { x: 7010, y: 6870 }, { x: 7330, y: 6870 }, { x: 7330, y: 5800 }, { x: 7010, y: 5800 }],
+  // Far-west alley — short N-S loop x=5680
+  [{ x: 5680, y: 5960 }, { x: 5680, y: 6710 }, { x: 5960, y: 6710 }, { x: 5960, y: 5960 }, { x: 5680, y: 5960 }],
 ];
 const TRAFFIC_COLORS = ['#445566', '#554433', '#334455', '#665544', '#443355', '#335544', '#553344', '#444455'];
 function initTrafficVehicles(): TrafficVehicle[] {
@@ -362,18 +364,22 @@ function initTrafficVehicles(): TrafficVehicle[] {
   return vehicles;
 }
 const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
-  { x: 5600, y: 5580, type: 'sedan',          stolen: false },
-  { x: 6680, y: 5580, type: 'cargo_bike',     stolen: false },
-  { x: 7160, y: 5580, type: 'hover_scooter',  stolen: false },
-  { x: 7850, y: 5580, type: 'taxi',           stolen: false },
-  { x: 5600, y: 5960, type: 'police_cruiser', stolen: false },
-  { x: 6680, y: 6350, type: 'sports_car',     stolen: false },
-  { x: 7160, y: 6350, type: 'armored_moped',  stolen: false },
-  { x: 6060, y: 6600, type: 'van',            stolen: false },
-  { x: 8450, y: 6430, type: 'motorcycle',     stolen: false },
-  { x: 6400, y: 6100, type: 'truck',          stolen: false },
-  { x: 7400, y: 6100, type: 'sedan',          stolen: false },
-  { x: 6900, y: 5700, type: 'sports_car',     stolen: false },
+  // North belt road (y≈5960) shoulder spots
+  { x: 5980, y: 5940, type: 'sedan',          stolen: false },
+  { x: 6310, y: 5940, type: 'cargo_bike',     stolen: false },
+  { x: 6650, y: 5940, type: 'hover_scooter',  stolen: false },
+  { x: 7010, y: 5940, type: 'police_cruiser', stolen: false },
+  // Main boulevard (y≈6310) shoulder spots
+  { x: 5720, y: 6290, type: 'sports_car',     stolen: false },
+  { x: 6310, y: 6290, type: 'taxi',           stolen: false },
+  { x: 6650, y: 6290, type: 'armored_moped',  stolen: false },
+  { x: 7010, y: 6290, type: 'van',            stolen: false },
+  // West avenue (x≈5960) shoulder spots
+  { x: 5940, y: 6310, type: 'motorcycle',     stolen: false },
+  { x: 5940, y: 6510, type: 'truck',          stolen: false },
+  // East avenue (x≈7010) shoulder spots
+  { x: 7030, y: 6100, type: 'sedan',          stolen: false },
+  { x: 7030, y: 6510, type: 'sports_car',     stolen: false },
 ];
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
@@ -399,17 +405,30 @@ interface DebrisParticle { x: number; y: number; vx: number; vy: number; life: n
 const MAX_DEBRIS = 20;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
-const ROAD_HALF_W = 30;
-const CITY_ROADS_H = [5980, 6300, 6560];
-const CITY_ROADS_V = [6480, 6800, 7180];
-// Diagonal/spur road segments defined as [x1,y1,x2,y2]
+const ROAD_HALF_W = 32;
+// Extended city road network — covers actual building footprint (x: 5480-7800, y: 5800-6870)
+// H roads: north belt, mid-north connector, main boulevard, mid-south, south loop
+const CITY_ROADS_H = [5960, 6100, 6310, 6510, 6710];
+// V roads: far-west alley, west avenue, main spine, east avenue, far-east alley
+const CITY_ROADS_V = [5680, 5960, 6310, 6650, 7010, 7330];
+// Ring road, diagonal spurs, alleys as segments [x1,y1,x2,y2]
 const CITY_ROADS_DIAG: [number,number,number,number][] = [
-  [CITY_LEFT + 20, CITY_TOP + 60, 6800, 6300],   // NW diagonal
-  [CITY_RIGHT - 20, CITY_TOP + 80, 6800, 6300],  // NE diagonal
-  [CITY_LEFT + 40, 6560, 6480, 6560],             // SW cross-alley (horiz, handled by H but listed for clarity)
-  [6150, 6300, 6150, CITY_BOTTOM],                // SW vertical spur
-  [7180, 5980, 7380, 5780],                       // NE diagonal spur
-  [CITY_RIGHT - 60, 6300, CITY_RIGHT - 60, 6560],// East vertical spur
+  // NW ring connector: joins far-west alley north to west avenue mid
+  [5680, 5960, 5960, 5800],
+  // NE ring connector: joins east avenue north to far-east alley mid
+  [7010, 5800, 7330, 5960],
+  // SW ring connector: joins far-west alley south to west avenue south
+  [5680, 6710, 5960, 6870],
+  // SE ring connector: joins east avenue south to far-east alley south
+  [7010, 6870, 7330, 6710],
+  // Inner NW cul-de-sac alley (Shadow District dead-end)
+  [5680, 6100, 5820, 6100],
+  // Inner SW alley spur (Industrial shortcut)
+  [5680, 6510, 5820, 6510],
+  // NE diagonal spur off far-east alley
+  [7330, 5960, 7520, 5800],
+  // Central ring east segment (connects main boulevard to south loop via east side)
+  [7330, 6310, 7330, 6510],
 ];
 function pointToSegDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
@@ -418,14 +437,41 @@ function pointToSegDist(px: number, py: number, x1: number, y1: number, x2: numb
   const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
+// Extended city road area — slightly wider than CITY bounds to cover suburban roads
+const ROAD_AREA_LEFT   = 5500;
+const ROAD_AREA_RIGHT  = 7600;
+const ROAD_AREA_TOP    = 5750;
+const ROAD_AREA_BOTTOM = 6950;
 function isOnRoad(px: number, py: number): boolean {
-  if (!inCityBounds(px, py)) return false;
+  if (px < ROAD_AREA_LEFT || px > ROAD_AREA_RIGHT || py < ROAD_AREA_TOP || py > ROAD_AREA_BOTTOM) return false;
   for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
   for (const rx of CITY_ROADS_V) { if (Math.abs(px - rx) < ROAD_HALF_W) return true; }
   for (const [x1,y1,x2,y2] of CITY_ROADS_DIAG) {
     if (pointToSegDist(px, py, x1, y1, x2, y2) < ROAD_HALF_W) return true;
   }
   return false;
+}
+// Find the nearest road centre point to (px, py) — used for snapping off-road vehicles
+function nearestRoadPoint(px: number, py: number): { x: number; y: number } {
+  let bestDist = Infinity, bestX = px, bestY = py;
+  for (const ry of CITY_ROADS_H) {
+    const d = Math.abs(py - ry);
+    if (d < bestDist) { bestDist = d; bestX = px; bestY = ry; }
+  }
+  for (const rx of CITY_ROADS_V) {
+    const d = Math.abs(px - rx);
+    if (d < bestDist) { bestDist = d; bestX = rx; bestY = py; }
+  }
+  for (const [x1,y1,x2,y2] of CITY_ROADS_DIAG) {
+    const dx2 = x2 - x1, dy2 = y2 - y1;
+    const lenSq = dx2 * dx2 + dy2 * dy2;
+    if (lenSq === 0) continue;
+    const t = Math.max(0, Math.min(1, ((px - x1) * dx2 + (py - y1) * dy2) / lenSq));
+    const cx = x1 + t * dx2, cy = y1 + t * dy2;
+    const d = Math.hypot(px - cx, py - cy);
+    if (d < bestDist) { bestDist = d; bestX = cx; bestY = cy; }
+  }
+  return { x: bestX, y: bestY };
 }
 
 // ── NPC idle behavior types ──────────────────────────────────────────────────
@@ -1219,8 +1265,9 @@ function getNpcContextualWhisper(n: NpcDef, worldTime: number): string {
   }
   return n.whisper;
 }
-const STREET_XS = [5500, 5560, 6060, 6680, 7160, 7850, 8000];
-const STREET_YS = [5180, 5580, 5960, 6350, 6600, 6780, 7000];
+// Street snap points aligned with new road network
+const STREET_XS = [5680, 5960, 6310, 6650, 7010, 7330];
+const STREET_YS = [5960, 6100, 6310, 6510, 6710];
 function nearestStreetX(x: number): number { let best = STREET_XS[0]; for (const sx of STREET_XS) if (Math.abs(sx - x) < Math.abs(best - x)) best = sx; return best; }
 function nearestStreetY(y: number): number { let best = STREET_YS[0]; for (const sy of STREET_YS) if (Math.abs(sy - y) < Math.abs(best - y)) best = sy; return best; }
 function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: number; y: number }[] {
@@ -5914,7 +5961,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const sprintMult = shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
         const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
-        const vMult = (g.vehicle ? (onRoad ? baseVehicleSpeed : 1 + (baseVehicleSpeed - 1) * 0.3) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
+        // Off-road penalty: vehicles crawl at near-walking speed off-road
+        const offRoadPenalty = (g.vehicle && !onRoad && inCityBounds(g.px, g.py)) ? 0.18 : 1;
+        const vMult = (g.vehicle ? (onRoad ? baseVehicleSpeed : baseVehicleSpeed * offRoadPenalty) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
+        // Show warning when driving off-road in the city
+        if (g.vehicle && !onRoad && inCityBounds(g.px, g.py) && g.frame % 150 === 0) {
+          setNarr(`> OFF-ROAD — Terrain is rough. ${g.vehicle.replace(/_/g,' ').toUpperCase()} crawling at low speed. Return to a road.`);
+        }
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) { dx -= SPD * vMult; g.moveTarget = null; }
         if (g.keys.has('arrowright') || g.keys.has('d')) { dx += SPD * vMult; g.moveTarget = null; }
@@ -7833,15 +7886,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (npc.reactState === 'FLEEING') {
             const fleeAng = Math.atan2(npc.y - eventY, npc.x - eventX);
-            npc.x += Math.cos(fleeAng) * 1.5 * NPC_SPEED_MULT;
-            npc.y += Math.sin(fleeAng) * 1.5 * NPC_SPEED_MULT;
+            const fmx = npc.x + Math.cos(fleeAng) * 1.5 * NPC_SPEED_MULT;
+            const fmy = npc.y + Math.sin(fleeAng) * 1.5 * NPC_SPEED_MULT;
+            const npcR = 8;
+            const npcHitX = BUILDINGS.some(b => fmx + npcR > b.x && fmx - npcR < b.x + b.w && npc.y + npcR > b.y && npc.y - npcR < b.y + b.h && !(b.doors?.some(d => fmx + npcR > d.x && fmx - npcR < d.x + d.w && npc.y + npcR > d.y && npc.y - npcR < d.y + d.h)));
+            const npcHitY = BUILDINGS.some(b => npc.x + npcR > b.x && npc.x - npcR < b.x + b.w && fmy + npcR > b.y && fmy - npcR < b.y + b.h && !(b.doors?.some(d => npc.x + npcR > d.x && npc.x - npcR < d.x + d.w && fmy + npcR > d.y && fmy - npcR < d.y + d.h)));
+            if (!npcHitX) npc.x = fmx;
+            if (!npcHitY) npc.y = fmy;
             if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
           } else if (npc.reactState === 'SPECTATING') {
             const npcDist = Math.hypot(npc.x - eventX, npc.y - eventY);
             if (npcDist > 80) {
               const watchAng = Math.atan2(eventY - npc.y, eventX - npc.x);
-              npc.x += Math.cos(watchAng) * 0.3 * NPC_SPEED_MULT;
-              npc.y += Math.sin(watchAng) * 0.3 * NPC_SPEED_MULT;
+              const smx = npc.x + Math.cos(watchAng) * 0.3 * NPC_SPEED_MULT;
+              const smy = npc.y + Math.sin(watchAng) * 0.3 * NPC_SPEED_MULT;
+              const npcR = 8;
+              const specHitX = BUILDINGS.some(b => smx + npcR > b.x && smx - npcR < b.x + b.w && npc.y + npcR > b.y && npc.y - npcR < b.y + b.h && !(b.doors?.some(d => smx + npcR > d.x && smx - npcR < d.x + d.w && npc.y + npcR > d.y && npc.y - npcR < d.y + d.h)));
+              const specHitY = BUILDINGS.some(b => npc.x + npcR > b.x && npc.x - npcR < b.x + b.w && smy + npcR > b.y && smy - npcR < b.y + b.h && !(b.doors?.some(d => npc.x + npcR > d.x && npc.x - npcR < d.x + d.w && smy + npcR > d.y && smy - npcR < d.y + d.h)));
+              if (!specHitX) npc.x = smx;
+              if (!specHitY) npc.y = smy;
             }
             if (npc.reactTimer <= 0) { npc.reactState = 'NORMAL'; npc.x = npc.origX!; npc.y = npc.origY!; }
           }
@@ -7866,8 +7929,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const dy = targetY - npc.y;
           const dist = Math.hypot(dx, dy);
           if (dist > 10) {
-            npc.x += (dx / dist) * speed;
-            npc.y += (dy / dist) * speed;
+            const gpR = 8;
+            const gpMx = npc.x + (dx / dist) * speed;
+            const gpMy = npc.y + (dy / dist) * speed;
+            const gpHitX = BUILDINGS.some(b => gpMx + gpR > b.x && gpMx - gpR < b.x + b.w && npc.y + gpR > b.y && npc.y - gpR < b.y + b.h && !(b.doors?.some(d => gpMx + gpR > d.x && gpMx - gpR < d.x + d.w && npc.y + gpR > d.y && npc.y - gpR < d.y + d.h)));
+            const gpHitY = BUILDINGS.some(b => npc.x + gpR > b.x && npc.x - gpR < b.x + b.w && gpMy + gpR > b.y && gpMy - gpR < b.y + b.h && !(b.doors?.some(d => npc.x + gpR > d.x && npc.x - gpR < d.x + d.w && gpMy + gpR > d.y && gpMy - gpR < d.y + d.h)));
+            if (!gpHitX) npc.x = gpMx;
+            if (!gpHitY) npc.y = gpMy;
           }
         }
       }
@@ -7887,6 +7955,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           tv.dy = (tdy / tdist) * tv.speed;
           tv.x += tv.dx;
           tv.y += tv.dy;
+        }
+        // Snap traffic vehicle back to nearest road if it drifts off
+        if (!isOnRoad(tv.x, tv.y)) {
+          const snap = nearestRoadPoint(tv.x, tv.y);
+          tv.x += (snap.x - tv.x) * 0.15;
+          tv.y += (snap.y - tv.y) * 0.15;
         }
       }
 
