@@ -24,28 +24,40 @@ interface SpeechRecognitionLike {
   stop(): void;
 }
 
-function pickVoice(): SpeechSynthesisVoice | null {
+let cachedVoice: SpeechSynthesisVoice | null = null;
+function resolveVoice(): void {
   const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find(v => v.lang.startsWith('es') && v.name.toLowerCase().includes('male')) ||
-    voices.find(v => v.lang.startsWith('es')) ||
-    voices.find(v => v.lang.startsWith('en')) ||
-    null
-  );
+  const en = voices.filter(v => v.lang.startsWith('en'));
+  const natural = en.filter(v => /natural|premium|enhanced/i.test(v.name));
+  cachedVoice = natural.find(v => /male|guy|david|james|daniel/i.test(v.name))
+    || natural[0]
+    || en.find(v => /male|guy|david|james|daniel/i.test(v.name))
+    || en[0]
+    || null;
+}
+if (typeof window !== 'undefined') {
+  resolveVoice();
+  window.speechSynthesis.addEventListener('voiceschanged', resolveVoice);
 }
 
 function speakText(text: string, onEnd: () => void): void {
   const clean = text.replace(/[#*`_~\[\]()>]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ');
-  const u = new SpeechSynthesisUtterance(clean);
-  u.lang = 'es-ES';
-  u.rate = 0.95;
-  u.pitch = 1.05;
-  const voice = pickVoice();
-  if (voice) u.voice = voice;
-  u.onend = onEnd;
-  u.onerror = onEnd;
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s => s.trim()).filter(Boolean) || [clean];
+
   window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(u);
+
+  const speakNext = (idx: number) => {
+    if (idx >= sentences.length) { onEnd(); return; }
+    const u = new SpeechSynthesisUtterance(sentences[idx]);
+    u.lang = 'en-US';
+    u.rate = 0.85;
+    u.pitch = 1.0;
+    if (cachedVoice) u.voice = cachedVoice;
+    u.onend = () => setTimeout(() => speakNext(idx + 1), 180);
+    u.onerror = onEnd;
+    window.speechSynthesis.speak(u);
+  };
+  speakNext(0);
 }
 
 let sharedAudioCtx: AudioContext | null = null;

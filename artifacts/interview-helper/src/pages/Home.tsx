@@ -84,24 +84,42 @@ function usePabloVoice() {
     setIsHolding(false);
   }, []);
 
+  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  useEffect(() => {
+    const resolve = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const en = voices.filter(v => v.lang.startsWith('en'));
+      const natural = en.filter(v => /natural|premium|enhanced/i.test(v.name));
+      cachedVoiceRef.current = natural.find(v => /male|guy|david|james|daniel/i.test(v.name))
+        || natural[0]
+        || en.find(v => /male|guy|david|james|daniel/i.test(v.name))
+        || en[0]
+        || null;
+    };
+    resolve();
+    window.speechSynthesis.addEventListener('voiceschanged', resolve);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', resolve);
+  }, []);
+
   const speakResponse = useCallback((text: string) => {
     const clean = text.replace(/[#*`_~\[\]()>]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ');
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = 'es-ES';
-    u.rate = 0.95;
-    u.pitch = 1.05;
+    const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s => s.trim()).filter(Boolean) || [clean];
 
-    const voices = window.speechSynthesis.getVoices();
-    const spanishVoice = voices.find(v => v.lang.startsWith('es') && v.name.toLowerCase().includes('male'))
-      || voices.find(v => v.lang.startsWith('es'))
-      || voices.find(v => v.lang.startsWith('en'));
-    if (spanishVoice) u.voice = spanishVoice;
-
-    setIsSpeaking(true);
-    u.onend = () => setIsSpeaking(false);
-    u.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    setIsSpeaking(true);
+
+    const speakNext = (idx: number) => {
+      if (idx >= sentences.length) { setIsSpeaking(false); return; }
+      const u = new SpeechSynthesisUtterance(sentences[idx]);
+      u.lang = 'en-US';
+      u.rate = 0.85;
+      u.pitch = 1.0;
+      if (cachedVoiceRef.current) u.voice = cachedVoiceRef.current;
+      u.onend = () => setTimeout(() => speakNext(idx + 1), 180);
+      u.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(u);
+    };
+    speakNext(0);
   }, []);
 
   const stopSpeaking = useCallback(() => {
@@ -372,7 +390,7 @@ export default function Home() {
     return result;
   }, [noteInput, spellMatches]);
 
-  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(true);
+  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false);
   const lastSpokenRef = useRef(-1);
 
   useEffect(() => {
