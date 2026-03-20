@@ -7,7 +7,6 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useAdvisorChat } from '@/hooks/use-interview';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { OnboardingModal } from '@/components/OnboardingModal';
-import { PhoneDialer } from '@/components/PhoneDialer';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
@@ -390,8 +389,6 @@ export default function Home() {
   const handleVoiceSend = useCallback((transcript: string) => {
     sendChat(transcript);
   }, [sendChat]);
-
-  const [showPhone, setShowPhone] = useState(false);
 
   const LANGUAGES = [['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']];
 
@@ -1009,40 +1006,22 @@ export default function Home() {
       </main>
 
       {isAuthenticated && (
-        <>
-          <button
-            onClick={() => setShowPhone(!showPhone)}
-            style={{
-              position: 'fixed', bottom: 20, right: 20, zIndex: 50,
-              width: 48, height: 48, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: showPhone ? 'rgba(255,40,40,0.2)' : 'rgba(34,197,94,0.1)',
-              border: showPhone ? '1px solid rgba(255,40,40,0.5)' : '1px solid rgba(34,197,94,0.4)',
-              color: showPhone ? 'rgba(255,60,60,0.9)' : 'rgba(34,197,94,0.9)',
-              cursor: 'pointer',
-              boxShadow: showPhone ? '0 0 20px rgba(255,40,40,0.2)' : '0 0 20px rgba(34,197,94,0.15)',
-            }}
-            title={showPhone ? 'Close TTC' : 'TTC Phone'}
-          >
-            <Phone className="w-5 h-5" />
-          </button>
-          <AnimatePresence>
-            {showPhone && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                style={{ position: 'fixed', bottom: 76, right: 20, zIndex: 50 }}
-              >
-                <PhoneDialer
-                  userId={user?.id ?? 'anon'}
-                  callerName={user?.firstName ?? undefined}
-                  onClose={() => setShowPhone(false)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>
+        <button
+          onClick={() => navigate('/phone')}
+          style={{
+            position: 'fixed', bottom: 20, right: 20, zIndex: 50,
+            width: 48, height: 48, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(34,197,94,0.1)',
+            border: '1px solid rgba(34,197,94,0.4)',
+            color: 'rgba(34,197,94,0.9)',
+            cursor: 'pointer',
+            boxShadow: '0 0 20px rgba(34,197,94,0.15)',
+          }}
+          title="Open Phone System"
+        >
+          <Phone className="w-5 h-5" />
+        </button>
       )}
     </div>
   );
