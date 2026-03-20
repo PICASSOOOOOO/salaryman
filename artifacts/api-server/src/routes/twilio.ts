@@ -54,14 +54,6 @@ function getTwilioNumber() {
   return num;
 }
 
-router.get("/twilio/phone-number", (_req: Request, res: Response) => {
-  const num = process.env.TWILIO_PHONE_NUMBER;
-  if (!num) {
-    res.json({ phoneNumber: null });
-    return;
-  }
-  res.json({ phoneNumber: num });
-});
 
 async function verifyCallOwnership(userId: string, callSid: string): Promise<boolean> {
   const rows = await db

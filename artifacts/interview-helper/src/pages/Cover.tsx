@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { motion } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2, Phone } from 'lucide-react';
@@ -84,28 +84,9 @@ function EmailSubscribeForm() {
   );
 }
 
-function formatPhoneNumber(num: string): string {
-  const digits = num.replace(/\D/g, '');
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return num;
-}
-
 export default function Cover() {
   const { login, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
-  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(apiUrl('twilio/phone-number'))
-      .then(r => r.json())
-      .then(data => { if (data.phoneNumber) setPhoneNumber(data.phoneNumber); })
-      .catch(() => {});
-  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#09090b] relative overflow-x-hidden px-6 py-20 sm:py-28">
@@ -328,11 +309,6 @@ export default function Cover() {
               {label}
             </button>
           ))}
-          {phoneNumber && (
-            <span className="text-[10px] text-zinc-700 font-mono uppercase tracking-wider">
-              {formatPhoneNumber(phoneNumber)}
-            </span>
-          )}
         </div>
       </div>
 
