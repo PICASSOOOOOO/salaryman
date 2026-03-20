@@ -319,20 +319,24 @@ interface TrafficVehicle {
   routeIdx: number; wpIdx: number;
 }
 const TRAFFIC_ROUTES: { x: number; y: number }[][] = [
-  // Main boulevard loop — E-W on y=6310, loops via west alley and east alley
-  [{ x: 5680, y: 6310 }, { x: 7330, y: 6310 }, { x: 7330, y: 6510 }, { x: 5680, y: 6510 }, { x: 5680, y: 6310 }],
-  // North belt — E-W on y=5960, full width
-  [{ x: 5960, y: 5960 }, { x: 7010, y: 5960 }, { x: 7010, y: 6100 }, { x: 5960, y: 6100 }, { x: 5960, y: 5960 }],
-  // South loop — E-W on y=6710
-  [{ x: 5680, y: 6710 }, { x: 7010, y: 6710 }, { x: 7010, y: 6510 }, { x: 5680, y: 6510 }, { x: 5680, y: 6710 }],
-  // Main spine — N-S on x=6310 (central avenue)
-  [{ x: 6310, y: 5800 }, { x: 6310, y: 6870 }, { x: 6650, y: 6870 }, { x: 6650, y: 5800 }, { x: 6310, y: 5800 }],
-  // West avenue — N-S on x=5960
-  [{ x: 5960, y: 5800 }, { x: 5960, y: 6870 }, { x: 6310, y: 6870 }, { x: 6310, y: 5800 }, { x: 5960, y: 5800 }],
-  // East avenue — N-S on x=7010 + far-east x=7330
-  [{ x: 7010, y: 5800 }, { x: 7010, y: 6870 }, { x: 7330, y: 6870 }, { x: 7330, y: 5800 }, { x: 7010, y: 5800 }],
-  // Far-west alley — short N-S loop x=5680
+  // Route 1 — Main boulevard loop: E-W on y=6310, returns via south loop y=6710 (all H/V)
+  [{ x: 5680, y: 6310 }, { x: 7330, y: 6310 }, { x: 7330, y: 6710 }, { x: 5680, y: 6710 }, { x: 5680, y: 6310 }],
+  // Route 2 — North belt rectangle: y=5960 east then down x=7010, back via y=6100, west via x=5960
+  [{ x: 5960, y: 5960 }, { x: 7010, y: 5960 }, { x: 7010, y: 6100 }, { x: 6310, y: 6100 }, { x: 6310, y: 5960 }, { x: 5960, y: 5960 }],
+  // Route 3 — West block circuit: x=5960 south to y=6510, east to x=6310, north to y=5960, west
+  [{ x: 5960, y: 5960 }, { x: 5960, y: 6510 }, { x: 6310, y: 6510 }, { x: 6310, y: 5960 }, { x: 5960, y: 5960 }],
+  // Route 4 — Central spine circuit: x=6310 north to y=5800, east to x=7010, south to y=6870, west
+  [{ x: 6310, y: 5800 }, { x: 7010, y: 5800 }, { x: 7010, y: 6870 }, { x: 6310, y: 6870 }, { x: 6310, y: 5800 }],
+  // Route 5 — Mid-east loop: x=6650 south to y=6710, east to x=7010, north to y=6310, west
+  [{ x: 6650, y: 6310 }, { x: 7010, y: 6310 }, { x: 7010, y: 6710 }, { x: 6650, y: 6710 }, { x: 6650, y: 6510 }, { x: 6310, y: 6510 }, { x: 6310, y: 6310 }, { x: 6650, y: 6310 }],
+  // Route 6 — East corridor: x=7330 south to y=6710, west to x=7010, north to y=5960, east
+  [{ x: 7330, y: 5960 }, { x: 7010, y: 5960 }, { x: 7010, y: 6710 }, { x: 7330, y: 6710 }, { x: 7330, y: 5960 }],
+  // Route 7 — Far-west alley short loop: x=5680 south y=5960–6710, east to x=5960, north
   [{ x: 5680, y: 5960 }, { x: 5680, y: 6710 }, { x: 5960, y: 6710 }, { x: 5960, y: 5960 }, { x: 5680, y: 5960 }],
+  // Route 8 — South cross: y=6510 west to east, dips south on x=6650 to y=6710
+  [{ x: 5960, y: 6510 }, { x: 6650, y: 6510 }, { x: 6650, y: 6710 }, { x: 5960, y: 6710 }, { x: 5960, y: 6510 }],
+  // Route 9 — NW cap loop: y=5800 west to x=5680, south on x=5680 to y=5960, east to x=5960
+  [{ x: 5680, y: 5800 }, { x: 5960, y: 5800 }, { x: 5960, y: 5960 }, { x: 5680, y: 5960 }, { x: 5680, y: 5800 }],
 ];
 const TRAFFIC_COLORS = ['#445566', '#554433', '#334455', '#665544', '#443355', '#335544', '#553344', '#444455'];
 function initTrafficVehicles(): TrafficVehicle[] {
@@ -373,22 +377,34 @@ function initTrafficVehicles(): TrafficVehicle[] {
   return vehicles;
 }
 const PARKED_VEHICLES_INIT: ParkedVehicle[] = [
-  // North belt road (y≈5960) shoulder spots
-  { x: 5980, y: 5940, type: 'sedan',          stolen: false },
-  { x: 6310, y: 5940, type: 'cargo_bike',     stolen: false },
-  { x: 6650, y: 5940, type: 'hover_scooter',  stolen: false },
-  { x: 7010, y: 5940, type: 'police_cruiser', stolen: false },
-  // Main boulevard (y≈6310) shoulder spots
-  { x: 5720, y: 6290, type: 'sports_car',     stolen: false },
-  { x: 6310, y: 6290, type: 'taxi',           stolen: false },
-  { x: 6650, y: 6290, type: 'armored_moped',  stolen: false },
-  { x: 7010, y: 6290, type: 'van',            stolen: false },
-  // West avenue (x≈5960) shoulder spots
-  { x: 5940, y: 6310, type: 'motorcycle',     stolen: false },
-  { x: 5940, y: 6510, type: 'truck',          stolen: false },
-  // East avenue (x≈7010) shoulder spots
-  { x: 7030, y: 6100, type: 'sedan',          stolen: false },
-  { x: 7030, y: 6510, type: 'sports_car',     stolen: false },
+  // North Belt (y=5960) — parked on south shoulder of road
+  { x: 5990, y: 5975, type: 'sedan',          stolen: false },
+  { x: 6180, y: 5975, type: 'cargo_bike',     stolen: false },
+  { x: 6650, y: 5975, type: 'hover_scooter',  stolen: false },
+  { x: 6880, y: 5975, type: 'police_cruiser', stolen: false },
+  // NW cap road (y=5800) — parked on south shoulder
+  { x: 5760, y: 5815, type: 'motorcycle',     stolen: false },
+  { x: 5870, y: 5815, type: 'cargo_bike',     stolen: false },
+  // Main Boulevard (y=6310) — parked on north shoulder
+  { x: 5740, y: 6293, type: 'sports_car',     stolen: false },
+  { x: 6100, y: 6293, type: 'taxi',           stolen: false },
+  { x: 6480, y: 6293, type: 'armored_moped',  stolen: false },
+  { x: 6870, y: 6293, type: 'van',            stolen: false },
+  { x: 7160, y: 6293, type: 'truck',          stolen: false },
+  // South Loop (y=6710) — parked on north shoulder
+  { x: 5720, y: 6693, type: 'sedan',          stolen: false },
+  { x: 6310, y: 6693, type: 'hover_scooter',  stolen: false },
+  { x: 7050, y: 6693, type: 'sports_car',     stolen: false },
+  // West Avenue (x=5960) — parked on east shoulder
+  { x: 5975, y: 6100, type: 'motorcycle',     stolen: false },
+  { x: 5975, y: 6510, type: 'truck',          stolen: false },
+  // Mid-east Avenue (x=6650) — parked on west shoulder
+  { x: 6633, y: 6400, type: 'sedan',          stolen: false },
+  // East Avenue (x=7010) — parked on west shoulder
+  { x: 6993, y: 5860, type: 'van',            stolen: false },
+  { x: 6993, y: 6510, type: 'taxi',           stolen: false },
+  // Far-East Avenue (x=7330) — parked on west shoulder
+  { x: 7313, y: 6200, type: 'police_cruiser', stolen: false },
 ];
 const STEAL_RANGE = 35;
 const STEAL_CHANCE = 0.65;
@@ -415,68 +431,96 @@ const MAX_DEBRIS = 20;
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 32;
-// Extended city road network — covers actual building footprint (x: 5480-7800, y: 5800-6870)
-// H roads: north belt, mid-north connector, main boulevard, mid-south, south loop
-const CITY_ROADS_H = [5960, 6100, 6310, 6510, 6710];
-// V roads: far-west alley, west avenue, main spine, east avenue, far-east alley
-const CITY_ROADS_V = [5680, 5960, 6310, 6650, 7010, 7330];
-// Ring road, diagonal spurs, alleys as segments [x1,y1,x2,y2]
-const CITY_ROADS_DIAG: [number,number,number,number][] = [
-  // NW ring connector: joins far-west alley north to west avenue mid
-  [5680, 5960, 5960, 5800],
-  // NE ring connector: joins east avenue north to far-east alley mid
-  [7010, 5800, 7330, 5960],
-  // SW ring connector: joins far-west alley south to west avenue south
-  [5680, 6710, 5960, 6870],
-  // SE ring connector: joins east avenue south to far-east alley south
-  [7010, 6870, 7330, 6710],
-  // Inner NW cul-de-sac alley (Shadow District dead-end)
-  [5680, 6100, 5820, 6100],
-  // Inner SW alley spur (Industrial shortcut)
-  [5680, 6510, 5820, 6510],
-  // NE diagonal spur off far-east alley
-  [7330, 5960, 7520, 5800],
-  // Central ring east segment (connects main boulevard to south loop via east side)
-  [7330, 6310, 7330, 6510],
+// ── Full city road network as bounded axis-aligned segments ──────────────────
+// Every road is represented as an explicit [x1,y1,x2,y2] segment, either purely
+// horizontal (y1===y2) or purely vertical (x1===x2).  No diagonals.  No unbounded
+// axis strips.  This is the single source of truth for isOnRoad(), nearestRoadPoint(),
+// and the street snap helpers.
+//
+// City footprint:  x 5480–7800,  y 5780–6900
+// Road centre coordinates:
+//   H-roads: y = 5800, 5960, 6100, 6310, 6510, 6710, 6870
+//   V-roads: x = 5680, 5960, 6310, 6650, 7010, 7330
+const CITY_ROAD_SEGS: [number,number,number,number][] = [
+  // ════ MAIN ARTERIALS ═════════════════════════════════════════════════════
+  // Main Boulevard — E-W, y=6310, full city width
+  [5480, 6310, 7800, 6310],
+  // Central Avenue — N-S, x=6310, full city height
+  [6310, 5780, 6310, 6900],
+
+  // ════ NORTH BELT SYSTEM ══════════════════════════════════════════════════
+  // North Belt — E-W, y=5960, city width
+  [5480, 5960, 7800, 5960],
+  // NW cap road — E-W, y=5800, x=5480–5960 (bend off west ave north)
+  [5480, 5800, 5960, 5800],
+  // NE cap road — E-W, y=5800, x=7010–7800 (bend off east ave north)
+  [7010, 5800, 7800, 5800],
+  // Mid-North side street — E-W, y=6100, x=5480–7010
+  [5480, 6100, 7010, 6100],
+
+  // ════ SOUTH LOOP SYSTEM ══════════════════════════════════════════════════
+  // South Loop — E-W, y=6710, city width
+  [5480, 6710, 7800, 6710],
+  // SW cap road — E-W, y=6870, x=5480–5960 (bend off west ave south)
+  [5480, 6870, 5960, 6870],
+  // SE cap road — E-W, y=6870, x=7010–7800 (bend off east ave south)
+  [7010, 6870, 7800, 6870],
+  // Mid-South cross street — E-W, y=6510, x=5480–7010
+  [5480, 6510, 7010, 6510],
+
+  // ════ WEST AVENUES ═══════════════════════════════════════════════════════
+  // Far-West Alley — N-S, x=5680, y=5800–6870 (bounded, not full height)
+  [5680, 5800, 5680, 6870],
+  // West Avenue — N-S, x=5960, full city height
+  [5960, 5780, 5960, 6900],
+
+  // ════ EAST AVENUES ═══════════════════════════════════════════════════════
+  // Mid-East Avenue — N-S, x=6650, full city height
+  [6650, 5780, 6650, 6900],
+  // East Avenue — N-S, x=7010, full city height
+  [7010, 5780, 7010, 6900],
+  // Far-East Avenue — N-S, x=7330, y=5800–6870 (bounded, not full height)
+  [7330, 5800, 7330, 6870],
+
+  // ════ SHORT CONNECTORS & SPURS ═══════════════════════════════════════════
+  // East spur — short N-S, x=7330, y=6310–6510 (connects mid-south to main blvd)
+  // (already covered by Far-East Avenue above, but segmented here for clarity)
+  // Mid-east bend — connects x=6650 south to y=6710 (already in Mid-East Avenue)
+  // East horizontal spur — y=6310, x=7010–7330
+  [7010, 6310, 7330, 6310],
 ];
-function pointToSegDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1, dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
-  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
-}
-// Extended city road area — slightly wider than CITY bounds to cover suburban roads
-const ROAD_AREA_LEFT   = 5500;
-const ROAD_AREA_RIGHT  = 7600;
-const ROAD_AREA_TOP    = 5750;
-const ROAD_AREA_BOTTOM = 6950;
+// Extended city road area bounding box — fast early-out before segment check
+const ROAD_AREA_LEFT   = 5460;
+const ROAD_AREA_RIGHT  = 7820;
+const ROAD_AREA_TOP    = 5760;
+const ROAD_AREA_BOTTOM = 6920;
 function isOnRoad(px: number, py: number): boolean {
   if (px < ROAD_AREA_LEFT || px > ROAD_AREA_RIGHT || py < ROAD_AREA_TOP || py > ROAD_AREA_BOTTOM) return false;
-  for (const ry of CITY_ROADS_H) { if (Math.abs(py - ry) < ROAD_HALF_W) return true; }
-  for (const rx of CITY_ROADS_V) { if (Math.abs(px - rx) < ROAD_HALF_W) return true; }
-  for (const [x1,y1,x2,y2] of CITY_ROADS_DIAG) {
-    if (pointToSegDist(px, py, x1, y1, x2, y2) < ROAD_HALF_W) return true;
+  for (const [x1,y1,x2,y2] of CITY_ROAD_SEGS) {
+    if (x1 === x2) {
+      // Vertical segment
+      if (Math.abs(px - x1) < ROAD_HALF_W && py >= Math.min(y1,y2) - ROAD_HALF_W && py <= Math.max(y1,y2) + ROAD_HALF_W) return true;
+    } else {
+      // Horizontal segment
+      if (Math.abs(py - y1) < ROAD_HALF_W && px >= Math.min(x1,x2) - ROAD_HALF_W && px <= Math.max(x1,x2) + ROAD_HALF_W) return true;
+    }
   }
   return false;
 }
-// Find the nearest road centre point to (px, py) — used for snapping off-road vehicles
+// Find the nearest point on the road network to (px, py) — used for snapping vehicles
 function nearestRoadPoint(px: number, py: number): { x: number; y: number } {
   let bestDist = Infinity, bestX = px, bestY = py;
-  for (const ry of CITY_ROADS_H) {
-    const d = Math.abs(py - ry);
-    if (d < bestDist) { bestDist = d; bestX = px; bestY = ry; }
-  }
-  for (const rx of CITY_ROADS_V) {
-    const d = Math.abs(px - rx);
-    if (d < bestDist) { bestDist = d; bestX = rx; bestY = py; }
-  }
-  for (const [x1,y1,x2,y2] of CITY_ROADS_DIAG) {
-    const dx2 = x2 - x1, dy2 = y2 - y1;
-    const lenSq = dx2 * dx2 + dy2 * dy2;
-    if (lenSq === 0) continue;
-    const t = Math.max(0, Math.min(1, ((px - x1) * dx2 + (py - y1) * dy2) / lenSq));
-    const cx = x1 + t * dx2, cy = y1 + t * dy2;
+  for (const [x1,y1,x2,y2] of CITY_ROAD_SEGS) {
+    let cx: number, cy: number;
+    if (x1 === x2) {
+      // Vertical segment — clamp py to segment range
+      cy = Math.max(Math.min(y1,y2), Math.min(Math.max(y1,y2), py));
+      cx = x1;
+    } else {
+      // Horizontal segment — clamp px to segment range
+      cx = Math.max(Math.min(x1,x2), Math.min(Math.max(x1,x2), px));
+      cy = y1;
+    }
     const d = Math.hypot(px - cx, py - cy);
     if (d < bestDist) { bestDist = d; bestX = cx; bestY = cy; }
   }
@@ -1274,11 +1318,12 @@ function getNpcContextualWhisper(n: NpcDef, worldTime: number): string {
   }
   return n.whisper;
 }
-// Street snap points aligned with new road network
+// Street snap points aligned with the city road network (no diagonals)
 const STREET_XS = [5680, 5960, 6310, 6650, 7010, 7330];
-const STREET_YS = [5960, 6100, 6310, 6510, 6710];
+const STREET_YS = [5800, 5960, 6100, 6310, 6510, 6710, 6870];
 function nearestStreetX(x: number): number { let best = STREET_XS[0]; for (const sx of STREET_XS) if (Math.abs(sx - x) < Math.abs(best - x)) best = sx; return best; }
 function nearestStreetY(y: number): number { let best = STREET_YS[0]; for (const sy of STREET_YS) if (Math.abs(sy - y) < Math.abs(best - y)) best = sy; return best; }
+// Build an H/V street path: go vertical from start to nearest street Y, then horizontal to nearest street X, then horizontal/vertical to end
 function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: number; y: number }[] {
   const mx = nearestStreetX((sx + ex) / 2);
   const my = nearestStreetY((sy + ey) / 2);
@@ -1289,6 +1334,30 @@ function buildStreetPath(sx: number, sy: number, ex: number, ey: number): { x: n
     { x: ex, y: my },
     { x: ex, y: ey },
   ];
+}
+// Nudge a position out of any building footprint toward the nearest edge (used for NPC placement)
+function nudgeOutOfBuildings(pos: { x: number; y: number }): { x: number; y: number } {
+  const BPAD = 6;
+  for (const bld of BUILDINGS) {
+    const bx1 = bld.x - BPAD, by1 = bld.y - BPAD, bx2 = bld.x + bld.w + BPAD, by2 = bld.y + bld.h + BPAD;
+    if (pos.x >= bx1 && pos.x <= bx2 && pos.y >= by1 && pos.y <= by2) {
+      const dLeft = pos.x - bx1, dRight = bx2 - pos.x, dTop = pos.y - by1, dBottom = by2 - pos.y;
+      const minD = Math.min(dLeft, dRight, dTop, dBottom);
+      if (minD === dLeft) return { x: bx1 - 2, y: pos.y };
+      if (minD === dRight) return { x: bx2 + 2, y: pos.y };
+      if (minD === dTop) return { x: pos.x, y: by1 - 2 };
+      return { x: pos.x, y: by2 + 2 };
+    }
+  }
+  return pos;
+}
+// Snap a wander position to the nearest street intersection to keep NPCs on roads
+function snapWanderToStreet(wx2: number, wy2: number): { x: number; y: number } {
+  const snapX = nearestStreetX(wx2);
+  const snapY = nearestStreetY(wy2);
+  // Pick whichever axis is closer to the wander point to create L-shaped street wandering
+  const onX = Math.abs(wx2 - snapX) < Math.abs(wy2 - snapY);
+  return nudgeOutOfBuildings({ x: onX ? snapX : wx2, y: onX ? wy2 : snapY });
 }
 function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number } {
   const phase = getNpcPhaseForNpc(n, worldTime);
@@ -1308,17 +1377,18 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
     const timeScale = worldTime * 0.3 + seed;
     const wx2 = hx + Math.sin(timeScale) * wanderRadius * ((seed % 7 + 3) / 10);
     const wy2 = hy + Math.cos(timeScale * 0.7 + seed) * wanderRadius * ((seed % 5 + 3) / 8);
-    return { x: wx2, y: wy2 };
+    // Snap to street grid so NPCs wander on roads, not through buildings
+    return snapWanderToStreet(wx2, wy2);
   }
 
   if (sched.isErratic) {
     const seed = hashNpcSeed(n.name, n._idx ?? 0, n.gender);
     const erraticT = worldTime * 0.5 + seed;
     const burstActive = Math.sin(erraticT * 0.7) > 0.2;
-    if (!burstActive) return { x: hx, y: hy };
+    if (!burstActive) return nudgeOutOfBuildings({ x: hx, y: hy });
     const midX = (hx + wx) / 2 + Math.sin(erraticT * 1.3) * 150 * ((seed % 5 + 1) / 5);
     const midY = (hy + wy) / 2 + Math.cos(erraticT * 0.9 + seed) * 150 * ((seed % 3 + 1) / 4);
-    return { x: midX, y: midY };
+    return snapWanderToStreet(midX, midY);
   }
 
   const hour = normalizeHour(worldTime);
@@ -1340,7 +1410,25 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
   const toX = phase === 'commute_work' ? wx : hx;
   const toY = phase === 'commute_work' ? wy : hy;
   if (Math.abs(fromX - toX) < 200 && Math.abs(fromY - toY) < 200) {
-    return { x: fromX + (toX - fromX) * adjT, y: fromY + (toY - fromY) * adjT };
+    // Short path — use street waypoints to avoid cutting through buildings
+    const shortPath = buildStreetPath(fromX, fromY, toX, toY);
+    let sDist = 0;
+    const sSegs: number[] = [];
+    for (let i = 0; i < shortPath.length - 1; i++) {
+      const d = Math.abs(shortPath[i+1].x - shortPath[i].x) + Math.abs(shortPath[i+1].y - shortPath[i].y);
+      sSegs.push(d);
+      sDist += d;
+    }
+    if (sDist === 0) return nudgeOutOfBuildings({ x: fromX, y: fromY });
+    let sTravel = adjT * sDist;
+    for (let i = 0; i < sSegs.length; i++) {
+      if (sTravel <= sSegs[i]) {
+        const st = sSegs[i] > 0 ? sTravel / sSegs[i] : 0;
+        return nudgeOutOfBuildings({ x: shortPath[i].x + (shortPath[i+1].x - shortPath[i].x) * st, y: shortPath[i].y + (shortPath[i+1].y - shortPath[i].y) * st });
+      }
+      sTravel -= sSegs[i];
+    }
+    return nudgeOutOfBuildings({ x: toX, y: toY });
   }
   const path = buildStreetPath(fromX, fromY, toX, toY);
   let totalDist = 0;
@@ -1350,16 +1438,16 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
     segDists.push(d);
     totalDist += d;
   }
-  if (totalDist === 0) return { x: fromX, y: fromY };
+  if (totalDist === 0) return nudgeOutOfBuildings({ x: fromX, y: fromY });
   let traveled = adjT * totalDist;
   for (let i = 0; i < segDists.length; i++) {
     if (traveled <= segDists[i]) {
-      const segT = traveled / segDists[i];
-      return { x: path[i].x + (path[i+1].x - path[i].x) * segT, y: path[i].y + (path[i+1].y - path[i].y) * segT };
+      const segT = segDists[i] > 0 ? traveled / segDists[i] : 0;
+      return nudgeOutOfBuildings({ x: path[i].x + (path[i+1].x - path[i].x) * segT, y: path[i].y + (path[i+1].y - path[i].y) * segT });
     }
     traveled -= segDists[i];
   }
-  return { x: toX, y: toY };
+  return nudgeOutOfBuildings({ x: toX, y: toY });
 }
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
@@ -9280,25 +9368,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineCap = 'butt';
         }
       };
-      // ── Main boulevard (E-W) and avenue (N-S) — wide arterials ──
-      drawRoad(CITY_LEFT - 100, 6300, CITY_RIGHT + 100, 6300, 56, .14);
-      drawRoad(6800, CITY_TOP - 100, 6800, CITY_BOTTOM + 100, 56, .14);
-      // ── Secondary E-W streets ──
-      drawRoad(CITY_LEFT, 5980, CITY_RIGHT, 5980, 38, .09);
-      drawRoad(CITY_LEFT, 6560, CITY_RIGHT, 6560, 38, .09);
-      // ── Secondary N-S streets ──
-      drawRoad(6480, CITY_TOP, 6480, CITY_BOTTOM, 36, .08);
-      drawRoad(7180, CITY_TOP, 7180, CITY_BOTTOM, 36, .08);
-      // ── Diagonal connector — NW to SE across north quarter ──
-      drawRoad(CITY_LEFT + 20, CITY_TOP + 60, 6800, 6300, 28, .07);
-      // ── Diagonal connector — NE corner to main boulevard ──
-      drawRoad(CITY_RIGHT - 20, CITY_TOP + 80, 6800, 6300, 26, .07);
-      // ── Short cross-alley in SW block ──
-      drawRoad(CITY_LEFT + 40, 6560, 6480, 6560, 24, .06);
-      drawRoad(6150, 6300, 6150, CITY_BOTTOM, 24, .06);
-      // ── T-intersection spur roads ──
-      drawRoad(7180, 5980, 7380, 5780, 22, .06);
-      drawRoad(CITY_RIGHT - 60, 6300, CITY_RIGHT - 60, 6560, 22, .06);
+      // ── Main boulevard (E-W) y=6310 — widest arterial, full city width ──
+      drawRoad(CITY_LEFT - 100, 6310, CITY_RIGHT + 100, 6310, 56, .14);
+      // ── Central avenue (N-S) x=6310 — full city height ──
+      drawRoad(6310, CITY_TOP - 100, 6310, CITY_BOTTOM + 100, 52, .13);
+      // ── North Belt (E-W) y=5960 — secondary arterial ──
+      drawRoad(CITY_LEFT, 5960, CITY_RIGHT, 5960, 38, .09);
+      // ── South Loop (E-W) y=6710 ──
+      drawRoad(CITY_LEFT, 6710, CITY_RIGHT, 6710, 38, .09);
+      // ── West Avenue (N-S) x=5960 ──
+      drawRoad(5960, CITY_TOP, 5960, CITY_BOTTOM, 36, .08);
+      // ── East Avenue (N-S) x=7010 ──
+      drawRoad(7010, CITY_TOP, 7010, CITY_BOTTOM, 36, .08);
+      // ── Mid-East Avenue (N-S) x=6650 ──
+      drawRoad(6650, CITY_TOP, 6650, CITY_BOTTOM, 32, .08);
+      // ── Far-West Alley (N-S) x=5680, y=5800–6870 ──
+      drawRoad(5680, 5800, 5680, 6870, 22, .07);
+      // ── Far-East Avenue (N-S) x=7330, y=5800–6870 ──
+      drawRoad(7330, 5800, 7330, 6870, 22, .07);
+      // ── NW cap road (E-W) y=5800, x=5680–5960 ──
+      drawRoad(5680, 5800, 5960, 5800, 24, .07);
+      // ── NE cap road (E-W) y=5800, x=7010–7330 ──
+      drawRoad(7010, 5800, 7330, 5800, 24, .07);
+      // ── SW cap road (E-W) y=6870, x=5680–5960 ──
+      drawRoad(5680, 6870, 5960, 6870, 24, .07);
+      // ── SE cap road (E-W) y=6870, x=7010–7330 ──
+      drawRoad(7010, 6870, 7330, 6870, 24, .07);
+      // ── Mid-North side street (E-W) y=6100, x=5680–7010 ──
+      drawRoad(5680, 6100, 7010, 6100, 26, .07);
+      // ── Mid-South cross street (E-W) y=6510, x=5680–7010 ──
+      drawRoad(5680, 6510, 7010, 6510, 26, .07);
+      // ── East spur: y=6310–6510 on x=7330 (short connector) ──
+      drawRoad(7330, 6310, 7330, 6510, 22, .06);
       // ── City perimeter ring road ──
       drawRoad(CITY_LEFT, CITY_TOP, CITY_RIGHT, CITY_TOP, 22, .07);
       drawRoad(CITY_LEFT, CITY_BOTTOM, CITY_RIGHT, CITY_BOTTOM, 22, .07);
@@ -9325,12 +9426,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const LAMP_SPACING = 90;
       // Light roads (horizontal avenues + vertical streets)
       const lampRoads = [
-        { horiz: true,  coord: 6300, from: CITY_LEFT - 100, to: CITY_RIGHT + 100 },
-        { horiz: true,  coord: 5980, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: true,  coord: 6560, from: CITY_LEFT, to: CITY_RIGHT },
-        { horiz: false, coord: 6800, from: CITY_TOP - 100, to: CITY_BOTTOM + 100 },
-        { horiz: false, coord: 6480, from: CITY_TOP, to: CITY_BOTTOM },
-        { horiz: false, coord: 7180, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: true,  coord: 6310, from: CITY_LEFT - 100, to: CITY_RIGHT + 100 },
+        { horiz: true,  coord: 5960, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6710, from: CITY_LEFT, to: CITY_RIGHT },
+        { horiz: true,  coord: 6100, from: CITY_LEFT, to: 7010 },
+        { horiz: true,  coord: 6510, from: CITY_LEFT, to: 7010 },
+        { horiz: false, coord: 6310, from: CITY_TOP - 100, to: CITY_BOTTOM + 100 },
+        { horiz: false, coord: 5960, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 7010, from: CITY_TOP, to: CITY_BOTTOM },
+        { horiz: false, coord: 6650, from: CITY_TOP, to: CITY_BOTTOM },
       ];
       for (const lr of lampRoads) {
         const total = lr.to - lr.from;
