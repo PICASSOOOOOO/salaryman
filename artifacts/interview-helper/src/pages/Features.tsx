@@ -4,13 +4,16 @@ import { ChevronRight, ArrowLeft, X, Mail, Loader2, Check, Clock, Lock } from 'l
 import { useAuth } from '@workspace/replit-auth-web';
 import { useState } from 'react';
 import { usePlan, invalidatePlanCache, type FeatureKey } from '@/hooks/use-plan';
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 type ModuleAccess = 'free' | 'paid';
 
 interface ModuleDef {
   id: string;
   label: string;
+  boomerLabel?: string;
   codename: string;
+  boomerCodename?: string;
   tagline: string;
   description: string;
   access: ModuleAccess;
@@ -23,7 +26,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'pablo',
     label: 'PABLO AI',
+    boomerLabel: 'PABLO AI',
     codename: 'Neural Core v5.0',
+    boomerCodename: 'AI Assistant',
     tagline: 'Your personal business intelligence operator — always on, always sharp.',
     access: 'free',
     route: '/',
@@ -39,7 +44,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'console',
     label: 'CONSOLE',
+    boomerLabel: 'CONSOLE',
     codename: 'Cipher-X Suite',
+    boomerCodename: 'Professional Tools',
     tagline: 'The unfair advantage in every technical interview and live problem-solving session.',
     access: 'free',
     route: '/',
@@ -55,7 +62,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'contacts',
     label: 'CONTACTS',
+    boomerLabel: 'CRM',
     codename: 'Recall-6 Registry',
+    boomerCodename: 'Customer Relationship Management',
     tagline: 'Your professional network, organized the way your brain actually works.',
     access: 'free',
     route: '/business/contacts',
@@ -69,7 +78,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'hiring',
     label: 'HIRING',
+    boomerLabel: 'HIRING',
     codename: 'Recruit-8 Field Ops',
+    boomerCodename: 'Talent Management',
     tagline: 'Run your entire talent operation from a single terminal.',
     access: 'free',
     route: '/business/hiring',
@@ -86,7 +97,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'documents',
     label: 'DOCUMENTS',
+    boomerLabel: 'DOCUMENTS',
     codename: 'Ink-6 Phantom Printer',
+    boomerCodename: 'Document Management',
     tagline: 'Contracts, invoices, and files — professional-grade paperwork without the paperwork.',
     access: 'free',
     route: '/business/documents',
@@ -101,7 +114,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'calendar',
     label: 'CALENDAR',
+    boomerLabel: 'CALENDAR',
     codename: 'Chrono-4 Array',
+    boomerCodename: 'Scheduling',
     tagline: 'Time is your only non-renewable resource. Manage it like one.',
     access: 'free',
     route: '/business/calendar',
@@ -116,7 +131,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'dashboard',
     label: 'DASHBOARD',
+    boomerLabel: 'DASHBOARD',
     codename: 'Command Deck v4.0',
+    boomerCodename: 'Business Dashboard',
     tagline: 'Your command center. Everything you\'re building, in one view.',
     access: 'free',
     route: '/intel/dashboard',
@@ -131,7 +148,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'studio',
     label: 'STUDIO',
+    boomerLabel: 'STUDIO',
     codename: 'Forge-7 Content Matrix',
+    boomerCodename: 'Content Studio',
     tagline: 'Create like a creative director. Ship like a machine.',
     access: 'free',
     route: '/creative/studio',
@@ -146,7 +165,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'reports',
     label: 'REPORTS',
+    boomerLabel: 'REPORTS',
     codename: 'Intel-9 Command Brief',
+    boomerCodename: 'Business Intelligence',
     tagline: 'Turn your business data into decisions.',
     access: 'free',
     route: '/intel/reports',
@@ -160,7 +181,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'salaryman',
     label: 'SALARYMAN',
+    boomerLabel: 'SALARYMAN',
     codename: 'Social Environment',
+    boomerCodename: 'Professional Network',
     tagline: 'The corner office was always about who you knew. This is where you know them.',
     access: 'free',
     route: '/world',
@@ -174,7 +197,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'live_listen',
     label: 'LIVE LISTEN',
+    boomerLabel: 'LIVE LISTEN',
     codename: 'Echo-7 Nerve Tap',
+    boomerCodename: 'Audio Monitor',
     tagline: 'Real-time audio intercept. AI listens to your meetings and feeds you responses.',
     access: 'paid',
     featureKey: 'live_listen',
@@ -189,7 +214,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'screen_scan',
     label: 'SCREEN SCAN',
+    boomerLabel: 'SCREEN SCAN',
     codename: 'Optic-9 Retinal Scanner',
+    boomerCodename: 'Screen Analysis',
     tagline: 'AI sees your screen and identifies code, content, and context instantly.',
     access: 'paid',
     featureKey: 'screen_scan',
@@ -204,7 +231,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'say_this',
     label: 'SAY THIS',
+    boomerLabel: 'SAY THIS',
     codename: 'Vox-4 Larynx Module',
+    boomerCodename: 'Speech Coach',
     tagline: 'Real-time speech coaching. AI tells you exactly what to say.',
     access: 'paid',
     featureKey: 'say_this',
@@ -219,7 +248,9 @@ const MODULES: ModuleDef[] = [
   {
     id: 'phone_system',
     label: 'PHONE SYSTEM',
+    boomerLabel: 'PHONE SYSTEM',
     codename: 'Calll Home',
+    boomerCodename: 'Business Phone',
     tagline: 'Unlimited predictive dialing & text messaging for business partners.',
     access: 'paid',
     featureKey: 'phone_system',
@@ -272,18 +303,23 @@ function ModuleCard({
   onStartTrial,
   trials,
   hasFeatureAccess,
+  boomer,
 }: {
   module: ModuleDef;
   index: number;
   onStartTrial: (featureKey: FeatureKey) => void;
   trials: { featureKey: string; daysLeft: number }[];
   hasFeatureAccess: (featureKey: FeatureKey) => boolean;
+  boomer: boolean;
 }) {
   const [, navigate] = useLocation();
 
   const trial = module.featureKey ? trials.find((t) => t.featureKey === module.featureKey) : undefined;
   const hasPaidAccess = module.featureKey ? hasFeatureAccess(module.featureKey) : false;
   const canAccess = module.access === 'free' || !!trial || hasPaidAccess;
+
+  const displayLabel = boomer && module.boomerLabel ? module.boomerLabel : module.label;
+  const displayCodename = boomer && module.boomerCodename ? module.boomerCodename : module.codename;
 
   return (
     <motion.div
@@ -294,12 +330,12 @@ function ModuleCard({
     >
       <div className="flex items-start justify-between mb-2">
         <div className="text-[10px] font-mono text-zinc-700 uppercase tracking-widest">
-          {module.codename}
+          {displayCodename}
         </div>
         <AccessBadge access={module.access} featureKey={module.featureKey} trials={trials} />
       </div>
       <div className="font-['Share_Tech_Mono',monospace] text-sm text-zinc-100 tracking-widest uppercase mb-1.5">
-        {module.label}
+        {displayLabel}
       </div>
       <p className="text-xs text-zinc-500 italic mb-4 leading-relaxed">
         {module.tagline}
@@ -502,6 +538,7 @@ export default function Features() {
   const { login } = useAuth();
   const { features, isOwner, trials } = usePlan();
   const [trialModal, setTrialModal] = useState<FeatureKey | null>(null);
+  const [boomer] = useBoomerMode();
 
   const trialList = trials.map((t) => ({ featureKey: t.featureKey, daysLeft: t.daysLeft }));
 
@@ -573,6 +610,7 @@ export default function Features() {
                 onStartTrial={() => {}}
                 trials={trialList}
                 hasFeatureAccess={hasFeatureAccess}
+                boomer={boomer}
               />
             ))}
           </div>
@@ -595,6 +633,7 @@ export default function Features() {
                 onStartTrial={(fk) => setTrialModal(fk)}
                 trials={trialList}
                 hasFeatureAccess={hasFeatureAccess}
+                boomer={boomer}
               />
             ))}
           </div>
