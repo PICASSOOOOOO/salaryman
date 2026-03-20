@@ -98,6 +98,11 @@ export const PABLO_PRODUCTS = {
     short: "LEXICON-5",
     desc: "Neural word lookup module. Definitions, synonyms, and phonetic pronunciation for any word in the database.",
   },
+  THESAURUS: {
+    name: "SYNAPSE-4 WORD MATRIX",
+    short: "SYNAPSE-4",
+    desc: "Neural synonym/antonym resolver. Finds related words across all semantic axes.",
+  },
   NOTES: {
     name: "MEMO-2 NEURAL SCRATCH PAD",
     short: "MEMO-2",

@@ -109,7 +109,57 @@ function usePabloVoice() {
     setIsSpeaking(false);
   }, []);
 
-  return { isHolding, isTranscribing, isSpeaking, startHold, stopHold, speakResponse, stopSpeaking };
+  const [isListening, setIsListening] = useState(false);
+  const toggleListenRef = useRef<{ stop: () => void } | null>(null);
+
+  const startListening = useCallback((onTranscript: (text: string) => void) => {
+    if (toggleListenRef.current) {
+      toggleListenRef.current.stop();
+      toggleListenRef.current = null;
+      setIsListening(false);
+      return;
+    }
+    const W = window as unknown as Record<string, unknown>;
+    const SRCtor = (W.SpeechRecognition ?? W.webkitSpeechRecognition) as (new () => {
+      continuous: boolean; interimResults: boolean; lang: string;
+      onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+      onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void;
+    }) | undefined;
+    if (!SRCtor) return;
+
+    setIsListening(true);
+    const listenTranscript = { current: '' };
+    const rec = new SRCtor();
+    toggleListenRef.current = rec;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+    rec.onresult = (ev) => {
+      listenTranscript.current = Array.from(ev.results).map(r => r[0].transcript).join('');
+    };
+    rec.onend = () => {
+      setIsListening(false);
+      toggleListenRef.current = null;
+      if (listenTranscript.current.trim()) {
+        onTranscript(listenTranscript.current.trim());
+      }
+    };
+    rec.onerror = () => {
+      setIsListening(false);
+      toggleListenRef.current = null;
+    };
+    rec.start();
+  }, []);
+
+  const stopListening = useCallback(() => {
+    if (toggleListenRef.current) {
+      toggleListenRef.current.stop();
+      toggleListenRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  return { isHolding, isTranscribing, isSpeaking, isListening, startHold, stopHold, startListening, stopListening, speakResponse, stopSpeaking };
 }
 
 export default function Home() {
@@ -146,6 +196,49 @@ export default function Home() {
   const [dictError, setDictError] = useState('');
   const [dictSuggestions, setDictSuggestions] = useState<string[]>([]);
   const [dictThesaurus, setDictThesaurus] = useState<{ synonymsByPos: Record<string, string[]>; antonyms: string[] } | null>(null);
+
+  const [thesWord, setThesWord] = useState('');
+  const [thesLoading, setThesLoading] = useState(false);
+  const [thesError, setThesError] = useState('');
+  const [thesSynonyms, setThesSynonyms] = useState<Record<string, string[]>>({});
+  const [thesAntonyms, setThesAntonyms] = useState<string[]>([]);
+  const [thesRelated, setThesRelated] = useState<string[]>([]);
+  const [thesLookedUp, setThesLookedUp] = useState('');
+
+  const lookupThesaurus = async (word: string) => {
+    const w = word.trim().toLowerCase();
+    if (!w) return;
+    setThesLoading(true); setThesError(''); setThesSynonyms({}); setThesAntonyms([]); setThesRelated([]); setThesLookedUp(w);
+    try {
+      const [synRes, antRes, relRes] = await Promise.all([
+        fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(w)}&max=25&md=p`),
+        fetch(`https://api.datamuse.com/words?rel_ant=${encodeURIComponent(w)}&max=10`),
+        fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(w)}&max=12`),
+      ]);
+      const synData: { word: string; tags?: string[] }[] = synRes.ok ? await synRes.json() : [];
+      const antData: { word: string }[] = antRes.ok ? await antRes.json() : [];
+      const relData: { word: string }[] = relRes.ok ? await relRes.json() : [];
+      const POS_LABELS: Record<string, string> = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb' };
+      const synonymsByPos: Record<string, string[]> = {};
+      for (const item of synData) {
+        const posTag = item.tags?.find(t => t in POS_LABELS) ?? 'other';
+        const posLabel = POS_LABELS[posTag] ?? posTag;
+        if (!synonymsByPos[posLabel]) synonymsByPos[posLabel] = [];
+        if (synonymsByPos[posLabel].length < 8) synonymsByPos[posLabel].push(item.word);
+      }
+      const antonyms = antData.map(d => d.word);
+      const synWords = new Set(synData.map(d => d.word));
+      const related = relData.filter(d => d.word !== w && !synWords.has(d.word)).map(d => d.word).slice(0, 8);
+      if (Object.keys(synonymsByPos).length === 0 && antonyms.length === 0 && related.length === 0) {
+        setThesError(`No thesaurus results for "${w}".`);
+      } else {
+        setThesSynonyms(synonymsByPos);
+        setThesAntonyms(antonyms);
+        setThesRelated(related);
+      }
+    } catch { setThesError('Thesaurus service unavailable.'); }
+    setThesLoading(false);
+  };
 
   const [notes, setNotes] = useState<{ id: number; text: string; ts: number }[]>(() => {
     try { return JSON.parse(localStorage.getItem('sm_notes') ?? '[]'); } catch { return []; }
@@ -279,7 +372,7 @@ export default function Home() {
     return result;
   }, [noteInput, spellMatches]);
 
-  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(false);
+  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(true);
   const lastSpokenRef = useRef(-1);
 
   useEffect(() => {
@@ -503,7 +596,7 @@ export default function Home() {
             </div>
             <div>
               <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.7)' }}>PABLO FREE TOOLKIT</span>
-              <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI Chat + Translator + Dictionary + Notes — no subscription required</span>
+              <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI Chat + Translator + Dictionary + Thesaurus + Notes — no subscription required</span>
             </div>
           </div>
         </div>
@@ -512,13 +605,13 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
 
           {/* Sidebar Tools — FREE */}
-          <div className="lg:w-80 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(34,197,94,0.15) transparent' }}>
+          <div className="lg:w-96 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(34,197,94,0.15) transparent' }}>
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR — FREE' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
               </div>
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
                 <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
                   className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
@@ -532,6 +625,8 @@ export default function Home() {
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
+              </div>
+              <div className="flex items-center gap-1.5 mb-2">
                 <button onClick={() => {
                   if (translatorListening) {
                     try { translatorRecRef.current?.stop(); } catch {}
@@ -697,6 +792,90 @@ export default function Home() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Thesaurus — FREE */}
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'THESAURUS — FREE' : PABLO_PRODUCTS.THESAURUS.name}</span>
+              </div>
+              <div className="flex gap-1.5 mb-2">
+                <input value={thesWord} onChange={e => setThesWord(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') lookupThesaurus(thesWord); }}
+                  placeholder="Type a word..."
+                  className={`flex-1 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                <button onClick={() => lookupThesaurus(thesWord)}
+                  className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  SEARCH
+                </button>
+              </div>
+              {thesLoading && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Searching...</p>
+                </div>
+              )}
+              {thesError && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{thesError}</p>
+                </div>
+              )}
+              {!thesLoading && !thesError && thesLookedUp && (Object.keys(thesSynonyms).length > 0 || thesAntonyms.length > 0 || thesRelated.length > 0) && (
+                <div className="space-y-2">
+                  <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 space-y-1.5">
+                    <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{thesLookedUp.toUpperCase()}</span>
+                    {Object.keys(thesSynonyms).length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>SYNONYMS</p>
+                        {Object.entries(thesSynonyms).map(([pos, words]) => (
+                          <div key={pos}>
+                            <span className={`${boomerMode ? 'text-sm' : 'text-[10px]'} font-bold text-pink-400/40 uppercase ml-0.5`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{pos}</span>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {words.map(s => (
+                                <button key={s} onClick={() => { setThesWord(s); lookupThesaurus(s); }}
+                                  className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/20 bg-pink-500/5 text-pink-300/80 hover:bg-pink-500/20 hover:text-pink-300 transition-colors`}
+                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {thesAntonyms.length > 0 && (
+                      <div>
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>ANTONYMS</p>
+                        <div className="flex flex-wrap gap-1">
+                          {thesAntonyms.map(a => (
+                            <button key={a} onClick={() => { setThesWord(a); lookupThesaurus(a); }}
+                              className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-400/20 bg-pink-400/5 text-pink-400/70 hover:bg-pink-400/15 hover:text-pink-400 transition-colors`}
+                              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              {a}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {thesRelated.length > 0 && (
+                      <div>
+                        <p className={`${boomerMode ? 'text-sm' : 'text-[10px]'} text-pink-400/50 mb-1`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>RELATED WORDS</p>
+                        <div className="flex flex-wrap gap-1">
+                          {thesRelated.map(r => (
+                            <button key={r} onClick={() => { setThesWord(r); lookupThesaurus(r); }}
+                              className={`${boomerMode ? 'text-sm px-2.5 py-1' : 'text-[10px] px-2 py-0.5'} rounded border border-pink-500/15 bg-pink-500/5 text-pink-300/60 hover:bg-pink-500/15 hover:text-pink-300 transition-colors`}
+                              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -924,9 +1103,10 @@ export default function Home() {
                               </span>
                             )}
                             <button onClick={() => voice.speakResponse(msg.content)}
-                              className="p-1 rounded-md text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-400/10 transition-colors"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                              style={{ fontFamily: "'Share Tech Mono', monospace" }}
                               title="Hear PABLO say this">
-                              <Volume2 className="w-3 h-3" />
+                              <Volume2 className="w-3 h-3" /> {boomerMode ? 'HEAR THIS' : 'PLAY'}
                             </button>
                           </div>
                         )}
@@ -1003,69 +1183,75 @@ export default function Home() {
                     style={{ fieldSizing: 'content' } as React.CSSProperties}
                   />
 
-                  {/* Conversation Mode Button */}
-                  {conv.isSupported && (
-                    <button
-                      onClick={() => conv.isConvMode ? conv.stopConversation() : conv.startConversation()}
-                      disabled={chatStreaming && !conv.isConvMode}
-                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40 disabled:cursor-not-allowed
-                        ${conv.isConvMode
-                          ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400 animate-pulse'
-                          : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-400'}`}
-                      title={conv.isConvMode ? 'End conversation mode' : (boomerMode ? 'Start Voice Conversation' : 'CONV MODE — Hands-free talk with PABLO')}
-                    >
-                      <Radio className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  {/* Voice Hold Button — PRO */}
-                  {!conv.isConvMode && (
-                    <button
-                      onMouseDown={() => voice.startHold(handleVoiceSend)}
-                      onMouseUp={() => voice.stopHold()}
-                      onMouseLeave={() => { if (voice.isHolding) voice.stopHold(); }}
-                      onTouchStart={(e) => { e.preventDefault(); voice.startHold(handleVoiceSend); }}
-                      onTouchEnd={() => voice.stopHold()}
-                      disabled={chatStreaming || voice.isTranscribing}
-                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed
-                        ${voice.isHolding
-                          ? 'bg-red-500/30 border-red-500/50 text-red-400 scale-110 animate-pulse'
-                          : voice.isSpeaking
-                            ? 'bg-amber-500/20 border-amber-500/30 text-amber-400'
-                            : 'bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:bg-purple-500/30'}`}
-                      title={boomerMode ? 'Hold to talk to PABLO (Pro)' : 'VOX HOLD — Speak to PABLO'}
-                    >
-                      {voice.isHolding ? <Mic className="w-4 h-4" /> :
-                       voice.isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                       voice.isSpeaking ? <Volume2 className="w-4 h-4" /> :
-                       <Mic className="w-4 h-4" />}
-                    </button>
-                  )}
-
-                  {/* Auto-speak toggle */}
-                  {!conv.isConvMode && (
-                    <button
-                      onClick={() => {
-                        if (voice.isSpeaking) { voice.stopSpeaking(); }
-                        setAutoSpeakEnabled(p => !p);
-                      }}
-                      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center border transition-colors
-                        ${autoSpeakEnabled
-                          ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                          : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
-                      title={autoSpeakEnabled ? 'Auto-speak ON — PABLO reads responses aloud' : 'Auto-speak OFF'}
-                    >
-                      {voice.isSpeaking ? <MicOff className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    </button>
-                  )}
-
                   <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming || conv.isConvMode}
                     className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     {chatStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center">
-                  {conv.isConvMode ? 'Voice conversation active — speak naturally' : 'Enter to send · Shift+Enter for new line · Hold mic or tap radio for conversation'}
+
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => voice.isListening ? voice.stopListening() : voice.startListening(handleVoiceSend)}
+                    disabled={chatStreaming || conv.isConvMode}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed
+                      ${voice.isListening
+                        ? 'bg-red-500/20 border-red-500/40 text-red-400 animate-pulse'
+                        : 'bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25'}`}
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                  >
+                    {voice.isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    {voice.isListening ? 'STOP' : (boomerMode ? 'SPEAK TO PABLO' : 'MIC')}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (voice.isSpeaking) { voice.stopSpeaking(); }
+                      setAutoSpeakEnabled(p => !p);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors
+                      ${autoSpeakEnabled
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                        : 'bg-muted/30 border-border text-muted-foreground/40 hover:text-foreground hover:bg-muted/50'}`}
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                    title={autoSpeakEnabled ? 'PABLO reads every response aloud' : 'PABLO stays silent'}
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    {autoSpeakEnabled ? (boomerMode ? 'PABLO VOICE ON' : 'VOICE ON') : (boomerMode ? 'PABLO VOICE OFF' : 'VOICE OFF')}
+                  </button>
+
+                  {conv.isSupported && (
+                    <button
+                      onClick={() => conv.isConvMode ? conv.stopConversation() : conv.startConversation()}
+                      disabled={chatStreaming && !conv.isConvMode}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed
+                        ${conv.isConvMode
+                          ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400 animate-pulse'
+                          : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-400'}`}
+                      style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                      title={conv.isConvMode ? 'End conversation mode' : 'Hands-free back-and-forth with PABLO'}
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      {conv.isConvMode ? 'END CONV' : (boomerMode ? 'CONVERSATION MODE' : 'CONV')}
+                    </button>
+                  )}
+
+                  {voice.isSpeaking && (
+                    <button
+                      onClick={() => voice.stopSpeaking()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 transition-colors ml-auto"
+                      style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      STOP
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-muted-foreground/30 mt-1.5 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {voice.isListening ? 'Listening... tap MIC again or wait to send' :
+                   conv.isConvMode ? 'Voice conversation active — speak naturally' :
+                   voice.isSpeaking ? 'PABLO is speaking...' :
+                   'Enter to send · Tap MIC to speak · PABLO reads replies aloud'}
                 </p>
               </div>
             </div>
