@@ -243,6 +243,21 @@ export default function Cover() {
           <p className="text-zinc-700 text-xs">No spam. Unsubscribe anytime.</p>
         </motion.div>
 
+        {/* Teaser video */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="w-full max-w-2xl"
+        >
+          <video
+            src="/brand/other/salaryman-teaser.mp4"
+            controls
+            playsInline
+            className="w-full rounded-xl border border-zinc-800 shadow-lg"
+          />
+        </motion.div>
+
         {/* Powered by */}
         <motion.div
           initial={{ opacity: 0 }}
