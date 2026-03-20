@@ -166,7 +166,20 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
       twiml = `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`;
     }
 
-    const call = await client.calls.create({ to: e164, from: fromNumber, twiml });
+    const _protocol = "https";
+    const _host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _statusCallbackUrl = _host ? `${_protocol}://${_host}/api/twilio/webhook/status` : undefined;
+
+    const call = await client.calls.create({
+      to: e164,
+      from: fromNumber,
+      twiml,
+      ...(_statusCallbackUrl && {
+        statusCallback: _statusCallbackUrl,
+        statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        statusCallbackMethod: "POST",
+      }),
+    });
 
     const [record] = await db
       .insert(callHistoryTable)
@@ -346,10 +359,21 @@ router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) =>
     }
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
+    const _confHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _confStatusUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/status` : undefined;
+    const _confEventUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/conference-status` : undefined;
+    const confTwiml = _confEventUrl
+      ? `<Response><Say voice="alice">You are being connected to a conference call.</Say><Dial><Conference statusCallback="${_confEventUrl}" statusCallbackEvent="start end join leave mute hold" statusCallbackMethod="POST">${roomName}</Conference></Dial></Response>`
+      : `<Response><Say voice="alice">You are being connected to a conference call.</Say><Dial><Conference>${roomName}</Conference></Dial></Response>`;
     const call = await client.calls.create({
       to: e164,
       from: fromNumber,
-      twiml: `<Response><Say voice="alice">You are being connected to a conference call.</Say><Dial><Conference>${roomName}</Conference></Dial></Response>`,
+      twiml: confTwiml,
+      ...(_confStatusUrl && {
+        statusCallback: _confStatusUrl,
+        statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        statusCallbackMethod: "POST",
+      }),
     });
 
     const roomRows = await db.select().from(conferenceRoomsTable)
@@ -439,6 +463,8 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
 
     let dialCount = mode === "predictive" ? Math.min(3, numbers.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string }> = [];
+    const _dialingHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
 
     for (let i = 0; i < dialCount; i++) {
       const entry = numbers[i];
@@ -454,7 +480,16 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
         } else {
           twiml = `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`;
         }
-        const call = await client.calls.create({ to: e164, from: fromNumber, twiml });
+        const call = await client.calls.create({
+          to: e164,
+          from: fromNumber,
+          twiml,
+          ...(_dialingStatusUrl && {
+            statusCallback: _dialingStatusUrl,
+            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+            statusCallbackMethod: "POST",
+          }),
+        });
         await db.insert(callHistoryTable).values({
           userId,
           callerName: (entry.name || callerName || "").slice(0, 64) || null,
@@ -514,7 +549,18 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
     }
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
-    const call = await client.calls.create({ to: e164, from: fromNumber, twiml: `<Response><Dial>${fromNumber}</Dial></Response>` });
+    const _nextHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
+    const call = await client.calls.create({
+      to: e164,
+      from: fromNumber,
+      twiml: `<Response><Dial>${fromNumber}</Dial></Response>`,
+      ...(_nextStatusUrl && {
+        statusCallback: _nextStatusUrl,
+        statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        statusCallbackMethod: "POST",
+      }),
+    });
     await db.insert(callHistoryTable).values({
       userId, recipientNumber: e164, twilioCallSid: call.sid, callerName: entry.name ?? null,
       status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
@@ -762,13 +808,38 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       res.status(403).send("Forbidden");
       return;
     }
-    const { From, To, CallSid } = req.body;
+    const { From, CallSid } = req.body;
     const userId = req.query.userId as string;
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
 
     const configRows = userId
       ? await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1)
       : [];
     const config = configRows[0] ?? null;
+
+    let fromName: string | undefined;
+    if (userId && From) {
+      try {
+        const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(100);
+        const match = contacts.find((c) => c.phone && toE164(c.phone) === toE164(From));
+        if (match) fromName = match.name;
+      } catch {
+      }
+    }
+
+    if (CallSid) {
+      await db.insert(callHistoryTable).values({
+        userId: userId || "unknown",
+        callerName: fromName ?? null,
+        recipientNumber: From ?? "unknown",
+        twilioCallSid: CallSid,
+        status: "ringing",
+        direction: "inbound",
+        callType: "single",
+      });
+    }
 
     if (config?.isEnabled) {
       const now = new Date();
@@ -777,8 +848,8 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       const currentTime = hour * 60 + minute;
       const [startH, startM] = (config.businessHoursStart ?? "09:00").split(":").map(Number);
       const [endH, endM] = (config.businessHoursEnd ?? "17:00").split(":").map(Number);
-      const startTime = startH * 60 + startM;
-      const endTime = endH * 60 + endM;
+      const startTime = startH * 60 + (startM ?? 0);
+      const endTime = endH * 60 + (endM ?? 0);
       const dayOfWeek = now.getDay();
       const businessDays = (config.businessDays ?? "1,2,3,4,5").split(",").map(Number);
       const isDuringBusinessHours = businessDays.includes(dayOfWeek) && currentTime >= startTime && currentTime <= endTime;
@@ -789,25 +860,21 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
-<Gather input="speech" timeout="5" action="/api/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
 <Say voice="alice">${escapeTwiml(greeting)}</Say>
 </Gather>
 <Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
-<Record maxLength="120" transcribe="true" transcribeCallback="/api/twilio/voicemail/webhook?userId=${userId}" />
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
         res.type("text/xml").send(twiml);
         return;
       }
     }
 
-    if (userId) {
-      await sendMissedCallEmail(userId, From);
-    }
-
     const greeting = config?.greetingScript ?? "You have reached our voicemail. Please leave a message after the tone.";
     const twiml = `<Response>
 <Say voice="alice">${escapeTwiml(greeting)} Please leave a message after the tone.</Say>
-<Record maxLength="120" transcribe="true" transcribeCallback="/api/twilio/voicemail/webhook?userId=${userId ?? ""}" />
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
     res.type("text/xml").send(twiml);
   } catch (err: unknown) {
@@ -852,16 +919,35 @@ End with asking if there's anything else you can help with.`,
 
     const response = completion.choices[0]?.message?.content?.trim() ?? "Thank you for calling. Please leave a message.";
 
-    await db.insert(callHistoryTable).values({
-      userId,
-      callerName: null,
-      recipientNumber: From ?? "unknown",
-      twilioCallSid: CallSid,
-      status: "in-progress",
-      direction: "inbound",
-      callType: "secretary",
-      notes: `Secretary handled. Caller said: "${SpeechResult}"`,
-    });
+    const existingSecCalls = CallSid
+      ? await db.select().from(callHistoryTable).where(eq(callHistoryTable.twilioCallSid, CallSid)).limit(1)
+      : [];
+    if (existingSecCalls[0]) {
+      await db
+        .update(callHistoryTable)
+        .set({
+          status: "in-progress",
+          callType: "secretary",
+          notes: existingSecCalls[0].notes
+            ? `${existingSecCalls[0].notes}\nSecretary handled. Caller said: "${SpeechResult}"`
+            : `Secretary handled. Caller said: "${SpeechResult}"`,
+        })
+        .where(eq(callHistoryTable.id, existingSecCalls[0].id));
+    } else {
+      await db.insert(callHistoryTable).values({
+        userId,
+        callerName: null,
+        recipientNumber: From ?? "unknown",
+        twilioCallSid: CallSid,
+        status: "in-progress",
+        direction: "inbound",
+        callType: "secretary",
+        notes: `Secretary handled. Caller said: "${SpeechResult}"`,
+      });
+    }
+
+    const secHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const secBase = secHost ? `https://${secHost}/api` : "/api";
 
     const forwardTo = config?.forwardToNumber;
     let action = "";
@@ -870,7 +956,7 @@ End with asking if there's anything else you can help with.`,
       action = `<Dial>${safeForward}</Dial>`;
     } else {
       const safeResponse = escapeTwiml(response);
-      action = `<Gather input="speech" timeout="5" action="/api/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto"><Say voice="alice">${safeResponse}</Say></Gather><Record maxLength="120" transcribeCallback="/api/twilio/voicemail/webhook?userId=${userId}" />`;
+      action = `<Gather input="speech" timeout="5" action="${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto"><Say voice="alice">${safeResponse}</Say></Gather><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
     }
 
     res.type("text/xml").send(`<Response>${action}</Response>`);
@@ -1104,6 +1190,9 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
     }
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
+    const protocol = process.env.NODE_ENV === "production" ? "https" : "https";
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const statusCallbackUrl = host ? `${protocol}://${host}/api/twilio/webhook/status` : undefined;
     const results = await Promise.allSettled(
       numbers.map(async (entry: { phone: string; name?: string }) => {
         const e164 = toE164(entry.phone);
@@ -1112,6 +1201,11 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
           to: e164,
           from: fromNumber,
           twiml: `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`,
+          ...(statusCallbackUrl && {
+            statusCallback: statusCallbackUrl,
+            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+            statusCallbackMethod: "POST",
+          }),
         });
         const [record] = await db
           .insert(callHistoryTable)
@@ -1265,6 +1359,459 @@ router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] history error:", _msg);
     res.status(500).json({ error: "Failed to fetch call history" });
+  }
+});
+
+router.get("/twilio/webhook-config", requireAuth, async (req, res) => {
+  const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+  const base = host ? `https://${host}/api` : "/api";
+  const userId = getAuthUserId(req);
+  res.json({
+    webhookUrls: {
+      voiceUrl: `${base}/twilio/webhook/voice?userId=${userId}`,
+      statusCallback: `${base}/twilio/webhook/status`,
+      smsUrl: `${base}/twilio/webhook/sms?userId=${userId}`,
+      recordingCallback: `${base}/twilio/webhook/recording`,
+      transcriptionCallback: `${base}/twilio/webhook/transcription`,
+      conferenceStatusCallback: `${base}/twilio/webhook/conference-status`,
+    },
+    instructions: {
+      voiceUrl: "Set as the Voice URL (HTTP POST) for your Twilio phone number to handle inbound calls.",
+      statusCallback: "Optionally set as the Status Callback URL on your Twilio phone number for call lifecycle events.",
+      smsUrl: "Set as the Messaging URL (HTTP POST) for your Twilio phone number to receive inbound SMS.",
+      recordingCallback: "Used automatically by the app when creating recordings via the inbound voice webhook.",
+      transcriptionCallback: "Used automatically by the app when enabling transcription on recorded calls.",
+      conferenceStatusCallback: "Pass this URL when creating conference participants to track join/leave events.",
+    },
+  });
+});
+
+router.post("/twilio/webhook/voice", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/voice: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { From, To, CallSid } = req.body;
+    const userId = req.query.userId as string;
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    const configRows = userId
+      ? await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1)
+      : [];
+    const config = configRows[0] ?? null;
+
+    let fromName: string | undefined;
+    if (userId && From) {
+      try {
+        const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(100);
+        const match = contacts.find((c) => c.phone && toE164(c.phone) === toE164(From));
+        if (match) fromName = match.name;
+      } catch {
+      }
+    }
+
+    await db.insert(callHistoryTable).values({
+      userId: userId || "unknown",
+      callerName: fromName ?? null,
+      recipientNumber: From ?? "unknown",
+      twilioCallSid: CallSid,
+      status: "ringing",
+      direction: "inbound",
+      callType: "single",
+    });
+
+    if (config?.isEnabled) {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      const currentTime = hour * 60 + minute;
+      const [startH, startM] = (config.businessHoursStart ?? "09:00").split(":").map(Number);
+      const [endH, endM] = (config.businessHoursEnd ?? "17:00").split(":").map(Number);
+      const startTime = startH * 60 + (startM ?? 0);
+      const endTime = endH * 60 + (endM ?? 0);
+      const dayOfWeek = now.getDay();
+      const businessDays = (config.businessDays ?? "1,2,3,4,5").split(",").map(Number);
+      const isDuringBusinessHours = businessDays.includes(dayOfWeek) && currentTime >= startTime && currentTime <= endTime;
+
+      if (isDuringBusinessHours) {
+        const personality = config.personality ?? "professional";
+        const greeting = config.greetingScript ?? `Thank you for calling. I'm an AI assistant. How can I help you today?`;
+        const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
+        const routing = config.routingInstructions ?? "";
+        const twiml = `<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
+<Say voice="alice">${escapeTwiml(greeting)}</Say>
+</Gather>
+<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
+</Response>`;
+        res.type("text/xml").send(twiml);
+        return;
+      }
+    }
+
+    const greeting = config?.greetingScript ?? "You have reached our voicemail. Please leave a message after the tone.";
+    const twiml = `<Response>
+<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
+</Response>`;
+    res.type("text/xml").send(twiml);
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/voice error:", _msg);
+    res.type("text/xml").send("<Response><Say>An error occurred. Please try again later.</Say></Response>");
+  }
+});
+
+router.post("/twilio/webhook/status", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/status: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const {
+      CallSid,
+      CallStatus,
+      CallDuration,
+      From,
+      To,
+      Direction,
+    } = req.body;
+
+    if (!CallSid || !CallStatus) {
+      res.status(400).send("Missing params");
+      return;
+    }
+
+    const terminalStatuses = ["completed", "failed", "busy", "no-answer", "canceled"];
+    const isTerminal = terminalStatuses.includes(CallStatus);
+
+    const updated = await db
+      .update(callHistoryTable)
+      .set({
+        status: CallStatus,
+        ...(CallDuration && { durationSeconds: parseInt(CallDuration, 10) }),
+        ...(isTerminal && { endedAt: new Date() }),
+      })
+      .where(eq(callHistoryTable.twilioCallSid, CallSid))
+      .returning();
+
+    if (updated.length === 0 && Direction === "inbound" && isTerminal) {
+      const rows = await db
+        .select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .limit(1);
+      if (rows.length === 0) {
+        console.log(`[CalllHome] webhook/status: no record found for inbound call ${CallSid}, status=${CallStatus}`);
+      }
+    }
+
+    if (isTerminal && (CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed")) {
+      const records = await db
+        .select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .limit(1);
+      const record = records[0];
+      if (record && record.direction === "inbound") {
+        await sendMissedCallEmail(record.userId, From ?? record.recipientNumber, record.callerName ?? undefined);
+      }
+    }
+
+    res.status(204).send();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/status error:", _msg);
+    res.status(500).send("Error");
+  }
+});
+
+router.post("/twilio/webhook/recording", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/recording: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const {
+      RecordingUrl,
+      RecordingSid,
+      CallSid,
+      From: FromField,
+      RecordingDuration,
+      RecordingStatus,
+    } = req.body;
+    const userId = req.query.userId as string;
+    const recordingType = req.query.type as string;
+
+    if (RecordingStatus && RecordingStatus !== "completed") {
+      res.status(204).send();
+      return;
+    }
+
+    let fromNumber = FromField as string | undefined;
+
+    if (!fromNumber && CallSid) {
+      const callRows = await db
+        .select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .limit(1);
+      if (callRows[0]) fromNumber = callRows[0].recipientNumber;
+    }
+
+    if (recordingType === "voicemail" && userId) {
+      const transcript = `[Voicemail from ${fromNumber ?? "unknown"} - ${new Date().toLocaleString()}]`;
+
+      let fromName: string | undefined;
+      if (fromNumber) {
+        try {
+          const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(100);
+          const match = contacts.find((c) => c.phone && toE164(c.phone) === toE164(fromNumber!));
+          if (match) fromName = match.name;
+        } catch {
+        }
+      }
+
+      const existingVm = RecordingSid
+        ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.recordingSid, RecordingSid)).limit(1)
+        : [];
+
+      if (existingVm.length === 0) {
+        const [vm] = await db
+          .insert(voicemailsTable)
+          .values({
+            userId,
+            fromNumber: fromNumber ?? "unknown",
+            fromName: fromName ?? undefined,
+            twilioCallSid: CallSid,
+            recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : undefined,
+            recordingSid: RecordingSid,
+            durationSeconds: RecordingDuration ? Number(RecordingDuration) : 0,
+            transcript,
+          })
+          .returning();
+
+        await sendMissedCallEmail(userId, fromNumber ?? "unknown", fromName);
+        console.log(`[CalllHome] webhook/recording: voicemail created id=${vm.id} from=${fromNumber}`);
+      } else {
+        await db
+          .update(voicemailsTable)
+          .set({
+            recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : undefined,
+            durationSeconds: RecordingDuration ? Number(RecordingDuration) : 0,
+          })
+          .where(eq(voicemailsTable.id, existingVm[0].id));
+      }
+    } else if (CallSid && RecordingUrl) {
+      await db
+        .update(callHistoryTable)
+        .set({ recordingUrl: `${RecordingUrl}.mp3` })
+        .where(eq(callHistoryTable.twilioCallSid, CallSid));
+    }
+
+    res.status(204).send();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/recording error:", _msg);
+    res.status(500).send("Error");
+  }
+});
+
+router.post("/twilio/webhook/transcription", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/transcription: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { CallSid, TranscriptionText, TranscriptionStatus, RecordingSid } = req.body;
+
+    if (TranscriptionStatus !== "completed" || !TranscriptionText) {
+      res.status(204).send();
+      return;
+    }
+
+    if (CallSid) {
+      const callRows = await db
+        .select()
+        .from(callHistoryTable)
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .limit(1);
+      if (callRows[0]) {
+        const summary = await generateCallSummary(TranscriptionText).catch(() => "");
+        await db
+          .update(callHistoryTable)
+          .set({ transcript: TranscriptionText, ...(summary && { summary }) })
+          .where(eq(callHistoryTable.id, callRows[0].id));
+      }
+    }
+
+    if (RecordingSid) {
+      const vmRows = await db
+        .select()
+        .from(voicemailsTable)
+        .where(eq(voicemailsTable.recordingSid, RecordingSid))
+        .limit(1);
+      if (vmRows[0]) {
+        const summary = await generateCallSummary(TranscriptionText).catch(() => "");
+        await db
+          .update(voicemailsTable)
+          .set({ transcript: TranscriptionText, ...(summary && { summary }) })
+          .where(eq(voicemailsTable.id, vmRows[0].id));
+      }
+    }
+
+    res.status(204).send();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/transcription error:", _msg);
+    res.status(500).send("Error");
+  }
+});
+
+router.post("/twilio/webhook/sms", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/sms: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { From, To, Body, MessageSid, NumMedia } = req.body;
+    const userId = req.query.userId as string;
+
+    if (!From || !Body) {
+      res.type("text/xml").send("<Response></Response>");
+      return;
+    }
+
+    let fromName: string | undefined;
+    let contactId: number | undefined;
+
+    if (userId) {
+      try {
+        const e164From = toE164(From) ?? From;
+        const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(200);
+        const match = contacts.find((c) => c.phone && (toE164(c.phone) === e164From || c.phone === From));
+        if (match) {
+          fromName = match.name;
+          contactId = match.id;
+        } else {
+          const [newContact] = await db
+            .insert(contactsTable)
+            .values({
+              userId,
+              name: From,
+              phone: e164From,
+            })
+            .returning();
+          contactId = newContact.id;
+          fromName = From;
+        }
+      } catch (e: unknown) {
+        console.error("[CalllHome] webhook/sms: contact lookup/create error:", e instanceof Error ? e.message : "Unknown");
+      }
+    }
+
+    if (contactId && userId) {
+      await db.insert(contactInteractionsTable).values({
+        contactId,
+        userId,
+        type: "sms",
+        note: `Inbound SMS from ${fromName ?? From}: ${Body}`,
+      });
+    } else if (!userId) {
+      console.warn(`[CalllHome] webhook/sms: no userId in query, SMS from ${From} not persisted to DB`);
+    }
+
+    console.log(`[CalllHome] webhook/sms: inbound SMS from ${fromName ?? From} (${From}) to ${To}: ${Body.slice(0, 100)}`);
+
+    res.type("text/xml").send("<Response></Response>");
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/sms error:", _msg);
+    res.type("text/xml").send("<Response></Response>");
+  }
+});
+
+router.post("/twilio/webhook/conference-status", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      console.error("[CalllHome] webhook/conference-status: invalid Twilio signature");
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const {
+      ConferenceSid,
+      FriendlyName,
+      StatusCallbackEvent,
+      CallSid,
+      Muted,
+      Hold,
+      EndConferenceOnExit,
+    } = req.body;
+
+    if (!FriendlyName) {
+      res.status(204).send();
+      return;
+    }
+
+    const rooms = await db
+      .select()
+      .from(conferenceRoomsTable)
+      .where(eq(conferenceRoomsTable.roomName, FriendlyName))
+      .limit(1);
+    const room = rooms[0];
+
+    if (!room) {
+      res.status(204).send();
+      return;
+    }
+
+    if (ConferenceSid && !room.twilioConferenceSid) {
+      await db
+        .update(conferenceRoomsTable)
+        .set({ twilioConferenceSid: ConferenceSid })
+        .where(eq(conferenceRoomsTable.id, room.id));
+    }
+
+    if (StatusCallbackEvent === "participant-join" || StatusCallbackEvent === "participant-leave") {
+      const participants: Array<{ callSid: string; phone: string; name: string; muted: boolean; hold: boolean }> = JSON.parse(room.participantsJson ?? "[]");
+
+      if (StatusCallbackEvent === "participant-join") {
+        const existing = participants.find((p) => p.callSid === CallSid);
+        if (!existing && CallSid) {
+          participants.push({ callSid: CallSid, phone: "", name: CallSid, muted: Muted === "true", hold: Hold === "true" });
+        }
+      } else if (StatusCallbackEvent === "participant-leave") {
+        const idx = participants.findIndex((p) => p.callSid === CallSid);
+        if (idx !== -1) participants.splice(idx, 1);
+      }
+
+      await db
+        .update(conferenceRoomsTable)
+        .set({ participantsJson: JSON.stringify(participants) })
+        .where(eq(conferenceRoomsTable.id, room.id));
+    }
+
+    if (StatusCallbackEvent === "conference-end") {
+      await db
+        .update(conferenceRoomsTable)
+        .set({ status: "ended", endedAt: new Date() })
+        .where(eq(conferenceRoomsTable.id, room.id));
+    }
+
+    res.status(204).send();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] webhook/conference-status error:", _msg);
+    res.status(500).send("Error");
   }
 });
 
