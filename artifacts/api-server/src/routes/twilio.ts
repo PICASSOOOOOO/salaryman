@@ -1510,14 +1510,45 @@ router.post("/twilio/webhook/status", async (req, res) => {
       .where(eq(callHistoryTable.twilioCallSid, CallSid))
       .returning();
 
-    if (updated.length === 0 && Direction === "inbound" && isTerminal) {
-      const rows = await db
-        .select()
+    if (updated.length === 0 && Direction === "inbound") {
+      const existing = await db
+        .select({ id: callHistoryTable.id })
         .from(callHistoryTable)
-        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.direction, "inbound")))
         .limit(1);
-      if (rows.length === 0) {
-        console.log(`[CalllHome] webhook/status: no record found for inbound call ${CallSid}, status=${CallStatus}`);
+      if (existing.length === 0) {
+        let resolvedUserId: string | null = null;
+        if (To) {
+          try {
+            const e164To = toE164(To) ?? To;
+            const phoneRows = await db
+              .select({ userId: phoneNumbersTable.userId })
+              .from(phoneNumbersTable)
+              .where(eq(phoneNumbersTable.number, e164To))
+              .limit(1);
+            if (phoneRows[0]) resolvedUserId = phoneRows[0].userId;
+          } catch {
+          }
+        }
+        if (resolvedUserId) {
+          try {
+            await db.insert(callHistoryTable).values({
+              userId: resolvedUserId,
+              recipientNumber: From ?? "unknown",
+              twilioCallSid: CallSid,
+              status: CallStatus,
+              direction: "inbound",
+              callType: "single",
+              ...(CallDuration && { durationSeconds: parseInt(CallDuration, 10) }),
+              ...(isTerminal && { endedAt: new Date() }),
+            });
+            console.log(`[CalllHome] webhook/status: created fallback inbound record for ${CallSid} userId=${resolvedUserId} status=${CallStatus}`);
+          } catch (insertErr: unknown) {
+            console.warn(`[CalllHome] webhook/status: fallback insert skipped (likely race) for ${CallSid}:`, insertErr instanceof Error ? insertErr.message : "Unknown");
+          }
+        } else {
+          console.log(`[CalllHome] webhook/status: no record found for inbound call ${CallSid}, status=${CallStatus}, To=${To}`);
+        }
       }
     }
 
