@@ -44,3 +44,4 @@ export * from "./cosmetics";
 export * from "./donations";
 export * from "./salaryman-season";
 export * from "./meetings";
+export * from "./investor-leads";

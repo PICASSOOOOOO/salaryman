@@ -74,6 +74,12 @@ export function NavBar() {
           <span className="font-mono text-[9px] text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
             ALPHA
           </span>
+          <button
+            onClick={() => navigate('/investors')}
+            className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
+          >
+            Investors
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">

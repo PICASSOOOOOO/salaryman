@@ -214,6 +214,11 @@ function AppShell() {
             <Route path="/agents">{() => <Redirect to="/intel/agents" />}</Route>
             <Route path="/seo">{() => <Redirect to="/intel/seo" />}</Route>
 
+            {/* Investor portal — standalone page */}
+            <Route path="/investors" component={LegalInvestors} />
+            {/* Legacy alias — keeps existing links working */}
+            <Route path="/legal/investors">{() => <Redirect to="/investors" />}</Route>
+
             {/* LEGAL pages */}
             <Route path="/legal" component={LegalHub} />
             <Route path="/legal/terms" component={LegalTerms} />
@@ -224,7 +229,6 @@ function AppShell() {
             <Route path="/legal/cancellation" component={LegalCancellation} />
             <Route path="/legal/promotions" component={LegalPromotions} />
             <Route path="/legal/restrictions" component={LegalRestrictions} />
-            <Route path="/legal/investors" component={LegalInvestors} />
 
             <Route component={NotFound} />
           </Switch>

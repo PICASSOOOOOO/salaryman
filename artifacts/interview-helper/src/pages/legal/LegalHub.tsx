@@ -55,7 +55,7 @@ export default function LegalHub() {
         </div>
 
         <button
-          onClick={() => navigate("/legal/investors")}
+          onClick={() => navigate("/investors")}
           className="group w-full text-left border border-zinc-800 rounded-lg p-5 bg-zinc-900/30 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all mb-8"
         >
           <div className="flex items-center gap-2 mb-2">

@@ -71,6 +71,13 @@
       "when": 1773999662484,
       "tag": "0009_goofy_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774004933656,
+      "tag": "0010_little_skin",
+      "breakpoints": true
     }
   ]
 }

@@ -293,7 +293,7 @@ export default function Cover() {
             { label: "Privacy", path: "/legal/privacy" },
             { label: "Refunds", path: "/legal/refunds" },
             { label: "Contact", path: "/legal/contact" },
-            { label: "Investors", path: "/legal/investors" },
+            { label: "Investors", path: "/investors" },
             { label: "Legal", path: "/legal" },
           ].map(({ label, path }) => (
             <button
