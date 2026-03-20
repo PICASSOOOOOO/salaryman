@@ -361,8 +361,8 @@ function initTrafficVehicles(): TrafficVehicle[] {
     const wp = route[startWp];
     const types: TrafficVehicle['type'][] = ['sedan', 'sedan', 'sedan', 'truck', 'van', 'taxi', 'police_cruiser'];
     vehicles.push({
-      x: wp.x + Math.random() * 100 - 50,
-      y: wp.y + Math.random() * 50 - 25,
+      x: wp.x,
+      y: wp.y,
       dx: 0, dy: 0,
       type: types[Math.floor(Math.random() * types.length)],
       color: TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)],
@@ -378,8 +378,8 @@ function initTrafficVehicles(): TrafficVehicle[] {
     const wp = route[startWp];
     const types: TrafficVehicle['type'][] = ['sedan', 'sedan', 'truck', 'van', 'sports_car', 'taxi'];
     vehicles.push({
-      x: wp.x + Math.random() * 200 - 100,
-      y: wp.y + Math.random() * 100 - 50,
+      x: wp.x,
+      y: wp.y,
       dx: 0, dy: 0,
       type: types[Math.floor(Math.random() * types.length)],
       color: TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)],
@@ -8556,16 +8556,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (tdist < 15) {
           tv.wpIdx = (tv.wpIdx + 1) % route.length;
         } else {
-          tv.dx = (tdx / tdist) * tv.speed;
-          tv.dy = (tdy / tdist) * tv.speed;
-          tv.x += tv.dx;
-          tv.y += tv.dy;
+          const ndx = (tdx / tdist) * tv.speed;
+          const ndy = (tdy / tdist) * tv.speed;
+          const nx = tv.x + ndx;
+          const ny = tv.y + ndy;
+          // Building collision avoidance — skip move tick if next pos is inside a building
+          const hitBuilding = BUILDINGS.some(b => nx + 8 > b.x && nx - 8 < b.x + b.w && ny + 8 > b.y && ny - 8 < b.y + b.h);
+          if (hitBuilding) {
+            // Advance to next waypoint to reroute rather than getting stuck
+            tv.wpIdx = (tv.wpIdx + 1) % route.length;
+          } else {
+            tv.dx = ndx;
+            tv.dy = ndy;
+            tv.x = nx;
+            tv.y = ny;
+          }
         }
-        // Snap traffic vehicle back to nearest road if it drifts off
+        // Snap traffic vehicle back to nearest road if it drifts off (faster correction)
         if (!isOnRoad(tv.x, tv.y)) {
           const snap = nearestRoadPoint(tv.x, tv.y);
-          tv.x += (snap.x - tv.x) * 0.15;
-          tv.y += (snap.y - tv.y) * 0.15;
+          tv.x += (snap.x - tv.x) * 0.5;
+          tv.y += (snap.y - tv.y) * 0.5;
         }
       }
 

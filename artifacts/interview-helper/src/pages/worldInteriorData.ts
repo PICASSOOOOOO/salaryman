@@ -1529,6 +1529,57 @@ export const BUILDINGS = [
   { id: 'company_hq_6',   x: 6160, y: 6580, w: 70,  h: 55,  label: 'CORP BLOCK F',     bright: true,  doors: mkDoorS(6160,6580,70,55), isCompanyHQ: true },
   { id: 'company_hq_7',   x: 6240, y: 6580, w: 70,  h: 55,  label: 'CORP BLOCK G',     bright: true,  doors: mkDoorS(6240,6580,70,55), isCompanyHQ: true },
   { id: 'company_hq_8',   x: 6320, y: 6580, w: 70,  h: 55,  label: 'CORP BLOCK H',     bright: true,  doors: mkDoorS(6320,6580,70,55), isCompanyHQ: true },
+
+  // ═══ DECORATIVE FILL — non-enterable facades, walls, alley blocks ═══════════
+  // ── Far-west boulevard gap (y=6326–6372, x=5712–5940) ───────────────────────
+  { id: 'fill_fw_1',  x: 5712, y: 6326, w: 78, h: 46, label: 'WEST FACADE A',   bright: false, doors: [] as Door[] },
+  { id: 'fill_fw_2',  x: 5798, y: 6326, w: 78, h: 46, label: 'WEST FACADE B',   bright: false, doors: [] as Door[] },
+  { id: 'fill_fw_3',  x: 5884, y: 6326, w: 56, h: 46, label: 'WEST FACADE C',   bright: false, doors: [] as Door[] },
+  // ── Central-west inner (y=6326–6372, x=5975–6107) ───────────────────────────
+  { id: 'fill_cw_1',  x: 5975, y: 6326, w: 64, h: 46, label: 'INNER BLOCK A',   bright: false, doors: [] as Door[] },
+  { id: 'fill_cw_2',  x: 6047, y: 6326, w: 60, h: 46, label: 'INNER BLOCK B',   bright: false, doors: [] as Door[] },
+  // ── South of boulevard near machine bunker (y=6326–6372, x=6290–6340) ───────
+  { id: 'fill_mb_e',  x: 6290, y: 6326, w: 50, h: 46, label: 'BUNKER ROW',      bright: false, doors: [] as Door[] },
+  // ── Mid-south gap west (y=6466–6502, x=5642–5922) ───────────────────────────
+  { id: 'fill_ms_1',  x: 5642, y: 6466, w: 88, h: 36, label: 'DISTRICT GAP A',  bright: false, doors: [] as Door[] },
+  { id: 'fill_ms_2',  x: 5738, y: 6466, w: 88, h: 36, label: 'DISTRICT GAP B',  bright: false, doors: [] as Door[] },
+  { id: 'fill_ms_3',  x: 5834, y: 6466, w: 88, h: 36, label: 'DISTRICT GAP C',  bright: false, doors: [] as Door[] },
+  // ── South inner-west (y=6528–6593, x=5975–6255) ─────────────────────────────
+  { id: 'fill_sw_1',  x: 5975, y: 6528, w: 88, h: 65, label: 'SOUTH BLOCK A',   bright: false, doors: [] as Door[] },
+  { id: 'fill_sw_2',  x: 6071, y: 6528, w: 88, h: 65, label: 'SOUTH BLOCK B',   bright: false, doors: [] as Door[] },
+  { id: 'fill_sw_3',  x: 6167, y: 6528, w: 88, h: 65, label: 'SOUTH BLOCK C',   bright: false, doors: [] as Door[] },
+  // ── South inner-central (y=6528–6593, x=6402–6586) ──────────────────────────
+  { id: 'fill_sc_1',  x: 6402, y: 6528, w: 88, h: 65, label: 'CENTRAL FILL A',  bright: false, doors: [] as Door[] },
+  { id: 'fill_sc_2',  x: 6498, y: 6528, w: 88, h: 65, label: 'CENTRAL FILL B',  bright: false, doors: [] as Door[] },
+  // ── South inner-east (y=6528–6593, x=6727–7031) ─────────────────────────────
+  { id: 'fill_se_1',  x: 6727, y: 6528, w: 96, h: 65, label: 'EAST FILL A',     bright: false, doors: [] as Door[] },
+  { id: 'fill_se_2',  x: 6831, y: 6528, w: 96, h: 65, label: 'EAST FILL B',     bright: false, doors: [] as Door[] },
+  { id: 'fill_se_3',  x: 6935, y: 6528, w: 96, h: 65, label: 'EAST FILL C',     bright: false, doors: [] as Door[] },
+  // ── Far-east boulevard gap (y=6326–6372, x=7065–7265) ───────────────────────
+  { id: 'fill_fe_1',  x: 7065, y: 6326, w: 96, h: 46, label: 'FAR EAST A',      bright: false, doors: [] as Door[] },
+  { id: 'fill_fe_2',  x: 7169, y: 6326, w: 96, h: 46, label: 'FAR EAST B',      bright: false, doors: [] as Door[] },
+  // ── Far-east mid-south gap (y=6466–6502, x=7065–7265) ───────────────────────
+  { id: 'fill_fes_1', x: 7065, y: 6466, w: 96, h: 36, label: 'FAR EAST GAP A',  bright: false, doors: [] as Door[] },
+  { id: 'fill_fes_2', x: 7169, y: 6466, w: 96, h: 36, label: 'FAR EAST GAP B',  bright: false, doors: [] as Door[] },
+  // ── Far-east north (y=5978–6096, x=7065–7265) ───────────────────────────────
+  { id: 'fill_fen_1', x: 7065, y: 5978, w: 96, h: 55, label: 'PRECINCT FILL A', bright: false, doors: [] as Door[] },
+  { id: 'fill_fen_2', x: 7169, y: 5978, w: 96, h: 55, label: 'PRECINCT FILL B', bright: false, doors: [] as Door[] },
+  { id: 'fill_fen_3', x: 7065, y: 6041, w: 96, h: 55, label: 'PRECINCT FILL C', bright: false, doors: [] as Door[] },
+  { id: 'fill_fen_4', x: 7169, y: 6041, w: 96, h: 55, label: 'PRECINCT FILL D', bright: false, doors: [] as Door[] },
+  // ── North belt gap (y=5978–6034, x=6002–6202) ───────────────────────────────
+  { id: 'fill_nb_1',  x: 6002, y: 5978, w: 96, h: 56, label: 'NORTH FILL A',    bright: false, doors: [] as Door[] },
+  { id: 'fill_nb_2',  x: 6106, y: 5978, w: 96, h: 56, label: 'NORTH FILL B',    bright: false, doors: [] as Door[] },
+  // ── Far-west south block (y=6726–6806, x=5748–5920) ─────────────────────────
+  { id: 'fill_fws_1', x: 5748, y: 6726, w: 82, h: 80, label: 'SOUTH ROW A',     bright: false, doors: [] as Door[] },
+  { id: 'fill_fws_2', x: 5838, y: 6726, w: 82, h: 80, label: 'SOUTH ROW B',     bright: false, doors: [] as Door[] },
+  // ── Mid-south east gap (y=6466–6502, x=6367–6551) ───────────────────────────
+  { id: 'fill_mse_1', x: 6367, y: 6466, w: 88, h: 36, label: 'CENTRAL GAP A',   bright: false, doors: [] as Door[] },
+  { id: 'fill_mse_2', x: 6463, y: 6466, w: 88, h: 36, label: 'CENTRAL GAP B',   bright: false, doors: [] as Door[] },
+  // ── Commerce-east boulevard gap (y=6326–6372, x=6622–7030) ─────────────────
+  { id: 'fill_ce_1',  x: 6622, y: 6326, w: 96, h: 46, label: 'CORP ROW A',      bright: false, doors: [] as Door[] },
+  { id: 'fill_ce_2',  x: 6726, y: 6326, w: 96, h: 46, label: 'CORP ROW B',      bright: false, doors: [] as Door[] },
+  { id: 'fill_ce_3',  x: 6830, y: 6326, w: 96, h: 46, label: 'CORP ROW C',      bright: false, doors: [] as Door[] },
+  { id: 'fill_ce_4',  x: 6934, y: 6326, w: 96, h: 46, label: 'CORP ROW D',      bright: false, doors: [] as Door[] },
 ];
 
 export const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.radio).map(b => b.id));
