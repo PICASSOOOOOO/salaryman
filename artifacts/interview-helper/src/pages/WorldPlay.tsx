@@ -1451,7 +1451,7 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
 }
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
-interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; }
+interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; }
 const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   RUST_SYNDICATE:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
   VOID_RUNNERS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
@@ -1794,6 +1794,8 @@ interface WeaponDef { id: string; label: string; desc: string; atkBonus: number;
 interface MerchantItem { id: string; name: string; desc: string; price: number; effect: string; }
 interface Projectile { x: number; y: number; dx: number; dy: number; life: number; damage: number; type: string; }
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
+interface HitEffect { x: number; y: number; life: number; maxLife: number; dx: number; dy: number; }
+interface MuzzleFlash { angle: number; life: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
@@ -3032,6 +3034,8 @@ export default function WorldPlay() {
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
+    muzzleFlash: null as null | MuzzleFlash,
+    hitEffects: [] as HitEffect[],
     moveTarget: null as null | { x: number; y: number },
     deathReason: '' as string,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
@@ -5387,6 +5391,7 @@ export default function WorldPlay() {
             const facingMap: Record<string, number> = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
             fireAngle = facingMap[g.facing] ?? 0;
           }
+          g.muzzleFlash = { angle: fireAngle, life: 5 };
           const speed = 8;
           if (wpn.icon === 'bomb') {
             g.bombs.push({ x: g.px + Math.cos(fireAngle) * 30, y: g.py + Math.sin(fireAngle) * 30, timer: 45, damage: ATK, radius: wpn.range });
@@ -5547,7 +5552,8 @@ export default function WorldPlay() {
           if (bb) { setShowBillboard(bb); fetchBillboards(); return; }
         }
       }
-      const clickedEnemy = g.threats.find(t => Math.hypot(clickWorldX - t.x, clickWorldY - t.y) < 35);
+      const RANGED_CLICK_RADIUS = 40;
+      const clickedEnemy = g.threats.find(t => Math.hypot(clickWorldX - t.x, clickWorldY - t.y) < RANGED_CLICK_RADIUS);
       // Determine if we have a ranged weapon equipped (secondary slot preferred)
       const rangedWpnClick = (() => {
         const sw = WEAPONS.find(w => w.id === secondaryWeaponRef.current);
@@ -5558,17 +5564,23 @@ export default function WorldPlay() {
       })();
       // Check if a peer player was clicked on (PvP ranged targeting)
       const clickedPeer = (!clickedEnemy && rangedWpnClick)
-        ? [...g.peers.values()].find(peer => !peer.interiorBid && Math.hypot(clickWorldX - peer.x, clickWorldY - peer.y) < 35)
+        ? [...g.peers.values()].find(peer => !peer.interiorBid && Math.hypot(clickWorldX - peer.x, clickWorldY - peer.y) < RANGED_CLICK_RADIUS)
         : null;
-      if (rangedWpnClick) {
-        // Free-fire: fire ranged weapon toward click position (also handles PvP peer targeting)
+      if (rangedWpnClick && (clickedEnemy || clickedPeer)) {
+        const targetX = clickedEnemy ? clickedEnemy.x : clickedPeer!.x;
+        const targetY = clickedEnemy ? clickedEnemy.y : clickedPeer!.y;
+        const distToTarget = Math.hypot(g.px - targetX, g.py - targetY);
+        if (distToTarget > rangedWpnClick.range) {
+          // Out of range — move toward target
+          g.moveTarget = { x: targetX, y: targetY };
+          return;
+        }
+        // In range — fire at the target
         if (g.attackCooldown <= 0) {
-          // Aim-assist: snap to entity center when clicking near an enemy or peer
-          const aimTargetX = clickedEnemy ? clickedEnemy.x : (clickedPeer ? clickedPeer.x : clickWorldX);
-          const aimTargetY = clickedEnemy ? clickedEnemy.y : (clickedPeer ? clickedPeer.y : clickWorldY);
-          const angle = Math.atan2(aimTargetY - g.py, aimTargetX - g.px);
+          const angle = Math.atan2(targetY - g.py, targetX - g.px);
           const speed = 8;
           g.attackCooldown = rangedWpnClick.cooldown; g.attackFlash = 4;
+          g.muzzleFlash = { angle, life: 5 };
           sfxWeaponDraw(); sfxAttack();
           const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
           const ATK = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerch;
@@ -5577,11 +5589,22 @@ export default function WorldPlay() {
           } else {
             g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATK, type: rangedWpnClick.icon });
           }
-          // Return if clicked on specific target (don't move toward enemy/peer)
-          if (clickedEnemy || clickedPeer) return;
-          // For free-fire at ground/space, still fire but don't block movement commands
+          return; // Don't move — we fired at the target
         }
-        // If on cooldown, fall through to movement
+        return; // On cooldown, ignore click
+      } else if (rangedWpnClick && !clickedEnemy && !clickedPeer) {
+        // Ranged weapon but clicking empty ground — check if distant enemy: move toward them
+        const nearestEnemy = g.threats.reduce((best: Threat | null, t) => {
+          const d = Math.hypot(clickWorldX - t.x, clickWorldY - t.y);
+          if (d < 80 && (!best || d < Math.hypot(clickWorldX - best.x, clickWorldY - best.y))) return t;
+          return best;
+        }, null);
+        if (nearestEnemy && Math.hypot(g.px - nearestEnemy.x, g.py - nearestEnemy.y) > rangedWpnClick.range) {
+          // Move toward out-of-range enemy
+          g.moveTarget = { x: nearestEnemy.x, y: nearestEnemy.y };
+          return;
+        }
+        // Empty ground — just move, no shot
       } else if (clickedEnemy) {
         // Melee weapon: move toward enemy
         if (g.attackCooldown > 0) return;
@@ -5978,6 +6001,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Cooldown ticks
       if (g.attackCooldown > 0) g.attackCooldown--;
       if (g.attackFlash > 0) g.attackFlash--;
+      if (g.muzzleFlash && g.muzzleFlash.life > 0) g.muzzleFlash.life--;
+      if (g.muzzleFlash && g.muzzleFlash.life <= 0) g.muzzleFlash = null;
+      g.hitEffects = g.hitEffects.map(h => ({ ...h, x: h.x + h.dx * 0.5, y: h.y + h.dy * 0.5, life: h.life - 1 })).filter(h => h.life > 0);
+      // Tick down knockback on threats
+      for (const t of g.threats) {
+        if (t.knockback) {
+          t.knockback.frames--;
+          if (t.knockback.frames <= 0) t.knockback = undefined;
+        }
+      }
 
       // Projectile update
       g.projectiles = g.projectiles.map(p => ({ ...p, x: p.x + p.dx, y: p.y + p.dy, life: p.life - 1 })).filter(p => {
@@ -5987,30 +6020,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const d = Math.hypot(p.x - t.x, p.y - t.y);
           if (d < (p.type === 'laser' ? 20 : 14)) {
             hitAny = true;
-            const nhp = t.hp - p.damage;
+            // Hit impact effect — burst sparks at impact point
+            const impactAngle = Math.atan2(p.dy, p.dx);
+            for (let si = 0; si < 4; si++) {
+              const sa = impactAngle + (Math.random() - 0.5) * 2.2;
+              g.hitEffects.push({ x: t.x, y: t.y, life: 5, maxLife: 5, dx: Math.cos(sa) * 1.5, dy: Math.sin(sa) * 1.5 });
+            }
+            // Knockback visual: 2px displacement for 3 frames in shot direction
+            const kbT = { ...t, knockback: { dx: Math.cos(impactAngle) * 2, dy: Math.sin(impactAngle) * 2, frames: 3 } };
+            const nhp = kbT.hp - p.damage;
             if (nhp <= 0) {
               sfxKill();
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const inWaste = !inCityBounds(g.px, g.py);
-              const isAnimal = ANIMAL_TYPES.has(t.type);
-              let bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+              const isAnimal = ANIMAL_TYPES.has(kbT.type);
+              let bountyAmt = isAnimal ? 0 : (BOUNTY[kbT.type] ?? 10);
               if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               if (isAnimal) {
                 const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
-                g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                g.floaters.push({ x: kbT.x, y: kbT.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
               } else {
-                g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                g.floaters.push({ x: kbT.x, y: kbT.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               }
               if (!isAnimal) reportMissionProgress('npcsDefeated', 1);
-              const earned = THREAT_EXP[t.type] ?? 20;
-              g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+              const earned = THREAT_EXP[kbT.type] ?? 20;
+              g.floaters.push({ x: kbT.x + 8, y: kbT.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
               applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
-              g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
-              g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
+              g.threatRespawn.push({ ox: kbT.ox, oy: kbT.oy, type: kbT.type, at: g.frame + 420 });
+              g.deadBodies.push({ x: kbT.x, y: kbT.y, type: kbT.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
             }
-            sfxHit(); return { ...t, hp: nhp };
+            sfxHit(); return { ...kbT, hp: nhp };
           }
           return t;
         }).filter(Boolean) as Threat[];
@@ -6020,6 +6061,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const pd = Math.hypot(p.x - peer.x, p.y - peer.y);
             if (pd < (p.type === 'laser' ? 20 : 14)) {
               hitAny = true;
+              const impactAngle2 = Math.atan2(p.dy, p.dx);
+              for (let si = 0; si < 4; si++) {
+                const sa = impactAngle2 + (Math.random() - 0.5) * 2.2;
+                g.hitEffects.push({ x: peer.x, y: peer.y, life: 5, maxLife: 5, dx: Math.cos(sa) * 1.5, dy: Math.sin(sa) * 1.5 });
+              }
               wsSend({ type: 'pvp_projectile', targetId: peer.id });
               sfxHit();
               break;
@@ -10476,7 +10522,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // Threats — type-specific pixel shapes
       for (const t of g.threats) {
-        const tx = t.x + ox, ty = t.y + oy;
+        const kbOffX = t.knockback ? t.knockback.dx : 0;
+        const kbOffY = t.knockback ? t.knockback.dy : 0;
+        const tx = t.x + ox + kbOffX, ty = t.y + oy + kbOffY;
         if (tx < -12 || tx > cw + 12 || ty < -12 || ty > ch + 12) continue;
         const tc = THREAT_COL[t.type] ?? '#ff4444';
         const dist2 = Math.hypot(g.px - t.x, g.py - t.y);
@@ -10829,20 +10877,80 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // Muzzle flash — directional bright line at barrel
+      if (g.muzzleFlash && g.muzzleFlash.life > 0) {
+        const mf = g.muzzleFlash;
+        const mfAlpha = mf.life / 5;
+        const mfLen = 14 + mf.life * 2;
+        const mfStartX = px + Math.cos(mf.angle) * 10;
+        const mfStartY = py2 + Math.sin(mf.angle) * 10;
+        const mfEndX = px + Math.cos(mf.angle) * (10 + mfLen);
+        const mfEndY = py2 + Math.sin(mf.angle) * (10 + mfLen);
+        ctx.save();
+        ctx.shadowColor = '#ffffaa'; ctx.shadowBlur = 10;
+        ctx.strokeStyle = `rgba(255,255,180,${mfAlpha})`; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(mfStartX, mfStartY); ctx.lineTo(mfEndX, mfEndY); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${mfAlpha * 0.8})`; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(mfStartX, mfStartY); ctx.lineTo(mfEndX, mfEndY); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      // Hit impact effects — small radial sparks at impact point
+      for (const he of g.hitEffects) {
+        const hx = he.x + ox, hy = he.y + oy;
+        if (hx < -20 || hx > cw + 20 || hy < -20 || hy > ch + 20) continue;
+        const heAlpha = he.life / he.maxLife;
+        ctx.save();
+        ctx.shadowColor = '#ff8844'; ctx.shadowBlur = 6;
+        ctx.fillStyle = `rgba(255,${120 + Math.floor(heAlpha * 100)},50,${heAlpha})`;
+        ctx.beginPath(); ctx.arc(hx, hy, 2.5 * heAlpha + 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
       // Render projectiles
       for (const p of g.projectiles) {
         const ppx = p.x + ox, ppy = p.y + oy;
         if (ppx < -10 || ppx > cw + 10 || ppy < -10 || ppy > ch + 10) continue;
         if (p.type === 'laser') {
-          ctx.strokeStyle = `rgba(255,68,170,${0.6 + Math.sin(g.frame * 0.2) * 0.3})`; ctx.lineWidth = 3;
-          ctx.shadowColor = '#ff44aa'; ctx.shadowBlur = 8;
-          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 2, ppy - p.dy * 2); ctx.lineTo(ppx, ppy); ctx.stroke();
+          // Laser: long glowing beam trail with bright core
+          ctx.save();
+          ctx.shadowColor = '#ff44aa'; ctx.shadowBlur = 14;
+          ctx.strokeStyle = `rgba(255,100,220,${0.4 + Math.sin(g.frame * 0.25) * 0.15})`; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 6, ppy - p.dy * 6); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.strokeStyle = `rgba(255,200,255,${0.85 + Math.sin(g.frame * 0.25) * 0.1})`; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 4, ppy - p.dy * 4); ctx.lineTo(ppx, ppy); ctx.stroke();
           ctx.shadowBlur = 0;
-        } else {
-          ctx.fillStyle = '#88aaff';
-          ctx.shadowColor = '#88aaff'; ctx.shadowBlur = 6;
+          ctx.restore();
+        } else if (p.type === 'bomb') {
+          // Bomb: arc projectile with a smoke/fire trail
+          ctx.save();
+          ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 10;
+          ctx.fillStyle = '#ffcc00';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 4.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ff6600';
           ctx.beginPath(); ctx.arc(ppx, ppy, 3, 0, Math.PI * 2); ctx.fill();
+          for (let ti = 1; ti <= 4; ti++) {
+            const tx = ppx - p.dx * ti * 1.5, ty = ppy - p.dy * ti * 1.5;
+            ctx.globalAlpha = (5 - ti) / 8;
+            ctx.fillStyle = `rgba(120,80,40,${0.6 - ti * 0.1})`;
+            ctx.beginPath(); ctx.arc(tx, ty, 3 - ti * 0.4, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+          ctx.restore();
+        } else {
+          // Bullet: short bright trail with glowing core
+          ctx.save();
+          ctx.shadowColor = '#aaccff'; ctx.shadowBlur = 8;
+          ctx.strokeStyle = 'rgba(180,210,255,0.55)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 3.5, ppy - p.dy * 3.5); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#88aaff';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 4, 0, Math.PI * 2); ctx.fill();
           ctx.shadowBlur = 0;
+          ctx.restore();
         }
       }
 
