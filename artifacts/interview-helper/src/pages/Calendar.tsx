@@ -5,6 +5,7 @@ import {
   AlarmClock, Mail, Loader2, Video, Copy, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
@@ -894,7 +895,7 @@ function useNotificationAlarms(appointments: Appointment[]) {
 }
 
 export default function Calendar() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   usePlan();
   const { toast } = useToast();
   const [boomerMode] = useState(() => getDefaultBoomerMode());
@@ -946,6 +947,10 @@ export default function Calendar() {
       setLoading(false);
     }
   }, [user, fetchAppointments]);
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to access your calendar.' : 'Operative credentials required. SCHEDULE GRID access locked.'} />;
+  }
 
   function buildISOFromForm(form: ApptForm) {
     const startAt = new Date(`${form.startDate}T${form.startTime}`).toISOString();

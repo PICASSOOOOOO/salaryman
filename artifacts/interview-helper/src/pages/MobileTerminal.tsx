@@ -5,6 +5,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { CITY_NAME } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
+import { SignInPage } from '@/components/SignInPrompt';
 
 interface CargoItem {
   id: string;
@@ -205,18 +206,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
   }, [pabloIn, pabloLoad, activeSave]);
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ minHeight: '100dvh', background: '#09090b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...ST }}>
-        <div style={{ fontSize: '0.85rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.1em', marginBottom: '8px' }}>ACCESS DENIED</div>
-        <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em', marginBottom: '16px' }}>AUTHENTICATION REQUIRED</div>
-        <a
-          href="/profile"
-          style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', border: '1px solid rgba(34,197,94,0.25)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}
-        >
-          SIGN IN
-        </a>
-      </div>
-    );
+    return <SignInPage context={boomerMode ? 'Sign in to access your mobile terminal.' : 'Operative credentials required. Terminal MX-75 remote access locked.'} />;
   }
 
   if (loading) {

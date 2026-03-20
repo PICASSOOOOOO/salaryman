@@ -6,6 +6,7 @@ import {
   Users, DollarSign, Calendar, ArrowRight, Check,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface Contact {
@@ -88,6 +89,10 @@ export default function Deals() {
   }, [isAuthenticated]);
 
   useEffect(() => { loadDeals(); }, [loadDeals]);
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to manage your deals.' : 'Operative credentials required. DEAL PIPELINE access locked.'} />;
+  }
 
   const handleSave = async () => {
     if (!form.title.trim() || saving) return;

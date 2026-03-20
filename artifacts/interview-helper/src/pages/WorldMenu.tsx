@@ -1062,6 +1062,7 @@ export default function WorldMenu() {
                   <button
                     onClick={() => {
                       if (isMobile) return;
+                      if (!isAuthenticated) { login(); return; }
                       const seen = localStorage.getItem('sm_cinematic_seen');
                       if (seen) {
                         setScreen('new'); setStep(1);

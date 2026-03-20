@@ -2712,7 +2712,8 @@ const INTRO_LINES = [
   'YOUR CREDIT SCORE WAS LOGGED.',
   'YOUR MISSION ASSIGNMENT IS PENDING.',
   '',
-  'REPORT TO SHADOW TOWER FOR PROCESSING.',
+  'FIND A TERMINAL.',
+  'AN AI NAMED PABLO WILL HANDLE YOUR INTAKE.',
   '',
   'GOOD LUCK, OPERATIVE.',
   'YOU\'LL NEED IT.',
@@ -2829,15 +2830,15 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
 }
 
 function createFirstMission(char: Char): Quest | null {
-  const towerB = BUILDINGS.find(b => b.id === 'pablo_tower');
-  const towerFallback = towerB ?? { x: 1400, y: 400, w: 200, h: 200 };
+  const termB = BUILDINGS.find(b => b.id === 'term_central') ?? BUILDINGS.find(b => b.id.startsWith('term_'));
+  const termFallback = termB ?? { x: 6380, y: 5970, w: 18, h: 24 };
   return {
-    id: 'report_to_terminal',
-    title: 'REPORT TO TERMINAL FOR INTAKE',
-    description: 'New operative detected. Report to SHADOW TOWER (PABLO CORP HQ) for mandatory intake processing. NOTE: Personal arm-terminals are issued post-intake only. Until processed, all operatives must use the public terminal at HQ. No exceptions.',
+    id: 'find_terminal',
+    title: 'FIND A TERMINAL',
+    description: 'Your intake chip was scanned at the checkpoint but you have not been processed. Find a public terminal anywhere in Minx City and connect. An AI named PABLO will handle your intake remotely. Look for terminals marked on your map — small kiosks with green screens.',
     completed: false,
     tasks: [
-      { id: 'visit_tower_intake', label: 'Report to SHADOW TOWER for intake', done: false, mapMarker: { x: towerFallback.x + towerFallback.w / 2, y: towerFallback.y + towerFallback.h / 2, label: 'SHADOW TOWER — INTAKE' } },
+      { id: 'open_terminal', label: 'Find and use a public terminal', done: false, mapMarker: { x: termFallback.x + termFallback.w / 2, y: termFallback.y + termFallback.h / 2, label: 'PUBLIC TERMINAL' } },
     ],
   };
 }
@@ -4057,6 +4058,8 @@ export default function WorldPlay() {
       sfxEnter();
       gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
       setShowPablo(true);
+      completeQuestTask('find_terminal', 'open_terminal');
+      completeQuestTask('report_to_terminal', 'visit_tower_intake');
       if (IS_VAN(bid)) {
         g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy);
         setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. PABLO AI online. Energy +15. Press [ESC] to leave.`);
@@ -4969,9 +4972,9 @@ export default function WorldPlay() {
         setShowOffice(true);
         completeQuestTask('establish_business', 'visit_tower');
         completeQuestTask('report_to_terminal', 'visit_tower_intake');
+        completeQuestTask('find_terminal', 'open_terminal');
         const g = gs.current;
-        // If intake quest is now complete and player has a business, add establish_business quest
-        const intakeQ = g.quests?.find((q: Quest) => q.id === 'report_to_terminal');
+        const intakeQ = g.quests?.find((q: Quest) => q.id === 'report_to_terminal') ?? g.quests?.find((q: Quest) => q.id === 'find_terminal');
         const hasEstablish = g.quests?.some((q: Quest) => q.id === 'establish_business');
         if (intakeQ && intakeQ.tasks.every((t: QuestTask) => t.done) && !hasEstablish) {
           const bizMission = createEstablishBusinessMission(char);
@@ -12773,7 +12776,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               role: 'pablo' as const,
               text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Perception: ${answers.perception ?? 5}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
             }]);
-            setNarr('> PABLO CORP ONBOARDING COMPLETE. Your profile has been calibrated. Terminal is now fully operational.');
+            setNarr('> PABLO INTAKE COMPLETE. Profile calibrated. Progress saved. Terminal is now fully operational.');
+            sfxSave();
             doSaveRef.current(buildSaveData());
           }}
         />

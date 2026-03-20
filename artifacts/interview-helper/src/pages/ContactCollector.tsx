@@ -10,6 +10,7 @@ import {
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
+import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
@@ -561,12 +562,7 @@ export default function ContactCollector() {
 
         {/* Not logged in / loading */}
         {!isAuthenticated && !loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center">
-              <Users className="w-8 h-8 text-muted-foreground/30" />
-            </div>
-            <p className="text-muted-foreground text-sm">Sign in to save and access your contacts from any device</p>
-          </div>
+          <SignInPage context="Sign in to manage your contacts." />
         )}
         {loading && (
           <div className="flex justify-center py-20">

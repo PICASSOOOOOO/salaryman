@@ -5,6 +5,7 @@ import {
   Target, Plus, X, Trash2, Edit2, Loader2, Check, ChevronDown, ChevronUp, Flag,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface Milestone {
@@ -85,6 +86,10 @@ export default function Goals() {
   }, [isAuthenticated]);
 
   useEffect(() => { loadGoals(); }, [loadGoals]);
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to manage your goals.' : 'Operative credentials required. OBJECTIVE TRACKER access locked.'} />;
+  }
 
   const loadMilestones = async (goalId: number) => {
     const existing = goals.find(g => g.id === goalId);

@@ -10,6 +10,8 @@ import { ProGate } from '@/components/ProGate';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 
 const SoundLab = lazy(() => import('./SoundLab'));
 
@@ -146,8 +148,13 @@ export default function Console() {
     setTypeMode(false); setActivePanel('solve');
   };
 
+  const { isAuthenticated: _consoleAuth } = useAuth();
   const isAnyBusy = isStreaming || isRecording || isListenProcessing || isConnecting || isAnalyzing;
   const typingProgress = displayedText.length / (getTypableText().length || 1);
+
+  if (!_consoleAuth) {
+    return <SignInPage context={boomerMode ? 'Sign in to access Pablo AI and all tools.' : 'Operative credentials required. PABLO TERMINAL access locked.'} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">

@@ -13,6 +13,7 @@ import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { InterviewConductor } from '@/components/InterviewConductor';
+import { SignInPage } from '@/components/SignInPrompt';
 import { PresentationTool } from '@/components/PresentationTool';
 
 type ActiveTab = 'jobs' | 'applicants' | 'staff' | 'conduct' | 'present';
@@ -378,12 +379,7 @@ export default function Hiring() {
         )}
 
         {!loading && !isAuthenticated && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center">
-              <Briefcase className="w-8 h-8 text-muted-foreground/30" />
-            </div>
-            <p className="text-muted-foreground text-sm">Sign in to manage your hiring pipeline</p>
-          </div>
+          <SignInPage context="Sign in to manage your hiring pipeline." />
         )}
 
         {/* ── Jobs Tab ── */}

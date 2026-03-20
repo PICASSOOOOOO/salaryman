@@ -11,6 +11,7 @@ import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { SignInPage } from '@/components/SignInPrompt';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -489,13 +490,7 @@ export default function Dashboard() {
   ];
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground text-sm">Sign in to access your workspace.</p>
-        </div>
-      </div>
-    );
+    return <SignInPage context="Sign in to access your workspace." />;
   }
 
   return (

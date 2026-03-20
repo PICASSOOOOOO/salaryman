@@ -7,6 +7,7 @@ import {
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAppMode } from '@/hooks/use-app-mode';
+import { SignInPage } from '@/components/SignInPrompt';
 
 interface LineItem {
   description: string;
@@ -324,12 +325,7 @@ export default function Invoices() {
         )}
 
         {!isAuthenticated && !loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center">
-              <FileText className="w-8 h-8 text-muted-foreground/30" />
-            </div>
-            <p className="text-muted-foreground text-sm">Sign in to manage invoices</p>
-          </div>
+          <SignInPage context="Sign in to manage your invoices." />
         )}
 
         {loading && (

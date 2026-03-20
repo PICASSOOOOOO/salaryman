@@ -7,6 +7,7 @@ import {
   Twitter, Linkedin, Layers, Palette, SlidersHorizontal, Plus, X, Video, Globe
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { usePlan } from '@/hooks/use-plan';
@@ -929,11 +930,7 @@ export default function ContentStudio() {
   }, []);
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030803' }}>
-        <p style={{ fontFamily: "'Share Tech Mono', monospace", color: CRT_DIM, letterSpacing: '0.1em' }}>AUTHENTICATION REQUIRED</p>
-      </div>
-    );
+    return <SignInPage context={boomerMode ? 'Sign in to access the content studio.' : 'Operative credentials required. CONTENT STUDIO access locked.'} />;
   }
 
   return (

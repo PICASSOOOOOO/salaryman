@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { Loader2, Search, Globe, FileText, BarChart2, Copy, Check, ChevronRight } from 'lucide-react';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import ReactMarkdown from 'react-markdown';
 
 const CRT_GREEN = '#22c55e';
@@ -559,12 +561,17 @@ const TABS: { id: Tab; label: string; boomerLabel: string; icon: React.ElementTy
 ];
 
 export default function SeoModule() {
+  const { isAuthenticated } = useAuth();
   const [tab, setTab] = useState<Tab>('audit');
   const boomerMode = getDefaultBoomerMode();
 
   const product = PABLO_PRODUCTS.SEO;
   const title = boomerMode ? 'SEO TOOLS' : product.name;
   const subtitle = boomerMode ? 'Search Engine Optimization Suite' : 'SEARCH INTELLIGENCE MODULE — SPIDER-X UNIT';
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to access SEO tools.' : 'Operative credentials required. SPIDER-X UNIT access locked.'} />;
+  }
 
   return (
     <div style={{

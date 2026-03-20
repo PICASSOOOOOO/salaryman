@@ -42,9 +42,9 @@ const PERCEPTION_OPTIONS = [
   { id: '10', label: 'ELITE (10)', desc: 'Nothing escapes you. Maximum detection and map reveal.' },
 ];
 
-type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'perception' | 'tut_combat' | 'tut_economy' | 'tut_survival' | 'done';
+type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'perception' | 'tut_combat' | 'tut_economy' | 'tut_survival' | 'done' | 'save';
 
-const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'perception', 'tut_combat', 'tut_economy', 'tut_survival', 'done'];
+const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'perception', 'tut_combat', 'tut_economy', 'tut_survival', 'done', 'save'];
 
 const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
@@ -130,6 +130,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 440,
     }}>
+      <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(0,255,65,.2); } 50% { box-shadow: 0 0 20px rgba(0,255,65,.5); } }`}</style>
       <div style={{
         width: 460, maxWidth: '90vw', maxHeight: '85vh',
         display: 'flex', flexDirection: 'column',
@@ -285,8 +286,26 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
                   Step outside. Minx City is waiting. Press [P] anytime to open your PABLO device and talk to me. I'll be here.<br/><br/>
-                  One more thing — don't trust everything you see. And don't go above Floor 39.<br/><br/>
-                  Good luck, operative. PABLO out.
+                  One more thing — don't trust everything you see. And don't go above Floor 39.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 'save' && (
+            <div>
+              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(0,255,65,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
+                &gt; INTAKE COMPLETE.<br/>
+                &gt; PROFILE LOCKED.
+              </div>
+              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
+                <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.05em', lineHeight: 1.7 }}>
+                  One last thing, {charName}.
+                </div>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
+                  Save your progress now. This city doesn't give second chances. If you die out there without saving — everything since your last checkpoint is gone. I mean everything.<br/><br/>
+                  Hit the button below. I'll handle the rest.<br/><br/>
+                  After this, you're on your own. Good luck, operative. PABLO out.
                 </div>
               </div>
             </div>
@@ -302,9 +321,24 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.06em' }}>
             PABLO CORP FIELD CALIBRATION v1.0
           </div>
-          {step === 'done' ? (
+          {step === 'save' ? (
             <button
               onClick={handleComplete}
+              style={{
+                ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
+                padding: '.4rem 1.2rem',
+                background: 'rgba(0,255,65,.15)',
+                border: '1px solid rgba(0,255,65,.7)',
+                color: '#00ff41',
+                cursor: 'pointer',
+                animation: 'pulse-save 1.5s ease-in-out infinite',
+              }}
+            >
+              ▸ SAVE PROGRESS ◂
+            </button>
+          ) : step === 'done' ? (
+            <button
+              onClick={next}
               style={{
                 ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
                 padding: '.4rem 1.2rem',
@@ -314,7 +348,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 cursor: 'pointer',
               }}
             >
-              BEGIN OPERATIONS ▸
+              CONTINUE ▸
             </button>
           ) : (
             <button

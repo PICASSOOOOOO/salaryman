@@ -5,6 +5,7 @@ import {
   Palette, Save, Loader2, Check, Upload, Globe, Target, Type, Zap,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
 interface BrandKitData {
@@ -83,6 +84,10 @@ export default function BrandKit() {
   }, [isAuthenticated]);
 
   useEffect(() => { loadKit(); }, [loadKit]);
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to manage your brand kit.' : 'Operative credentials required. BRAND VAULT access locked.'} />;
+  }
 
   const handleSave = async () => {
     if (saving) return;

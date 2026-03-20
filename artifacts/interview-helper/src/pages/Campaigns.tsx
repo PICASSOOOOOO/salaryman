@@ -7,6 +7,7 @@ import {
   Zap, Filter, RefreshCw, Check, Copy, ArrowLeft, Megaphone, Inbox,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1002,6 +1003,10 @@ export default function Campaigns() {
     { id: 'sms-campaigns' as Tab, label: 'SMS Campaigns', icon: Megaphone },
     { id: 'sms-inbox' as Tab, label: 'SMS Inbox', icon: Inbox },
   ];
+
+  if (!isAuthenticated) {
+    return <SignInPage context="Sign in to manage your campaigns." />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

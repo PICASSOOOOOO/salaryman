@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
+import { SignInPage } from '@/components/SignInPrompt';
 
 interface BillboardRow {
   id: number; locationId: string; label: string;
@@ -53,18 +54,7 @@ export default function BillboardAdmin() {
   };
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', textAlign: 'center' }}>
-          <div style={{ marginBottom: '8px' }}>ACCESS DENIED</div>
-          <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', marginBottom: '16px' }}>AUTHENTICATION REQUIRED</div>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <a href="/profile" style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', border: '1px solid rgba(34,197,94,0.25)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}>SIGN IN</a>
-            <a href="/dashboard" style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', border: '1px solid rgba(34,197,94,0.15)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}>← DASHBOARD</a>
-          </div>
-        </div>
-      </div>
-    );
+    return <SignInPage context="Sign in to access billboard administration." />;
   }
 
   return (

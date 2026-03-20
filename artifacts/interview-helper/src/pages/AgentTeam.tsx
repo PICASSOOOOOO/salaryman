@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Zap, Brain, Activity, Cpu, Shield, AlertCircle } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useAuth } from '@workspace/replit-auth-web';
+import { SignInPage } from '@/components/SignInPrompt';
 
 interface AgentDefinition {
   id: string;
@@ -77,6 +79,12 @@ export default function AgentTeam() {
     const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
+
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <SignInPage context={boomerMode ? 'Sign in to access your AI agents.' : 'Operative credentials required. Agent team access locked.'} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">

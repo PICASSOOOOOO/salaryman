@@ -7,6 +7,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
+import { SignInPage } from '@/components/SignInPrompt';
 
 interface DonationRecord {
   id: number;
@@ -258,13 +259,7 @@ export default function Profile() {
   };
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground text-sm">Sign in to manage your account.</p>
-        </div>
-      </div>
-    );
+    return <SignInPage context="Sign in to manage your account." />;
   }
 
   const displayName = user?.firstName
