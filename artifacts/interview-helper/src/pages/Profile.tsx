@@ -1,10 +1,12 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2 } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { usePlan } from '@/hooks/use-plan';
 
 interface AccountData {
   user: { id: string; email?: string; firstName?: string; lastName?: string; profileImageUrl?: string; createdAt: string };
@@ -153,9 +155,11 @@ function MobileInstallSection() {
 
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
+  const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const { isPro, isOwner, features } = usePlan();
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
     window.addEventListener('storage', onStorage);
@@ -296,6 +300,88 @@ export default function Profile() {
                   <LogOut className="w-3.5 h-3.5" /> Sign out
                 </button>
               </div>
+            </motion.section>
+
+            {/* Subscription Status */}
+            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
+              className="bg-card border border-border rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isPro ? 'bg-amber-500/15 border border-amber-500/25' : 'bg-muted/30 border border-border'}`}>
+                  {isPro ? <Zap className="w-4 h-4 text-amber-400" /> : <CreditCard className="w-4 h-4 text-muted-foreground" />}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    {boomerMode ? 'Membership Status' : 'Corporate Clearance Level'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {boomerMode ? 'Your current plan and subscription details' : 'Your Pablo Corp employee classification'}
+                  </p>
+                </div>
+              </div>
+
+              {isOwner ? (
+                <div className="flex items-center justify-between bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <div>
+                      <p className="text-sm font-bold text-amber-300">
+                        {boomerMode ? 'Corporate Admin' : 'CORP ADMIN — All Modules Unlocked'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {boomerMode ? 'Owner-level access — all features unlocked' : 'Owner implant active — all protocols accessible'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : features.size > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <p className="text-sm font-bold text-amber-300">
+                          {boomerMode ? `${features.size} Active Subscription${features.size !== 1 ? 's' : ''}` : `${features.size} MODULE${features.size !== 1 ? 'S' : ''} ACTIVE`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {[...features].join(', ').replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="https://billing.stripe.com/p/login"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors shrink-0"
+                    >
+                      Manage
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => navigate('/upgrade')}
+                    className="w-full flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-muted/15 border border-border text-muted-foreground text-xs font-mono hover:bg-muted/25 transition-colors"
+                  >
+                    {boomerMode ? 'Add More Tools' : 'Browse Modules'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-muted/15 border border-border rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {boomerMode ? 'Free Plan' : 'Standard Employee — No Modules Active'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {boomerMode ? 'Core features included — subscribe to individual tools for more' : 'Standard-issue modules available — premium modules require activation'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/upgrade')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-400 text-xs font-bold hover:bg-amber-500/25 transition-colors shrink-0 ml-3"
+                  >
+                    <Zap className="w-3 h-3" />
+                    {boomerMode ? 'Browse' : 'Modules'}
+                  </button>
+                </div>
+              )}
             </motion.section>
 
             {/* PABLO Memory */}

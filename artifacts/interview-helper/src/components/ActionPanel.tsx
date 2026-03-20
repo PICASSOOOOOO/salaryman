@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
-import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play } from 'lucide-react';
+import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play, Lock } from 'lucide-react';
 import type { InterviewMode } from '@/hooks/use-interview';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
+import { useLocation } from 'wouter';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
   isStreaming: boolean;
-  isPro?: boolean;
+  hasSayThis?: boolean;
   boomerMode?: boolean;
 }
 
@@ -70,27 +71,39 @@ const sayItAction = {
   icon: Mic,
 };
 
-export function ActionPanel({ onAction, isStreaming, boomerMode = false }: ActionPanelProps) {
+export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerMode = false }: ActionPanelProps) {
+  const [, navigate] = useLocation();
+
   return (
     <div className="flex flex-col gap-3 mt-6">
       <motion.button
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0 }}
-        onClick={() => onAction(sayItAction.id)}
-        disabled={isStreaming}
-        className="relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 hover:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={() => hasSayThis ? onAction(sayItAction.id) : navigate('/upgrade')}
+        disabled={isStreaming && hasSayThis}
+        className={`relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden ${
+          hasSayThis
+            ? 'border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 hover:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed'
+            : 'border-amber-500/30 bg-amber-500/8 hover:bg-amber-500/15 hover:border-amber-500/50 cursor-pointer'
+        }`}
       >
-        <div className="p-2 rounded-lg border shrink-0 group-hover:scale-110 transition-transform duration-300 bg-rose-500/20 border-rose-500/40">
-          <Mic className="w-5 h-5 text-rose-400" />
+        <div className={`p-2 rounded-lg border shrink-0 group-hover:scale-110 transition-transform duration-300 ${
+          hasSayThis ? 'bg-rose-500/20 border-rose-500/40' : 'bg-amber-500/15 border-amber-500/30'
+        }`}>
+          {hasSayThis ? <Mic className="w-5 h-5 text-rose-400" /> : <Lock className="w-5 h-5 text-amber-400" />}
         </div>
         <div className="flex-1">
-          <h3 className={`font-bold ${boomerMode ? 'text-lg' : 'text-base'} leading-none mb-1 flex items-center gap-2 text-white`}>
+          <h3 className={`font-bold ${boomerMode ? 'text-lg' : 'text-base'} leading-none mb-1 flex items-center gap-2 ${hasSayThis ? 'text-white' : 'text-amber-300'}`}>
             {boomerMode ? sayItAction.boomerLabel : sayItAction.label}
-            <span className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-mono bg-rose-500/30 text-rose-300 px-1.5 py-0.5 rounded`}>QUICK READ</span>
+            <span className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-mono px-1.5 py-0.5 rounded ${
+              hasSayThis ? 'bg-rose-500/30 text-rose-300' : 'bg-amber-500/20 text-amber-400'
+            }`}>{hasSayThis ? 'QUICK READ' : '$5/MO'}</span>
           </h3>
-          <p className={`${boomerMode ? 'text-sm' : 'text-xs'} leading-relaxed text-rose-300/80`}>
-            {boomerMode ? sayItAction.boomerDesc : sayItAction.description}
+          <p className={`${boomerMode ? 'text-sm' : 'text-xs'} leading-relaxed ${hasSayThis ? 'text-rose-300/80' : 'text-amber-400/60'}`}>
+            {hasSayThis
+              ? (boomerMode ? sayItAction.boomerDesc : sayItAction.description)
+              : (boomerMode ? 'Subscribe to unlock — $5/month' : 'Module subscription required — $5/mo to activate')}
           </p>
         </div>
       </motion.button>

@@ -954,7 +954,6 @@ export default function Home() {
                   />
 
                   {/* Voice Hold Button — PRO */}
-                  <ProGate inline feature={boomerMode ? 'Voice PABLO' : 'VOX PABLO'}>
                     <button
                       onMouseDown={() => voice.startHold(handleVoiceSend)}
                       onMouseUp={() => voice.stopHold()}
@@ -975,7 +974,6 @@ export default function Home() {
                        voice.isSpeaking ? <Volume2 className="w-4 h-4" /> :
                        <Mic className="w-4 h-4" />}
                     </button>
-                  </ProGate>
 
                   {/* Auto-speak toggle */}
                   <button

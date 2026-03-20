@@ -17,12 +17,21 @@ import {
 import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
+import { hasFeature } from "../lib/plan";
 
 const router = Router();
 
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated && req.isAuthenticated()) return next();
-  res.status(401).json({ error: "Login required" });
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const has = await hasFeature(req.user.id, req.user.email, "phone_system");
+  if (!has) {
+    res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
+    return;
+  }
+  next();
 }
 
 function getAuthUserId(req: Request): string {

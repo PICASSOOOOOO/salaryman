@@ -14,15 +14,23 @@ import {
 } from "@workspace/db";
 import { getUncachableResendClient } from "../lib/resend";
 import twilio from "twilio";
+import { hasFeature } from "../lib/plan";
 
 const router = Router();
 
-function requireAuth(req: Request, res: Response): string | null {
+async function requireAuth(req: Request, res: Response): Promise<string | null> {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
     return null;
   }
-  return (req.user as { id: string } | undefined)?.id ?? null;
+  const userId = (req.user as { id: string } | undefined)?.id ?? null;
+  if (!userId) return null;
+  const has = await hasFeature(userId, req.user?.email, "phone_system");
+  if (!has) {
+    res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
+    return null;
+  }
+  return userId;
 }
 
 function getTwilioClient() {
@@ -53,7 +61,7 @@ function sleep(ms: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/campaigns/email", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const campaigns = await db
@@ -69,7 +77,7 @@ router.get("/campaigns/email", async (req: Request, res: Response) => {
 });
 
 router.get("/campaigns/email/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const [campaign] = await db
@@ -90,7 +98,7 @@ router.get("/campaigns/email/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/email", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { name, subject, previewText, htmlBody, textBody, fromName, replyTo, scheduledAt, recipientFilter } = req.body;
   if (!name?.trim()) { res.status(400).json({ error: "Campaign name required" }); return; }
@@ -119,7 +127,7 @@ router.post("/campaigns/email", async (req: Request, res: Response) => {
 });
 
 router.put("/campaigns/email/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { name, subject, previewText, htmlBody, textBody, fromName, replyTo, scheduledAt, recipientFilter, status } = req.body;
   try {
@@ -155,7 +163,7 @@ router.put("/campaigns/email/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/campaigns/email/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     await db
@@ -169,7 +177,7 @@ router.delete("/campaigns/email/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { test, testEmail } = req.body;
 
@@ -303,7 +311,7 @@ router.get("/campaigns/email/unsubscribe", async (req: Request, res: Response) =
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const campaigns = await db
@@ -319,7 +327,7 @@ router.get("/campaigns/sms", async (req: Request, res: Response) => {
 });
 
 router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const [campaign] = await db
@@ -340,7 +348,7 @@ router.get("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter } = req.body;
   if (!name?.trim()) { res.status(400).json({ error: "Campaign name required" }); return; }
@@ -364,7 +372,7 @@ router.post("/campaigns/sms", async (req: Request, res: Response) => {
 });
 
 router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { name, messageBody, scheduledAt, recipientFilter, status } = req.body;
   try {
@@ -395,7 +403,7 @@ router.put("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     await db
@@ -409,7 +417,7 @@ router.delete("/campaigns/sms/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { test, testPhone } = req.body;
 
@@ -514,7 +522,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/sms/conversations", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const conversations = await db
@@ -530,7 +538,7 @@ router.get("/sms/conversations", async (req: Request, res: Response) => {
 });
 
 router.get("/sms/conversations/:id/messages", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const [conv] = await db
@@ -564,7 +572,7 @@ router.get("/sms/conversations/:id/messages", async (req: Request, res: Response
 });
 
 router.post("/sms/send", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { phone, body, contactId, contactName } = req.body;
   if (!phone || !body?.trim()) { res.status(400).json({ error: "Phone and message body required" }); return; }
@@ -721,7 +729,7 @@ router.post("/sms/webhook/status", async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/campaigns/contact-prefs/:contactId", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   try {
     const [pref] = await db
@@ -735,7 +743,7 @@ router.get("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
 });
 
 router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { emailOptIn, smsOptIn, tags } = req.body;
   const contactId = Number(req.params.contactId);
@@ -787,7 +795,7 @@ router.put("/campaigns/contact-prefs/:contactId", async (req: Request, res: Resp
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/campaigns/generate-sms", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
+  const userId = await requireAuth(req, res);
   if (!userId) return;
   const { goal, tone = "professional", context = "" } = req.body;
   if (!goal?.trim()) { res.status(400).json({ error: "Campaign goal required" }); return; }

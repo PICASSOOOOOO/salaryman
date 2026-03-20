@@ -1030,7 +1030,6 @@ export default function Calendar() {
   const productName = boomerMode ? "CALENDAR" : PABLO_PRODUCTS.CALENDAR.short;
 
   return (
-    <ProGate>
       <div
         className="flex flex-col"
         style={{
@@ -1302,6 +1301,5 @@ export default function Calendar() {
           </div>
         )}
       </div>
-    </ProGate>
   );
 }

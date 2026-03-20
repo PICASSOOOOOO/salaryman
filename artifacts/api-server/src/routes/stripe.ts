@@ -1,8 +1,16 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
-import { setUserTier } from "../lib/plan";
+import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
+import { FEATURE_KEYS, type FeatureKey } from "@workspace/db";
 
 const router = Router();
+
+const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
+  live_listen: "STRIPE_PRICE_LIVE_LISTEN",
+  screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
+  say_this: "STRIPE_PRICE_SAY_THIS",
+  phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
+};
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -16,15 +24,32 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+function getPriceIdForFeature(feature: FeatureKey): string | undefined {
+  return process.env[FEATURE_PRICE_ENV[feature]];
+}
+
+function featureKeyFromPriceId(priceId: string): FeatureKey | undefined {
+  for (const key of FEATURE_KEYS) {
+    if (process.env[FEATURE_PRICE_ENV[key]] === priceId) return key;
+  }
+  return undefined;
+}
+
 router.post("/stripe/create-checkout-session", async (req, res) => {
   if (!req.isAuthenticated?.()) {
     res.status(401).json({ error: "Login required" });
     return;
   }
 
-  const priceId = process.env.STRIPE_PRO_PRICE_ID;
+  const feature = req.body?.feature as FeatureKey | undefined;
+  if (!feature || !FEATURE_KEYS.includes(feature)) {
+    res.status(400).json({ error: "Invalid feature", validFeatures: [...FEATURE_KEYS] });
+    return;
+  }
+
+  const priceId = getPriceIdForFeature(feature);
   if (!priceId) {
-    res.status(500).json({ error: "Stripe price not configured" });
+    res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
     return;
   }
 
@@ -35,10 +60,10 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/upgrade?checkout=success`,
+    success_url: `${baseUrl}/upgrade?checkout=success&feature=${feature}`,
     cancel_url: `${baseUrl}/upgrade?checkout=cancel`,
     client_reference_id: user.id,
-    metadata: { userId: user.id },
+    metadata: { userId: user.id, feature },
   });
 
   res.json({ url: session.url });
@@ -72,34 +97,46 @@ router.post(
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id || session.metadata?.userId;
-        if (userId) {
-          await setUserTier(userId, "pro", "stripe");
-          console.log(`[Stripe] User ${userId} upgraded to pro`);
+        const feature = session.metadata?.feature as FeatureKey | undefined;
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : (session.subscription as any)?.id;
+
+        if (userId && feature && FEATURE_KEYS.includes(feature)) {
+          await grantFeature(userId, feature, "stripe", subscriptionId);
+          console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
         } else {
-          console.warn("[Stripe] checkout.session.completed but no userId found");
+          console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id;
-        const stripe2 = getStripe();
-        const sessions = await stripe2.checkout.sessions.list({
-          customer: customerId,
-          limit: 10,
-        });
-        const userId =
-          sessions.data.find(s => s.client_reference_id)?.client_reference_id ||
-          sessions.data.find(s => s.metadata?.userId)?.metadata?.userId;
+        const subId = subscription.id;
+        const userId = await revokeFeatureBySubscription(subId);
         if (userId) {
-          await setUserTier(userId, "free", "stripe");
-          console.log(`[Stripe] User ${userId} downgraded to free`);
+          console.log(`[Stripe] User ${userId} lost feature (subscription ${subId} deleted)`);
         } else {
-          console.warn("[Stripe] subscription.deleted but no userId found for customer", customerId);
+          console.warn("[Stripe] subscription.deleted but no matching feature found for sub", subId);
         }
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : (invoice.subscription as any)?.id;
+        if (subId && (invoice.billing_reason === "subscription_cycle" || invoice.billing_reason === "subscription_create")) {
+          console.log(`[Stripe] Payment succeeded for subscription ${subId}`);
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.warn(`[Stripe] Payment failed for invoice ${invoice.id} — customer ${invoice.customer}`);
         break;
       }
 

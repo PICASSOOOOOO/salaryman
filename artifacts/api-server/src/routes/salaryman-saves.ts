@@ -1,8 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db, salarymanSavesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { getUserTier } from "../lib/plan";
 
 const router: IRouter = Router();
+
+const FREE_MAX_SLOTS = 2;
+const PRO_MAX_SLOTS = 10;
 
 router.get("/salaryman/saves", async (req, res) => {
   if (!req.isAuthenticated()) {
@@ -10,11 +14,13 @@ router.get("/salaryman/saves", async (req, res) => {
     return;
   }
   try {
+    const tier = await getUserTier(req.user.id, req.user.email);
+    const maxSlots = tier === "pro" ? PRO_MAX_SLOTS : FREE_MAX_SLOTS;
     const saves = await db
       .select()
       .from(salarymanSavesTable)
       .where(eq(salarymanSavesTable.userId, req.user.id));
-    res.json({ saves });
+    res.json({ saves, maxSlots, tier });
   } catch (err: any) {
     console.error("[saves] list error:", err.message);
     res.status(500).json({ error: "Server error" });
@@ -27,8 +33,10 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     return;
   }
   const slot = parseInt(req.params.slot, 10);
-  if (isNaN(slot) || slot < 0 || slot > 3) {
-    res.status(400).json({ error: "Invalid slot (0-3)" });
+  const tier = await getUserTier(req.user.id, req.user.email);
+  const maxSlots = tier === "pro" ? PRO_MAX_SLOTS : FREE_MAX_SLOTS;
+  if (isNaN(slot) || slot < 0 || slot >= maxSlots) {
+    res.status(400).json({ error: `Invalid slot (0-${maxSlots - 1})`, maxSlots, tier });
     return;
   }
   const { charName, charClass, level, salary, lastZone, playtime, data } = req.body;
@@ -78,8 +86,10 @@ router.delete("/salaryman/saves/:slot", async (req, res) => {
     return;
   }
   const slot = parseInt(req.params.slot, 10);
-  if (isNaN(slot) || slot < 0 || slot > 3) {
-    res.status(400).json({ error: "Invalid slot" });
+  const tier = await getUserTier(req.user.id, req.user.email);
+  const maxSlots = tier === "pro" ? PRO_MAX_SLOTS : FREE_MAX_SLOTS;
+  if (isNaN(slot) || slot < 0 || slot >= maxSlots) {
+    res.status(400).json({ error: `Invalid slot (0-${maxSlots - 1})`, maxSlots, tier });
     return;
   }
   try {

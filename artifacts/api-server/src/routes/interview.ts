@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 import { streamWithRouter } from "../lib/ai-router";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router: IRouter = Router();
 
@@ -20,6 +21,19 @@ router.post("/interview/solve", async (req, res) => {
   }
 
   const { question, language, mode } = parsed.data;
+
+  if (mode === "say_it") {
+    const { hasFeature } = await import("../lib/plan");
+    if (!req.isAuthenticated?.()) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    const has = await hasFeature(req.user.id, req.user.email, "say_this");
+    if (!has) {
+      res.status(403).json({ error: "Say This subscription required", feature: "say_this", price: 5, upgrade: "/upgrade" });
+      return;
+    }
+  }
 
   const modePrompts: Record<string, string> = {
     hint: `As a technical leader giving a nudge — not the answer — give 1-2 sentences pointing toward the right approach for this ${language} problem. Mention the key concept or data structure to think about. Frame it like you're thinking out loud with a capable engineer, not lecturing. Make them feel like they're close.\n\nProblem: ${question}`,
@@ -90,7 +104,7 @@ Write the reply they should type back. Rules:
 Output ONLY the reply text. Nothing else.`,
 };
 
-router.post("/interview/scan", async (req, res) => {
+router.post("/interview/scan", requireFeature("screen_scan"), async (req, res) => {
   const { image, responseMode = "bullets" } = req.body;
   if (!image || typeof image !== "string") {
     res.status(400).json({ error: "Missing image data" });
@@ -139,7 +153,7 @@ router.post("/interview/scan", async (req, res) => {
   res.end();
 });
 
-router.post("/interview/listen", async (req, res) => {
+router.post("/interview/listen", requireFeature("live_listen"), async (req, res) => {
   const { audio } = req.body;
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "Missing audio data" });

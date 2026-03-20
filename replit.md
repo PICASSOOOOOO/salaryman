@@ -31,18 +31,22 @@ pnpm workspace monorepo using TypeScript. **Salaryman** is the master brand — 
 - CRT utility classes (`.crt-text`, `.crt-panel`, `.crt-btn`, etc.) preserved in index.css for game components.
 - Multiple skins planned (same features, different look)
 
-## Freemium Model
+## Per-Feature Subscription Model
 
-- **Free tier**: PABLO AI chat only (fully functional, always free)
-- **Pro tier** ($4–6/mo, 7-day free trial): PABLO AI Pro + Live Listen, Scan Screen, Presenter Mode, Contacts/CRM, Hiring/HR (RECRUIT-8), Workspace, Documents/ARCHIVE-X (INK-6), Calendar (CHRONO-4)
-- **Gating**: `ProGate` component wraps pro pages/sections. `usePlan` hook fetches tier from `GET /api/plan`.
-- **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails permanent pro access
-- **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant pro to any email
-- **Webhook endpoint**: `POST /api/plan/activate` — protected by `WEBHOOK_SECRET` env var for legacy/manual callbacks
-- **Stripe payment**: Stripe Checkout integration for Pro tier subscriptions. Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`. Endpoints: `POST /api/stripe/create-checkout-session` (creates Checkout session, requires auth), `POST /api/stripe/webhook` (handles `checkout.session.completed` → upgrade to pro, `customer.subscription.deleted` → downgrade to free). Raw body parsing is skipped for webhook route in `app.ts`. Upgrade page handles `?checkout=success` and `?checkout=cancel` query params. `usePlan` hook invalidates cache on `?checkout=success`.
-- **DB table**: `user_tiers` — stores tier assignments; auto-created by `ensureTables()` in `plan.ts`
-- **Email Subscribers**: `subscribers` DB table (`id`, `email` unique, `source`, `created_at`). `POST /api/subscribers` endpoint in `artifacts/api-server/src/routes/subscribers.ts`. Sends a welcome email via Resend on first subscribe. Gracefully returns `{ alreadySubscribed: true }` for duplicate emails. Subscribe form lives on the Cover (landing) page.
-- **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/api-server/src/routes/stripe.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
+- **Free tier**: PABLO AI Chat, CRM, Workspace, Presentations, Calendar, Documents/Invoices, Hiring tools, CIPHER-X, Content Studio — all free forever
+- **Paid features** (individual monthly subscriptions):
+  - **Live Listen** (ECHO-7): $5/mo — real-time audio intercept
+  - **Screen Scan** (OPTIC-9): $5/mo — auto-identifies code/content on screen
+  - **Say This** (VOX-4): $5/mo — real-time speech coaching
+  - **Calll Home** (phone system): $95/mo — unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, conference calling
+- **Architecture**: Per-feature subscriptions stored in `user_features` DB table (userId + featureKey composite PK). Each feature has its own Stripe price ID env var: `STRIPE_PRICE_LIVE_LISTEN`, `STRIPE_PRICE_SCREEN_SCAN`, `STRIPE_PRICE_SAY_THIS`, `STRIPE_PRICE_PHONE_SYSTEM`
+- **Gating**: `ProGate` component accepts optional `featureKey` prop for feature-specific gating. `usePlan` hook returns `features: Set<FeatureKey>` with active feature keys. Backend uses `requireFeature(featureKey)` middleware.
+- **Owner bypass**: Set `OWNER_EMAILS` env var (comma-separated) to grant those emails all features automatically
+- **Grant endpoint**: `POST /api/plan/grant` — owner-only route to grant a specific feature to any user
+- **Stripe payment**: Per-feature Stripe Checkout. `POST /api/stripe/create-checkout-session` accepts `{ feature: "live_listen" | "screen_scan" | "say_this" | "phone_system" }`. Webhook maps subscription to feature via metadata. `customer.subscription.deleted` revokes the specific feature by subscription ID.
+- **DB tables**: `user_features` (per-feature subscriptions), `user_tiers` (legacy, kept for backward compat)
+- **Email Subscribers**: `subscribers` DB table. `POST /api/subscribers` endpoint. Welcome email via Resend.
+- **Key files**: `artifacts/api-server/src/lib/plan.ts`, `artifacts/api-server/src/routes/plan.ts`, `artifacts/api-server/src/routes/stripe.ts`, `lib/db/src/schema/user-features.ts`, `artifacts/interview-helper/src/hooks/use-plan.ts`, `artifacts/interview-helper/src/components/ProGate.tsx`, `artifacts/interview-helper/src/pages/Upgrade.tsx`
 
 ## Documents / ARCHIVE-X / INK-6 (Pro feature at `/documents`)
 

@@ -950,6 +950,9 @@ function SmsInbox({ contacts }: { contacts: Contact[] }) {
 
 export default function Campaigns() {
   const { isAuthenticated } = useAuth();
+  const { features, loading: planLoading } = usePlan();
+  const isPro = features.has('phone_system');
+
   const [tab, setTab] = useState<Tab>('dashboard');
   const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>([]);
   const [smsCampaigns, setSmsCampaigns] = useState<SmsCampaign[]>([]);
@@ -989,6 +992,9 @@ export default function Campaigns() {
     setSmsCampaigns(prev => prev.filter(c => c.id !== id));
   }
 
+  if (!planLoading && !isPro) {
+    return <div className="min-h-screen flex flex-col bg-background"><ProGate featureKey="phone_system" feature="Calll Home — Campaign Manager" /></div>;
+  }
 
   const totalEmailSent = emailCampaigns.reduce((a, c) => a + c.totalSent, 0);
   const totalSmsSent = smsCampaigns.reduce((a, c) => a + c.totalSent, 0);

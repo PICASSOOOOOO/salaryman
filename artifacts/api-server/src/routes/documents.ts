@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, invoicesTable, contractsTable, filesFoldersTable } from "@workspace/db";
 import { eq, and, isNull, sql, asc } from "drizzle-orm";
-import { getUserTier } from "../lib/plan";
 import { randomBytes } from "crypto";
 import { ObjectStorageService } from "../lib/objectStorage";
 
@@ -10,11 +9,6 @@ const router: IRouter = Router();
 async function requirePro(req: Request, res: Response): Promise<boolean> {
   if (!req.isAuthenticated() || !req.user) {
     res.status(401).json({ error: "Login required" });
-    return false;
-  }
-  const tier = await getUserTier(req.user.id, req.user.email);
-  if (tier !== "pro") {
-    res.status(403).json({ error: "Pro tier required" });
     return false;
   }
   return true;

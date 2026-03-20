@@ -1,38 +1,107 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 
 export type Tier = "free" | "pro";
+export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system";
 
 interface PlanData {
   tier: Tier;
   isOwner: boolean;
   isPro: boolean;
-  isTrial: boolean;
-  trialDaysLeft: number;
-  trialHoursLeft: number;
+  features: Set<FeatureKey>;
   loading: boolean;
 }
 
-export function invalidatePlanCache() {}
+let _cachedPlan: PlanData | null = null;
+let _cachedForAuth: boolean | undefined = undefined;
+let _cacheListeners: Array<() => void> = [];
+
+export function invalidatePlanCache() {
+  _cachedPlan = null;
+  _cachedForAuth = undefined;
+  _cacheListeners.forEach(fn => fn());
+}
+
+const DEFAULT_PLAN: PlanData = {
+  tier: "free",
+  isOwner: false,
+  isPro: false,
+  features: new Set(),
+  loading: true,
+};
 
 export function usePlan(): PlanData {
   const { isAuthenticated } = useAuth();
+  const [plan, setPlan] = useState<PlanData>(_cachedPlan && _cachedForAuth === isAuthenticated ? _cachedPlan : DEFAULT_PLAN);
+  const prevAuth = useRef<boolean | undefined>(undefined);
 
-  const [loading, setLoading] = useState(true);
+  const fetchPlan = useCallback(async () => {
+    if (isAuthenticated === undefined) {
+      return;
+    }
 
-  useEffect(() => {
-    if (isAuthenticated !== undefined) {
-      setLoading(false);
+    if (!isAuthenticated) {
+      const p: PlanData = { ...DEFAULT_PLAN, loading: false };
+      _cachedPlan = p;
+      _cachedForAuth = false;
+      setPlan(p);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/plan");
+      if (!res.ok) throw new Error("plan fetch failed");
+      const data = await res.json();
+      const featureSet = new Set<FeatureKey>((data.features ?? []) as FeatureKey[]);
+      const tier: Tier = featureSet.size > 0 ? "pro" : "free";
+      const p: PlanData = {
+        tier,
+        isOwner: !!data.isOwner,
+        isPro: featureSet.size > 0 || !!data.isOwner,
+        features: featureSet,
+        loading: false,
+      };
+      _cachedPlan = p;
+      _cachedForAuth = true;
+      setPlan(p);
+    } catch {
+      const p: PlanData = { ...DEFAULT_PLAN, loading: false };
+      _cachedPlan = p;
+      _cachedForAuth = isAuthenticated;
+      setPlan(p);
     }
   }, [isAuthenticated]);
 
-  return {
-    tier: "pro",
-    isOwner: false,
-    isPro: true,
-    isTrial: false,
-    trialDaysLeft: 0,
-    trialHoursLeft: 0,
-    loading: false,
-  };
+  useEffect(() => {
+    if (isAuthenticated === undefined) return;
+
+    const authChanged = prevAuth.current !== isAuthenticated;
+    prevAuth.current = isAuthenticated;
+
+    if (authChanged) {
+      _cachedPlan = null;
+      _cachedForAuth = undefined;
+    }
+
+    if (_cachedPlan && _cachedForAuth === isAuthenticated) {
+      setPlan(_cachedPlan);
+      return;
+    }
+
+    fetchPlan();
+  }, [isAuthenticated, fetchPlan]);
+
+  useEffect(() => {
+    const invalidate = () => {
+      _cachedPlan = null;
+      _cachedForAuth = undefined;
+      fetchPlan();
+    };
+    _cacheListeners.push(invalidate);
+    return () => {
+      _cacheListeners = _cacheListeners.filter(fn => fn !== invalidate);
+    };
+  }, [fetchPlan]);
+
+  return plan;
 }

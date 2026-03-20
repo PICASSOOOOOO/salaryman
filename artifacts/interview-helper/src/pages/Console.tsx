@@ -17,7 +17,7 @@ const LANGUAGES = [
 ];
 
 export default function Console() {
-  const { isPro } = usePlan();
+  const { isPro, features } = usePlan();
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
@@ -228,7 +228,7 @@ export default function Console() {
           <StatusIndicator status={toSolverStatus(displayStatus)} />
 
           {/* LIVE LISTEN */}
-          <ProGate inline feature={boomerMode ? 'Live Listener' : PABLO_PRODUCTS.LIVE_LISTEN.short}>
+          <ProGate inline featureKey="live_listen" feature={boomerMode ? 'Live Listener' : PABLO_PRODUCTS.LIVE_LISTEN.short}>
           <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
@@ -261,7 +261,7 @@ export default function Console() {
           </ProGate>
 
           {/* SCREEN SCAN */}
-          <ProGate inline feature={boomerMode ? 'Screen Scanner' : PABLO_PRODUCTS.SCAN_SCREEN.short}>
+          <ProGate inline featureKey="screen_scan" feature={boomerMode ? 'Screen Scanner' : PABLO_PRODUCTS.SCAN_SCREEN.short}>
           <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <ScanSearch className="w-3.5 h-3.5 text-sky-400" />
@@ -296,8 +296,7 @@ export default function Console() {
           </div>
           </ProGate>
 
-          {/* PROBLEM DESCRIPTION */}
-          <ProGate inline feature={boomerMode ? 'Problem Input' : PABLO_PRODUCTS.PROBLEM_DESC.short}>
+          {/* PROBLEM DESCRIPTION — free tier (CIPHER-X code understanding) */}
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden relative group transition-colors focus-within:border-primary/50">
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -319,9 +318,8 @@ export default function Console() {
               <div className="absolute bottom-4 right-4 text-xs font-mono text-muted-foreground/30 pointer-events-none select-none">INPUT_BUFFER</div>
             </div>
           </div>
-          </ProGate>
 
-          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} isPro={isPro} boomerMode={boomerMode} />
+          <ActionPanel onAction={handleAction} isStreaming={isAnyBusy || autoPilot || (!question.trim() && activePanel === 'solve')} hasSayThis={isPro || features.has('say_this')} boomerMode={boomerMode} />
 
           {/* PRINTER TOOLS */}
           <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">

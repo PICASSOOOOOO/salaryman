@@ -1,4 +1,4 @@
-import { Terminal, LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown } from 'lucide-react';
+import { Terminal, LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
@@ -12,7 +12,7 @@ export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
-  usePlan();
+  const { isPro, isOwner, features } = usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -73,10 +73,26 @@ export function NavBar() {
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="font-mono text-[10px] text-zinc-600 tracking-wide">
-              {boomerMode ? 'FREE FOREVER' : 'ALL FEATURES FREE'}
-            </span>
+            {isPro || features.size > 0 ? (
+              <>
+                <Zap className="w-2.5 h-2.5 text-amber-500" />
+                <span className="font-mono text-[10px] text-amber-400 tracking-wide">
+                  {isOwner
+                    ? 'CORP ADMIN'
+                    : (boomerMode ? `${features.size} ACTIVE` : `${features.size} MODULE${features.size !== 1 ? 'S' : ''}`)}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <button
+                  onClick={() => navigate('/upgrade')}
+                  className="font-mono text-[10px] text-zinc-600 tracking-wide hover:text-amber-400 transition-colors"
+                >
+                  {boomerMode ? 'FREE PLAN — UPGRADE' : 'STANDARD EMPLOYEE — ACTIVATE EXEC CARD'}
+                </button>
+              </>
+            )}
           </span>
           {!location.startsWith('/world') && (
             <button

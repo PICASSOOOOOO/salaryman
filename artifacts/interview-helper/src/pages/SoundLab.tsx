@@ -2041,10 +2041,8 @@ export default function SoundLab({ onClose }: { onClose?: () => void }) {
     return <SoundLabInner onClose={onClose} />;
   }
   return (
-    <ProGate feature="THE LAB">
       <div style={{ minHeight: '100vh', background: BG_FULL }}>
         <SoundLabInner />
       </div>
-    </ProGate>
   );
 }

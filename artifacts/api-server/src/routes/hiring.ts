@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
-import { getUserTier } from "../lib/plan";
 import { fireWebhook } from "../lib/webhook";
 
 const router: IRouter = Router();
@@ -13,11 +12,6 @@ const VALID_STAFF_STATUSES = ["active", "on leave", "terminated", "departed"] as
 async function requirePro(req: Request, res: Response): Promise<boolean> {
   if (!req.isAuthenticated() || !req.user) {
     res.status(401).json({ error: "Login required" });
-    return false;
-  }
-  const tier = await getUserTier(req.user.id, req.user.email);
-  if (tier !== "pro") {
-    res.status(403).json({ error: "Pro tier required" });
     return false;
   }
   return true;
