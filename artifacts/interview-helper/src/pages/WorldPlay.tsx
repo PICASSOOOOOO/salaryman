@@ -6163,6 +6163,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Projectile update
       g.projectiles = g.projectiles.map(p => ({ ...p, x: p.x + p.dx, y: p.y + p.dy, life: p.life - 1 })).filter(p => {
         if (p.life <= 0) return false;
+        // Destroy projectile if it hits a building wall
+        const pR = 3;
+        const hitBuilding = BUILDINGS.some(b => {
+          if (!(p.x + pR > b.x && p.x - pR < b.x + b.w && p.y + pR > b.y && p.y - pR < b.y + b.h)) return false;
+          if (b.doors && b.doors.length > 0) {
+            for (const d of b.doors) {
+              if (p.x + pR > d.x && p.x - pR < d.x + d.w && p.y + pR > d.y && p.y - pR < d.y + d.h) return false;
+            }
+          }
+          return true;
+        });
+        if (hitBuilding) {
+          const impactA = Math.atan2(p.dy, p.dx);
+          for (let si = 0; si < 3; si++) {
+            const sa = impactA + (Math.random() - 0.5) * 1.8;
+            g.hitEffects.push({ x: p.x, y: p.y, life: 4, maxLife: 4, dx: Math.cos(sa) * 1.2, dy: Math.sin(sa) * 1.2 });
+          }
+          return false;
+        }
         let hitAny = false;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(p.x - t.x, p.y - t.y);
@@ -8311,8 +8330,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const dToOrigin = Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
           if (dToOrigin < 600) {
             const ang = Math.atan2(g.py - p.y, g.px - p.x);
-            p.x += Math.cos(ang) * 2.2 * NPC_SPEED_MULT;
-            p.y += Math.sin(ang) * 2.2 * NPC_SPEED_MULT;
+            const polSpd = 2.2 * NPC_SPEED_MULT;
+            const polR = 8;
+            const pmx = p.x + Math.cos(ang) * polSpd;
+            const pmy = p.y + Math.sin(ang) * polSpd;
+            const polHitX = BUILDINGS.some(b => pmx + polR > b.x && pmx - polR < b.x + b.w && p.y + polR > b.y && p.y - polR < b.y + b.h && !(b.doors?.some(d => pmx + polR > d.x && pmx - polR < d.x + d.w && p.y + polR > d.y && p.y - polR < d.y + d.h)));
+            const polHitY = BUILDINGS.some(b => p.x + polR > b.x && p.x - polR < b.x + b.w && pmy + polR > b.y && pmy - polR < b.y + b.h && !(b.doors?.some(d => p.x + polR > d.x && p.x - polR < d.x + d.w && pmy + polR > d.y && pmy - polR < d.y + d.h)));
+            if (!polHitX) p.x = pmx;
+            if (!polHitY) p.y = pmy;
             const dToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
             if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
               g.policeCooldowns[pi] = 25;
@@ -8374,6 +8399,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         for (const m of aliveMembers) {
           m.x = bandCX + m.ox;
           m.y = bandCY + m.oy;
+          // Nudge member out of any building they may overlap
+          const bmR = 8;
+          for (const b of BUILDINGS) {
+            if (m.x + bmR > b.x && m.x - bmR < b.x + b.w && m.y + bmR > b.y && m.y - bmR < b.y + b.h) {
+              if (b.doors && b.doors.some(d => m.x + bmR > d.x && m.x - bmR < d.x + d.w && m.y + bmR > d.y && m.y - bmR < d.y + d.h)) continue;
+              const overlapL = (m.x + bmR) - b.x;
+              const overlapR = (b.x + b.w) - (m.x - bmR);
+              const overlapT = (m.y + bmR) - b.y;
+              const overlapB = (b.y + b.h) - (m.y - bmR);
+              const minX = Math.min(overlapL, overlapR);
+              const minY = Math.min(overlapT, overlapB);
+              if (minX < minY) {
+                m.x += overlapL < overlapR ? -overlapL : overlapR;
+              } else {
+                m.y += overlapT < overlapB ? -overlapT : overlapB;
+              }
+            }
+          }
           if (m.attackCd > 0) m.attackCd--;
         }
 
