@@ -190,7 +190,7 @@ export default function Cover() {
           transition={{ duration: 0.6, delay: 0.35 }}
           className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-6 max-w-xl"
         >
-          The professional intelligence platform — live listen, screen scan, ghost typing, AI agents, phone system, CRM, and more. Built for people who take their career seriously.
+          Real-time listening, screen intelligence, stealth typing, AI agents, a full phone system, and CRM — unified into one platform. For professionals who refuse to settle.
         </motion.p>
 
         <motion.p
