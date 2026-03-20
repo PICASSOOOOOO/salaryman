@@ -8,25 +8,25 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     name: "Live Listen",
     codename: "ECHO-7 NERVE TAP",
     price: 5,
-    desc: "Real-time audio intercept — hear what's happening live",
+    desc: "Real-time audio intercept by Picassoo.AI — hear what's happening live",
   },
   screen_scan: {
     name: "Screen Scan",
     codename: "OPTIC-9 RETINAL SCANNER",
     price: 5,
-    desc: "Auto-identifies code and content on screen",
+    desc: "Auto-identifies code and content on screen — a Picassoo.AI product",
   },
   say_this: {
     name: "Say This",
     codename: "VOX-4 LARYNX MODULE",
     price: 5,
-    desc: "Real-time speech coaching — 3 bullet points to read aloud",
+    desc: "Real-time speech coaching by Picassoo.AI — 3 bullet points to read aloud",
   },
   phone_system: {
     name: "Calll Home",
     codename: "CALLLHOME",
     price: 95,
-    desc: "Unlimited predictive dialing & text messaging for business and marketing partners",
+    desc: "Unlimited predictive dialing & text messaging by Picassoo.AI for business and marketing partners",
   },
 };
 

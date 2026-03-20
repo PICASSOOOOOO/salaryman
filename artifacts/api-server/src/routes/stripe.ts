@@ -67,13 +67,28 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   const stripe = getStripe();
   const baseUrl = getAppBaseUrl();
 
+  const featureName = FEATURE_CATALOG[feature].name;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${baseUrl}/upgrade?checkout=success&feature=${feature}`,
     cancel_url: `${baseUrl}/upgrade?checkout=cancel`,
     client_reference_id: user.id,
-    metadata: { userId: user.id, feature },
+    metadata: {
+      userId: user.id,
+      feature,
+      brand: "Picassoo.AI",
+      product_line: "SALARYMAN",
+    },
+    subscription_data: {
+      description: `${featureName} by Picassoo.AI — SALARYMAN`,
+      metadata: {
+        brand: "Picassoo.AI",
+        product_line: "SALARYMAN",
+        feature,
+      },
+    },
   });
 
   res.json({ url: session.url });

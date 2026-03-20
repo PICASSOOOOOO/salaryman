@@ -184,6 +184,9 @@ export default function Upgrade() {
                 ? "Subscribe to individual tools — only pay for what you need. Cancel anytime."
                 : "Each module is independently activated. Select your operational loadout. Cancel any module at any time."}
             </p>
+            <p className="mt-3 text-[10px] font-mono tracking-widest uppercase text-muted-foreground/40">
+              by Picassoo.AI
+            </p>
           </motion.div>
         </div>
 
@@ -404,6 +407,10 @@ export default function Upgrade() {
             </p>
           </div>
         )}
+
+        <div className="mt-8 mb-4 flex items-center justify-center gap-1.5 text-muted-foreground/35">
+          <span className="text-[10px] font-mono tracking-widest uppercase">A Picassoo.AI Product</span>
+        </div>
       </main>
     </div>
   );
