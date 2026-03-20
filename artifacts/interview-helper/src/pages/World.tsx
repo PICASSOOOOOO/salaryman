@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
-import { boomerize, CITY_NAME } from '../gameSystems';
+import { boomerize, CITY_NAME, CLASS_GOV_SALARY, TransactionCategory } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 
 // ── World ─────────────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ const OFFICE_TIERS = [
 
 // ── Character Select ──────────────────────────────────────────────────────────
 type CharClass = 'corporate'|'outlaw'|'replicant';
-interface Char { name:string; class:CharClass; sx:number; sy:number; salary:number; company?:string; }
+interface Char { name:string; class:CharClass; sx:number; sy:number; salary:number; company?:string; governmentBaseSalary?:number; businessProfit?:number; realSalaryAmount?:number; incomeType?:string; }
 
 function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>void }) {
   const [name, setName] = useState('');
@@ -79,9 +79,9 @@ function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>voi
   }, []);
   const bmLabel = (txt: string) => bm ? boomerize(txt, true) : txt;
   const CLASSES: { id:CharClass; label:string; desc:string; sx:number; sy:number; salary:number }[] = [
-    { id:'corporate', label:'CORPORATE', desc:'City dweller. ƒ100/min salary. Well connected.', sx:6800, sy:5900, salary:25000 },
-    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. ƒ25/min. Hunted.',      sx:5600, sy:6200, salary:10000 },
-    { id:'replicant', label:'REPLICANT', desc:'Android. ƒ50/min. Trusted by nobody.',         sx:6800, sy:5900, salary:18000 },
+    { id:'corporate', label:'CORPORATE', desc:'City dweller. Starts at ƒ0. PABLO CORP base: ƒ100/min. Well connected.',   sx:6800, sy:5900, salary:0 },
+    { id:'outlaw',    label:'OUTLAW',    desc:'Wasteland born. Tough. Starts at ƒ0. PABLO CORP base: ƒ25/min. Hunted.', sx:5600, sy:6200, salary:0 },
+    { id:'replicant', label:'REPLICANT', desc:'Android. Starts at ƒ0. PABLO CORP base: ƒ50/min. Trusted by nobody.',    sx:6800, sy:5900, salary:0 },
   ];
   const sel = CLASSES.find(c=>c.id===cls)!;
   return (
@@ -166,6 +166,30 @@ function PwPrompt({ label, onOk, onCancel }:{ label:string; onOk:(pw:string)=>vo
 
 // ── Main World ────────────────────────────────────────────────────────────────
 let msgSeq = 0;
+let txSeq = 0;
+function pushTx(
+  ledgerRefCurrent: {id:number;desc:string;amount:number;bal:number;category:TransactionCategory;timestamp:number}[],
+  entry: {desc:string;amount:number;bal:number;category:TransactionCategory},
+  charName: string,
+  companyName?: string,
+): void {
+  txSeq++;
+  const full = { id: txSeq, ...entry, timestamp: Date.now() };
+  ledgerRefCurrent.push(full);
+  if (ledgerRefCurrent.length > 200) ledgerRefCurrent.splice(0, ledgerRefCurrent.length - 200);
+  apiFetch('/api/world/transactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      playerName: charName,
+      companyName: companyName ?? null,
+      category: entry.category,
+      description: entry.desc,
+      amount: entry.amount,
+      balanceAfter: entry.bal,
+    }),
+  }).catch(() => {});
+}
 
 export default function World() {
   const [,navigate] = useLocation();
@@ -178,7 +202,7 @@ export default function World() {
     cam: { x:0, y:0 },
     keys: new Set<string>(),
     frame: 0, blink: 0,
-    hp: 100, salary: (() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; })(),
+    hp: 100, salary: (() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 0; } } catch {} return 0; })(),
     hasDevice: false,
     invincible: 0, flash: 0,
     threats: THREATS_INIT.map(t=>({...t})),
@@ -198,7 +222,17 @@ export default function World() {
   const [msg,     setMsg]     = useState(`PABLO CORP ALPHA ${__BUILD_VERSION__} — WASD move · E enter · C chat · V voice · P PABLO device`);
   const [near,    setNear]    = useState<string|null>(null);
   const [hp,      setHp]      = useState(100);
-  const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 25000; } } catch {} return 25000; });
+  const [salary,  setSalary]  = useState(() => { try { const s = localStorage.getItem('sm_char'); if (s) { const c = JSON.parse(s); return c.salary ?? 0; } } catch {} return 0; });
+  const [showBalanceSheet, setShowBalanceSheet] = useState(false);
+  const [balanceTab, setBalanceTab] = useState<'summary'|'ledger'>('summary');
+  const [ledger, setLedger] = useState<{id:number;desc:string;amount:number;bal:number;category:TransactionCategory;timestamp:number}[]>([]);
+  const ledgerRef = useRef<{id:number;desc:string;amount:number;bal:number;category:TransactionCategory;timestamp:number}[]>([]);
+  const salaryTickRef = useRef(0);
+  const [realSalInput, setRealSalInput] = useState(()=>{ try{ const s=localStorage.getItem('sm_char'); if(s){const c=JSON.parse(s); return c.incomeType==='real'&&c.realSalaryAmount?String(c.realSalaryAmount):'';} }catch{} return ''; });
+  const [realSalProofName, setRealSalProofName] = useState(()=>{ try{ const s=localStorage.getItem('sm_char'); if(s){const c=JSON.parse(s); return c.realSalProofName??'';} }catch{} return ''; });
+  const [realSalProofFile, setRealSalProofFile] = useState<File|null>(null);
+  const [realSalSaved, setRealSalSaved] = useState(()=>{ try{ const s=localStorage.getItem('sm_char'); if(s){const c=JSON.parse(s); return c.incomeType==='real'&&(c.realSalaryAmount??0)>0;} }catch{} return false; });
+  const [realSalUploading, setRealSalUploading] = useState(false);
   const [isDead,  setIsDead]  = useState(false);
   const [showStore, setShowStore] = useState(false);
   const [showOffice,setShowOffice]=useState(false);
@@ -349,20 +383,43 @@ export default function World() {
   // ── Building enter ─────────────────────────────────────────────────────────
   const enterBuilding = useCallback((bid:string) => {
     const g = gs.current;
+    const cname = char?.name ?? 'UNKNOWN';
+    const company = char?.company;
     if (bid==='pablo_store') { setDialog({lines:STORE_LINES,idx:0,bid}); }
     else if (bid==='clinic') {
-      if(g.salary>=100){ g.hp=100; g.salary-=100; setHp(100); setSalary(g.salary); setMsg('> MED CLINIC — [ƒ100] Health restored.'); }
-      else setMsg('> MED CLINIC — "Come back with ƒ100."');
+      if(g.salary>=100){
+        g.hp=100; g.salary-=100; setHp(100); setSalary(g.salary);
+        setMsg('> MED CLINIC — [ƒ100] Health restored.');
+        pushTx(ledgerRef.current,{desc:'MED CLINIC — HEALTH RESTORE',amount:-100,bal:g.salary,category:'expense'},cname,company);
+        setLedger([...ledgerRef.current]);
+        const s=localStorage.getItem('sm_char'); if(s){try{const c=JSON.parse(s);c.salary=g.salary;localStorage.setItem('sm_char',JSON.stringify(c));}catch{}}
+      } else setMsg('> MED CLINIC — "Come back with ƒ100."');
     }
     else if (bid==='megabank') { setMsg('> BANCO OMBRA — Account suspended. Try again never.'); }
-    else if (bid==='market')   { g.salary+=30; setSalary(g.salary); setMsg('> BLACK MARKET — Odd job. +ƒ30.'); }
+    else if (bid==='market') {
+      g.salary+=30; setSalary(g.salary); setMsg('> BLACK MARKET — Odd job. +ƒ30.');
+      pushTx(ledgerRef.current,{desc:'BLACK MARKET — ODD JOB',amount:30,bal:g.salary,category:'business_profit'},cname,company);
+      setLedger([...ledgerRef.current]);
+      const s=localStorage.getItem('sm_char'); if(s){try{const c=JSON.parse(s);c.salary=g.salary;
+        // Accumulate business service transactions into businessProfit rate for Minx operators
+        if(c.bizType==='minx'||c.incomeType==='minx'){c.businessProfit=Math.min((c.businessProfit??0)+5,500);}
+        localStorage.setItem('sm_char',JSON.stringify(c));}catch{}}
+    }
     else if (bid==='office')   { setShowOffice(true); }
     else if (bid==='hotel')    { g.hp=Math.min(100,g.hp+40); setHp(g.hp); setMsg('> HOTEL NEON — You rest. HP +40.'); }
     else if (bid==='bunker')   { setMsg('> BUNKER-09 — "We don\'t let strangers in. Move on."'); }
     else if (bid==='radio')    { setMsg('> PIRATE RADIO — Static and broken promises. Someone is broadcasting.'); }
-    else if (bid==='scrap')    { g.salary+=20; setSalary(g.salary); setMsg('> SCRAP YARD — Sold some junk. +ƒ20.'); }
+    else if (bid==='scrap') {
+      g.salary+=20; setSalary(g.salary); setMsg('> SCRAP YARD — Sold some junk. +ƒ20.');
+      pushTx(ledgerRef.current,{desc:'SCRAP YARD — SALVAGE',amount:20,bal:g.salary,category:'business_profit'},cname,company);
+      setLedger([...ledgerRef.current]);
+      const s=localStorage.getItem('sm_char'); if(s){try{const c=JSON.parse(s);c.salary=g.salary;
+        // Accumulate scrap transactions into businessProfit rate for Minx operators
+        if(c.bizType==='minx'||c.incomeType==='minx'){c.businessProfit=Math.min((c.businessProfit??0)+3,500);}
+        localStorage.setItem('sm_char',JSON.stringify(c));}catch{}}
+    }
     else setMsg(`> Locked.`);
-  }, []);
+  }, [char]);
 
   const tryEnter = useCallback((bid:string) => {
     const lock = gs.current.locks.get(bid);
@@ -410,8 +467,39 @@ export default function World() {
     localStorage.setItem('sm_char',JSON.stringify(c));
     gs.current.px=c.sx; gs.current.py=c.sy; gs.current.salary=c.salary;
     setSalary(c.salary); setChar(c);
+    salaryTickRef.current = 0;
+    ledgerRef.current = [];
+    setLedger([]);
     setTimeout(()=>setMsg(`> ${c.name} [${c.class.toUpperCase()}] — Find the PABLO STORE. Press [E] near buildings.`),300);
   },[]);
+
+  // ── On-load: check server for latest snapshot & offer recovery if local balance is lower ──
+  useEffect(()=>{
+    if(!char) return;
+    const slotStr=localStorage.getItem('sm_slot');
+    apiFetch(`/api/world/snapshots/latest?slot=${slotStr??'0'}`,{credentials:'include'})
+      .then(r=>r.ok?r.json():null)
+      .then(data=>{
+        if(!data?.snapshot) return;
+        const snap=data.snapshot;
+        if(typeof snap.balance==='number' && snap.balance > gs.current.salary) {
+          // Server snapshot shows higher balance — likely a recovery scenario
+          const stored=localStorage.getItem('sm_char');
+          if(stored){
+            try{
+              const c=JSON.parse(stored);
+              c.salary=snap.balance;
+              if(snap.businessProfit>0) c.businessProfit=snap.businessProfit;
+              if(snap.realSalaryAmount>0){c.realSalaryAmount=snap.realSalaryAmount;c.incomeType='real';}
+              localStorage.setItem('sm_char',JSON.stringify(c));
+              gs.current.salary=snap.balance;
+              setSalary(snap.balance);
+              setMsg(`> RECOVERY: Balance restored from server snapshot — ƒ${snap.balance.toLocaleString()}.`);
+            }catch{}
+          }
+        }
+      }).catch(()=>{});
+  },[char?.name]);
 
   // WS connect
   useEffect(()=>{ if(!char) return; connectWS(char); return()=>{ wsRef.current?.close(); wsRef.current=null; }; },[char?.name]);
@@ -423,6 +511,111 @@ export default function World() {
     return()=>clearInterval(id);
   },[char,wsSend]);
 
+  // ── Sync businessProfit rate from server-authoritative transaction aggregation (every 5 min) ──
+  useEffect(()=>{
+    if(!char) return;
+    const syncRate=()=>{
+      apiFetch('/api/world/business-profit-rate',{credentials:'include'})
+        .then(r=>r.ok?r.json():null)
+        .then(data=>{
+          if(!data||typeof data.businessProfitRate!=='number') return;
+          const s=localStorage.getItem('sm_char');
+          if(!s) return;
+          try{
+            const c=JSON.parse(s);
+            if(c.incomeType==='minx'&&data.businessProfitRate!==c.businessProfit){
+              c.businessProfit=data.businessProfitRate;
+              localStorage.setItem('sm_char',JSON.stringify(c));
+            }
+          }catch{}
+        }).catch(()=>{});
+    };
+    syncRate();
+    const id=setInterval(syncRate,300_000);
+    return()=>clearInterval(id);
+  },[char?.name]);
+
+  // ── Salary tick: gov base + business profit + real salary (every 60s = 1 game-minute) ──
+  useEffect(()=>{
+    if(!char) return;
+    const tick=()=>{
+      try {
+        const stored = localStorage.getItem('sm_char');
+        if(!stored) return;
+        const c = JSON.parse(stored);
+        // governmentBaseSalary is derived from class — never stored at char creation, always computed
+        const govBase = CLASS_GOV_SALARY[char.class] ?? 25;
+        // Business XOR real enterprise — only one non-base income path is active at a time
+        const incomeType: string = c.incomeType ?? 'unemployed';
+        const bizProfit = incomeType === 'minx' ? (c.businessProfit ?? 0) : 0;
+        const realSal = incomeType === 'real' ? (c.realSalaryAmount ?? 0) : 0;
+        const totalTick = govBase + bizProfit + realSal;
+        gs.current.salary += totalTick;
+        setSalary(gs.current.salary);
+        c.salary = gs.current.salary;
+        localStorage.setItem('sm_char', JSON.stringify(c));
+        salaryTickRef.current++;
+        const cname = char.name;
+        const company = char.company;
+        if(govBase>0) pushTx(ledgerRef.current,{desc:'PABLO CORP GOV ASSISTANCE',amount:govBase,bal:gs.current.salary,category:'gov_salary'},cname,company);
+        if(bizProfit>0) pushTx(ledgerRef.current,{desc:`${c.company??'BUSINESS'} PROFIT`,amount:bizProfit,bal:gs.current.salary,category:'business_profit'},cname,company);
+        if(realSal>0) pushTx(ledgerRef.current,{desc:'ENTERPRISE SALARY',amount:realSal,bal:gs.current.salary,category:'real_salary'},cname,company);
+        setLedger([...ledgerRef.current]);
+      } catch { /* ignore */ }
+    };
+    const id=setInterval(tick,60000);
+    return()=>clearInterval(id);
+  },[char]);
+
+  // ── Business financial snapshot (every 5 min, stored locally for recovery) ──
+  useEffect(()=>{
+    if(!char) return;
+    const snap=()=>{
+      try {
+        const s=localStorage.getItem('sm_char');
+        if(!s) return;
+        const c=JSON.parse(s);
+        const govBase = CLASS_GOV_SALARY[char.class]??25;
+        const bizProfit = c.businessProfit??0;
+        const realSal = c.realSalaryAmount??0;
+        const incomeType = c.incomeType??'unemployed';
+        const snapshotData={
+          playerName:char.name,
+          balance:gs.current.salary,
+          salary:gs.current.salary,
+          businessProfit:bizProfit,
+          governmentBaseSalary:govBase,
+          realSalaryAmount:realSal,
+          incomeType,
+          snapshotAt:Date.now(),
+        };
+        type FinSnapshot={playerName:string;balance:number;salary:number;businessProfit:number;governmentBaseSalary:number;realSalaryAmount:number;incomeType:string;snapshotAt:number};
+        const prev: FinSnapshot[] = (() => { try { const raw=JSON.parse(localStorage.getItem('sm_fin_snapshots')||'[]'); return Array.isArray(raw)?raw:[]; } catch { return []; } })();
+        const updated=[snapshotData,...prev].slice(0,10);
+        localStorage.setItem('sm_fin_snapshots',JSON.stringify(updated));
+        // Also persist to server when authenticated
+        const slotStr = localStorage.getItem('sm_slot');
+        apiFetch('/api/world/snapshots',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body:JSON.stringify({
+            slotIndex: slotStr ? parseInt(slotStr,10) : 0,
+            balance: gs.current.salary,
+            salary: gs.current.salary,
+            businessProfit: bizProfit,
+            governmentBaseSalary: govBase,
+            realSalaryAmount: realSal,
+            incomeType,
+            snapshotReason:'auto',
+          }),
+        }).catch(()=>{});
+      } catch { /* ignore */ }
+    };
+    const id=setInterval(snap,300000);
+    return()=>clearInterval(id);
+  },[char]);
+
   // Keys
   useEffect(()=>{
     if(!char) return;
@@ -432,10 +625,11 @@ export default function World() {
       gs.current.keys.add(e.key.toLowerCase());
       if(e.key==='e'||e.key==='E'){ const nb=gs.current.near; if(nb&&!dialog&&!showStore&&!showOffice&&!showPablo&&!pwPrompt) tryEnter(nb); }
       if(e.key==='p'||e.key==='P') setShowPablo(v=>!v);
+      if(e.key==='b'||e.key==='B') setShowBalanceSheet(v=>!v);
       if(e.key==='c'||e.key==='C'){ setChatOpen(v=>!v); setUnread(0); }
       if(e.key==='v'||e.key==='V') toggleVoice();
       if(e.key===' '||e.key==='Enter') { if(dialog){ e.preventDefault(); advDialog(); } }
-      if(e.key==='Escape'){ setDialog(null); setShowStore(false); setShowOffice(false); setShowPablo(false); setPwPrompt(null); setPendingBid(null); }
+      if(e.key==='Escape'){ setDialog(null); setShowStore(false); setShowOffice(false); setShowPablo(false); setShowBalanceSheet(false); setPwPrompt(null); setPendingBid(null); }
     };
     const up=(e:KeyboardEvent)=>gs.current.keys.delete(e.key.toLowerCase());
     window.addEventListener('keydown',dn); window.addEventListener('keyup',up);
@@ -667,6 +861,9 @@ export default function World() {
           <button onClick={()=>setShowPablo(v=>!v)} title="PABLO [P]" style={{ padding:'.3rem .55rem',background:showPablo?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:showPablo?'1px solid rgba(0,255,65,.45)':'1px solid rgba(0,255,65,.12)',color:showPablo?'#00ff41':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             PABLO
           </button>
+          <button onClick={()=>setShowBalanceSheet(v=>!v)} title="Balance Sheet [B]" style={{ padding:'.3rem .55rem',background:showBalanceSheet?'rgba(255,200,60,.1)':'rgba(0,255,65,.03)',border:showBalanceSheet?'1px solid rgba(255,200,60,.45)':'1px solid rgba(0,255,65,.12)',color:showBalanceSheet?'#ffcc00':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+            LEDGER
+          </button>
           <button onClick={()=>setShowColleagues(v=>!v)} title="Colleagues" style={{ padding:'.3rem .55rem',background:showColleagues?'rgba(100,180,255,.1)':'rgba(0,255,65,.03)',border:showColleagues?'1px solid rgba(100,180,255,.45)':'1px solid rgba(0,255,65,.12)',color:showColleagues?'#55bbff':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             CRM
           </button>
@@ -747,7 +944,145 @@ export default function World() {
         </div>
       )}
 
-      {/* COLLEAGUES / CRM PANEL */}
+      {/* BALANCE SHEET PANEL */}
+      {showBalanceSheet&&(()=>{
+        const stored = (() => { try { const s=localStorage.getItem('sm_char'); return s?JSON.parse(s):{}; } catch { return {}; } })();
+        const govBase = CLASS_GOV_SALARY[char?.class??'outlaw'] ?? 25;
+        const incomeType: string = stored.incomeType ?? stored.bizType ?? 'unemployed';
+        // XOR semantics: business OR real, not both simultaneously
+        const bizProfit = incomeType === 'minx' ? (stored.businessProfit ?? 0) : 0;
+        const realSal = incomeType === 'real' ? (stored.realSalaryAmount ?? 0) : 0;
+        const totalIncome = govBase + bizProfit + realSal;
+        const fmtCat = (cat: string) => {
+          if(cat==='gov_salary') return 'GOV';
+          if(cat==='business_profit') return 'BIZ';
+          if(cat==='real_salary') return 'ENT';
+          if(cat==='expense') return 'EXP';
+          if(cat==='income') return 'INC';
+          return cat.slice(0,4).toUpperCase();
+        };
+        return (
+          <div style={{ position:'absolute',bottom:'3.5rem',left:'50%',transform:'translateX(-50%)',width:440,maxWidth:'94vw',maxHeight:'60vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(255,200,60,.45)',display:'flex',flexDirection:'column',zIndex:210 }}>
+            <div style={{ padding:'.5rem .75rem',borderBottom:'1px solid rgba(255,200,60,.2)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+              <div>
+                <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.1rem',color:'#ffcc00',letterSpacing:'.12em' }}>BALANCE SHEET</div>
+                <div style={{ fontSize:'.42rem',color:'rgba(255,200,60,.35)',letterSpacing:'.07em' }}>BANCO OMBRA — {char?.name}</div>
+              </div>
+              <div style={{ display:'flex',gap:'.4rem',alignItems:'center' }}>
+                <button onClick={()=>setBalanceTab('summary')} style={{ fontSize:'.48rem',padding:'2px 7px',background:balanceTab==='summary'?'rgba(255,200,60,.15)':'transparent',border:balanceTab==='summary'?'1px solid rgba(255,200,60,.5)':'1px solid rgba(255,200,60,.2)',color:balanceTab==='summary'?'#ffcc00':'rgba(255,200,60,.4)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>SUMMARY</button>
+                <button onClick={()=>setBalanceTab('ledger')} style={{ fontSize:'.48rem',padding:'2px 7px',background:balanceTab==='ledger'?'rgba(255,200,60,.15)':'transparent',border:balanceTab==='ledger'?'1px solid rgba(255,200,60,.5)':'1px solid rgba(255,200,60,.2)',color:balanceTab==='ledger'?'#ffcc00':'rgba(255,200,60,.4)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>LEDGER</button>
+                <button onClick={()=>setShowBalanceSheet(false)} style={{ background:'transparent',border:'none',color:'rgba(255,200,60,.4)',cursor:'pointer',fontSize:'.8rem' }}>×</button>
+              </div>
+            </div>
+            {balanceTab==='summary'?(
+              <div style={{ flex:1,overflowY:'auto',padding:'.75rem' }}>
+                {(()=>{
+                  const totalExpenses = ledger.filter(e=>e.amount<0).reduce((s,e)=>s+Math.abs(e.amount),0);
+                  const totalEarned = ledger.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0);
+                  return (
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.5rem',marginBottom:'.75rem' }}>
+                  {[
+                    {l:'CURRENT BALANCE',v:`ƒ${salary.toLocaleString()}`,col:'#ffcc00',big:true},
+                    {l:'INCOME TYPE',v:incomeType==='unemployed'?'UNEMPLOYED':incomeType==='minx'?'MINX BUSINESS':'REAL ENTERPRISE',col:'#00ff41',big:false},
+                    {l:'PABLO CORP GOV BASE',v:`ƒ${govBase}/min`,col:'rgba(0,255,65,.7)',big:false},
+                    {l:'BUSINESS PROFIT',v:bizProfit>0?`ƒ${bizProfit}/min`:'—',col:bizProfit>0?'rgba(100,255,180,.7)':'rgba(0,255,65,.2)',big:false},
+                    {l:'ENTERPRISE SALARY',v:realSal>0?`ƒ${realSal}/min`:'—',col:realSal>0?'rgba(100,200,255,.7)':'rgba(0,255,65,.2)',big:false},
+                    {l:'TOTAL INCOME/MIN',v:`ƒ${totalIncome}/min`,col:'#ffcc00',big:false},
+                    {l:'SESSION EARNED',v:`ƒ${totalEarned.toLocaleString()}`,col:'rgba(0,255,65,.55)',big:false},
+                    {l:'SESSION EXPENSES',v:totalExpenses>0?`-ƒ${totalExpenses.toLocaleString()}`:'ƒ0',col:totalExpenses>0?'rgba(255,100,100,.6)':'rgba(0,255,65,.2)',big:false},
+                  ].map(({l,v,col,big})=>(
+                    <div key={l} style={{ border:'1px solid rgba(255,200,60,.18)',padding:'.45rem .6rem',background:'rgba(255,200,60,.03)' }}>
+                      <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.35)',letterSpacing:'.12em',marginBottom:'.2rem' }}>{l}</div>
+                      <div style={{ fontFamily:"'VT323',monospace",fontSize:big?'1.4rem':'.9rem',color:col,letterSpacing:'.06em' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>);})()}
+                {incomeType==='real'&&(
+                  <div style={{ borderTop:'1px solid rgba(255,200,60,.15)',paddingTop:'.6rem',marginTop:'.2rem' }}>
+                    <div style={{ fontSize:'.42rem',color:'rgba(255,200,60,.4)',letterSpacing:'.1em',marginBottom:'.3rem' }}>REAL ENTERPRISE SALARY DECLARATION</div>
+                    {realSalSaved?(
+                      <div style={{ fontSize:'.52rem',color:'rgba(100,255,180,.6)',lineHeight:1.7,padding:'.3rem',border:'1px solid rgba(100,255,180,.2)',background:'rgba(100,255,180,.04)' }}>
+                        <div>SALARY REGISTERED: ƒ{realSal}/min <button onClick={()=>{setRealSalSaved(false);}} style={{ fontSize:'.42rem',marginLeft:'.5rem',background:'transparent',border:'none',color:'rgba(255,200,60,.4)',cursor:'pointer' }}>EDIT</button></div>
+                        {realSalProofName&&<div style={{ fontSize:'.42rem',color:'rgba(255,200,60,.5)',marginTop:'.15rem' }}>PROOF: {realSalProofName} <button onClick={async()=>{
+                          const slot=localStorage.getItem('sm_slot');
+                          const r=await apiFetch(`/api/world/salary-proof?slot=${slot??'0'}`,{credentials:'include'});
+                          if(r.ok){const d=await r.json();if(d.storagePath){window.open(d.storagePath,'_blank');}}
+                        }} style={{ fontSize:'.42rem',marginLeft:'.4rem',background:'transparent',border:'none',color:'rgba(100,200,255,.6)',cursor:'pointer',textDecoration:'underline' }}>VIEW</button></div>}
+                      </div>
+                    ):(
+                      <div style={{ display:'flex',flexDirection:'column',gap:'.35rem' }}>
+                        <div style={{ fontSize:'.42rem',color:'rgba(255,200,60,.3)',lineHeight:1.6 }}>Declare your real-world enterprise salary. Proof (screenshot, invoice, document) boosts your in-game income.</div>
+                        <input value={realSalInput} onChange={e=>setRealSalInput(e.target.value)} placeholder="MONTHLY SALARY IN ƒ (e.g. 5000)" style={{ width:'100%',padding:'.35rem .5rem',background:'rgba(0,8,0,.9)',border:'1px solid rgba(255,200,60,.3)',color:'#ffcc00',fontFamily:"'Share Tech Mono',monospace",fontSize:'.6rem',outline:'none',caretColor:'#ffcc00',boxSizing:'border-box' }} type="number" min="0" />
+                        <div style={{ display:'flex',gap:'.35rem',alignItems:'center' }}>
+                          <label style={{ flex:1,padding:'.3rem .5rem',border:'1px solid rgba(255,200,60,.25)',color:'rgba(255,200,60,.5)',fontSize:'.5rem',cursor:'pointer',background:'rgba(255,200,60,.04)',textAlign:'center',letterSpacing:'.06em' }}>
+                            {realSalProofName||'UPLOAD PROOF (OPTIONAL)'}
+                            <input type="file" accept="image/*,.pdf" style={{ display:'none' }} onChange={e=>{const f=e.target.files?.[0]; if(f){setRealSalProofName(f.name);setRealSalProofFile(f);}}} />
+                          </label>
+                          <button disabled={realSalUploading} onClick={async()=>{
+                            const amt=parseInt(realSalInput,10)||0;
+                            if(amt<=0) return;
+                            setRealSalUploading(true);
+                            try {
+                              let proofPath: string|null = null;
+                              if(realSalProofFile){
+                                const urlResp = await apiFetch('/api/storage/uploads/request-url',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({name:realSalProofFile.name,size:realSalProofFile.size,contentType:realSalProofFile.type||'application/octet-stream'})});
+                                if(urlResp.ok){
+                                  const {uploadURL,objectPath} = await urlResp.json();
+                                  await fetch(uploadURL,{method:'PUT',body:realSalProofFile,headers:{'Content-Type':realSalProofFile.type||'application/octet-stream'}});
+                                  proofPath = objectPath;
+                                }
+                              }
+                              const s=localStorage.getItem('sm_char');
+                              if(s){const c=JSON.parse(s);c.realSalaryAmount=amt;c.incomeType='real';if(proofPath)c.realSalProofPath=proofPath;if(realSalProofFile)c.realSalProofName=realSalProofFile.name;localStorage.setItem('sm_char',JSON.stringify(c));}
+                              const slotStr=localStorage.getItem('sm_slot');
+                              await apiFetch('/api/world/declare-salary',{
+                                method:'POST',
+                                headers:{'Content-Type':'application/json'},
+                                credentials:'include',
+                                body:JSON.stringify({
+                                  slotIndex:slotStr?parseInt(slotStr,10):0,
+                                  realSalaryAmount:amt,
+                                  proofObjectPath:proofPath,
+                                  charClass:char?.class,
+                                  companyName:char?.company,
+                                }),
+                              }).catch(()=>{});
+                            } catch { /* ignore upload errors — declaration still saved locally */ }
+                            setRealSalSaved(true);
+                            setRealSalUploading(false);
+                          }} style={{ padding:'.3rem .8rem',background:realSalUploading?'rgba(255,200,60,.06)':'rgba(255,200,60,.15)',border:'1px solid rgba(255,200,60,.55)',color:'#ffcc00',fontSize:'.5rem',cursor:realSalUploading?'default':'pointer',fontFamily:"'Share Tech Mono',monospace",letterSpacing:'.06em',flexShrink:0 }}>{realSalUploading?'UPLOADING…':'SUBMIT'}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div style={{ fontSize:'.42rem',color:'rgba(255,200,60,.25)',letterSpacing:'.06em',lineHeight:1.7,borderTop:'1px solid rgba(255,200,60,.12)',paddingTop:'.4rem',marginTop:'.4rem' }}>
+                  PABLO CORP government assistance ticks every 60 seconds regardless of income type. Business profit and real enterprise salary stack on top. Balance updates live. Press [B] to toggle this panel.
+                </div>
+              </div>
+            ):(
+              <div style={{ flex:1,overflowY:'auto',padding:'.5rem' }}>
+                {ledger.length===0&&(
+                  <div style={{ fontSize:'.55rem',color:'rgba(255,200,60,.25)',padding:'.75rem',textAlign:'center',lineHeight:1.8 }}>No transactions yet. Income begins ticking every 60 seconds.</div>
+                )}
+                {[...ledger].reverse().map(e=>(
+                  <div key={e.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.3rem .4rem',borderBottom:'1px solid rgba(255,200,60,.07)',gap:'.4rem' }}>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:'.52rem',color:'rgba(255,200,60,.7)',letterSpacing:'.04em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>{e.desc}</div>
+                      <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.28)',letterSpacing:'.06em' }}>{new Date(e.timestamp).toLocaleTimeString()} · {fmtCat(e.category)}</div>
+                    </div>
+                    <div style={{ textAlign:'right',flexShrink:0 }}>
+                      <div style={{ fontFamily:"'VT323',monospace",fontSize:'.85rem',color:e.amount>=0?'#00ff41':'#ff4444',letterSpacing:'.04em' }}>{e.amount>=0?'+':''}{e.amount>=0?`ƒ${e.amount.toLocaleString()}`:e.amount.toLocaleString()}</div>
+                      <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.35)' }}>ƒ{e.bal.toLocaleString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {showColleagues&&(
         <div style={{ position:'absolute',bottom:'3.5rem',right:'.75rem',width:320,maxHeight:'55vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(100,180,255,.35)',display:'flex',flexDirection:'column',zIndex:200 }}>
           <div style={{ padding:'.4rem .6rem',borderBottom:'1px solid rgba(100,180,255,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
@@ -865,6 +1200,8 @@ export default function World() {
                       const g=gs.current; g.salary-=price; setSalary(g.salary);
                       localStorage.setItem('sm_office',label); setRentedOffice(label);
                       setMsg(`> ${label} leased. ƒ${price} deducted. Set a security code from the lease panel.`);
+                      if(char){pushTx(ledgerRef.current,{desc:`OFFICE TOWER — ${label} LEASE`,amount:-price,bal:g.salary,category:'expense'},char.name,char.company);setLedger([...ledgerRef.current]);}
+                      const sm=localStorage.getItem('sm_char'); if(sm){try{const cc=JSON.parse(sm);cc.salary=g.salary;localStorage.setItem('sm_char',JSON.stringify(cc));}catch{}}
                     }} style={{ marginTop:'.5rem',width:'100%',padding:'.28rem',background:isRented?'rgba(255,50,50,.07)':canAfford?'rgba(0,255,65,.08)':'transparent',border:isRented?'1px solid rgba(255,80,80,.3)':canAfford?'1px solid rgba(0,255,65,.4)':'1px solid rgba(0,255,65,.1)',color:isRented?'rgba(255,80,80,.65)':canAfford?'#00ff41':'rgba(0,255,65,.18)',fontFamily:"'VT323',monospace",fontSize:'.85rem',letterSpacing:'.08em',cursor:canAfford||isRented?'pointer':'default' }}>
                       {isRented?'CANCEL':canAfford?'RENT':'NO FUNDS'}
                     </button>

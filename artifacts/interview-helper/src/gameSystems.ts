@@ -282,7 +282,7 @@ export function calcResaleFee(salePrice: number): number {
 }
 
 // ── Transaction Log Types ───────────────────────────────────────────────────
-export type TransactionCategory = 'atm_fee' | 'loan_interest' | 'loan_origination' | 'property_tax' | 'resale_fee' | 'exchange_spread' | 'deposit_tax' | 'wire_tax' | 'income' | 'general';
+export type TransactionCategory = 'atm_fee' | 'loan_interest' | 'loan_origination' | 'property_tax' | 'resale_fee' | 'exchange_spread' | 'deposit_tax' | 'wire_tax' | 'income' | 'gov_salary' | 'business_profit' | 'real_salary' | 'expense' | 'general';
 
 export interface TransactionLogEntry {
   id: number;
@@ -291,6 +291,46 @@ export interface TransactionLogEntry {
   bal: number;
   category: TransactionCategory;
   timestamp: number;
+}
+
+// ── Salary Economy ───────────────────────────────────────────────────────────
+export type IncomeType = 'unemployed' | 'minx' | 'real';
+
+export interface SalaryBreakdown {
+  governmentBase: number;
+  businessProfit: number;
+  realSalaryAmount: number;
+  incomeType: IncomeType;
+}
+
+export const CLASS_GOV_SALARY: Record<string, number> = {
+  corporate: 100,
+  replicant: 50,
+  outlaw: 25,
+};
+
+export const MINX_BUSINESS_PROFIT_BASE = 30;
+
+export const CLASS_GOV_SALARY_LABEL: Record<string, string> = {
+  corporate: 'ƒ100/min',
+  replicant: 'ƒ50/min',
+  outlaw: 'ƒ25/min',
+};
+
+export function calcEffectiveSalary(breakdown: SalaryBreakdown): number {
+  return breakdown.governmentBase + breakdown.businessProfit + breakdown.realSalaryAmount;
+}
+
+// ── Business Financial Snapshot ──────────────────────────────────────────────
+export interface BusinessFinancialSnapshot {
+  playerName: string;
+  balance: number;
+  salary: number;
+  businessProfit: number;
+  governmentBaseSalary: number;
+  realSalaryAmount: number;
+  incomeType: IncomeType;
+  snapshotAt: number;
 }
 
 // ── Treasure System ──────────────────────────────────────────────────────────

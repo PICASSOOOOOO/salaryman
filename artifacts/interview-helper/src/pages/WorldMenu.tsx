@@ -4,7 +4,7 @@ import { PicassoLogo } from '../components/PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useIsMobile, getDefaultBoomerMode } from '../hooks/use-mobile';
-import { boomerize, CITY_NAME } from '../gameSystems';
+import { boomerize, CITY_NAME, MINX_BUSINESS_PROFIT_BASE } from '../gameSystems';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 
 type CharClass = 'corporate' | 'outlaw' | 'replicant';
@@ -58,42 +58,42 @@ const CLASSES = [
     id: 'corporate' as CharClass,
     label: 'PABLO CORP',
     tagline: 'City. Money. Influence.',
-    desc: 'Born in the neon towers. Highest salary at ƒ100/min. Control military and police. Government buildings welcome you. Full city passport included. The wasteland will eat you alive — but you can buy your way through checkpoints.',
+    desc: 'Born in the neon towers. PABLO CORP government base: ƒ100/min — paid by the corp from your first session. Start with ƒ0, earn every credit. Control military and police. Government buildings welcome you. Full city passport included.',
     start: 'CORPORATE DISTRICT',
     salary: 'ƒ100/min',
     hp: '350',
     atk: '3',
     def: '6',
-    networth: 'ƒ25,000',
-    perks: 'Most money · Full city passport · ƒ100/min · Control military & police',
+    networth: 'ƒ0',
+    perks: 'Full city passport · PABLO CORP base ƒ100/min · Control military & police',
     color: '#00ff41',
   },
   {
     id: 'outlaw' as CharClass,
     label: 'OUTLAWS',
     tagline: 'Wasteland. Tough. Scarred.',
-    desc: 'Exiled and hardened. High HP, strong ATK. Hunger and thirst drain slower in the wastes. Can craft supplies from scavenged materials. Bonus credits for kills outside the city. Starts with a wasteland passport.',
+    desc: 'Exiled and hardened. High HP, strong ATK. PABLO CORP government base: ƒ25/min — the minimum assistance even the corp provides. Hunger and thirst drain slower in the wastes. Can craft supplies from scavenged materials.',
     start: 'WASTELAND',
     salary: 'ƒ25/min',
     hp: '480',
     atk: '14',
     def: '8',
-    networth: 'ƒ10,000',
-    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · ƒ25/min',
+    networth: 'ƒ0',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · PABLO base ƒ25/min',
     color: '#88ff44',
   },
   {
     id: 'replicant' as CharClass,
     label: 'REPLICANTS',
     tagline: 'Android. Conscious. Deadliest.',
-    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO CORP wants you shut down. Operates in both city and wasteland. Starts at the city fringe with a basic city passport.',
+    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO CORP government base: ƒ50/min. PABLO CORP wants you shut down but still cuts you a check. Operates in both city and wasteland.',
     start: 'CITY FRINGE',
     salary: 'ƒ50/min',
     hp: '600',
     atk: '18',
     def: '12',
-    networth: 'ƒ18,000',
-    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · ƒ50/min',
+    networth: 'ƒ0',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · PABLO base ƒ50/min',
     color: '#33ffaa',
   },
 ];
@@ -223,7 +223,8 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Divider />
       <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
       <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
-      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything." col="#ffcc00" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0 and earns through PABLO CORP government assistance (class base), business profits, or real enterprise salary." col="#ffcc00" />
+      <Row label="PABLO CORP ASSISTANCE" val="All operatives receive a PABLO CORP government base salary once they enter the world. Corporate: ƒ100/min. Replicants: ƒ50/min. Outlaws: ƒ25/min. This ticks every 60 seconds on top of any business or real enterprise income. No one leaves Minx City empty-handed — PABLO CORP makes sure of it." col="#cc44ff" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
@@ -510,6 +511,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         {[
           ['C', 'Open world chat'],
           ['V', 'Toggle voice (mic)'],
+          ['B', 'Open BALANCE SHEET — live income, expenses & ledger'],
           ['E at BANK', 'Deposit salary / view balance / transfer credits'],
           ['E at STORE', 'Browse inventory / buy items / sell cargo'],
           ['E at EXCHANGE', 'Trade commodities (buy low, sell high)'],
@@ -733,6 +735,7 @@ export default function WorldMenu() {
     const str = (k: string) => typeof d[k] === 'string' ? d[k] as string : null;
     const num = (k: string) => typeof d[k] === 'number' ? d[k] as number : null;
     const bool = (k: string) => typeof d[k] === 'boolean' ? (d[k] as boolean) : false;
+    const incomeTypeParsed = str('incomeType') ?? (bool('hasBusiness') ? (str('bizType') === 'real' ? 'real' : 'minx') : 'unemployed');
     const char = {
       name: save.charName,
       class: save.charClass,
@@ -740,6 +743,10 @@ export default function WorldMenu() {
       sx: num('px') ?? 5555,
       sy: num('py') ?? 5620,
       salary: save.salary,
+      governmentBaseSalary: num('governmentBaseSalary') ?? (save.charClass === 'corporate' ? 100 : save.charClass === 'replicant' ? 50 : 25),
+      businessProfit: num('businessProfit') ?? 0,
+      realSalaryAmount: num('realSalaryAmount') ?? 0,
+      incomeType: incomeTypeParsed,
       hasBusiness: bool('hasBusiness'),
       bizType: (() => { const bt = str('bizType'); if (bt === 'fictitious') return 'minx'; return bt ?? (bool('hasBusiness') ? 'minx' : 'unemployed'); })(),
       workstation: str('workstation'),
@@ -834,7 +841,7 @@ export default function WorldMenu() {
           ? null
           : name.trim().toUpperCase() + ' OPS';
     const ws = hasBusiness ? getWorkstation(bizType === 'real' ? 'real' : 'minx', industry, minxCompany.trim().toUpperCase() || 'UNKNOWN') : null;
-    const startSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : 15000;
+    const startSalary = 0;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const signupTimestamp = new Date().toISOString();
     const factionStartOutfit = cls === 'corporate' ? 'corpo_suit' : cls === 'outlaw' ? 'wasteland_gear' : cls === 'replicant' ? 'replicant_civvies' : 'default';
@@ -845,7 +852,9 @@ export default function WorldMenu() {
       sx: spawnPos.x,
       sy: spawnPos.y,
       salary: startSalary,
-      governmentBaseSalary: startSalary,
+      businessProfit: 0,
+      realSalaryAmount: 0,
+      incomeType: bizType,
       hasBusiness,
       bizType: bizType,
       workstation: ws?.bid ?? null,
@@ -1432,7 +1441,7 @@ export default function WorldMenu() {
                     <div style={{ ...VT, fontSize: '1.4rem', color: selected.color, letterSpacing: '.12em', marginBottom: '.5rem' }}>{selected.label}</div>
                     <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
-                      {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['SALARY', selected.salary], ['NETWORTH', selected.networth], ['START', selected.start]].map(([k, v]) => (
+                      {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['GOV BASE', selected.salary], ['START FIAT', selected.networth], ['START', selected.start]].map(([k, v]) => (
                         <div key={k} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.4rem .5rem' }}>
                           <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
                           <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
