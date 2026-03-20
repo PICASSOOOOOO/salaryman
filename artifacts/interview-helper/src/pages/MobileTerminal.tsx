@@ -206,18 +206,15 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...ST }}>
-        <div style={{ ...VT, fontSize: '2rem', color: '#00ff41', letterSpacing: '.2em', marginBottom: '.5rem', textShadow: '0 0 20px rgba(0,255,65,.3)' }}>TERMINAL</div>
-        <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '1.5rem' }}>MOBILE ACCESS POINT</div>
-        <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, textAlign: 'center', maxWidth: 300 }}>
-          Authentication required. Sign in to access your operative's terminal remotely.
-        </div>
-        <button
-          onClick={() => navigate('/profile')}
-          style={{ marginTop: '1.2rem', padding: '.6rem 1.5rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', ...VT, fontSize: '1.1rem', letterSpacing: '.15em', cursor: 'pointer' }}
+      <div style={{ minHeight: '100dvh', background: '#09090b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...ST }}>
+        <div style={{ fontSize: '0.85rem', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.1em', marginBottom: '8px' }}>ACCESS DENIED</div>
+        <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em', marginBottom: '16px' }}>AUTHENTICATION REQUIRED</div>
+        <a
+          href="/profile"
+          style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', border: '1px solid rgba(34,197,94,0.25)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}
         >
           SIGN IN
-        </button>
+        </a>
       </div>
     );
   }

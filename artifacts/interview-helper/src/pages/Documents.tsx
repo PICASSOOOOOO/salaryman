@@ -907,7 +907,8 @@ export default function Documents() {
       <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', textAlign: 'center' }}>
           <div style={{ marginBottom: '8px' }}>ACCESS DENIED</div>
-          <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)' }}>AUTHENTICATION REQUIRED</div>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', marginBottom: '16px' }}>AUTHENTICATION REQUIRED</div>
+          <a href="/profile" style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', border: '1px solid rgba(34,197,94,0.25)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}>SIGN IN</a>
         </div>
       </div>
     );

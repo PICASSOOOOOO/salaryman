@@ -54,11 +54,14 @@ export default function BillboardAdmin() {
 
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', background: '#000a02', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', letterSpacing: '.2em', marginBottom: '1rem' }}>ACCESS DENIED</div>
-          <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.4)' }}>Authentication required for billboard administration.</div>
-          <button onClick={() => navigate('/dashboard')} style={{ marginTop: '1rem', padding: '.5rem 1.5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>← DASHBOARD</button>
+      <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', textAlign: 'center' }}>
+          <div style={{ marginBottom: '8px' }}>ACCESS DENIED</div>
+          <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', marginBottom: '16px' }}>AUTHENTICATION REQUIRED</div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <a href="/profile" style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.5)', border: '1px solid rgba(34,197,94,0.25)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}>SIGN IN</a>
+            <a href="/dashboard" style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.3)', border: '1px solid rgba(34,197,94,0.15)', padding: '6px 16px', textDecoration: 'none', letterSpacing: '0.1em' }}>← DASHBOARD</a>
+          </div>
         </div>
       </div>
     );
