@@ -1,4 +1,4 @@
-import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS } from "@workspace/db";
+import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 
 export type Tier = "free" | "pro";
@@ -40,8 +40,24 @@ export function isOwnerEmail(email: string | undefined | null): boolean {
   return ownerEmails().includes(email.toLowerCase());
 }
 
+export async function isActiveDeveloperOrgMember(userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ orgId: orgMembersTable.orgId })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, and(
+      eq(orgMembersTable.orgId, organizationsTable.id),
+      eq(organizationsTable.isDeveloper, true)
+    ))
+    .where(and(
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.status, "active")
+    ));
+  return rows.length > 0;
+}
+
 export async function getUserFeatures(userId: string, email?: string | null): Promise<Set<FeatureKey>> {
   if (isOwnerEmail(email)) return new Set(FEATURE_KEYS);
+  if (await isActiveDeveloperOrgMember(userId)) return new Set(FEATURE_KEYS);
   const rows = await db.select().from(userFeaturesTable).where(eq(userFeaturesTable.userId, userId));
   return new Set(rows.map(r => r.featureKey as FeatureKey));
 }
@@ -76,6 +92,7 @@ export async function hasActiveTrial(userId: string, email: string | undefined |
 
 export async function hasFeature(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
   if (isOwnerEmail(email)) return true;
+  if (await isActiveDeveloperOrgMember(userId)) return true;
   const [row] = await db
     .select()
     .from(userFeaturesTable)

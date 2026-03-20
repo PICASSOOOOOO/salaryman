@@ -1,6 +1,13 @@
-import { pgTable, serial, varchar, text, timestamp, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { sql } from "drizzle-orm";
+
+export const RESERVED_ORG_NAMES = ["picasso", "picassoo", "picasso ai", "picasso ai llc", "picassoo.ai"];
+
+export function isReservedOrgName(name: string): boolean {
+  return RESERVED_ORG_NAMES.includes(name.trim().toLowerCase());
+}
 
 export const organizationsTable = pgTable("organizations", {
   id: serial("id").primaryKey(),
@@ -9,9 +16,12 @@ export const organizationsTable = pgTable("organizations", {
   size: varchar("size", { length: 40 }),
   ownerUserId: varchar("owner_user_id").notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
+  isDeveloper: boolean("is_developer").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("organizations_name_unique_idx").on(sql`lower(${t.name})`),
+]);
 
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;

@@ -9,8 +9,9 @@ import {
   FEATURE_KEYS,
   type FeatureKey,
   type OrgMember,
+  isReservedOrgName,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { grantFeature } from "../lib/plan";
 import { getStripe } from "./stripe";
 
@@ -102,15 +103,40 @@ router.post("/orgs", async (req, res) => {
     return;
   }
 
-  const [org] = await db
-    .insert(organizationsTable)
-    .values({
-      name: name.trim().toUpperCase(),
-      industry: industry ? String(industry).trim() : null,
-      size: size ? String(size).trim() : null,
-      ownerUserId: userId,
-    })
-    .returning();
+  if (isReservedOrgName(name)) {
+    res.status(400).json({ error: "That organization name is reserved and cannot be used" });
+    return;
+  }
+
+  const [existingOrg] = await db
+    .select()
+    .from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = lower(${name.trim()})`);
+  if (existingOrg) {
+    res.status(400).json({ error: "An organization with that name already exists" });
+    return;
+  }
+
+  let org: typeof organizationsTable.$inferSelect;
+  try {
+    const [inserted] = await db
+      .insert(organizationsTable)
+      .values({
+        name: name.trim().toUpperCase(),
+        industry: industry ? String(industry).trim() : null,
+        size: size ? String(size).trim() : null,
+        ownerUserId: userId,
+      })
+      .returning();
+    org = inserted;
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code === "23505") {
+      res.status(400).json({ error: "An organization with that name already exists" });
+      return;
+    }
+    throw err;
+  }
 
   await db.insert(orgMembersTable).values({
     orgId: org.id,
@@ -157,7 +183,23 @@ router.put("/orgs/:orgId", async (req, res) => {
 
   const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
   const updates: { name?: string; industry?: string | null; size?: string | null } = {};
-  if (name && typeof name === "string") updates.name = name.trim().toUpperCase();
+
+  if (name && typeof name === "string") {
+    if (isReservedOrgName(name)) {
+      res.status(400).json({ error: "That organization name is reserved and cannot be used" });
+      return;
+    }
+    const [existingOrg] = await db
+      .select()
+      .from(organizationsTable)
+      .where(sql`lower(${organizationsTable.name}) = lower(${name.trim()}) AND ${organizationsTable.id} != ${orgId}`);
+    if (existingOrg) {
+      res.status(400).json({ error: "An organization with that name already exists" });
+      return;
+    }
+    updates.name = name.trim().toUpperCase();
+  }
+
   if (industry !== undefined) updates.industry = industry ? String(industry).trim() : null;
   if (size !== undefined) updates.size = size ? String(size).trim() : null;
 
@@ -166,11 +208,22 @@ router.put("/orgs/:orgId", async (req, res) => {
     return;
   }
 
-  const [updated] = await db
-    .update(organizationsTable)
-    .set(updates)
-    .where(eq(organizationsTable.id, orgId))
-    .returning();
+  let updated: typeof organizationsTable.$inferSelect;
+  try {
+    const [row] = await db
+      .update(organizationsTable)
+      .set(updates)
+      .where(eq(organizationsTable.id, orgId))
+      .returning();
+    updated = row;
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code === "23505") {
+      res.status(400).json({ error: "An organization with that name already exists" });
+      return;
+    }
+    throw err;
+  }
 
   res.json({ org: updated });
 });
@@ -259,6 +312,12 @@ router.post("/orgs/invite/accept", async (req, res) => {
     return;
   }
 
+  const [invitedOrg] = await db
+    .select()
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, invite.orgId));
+  const developerSpawn = invitedOrg?.isDeveloper ? "Shadow Tower" : undefined;
+
   const existingMember = await db
     .select()
     .from(orgMembersTable)
@@ -267,7 +326,7 @@ router.post("/orgs/invite/accept", async (req, res) => {
   if (existingMember.length > 0) {
     await db
       .update(orgMembersTable)
-      .set({ status: "active", joinedAt: new Date() })
+      .set({ status: "active", joinedAt: new Date(), ...(developerSpawn ? { spawnLocation: developerSpawn } : {}) })
       .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
   } else {
     await db.insert(orgMembersTable).values({
@@ -279,6 +338,7 @@ router.post("/orgs/invite/accept", async (req, res) => {
       invitedByUserId: invite.invitedByUserId,
       inviteEmail: invite.inviteEmail,
       joinedAt: new Date(),
+      ...(developerSpawn ? { spawnLocation: developerSpawn } : {}),
     });
   }
 
