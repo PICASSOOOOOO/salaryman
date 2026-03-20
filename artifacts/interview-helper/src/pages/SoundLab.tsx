@@ -82,12 +82,22 @@ interface AudioBus {
   analyser: AnalyserNode;
 }
 
+interface EffectChainResult {
+  input: GainNode;
+  output: GainNode;
+  oscillators: OscillatorNode[];
+}
+
 interface AudioEngine {
   ctx: AudioContext;
   masterGain: GainNode;
   masterAnalyser: AnalyserNode;
   trackBuses: AudioBus[];
-  effectNodes: Map<number, AudioNode[]>;
+  activeEffects: EffectChainResult[];
+  masterInsertIn: GainNode;
+  masterInsertOut: GainNode;
+  drumFilter: BiquadFilterNode;
+  drumDrive: WaveShaperNode;
 }
 
 interface SynthVoice {
@@ -1230,48 +1240,48 @@ function Looper({ bpm, globalPlaying, muted }: { bpm: number; globalPlaying: boo
   );
 }
 
-function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectParams) {
+function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectParams): EffectChainResult {
   const dry = ctx.createGain(); dry.gain.value = 1 - effect.wetDry;
   const wet = ctx.createGain(); wet.gain.value = effect.wetDry;
   const merger = ctx.createGain(); dry.connect(merger); wet.connect(merger);
+  const oscillators: OscillatorNode[] = [];
+  const mkInput = () => ctx.createGain();
   switch (effectIdx) {
     case 0: {
       const conv = ctx.createConvolver();
       conv.buffer = mkImpulseResponse(ctx, effect.reverbDecay ?? 2.5, effect.reverbDecay ?? 2.5);
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(conv); conv.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(conv); conv.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 1: {
       const delay = ctx.createDelay(5);
       delay.delayTime.value = effect.delayTime ?? 0.3;
       const fb = ctx.createGain(); fb.gain.value = effect.delayFeedback ?? 0.4;
       delay.connect(fb); fb.connect(delay);
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(delay); delay.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 2: {
       const ws = ctx.createWaveShaper();
-      const drive = effect.distDrive ?? 20;
-      const samples = 44100;
-      const curve = new Float32Array(samples);
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1;
-        curve[i] = ((3 + drive) * x * 20 * (Math.PI / 180)) / (Math.PI + drive * Math.abs(x));
-      }
-      ws.curve = curve; ws.oversample = '4x';
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(ws); ws.connect(wet); return s; })(), output: merger };
+      ws.curve = makeDriveCurve(effect.distDrive ?? 20); ws.oversample = '4x';
+      const s = mkInput(); s.connect(dry); s.connect(ws); ws.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 3: {
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = effect.compThreshold ?? -24;
       comp.ratio.value = effect.compRatio ?? 4;
       comp.knee.value = 10; comp.attack.value = 0.003; comp.release.value = 0.25;
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(comp); comp.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(comp); comp.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 4: {
       const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 320; low.gain.value = effect.eqLow ?? 0;
       const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 1000; mid.Q.value = 0.5; mid.gain.value = effect.eqMid ?? 0;
       const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 3200; high.gain.value = effect.eqHigh ?? 0;
       low.connect(mid); mid.connect(high);
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(low); high.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(low); high.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 5: {
       const delay = ctx.createDelay(0.05);
@@ -1280,7 +1290,9 @@ function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectPa
       lfo.type = 'sine'; lfo.frequency.value = effect.chorusRate ?? 1.5;
       const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.chorusDepth ?? 0.003;
       lfo.connect(lfoGain); lfoGain.connect(delay.delayTime); lfo.start();
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+      oscillators.push(lfo);
+      const s = mkInput(); s.connect(dry); s.connect(delay); delay.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 6: {
       const delay = ctx.createDelay(0.02);
@@ -1291,7 +1303,9 @@ function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectPa
       lfo.type = 'sine'; lfo.frequency.value = effect.flangerRate ?? 0.5;
       const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.flangerDepth ?? 0.003;
       lfo.connect(lfoGain); lfoGain.connect(delay.delayTime); lfo.start();
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(delay); delay.connect(wet); return s; })(), output: merger };
+      oscillators.push(lfo);
+      const s = mkInput(); s.connect(dry); s.connect(delay); delay.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 7: {
       const filters: BiquadFilterNode[] = [];
@@ -1304,7 +1318,9 @@ function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectPa
       lfo.type = 'sine'; lfo.frequency.value = effect.phaserRate ?? 0.8;
       const lfoGain = ctx.createGain(); lfoGain.gain.value = effect.phaserDepth ?? 400;
       lfo.connect(lfoGain); filters.forEach(f => lfoGain.connect(f.frequency)); lfo.start();
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(filters[0]); filters[filters.length - 1].connect(wet); return s; })(), output: merger };
+      oscillators.push(lfo);
+      const s = mkInput(); s.connect(dry); s.connect(filters[0]); filters[filters.length - 1].connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     case 8: {
       const tremGain = ctx.createGain();
@@ -1313,29 +1329,44 @@ function buildEffectChain(ctx: AudioContext, effectIdx: number, effect: EffectPa
       lfo.type = 'sine'; lfo.frequency.value = effect.tremoloRate ?? 4;
       const lfoGain = ctx.createGain(); lfoGain.gain.value = (effect.tremoloDepth ?? 0.5) / 2;
       lfo.connect(lfoGain); lfoGain.connect(tremGain.gain); lfo.start();
-      return { input: (() => { const s = ctx.createGain(); s.connect(tremGain); tremGain.connect(merger); return s; })(), output: merger };
+      oscillators.push(lfo);
+      const s = mkInput(); s.connect(tremGain); tremGain.connect(merger);
+      return { input: s, output: merger, oscillators };
     }
     case 9: {
       const ws = ctx.createWaveShaper();
       const bits = effect.bitDepth ?? 8;
       const levels = Math.pow(2, bits);
       const samples = 44100;
-      const curve = new Float32Array(samples);
+      const curve = new Float32Array(new ArrayBuffer(samples * 4));
       for (let i = 0; i < samples; i++) { const x = (i * 2) / samples - 1; curve[i] = Math.round(x * levels) / levels; }
       ws.curve = curve;
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(ws); ws.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(ws); ws.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
     default: {
-      return { input: (() => { const s = ctx.createGain(); s.connect(dry); s.connect(wet); return s; })(), output: merger };
+      const s = mkInput(); s.connect(dry); s.connect(wet);
+      return { input: s, output: merger, oscillators };
     }
   }
 }
 
-function EffectsRack() {
-  const [effects, setEffects] = useState<EffectParams[]>(EFFECT_NAMES.map(() => ({ ...DEFAULT_EFFECT })));
+function EffectsRack({ effects, onEffectsChange, engine }: {
+  effects: EffectParams[];
+  onEffectsChange: (effects: EffectParams[]) => void;
+  engine: AudioEngine | null;
+}) {
   const [selected, setSelected] = useState(0);
-  const upEff = (idx: number, key: keyof EffectParams, val: EffectParams[keyof EffectParams]) =>
-    setEffects(es => es.map((e, i) => i === idx ? { ...e, [key]: val } : e));
+  const upEff = (idx: number, key: keyof EffectParams, val: EffectParams[keyof EffectParams]) => {
+    const next = effects.map((e, i) => i === idx ? { ...e, [key]: val } : e);
+    onEffectsChange(next);
+  };
+
+  useEffect(() => {
+    if (!engine) return;
+    applyMasterEffects(engine, effects);
+  }, [effects, engine]);
+
   const eff = effects[selected];
 
   return (
@@ -1542,23 +1573,85 @@ function Timeline({ tracks, bpm }: { tracks: TrackDef[]; bpm: number }) {
   );
 }
 
+function makeDriveCurve(drive: number): Float32Array<ArrayBuffer> {
+  const samples = 44100;
+  const curve = new Float32Array(new ArrayBuffer(samples * 4));
+  if (drive <= 1) {
+    for (let i = 0; i < samples; i++) curve[i] = (i * 2) / samples - 1;
+  } else {
+    for (let i = 0; i < samples; i++) {
+      const x = (i * 2) / samples - 1;
+      curve[i] = ((3 + drive) * x * 20 * (Math.PI / 180)) / (Math.PI + drive * Math.abs(x));
+    }
+  }
+  return curve;
+}
+
+function applyMasterEffects(engine: AudioEngine, effects: EffectParams[]) {
+  const ctx = engine.ctx;
+  engine.masterInsertIn.disconnect();
+  for (const chain of engine.activeEffects) {
+    for (const osc of chain.oscillators) { try { osc.stop(); } catch {} }
+    try { chain.input.disconnect(); } catch {}
+    try { chain.output.disconnect(); } catch {}
+  }
+  engine.activeEffects = [];
+
+  const enabled = effects.map((e, i) => ({ idx: i, params: e })).filter(e => e.params.enabled);
+  if (enabled.length === 0) {
+    engine.masterInsertIn.connect(engine.masterInsertOut);
+    return;
+  }
+  let prevOutput: AudioNode = engine.masterInsertIn;
+  for (const { idx, params } of enabled) {
+    const chain = buildEffectChain(ctx, idx, params);
+    prevOutput.connect(chain.input);
+    prevOutput = chain.output;
+    engine.activeEffects.push(chain);
+  }
+  prevOutput.connect(engine.masterInsertOut);
+}
+
 function createAudioEngine(trackCount: number): AudioEngine {
   const ctx = actx();
   const masterGain = ctx.createGain();
   masterGain.gain.value = 0.8;
   const masterAnalyser = ctx.createAnalyser();
   masterAnalyser.fftSize = 256;
+
+  const masterInsertIn = ctx.createGain();
+  const masterInsertOut = ctx.createGain();
+  masterInsertIn.connect(masterInsertOut);
+  masterInsertOut.connect(masterGain);
   masterGain.connect(masterAnalyser);
   masterAnalyser.connect(ctx.destination);
+
+  const drumFilter = ctx.createBiquadFilter();
+  drumFilter.type = 'lowpass';
+  drumFilter.frequency.value = 20000;
+  drumFilter.Q.value = 0.7;
+
+  const drumDrive = ctx.createWaveShaper();
+  drumDrive.oversample = '4x';
+  drumDrive.curve = makeDriveCurve(1);
+
   const trackBuses: AudioBus[] = [];
   for (let i = 0; i < trackCount; i++) {
     const gain = ctx.createGain(); gain.gain.value = 0.8;
     const panner = new StereoPannerNode(ctx);
     const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
-    gain.connect(panner); panner.connect(analyser); analyser.connect(masterGain);
+    if (i === 0) {
+      gain.connect(drumFilter);
+      drumFilter.connect(drumDrive);
+      drumDrive.connect(panner);
+    } else {
+      gain.connect(panner);
+    }
+    panner.connect(analyser);
+    analyser.connect(masterInsertIn);
     trackBuses.push({ gain, panner, analyser });
   }
-  return { ctx, masterGain, masterAnalyser, trackBuses, effectNodes: new Map() };
+  return { ctx, masterGain, masterAnalyser, trackBuses, activeEffects: [], masterInsertIn, masterInsertOut, drumFilter, drumDrive };
 }
 
 interface MidiState {
@@ -1712,6 +1805,9 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   ]);
   const [projectName, setProjectName] = useState('UNTITLED PROJECT');
   const [boomerMode] = useState(() => getDefaultBoomerMode());
+  const [masterEffects, setMasterEffects] = useState<EffectParams[]>(EFFECT_NAMES.map(() => ({ ...DEFAULT_EFFECT })));
+  const [drumFilterCutoff, setDrumFilterCutoff] = useState(20000);
+  const [drumDriveAmount, setDrumDriveAmount] = useState(1);
   const engineRef = useRef<AudioEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [activePads, setActivePads] = useState<Set<number>>(new Set());
@@ -1720,6 +1816,14 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const midiVoicesRef = useRef<Map<number, MidiVoiceHandle>>(new Map());
 
   useEffect(() => { synthVoiceRef.current = synthVoice; }, [synthVoice]);
+
+  useEffect(() => {
+    if (engineRef.current) engineRef.current.drumFilter.frequency.value = drumFilterCutoff;
+  }, [drumFilterCutoff]);
+
+  useEffect(() => {
+    if (engineRef.current) engineRef.current.drumDrive.curve = makeDriveCurve(drumDriveAmount);
+  }, [drumDriveAmount]);
 
   const [globalPlaying, setGlobalPlaying] = useState(false);
   const [globalStep, setGlobalStep] = useState(0);
@@ -1731,8 +1835,21 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
     setInstrumentMutes(m => ({ ...m, [id]: !m[id] }));
   }, []);
 
+  const masterEffectsRef = useRef(masterEffects);
+  useEffect(() => { masterEffectsRef.current = masterEffects; }, [masterEffects]);
+  const drumFilterRef = useRef(drumFilterCutoff);
+  useEffect(() => { drumFilterRef.current = drumFilterCutoff; }, [drumFilterCutoff]);
+  const drumDriveRef = useRef(drumDriveAmount);
+  useEffect(() => { drumDriveRef.current = drumDriveAmount; }, [drumDriveAmount]);
+
   const initEngine = useCallback(() => {
-    if (!engineRef.current) { engineRef.current = createAudioEngine(5); setEngineReady(true); }
+    if (!engineRef.current) {
+      engineRef.current = createAudioEngine(5);
+      engineRef.current.drumFilter.frequency.value = drumFilterRef.current;
+      engineRef.current.drumDrive.curve = makeDriveCurve(drumDriveRef.current);
+      applyMasterEffects(engineRef.current, masterEffectsRef.current);
+      setEngineReady(true);
+    }
     return engineRef.current;
   }, []);
 
@@ -1964,11 +2081,11 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
             <div style={{ ...hwPanel, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div style={hwLabel}>CONTROLS</div>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                <HwKnob label="FILTER" val={2000} min={50} max={20000} step={10} onChange={() => {}} color={OC} />
-                <HwKnob label="DRIVE" val={20} min={1} max={100} step={1} onChange={() => {}} color={OC} />
-                <HwKnob label="DECAY" val={0.1} min={0.001} max={2} onChange={() => {}} />
-                <HwKnob label="ATTACK" val={0.01} min={0.001} max={2} onChange={() => {}} />
-                <HwKnob label="RELEASE" val={0.3} min={0.001} max={4} onChange={() => {}} />
+                <HwKnob label="FILTER" val={drumFilterCutoff} min={50} max={20000} step={10} onChange={setDrumFilterCutoff} color={OC} />
+                <HwKnob label="DRIVE" val={drumDriveAmount} min={1} max={100} step={1} onChange={setDrumDriveAmount} color={OC} />
+                <HwKnob label="DECAY" val={synthVoice.decay} min={0.001} max={2} onChange={v => setSynthVoice(sv => ({ ...sv, decay: v }))} />
+                <HwKnob label="ATTACK" val={synthVoice.attack} min={0.001} max={2} onChange={v => setSynthVoice(sv => ({ ...sv, attack: v }))} />
+                <HwKnob label="RELEASE" val={synthVoice.release} min={0.001} max={4} onChange={v => setSynthVoice(sv => ({ ...sv, release: v }))} />
               </div>
             </div>
           </div>
@@ -2005,7 +2122,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         </div>
 
         <div style={{ display: section === 'effects' ? 'block' : 'none' }}>
-          <EffectsRack />
+          <EffectsRack effects={masterEffects} onEffectsChange={setMasterEffects} engine={engineRef.current} />
         </div>
 
       </div>
