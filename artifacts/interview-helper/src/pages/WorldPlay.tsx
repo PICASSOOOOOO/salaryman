@@ -139,6 +139,7 @@ const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_
 
 const FLOOR_PASSWORDS: Map<string, Map<number, string>> = new Map();
 const HOME_PASSWORDS: Map<string, string> = new Map();
+const INTERIOR_OBJ_COOLDOWNS: Map<string, number> = new Map();
 
 const VALID_PASSWORD = (pw: string): string | null => {
   if (pw.length < 6) return 'Minimum 6 characters required.';
@@ -5261,6 +5262,258 @@ export default function WorldPlay() {
               setNarr(hasPw ? '> DOOR LOCK — Your unit is locked. Manage your lock.' : '> DOOR LOCK — No password set. Set one to secure your unit.');
               return;
             }
+            if (tObj.type === 'vending_machine') {
+              sfxEnter(); setShowPablo(true); frozenRef.current = true;
+              setNarr('> VENDING MACHINE — Browse available items.');
+              return;
+            }
+            // ── New object interactions ─────────────────────────────────────
+            const _objCoolKey = `${g.interior?.bid ?? ''}_${tObj.x}_${tObj.y}`;
+            const _objCoolUntil = INTERIOR_OBJ_COOLDOWNS.get(_objCoolKey) ?? 0;
+            const _objOnCooldown = _objCoolUntil > Date.now();
+            if (tObj.type === 'bed') {
+              if (_objOnCooldown) { setNarr('> BED — You already rested here recently.'); return; }
+              sfxEnter();
+              const healAmt = Math.floor(g.maxHp * 0.35);
+              g.hp = Math.min(g.maxHp, g.hp + healAmt);
+              g.energy = Math.min(100, g.energy + 25);
+              setHp(g.hp); setEnergy(g.energy);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 30000);
+              const bedMsgs = ['You collapse onto the bed. The world fades for a moment.', 'A few minutes of horizontal silence. Better.', 'The mattress creaks under your weight. Luxury is relative.', 'You close your eyes. Minx City still waits outside.'];
+              setNarr(`> BED — Rested. HP +${healAmt}. "${bedMsgs[Math.floor(Math.random() * bedMsgs.length)]}"`);
+              return;
+            }
+            if (tObj.type === 'medical_bed') {
+              if (_objOnCooldown) { setNarr('> MEDICAL BED — The bed is occupied or recently used.'); return; }
+              sfxEnter();
+              const medHeal = Math.floor(g.maxHp * 0.5);
+              g.hp = Math.min(g.maxHp, g.hp + medHeal);
+              setHp(g.hp);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 60000);
+              setNarr(`> MEDICAL BED — Vital signs stabilizing. HP +${medHeal}. The monitors beep steadily.`);
+              return;
+            }
+            if (tObj.type === 'desk' || tObj.type === 'nightstand') {
+              if (_objOnCooldown) { setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — Already searched.`); return; }
+              sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 120000);
+              const deskRoll = Math.random();
+              if (deskRoll > 0.7) {
+                const lootAmt = Math.floor(Math.random() * 80 + 20);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — You rummage through the drawers. Found ƒ${lootAmt} FIAT tucked in the back.`);
+              } else if (deskRoll > 0.4) {
+                const deskMsgs = ['Old receipts, a broken stylus, and dust.', 'A half-eaten energy bar and some encrypted notes.', 'Someone\'s expired transit pass and a crumpled resignation letter.', 'Empty. Someone cleared this out before you.'];
+                setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — ${deskMsgs[Math.floor(Math.random() * deskMsgs.length)]}`);
+              } else {
+                const smallLoot = Math.floor(Math.random() * 30 + 5);
+                g.salary += smallLoot; setSalary(g.salary);
+                setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — Found ƒ${smallLoot} in loose change under the drawer.`);
+              }
+              return;
+            }
+            if (tObj.type === 'locker' || tObj.type === 'filing_cabinet') {
+              if (_objOnCooldown) { setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — Already searched.`); return; }
+              sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
+              const lockerRoll = Math.random();
+              if (lockerRoll > 0.65) {
+                const lootAmt = Math.floor(Math.random() * 120 + 30);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — Found ƒ${lootAmt} FIAT. Someone left their lunch money and forgot about it.`);
+              } else if (lockerRoll > 0.35) {
+                const lockerMsgs = ['Redacted documents. Whoever worked here covered their tracks.', 'Old uniform, worn shoes, a photo of someone\'s family.', 'Maintenance logs going back three years. Nothing useful.', 'Empty hangers. The previous occupant cleared out fast.'];
+                setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — ${lockerMsgs[Math.floor(Math.random() * lockerMsgs.length)]}`);
+              } else {
+                setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — Locked. No way in without the code.`);
+              }
+              return;
+            }
+            if (tObj.type === 'crate') {
+              if (_objOnCooldown) { setNarr('> CRATE — Already searched.'); return; }
+              sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
+              const crateRoll = Math.random();
+              if (crateRoll > 0.6) {
+                const lootAmt = Math.floor(Math.random() * 150 + 50);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> CRATE — Pried it open. Found ƒ${lootAmt} FIAT in a sealed envelope at the bottom.`);
+              } else {
+                const crateMsgs = ['Packed with industrial foam and nothing else.', 'Shipping manifest, some zip ties, and a defunct tracking device.', 'Old hardware parts, none functional.', 'Sealed compartment — no contents.'];
+                setNarr(`> CRATE — ${crateMsgs[Math.floor(Math.random() * crateMsgs.length)]}`);
+              }
+              return;
+            }
+            if (tObj.type === 'chair' || tObj.type === 'couch') {
+              sfxEnter();
+              const sitMsgs = [
+                'You sit down for a moment. Your feet appreciate the break.',
+                'The seat is surprisingly comfortable for a place like this.',
+                'You take the weight off your legs. Minx City can wait.',
+                'A brief moment of stillness in the chaos.',
+                'You slouch into the seat. Not your worst decision today.',
+              ];
+              g.energy = Math.min(100, g.energy + 5);
+              setEnergy(g.energy);
+              setNarr(`> ${tObj.type === 'couch' ? 'COUCH' : 'CHAIR'} — ${sitMsgs[Math.floor(Math.random() * sitMsgs.length)]} Energy +5.`);
+              return;
+            }
+            if (tObj.type === 'bookshelf') {
+              sfxEnter();
+              const bookMsgs = [
+                '"THE INVISIBLE HAND: A HISTORY OF SHADOW MARKETS" — Chapter 12 is missing.',
+                '"MINX CITY MUNICIPAL CODE, VOL. III" — Most of it has been redacted.',
+                '"REPLICANT INTEGRATION PROTOCOLS" — A technical manual from 2041, now illegal.',
+                '"CORPORATE SURVIVAL GUIDE" — "Rule 1: Never trust anyone with a business card."',
+                '"BEYOND THE WALL" — A banned novel. Someone hid it spine-in.',
+                '"FIAT AND FURY: THE ECONOMICS OF DESPERATION" — Dog-eared and annotated heavily.',
+              ];
+              setNarr(`> BOOKSHELF — ${bookMsgs[Math.floor(Math.random() * bookMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'newspaper') {
+              sfxEnter();
+              const seasonIdx = Math.floor(((g.worldTime ?? 8) / 24 * 365) / 91.25) % 4;
+              setShowNewspaper(THE_MINX_ISSUES[seasonIdx] ?? THE_MINX_ISSUES[0]);
+              setGamePaused(true);
+              return;
+            }
+            if (tObj.type === 'equipment') {
+              sfxEnter();
+              const equipMsgs = [
+                'Biomonitor Array — All readings nominal. Three unknown anomalies.',
+                'Atmospheric Scrubber — Filter 78% saturated. Maintenance overdue.',
+                'Neural Interface Hub — 14 active connections. 2 unauthorized.',
+                'Power Regulation Unit — Drawing 340% rated capacity. No alerts filed.',
+                'Life Support Secondary — Running on backup. Primary offline since Tuesday.',
+              ];
+              setNarr(`> ${tObj.label ?? 'EQUIPMENT'} — ${equipMsgs[Math.floor(Math.random() * equipMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'counter' || tObj.type === 'table' || tObj.type === 'shelf' || tObj.type === 'reception') {
+              sfxEnter();
+              const examMsgs = [
+                'Nothing of immediate value. Ordinary surface clutter.',
+                'A coffee ring stain and some data chips, wiped clean.',
+                'Scratched markings on the underside. Numbers. An address?',
+                'Dust outlines where something used to sit. Recently moved.',
+                'Standard issue. Nothing distinguishes it from ten thousand others.',
+              ];
+              setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — ${examMsgs[Math.floor(Math.random() * examMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'plant') {
+              sfxEnter();
+              const plantMsgs = [
+                'Synthetic. The label says "BioLux Living Decor™". It is not living.',
+                'Real, somehow. Someone has been watering it. That\'s dedication.',
+                'The leaves are dusty. No one has touched this in months.',
+                'A resilient little thing. Growing through concrete cracks.',
+              ];
+              setNarr(`> PLANT — ${plantMsgs[Math.floor(Math.random() * plantMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'photocopier') {
+              sfxEnter();
+              const copierMsgs = [
+                'The queue is 847 pages deep. Someone is running the system dry.',
+                'Paper jam on tray 3. Error code: SOUL_CRUSHED_47.',
+                'Output tray holds a single page: a resignation letter, unsigned.',
+                'Warm to the touch. It has been running all night. Nothing in the output.',
+              ];
+              setNarr(`> PHOTOCOPIER — ${copierMsgs[Math.floor(Math.random() * copierMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'tv_screen') {
+              sfxEnter();
+              const tvMsgs = [
+                'Breaking: FIAT reserves down 4% — Corp spokesperson calls it "healthy correction".',
+                'Weather: Acid particulates elevated. Stay indoors. Filter masks mandatory in sectors 7-12.',
+                'Tonight: "Shadow Markets" — an investigative series. Premieres never.',
+                'Ad: PABLO CORP NEURAL IMPLANTS — "See more. Feel less." ™',
+                'Emergency Broadcast: [SIGNAL INTERRUPTED] — [SIGNAL INTERRUPTED]',
+              ];
+              setNarr(`> TV SCREEN — ${tvMsgs[Math.floor(Math.random() * tvMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'terminal') {
+              sfxEnter();
+              const termMsgs = [
+                'ACCESS DENIED — Credentials not recognized. Incident logged.',
+                'SYSTEM OFFLINE — Maintenance window. Resume: UNKNOWN.',
+                'PABLO CORP SECURE TERMINAL — Login required. Unauthorized access prosecuted.',
+                'LOCKED — This terminal is restricted to authorized personnel.',
+                'CONNECTION TIMEOUT — Remote server unreachable.',
+              ];
+              setNarr(`> ${tObj.label ?? 'TERMINAL'} — ${termMsgs[Math.floor(Math.random() * termMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'server') {
+              sfxEnter();
+              const serverMsgs = [
+                'RACK SERVER — Uptime: 847 days. Load: 98.7%. No maintenance window scheduled.',
+                'PROCESSING UNIT — Encrypted workload. Contents classified. Do not touch.',
+                'NODE 7-C — Active. Routing 14,000 requests/sec across the PABLO network.',
+                'BACKUP ARRAY — Last sync: 6 weeks ago. Integrity: UNKNOWN.',
+                'HOT STANDBY — Waiting for primary failure. It will come.',
+              ];
+              setNarr(`> SERVER — ${serverMsgs[Math.floor(Math.random() * serverMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'security_gate') {
+              sfxEnter();
+              const gateMsgs = [
+                'SECURITY CHECKPOINT — Access denied. Clearance level insufficient.',
+                'SENSOR ARRAY ACTIVE — All personnel must present credentials.',
+                'RESTRICTED AREA — Unauthorized crossing triggers automated response.',
+                'CHECKPOINT OFFLINE — Override in progress. Do not attempt to pass.',
+              ];
+              setNarr(`> SECURITY GATE — ${gateMsgs[Math.floor(Math.random() * gateMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'portrait') {
+              sfxEnter();
+              const portraitMsgs = [
+                'A framed portrait. The subject\'s eyes follow you. Or maybe that\'s just the lighting.',
+                'Corporate founder, circa 2028. The plaque has been removed.',
+                'Generic landscape print. Legally safe. Emotionally hollow.',
+                'PABLO CORP YEAR OF RECORD — signed by the board. None of them are here anymore.',
+                'Family photo. Someone left it when they were let go. No one came back for it.',
+              ];
+              setNarr(`> PORTRAIT — ${portraitMsgs[Math.floor(Math.random() * portraitMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'flag') {
+              sfxEnter();
+              const flagMsgs = [
+                'PABLO CORP banner. Gold thread. More expensive than your rent.',
+                'Company flag. The logo has been redesigned three times this year.',
+                'District flag. The district no longer exists under that name.',
+                'A banner for an organization that was quietly dissolved. The flag remained.',
+              ];
+              setNarr(`> FLAG — ${flagMsgs[Math.floor(Math.random() * flagMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'conference_table') {
+              sfxEnter();
+              const confMsgs = [
+                'Sixteen chairs. The important ones sit at the center. You are not invited.',
+                'This table has seen decisions that shaped the lives of thousands. All bad.',
+                'Scratched surface. Someone carved initials underneath. They are gone now.',
+                'Meeting room: BOOKED SOLID through 2031. Only if you know who to ask.',
+              ];
+              setNarr(`> CONFERENCE TABLE — ${confMsgs[Math.floor(Math.random() * confMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'window') {
+              sfxEnter();
+              const _isNight2 = (g.worldTime ?? 8) >= 19 || (g.worldTime ?? 8) < 4;
+              const winMsgs = _isNight2
+                ? ['Neon reflects off the rain-slicked streets below. The city never sleeps.', 'Distant sirens. Someone else\'s problem for now.', 'The nightlife district pulses three blocks east. You can\'t afford it.', 'City lights streak in the smog. Beautiful in a toxic kind of way.']
+                : ['Grey sky, grey streets. The usual.', 'Minx City from above. Smaller than it feels from inside.', 'A maintenance drone passes the window without stopping.', 'You can see the PABLO CORP tower from here. Everyone can.'];
+              setNarr(`> WINDOW — ${winMsgs[Math.floor(Math.random() * winMsgs.length)]}`);
+              return;
+            }
           }
           {
             const nearNP = NEWSPAPER_WORLD_SPOTS.find(np => Math.hypot(g.px - np.x, g.py - np.y) < 40);
@@ -7528,19 +7781,78 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = isHQLocked ? `rgba(255,100,60,${0.6 + dlPulse * 0.3})` : `rgba(0,220,130,${0.6 + dlPulse * 0.3})`;
             ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText(isHQLocked ? '⬤ SECURED' : '⬤ OPEN ACCESS', osx + obj.w / 2, osy + obj.h / 2 + 2);
+          } else if (obj.type === 'nightstand') {
+            // Nightstand: wooden box with a tiny drawer and lamp
+            ctx.fillStyle = 'rgb(100,70,40)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(130,90,50)';
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, obj.h - 2);
+            ctx.fillStyle = 'rgb(80,55,30)';
+            ctx.fillRect(osx + 2, osy + obj.h * 0.45, obj.w - 4, obj.h * 0.4);
+            ctx.fillStyle = 'rgb(180,150,80)';
+            ctx.fillRect(osx + obj.w / 2 - 2, osy + obj.h * 0.6, 4, 2);
+            // Small lamp on top
+            ctx.fillStyle = 'rgb(50,45,35)';
+            ctx.fillRect(osx + obj.w * 0.3, osy - 6, 3, 7);
+            const lampGlow = 0.4 + Math.sin(g.frame * 0.04 + osx) * 0.2;
+            ctx.fillStyle = `rgba(255,220,100,${lampGlow * 0.7})`;
+            ctx.beginPath(); ctx.ellipse(osx + obj.w * 0.3 + 1.5, osy - 7, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgb(220,200,120)';
+            ctx.fillRect(osx + obj.w * 0.3 - 3, osy - 9, 9, 3);
+          } else if (obj.type === 'shelf') {
+            // Shelf: wall-mounted wooden board with items on it
+            ctx.fillStyle = 'rgb(90,60,35)';
+            ctx.fillRect(osx, osy + obj.h - 4, obj.w, 4);
+            ctx.fillStyle = 'rgb(110,75,45)';
+            ctx.fillRect(osx, osy, obj.w, obj.h - 4);
+            // Items on shelf
+            const shelfItemColors = ['rgb(160,50,40)', 'rgb(40,100,160)', 'rgb(80,60,30)', 'rgb(50,80,50)'];
+            const numItems = Math.max(2, Math.floor(obj.w / 8));
+            for (let si = 0; si < numItems; si++) {
+              const iCol = shelfItemColors[si % shelfItemColors.length];
+              const iw = (obj.w - 6) / numItems;
+              ctx.fillStyle = iCol;
+              ctx.fillRect(osx + 3 + si * iw, osy + 2, iw - 2, obj.h - 8);
+            }
+          } else if (obj.type === 'crate') {
+            // Wooden crate with planks and stencil marks
+            ctx.fillStyle = 'rgb(120,80,40)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(100,65,30)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeStyle = 'rgb(80,55,25)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
+            // Plank lines
+            ctx.strokeStyle = 'rgb(90,60,30)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath(); ctx.moveTo(osx, osy + obj.h / 3); ctx.lineTo(osx + obj.w, osy + obj.h / 3); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(osx, osy + obj.h * 2 / 3); ctx.lineTo(osx + obj.w, osy + obj.h * 2 / 3); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(osx + obj.w / 2, osy); ctx.lineTo(osx + obj.w / 2, osy + obj.h); ctx.stroke();
+            // Cross bracing
+            ctx.strokeStyle = 'rgba(200,160,80,0.3)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(osx + 4, osy + 4); ctx.lineTo(osx + obj.w - 4, osy + obj.h - 4); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(osx + obj.w - 4, osy + 4); ctx.lineTo(osx + 4, osy + obj.h - 4); ctx.stroke();
+          } else if (obj.type === 'newspaper') {
+            // Folded newspaper with headline lines
+            ctx.fillStyle = 'rgb(230,220,195)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(200,195,170)';
+            ctx.fillRect(osx + 1, osy + obj.h / 2, obj.w - 2, obj.h / 2 - 1);
+            ctx.strokeStyle = 'rgb(150,140,120)';
+            ctx.lineWidth = 0.5;
+            for (let li = 0; li < 4; li++) {
+              ctx.beginPath(); ctx.moveTo(osx + 3, osy + 3 + li * 4); ctx.lineTo(osx + obj.w - 3, osy + 3 + li * 4); ctx.stroke();
+            }
+            ctx.fillStyle = 'rgb(30,30,30)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, 3);
           } else {
             ctx.fillStyle = obj.color ?? 'rgb(80,70,55)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
             ctx.strokeStyle = 'rgb(100,85,60)';
             ctx.lineWidth = 0.8;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
-          }
-
-          if (obj.label) {
-            ctx.fillStyle = 'rgb(220,210,190)';
-            ctx.font = '6px "Share Tech Mono"';
-            ctx.textAlign = 'center';
-            ctx.fillText(obj.label, osx + obj.w / 2, osy + obj.h / 2 + 3);
           }
 
           if (itr.bid === 'public_office' && obj.type === 'terminal' && obj.label && PUBLIC_OFFICE_TERMINALS.has(obj.label)) {
@@ -7720,10 +8032,65 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const isWhiteboard = nObj.type === 'whiteboard';
           const isElevator = nObj.type === 'elevator';
           const isDoorLock = nObj.type === 'door_lock';
-          if (isTerminal || isVending || isWhiteboard || isElevator || isDoorLock) {
+          const isBed = nObj.type === 'bed';
+          const isMedBed = nObj.type === 'medical_bed';
+          const isDesk = nObj.type === 'desk';
+          const isChair = nObj.type === 'chair' || nObj.type === 'couch';
+          const isLocker = nObj.type === 'locker';
+          const isFiling = nObj.type === 'filing_cabinet';
+          const isBookshelf = nObj.type === 'bookshelf';
+          const isNightstand = nObj.type === 'nightstand';
+          const isCrate = nObj.type === 'crate';
+          const isEquipment = nObj.type === 'equipment';
+          const isCounter = nObj.type === 'counter';
+          const isTable = nObj.type === 'table';
+          const isShelf = nObj.type === 'shelf';
+          const isPlant = nObj.type === 'plant';
+          const isReception = nObj.type === 'reception';
+          const isPhotocopier = nObj.type === 'photocopier';
+          const isTvScreen = nObj.type === 'tv_screen';
+          const isNewspaper = nObj.type === 'newspaper';
+          const isGenTerminal = nObj.type === 'terminal' && !(nObj.label && PUBLIC_OFFICE_TERMINALS.has(nObj.label) && itr.bid === 'public_office');
+          const isServer = nObj.type === 'server';
+          const isSecGate = nObj.type === 'security_gate';
+          const isPortrait = nObj.type === 'portrait';
+          const isFlag = nObj.type === 'flag';
+          const isConferenceTable = nObj.type === 'conference_table';
+          const isWindow = nObj.type === 'window';
+          let prompt: string | null = null;
+          if (isTerminal) prompt = g.officeTerminalRenting?.label === nObj.label ? '[E] RELEASE' : '[E] RENT';
+          else if (isGenTerminal) prompt = '[E] ACCESS';
+          else if (isWhiteboard) prompt = '[E] WRITE';
+          else if (isElevator) prompt = '[E] FLOORS';
+          else if (isDoorLock) prompt = HOME_PASSWORDS.has(itr.bid) ? '[E] LOCK' : '[E] SET LOCK';
+          else if (isVending) prompt = '[E] SHOP';
+          else if (isMedBed) prompt = '[E] USE BED';
+          else if (isBed) prompt = '[E] SLEEP';
+          else if (isDesk) prompt = '[E] SEARCH';
+          else if (isChair) prompt = '[E] SIT';
+          else if (isLocker) prompt = '[E] SEARCH';
+          else if (isFiling) prompt = '[E] SEARCH';
+          else if (isBookshelf) prompt = '[E] READ';
+          else if (isNightstand) prompt = '[E] SEARCH';
+          else if (isCrate) prompt = '[E] SEARCH';
+          else if (isEquipment) prompt = '[E] EXAMINE';
+          else if (isCounter) prompt = '[E] EXAMINE';
+          else if (isTable) prompt = '[E] EXAMINE';
+          else if (isShelf) prompt = '[E] EXAMINE';
+          else if (isPlant) prompt = '[E] EXAMINE';
+          else if (isReception) prompt = '[E] EXAMINE';
+          else if (isPhotocopier) prompt = '[E] USE';
+          else if (isTvScreen) prompt = '[E] WATCH';
+          else if (isNewspaper) prompt = '[E] READ';
+          else if (isServer) prompt = '[E] INSPECT';
+          else if (isSecGate) prompt = '[E] INSPECT';
+          else if (isPortrait) prompt = '[E] EXAMINE';
+          else if (isFlag) prompt = '[E] EXAMINE';
+          else if (isConferenceTable) prompt = '[E] EXAMINE';
+          else if (isWindow) prompt = '[E] LOOK OUT';
+          if (prompt) {
             ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.4)';
             ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-            const prompt = isTerminal ? (g.officeTerminalRenting?.label === nObj.label ? '[E] RELEASE' : '[E] RENT') : isWhiteboard ? '[E] WRITE' : isElevator ? '[E] FLOORS' : isDoorLock ? (HOME_PASSWORDS.has(itr.bid) ? '[E] LOCK 🔒' : '[E] SET LOCK') : '[E] USE';
             ctx.fillText(prompt, npx, npy);
           }
         }
@@ -7771,39 +8138,91 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('[E] EXIT', exX + iDef.exitW / 2, exY - 6);
         }
 
+        // ── NPC sprite helper — draws a role-appropriate character ────────────
+        const drawInteriorNpcSprite = (nx: number, ny: number, name: string, role: string, hostile: boolean, seed: number) => {
+          const roleLow = role.toLowerCase();
+          const isDoc = roleLow.includes('doc') || roleLow.includes('phys') || roleLow.includes('nurse') || roleLow.includes('med');
+          const isGuard2 = roleLow.includes('guard') || roleLow.includes('security') || roleLow.includes('police') || roleLow.includes('cop') || roleLow.includes('officer') || hostile;
+          const isCleaner2 = roleLow.includes('clean') || roleLow.includes('maid') || roleLow.includes('jan');
+          const isCorp2 = roleLow.includes('manager') || roleLow.includes('exec') || roleLow.includes('director') || roleLow.includes('chief') || roleLow.includes('teller') || roleLow.includes('broker') || roleLow.includes('clerk') || roleLow.includes('host');
+          const nBob2 = Math.sin(g.frame * 0.04 + nx * 0.07) * 0.8;
+          ctx.fillStyle = 'rgba(0,0,0,0.12)';
+          ctx.beginPath(); ctx.ellipse(nx, ny + 7, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+          // Legs
+          if (isGuard2) {
+            ctx.fillStyle = '#1a1a22'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+            ctx.fillStyle = '#111'; ctx.fillRect(nx - 3, ny + 6, 3, 2); ctx.fillRect(nx, ny + 6, 3, 2);
+          } else if (isDoc) {
+            ctx.fillStyle = '#334455'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+          } else if (isCleaner2) {
+            ctx.fillStyle = '#3a3a3a'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+          } else {
+            ctx.fillStyle = '#222233'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+          }
+          // Body
+          if (isGuard2) {
+            ctx.fillStyle = hostile ? '#3a1515' : '#1a2235';
+            ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = hostile ? '#cc2233' : '#4466aa';
+            ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 5);
+            ctx.fillStyle = hostile ? '#552222' : '#2a3a55';
+            ctx.fillRect(nx - 6, ny - 5 + nBob2, 2, 4); ctx.fillRect(nx + 4, ny - 5 + nBob2, 2, 4);
+          } else if (isDoc) {
+            ctx.fillStyle = '#ddeeff'; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = '#aaccdd'; ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 5);
+            ctx.strokeStyle = '#336677'; ctx.lineWidth = 0.7;
+            ctx.beginPath(); ctx.arc(nx + 2, ny - 1 + nBob2, 2, 0, Math.PI); ctx.stroke();
+          } else if (isCleaner2) {
+            ctx.fillStyle = '#336633'; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = '#224422'; ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 5);
+          } else if (isCorp2) {
+            ctx.fillStyle = '#2a2a3a'; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = '#e8e8e8'; ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 2);
+            ctx.fillStyle = '#cc1111'; ctx.fillRect(nx, ny - 3 + nBob2, 1, 4);
+            ctx.fillStyle = '#1a1a2a'; ctx.fillRect(nx - 4, ny - 5 + nBob2, 2, 4); ctx.fillRect(nx + 2, ny - 5 + nBob2, 2, 4);
+          } else {
+            const nColorArr2 = ['#333355','#443355','#335544','#554433'];
+            ctx.fillStyle = nColorArr2[seed % nColorArr2.length]; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+          }
+          // Arms
+          const narmCol2 = isGuard2 ? (hostile ? '#3a1515' : '#1a2235') : isDoc ? '#ddeeff' : isCleaner2 ? '#336633' : isCorp2 ? '#2a2a3a' : '#333355';
+          ctx.fillStyle = narmCol2;
+          ctx.fillRect(nx - 8, ny - 4 + nBob2, 3, 6); ctx.fillRect(nx + 5, ny - 4 + nBob2, 3, 6);
+          ctx.fillStyle = '#d4a07a';
+          ctx.fillRect(nx - 8, ny + 1 + nBob2, 3, 2); ctx.fillRect(nx + 5, ny + 1 + nBob2, 3, 2);
+          // Neck + head
+          ctx.fillStyle = '#d4a07a'; ctx.fillRect(nx - 1, ny - 7 + nBob2, 3, 3);
+          ctx.fillStyle = '#d4a07a'; ctx.beginPath(); ctx.arc(nx, ny - 11 + nBob2, 3.8, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#111'; ctx.fillRect(nx - 2, ny - 12 + nBob2, 1, 1); ctx.fillRect(nx + 1, ny - 12 + nBob2, 1, 1);
+          // Hair / hat
+          if (isGuard2) {
+            ctx.fillStyle = hostile ? '#882222' : '#334466';
+            ctx.fillRect(nx - 5, ny - 17 + nBob2, 10, 5);
+            ctx.fillStyle = hostile ? '#662222' : '#223355';
+            ctx.fillRect(nx - 6, ny - 14 + nBob2, 12, 2);
+          } else {
+            const hairArr2 = ['#2a1800','#1a1a1a','#553322','#334455'];
+            ctx.fillStyle = hairArr2[seed % hairArr2.length]; ctx.fillRect(nx - 4, ny - 16 + nBob2, 8, 4);
+          }
+          // Labels
+          const labelColor2 = isGuard2 ? (hostile ? 'rgba(255,80,60,.7)' : 'rgba(100,160,255,.7)') : isDoc ? 'rgba(100,220,255,.7)' : 'rgba(255,200,60,.6)';
+          ctx.fillStyle = labelColor2; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(name, nx, ny - 20 + nBob2);
+          ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.font = '4px "Share Tech Mono"';
+          ctx.fillText(role, nx, ny - 15 + nBob2);
+        };
+
         if (iDef.workers) {
           for (const w of iDef.workers) {
             const wx = w.x, wy = w.y;
-            const bobY = Math.sin(g.frame * 0.03 + wx) * 0.5;
-            ctx.fillStyle = 'rgba(0,0,0,0.12)';
-            ctx.beginPath(); ctx.ellipse(wx, wy + 5, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
-            if (w.hostile) {
-              ctx.fillStyle = 'rgba(120,40,40,.8)'; ctx.fillRect(wx - 3, wy + 1, 3, 5); ctx.fillRect(wx, wy + 1, 3, 5);
-              ctx.fillStyle = 'rgba(140,50,50,.8)'; ctx.fillRect(wx - 5, wy - 6 + bobY, 10, 7);
-              ctx.fillStyle = 'rgba(200,140,100,.8)'; ctx.beginPath(); ctx.arc(wx, wy - 10 + bobY, 4, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = 'rgba(255,60,60,.7)';
-            } else {
-              ctx.fillStyle = 'rgba(40,60,80,.8)'; ctx.fillRect(wx - 3, wy + 1, 3, 5); ctx.fillRect(wx, wy + 1, 3, 5);
-              ctx.fillStyle = 'rgba(50,70,90,.8)'; ctx.fillRect(wx - 5, wy - 6 + bobY, 10, 7);
-              ctx.fillStyle = 'rgba(200,170,130,.8)'; ctx.beginPath(); ctx.arc(wx, wy - 10 + bobY, 4, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = 'rgba(0,200,255,.6)';
-            }
-            ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
-            ctx.fillText(w.name, wx, wy - 16 + bobY);
-            ctx.fillStyle = 'rgba(255,255,255,.2)';
-            ctx.font = '4px "Share Tech Mono"';
-            ctx.fillText(w.role, wx, wy - 20 + bobY);
+            const wSeed = (w.name.charCodeAt(0) + w.name.length) % 8;
+            drawInteriorNpcSprite(wx, wy, w.name, w.role, !!w.hostile, wSeed);
             const nearW = Math.hypot(itr.px - wx, itr.py - wy) < 30;
             if (nearW && w.hostile) {
               ctx.fillStyle = g.blink ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.3)';
               ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText('⚠ HOSTILE', wx, wy + 14);
-            } else if (nearW && !w.hostile && w.dialogue) {
-              ctx.fillStyle = g.blink ? 'rgba(0,255,200,.9)' : 'rgba(0,255,200,.4)';
-              ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
-              ctx.fillText('[E] TALK', wx, wy + 14);
-            }
-            if (nearW && !w.hostile) {
+            } else if (nearW && !w.hostile) {
               ctx.fillStyle = g.blink ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.4)';
               ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText('[E] TALK', wx, wy + 16);
@@ -7828,18 +8247,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const intNpcs = INTERIOR_NPCS[itr.bid] ?? [];
         for (const inpc of intNpcs) {
           const inx = inpc.x, iny = inpc.y;
-          ctx.fillStyle = 'rgba(0,0,0,0.12)';
-          ctx.beginPath(); ctx.ellipse(inx, iny + 7, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#1a1a2a'; ctx.fillRect(inx - 3, iny + 2, 3, 5); ctx.fillRect(inx, iny + 2, 3, 5);
-          ctx.fillStyle = '#2a2a3a'; ctx.fillRect(inx - 5, iny - 5, 10, 7);
-          ctx.fillStyle = '#cc0000'; ctx.fillRect(inx - 1, iny - 3, 2, 4);
-          ctx.fillStyle = '#d4a07a'; ctx.beginPath(); ctx.arc(inx, iny - 9, 3.5, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#111'; ctx.fillRect(inx - 2, iny - 10, 1, 1); ctx.fillRect(inx + 1, iny - 10, 1, 1);
-          ctx.fillStyle = '#1a1a2a'; ctx.fillRect(inx - 4, iny - 13, 8, 3);
-          ctx.fillStyle = 'rgba(255,200,60,.6)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(inpc.name, inx, iny - 16);
-          ctx.fillStyle = 'rgba(255,200,60,.35)'; ctx.font = '4px "Share Tech Mono"';
-          ctx.fillText(inpc.role, inx, iny - 11);
+          const inpcSeed = (inpc.name.charCodeAt(0) + inpc.name.length) % 8;
+          drawInteriorNpcSprite(inx, iny, inpc.name, inpc.role, false, inpcSeed);
           const playerDist = Math.hypot(ppx - inx, ppy - iny);
           if (playerDist < 30) {
             ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.4)';
@@ -7848,12 +8257,126 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.beginPath(); ctx.ellipse(ppx, ppy + 5, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#335533'; ctx.fillRect(ppx - 3, ppy + 1, 3, 5); ctx.fillRect(ppx, ppy + 1, 3, 5);
-        ctx.fillStyle = '#446644'; ctx.fillRect(ppx - 5, ppy - 6, 10, 7);
-        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(ppx, ppy - 10, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#111'; ctx.fillRect(ppx - 2, ppy - 11, 1, 1); ctx.fillRect(ppx + 1, ppy - 11, 1, 1);
+        {
+          const ipCls = char.class?.toLowerCase() ?? 'corporate';
+          const ipCostumeColor = (() => {
+            const sc = equippedCosmeticsRef.current['skin'];
+            if (sc) { const sc2: Record<string,string> = { skin_neon_runner:'#00ccff', skin_void_ghost:'#220033', skin_chrome_executive:'#cccccc', skin_toxic_waste:'#44ff00', skin_bloodrush:'#cc1122', skin_gold_corp:'#ffaa00' }; if (sc2[sc]) return sc2[sc]; }
+            const ac = g.activeCostume; if (ac === 'default') return null; const cl = CLOTHES.find(c => c.id === ac); return cl ? cl.color : null;
+          })();
+          const ipWalkF = g.walkFrame;
+          const ipLLeg = Math.sin(ipWalkF / 28 * Math.PI * 2) * 3;
+          const ipRLeg = -ipLLeg;
+          const ipLArm = Math.sin(ipWalkF / 28 * Math.PI * 2 + Math.PI) * 2.5;
+          const ipRArm = -ipLArm;
+          const ipBob = ipWalkF === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : Math.abs(Math.sin(ipWalkF / 28 * Math.PI * 2)) * 1;
+          const ipFlash = g.invincible % 4 < 2;
+          ctx.globalAlpha = ipFlash ? 1 : 0.4;
+          ctx.shadowColor = g.poisoned ? '#88ff44' : (ipCostumeColor ?? (ipCls === 'corporate' ? '#00ff41' : ipCls === 'outlaw' ? '#88ff44' : '#33ffaa'));
+          ctx.shadowBlur = 4;
+          ctx.fillStyle = 'rgba(0,0,0,0.15)';
+          ctx.beginPath(); ctx.ellipse(ppx, ppy + 5, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+          if (ipCls === 'corporate') {
+            ctx.fillStyle = '#111111'; ctx.fillRect(ppx - 5, ppy + 7 + ipLLeg, 4, 5); ctx.fillRect(ppx + 1, ppy + 7 + ipRLeg, 4, 5);
+            ctx.fillStyle = '#1e1e1e'; ctx.fillRect(ppx - 4, ppy + 1 + ipLLeg * 0.5, 4, 7); ctx.fillRect(ppx, ppy + 1 + ipRLeg * 0.5, 4, 7);
+            ctx.fillStyle = '#888877'; ctx.fillRect(ppx - 5, ppy - 1 + ipBob, 10, 2);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#2e2e2e');
+            ctx.fillRect(ppx - 6, ppy - 8 + ipBob, 12, 9);
+            ctx.fillStyle = '#e8e8e8'; ctx.fillRect(ppx - 1, ppy - 7 + ipBob, 3, 2);
+            ctx.fillStyle = '#cc1111'; ctx.fillRect(ppx, ppy - 6 + ipBob, 2, 5);
+            ctx.fillStyle = '#222222'; ctx.fillRect(ppx - 5, ppy - 8 + ipBob, 2, 4); ctx.fillRect(ppx + 3, ppy - 8 + ipBob, 2, 4);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#2e2e2e');
+            ctx.fillRect(ppx - 9 + ipLArm, ppy - 7 + ipBob, 3, 7); ctx.fillRect(ppx + 6 + ipRArm, ppy - 7 + ipBob, 3, 7);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 9 + ipLArm, ppy + ipBob, 3, 2); ctx.fillRect(ppx + 6 + ipRArm, ppy + ipBob, 3, 2);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 1, ppy - 10 + ipBob, 3, 3);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.ellipse(ppx, ppy - 14 + ipBob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a0a00'; ctx.fillRect(ppx - 3, ppy - 16 + ipBob, 2, 2); ctx.fillRect(ppx + 1, ppy - 16 + ipBob, 2, 2);
+            ctx.fillStyle = '#1a1a1a'; ctx.fillRect(ppx - 5, ppy - 21 + ipBob, 10, 5); ctx.beginPath(); ctx.arc(ppx, ppy - 21 + ipBob, 3.5, Math.PI, 0); ctx.fill();
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 0.8; ctx.strokeRect(ppx - 4, ppy - 17 + ipBob, 3, 2); ctx.strokeRect(ppx + 1, ppy - 17 + ipBob, 3, 2);
+          } else if (ipCls === 'outlaw') {
+            ctx.fillStyle = '#3d2010'; ctx.fillRect(ppx - 5, ppy + 7 + ipLLeg, 4, 5); ctx.fillRect(ppx + 1, ppy + 7 + ipRLeg, 4, 5);
+            ctx.fillStyle = '#5a4030'; ctx.fillRect(ppx - 4, ppy + 1 + ipLLeg * 0.5, 4, 7); ctx.fillRect(ppx, ppy + 1 + ipRLeg * 0.5, 4, 7);
+            ctx.fillStyle = '#7a6040'; ctx.fillRect(ppx - 5, ppy - 1 + ipBob, 10, 2);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#6b4a28');
+            ctx.fillRect(ppx - 6, ppy - 8 + ipBob, 12, 9);
+            ctx.fillStyle = '#4a3020'; ctx.fillRect(ppx - 4, ppy - 7 + ipBob, 8, 7);
+            ctx.fillStyle = '#7a5a38'; ctx.fillRect(ppx - 6, ppy - 8 + ipBob, 2, 6); ctx.fillRect(ppx + 4, ppy - 8 + ipBob, 2, 6);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#6b4a28');
+            ctx.fillRect(ppx - 9 + ipLArm, ppy - 7 + ipBob, 3, 7); ctx.fillRect(ppx + 6 + ipRArm, ppy - 7 + ipBob, 3, 7);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 9 + ipLArm, ppy + ipBob, 3, 2); ctx.fillRect(ppx + 6 + ipRArm, ppy + ipBob, 3, 2);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 1, ppy - 10 + ipBob, 3, 3);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.ellipse(ppx, ppy - 14 + ipBob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a0a00'; ctx.fillRect(ppx - 3, ppy - 16 + ipBob, 2, 2); ctx.fillRect(ppx + 1, ppy - 16 + ipBob, 2, 2);
+            ctx.fillStyle = '#5a3a18'; ctx.fillRect(ppx - 6, ppy - 22 + ipBob, 12, 7);
+            ctx.fillStyle = '#6a4a25'; ctx.fillRect(ppx - 7, ppy - 16 + ipBob, 14, 2);
+            ctx.fillStyle = '#4a2a10'; ctx.fillRect(ppx - 4, ppy - 25 + ipBob, 8, 3);
+          } else if (ipCls === 'replicant') {
+            ctx.fillStyle = '#cccccc'; ctx.fillRect(ppx - 5, ppy + 7 + ipLLeg, 4, 4); ctx.fillRect(ppx + 1, ppy + 7 + ipRLeg, 4, 4);
+            ctx.fillStyle = '#2a3d6b'; ctx.fillRect(ppx - 4, ppy + 1 + ipLLeg * 0.5, 4, 7); ctx.fillRect(ppx, ppy + 1 + ipRLeg * 0.5, 4, 7);
+            ctx.fillStyle = '#4a3a22'; ctx.fillRect(ppx - 5, ppy - 1 + ipBob, 10, 2);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#3a4a5a');
+            ctx.fillRect(ppx - 6, ppy - 8 + ipBob, 12, 9);
+            ctx.fillStyle = g.poisoned ? '#445533' : (ipCostumeColor ?? '#2e3d4a');
+            ctx.fillRect(ppx - 3, ppy - 8 + ipBob, 6, 3);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(ppx - 5, ppy - 5 + ipBob, 3, 3); ctx.fillRect(ppx + 2, ppy - 5 + ipBob, 3, 3);
+            ctx.fillStyle = g.poisoned ? '#557722' : (ipCostumeColor ?? '#3a4a5a');
+            ctx.fillRect(ppx - 9 + ipLArm, ppy - 7 + ipBob, 3, 7); ctx.fillRect(ppx + 6 + ipRArm, ppy - 7 + ipBob, 3, 7);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 9 + ipLArm, ppy + ipBob, 3, 2); ctx.fillRect(ppx + 6 + ipRArm, ppy + ipBob, 3, 2);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 1, ppy - 10 + ipBob, 3, 3);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.ellipse(ppx, ppy - 14 + ipBob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a0a00'; ctx.fillRect(ppx - 3, ppy - 16 + ipBob, 2, 2); ctx.fillRect(ppx + 1, ppy - 16 + ipBob, 2, 2);
+            ctx.fillStyle = '#2a1800'; ctx.fillRect(ppx - 5, ppy - 21 + ipBob, 10, 5); ctx.beginPath(); ctx.arc(ppx, ppy - 21 + ipBob, 3.5, Math.PI, 0); ctx.fill();
+          } else {
+            ctx.fillStyle = '#3a2510'; ctx.fillRect(ppx - 5, ppy + 7 + ipLLeg, 4, 5); ctx.fillRect(ppx + 1, ppy + 7 + ipRLeg, 4, 5);
+            ctx.fillStyle = '#2a3555'; ctx.fillRect(ppx - 4, ppy + 1 + ipLLeg * 0.5, 4, 7); ctx.fillRect(ppx, ppy + 1 + ipRLeg * 0.5, 4, 7);
+            ctx.fillStyle = '#665533'; ctx.fillRect(ppx - 5, ppy - 1 + ipBob, 10, 2);
+            const ipDefCol = g.poisoned ? '#557722' : (ipCostumeColor ?? '#446644');
+            ctx.fillStyle = ipDefCol; ctx.fillRect(ppx - 6, ppy - 8 + ipBob, 12, 9);
+            ctx.fillStyle = '#334422'; ctx.fillRect(ppx - 2, ppy - 8 + ipBob, 5, 3);
+            ctx.fillStyle = ipDefCol; ctx.fillRect(ppx - 9 + ipLArm, ppy - 7 + ipBob, 3, 7); ctx.fillRect(ppx + 6 + ipRArm, ppy - 7 + ipBob, 3, 7);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 9 + ipLArm, ppy + ipBob, 3, 2); ctx.fillRect(ppx + 6 + ipRArm, ppy + ipBob, 3, 2);
+            ctx.fillStyle = '#d4906a'; ctx.fillRect(ppx - 1, ppy - 10 + ipBob, 3, 3);
+            ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.ellipse(ppx, ppy - 14 + ipBob, 5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a0a00'; ctx.fillRect(ppx - 3, ppy - 16 + ipBob, 2, 2); ctx.fillRect(ppx + 1, ppy - 16 + ipBob, 2, 2);
+            ctx.fillStyle = '#332211'; ctx.fillRect(ppx - 5, ppy - 22 + ipBob, 10, 6); ctx.beginPath(); ctx.arc(ppx, ppy - 21 + ipBob, 3.5, Math.PI, 0); ctx.fill();
+          }
+          // ── Interior weapon rendering ──
+          if (activeWeaponRef.current !== 'fists') {
+            const ipWpn = WEAPONS.find(w => w.id === activeWeaponRef.current);
+            if (ipWpn) {
+              const ipHandX = ppx + 10;
+              const ipHandY = ppy - 6 + ipBob + ipRArm;
+              if (ipWpn.type === 'melee') {
+                if (ipWpn.icon === 'sword') {
+                  ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 2.5;
+                  ctx.shadowColor = '#aaeeff'; ctx.shadowBlur = 4;
+                  ctx.beginPath(); ctx.moveTo(ipHandX, ipHandY); ctx.lineTo(ipHandX + 10, ipHandY - 8); ctx.stroke();
+                  ctx.fillStyle = '#886644'; ctx.fillRect(ipHandX - 1, ipHandY, 2, 4);
+                  ctx.shadowBlur = 0;
+                } else if (ipWpn.icon === 'bat') {
+                  ctx.strokeStyle = '#885522'; ctx.lineWidth = 3;
+                  ctx.beginPath(); ctx.moveTo(ipHandX, ipHandY + 2); ctx.lineTo(ipHandX + 11, ipHandY - 6); ctx.stroke();
+                } else {
+                  ctx.fillStyle = '#668866'; ctx.fillRect(ipHandX - 1, ipHandY - 6, 3, 8);
+                }
+              } else if (ipWpn.type === 'ranged') {
+                const isLong = ipWpn.icon === 'rifle' || ipWpn.icon === 'laser';
+                const isHvy = ipWpn.icon === 'bomb';
+                const bW = isLong ? 14 : isHvy ? 12 : 10, bH = isHvy ? 6 : 4;
+                const bCol = ipWpn.icon === 'laser' ? '#ff44aa' : ipWpn.icon === 'bomb' ? '#ffcc00' : '#334455';
+                const bGlow = ipWpn.icon === 'laser' ? '#ff44aa' : ipWpn.icon === 'bomb' ? '#ffcc00' : '#88aacc';
+                ctx.fillStyle = bCol; ctx.shadowColor = bGlow; ctx.shadowBlur = 2;
+                ctx.fillRect(ipHandX, ipHandY - bH / 2, bW, bH);
+                ctx.fillRect(ipHandX + 4, ipHandY + bH / 2, 2, 4);
+                ctx.shadowBlur = 0;
+              } else {
+                ctx.fillStyle = '#556677'; ctx.fillRect(ipHandX - 2, ipHandY - 4, 4, 8);
+              }
+            }
+          }
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
 
         ctx.fillStyle = iDef.accentColor;
         ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
