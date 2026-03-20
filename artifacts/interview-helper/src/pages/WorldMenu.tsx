@@ -530,7 +530,7 @@ export default function WorldMenu() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
   const isMobile = useIsMobile();
-  const [tab, setTab] = useState<'enter' | 'guide' | 'merch' | 'slush'>('enter');
+  const [tab, setTab] = useState<'enter' | 'guide' | 'merch' | 'pass' | 'slush'>('enter');
   const [wmMerchProducts, setWmMerchProducts] = useState<any[]>([]);
   const [wmMerchLoading, setWmMerchLoading] = useState(false);
   const [wmMerchSelectedSize, setWmMerchSelectedSize] = useState<Record<number, string>>({});
@@ -586,6 +586,91 @@ export default function WorldMenu() {
     return () => { clearInterval(t); window.removeEventListener('storage', sync); };
   }, []);
   const [showHelp, setShowHelp] = useState(false);
+
+  // ── Season Pass state ────────────────────────────────────────────────────────
+  const [passData, setPassData] = useState<null | {
+    season: {
+      id: number; slug: string; name: string; number: number;
+      startsAt: string; endsAt: string; premiumPriceUsd: number;
+      tiers: Array<{ level: number; xpRequired: number; freeReward: any; premiumReward: any }>;
+      missions: Array<{ id: string; type: string; label: string; description: string; targetCount: number; xpReward: number; trackingKey: string; periodKey: string }>;
+    };
+    pass: { xp: number; currentLevel: number; isPremium: boolean; claimedTiers: string[] };
+    playerMissions: Array<{ missionId: string; periodKey: string; progress: number; completed: boolean; xpAwarded: boolean }>;
+  }>(null);
+  const [passLoading, setPassLoading] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passBuying, setPassBuying] = useState(false);
+  const [passClaiming, setPassClaiming] = useState<string | null>(null);
+  const [passClaimMsg, setPassClaimMsg] = useState('');
+  const [passHistoryData, setPassHistoryData] = useState<null | { seasons: any[]; passes: Record<number, any> }>(null);
+  const [showPassHistory, setShowPassHistory] = useState(false);
+
+  const loadPassData = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setPassLoading(true);
+    setPassError('');
+    try {
+      const res = await apiFetch('/api/salaryman/season/current', { credentials: 'include' });
+      if (res.ok) {
+        const j = await res.json();
+        setPassData(j);
+      } else {
+        setPassError('Failed to load season data.');
+      }
+    } catch {
+      setPassError('Network error.');
+    }
+    setPassLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (tab === 'pass' && !passData && !passLoading) {
+      loadPassData();
+    }
+  }, [tab, passData, passLoading, loadPassData]);
+
+  const handlePremiumPurchase = async () => {
+    setPassBuying(true);
+    try {
+      const res = await apiFetch('/api/salaryman/season/purchase-premium', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const j = await res.json();
+      if (j.url) { window.location.href = j.url; }
+      else { setPassError(j.error ?? 'Purchase failed.'); }
+    } catch { setPassError('Network error.'); }
+    setPassBuying(false);
+  };
+
+  const handleClaimReward = async (tierLevel: number, track: 'free' | 'premium') => {
+    const key = `${tierLevel}-${track}`;
+    setPassClaiming(key);
+    setPassClaimMsg('');
+    try {
+      const res = await apiFetch('/api/salaryman/season/claim-reward', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tierLevel, track }),
+      });
+      const j = await res.json();
+      if (j.ok) {
+        setPassClaimMsg(`CLAIMED: ${j.reward?.label ?? 'REWARD'}`);
+        await loadPassData();
+      } else {
+        setPassClaimMsg(j.error ?? 'Claim failed.');
+      }
+    } catch { setPassClaimMsg('Network error.'); }
+    setPassClaiming(null);
+  };
+
+  const handleLoadPassHistory = async () => {
+    try {
+      const res = await apiFetch('/api/salaryman/season/history', { credentials: 'include' });
+      if (res.ok) { const j = await res.json(); setPassHistoryData(j); setShowPassHistory(true); }
+    } catch {}
+  };
   const [atPhysicalTerminal] = useState(() => {
     const flag = sessionStorage.getItem('sm_at_physical_terminal');
     if (flag) sessionStorage.removeItem('sm_at_physical_terminal');
@@ -941,21 +1026,21 @@ export default function WorldMenu() {
 
         {/* ── TAB BAR ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(0,255,65,.18)', overflow: 'hidden' }}>
-          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['merch', 'MERCH DEPT'], ['slush', "PABLO'S SLUSH FUND"]] as const).map(([id, label]) => (
+          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['pass', 'CORP QUARTER'], ['merch', 'MERCH DEPT'], ['slush', "PABLO'S SLUSH FUND"]] as const).map(([id, label]) => (
             <button
               key={id}
-              onClick={() => setTab(id as 'enter' | 'guide' | 'merch' | 'slush')}
+              onClick={() => setTab(id as 'enter' | 'guide' | 'pass' | 'merch' | 'slush')}
               style={{
                 padding: '.55rem 1.8rem',
-                background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : 'rgba(0,255,65,.1)') : 'transparent',
+                background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : id === 'pass' ? 'rgba(255,204,0,.1)' : 'rgba(0,255,65,.1)') : 'transparent',
                 border: 'none',
                 borderRight: id !== 'slush' ? '1px solid rgba(0,255,65,.18)' : 'none',
-                color: tab === id ? (id === 'slush' ? '#ffcc44' : '#00ff41') : (id === 'slush' ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.3)'),
+                color: tab === id ? (id === 'slush' ? '#ffcc44' : id === 'pass' ? '#ffcc00' : '#00ff41') : (id === 'slush' ? 'rgba(255,200,50,.35)' : id === 'pass' ? 'rgba(255,204,0,.4)' : 'rgba(0,255,65,.3)'),
                 ...VT,
                 fontSize: '1.2rem',
                 letterSpacing: '.14em',
                 cursor: 'pointer',
-                textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : '0 0 10px rgba(0,255,65,.4)') : 'none',
+                textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : id === 'pass' ? '0 0 10px rgba(255,204,0,.4)' : '0 0 10px rgba(0,255,65,.4)') : 'none',
                 transition: 'all .12s',
               }}
             >
@@ -1783,6 +1868,283 @@ export default function WorldMenu() {
             </div>
           </div>
         )}
+
+        {/* ── TAB: CORP QUARTER (SEASON PASS) ── */}
+        {tab === 'pass' && (() => {
+          const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+          const S: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+
+          if (!isAuthenticated) return (
+            <div style={{ width: '100%', maxWidth: 720, textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{ ...VT, fontSize: '2rem', color: '#ffcc00', letterSpacing: '.18em', marginBottom: '1rem' }}>CORPORATE QUARTER PASS</div>
+              <div style={{ fontSize: '.6rem', color: 'rgba(255,204,0,.4)', lineHeight: 1.8, marginBottom: '1.5rem', ...S }}>Log in to view your season pass, missions, and progress.</div>
+              <button onClick={login} style={{ padding: '.6rem 2rem', background: 'rgba(255,204,0,.12)', border: '1px solid rgba(255,204,0,.6)', color: '#ffcc00', cursor: 'pointer', ...VT, fontSize: '1.3rem', letterSpacing: '.15em' }}>LOGIN TO ACCESS</button>
+            </div>
+          );
+
+          if (passLoading) return (
+            <div style={{ width: '100%', maxWidth: 720, textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{ ...VT, fontSize: '1.5rem', color: 'rgba(255,204,0,.5)', letterSpacing: '.15em' }}>LOADING SEASON DATA ▮</div>
+            </div>
+          );
+
+          if (passError && !passData) return (
+            <div style={{ width: '100%', maxWidth: 720, textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{ ...VT, fontSize: '1.2rem', color: '#ff4444', letterSpacing: '.1em', marginBottom: '1rem' }}>{passError}</div>
+              <button onClick={loadPassData} style={{ padding: '.4rem 1.2rem', background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.4)', color: '#ffcc00', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.1em' }}>RETRY</button>
+            </div>
+          );
+
+          if (!passData) return null;
+
+          const { season, pass, playerMissions } = passData;
+          const totalTiers = season.tiers.length;
+          const currentTier = season.tiers.find(t => t.level === pass.currentLevel);
+          const nextTier = season.tiers.find(t => t.level === pass.currentLevel + 1);
+          const xpForCurrentLevel = currentTier?.xpRequired ?? 0;
+          const xpForNextLevel = nextTier?.xpRequired ?? null;
+          const xpProgress = xpForNextLevel != null ? pass.xp - xpForCurrentLevel : 0;
+          const xpNeeded = xpForNextLevel != null ? xpForNextLevel - xpForCurrentLevel : 0;
+          const progressPct = xpNeeded > 0 ? Math.min(100, (xpProgress / xpNeeded) * 100) : 100;
+
+          const endsAt = new Date(season.endsAt);
+          const now = Date.now();
+          const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - now) / 86400000));
+
+          const dailyMissions = season.missions.filter((m: any) => m.type === 'daily');
+          const weeklyMissions = season.missions.filter((m: any) => m.type === 'weekly');
+
+          const getMissionProgress = (mission: any) => {
+            const row = playerMissions.find(pm => pm.missionId === mission.id && pm.periodKey === mission.periodKey);
+            return row ?? { progress: 0, completed: false, xpAwarded: false };
+          };
+
+          return (
+            <div style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '.5rem' }}>
+                <div>
+                  <div style={{ ...VT, fontSize: 'clamp(1.4rem, 4vw, 2.4rem)', color: '#ffcc00', letterSpacing: '.18em', textShadow: '0 0 18px rgba(255,204,0,.3)' }}>{season.name}</div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(255,204,0,.4)', letterSpacing: '.12em', marginTop: '.2rem', ...S }}>SEASON #{season.number} · {daysLeft} DAYS REMAINING · {totalTiers} LEVELS</div>
+                </div>
+                <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                  {!pass.isPremium && (
+                    <button
+                      onClick={handlePremiumPurchase}
+                      disabled={passBuying}
+                      style={{ padding: '.45rem 1.2rem', background: 'rgba(255,204,0,.14)', border: '1px solid rgba(255,204,0,.7)', color: '#ffcc00', cursor: passBuying ? 'default' : 'pointer', ...VT, fontSize: '1.1rem', letterSpacing: '.12em', opacity: passBuying ? 0.6 : 1 }}
+                    >
+                      {passBuying ? 'LOADING...' : `UNLOCK PREMIUM — $${((season.premiumPriceUsd) / 100).toFixed(2)}`}
+                    </button>
+                  )}
+                  {pass.isPremium && (
+                    <div style={{ padding: '.35rem .9rem', background: 'rgba(255,204,0,.1)', border: '1px solid rgba(255,204,0,.5)', color: '#ffcc00', ...VT, fontSize: '1rem', letterSpacing: '.12em' }}>
+                      ★ PREMIUM ACTIVE
+                    </div>
+                  )}
+                  <button onClick={handleLoadPassHistory} style={{ padding: '.35rem .8rem', background: 'transparent', border: '1px solid rgba(255,204,0,.2)', color: 'rgba(255,204,0,.5)', cursor: 'pointer', ...VT, fontSize: '.9rem', letterSpacing: '.1em' }}>HISTORY</button>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(255,204,0,.4), transparent)' }} />
+
+              {/* XP Progress Bar */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.35rem' }}>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#ffcc00', letterSpacing: '.12em' }}>LEVEL {pass.currentLevel} / {totalTiers}</div>
+                  <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(255,204,0,.6)', letterSpacing: '.1em' }}>
+                    {pass.xp.toLocaleString()} XP
+                    {xpForNextLevel != null && <span style={{ color: 'rgba(255,204,0,.35)' }}> / {xpForNextLevel.toLocaleString()}</span>}
+                  </div>
+                </div>
+                <div style={{ height: 10, background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.2)', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${progressPct}%`, background: 'linear-gradient(90deg, #ffcc00, #ffaa00)', transition: 'width .3s', boxShadow: '0 0 8px rgba(255,204,0,.5)' }} />
+                </div>
+                {xpForNextLevel != null && (
+                  <div style={{ fontSize: '.45rem', color: 'rgba(255,204,0,.35)', marginTop: '.25rem', ...S }}>{xpNeeded - xpProgress} XP to next level</div>
+                )}
+              </div>
+
+              {passClaimMsg && (
+                <div style={{ padding: '.5rem .9rem', background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.35)', color: '#ffcc00', ...VT, fontSize: '1.1rem', letterSpacing: '.1em' }}>
+                  {passClaimMsg}
+                </div>
+              )}
+
+              {/* Reward Track */}
+              <div>
+                <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.15em', marginBottom: '.75rem' }}>REWARD TRACK</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                  {season.tiers.map((tier: any) => {
+                    const unlocked = pass.currentLevel >= tier.level;
+                    const claimedFree = (pass.claimedTiers as string[]).includes(`${tier.level}-free`);
+                    const claimedPremium = (pass.claimedTiers as string[]).includes(`${tier.level}-premium`);
+                    const isCurrent = pass.currentLevel === tier.level;
+
+                    return (
+                      <div
+                        key={tier.level}
+                        style={{
+                          display: 'grid', gridTemplateColumns: '3rem 1fr 1fr',
+                          gap: '.5rem', alignItems: 'center',
+                          padding: '.5rem .75rem',
+                          background: isCurrent ? 'rgba(255,204,0,.07)' : unlocked ? 'rgba(255,204,0,.03)' : 'transparent',
+                          border: `1px solid ${isCurrent ? 'rgba(255,204,0,.4)' : unlocked ? 'rgba(255,204,0,.12)' : 'rgba(255,204,0,.05)'}`,
+                          opacity: unlocked ? 1 : 0.45,
+                        }}
+                      >
+                        <div style={{ ...VT, fontSize: '1.3rem', color: isCurrent ? '#ffcc00' : unlocked ? 'rgba(255,204,0,.7)' : 'rgba(255,204,0,.3)', letterSpacing: '.08em', textAlign: 'center' }}>
+                          {isCurrent ? '▶' : ''}{tier.level}
+                        </div>
+
+                        {/* Free track */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                          <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', ...S, minWidth: 32 }}>FREE</div>
+                          {tier.freeReward ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flex: 1 }}>
+                              <div style={{ fontSize: '.5rem', color: tier.freeReward.color ?? '#00ff41', ...S, flex: 1 }}>
+                                {tier.freeReward.icon} {tier.freeReward.label}
+                                {tier.freeReward.kind === 'fiat' && ` · ƒ${Number(tier.freeReward.value).toLocaleString()}`}
+                              </div>
+                              {unlocked && !claimedFree && (
+                                <button
+                                  onClick={() => handleClaimReward(tier.level, 'free')}
+                                  disabled={passClaiming === `${tier.level}-free`}
+                                  style={{ padding: '.2rem .6rem', background: 'rgba(0,255,65,.12)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em', flexShrink: 0 }}
+                                >
+                                  CLAIM
+                                </button>
+                              )}
+                              {claimedFree && <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)', ...S }}>✓ CLAIMED</span>}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.18)', ...S }}>—</div>
+                          )}
+                        </div>
+
+                        {/* Premium track */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                          <div style={{ fontSize: '.38rem', color: pass.isPremium ? 'rgba(255,204,0,.55)' : 'rgba(255,204,0,.25)', letterSpacing: '.1em', ...S, minWidth: 56 }}>
+                            {pass.isPremium ? '★ PREM' : '🔒 PREM'}
+                          </div>
+                          {tier.premiumReward ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flex: 1 }}>
+                              <div style={{ fontSize: '.5rem', color: pass.isPremium ? (tier.premiumReward.color ?? '#ffcc00') : 'rgba(255,204,0,.3)', ...S, flex: 1 }}>
+                                {tier.premiumReward.icon} {tier.premiumReward.label}
+                                {tier.premiumReward.kind === 'fiat' && ` · ƒ${Number(tier.premiumReward.value).toLocaleString()}`}
+                              </div>
+                              {pass.isPremium && unlocked && !claimedPremium && (
+                                <button
+                                  onClick={() => handleClaimReward(tier.level, 'premium')}
+                                  disabled={passClaiming === `${tier.level}-premium`}
+                                  style={{ padding: '.2rem .6rem', background: 'rgba(255,204,0,.12)', border: '1px solid rgba(255,204,0,.5)', color: '#ffcc00', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em', flexShrink: 0 }}
+                                >
+                                  CLAIM
+                                </button>
+                              )}
+                              {claimedPremium && <span style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.5)', ...S }}>✓ CLAIMED</span>}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.18)', ...S }}>—</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Missions */}
+              <div>
+                <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.15em', marginBottom: '.75rem' }}>ACTIVE MISSIONS</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+                  {[...dailyMissions, ...weeklyMissions].map((mission: any) => {
+                    const mp = getMissionProgress(mission);
+                    const pct = Math.min(100, (mp.progress / mission.targetCount) * 100);
+                    const isDaily = mission.type === 'daily';
+                    return (
+                      <div key={mission.id} style={{
+                        padding: '.7rem .9rem',
+                        background: mp.completed ? 'rgba(0,255,65,.04)' : 'rgba(255,204,0,.03)',
+                        border: `1px solid ${mp.completed ? 'rgba(0,255,65,.2)' : isDaily ? 'rgba(255,204,0,.18)' : 'rgba(180,100,255,.22)'}`,
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.3rem', alignItems: 'flex-start' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: mp.completed ? '#00ff41' : isDaily ? '#ffcc00' : '#cc88ff', letterSpacing: '.1em' }}>{mission.label}</div>
+                          <div style={{ fontSize: '.38rem', color: mp.completed ? 'rgba(0,255,65,.5)' : isDaily ? 'rgba(255,204,0,.4)' : 'rgba(180,100,255,.5)', border: `1px solid ${isDaily ? 'rgba(255,204,0,.25)' : 'rgba(180,100,255,.3)'}`, padding: '1px 5px', ...S, letterSpacing: '.08em' }}>
+                            {isDaily ? 'DAILY' : 'WEEKLY'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(255,204,0,.4)', marginBottom: '.4rem', ...S, lineHeight: 1.6 }}>{mission.description}</div>
+                        <div style={{ height: 5, background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.15)', overflow: 'hidden', marginBottom: '.3rem' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: mp.completed ? '#00ff41' : isDaily ? '#ffcc00' : '#cc88ff', transition: 'width .3s' }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.4)', ...S }}>
+                            {mp.progress.toLocaleString()} / {mission.targetCount.toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: '.42rem', color: '#ffcc00', ...S }}>+{mission.xpReward} XP</div>
+                        </div>
+                        {mp.completed && <div style={{ fontSize: '.42rem', color: '#00ff41', marginTop: '.2rem', ...S }}>✓ COMPLETED</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.25)', marginTop: '.6rem', ...S, lineHeight: 1.8 }}>
+                  Daily missions reset at 00:00 UTC. Weekly missions reset every Monday at 00:00 UTC.<br />
+                  Mission progress is tracked automatically during gameplay.
+                </div>
+              </div>
+
+              {/* Season rules */}
+              <div style={{ padding: '.75rem', background: 'rgba(255,204,0,.03)', border: '1px solid rgba(255,204,0,.1)' }}>
+                <div style={{ ...VT, fontSize: '1rem', color: 'rgba(255,204,0,.5)', letterSpacing: '.1em', marginBottom: '.4rem' }}>SEASON RULES</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(255,204,0,.3)', lineHeight: 1.9, ...S }}>
+                  · Season ends {endsAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · {daysLeft} days remaining<br />
+                  · Unclaimed premium rewards are lost when the season ends<br />
+                  · Free track rewards carry over — claim them any time during the season<br />
+                  · Level up by completing daily and weekly missions<br />
+                  · No level skipping — progression is earned through gameplay only<br />
+                  · Premium pass: one-time purchase per season · no gifting
+                </div>
+              </div>
+
+              {/* Season history modal */}
+              {showPassHistory && passHistoryData && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.9)' }}>
+                  <div style={{ background: '#030803', border: '1px solid rgba(255,204,0,.3)', padding: '1.5rem', maxWidth: 640, width: '90%', maxHeight: '80vh', overflow: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+                      <div style={{ ...VT, fontSize: '1.6rem', color: '#ffcc00', letterSpacing: '.15em' }}>SEASON HISTORY</div>
+                      <button onClick={() => setShowPassHistory(false)} style={{ background: 'transparent', border: '1px solid rgba(255,204,0,.3)', color: '#ffcc00', cursor: 'pointer', padding: '.3rem .7rem', ...VT, fontSize: '1rem' }}>CLOSE</button>
+                    </div>
+                    {passHistoryData.seasons.length === 0 ? (
+                      <div style={{ fontSize: '.55rem', color: 'rgba(255,204,0,.35)', ...S }}>No season history yet.</div>
+                    ) : passHistoryData.seasons.map((s: any) => {
+                      const p = passHistoryData.passes[s.id];
+                      return (
+                        <div key={s.id} style={{ borderBottom: '1px solid rgba(255,204,0,.1)', padding: '.6rem 0', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '1rem', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ ...VT, fontSize: '1.1rem', color: s.isActive ? '#ffcc00' : 'rgba(255,204,0,.5)', letterSpacing: '.1em' }}>{s.name}</div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.3)', ...S }}>
+                              {new Date(s.startsAt).toLocaleDateString()} – {new Date(s.endsAt).toLocaleDateString()}
+                              {s.isActive && ' · ACTIVE'}
+                            </div>
+                          </div>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: p ? '#ffcc00' : 'rgba(255,204,0,.25)', letterSpacing: '.1em', textAlign: 'center' }}>
+                            {p ? `LVL ${p.currentLevel}` : 'NO DATA'}
+                          </div>
+                          <div style={{ fontSize: '.45rem', color: p?.isPremium ? '#ffcc00' : 'rgba(255,204,0,.3)', ...S, textAlign: 'right' }}>
+                            {p?.isPremium ? '★ PREMIUM' : p ? 'FREE' : '—'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {tab === 'merch' && (() => {
           const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };

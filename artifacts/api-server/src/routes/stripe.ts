@@ -4,6 +4,7 @@ import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../l
 import { FEATURE_KEYS, type FeatureKey, db, donationsTable } from "@workspace/db";
 import { eq, sum, desc } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
+import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 
 const router = Router();
 
@@ -230,6 +231,8 @@ router.post(
               .where(eq(donationsTable.stripeSessionId, session.id));
             console.log(`[Stripe] Donation completed for user ${userId} — session ${session.id}`);
           }
+        } else if (type === "season_pass") {
+          await handleSeasonPassWebhookEvent(event as any);
         } else if (userId && feature && FEATURE_KEYS.includes(feature)) {
           await grantFeature(userId, feature, "stripe", subscriptionId);
           console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);

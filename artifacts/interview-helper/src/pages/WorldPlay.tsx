@@ -3399,6 +3399,50 @@ export default function WorldPlay() {
   });
   const placedFurnitureMapRef = useRef<Record<string, PlacedFurnitureItem[]>>(placedFurnitureMap);
 
+  // ── Season Pass HUD state ──────────────────────────────────────────────────
+  const [seasonPassLevel, setSeasonPassLevel] = useState<number | null>(null);
+  const [seasonPassXp, setSeasonPassXp] = useState<number>(0);
+  const [seasonPassIsPremium, setSeasonPassIsPremium] = useState(false);
+  const [seasonPassSeasonName, setSeasonPassSeasonName] = useState('');
+  const seasonPassLoadedRef = useRef(false);
+  const lastMissionProgressRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (seasonPassLoadedRef.current) return;
+    seasonPassLoadedRef.current = true;
+    apiFetch('/api/salaryman/season/current', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setSeasonPassLevel(data.pass?.currentLevel ?? 1);
+        setSeasonPassXp(data.pass?.xp ?? 0);
+        setSeasonPassIsPremium(data.pass?.isPremium ?? false);
+        setSeasonPassSeasonName(data.season?.name ?? '');
+      })
+      .catch(() => {});
+  }, []);
+
+  const reportMissionProgress = useCallback((trackingKey: string, amount: number) => {
+    const now = Date.now();
+    const lastTs = lastMissionProgressRef.current[trackingKey] ?? 0;
+    if (now - lastTs < 5000) return;
+    lastMissionProgressRef.current[trackingKey] = now;
+    apiFetch('/api/salaryman/season/mission-progress', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trackingKey, amount }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.xpGained > 0) {
+          setSeasonPassXp(data.newXp);
+          setSeasonPassLevel(data.newLevel);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Business inactivity demolition on game load ──────────────────────────
   useEffect(() => {
     const g = gs.current;
@@ -5031,6 +5075,7 @@ export default function WorldPlay() {
               const nearChest = TREASURE_CHESTS.find(tc => !g.openedChests.has(tc.id) && Math.hypot(g.px - tc.x, g.py - tc.y) < 50);
               if (nearChest) {
                 g.openedChests.add(nearChest.id); sfxCoin(); sfxItemPickup();
+                reportMissionProgress('chestsOpened', 1);
                 const loot = nearChest.loot;
                 g.salary += loot.fiat; setSalary(g.salary);
                 const lootItemNames = loot.items.map(i => i.name).join(', ');
@@ -5099,6 +5144,7 @@ export default function WorldPlay() {
               } else {
                 g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               }
+              if (!isAnimal) reportMissionProgress('npcsDefeated', 1);
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -5739,6 +5785,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               } else {
                 g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               }
+              if (!isAnimal) reportMissionProgress('npcsDefeated', 1);
               const earned = THREAT_EXP[t.type] ?? 20;
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
@@ -7463,7 +7510,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       const newZone = getCurrentSector(g.px, g.py);
-      if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); }
+      if (newZone !== lastZone) { lastZone = newZone; g.zone = newZone; setZone(newZone); sfxZoneCross(); reportMissionProgress('districtsVisited', 1); }
 
       // Gang zone detection
       let newGang: string | null = null;
@@ -7553,6 +7600,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
           sfxCoin();
           addBankTx(INCOME_LABEL, total, g.salary);
+          reportMissionProgress('fiatEarned', total);
+          reportMissionProgress('minutesPlayed', 1);
         }
 
         // ── ECONOMY: Real estate passive income (every 15 ticks) ────────────
@@ -11167,6 +11216,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(0,255,65,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(0,255,65,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
           ⊕
         </button>
+        {seasonPassLevel !== null && (
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${seasonPassIsPremium ? 'rgba(255,204,0,.45)' : 'rgba(255,204,0,.2)'}`, padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.4rem', cursor: 'default' }} title={seasonPassSeasonName}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: seasonPassIsPremium ? '#ffcc00' : 'rgba(255,204,0,.55)', letterSpacing: '.06em' }}>
+              {seasonPassIsPremium ? '★' : '◆'} Q-PASS LVL {seasonPassLevel}
+            </span>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(255,204,0,.3)', letterSpacing: '.04em' }}>
+              {seasonPassXp.toLocaleString()} XP
+            </span>
+          </div>
+        )}
       </div>
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
