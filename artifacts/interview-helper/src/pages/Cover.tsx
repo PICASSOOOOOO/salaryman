@@ -164,8 +164,8 @@ export default function Cover() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.08 }}
-          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-3"
-          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed" }}
+          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-5"
+          style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
         >
           <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
             SALARYMAN
