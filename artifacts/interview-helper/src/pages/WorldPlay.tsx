@@ -13187,7 +13187,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
-                      {`TTC ${__BUILD_VERSION__} · CRM Power Dialer + PSTN via Twilio`}
+                      {`TTC ALPHA ${__BUILD_VERSION__} · CRM Power Dialer + PSTN via Twilio`}
                     </div>
                   </div>
                 )}
@@ -13254,7 +13254,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     )}
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.1rem', fontSize: '.42rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.6 }}>
-                      {`IN-GAME CRM ${__BUILD_VERSION__} · Contacts are stored locally · External CRM sync coming soon`}
+                      {`IN-GAME CRM ALPHA ${__BUILD_VERSION__} · Contacts are stored locally · External CRM sync coming soon`}
                     </div>
                   </div>
                 )}
@@ -14032,7 +14032,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* Footer */}
               <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
-                {`TERMINAL HUB ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
+                {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
               </div>
             </div>
           </div>

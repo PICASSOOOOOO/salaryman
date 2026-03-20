@@ -507,7 +507,7 @@ export default function Home() {
             <Terminal className="w-4 h-4" style={{ color: 'rgba(34,197,94,0.5)' }} />
             <div>
               <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(34,197,94,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · {__BUILD_VERSION__}</div>
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · ALPHA {__BUILD_VERSION__}</div>
             </div>
           </div>
           <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>

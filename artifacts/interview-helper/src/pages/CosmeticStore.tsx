@@ -234,7 +234,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
           <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.2em', textShadow: '0 0 16px rgba(0,255,65,.4)' }}>
             CRYPTO STORE
           </div>
-          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em' }}>PABLO CORP COSMETIC EXCHANGE {__BUILD_VERSION__}</div>
+          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em' }}>PABLO CORP COSMETIC EXCHANGE ALPHA {__BUILD_VERSION__}</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right' }}>

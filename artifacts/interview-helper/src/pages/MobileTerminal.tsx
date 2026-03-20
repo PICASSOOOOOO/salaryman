@@ -279,7 +279,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ ...VT, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em', textShadow: '0 0 12px rgba(0,255,65,.3)' }}>TERMINAL HUB</div>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · {__BUILD_VERSION__}</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · ALPHA {__BUILD_VERSION__}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ ...VT, fontSize: '.75rem', color: '#00ff41', letterSpacing: '.08em' }}>● ONLINE</div>
@@ -508,7 +508,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
         <div style={{ padding: '.5rem 1rem', borderTop: '1px solid rgba(0,255,65,.1)', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em' }}>
-              {`TERMINAL HUB ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
+              {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
             </div>
             <button
               onClick={() => navigate('/world')}

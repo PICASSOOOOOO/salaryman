@@ -198,7 +198,7 @@ export default function InvestorsPage() {
         <div className="mb-4">
           <span className="inline-flex items-center gap-2 text-[9px] font-mono tracking-widest uppercase text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-2.5 py-1 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Alpha Stage
+            Alpha Stage · {__BUILD_VERSION__}
           </span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight mb-3 leading-tight">

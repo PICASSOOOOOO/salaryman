@@ -467,7 +467,7 @@ export default function Upgrade() {
 
             <div className="mb-4 text-center">
               <span className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase border border-zinc-800 px-3 py-1 rounded-full">
-                Alpha pricing — early supporter rates
+                Alpha pricing — early supporter rates · {__BUILD_VERSION__}
               </span>
             </div>
 

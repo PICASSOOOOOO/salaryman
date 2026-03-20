@@ -90,7 +90,7 @@ export function PhonePageLayout({
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <img src="/brand/callhome/calll-home-brush.png" alt="CALLL HOME" style={{ height: 16, width: 'auto', opacity: 0.55, filter: 'brightness(2) saturate(0)' }} />
             <span style={{ color: crt(0.12) }}>│</span>
-            <span>{__BUILD_VERSION__} PRO</span>
+            <span>ALPHA {__BUILD_VERSION__}</span>
             <span style={{ color: crt(0.12) }}>│</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 4, height: 4, borderRadius: '50%', background: crt(0.6), boxShadow: `0 0 6px ${crt(0.3)}`, animation: 'pulse 2s infinite' }} />
