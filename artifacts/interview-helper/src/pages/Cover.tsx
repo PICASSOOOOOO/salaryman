@@ -275,6 +275,27 @@ export default function Cover() {
         </motion.div>
       </div>
 
+      {/* Legal footer */}
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {[
+            { label: "Terms", path: "/legal/terms" },
+            { label: "Privacy", path: "/legal/privacy" },
+            { label: "Refunds", path: "/legal/refunds" },
+            { label: "Contact", path: "/legal/contact" },
+            { label: "Legal", path: "/legal" },
+          ].map(({ label, path }) => (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              className="text-[10px] text-zinc-700 hover:text-zinc-500 transition-colors font-mono uppercase tracking-wider"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Phone System */}
       {isAuthenticated && (
         <>

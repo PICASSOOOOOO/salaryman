@@ -1,5 +1,5 @@
 import { Suspense, lazy, memo, useEffect } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,6 +38,16 @@ const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
+
+const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
+const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
+const LegalPrivacy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
+const LegalContact = lazy(() => import("@/pages/legal/ContactPage"));
+const LegalRefunds = lazy(() => import("@/pages/legal/RefundPolicy"));
+const LegalReturns = lazy(() => import("@/pages/legal/ReturnPolicy"));
+const LegalCancellation = lazy(() => import("@/pages/legal/CancellationPolicy"));
+const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
+const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
 
 const PhoneDialerPage = lazy(() => import("@/pages/phone/PhoneDialerPage"));
 const PhoneContactsPage = lazy(() => import("@/pages/phone/PhoneContactsPage"));
@@ -200,12 +210,70 @@ function AppShell() {
             <Route path="/agents">{() => <Redirect to="/intel/agents" />}</Route>
             <Route path="/seo">{() => <Redirect to="/intel/seo" />}</Route>
 
+            {/* LEGAL pages */}
+            <Route path="/legal" component={LegalHub} />
+            <Route path="/legal/terms" component={LegalTerms} />
+            <Route path="/legal/privacy" component={LegalPrivacy} />
+            <Route path="/legal/contact" component={LegalContact} />
+            <Route path="/legal/refunds" component={LegalRefunds} />
+            <Route path="/legal/returns" component={LegalReturns} />
+            <Route path="/legal/cancellation" component={LegalCancellation} />
+            <Route path="/legal/promotions" component={LegalPromotions} />
+            <Route path="/legal/restrictions" component={LegalRestrictions} />
+
             <Route component={NotFound} />
           </Switch>
         </Suspense>
       )}
       {/* Mobile bottom tab bar */}
       {showMobileBar && <MobileBottomBar />}
+      {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
+      {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+            gap: "12px",
+            padding: "4px 16px",
+            zIndex: 5,
+            pointerEvents: "none",
+          }}
+        >
+          {[
+            { label: "Terms", href: "/legal/terms" },
+            { label: "Privacy", href: "/legal/privacy" },
+            { label: "Contact", href: "/legal/contact" },
+            { label: "Legal", href: "/legal" },
+          ].map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              style={{
+                fontSize: "9px",
+                fontFamily: "monospace",
+                color: "rgba(63,63,70,0.6)",
+                textDecoration: "none",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                pointerEvents: "auto",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(34,197,94,0.5)";
+              }}
+              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(63,63,70,0.6)";
+              }}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
     </>
   );
 }
