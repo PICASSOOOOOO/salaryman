@@ -57,6 +57,13 @@
       "when": 1773991855177,
       "tag": "0007_ambiguous_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742342401000,
+      "tag": "0008_pablos_slush_fund",
+      "breakpoints": true
     }
   ]
 }

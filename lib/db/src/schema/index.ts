@@ -41,3 +41,4 @@ export * from "./deals";
 export * from "./goals";
 export * from "./merch";
 export * from "./cosmetics";
+export * from "./donations";

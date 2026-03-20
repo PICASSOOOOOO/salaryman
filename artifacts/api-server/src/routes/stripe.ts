@@ -1,7 +1,8 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
-import { FEATURE_KEYS, type FeatureKey } from "@workspace/db";
+import { FEATURE_KEYS, type FeatureKey, db, donationsTable } from "@workspace/db";
+import { eq, sum, desc } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 
 const router = Router();
@@ -29,11 +30,19 @@ function getPriceIdForFeature(feature: FeatureKey): string | undefined {
   return process.env[FEATURE_PRICE_ENV[feature]];
 }
 
-function featureKeyFromPriceId(priceId: string): FeatureKey | undefined {
-  for (const key of FEATURE_KEYS) {
-    if (process.env[FEATURE_PRICE_ENV[key]] === priceId) return key;
-  }
-  return undefined;
+const DONATION_TIERS = [
+  { id: "slush_2", label: "STREET INFORMANT", amountCents: 200, badge: "Street Informant" },
+  { id: "slush_5", label: "SHADOW INVESTOR", amountCents: 500, badge: "Shadow Investor" },
+  { id: "slush_10", label: "CORPORATE BENEFACTOR", amountCents: 1000, badge: "Corporate Benefactor" },
+  { id: "slush_25", label: "MEGACORP PATRON", amountCents: 2500, badge: "Megacorp Patron" },
+];
+
+function getDonorTitle(totalCents: number): string {
+  if (totalCents >= 5000) return "Megacorp Patron";
+  if (totalCents >= 2000) return "Corporate Benefactor";
+  if (totalCents >= 1000) return "Shadow Investor";
+  if (totalCents >= 200) return "Street Informant";
+  return "";
 }
 
 router.post("/stripe/create-checkout-session", async (req, res) => {
@@ -70,6 +79,98 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   res.json({ url: session.url });
 });
 
+router.post("/stripe/create-donation-session", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+
+  const { amountCents, tierId } = req.body as { amountCents?: number; tierId?: string };
+
+  let finalAmountCents: number;
+  let tierLabel: string | undefined;
+
+  if (tierId) {
+    const tier = DONATION_TIERS.find(t => t.id === tierId);
+    if (!tier) {
+      res.status(400).json({ error: "Invalid tier" });
+      return;
+    }
+    finalAmountCents = tier.amountCents;
+    tierLabel = tier.badge;
+  } else if (amountCents && typeof amountCents === "number" && amountCents >= 100) {
+    finalAmountCents = Math.min(Math.round(amountCents), 100000);
+    tierLabel = undefined;
+  } else {
+    res.status(400).json({ error: "Invalid amount — minimum $1.00" });
+    return;
+  }
+
+  const user = req.user;
+  const stripe = getStripe();
+  const baseUrl = getAppBaseUrl();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Pablo's Slush Fund",
+            description: tierLabel ?? "Custom donation — thanks for backing the mission.",
+          },
+          unit_amount: finalAmountCents,
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${baseUrl}/world?donation=success`,
+    cancel_url: `${baseUrl}/world?donation=cancel`,
+    client_reference_id: user.id,
+    metadata: {
+      userId: user.id,
+      type: "donation",
+      amountCents: String(finalAmountCents),
+      tier: tierLabel ?? "",
+    },
+  });
+
+  await db.insert(donationsTable).values({
+    userId: user.id,
+    stripeSessionId: session.id,
+    amountCents: finalAmountCents,
+    tier: tierLabel ?? null,
+    status: "pending",
+  });
+
+  res.json({ url: session.url });
+});
+
+router.get("/stripe/donation-history", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = req.user.id;
+  const history = await db
+    .select()
+    .from(donationsTable)
+    .where(eq(donationsTable.userId, userId))
+    .orderBy(desc(donationsTable.createdAt))
+    .limit(50);
+
+  const totalResult = await db
+    .select({ total: sum(donationsTable.amountCents) })
+    .from(donationsTable)
+    .where(eq(donationsTable.userId, userId));
+
+  const totalCents = Number(totalResult[0]?.total ?? 0);
+  const donorTitle = getDonorTitle(totalCents);
+
+  res.json({ history, totalCents, donorTitle });
+});
+
 router.post(
   "/stripe/webhook",
   raw({ type: "application/json" }),
@@ -97,22 +198,28 @@ router.post(
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const userId = session.client_reference_id || session.metadata?.userId;
+        const type = session.metadata?.type;
+        const feature = session.metadata?.feature as FeatureKey | undefined;
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : (session.subscription as any)?.id;
 
-        if (session.metadata?.type === "merch") {
+        if (type === "merch") {
           await handleMerchWebhookEvent(event);
-        } else {
-          const userId = session.client_reference_id || session.metadata?.userId;
-          const feature = session.metadata?.feature as FeatureKey | undefined;
-          const subscriptionId = typeof session.subscription === "string"
-            ? session.subscription
-            : (session.subscription as any)?.id;
-
-          if (userId && feature && FEATURE_KEYS.includes(feature)) {
-            await grantFeature(userId, feature, "stripe", subscriptionId);
-            console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
-          } else {
-            console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
+        } else if (type === "donation") {
+          if (userId && session.id) {
+            await db
+              .update(donationsTable)
+              .set({ status: "completed" })
+              .where(eq(donationsTable.stripeSessionId, session.id));
+            console.log(`[Stripe] Donation completed for user ${userId} — session ${session.id}`);
           }
+        } else if (userId && feature && FEATURE_KEYS.includes(feature)) {
+          await grantFeature(userId, feature, "stripe", subscriptionId);
+          console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId})`);
+        } else {
+          console.warn("[Stripe] checkout.session.completed but missing userId or feature", { userId, feature });
         }
         break;
       }
@@ -154,4 +261,5 @@ router.post(
   }
 );
 
+export { DONATION_TIERS, getDonorTitle };
 export default router;

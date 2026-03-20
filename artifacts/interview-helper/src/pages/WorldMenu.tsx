@@ -529,7 +529,7 @@ export default function WorldMenu() {
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
   const isMobile = useIsMobile();
-  const [tab, setTab] = useState<'enter' | 'guide' | 'merch'>('enter');
+  const [tab, setTab] = useState<'enter' | 'guide' | 'merch' | 'slush'>('enter');
   const [wmMerchProducts, setWmMerchProducts] = useState<any[]>([]);
   const [wmMerchLoading, setWmMerchLoading] = useState(false);
   const [wmMerchSelectedSize, setWmMerchSelectedSize] = useState<Record<number, string>>({});
@@ -563,6 +563,15 @@ export default function WorldMenu() {
   const [bizEmail, setBizEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
+
+  // Donation state
+  const [donationHistory, setDonationHistory] = useState<{ id: number; amountCents: number; tier: string | null; status: string; createdAt: string }[]>([]);
+  const [donationTotalCents, setDonationTotalCents] = useState(0);
+  const [donorTitle, setDonorTitle] = useState('');
+  const [donationLoading, setDonationLoading] = useState(false);
+  const [donationSubmitting, setDonationSubmitting] = useState(false);
+  const [customAmount, setCustomAmount] = useState('');
+  const [donationSuccess, setDonationSuccess] = useState(false);
 
   const [autoResumed, setAutoResumed] = useState(false);
   const [showCinematic, setShowCinematic] = useState(false);
@@ -601,6 +610,36 @@ export default function WorldMenu() {
     if (skipFlag) { sessionStorage.removeItem('sm_show_saves'); setAutoResumed(true); return; }
     setAutoResumed(true);
   }, [cloudSaves, savesLoading, isAuthenticated, autoResumed]);
+
+  // ── Donation history load ────────────────────────────────────────────────────
+  const loadDonationHistory = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setDonationLoading(true);
+    try {
+      const res = await apiFetch('/api/stripe/donation-history', { credentials: 'include' });
+      if (res.ok) {
+        const j = await res.json();
+        setDonationHistory(j.history ?? []);
+        setDonationTotalCents(j.totalCents ?? 0);
+        setDonorTitle(j.donorTitle ?? '');
+      }
+    } catch { /* ignore */ }
+    setDonationLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (tab === 'slush') loadDonationHistory();
+  }, [tab, loadDonationHistory]);
+
+  // ── Handle ?donation=success redirect from Stripe ────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('donation') === 'success') {
+      setTab('slush');
+      setDonationSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // ── Continue a save ─────────────────────────────────────────────────────────
   const handleContinue = (save: CloudSave) => {
@@ -890,21 +929,21 @@ export default function WorldMenu() {
 
         {/* ── TAB BAR ── */}
         <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(0,255,65,.18)', overflow: 'hidden' }}>
-          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['merch', 'MERCH DEPT']] as const).map(([id, label]) => (
+          {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['merch', 'MERCH DEPT'], ['slush', "PABLO'S SLUSH FUND"]] as const).map(([id, label]) => (
             <button
               key={id}
-              onClick={() => setTab(id as 'enter' | 'guide' | 'merch')}
+              onClick={() => setTab(id as 'enter' | 'guide' | 'merch' | 'slush')}
               style={{
                 padding: '.55rem 1.8rem',
-                background: tab === id ? 'rgba(0,255,65,.1)' : 'transparent',
+                background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : 'rgba(0,255,65,.1)') : 'transparent',
                 border: 'none',
-                borderRight: id !== 'merch' ? '1px solid rgba(0,255,65,.18)' : 'none',
-                color: tab === id ? '#00ff41' : 'rgba(0,255,65,.3)',
+                borderRight: id !== 'slush' ? '1px solid rgba(0,255,65,.18)' : 'none',
+                color: tab === id ? (id === 'slush' ? '#ffcc44' : '#00ff41') : (id === 'slush' ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.3)'),
                 ...VT,
                 fontSize: '1.2rem',
                 letterSpacing: '.14em',
                 cursor: 'pointer',
-                textShadow: tab === id ? '0 0 10px rgba(0,255,65,.4)' : 'none',
+                textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : '0 0 10px rgba(0,255,65,.4)') : 'none',
                 transition: 'all .12s',
               }}
             >
@@ -1470,6 +1509,210 @@ export default function WorldMenu() {
               </div>
             )}
           </>
+        )}
+
+        {/* ── TAB: PABLO'S SLUSH FUND ── */}
+        {tab === 'slush' && (
+          <div style={{ width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+
+            {/* Header */}
+            <div style={{ border: '1px solid rgba(255,200,50,.3)', background: 'rgba(255,200,50,.04)', padding: '1.2rem 1.5rem' }}>
+              <div style={{ ...VT, fontSize: '2rem', color: '#ffcc44', letterSpacing: '.15em', textShadow: '0 0 16px rgba(255,200,50,.4)', marginBottom: '.4rem' }}>PABLO'S SLUSH FUND</div>
+              <div style={{ fontSize: '.58rem', color: 'rgba(255,200,50,.5)', lineHeight: 1.8, fontFamily: "'Share Tech Mono',monospace" }}>
+                Voluntary corporate kickbacks. Off-ledger, untraceable, appreciated. Fund the mission — PABLO CORP takes no cut. Donors receive classified field titles recognizing their sacrifice.
+              </div>
+            </div>
+
+            {/* Success screen */}
+            {donationSuccess && (
+              <div style={{ border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,255,65,.06)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.8rem' }}>
+                <div style={{ ...VT, fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.15em', textShadow: '0 0 14px rgba(0,255,65,.5)' }}>TRANSACTION CONFIRMED</div>
+                <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.9, fontFamily: "'Share Tech Mono',monospace", maxWidth: 480 }}>
+                  Credits received and laundered through the appropriate shell corporations. PABLO CORP has noted your contribution in the classified donor registry. Your operative file has been updated. We'll pretend this never happened.
+                </div>
+                {donorTitle && (
+                  <div style={{ border: '1px solid rgba(255,200,50,.4)', background: 'rgba(255,200,50,.06)', padding: '.6rem 1.2rem', marginTop: '.3rem' }}>
+                    <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.4)', letterSpacing: '.14em', marginBottom: '.2rem' }}>FIELD TITLE GRANTED</div>
+                    <div style={{ ...VT, fontSize: '1.2rem', color: '#ffcc44', letterSpacing: '.1em' }}>{donorTitle.toUpperCase()}</div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setDonationSuccess(false)}
+                  style={{ marginTop: '.4rem', padding: '.4rem 1.2rem', background: 'transparent', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.55rem', letterSpacing: '.1em' }}
+                >
+                  CLOSE TRANSMISSION
+                </button>
+              </div>
+            )}
+
+            {/* Not signed in */}
+            {!isAuthenticated && !authLoading && (
+              <div style={{ border: '1px solid rgba(255,200,50,.2)', background: 'rgba(255,200,50,.03)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(255,200,50,.5)', letterSpacing: '.12em' }}>OPERATIVE AUTHENTICATION REQUIRED</div>
+                <div style={{ fontSize: '.52rem', color: 'rgba(255,200,50,.35)', lineHeight: 1.7, fontFamily: "'Share Tech Mono',monospace" }}>Sign in to make a contribution. Donations are tied to your operative record for title and badge tracking.</div>
+                <button onClick={login} style={{ padding: '.55rem 1.8rem', background: 'rgba(255,200,50,.1)', border: '1px solid rgba(255,200,50,.5)', color: '#ffcc44', cursor: 'pointer', ...VT, fontSize: '1.1rem', letterSpacing: '.12em' }}>AUTHENTICATE</button>
+              </div>
+            )}
+
+            {/* Preset tiers */}
+            {isAuthenticated && !donationSuccess && (
+              <>
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.15em', marginBottom: '.65rem', fontFamily: "'Share Tech Mono',monospace" }}>SELECT CONTRIBUTION TIER</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '.6rem' }}>
+                    {[
+                      { id: 'slush_2', label: 'STREET INFORMANT', amount: '$2', badge: 'Street Informant', desc: 'Buy a coffee. Keep the lights on. Low key, high value.' },
+                      { id: 'slush_5', label: 'SHADOW INVESTOR', amount: '$5', badge: 'Shadow Investor', desc: 'Back-channel funding. Five credits for the cause.' },
+                      { id: 'slush_10', label: 'CORPORATE BENEFACTOR', amount: '$10', badge: 'Corporate Benefactor', desc: 'Official off-ledger contribution. PABLO notes the name.' },
+                      { id: 'slush_25', label: 'MEGACORP PATRON', amount: '$25', badge: 'Megacorp Patron', desc: 'The kind of money that buys silence. We are grateful.' },
+                    ].map(tier => (
+                      <button
+                        key={tier.id}
+                        disabled={donationSubmitting}
+                        onClick={async () => {
+                          setDonationSubmitting(true);
+                          try {
+                            const res = await apiFetch('/api/stripe/create-donation-session', {
+                              method: 'POST',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ tierId: tier.id }),
+                            });
+                            if (res.ok) {
+                              const { url } = await res.json();
+                              if (url) window.location.href = url;
+                            }
+                          } catch { /* ignore */ }
+                          setDonationSubmitting(false);
+                        }}
+                        style={{
+                          padding: '.9rem 1rem',
+                          background: 'rgba(255,200,50,.04)',
+                          border: '1px solid rgba(255,200,50,.3)',
+                          color: '#ffcc44',
+                          cursor: donationSubmitting ? 'wait' : 'pointer',
+                          textAlign: 'left',
+                          fontFamily: "'Share Tech Mono',monospace",
+                          transition: 'all .12s',
+                          opacity: donationSubmitting ? 0.6 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '.35rem' }}>
+                          <div style={{ ...VT, fontSize: '1.05rem', color: '#ffcc44', letterSpacing: '.1em' }}>{tier.label}</div>
+                          <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc44', textShadow: '0 0 8px rgba(255,200,50,.4)' }}>{tier.amount}</div>
+                        </div>
+                        <div style={{ fontSize: '.46rem', color: 'rgba(255,200,50,.4)', lineHeight: 1.6 }}>{tier.desc}</div>
+                        <div style={{ marginTop: '.35rem', fontSize: '.42rem', color: 'rgba(255,200,50,.25)', letterSpacing: '.1em' }}>TITLE: {tier.badge.toUpperCase()}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom amount */}
+                <div style={{ border: '1px solid rgba(255,200,50,.2)', background: 'rgba(255,200,50,.02)', padding: '.85rem' }}>
+                  <div style={{ fontSize: '.52rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.14em', marginBottom: '.5rem', fontFamily: "'Share Tech Mono',monospace" }}>CUSTOM AMOUNT (USD)</div>
+                  <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <span style={{ position: 'absolute', left: '.7rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,200,50,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.9rem' }}>$</span>
+                      <input
+                        value={customAmount}
+                        onChange={e => setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                        placeholder="1.00"
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        style={{ width: '100%', padding: '.55rem .7rem .55rem 1.6rem', background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,200,50,.3)', color: '#ffcc44', fontFamily: "'Share Tech Mono',monospace", fontSize: '.9rem', outline: 'none', caretColor: '#ffcc44', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <button
+                      disabled={donationSubmitting || !customAmount || Number(customAmount) < 1}
+                      onClick={async () => {
+                        const cents = Math.round(Number(customAmount) * 100);
+                        if (!cents || cents < 100) return;
+                        setDonationSubmitting(true);
+                        try {
+                          const res = await apiFetch('/api/stripe/create-donation-session', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ amountCents: cents }),
+                          });
+                          if (res.ok) {
+                            const { url } = await res.json();
+                            if (url) window.location.href = url;
+                          }
+                        } catch { /* ignore */ }
+                        setDonationSubmitting(false);
+                      }}
+                      style={{
+                        padding: '.55rem 1.2rem',
+                        background: (!customAmount || Number(customAmount) < 1) ? 'transparent' : 'rgba(255,200,50,.1)',
+                        border: `1px solid ${(!customAmount || Number(customAmount) < 1) ? 'rgba(255,200,50,.15)' : 'rgba(255,200,50,.5)'}`,
+                        color: (!customAmount || Number(customAmount) < 1) ? 'rgba(255,200,50,.2)' : '#ffcc44',
+                        ...VT,
+                        fontSize: '1rem',
+                        letterSpacing: '.1em',
+                        cursor: (donationSubmitting || !customAmount || Number(customAmount) < 1) ? 'default' : 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all .12s',
+                      }}
+                    >
+                      {donationSubmitting ? 'ROUTING...' : 'SEND CREDITS'}
+                    </button>
+                  </div>
+                  <div style={{ marginTop: '.4rem', fontSize: '.42rem', color: 'rgba(255,200,50,.2)', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>
+                    Minimum $1.00. Processed via Stripe. PABLO CORP does not offer refunds on slush fund contributions. Consult your ethics officer.
+                  </div>
+                </div>
+
+                {/* Donor status */}
+                {!donationLoading && donationTotalCents > 0 && (
+                  <div style={{ border: `1px solid rgba(255,200,50,.25)`, background: 'rgba(255,200,50,.04)', padding: '.9rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.12em', marginBottom: '.2rem', fontFamily: "'Share Tech Mono',monospace" }}>YOUR TOTAL CONTRIBUTIONS</div>
+                      <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc44' }}>${(donationTotalCents / 100).toFixed(2)}</div>
+                    </div>
+                    {donorTitle && (
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.12em', marginBottom: '.2rem', fontFamily: "'Share Tech Mono',monospace" }}>OPERATIVE TITLE</div>
+                        <div style={{ ...VT, fontSize: '1.1rem', color: '#ffcc44', letterSpacing: '.1em' }}>{donorTitle.toUpperCase()}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Donation history */}
+                {donationHistory.filter(d => d.status === 'completed').length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '.52rem', color: 'rgba(255,200,50,.25)', letterSpacing: '.14em', marginBottom: '.5rem', fontFamily: "'Share Tech Mono',monospace" }}>TRANSACTION LOG</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                      {donationHistory.filter(d => d.status === 'completed').map(d => (
+                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.5rem .7rem', border: '1px solid rgba(255,200,50,.1)', background: 'rgba(255,200,50,.02)' }}>
+                          <div>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(255,200,50,.5)', fontFamily: "'Share Tech Mono',monospace" }}>
+                              {d.tier ? d.tier.toUpperCase() : 'CUSTOM CONTRIBUTION'}
+                            </div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.25)', fontFamily: "'Share Tech Mono',monospace", marginTop: '.08rem' }}>
+                              {new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </div>
+                          </div>
+                          <div style={{ ...VT, fontSize: '1rem', color: '#ffcc44' }}>${(d.amountCents / 100).toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {donationLoading && (
+                  <div style={{ fontSize: '.5rem', color: 'rgba(255,200,50,.25)', letterSpacing: '.1em', fontFamily: "'Share Tech Mono',monospace" }}>ACCESSING LEDGER▮</div>
+                )}
+              </>
+            )}
+
+            <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.15)', letterSpacing: '.08em', lineHeight: 1.7, fontFamily: "'Share Tech Mono',monospace", borderTop: '1px solid rgba(255,200,50,.08)', paddingTop: '.65rem' }}>
+              All contributions are voluntary and non-refundable. PABLO CORP is not a registered charity. Donor titles are cosmetic only. This is not a tax-deductible donation. If your compliance officer asks — you were never here.
+            </div>
+          </div>
         )}
 
         {/* ── TAB: FIELD GUIDE ── */}

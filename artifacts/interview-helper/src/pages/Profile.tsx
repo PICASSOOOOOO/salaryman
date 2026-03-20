@@ -1,12 +1,20 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
+
+interface DonationRecord {
+  id: number;
+  amountCents: number;
+  tier: string | null;
+  status: string;
+  createdAt: string;
+}
 
 interface AccountData {
   user: { id: string; email?: string; firstName?: string; lastName?: string; profileImageUrl?: string; createdAt: string };
@@ -173,6 +181,10 @@ export default function Profile() {
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState<string | null>(null);
 
+  const [donationHistory, setDonationHistory] = useState<DonationRecord[]>([]);
+  const [donationTotalCents, setDonationTotalCents] = useState(0);
+  const [donorTitle, setDonorTitle] = useState('');
+
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
     apiFetch('/api/account')
@@ -183,6 +195,14 @@ export default function Profile() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    apiFetch('/api/stripe/donation-history')
+      .then(r => r.json())
+      .then(d => {
+        setDonationHistory(d.history ?? []);
+        setDonationTotalCents(d.totalCents ?? 0);
+        setDonorTitle(d.donorTitle ?? '');
+      })
+      .catch(() => {});
   }, [isAuthenticated]);
 
   const saveMemory = async () => {
@@ -424,6 +444,55 @@ export default function Profile() {
                 </div>
               </div>
             </motion.section>
+
+            {/* Donations / Pablo's Slush Fund */}
+            {donationHistory.filter(d => d.status === 'completed').length > 0 && (
+              <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="bg-card border border-border rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-yellow-500/15 border border-yellow-500/25 flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-yellow-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Pablo's Slush Fund</p>
+                    <p className="text-xs text-muted-foreground">Your contributions to the cause</p>
+                  </div>
+                  {donorTitle && (
+                    <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">{donorTitle}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mb-4">
+                  <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Heart className="w-3.5 h-3.5 text-yellow-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Given</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">${(donationTotalCents / 100).toFixed(2)}</p>
+                  </div>
+                  <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contributions</span>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{donationHistory.filter(d => d.status === 'completed').length}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  {donationHistory.filter(d => d.status === 'completed').slice(0, 5).map(d => (
+                    <div key={d.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/10 border border-border">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{d.tier ?? 'Custom contribution'}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                      <span className="text-sm font-bold text-yellow-400">${(d.amountCents / 100).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </motion.section>
+            )}
 
             {/* Mobile Install */}
             <MobileInstallSection />
