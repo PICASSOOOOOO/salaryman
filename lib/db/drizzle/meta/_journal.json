@@ -64,6 +64,13 @@
       "when": 1742342401000,
       "tag": "0008_pablos_slush_fund",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1773999662484,
+      "tag": "0009_goofy_rhodey",
+      "breakpoints": true
     }
   ]
 }

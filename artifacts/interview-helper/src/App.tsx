@@ -61,6 +61,8 @@ const PhoneCoachPage = lazy(() => import("@/pages/phone/PhoneCoachPage"));
 const PhoneSecretaryPage = lazy(() => import("@/pages/phone/PhoneSecretaryPage"));
 const PhoneNumbersPage = lazy(() => import("@/pages/phone/PhoneNumbersPage"));
 
+const MeetPage = lazy(() => import("@/pages/MeetPage"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -70,7 +72,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards", "/meet"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
@@ -110,7 +112,7 @@ function AppShell() {
 
   const pathname = location.split("?")[0];
   const isRootRoute = pathname === "/";
-  const isFullscreenRoute = FULLSCREEN_ROUTES.includes(pathname);
+  const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showNavBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
 
   const isHome = pathname === "/";
@@ -160,6 +162,7 @@ function AppShell() {
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/admin/billboards" component={BillboardAdmin} />
             <Route path="/mobile" component={MobileTerminal} />
+            <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}
             <Route path="/business/contacts" component={ContactCollector} />

@@ -29,6 +29,7 @@ import merchRouter from "./merch";
 import cosmeticsRouter from "./cosmetics";
 import legalRouter from "./legal";
 import salarymanSeasonRouter from "./salaryman-season";
+import meetingsRouter from "./meetings";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(merchRouter);
 router.use(cosmeticsRouter);
 router.use(legalRouter);
 router.use(salarymanSeasonRouter);
+router.use(meetingsRouter);
 
 export default router;

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, FileText,
   Bell, Trash2, Edit2, Check, CalendarDays, Calendar as CalendarIcon,
-  AlarmClock, Mail, Loader2
+  AlarmClock, Mail, Loader2, Video, Copy, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { ProGate } from '@/components/ProGate';
@@ -30,6 +30,7 @@ interface Appointment {
   googleEventId: string | null;
   googleCalendarSynced: boolean;
   reminderEmailSent: boolean;
+  meetingRoomCode: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -332,6 +333,51 @@ function ApptModal({
               ))}
             </select>
           </div>
+
+          {isEdit && initial?.meetingRoomCode && (
+            <div
+              style={{
+                borderTop: "1px solid rgba(103,232,249,0.12)",
+                paddingTop: "12px",
+              }}
+            >
+              <div
+                className="display-text text-xs mb-2"
+                style={{ color: "rgba(103,232,249,0.5)", letterSpacing: "0.1em" }}
+              >
+                <Video className="w-3 h-3 inline mr-1" />MEETING LINK
+              </div>
+              <div className="flex gap-2">
+                <div
+                  className="flex-1 display-text text-xs px-2 py-1.5 truncate"
+                  style={{
+                    background: "rgba(103,232,249,0.04)",
+                    border: "1px solid rgba(103,232,249,0.2)",
+                    color: "#67e8f9",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  /meet/{initial.meetingRoomCode}
+                </div>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/meet/${initial!.meetingRoomCode}`); }}
+                  className="px-2 py-1.5 display-text"
+                  style={{ border: "1px solid rgba(103,232,249,0.25)", color: "#67e8f9", background: "rgba(103,232,249,0.06)" }}
+                  title="Copy link"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => window.open(`/meet/${initial!.meetingRoomCode}`, "_blank")}
+                  className="px-2 py-1.5 display-text"
+                  style={{ border: "1px solid rgba(103,232,249,0.25)", color: "#67e8f9", background: "rgba(103,232,249,0.06)" }}
+                  title="Join meeting"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 pt-1">
             <button
@@ -868,6 +914,13 @@ export default function Calendar() {
   const [emailModal, setEmailModal] = useState<Appointment | null>(null);
   const [emailInput, setEmailInput] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [meetModal, setMeetModal] = useState(false);
+  const [meetTitle, setMeetTitle] = useState("");
+  const [meetCreating, setMeetCreating] = useState(false);
+  const [meetLink, setMeetLink] = useState<string | null>(null);
+  const [meetCode, setMeetCode] = useState<string | null>(null);
+  const [meetInviteEmail, setMeetInviteEmail] = useState("");
+  const [meetInviteSending, setMeetInviteSending] = useState(false);
 
   useNotificationAlarms(appointments);
 
@@ -905,7 +958,7 @@ export default function Calendar() {
     setSaving(true);
     try {
       const { startAt, endAt } = buildISOFromForm(form);
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: form.title,
         description: form.description,
         location: form.location,
@@ -913,6 +966,9 @@ export default function Calendar() {
         endAt,
         reminderMinutes: form.reminderMinutes,
       };
+      if ((editTarget as any)?.meetingRoomCode) {
+        payload.meetingRoomCode = (editTarget as any).meetingRoomCode;
+      }
 
       const url = editTarget
         ? apiUrl(`calendar/appointments/${editTarget.id}`)
@@ -959,6 +1015,53 @@ export default function Calendar() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCreateMeeting() {
+    if (!meetTitle.trim()) return;
+    setMeetCreating(true);
+    try {
+      const resp = await fetch(apiUrl("meetings"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: meetTitle.trim() }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const code = data.meeting.roomCode;
+        const link = `${window.location.origin}/meet/${code}`;
+        setMeetCode(code);
+        setMeetLink(link);
+      } else {
+        const err = await resp.json();
+        toast({ title: "Error", description: err.error, variant: "destructive" });
+      }
+    } finally {
+      setMeetCreating(false);
+    }
+  }
+
+  async function handleSendMeetInvite() {
+    if (!meetCode || !meetInviteEmail.trim()) return;
+    setMeetInviteSending(true);
+    try {
+      const resp = await fetch(apiUrl(`meetings/${meetCode}/invite`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ emails: [meetInviteEmail.trim()] }),
+      });
+      if (resp.ok) {
+        toast({ title: "Invite sent", description: `Hologram link sent to ${meetInviteEmail.trim()}` });
+        setMeetInviteEmail("");
+      } else {
+        const err = await resp.json();
+        toast({ title: "Invite failed", description: err.error, variant: "destructive" });
+      }
+    } finally {
+      setMeetInviteSending(false);
     }
   }
 
@@ -1135,6 +1238,22 @@ export default function Calendar() {
             </span>
 
             <button
+              onClick={() => { setMeetTitle(""); setMeetLink(null); setMeetCode(null); setMeetInviteEmail(""); setMeetModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 display-text transition-all"
+              style={{
+                fontSize: "0.65rem",
+                letterSpacing: "0.1em",
+                color: "#67e8f9",
+                background: "rgba(103,232,249,0.07)",
+                border: "1px solid rgba(103,232,249,0.35)",
+                textShadow: "0 0 8px rgba(103,232,249,0.4)",
+              }}
+            >
+              <Video className="w-3.5 h-3.5" />
+              MEET
+            </button>
+
+            <button
               onClick={() => openNew()}
               className="flex items-center gap-1.5 px-3 py-1.5 display-text transition-all"
               style={{
@@ -1224,6 +1343,183 @@ export default function Calendar() {
             >
               NO MISSIONS SCHEDULED · CLICK ANY DAY OR [+ NEW] TO ADD ONE
             </div>
+          </div>
+        )}
+
+        {/* Meeting link modal */}
+        {meetModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.88)" }}
+            onClick={e => { if (e.target === e.currentTarget) setMeetModal(false); }}
+          >
+            <CRTBorder className="w-full max-w-sm">
+              <div
+                className="flex items-center justify-between px-5 py-3"
+                style={{ borderBottom: "1px solid rgba(103,232,249,0.2)" }}
+              >
+                <span
+                  className="display-text text-xs tracking-widest"
+                  style={{ color: "rgba(103,232,249,0.7)" }}
+                >
+                  <Video className="w-3 h-3 inline mr-1" />
+                  [ HOLOGRAM MEETING ]
+                </span>
+                <button onClick={() => setMeetModal(false)} style={{ color: "rgba(103,232,249,0.4)" }}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-5 flex flex-col gap-4">
+                {!meetLink ? (
+                  <>
+                    <div
+                      className="display-text text-xs"
+                      style={{ color: "rgba(103,232,249,0.5)", letterSpacing: "0.08em" }}
+                    >
+                      Create a hologram meeting room. Guests join via browser — no account needed.
+                    </div>
+                    <div>
+                      <label
+                        className="display-text text-xs block mb-1"
+                        style={{ color: "rgba(103,232,249,0.5)", letterSpacing: "0.1em" }}
+                      >
+                        MEETING TITLE
+                      </label>
+                      <input
+                        className="w-full display-text text-sm px-3 py-2 outline-none"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(103,232,249,0.25)",
+                          color: "#67e8f9",
+                          fontFamily: "'Share Tech Mono', monospace",
+                        }}
+                        value={meetTitle}
+                        onChange={e => setMeetTitle(e.target.value)}
+                        placeholder="e.g. Interview Round 2..."
+                        onKeyDown={e => { if (e.key === "Enter") handleCreateMeeting(); }}
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      onClick={handleCreateMeeting}
+                      disabled={meetCreating || !meetTitle.trim()}
+                      className="flex items-center justify-center gap-2 py-2 display-text text-xs"
+                      style={{
+                        background: "rgba(103,232,249,0.1)",
+                        border: "1px solid rgba(103,232,249,0.4)",
+                        color: "#67e8f9",
+                        letterSpacing: "0.1em",
+                        opacity: meetCreating || !meetTitle.trim() ? 0.5 : 1,
+                      }}
+                    >
+                      {meetCreating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Video className="w-3 h-3" />}
+                      GENERATE MEETING LINK
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="display-text text-xs"
+                      style={{ color: "rgba(103,232,249,0.5)", letterSpacing: "0.08em" }}
+                    >
+                      Room ready. Share this link with guests:
+                    </div>
+                    <div
+                      className="display-text text-xs px-3 py-2 break-all"
+                      style={{
+                        background: "rgba(103,232,249,0.05)",
+                        border: "1px solid rgba(103,232,249,0.2)",
+                        color: "#67e8f9",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {meetLink}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(meetLink!); toast({ title: "Copied!", description: "Meeting link copied to clipboard" }); }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 display-text text-xs"
+                        style={{
+                          background: "rgba(103,232,249,0.08)",
+                          border: "1px solid rgba(103,232,249,0.3)",
+                          color: "#67e8f9",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        <Copy className="w-3 h-3" />
+                        COPY
+                      </button>
+                      <button
+                        onClick={() => window.open(meetLink!, "_blank")}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 display-text text-xs"
+                        style={{
+                          background: "rgba(103,232,249,0.08)",
+                          border: "1px solid rgba(103,232,249,0.3)",
+                          color: "#67e8f9",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        JOIN
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setMeetModal(false);
+                        setDefaultSlotDate(new Date());
+                        setEditTarget({ title: meetTitle, meetingRoomCode: meetCode } as any);
+                        setModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 display-text text-xs"
+                      style={{
+                        background: "rgba(34,197,94,0.06)",
+                        border: "1px solid rgba(34,197,94,0.3)",
+                        color: "rgba(34,197,94,0.7)",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      <Plus className="w-3 h-3" />
+                      ADD TO CALENDAR
+                    </button>
+                    <div
+                      className="display-text text-xs"
+                      style={{ color: "rgba(103,232,249,0.4)", letterSpacing: "0.08em", borderTop: "1px solid rgba(103,232,249,0.1)", paddingTop: "12px" }}
+                    >
+                      EMAIL INVITE TO GUEST:
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        className="flex-1 display-text text-xs px-3 py-2 outline-none"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(103,232,249,0.2)",
+                          color: "#67e8f9",
+                          fontFamily: "'Share Tech Mono', monospace",
+                        }}
+                        value={meetInviteEmail}
+                        onChange={e => setMeetInviteEmail(e.target.value)}
+                        placeholder="guest@email.com"
+                        type="email"
+                        onKeyDown={e => { if (e.key === "Enter") handleSendMeetInvite(); }}
+                      />
+                      <button
+                        onClick={handleSendMeetInvite}
+                        disabled={meetInviteSending || !meetInviteEmail.trim()}
+                        className="flex items-center justify-center gap-2 px-3 py-2 display-text text-xs"
+                        style={{
+                          background: "rgba(103,232,249,0.08)",
+                          border: "1px solid rgba(103,232,249,0.3)",
+                          color: "#67e8f9",
+                          opacity: meetInviteSending || !meetInviteEmail.trim() ? 0.5 : 1,
+                        }}
+                      >
+                        {meetInviteSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CRTBorder>
           </div>
         )}
 

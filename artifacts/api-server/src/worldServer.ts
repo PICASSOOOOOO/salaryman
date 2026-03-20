@@ -1,6 +1,9 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
+import { db, meetingsTable } from '@workspace/db';
+import { eq, and, gt } from 'drizzle-orm';
+import { verifyGuestToken } from './routes/meetings';
 
 const MAX_PLAYERS = 50;
 
@@ -50,6 +53,15 @@ const buildingLocks = new Map<string, BuildingLock>();
 const videoRooms = new Map<string, Set<string>>();
 const pendingCalls = new Map<string, { callerId: string; targetId: string; ts: number }>();
 const activeCalls = new Map<string, string>();
+
+// Guest connection state (room code → set of guest connection objects)
+interface GuestConn {
+  id: string;
+  name: string;
+  ws: WebSocket;
+  roomCode: string;
+}
+const guestRooms = new Map<string, Set<GuestConn>>();
 
 let idCounter = 0;
 const makeId = () => `p${++idCounter}_${Date.now().toString(36)}`;
@@ -557,9 +569,20 @@ const handleMessage = (player: Player, raw: string) => {
       const room = videoRooms.get(roomId)!;
       const existingPeers = Array.from(room).filter(pid => players.has(pid) && pid !== player.id);
       room.add(player.id);
-      sendTo(player.id, { type: 'rtc_room_peers', roomId, peers: existingPeers.map(pid => ({ id: pid, name: players.get(pid)!.name })) });
+      // Include existing guests as peers too
+      const existingGuests = guestRooms.has(roomId) ? Array.from(guestRooms.get(roomId)!).map(g => ({ id: g.id, name: `${g.name} [REMOTE]`, isGuest: true })) : [];
+      sendTo(player.id, { type: 'rtc_room_peers', roomId, peers: [...existingPeers.map(pid => ({ id: pid, name: players.get(pid)!.name, isGuest: false })), ...existingGuests] });
       for (const pid of existingPeers) {
         sendTo(pid, { type: 'rtc_peer_joined', roomId, peerId: player.id, peerName: player.name });
+      }
+      // Notify guests that in-game player joined
+      const gRoomAtJoin = guestRooms.get(roomId);
+      if (gRoomAtJoin) {
+        for (const g of gRoomAtJoin) {
+          if (g.ws.readyState === WebSocket.OPEN) {
+            g.ws.send(JSON.stringify({ type: 'meet_peer_joined', peerId: player.id, peerName: player.name, isGuest: false }));
+          }
+        }
       }
       break;
     }
@@ -573,12 +596,34 @@ const handleMessage = (player: Player, raw: string) => {
       for (const pid of room) {
         sendTo(pid, { type: 'rtc_peer_left', roomId, peerId: player.id });
       }
+      // Notify guests that in-game player left
+      const gRoomAtLeave = guestRooms.get(roomId);
+      if (gRoomAtLeave) {
+        for (const g of gRoomAtLeave) {
+          if (g.ws.readyState === WebSocket.OPEN) {
+            g.ws.send(JSON.stringify({ type: 'meet_peer_left', peerId: player.id }));
+          }
+        }
+      }
       break;
     }
 
     case 'rtc_signal': {
       const { targetId, signal, roomId } = msg;
       if (!targetId || !signal || !roomId) break;
+
+      // Check if target is a guest connection
+      const gRoom = guestRooms.get(roomId);
+      if (gRoom) {
+        const targetGuest = Array.from(gRoom).find(g => g.id === targetId);
+        if (targetGuest) {
+          if (targetGuest.ws.readyState === WebSocket.OPEN) {
+            targetGuest.ws.send(JSON.stringify({ type: 'meet_signal', fromId: player.id, fromName: player.name, signal, isGuest: false }));
+          }
+          break;
+        }
+      }
+
       const sigRoom = videoRooms.get(roomId);
       if (!sigRoom || !sigRoom.has(player.id) || !sigRoom.has(targetId)) break;
       sendTo(targetId, { type: 'rtc_signal', fromId: player.id, fromName: player.name, signal, roomId });
@@ -665,6 +710,159 @@ export const attachWorldServer = (httpServer: Server) => {
       if (p.ws.readyState === WebSocket.OPEN) p.ws.ping();
     }
   }, 25000);
+
+  // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
+  const guestWss = new WebSocketServer({ noServer: true });
+  console.log('[Meet] Guest WebSocket server ready (noServer, handles /ws/meet/* upgrades)');
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    const pathname = req.url?.split('?')[0] ?? '';
+    if (pathname.includes('/ws/meet')) {
+      guestWss.handleUpgrade(req, socket as any, head, (ws) => {
+        guestWss.emit('connection', ws, req);
+      });
+    }
+  });
+
+  let guestIdCounter = 0;
+  const makeGuestId = () => `g${++guestIdCounter}_${Date.now().toString(36)}`;
+
+  const sendToGuest = (conn: GuestConn, msg: object) => {
+    if (conn.ws.readyState === WebSocket.OPEN) conn.ws.send(JSON.stringify(msg));
+  };
+
+  guestWss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
+    const urlPath = req.url ?? '';
+    const parts = urlPath.split('?');
+    const pathSegments = parts[0].split('/').filter(Boolean);
+    const roomCode = pathSegments[pathSegments.length - 1] ?? '';
+    const params = new URLSearchParams(parts[1] ?? '');
+    const guestName = (params.get('name') ?? 'GUEST').slice(0, 24).toUpperCase();
+    const guestToken = params.get('token') ?? '';
+
+    if (!roomCode) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Room code required' }));
+      ws.close(1008, 'Room code required');
+      return;
+    }
+
+    // Validate short-lived guest token (preferred) or fall back to DB check
+    const tokenClaim = guestToken ? verifyGuestToken(guestToken) : null;
+    if (guestToken && !tokenClaim) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid or expired guest token' }));
+      ws.close(1008, 'Invalid token');
+      return;
+    }
+    if (tokenClaim && tokenClaim.roomCode !== roomCode) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Token room mismatch' }));
+      ws.close(1008, 'Room mismatch');
+      return;
+    }
+
+    // Validate meeting exists and is not expired (always check DB for meeting-level expiry)
+    let meeting: any;
+    try {
+      const rows = await db
+        .select()
+        .from(meetingsTable)
+        .where(and(eq(meetingsTable.roomCode, roomCode), gt(meetingsTable.expiresAt, new Date())));
+      meeting = rows[0];
+    } catch (err) {
+      console.error('[Meet] DB error validating room:', err);
+      ws.send(JSON.stringify({ type: 'error', message: 'Server error' }));
+      ws.close(1011, 'Server error');
+      return;
+    }
+
+    if (!meeting) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Meeting not found or expired' }));
+      ws.close(1008, 'Invalid room');
+      return;
+    }
+
+    const guestId = makeGuestId();
+    const guestConn: GuestConn = { id: guestId, name: guestName, ws, roomCode };
+
+    if (!guestRooms.has(roomCode)) guestRooms.set(roomCode, new Set());
+    const guestRoom = guestRooms.get(roomCode)!;
+    guestRoom.add(guestConn);
+
+    console.log(`[Meet] Guest ${guestName} (${guestId}) joined room ${roomCode}`);
+
+    // Send welcome with existing participants
+    const existingGuests = Array.from(guestRoom).filter(g => g.id !== guestId).map(g => ({ id: g.id, name: g.name, isGuest: true }));
+    const inGamePlayers = videoRooms.has(roomCode)
+      ? Array.from(videoRooms.get(roomCode)!).filter(pid => players.has(pid)).map(pid => ({ id: pid, name: players.get(pid)!.name, isGuest: false }))
+      : [];
+    ws.send(JSON.stringify({ type: 'meet_welcome', guestId, guestName, meetingTitle: meeting.title, peers: [...existingGuests, ...inGamePlayers] }));
+
+    // Notify existing guests
+    for (const g of guestRoom) {
+      if (g.id !== guestId) sendToGuest(g, { type: 'meet_peer_joined', peerId: guestId, peerName: guestName, isGuest: true });
+    }
+
+    // Notify in-game players currently in this room's video call
+    const inGameRoom = videoRooms.get(roomCode);
+    if (inGameRoom) {
+      for (const pid of inGameRoom) {
+        sendTo(pid, { type: 'rtc_guest_joined', roomId: roomCode, guestId, guestName });
+      }
+    }
+
+    ws.on('message', (data: Buffer) => {
+      let msg: any;
+      try { msg = JSON.parse(data.toString()); } catch { return; }
+
+      switch (msg.type) {
+        case 'meet_signal': {
+          const { targetId, signal } = msg;
+          if (!targetId || !signal) break;
+
+          // Try guest-to-guest signal
+          const targetGuest = guestRoom ? Array.from(guestRoom).find(g => g.id === targetId) : null;
+          if (targetGuest) {
+            sendToGuest(targetGuest, { type: 'meet_signal', fromId: guestId, fromName: guestName, signal, isGuest: true });
+            break;
+          }
+
+          // Try guest-to-player signal (in-game player)
+          const inRoom = videoRooms.get(roomCode);
+          if (inRoom && inRoom.has(targetId)) {
+            sendTo(targetId, { type: 'rtc_signal', fromId: guestId, fromName: `${guestName} [REMOTE]`, signal, roomId: roomCode, isGuest: true });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    });
+
+    ws.on('close', () => {
+      guestRoom.delete(guestConn);
+      if (guestRoom.size === 0) guestRooms.delete(roomCode);
+
+      // Notify other guests
+      for (const g of guestRoom) {
+        sendToGuest(g, { type: 'meet_peer_left', peerId: guestId });
+      }
+
+      // Notify in-game players
+      const inRoom = videoRooms.get(roomCode);
+      if (inRoom) {
+        for (const pid of inRoom) {
+          sendTo(pid, { type: 'rtc_guest_left', roomId: roomCode, guestId, guestName });
+        }
+      }
+
+      console.log(`[Meet] Guest ${guestName} (${guestId}) left room ${roomCode}`);
+    });
+
+    ws.on('error', (err) => console.error(`[Meet] WS error for guest ${guestName}:`, err.message));
+  });
+
+  // Extend the in-game RTC signal handler to also forward signals to guests
+  // We do this by patching the sendTo helper for guest targets
+  // (Already handled in rtc_signal case by checking guestRooms below)
 
   return wss;
 };

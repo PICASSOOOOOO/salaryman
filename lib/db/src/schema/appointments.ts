@@ -14,6 +14,7 @@ export const appointmentsTable = pgTable("appointments", {
   googleEventId: varchar("google_event_id", { length: 300 }),
   googleCalendarSynced: boolean("google_calendar_synced").notNull().default(false),
   reminderEmailSent: boolean("reminder_email_sent").notNull().default(false),
+  meetingRoomCode: varchar("meeting_room_code", { length: 32 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

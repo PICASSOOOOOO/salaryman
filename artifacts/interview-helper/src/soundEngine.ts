@@ -246,6 +246,37 @@ export function sfxError() {
   play(o, t, t + 0.16);
 }
 
+export function sfxHologramBeamIn() {
+  const c = ctx(); const t = c.currentTime;
+  const freqs = [220, 440, 660, 880, 1100, 1320, 1100, 880, 660, 440];
+  freqs.forEach((f, i) => {
+    const g = gain(c, 0.12);
+    const o = osc(c, 'sine', f, g);
+    const st = t + i * 0.04;
+    g.gain.setValueAtTime(0.12 * _sfxVol, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.06);
+    play(o, st, st + 0.065);
+  });
+  const g2 = gain(c, 0.08);
+  const o2 = osc(c, 'sawtooth', 80, g2);
+  g2.gain.setValueAtTime(0.08 * _sfxVol, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  play(o2, t, t + 0.5);
+}
+
+export function sfxHologramSignalLost() {
+  const c = ctx(); const t = c.currentTime;
+  const freqs = [880, 660, 440, 220, 110];
+  freqs.forEach((f, i) => {
+    const g = gain(c, 0.1);
+    const o = osc(c, 'square', f, g);
+    const st = t + i * 0.06;
+    g.gain.setValueAtTime(0.1 * _sfxVol, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.08);
+    play(o, st, st + 0.09);
+  });
+}
+
 export function sfxZoneCross() {
   const c = ctx(); const t = c.currentTime;
   [220, 180].forEach((f, i) => {

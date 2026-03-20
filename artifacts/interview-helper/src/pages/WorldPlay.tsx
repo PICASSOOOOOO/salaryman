@@ -24,6 +24,7 @@ import {
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
   startCrowdMurmur, updateCrowdMurmurVolume, stopCrowdMurmur, sfxNpcMurmur,
+  sfxHologramBeamIn, sfxHologramSignalLost,
   type ConversationEvent, type ConversationLine,
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
@@ -3364,7 +3365,7 @@ export default function WorldPlay() {
     try { const saved = _ss?.inventory; return Array.isArray(saved) ? saved : []; } catch { return []; }
   });
   const [videoCallRoom, setVideoCallRoom] = useState<string | null>(null);
-  const [videoCallPeers, setVideoCallPeers] = useState<{ id: string; name: string; stream?: MediaStream }[]>([]);
+  const [videoCallPeers, setVideoCallPeers] = useState<{ id: string; name: string; isGuest?: boolean; stream?: MediaStream }[]>([]);
   const [vcStream, setVcStream] = useState<MediaStream | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -3372,6 +3373,7 @@ export default function WorldPlay() {
   const iceCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const vcStreamRef = useRef<MediaStream | null>(null);
   const videoCallRoomRef = useRef<string | null>(null);
+  const [hologramNotification, setHologramNotification] = useState<string | null>(null);
   const [hospitalCinematic, setHospitalCinematic] = useState<{ phase: number; lineIdx: number; fadeAlpha: number; startTime: number } | null>(null);
   const [showHospitalPrompt, setShowHospitalPrompt] = useState(() => {
     if (_ss?.diedLastSession) return true;
@@ -4412,17 +4414,34 @@ export default function WorldPlay() {
       else if (m.type === 'voice_ice')      handleVoiceICE(m.from, m.candidate);
       else if (m.type === 'voice_peer_joined') initiateVoiceWith(m.id);
       else if (m.type === 'rtc_room_peers') {
-        const peers = (m.peers as { id: string; name: string }[]) ?? [];
-        setVideoCallPeers(peers.map(p => ({ id: p.id, name: p.name })));
+        const peers = (m.peers as { id: string; name: string; isGuest?: boolean }[]) ?? [];
+        setVideoCallPeers(peers.map(p => ({ id: p.id, name: p.name, isGuest: p.isGuest ?? false })));
         for (const peer of peers) createPeerConnection(peer.id, peer.name, true);
       } else if (m.type === 'rtc_peer_joined') {
-        setVideoCallPeers(prev => [...prev, { id: m.peerId, name: m.peerName }]);
+        setVideoCallPeers(prev => [...prev, { id: m.peerId, name: m.peerName, isGuest: false }]);
         createPeerConnection(m.peerId, m.peerName, false);
       } else if (m.type === 'rtc_peer_left') {
         const pc = peerConnectionsRef.current.get(m.peerId);
         if (pc) { pc.close(); peerConnectionsRef.current.delete(m.peerId); }
         iceCandidateQueueRef.current.delete(m.peerId);
         setVideoCallPeers(prev => prev.filter(p => p.id !== m.peerId));
+      } else if (m.type === 'rtc_guest_joined') {
+        const gName = m.guestName as string;
+        setVideoCallPeers(prev => prev.some(p => p.id === m.guestId) ? prev : [...prev, { id: m.guestId, name: `${gName} [REMOTE]`, isGuest: true }]);
+        createPeerConnection(m.guestId, `${gName} [REMOTE]`, false);
+        sfxHologramBeamIn();
+        setHologramNotification(`HOLOGRAM LINK ESTABLISHED — GUEST: ${gName}`);
+        setTimeout(() => setHologramNotification(null), 4000);
+        setNarr(`> HOLOGRAM LINK — ${gName} joined as remote guest.`);
+      } else if (m.type === 'rtc_guest_left') {
+        const lpc = peerConnectionsRef.current.get(m.guestId);
+        if (lpc) { lpc.close(); peerConnectionsRef.current.delete(m.guestId); }
+        iceCandidateQueueRef.current.delete(m.guestId);
+        setVideoCallPeers(prev => prev.filter(p => p.id !== m.guestId));
+        sfxHologramSignalLost();
+        setHologramNotification(`SIGNAL LOST — GUEST: ${m.guestName}`);
+        setTimeout(() => setHologramNotification(null), 3000);
+        setNarr(`> HOLOGRAM LINK — ${m.guestName} disconnected.`);
       } else if (m.type === 'rtc_signal') {
         handleRtcSignal(m.fromId, m.fromName, m.signal);
       } else if (m.type === 'phone_call_incoming') {
@@ -5716,6 +5735,76 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     setPabloMsgs(m => [...m, { role: 'user', text: txt }]);
     const canAccess = (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
     if (!canAccess) { setPabloMsgs(m => [...m, { role: 'pablo', text: gs.current.deviceBroken ? 'Device damaged. Visit CITY CLINIC for repair (ƒ5,000) or find a PUBLIC TERMINAL.' : 'No device. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].' }]); return; }
+
+    // ── meet commands ───────────────────────────────────────────────────
+    const meetMatch = txt.match(/^meet\s+(\S+)(.*)$/i);
+    if (meetMatch) {
+      const subCmd = meetMatch[1].toLowerCase();
+      const rest = meetMatch[2].trim();
+      if (subCmd === 'create') {
+        const title = rest || `${char.name}'s Meeting`;
+        setPabloLoad(true);
+        try {
+          const r = await apiFetch('/api/meetings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }), credentials: 'include' });
+          const d = r.ok ? await r.json() : null;
+          if (d?.meeting) {
+            const baseUrl = window.location.origin;
+            const link = `${baseUrl}/meet/${d.meeting.roomCode}`;
+            setPabloMsgs(m => [...m, { role: 'pablo', text: `ROOM CREATED: "${d.meeting.title}"\nCODE: ${d.meeting.roomCode}\nLINK: ${link}\nExpires in 7 days. Type: meet join ${d.meeting.roomCode}` }]);
+          } else {
+            setPabloMsgs(m => [...m, { role: 'pablo', text: 'Failed to create meeting room. Try again.' }]);
+          }
+        } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error creating meeting.' }]); }
+        setPabloLoad(false);
+      } else if (subCmd === 'list') {
+        setPabloLoad(true);
+        try {
+          const r = await apiFetch('/api/meetings', { credentials: 'include' });
+          const d = r.ok ? await r.json() : null;
+          if (d?.meetings?.length) {
+            const baseUrl = window.location.origin;
+            const lines = d.meetings.map((m: any) => `${m.title} — CODE: ${m.roomCode} — ${baseUrl}/meet/${m.roomCode}`).join('\n');
+            setPabloMsgs(m => [...m, { role: 'pablo', text: `ACTIVE MEETINGS (${d.meetings.length}):\n${lines}` }]);
+          } else {
+            setPabloMsgs(m => [...m, { role: 'pablo', text: 'No active meeting rooms. Type: meet create [title]' }]);
+          }
+        } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error fetching meetings.' }]); }
+        setPabloLoad(false);
+      } else if (subCmd === 'join') {
+        const roomId = rest || videoCallRoom;
+        if (roomId) {
+          joinVideoCall(roomId);
+          setPabloMsgs(m => [...m, { role: 'pablo', text: `Joining video call for room: ${roomId}. Use [C] or [ESC] to end.` }]);
+        } else {
+          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Specify a room code: meet join [code]' }]);
+        }
+      } else if (subCmd === 'invite') {
+        const parts = rest.split(/\s+/);
+        const email = parts[0];
+        const roomCode = parts[1] ?? '';
+        if (!email || !email.includes('@')) {
+          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Usage: meet invite [email] [room-code]' }]);
+        } else if (!roomCode) {
+          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Usage: meet invite [email] [room-code]' }]);
+        } else {
+          setPabloLoad(true);
+          try {
+            const r = await apiFetch(`/api/meetings/${roomCode}/invite`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emails: [email] }), credentials: 'include' });
+            const d = r.ok ? await r.json() : null;
+            if (d?.ok) {
+              setPabloMsgs(m => [...m, { role: 'pablo', text: `INVITE SENT to ${email} for room ${roomCode}. Hologram link delivered.` }]);
+            } else {
+              setPabloMsgs(m => [...m, { role: 'pablo', text: `Invite failed: ${d?.error ?? 'Unknown error'}` }]);
+            }
+          } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error sending invite.' }]); }
+          setPabloLoad(false);
+        }
+      } else {
+        setPabloMsgs(m => [...m, { role: 'pablo', text: 'MEET COMMANDS:\nmeet create [title] — Create a meeting room\nmeet list — List active rooms\nmeet join [code] — Join video call\nmeet invite [email] [code] — Send invite email' }]);
+      }
+      return;
+    }
+
     setPabloLoad(true);
     try {
       const context = buildPabloContext();
@@ -5724,7 +5813,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       setPabloMsgs(m => [...m, { role: 'pablo', text: d.response ?? 'Signal lost. Try again.' }]);
     } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network dead. Move to higher ground.' }]); }
     setPabloLoad(false);
-  }, [pabloIn, pabloLoad, buildPabloContext]);
+  }, [pabloIn, pabloLoad, buildPabloContext, char.name, joinVideoCall, videoCallRoom]);
 
   const sendPabloVoice = useCallback(async (transcript: string): Promise<string> => {
     const canAccess = (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
@@ -11264,6 +11353,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
         @keyframes smblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+        @keyframes scanlines { 0%{background-position:0 0} 100%{background-position:0 8px} }
         
       `}</style>
       {/* Canvas — full screen game world */}
@@ -14611,11 +14701,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
+      {hologramNotification && (
+        <div style={{ position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 800, fontFamily: "'Share Tech Mono',monospace", pointerEvents: 'none' }}>
+          <div style={{ background: 'rgba(0,10,30,.95)', border: '1px solid rgba(0,200,255,.5)', padding: '6px 14px', borderRadius: '4px', boxShadow: '0 0 20px rgba(0,200,255,.2)', color: 'rgba(0,200,255,.9)', fontSize: '.55rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>
+            ▓ {hologramNotification} ▓
+          </div>
+        </div>
+      )}
+
       {videoCallRoom && (
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 750, fontFamily: "'Share Tech Mono',monospace", width: '340px', maxWidth: '40vw' }}>
           <div style={{ background: 'rgba(8,8,14,.94)', border: '1px solid rgba(0,200,255,.3)', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 0 25px rgba(0,200,255,.1)' }}>
             <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,200,255,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,200,255,.06)' }}>
-              <span style={{ color: 'rgba(0,200,255,.8)', fontSize: '.6rem', letterSpacing: '.1em' }}>VIDEO CALL — {videoCallPeers.length + 1} participant{videoCallPeers.length !== 0 ? 's' : ''}</span>
+              <span style={{ color: 'rgba(0,200,255,.8)', fontSize: '.6rem', letterSpacing: '.1em' }}>VIDEO CALL — {videoCallPeers.length + 1} participant{videoCallPeers.length !== 0 ? 's' : ''}{videoCallPeers.some(p => p.isGuest) ? ` · ${videoCallPeers.filter(p => p.isGuest).length} HOLOGRAM` : ''}</span>
               <button onClick={leaveVideoCall} style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,60,60,.8)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px' }}>END [ESC]</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: videoCallPeers.length > 1 ? '1fr 1fr' : '1fr', gap: '3px', padding: '4px' }}>
@@ -14631,15 +14729,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.6)', padding: '1px 4px', borderRadius: '2px' }}>YOU{!audioEnabled ? ' (MUTED)' : ''}</div>
               </div>
               {videoCallPeers.map(peer => (
-                <div key={peer.id} style={{ aspectRatio: '4/3', background: 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(0,200,255,.1)' }}>
+                <div key={peer.id} style={{ aspectRatio: '4/3', background: peer.isGuest ? 'rgba(0,10,30,.8)' : 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: peer.isGuest ? '1px solid rgba(0,200,255,.35)' : '1px solid rgba(0,200,255,.1)', boxShadow: peer.isGuest ? '0 0 12px rgba(0,150,255,.15) inset' : 'none' }}>
                   {peer.stream ? (
-                    <video ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <video ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', filter: peer.isGuest ? 'brightness(0.85) hue-rotate(180deg) saturate(0.7) contrast(1.1)' : 'none', opacity: peer.isGuest ? 0.82 : 1 }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontSize: '1.5rem' }}>👤</div>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ fontSize: '1.5rem', opacity: peer.isGuest ? 0.6 : 1 }}>👤</div>
+                      {peer.isGuest && <div style={{ fontSize: '.35rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em' }}>ACQUIRING SIGNAL...</div>}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.6)', padding: '1px 4px', borderRadius: '2px' }}>{peer.name}</div>
+                  {peer.isGuest && (
+                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,200,255,.04) 3px, rgba(0,200,255,.04) 4px)', animation: 'scanlines 2s linear infinite' }} />
+                  )}
+                  <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: peer.isGuest ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.7)', padding: '1px 4px', borderRadius: '2px' }}>
+                    {peer.name}
+                    {peer.isGuest && <span style={{ marginLeft: '4px', color: 'rgba(0,200,255,.5)', fontSize: '.35rem' }}>HOLOGRAM</span>}
+                  </div>
                 </div>
               ))}
             </div>

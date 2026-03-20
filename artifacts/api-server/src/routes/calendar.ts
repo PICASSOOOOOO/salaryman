@@ -51,7 +51,7 @@ router.get("/calendar/appointments", async (req, res) => {
 router.post("/calendar/appointments", async (req, res) => {
   if (!requireAuth(req, res)) return;
 
-  const { title, description = "", location = "", startAt, endAt, reminderMinutes = 15 } =
+  const { title, description = "", location = "", startAt, endAt, reminderMinutes = 15, meetingRoomCode } =
     req.body as {
       title: string;
       description?: string;
@@ -59,6 +59,7 @@ router.post("/calendar/appointments", async (req, res) => {
       startAt: string;
       endAt: string;
       reminderMinutes?: number;
+      meetingRoomCode?: string;
     };
 
   if (!title?.trim()) {
@@ -81,6 +82,7 @@ router.post("/calendar/appointments", async (req, res) => {
         startAt: new Date(startAt),
         endAt: new Date(endAt),
         reminderMinutes: Number(reminderMinutes),
+        ...(meetingRoomCode ? { meetingRoomCode } : {}),
       })
       .returning();
 
@@ -95,7 +97,7 @@ router.put("/calendar/appointments/:id", async (req, res) => {
   if (!requireAuth(req, res)) return;
 
   const id = Number(req.params.id);
-  const { title, description, location, startAt, endAt, reminderMinutes } =
+  const { title, description, location, startAt, endAt, reminderMinutes, meetingRoomCode } =
     req.body as {
       title?: string;
       description?: string;
@@ -103,6 +105,7 @@ router.put("/calendar/appointments/:id", async (req, res) => {
       startAt?: string;
       endAt?: string;
       reminderMinutes?: number;
+      meetingRoomCode?: string | null;
     };
 
   try {
@@ -125,6 +128,7 @@ router.put("/calendar/appointments/:id", async (req, res) => {
     if (startAt !== undefined) updates.startAt = new Date(startAt);
     if (endAt !== undefined) updates.endAt = new Date(endAt);
     if (reminderMinutes !== undefined) updates.reminderMinutes = Number(reminderMinutes);
+    if (meetingRoomCode !== undefined) (updates as any).meetingRoomCode = meetingRoomCode;
 
     const [updated] = await db
       .update(appointmentsTable)
