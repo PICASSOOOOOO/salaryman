@@ -1,13 +1,12 @@
-import { Terminal, LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Phone } from 'lucide-react';
+import { Terminal, LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
-import { PhoneDialer } from './PhoneDialer';
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -17,19 +16,6 @@ export function NavBar() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-  const [phoneOpen, setPhoneOpen] = useState(false);
-  const phoneRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!phoneOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (phoneRef.current && !phoneRef.current.contains(e.target as Node)) setPhoneOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [phoneOpen]);
-
-  useEffect(() => { setPhoneOpen(false); }, [location]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -166,37 +152,6 @@ export function NavBar() {
               </button>
             );
           })}
-
-          {/* Phone dialer — desktop only, auth required */}
-          {isAuthenticated && (
-            <div ref={phoneRef} className="relative">
-              <button
-                onClick={() => setPhoneOpen(prev => !prev)}
-                title="Calll Home — Phone System"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
-                  phoneOpen
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
-                }`}
-              >
-                <Phone className="w-3 h-3 shrink-0" />
-                {boomerMode ? 'PHONE' : 'CALLL HOME'}
-              </button>
-              {phoneOpen && (
-                <div
-                  className="absolute top-full left-0 mt-1.5 z-50"
-                  style={{ filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.6))' }}
-                >
-                  <PhoneDialer
-                    userId={user?.id ?? ''}
-                    callerName={user?.firstName ?? user?.email?.split('@')[0]}
-                    compact
-                    onClose={() => setPhoneOpen(false)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           {/* EXPLORE button — desktop only */}
           <button

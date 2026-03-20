@@ -2,7 +2,8 @@ import {
   Terminal, Code2, Briefcase, Layers, BarChart2,
   Users, CalendarDays, Archive, FileText, TrendingUp,
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
-  PhoneCall, Mic, Monitor, Search,
+  PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
+  Voicemail, Hash, Zap, Clock, MessageSquare,
 } from 'lucide-react';
 
 export type Module = {
@@ -61,7 +62,6 @@ export const MODULES: Module[] = [
       { id: 'documents', path: '/business/documents', label: 'DOCUMENTS', boomerLabel: 'DOCUMENTS', codename: 'INK-6', icon: Archive },
       { id: 'invoices', path: '/business/invoices', label: 'INVOICES', boomerLabel: 'INVOICES', codename: 'LEDGER-3', icon: FileText },
       { id: 'deals', path: '/business/deals', label: 'DEALS', boomerLabel: 'DEALS', codename: 'PIPELINE-X', icon: TrendingUp },
-      { id: 'phone', path: '/business/phone', label: 'PHONE', boomerLabel: 'PHONE SYSTEM', codename: 'COMM-1', icon: PhoneCall },
     ],
   },
   {
@@ -93,6 +93,26 @@ export const MODULES: Module[] = [
       { id: 'seo', path: '/intel/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
     ],
   },
+  {
+    id: 'phone',
+    path: '/phone',
+    label: 'PHONE',
+    codename: 'CALLL HOME',
+    icon: Phone,
+    defaultPath: '/phone/dialer',
+    subs: [
+      { id: 'dialer', path: '/phone/dialer', label: 'DIALER', boomerLabel: 'DIALER', codename: 'DIAL-PAD', icon: PhoneCall },
+      { id: 'contacts', path: '/phone/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'COMM-BOOK', icon: Users },
+      { id: 'active', path: '/phone/active', label: 'ACTIVE CALLS', boomerLabel: 'ACTIVE CALLS', codename: 'LIVE-OPS', icon: Zap },
+      { id: 'history', path: '/phone/history', label: 'CALL LOG', boomerLabel: 'CALL LOG', codename: 'CHRONO-LOG', icon: Clock },
+      { id: 'voicemail', path: '/phone/voicemail', label: 'VOICEMAIL', boomerLabel: 'VOICEMAIL', codename: 'V-MAIL', icon: Voicemail },
+      { id: 'conference', path: '/phone/conference', label: 'CONFERENCE', boomerLabel: 'CONFERENCE', codename: 'CONF-ROOM', icon: Users },
+      { id: 'sessions', path: '/phone/sessions', label: 'DIALING SESSIONS', boomerLabel: 'DIALING SESSIONS', codename: 'AUTO-DIAL', icon: Radio },
+      { id: 'coach', path: '/phone/coach', label: 'AI COACH', boomerLabel: 'AI COACH', codename: 'AI-COACH', icon: Bot },
+      { id: 'secretary', path: '/phone/secretary', label: 'AI SECRETARY', boomerLabel: 'AI SECRETARY', codename: 'AI-SEC', icon: Settings },
+      { id: 'numbers', path: '/phone/numbers', label: 'PHONE NUMBERS', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
+    ],
+  },
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
@@ -101,5 +121,6 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/business')) return MODULES[2];
   if (pathname.startsWith('/creative')) return MODULES[3];
   if (pathname.startsWith('/intel')) return MODULES[4];
+  if (pathname.startsWith('/phone')) return MODULES[5];
   return null;
 }

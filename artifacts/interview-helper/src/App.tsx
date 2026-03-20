@@ -39,6 +39,17 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
 
+const PhoneDialerPage = lazy(() => import("@/pages/phone/PhoneDialerPage"));
+const PhoneContactsPage = lazy(() => import("@/pages/phone/PhoneContactsPage"));
+const PhoneActivePage = lazy(() => import("@/pages/phone/PhoneActivePage"));
+const PhoneHistoryPage = lazy(() => import("@/pages/phone/PhoneHistoryPage"));
+const PhoneVoicemailPage = lazy(() => import("@/pages/phone/PhoneVoicemailPage"));
+const PhoneConferencePage = lazy(() => import("@/pages/phone/PhoneConferencePage"));
+const PhoneSessionsPage = lazy(() => import("@/pages/phone/PhoneSessionsPage"));
+const PhoneCoachPage = lazy(() => import("@/pages/phone/PhoneCoachPage"));
+const PhoneSecretaryPage = lazy(() => import("@/pages/phone/PhoneSecretaryPage"));
+const PhoneNumbersPage = lazy(() => import("@/pages/phone/PhoneNumbersPage"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -146,7 +157,6 @@ function AppShell() {
             <Route path="/business/documents" component={Documents} />
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
-            <Route path="/business/phone">{() => <Redirect to="/business/contacts" />}</Route>
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
@@ -163,6 +173,19 @@ function AppShell() {
             <Route path="/intel/goals" component={Goals} />
             <Route path="/intel/seo" component={SeoModule} />
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
+
+            {/* PHONE module */}
+            <Route path="/phone/dialer" component={PhoneDialerPage} />
+            <Route path="/phone/contacts" component={PhoneContactsPage} />
+            <Route path="/phone/active" component={PhoneActivePage} />
+            <Route path="/phone/history" component={PhoneHistoryPage} />
+            <Route path="/phone/voicemail" component={PhoneVoicemailPage} />
+            <Route path="/phone/conference" component={PhoneConferencePage} />
+            <Route path="/phone/sessions" component={PhoneSessionsPage} />
+            <Route path="/phone/coach" component={PhoneCoachPage} />
+            <Route path="/phone/secretary" component={PhoneSecretaryPage} />
+            <Route path="/phone/numbers" component={PhoneNumbersPage} />
+            <Route path="/phone">{() => <Redirect to="/phone/dialer" />}</Route>
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/contacts">{() => <Redirect to="/business/contacts" />}</Route>
