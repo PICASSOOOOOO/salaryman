@@ -1,11 +1,45 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable } from '@workspace/db';
 import { eq, and, gt } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 
-const MAX_PLAYERS = 50;
+const MAX_PLAYERS = 100;
+
+// ── City Liberation Progress (shared, persisted) ──────────────────────────────
+const LIBERATION_KEY = 'city_liberation_progress';
+let liberationProgress = 0;
+
+const loadLiberationProgress = async () => {
+  try {
+    const rows = await db.select().from(worldKvTable).where(eq(worldKvTable.key, LIBERATION_KEY)).limit(1);
+    if (rows.length > 0) liberationProgress = rows[0].value;
+    else {
+      await db.insert(worldKvTable).values({ key: LIBERATION_KEY, value: 0 });
+      liberationProgress = 0;
+    }
+    console.log(`[World] Liberation progress loaded: ${liberationProgress}%`);
+  } catch (err: any) {
+    console.error('[World] Failed to load liberation progress:', err.message);
+  }
+};
+
+const saveLiberationProgress = async () => {
+  try {
+    await db.update(worldKvTable).set({ value: liberationProgress }).where(eq(worldKvTable.key, LIBERATION_KEY));
+  } catch (err: any) {
+    console.error('[World] Failed to save liberation progress:', err.message);
+  }
+};
+
+export const getLiberationProgress = () => liberationProgress;
+
+export const incrementLiberationProgress = async (amount: number) => {
+  liberationProgress = Math.min(100, Math.max(0, liberationProgress + amount));
+  await saveLiberationProgress();
+  return liberationProgress;
+};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface LootItem {
@@ -36,6 +70,10 @@ interface Player {
   lastPveHeal: number;
   ownedWeapons: Set<string>;
   paused: boolean;
+  killLibContribCount: number;
+  killLibContribWindow: number;
+  buildingLibContribCount: number;
+  buildingLibContribWindow: number;
 }
 
 interface BuildingLock {
@@ -199,6 +237,20 @@ const handleMessage = (player: Player, raw: string) => {
         const loot = LOOT_ITEMS[Math.floor(Math.random() * LOOT_ITEMS.length)];
         player.inventory.push(loot);
         sendTo(player.id, { type: 'npc_loot', item: loot, inventory: player.inventory });
+      }
+      // ── Liberation contribution: ~0.5% chance per verified kill, max 5 per hour per player ──
+      {
+        const libNow = Date.now();
+        if (libNow - player.killLibContribWindow > 3600000) {
+          player.killLibContribWindow = libNow;
+          player.killLibContribCount = 0;
+        }
+        if (player.killLibContribCount < 5 && Math.random() < 0.005) {
+          player.killLibContribCount++;
+          incrementLiberationProgress(1).then(progress => {
+            broadcast({ type: 'liberation_update', progress });
+          });
+        }
       }
       break;
     }
@@ -504,6 +556,20 @@ const handleMessage = (player: Player, raw: string) => {
       broadcast({ type: 'building_locked', buildingId, ownerName: player.name, company: player.company }, player.id);
       broadcast({ type: 'ownership_update', stats: getOwnershipStats() });
       console.log(`[World] ${player.name} locked ${buildingId}`);
+      // ── Liberation contribution: claiming a building (max 2 contributions per player per day) ──
+      {
+        const libNow = Date.now();
+        if (libNow - player.buildingLibContribWindow > 86400000) {
+          player.buildingLibContribWindow = libNow;
+          player.buildingLibContribCount = 0;
+        }
+        if (player.buildingLibContribCount < 2) {
+          player.buildingLibContribCount++;
+          incrementLiberationProgress(1).then(progress => {
+            broadcast({ type: 'liberation_update', progress });
+          });
+        }
+      }
       break;
     }
 
@@ -636,11 +702,13 @@ const handleMessage = (player: Player, raw: string) => {
 export const getServerStatus = () => ({
   online: players.size,
   max: MAX_PLAYERS,
+  liberationProgress,
 });
 
 export const attachWorldServer = (httpServer: Server) => {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   console.log('[World] WebSocket server attached at /ws');
+  loadLiberationProgress();
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     if (players.size >= MAX_PLAYERS) {
@@ -660,7 +728,7 @@ export const attachWorldServer = (httpServer: Server) => {
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, name, class: cls, company, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false };
+    const player: Player = { id, name, class: cls, company, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     players.set(id, player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 

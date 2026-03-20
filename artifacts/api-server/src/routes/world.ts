@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, worldBusinessesTable } from "@workspace/db";
-import { getServerStatus } from "../worldServer";
+import { getServerStatus, getLiberationProgress } from "../worldServer";
 
 const router = Router();
 
@@ -74,6 +74,10 @@ router.post("/world/register", async (req, res) => {
 
 router.get("/world/server-status", (_req, res) => {
   res.json(getServerStatus());
+});
+
+router.get("/world/liberation", (_req, res) => {
+  res.json({ progress: getLiberationProgress() });
 });
 
 export default router;

@@ -3242,6 +3242,8 @@ export default function WorldPlay() {
   const [online,  setOnline]  = useState<Peer[]>([]);
   const [hasDevice, setHasDevice] = useState(_ss?.hasDevice ?? true);
   const [deviceBroken, setDeviceBroken] = useState(_ss?.deviceBroken ?? false);
+  const [liberationProgress, setLiberationProgress] = useState(0);
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState<number | null>(null);
   const [atPublicTerminal, setAtPublicTerminal] = useState(false);
   const [voice,   setVoice]   = useState(false);
   const [speaking,setSpeaking]= useState(false);
@@ -4420,6 +4422,8 @@ export default function WorldPlay() {
       } else if (m.type === 'chat') {
         setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: m.from, text: m.text, dm: m.room === 'dm' }]);
         if (!chatOpen) setUnread(n => n + 1);
+      } else if (m.type === 'liberation_update') {
+        if (typeof m.progress === 'number') setLiberationProgress(m.progress);
       } else if (m.type === 'ownership_update') {
         setOwnerStats(m.stats ?? {});
       } else if (m.type === 'building_lock_result') {
@@ -5767,6 +5771,22 @@ export default function WorldPlay() {
     } catch { /* silent */ }
   }, []);
   useEffect(() => { fetchBillboards(); const iv = setInterval(fetchBillboards, 30000); return () => clearInterval(iv); }, [fetchBillboards]);
+
+  useEffect(() => {
+    const fetchServerStatus = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.BASE_URL}api/world/server-status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.online === 'number') setOnlinePlayerCount(data.online);
+          if (typeof data.liberationProgress === 'number') setLiberationProgress(data.liberationProgress);
+        }
+      } catch {}
+    };
+    fetchServerStatus();
+    const iv = setInterval(fetchServerStatus, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -12564,6 +12584,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           )}
         </div>
+        {/* Liberation progress compact HUD */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>LIB</span>
+          <div style={{ width: 48, height: 4, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.15)', borderRadius: 1, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', borderRadius: 1, transition: 'width 1s ease' }} />
+          </div>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', minWidth: 28, textAlign: 'right' }}>{liberationProgress}%</span>
+        </div>
         {/* Gold Standard toggle */}
         <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(0,255,65,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(0,255,65,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
           ⊕
@@ -13096,7 +13124,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#33ffaa" />
                       <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col="#00ff41" />
                       <StatRow label="GOLD" val={`${goldBalance}oz`} col="#FFD700" />
-                      <StatRow label="SALARY" val={`ƒ${salary.toLocaleString()}`} />
+                      <StatRow label="SALARY" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#33ffaa" />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
@@ -13242,9 +13270,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{CITY_NAME} — NETWORK STATUS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                       <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
-                      <StatRow label="POPULATION" val="2.4M REGISTERED" />
+                      <StatRow label="ONLINE" val={onlinePlayerCount !== null ? `${onlinePlayerCount} ACTIVE` : '— LOADING'} col="#00ff41" />
                       <StatRow label="FACTION" val="PABLO CORP" col="#b400ff" />
                       <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
+                    </div>
+                    {/* ── Liberation Progress ─────────────────────────── */}
+                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>CITY LIBERATION</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.3rem' }}>
+                        <div style={{ flex: 1, height: 8, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.2)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : liberationProgress >= 50 ? '#aaff22' : '#00ff41', borderRadius: 2, transition: 'width 1s ease', boxShadow: `0 0 6px ${liberationProgress >= 75 ? 'rgba(255,200,0,.4)' : 'rgba(0,255,65,.3)'}` }} />
+                          {[25, 50, 75].map(mark => (
+                            <div key={mark} style={{ position: 'absolute', left: `${mark}%`, top: 0, width: 1, height: '100%', background: 'rgba(255,255,255,.2)' }} />
+                          ))}
+                        </div>
+                        <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', minWidth: 40, textAlign: 'right' }}>{liberationProgress}%</span>
+                      </div>
+                      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
+                        {liberationProgress < 25
+                          ? '▸ Pablo Corp tightens its grip on Minx City. Resistance is scattered.'
+                          : liberationProgress < 50
+                          ? '▸ 25%: Underground cells are active. Cracks appear in corporate control.'
+                          : liberationProgress < 75
+                          ? '▸ 50%: The city is divided. Pablo Corp is losing ground.'
+                          : liberationProgress < 100
+                          ? '▸ 75%: Pablo Corp is on the brink. One final push will free Minx City.'
+                          : '▸ 100%: PABLO CORP HAS FALLEN. Minx City is free.'}
+                      </div>
                     </div>
                     <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
