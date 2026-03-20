@@ -34,6 +34,7 @@ import investorsRouter from "./investors";
 import trialsRouter from "./trials";
 import organizationsRouter from "./organizations";
 import enterpriseRouter from "./enterprise";
+import ticketsRouter from "./tickets";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(investorsRouter);
 router.use(trialsRouter);
 router.use(organizationsRouter);
 router.use(enterpriseRouter);
+router.use(ticketsRouter);
 
 export default router;

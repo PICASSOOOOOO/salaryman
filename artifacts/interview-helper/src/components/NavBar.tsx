@@ -1,9 +1,11 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, TicketCheck } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
+import { useNotifications } from '../hooks/use-notifications';
+import { useOrg } from '../hooks/use-org';
 import { useEffect, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
@@ -14,6 +16,8 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isOwner, features } = usePlan();
+  const { unreadCount } = useNotifications();
+  const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
@@ -189,6 +193,26 @@ export function NavBar() {
             <Globe className="w-3 h-3" />
             EXPLORE
           </button>
+
+          {/* ADMIN PANEL button — only for authenticated org members/owners */}
+          {isAuthenticated && userOrg && (
+            <button
+              onClick={() => navigate('/admin/tickets')}
+              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
+                pathname.startsWith('/admin/tickets')
+                  ? 'bg-pink-500/10 text-pink-400 border-pink-500/20'
+                  : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border-transparent hover:border-white/10'
+              }`}
+            >
+              <TicketCheck className="w-3 h-3 shrink-0" />
+              {boomerMode ? 'ADMIN' : 'TICKETS'}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-pink-500 text-[8px] font-mono text-white px-0.5">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">

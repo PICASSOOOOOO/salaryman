@@ -58,6 +58,7 @@ const BalanceSheet = lazy(() => import("@/pages/BalanceSheet"));
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
+const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,6 +161,8 @@ function AppShell() {
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/admin/billboards" component={BillboardAdmin} />
+            <Route path="/admin/tickets" component={AdminTickets} />
+            <Route path="/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
             <Route path="/mobile" component={MobileTerminal} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
