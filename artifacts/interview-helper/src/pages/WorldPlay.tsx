@@ -67,8 +67,19 @@ const CITY_RIGHT = 7400;
 const CITY_THREAT_SCAN_Y = CITY_BOTTOM + 200;
 const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_RIGHT && py >= CITY_TOP && py <= CITY_BOTTOM;
 
-// ── 2.5D depth constant for building perspective ─────────────────────────────
+// ── 2.5D isometric projection ────────────────────────────────────────────────
 const BUILDING_DEPTH = 28;
+// ISO_SCALE: tile size in isometric space (width of iso diamond = 2x this)
+const ISO_TILE_W = 64;
+const ISO_TILE_H = 32; // 2:1 ratio
+// Convert flat world coords to isometric screen coords
+const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
+  const sx = (wx - wy) * (ISO_TILE_W / (2 * 32));
+  const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
+  return { sx, sy };
+};
+// Fixed close zoom level — no scroll-wheel zoom
+const ISO_ZOOM_LOCKED = 2.2;
 
 // ── Billboard locations ─────────────────────────────────────────────────────
 interface BillboardDef {
@@ -2986,8 +2997,8 @@ export default function WorldPlay() {
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
   const chatOpenRef   = useRef(false);
   const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
-  const zoomRef       = useRef(1.6);
-  const targetZoomRef = useRef(1.6);
+  const zoomRef       = useRef(ISO_ZOOM_LOCKED);
+  const targetZoomRef = useRef(ISO_ZOOM_LOCKED);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
   const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
 
@@ -5884,8 +5895,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     resize(); window.addEventListener('resize', resize);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.05 : 0.05;
-      targetZoomRef.current = Math.max(0.8, Math.min(2.5, targetZoomRef.current + delta));
+      // Zoom is locked at ISO_ZOOM_LOCKED — no scroll-wheel zoom
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
@@ -6918,32 +6928,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
-      // Cinematic camera: smooth zoom lerp toward target
+      // Camera zoom is locked — always snap to ISO_ZOOM_LOCKED
       const zoomLerp = 0.04;
+      zoomRef.current = ISO_ZOOM_LOCKED;
+      targetZoomRef.current = ISO_ZOOM_LOCKED;
 
-      // Building-entry cinematic zoom transition
+      // Building-entry cinematic zoom transition — keep zoom locked, just run the callback
       const entryZoom = buildingEntryZoomRef.current;
       if (entryZoom.active) {
         entryZoom.timer--;
-        zoomRef.current += (2.2 - zoomRef.current) * 0.08;
         if (entryZoom.timer <= 0) {
           entryZoom.active = false;
-          targetZoomRef.current = 1.6;
+          targetZoomRef.current = ISO_ZOOM_LOCKED;
           if (entryZoom.callback) entryZoom.callback();
           entryZoom.callback = null;
         }
-      } else {
-        zoomRef.current += (targetZoomRef.current - zoomRef.current) * zoomLerp;
-      }
-
-      // Cinematic zoom effects: combat zoom-in, building approach zoom-in
-      if (!entryZoom.active) {
-        let cinematicZoomBoost = 0;
-        const hasHostileNearby = g.threats.some((t: Threat) => t.behavior === 'HOSTILE' && Math.hypot(g.px - t.x, g.py - t.y) < 150);
-        if (hasHostileNearby) cinematicZoomBoost = 0.15;
-        if (g.near) cinematicZoomBoost = Math.max(cinematicZoomBoost, 0.2);
-        const effectiveTargetZoom = targetZoomRef.current + cinematicZoomBoost;
-        zoomRef.current += (effectiveTargetZoom - zoomRef.current) * zoomLerp;
       }
 
       // Look-ahead: camera leads slightly in the movement direction
@@ -8571,11 +8570,42 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return h - Math.floor(h);
       };
 
+      // ── Isometric tile helper ────────────────────────────────────────────────
+      // drawIsoTile: draw a flat diamond-shaped isometric tile at world coords (gx, gy)
+      // The diamond is drawn using the 2:1 isometric projection
+      const drawIsoTile = (gx: number, gy: number, fillCol: string, edgeCol?: string) => {
+        const hw = ISO_TILE_W / 2; // half-width = 32
+        const hh = ISO_TILE_H / 2; // half-height = 16
+        // Center of this tile in screen space (tile corner gx,gy maps to screen)
+        const cx = gx + ox + TILE / 2;
+        const cy = gy + oy + TILE / 2;
+        // Apply isometric skew: top-down tile at cx,cy projected to diamond
+        const isoX = cx;
+        const isoY = cy;
+        ctx.beginPath();
+        ctx.moveTo(isoX,      isoY - hh); // top
+        ctx.lineTo(isoX + hw, isoY);      // right
+        ctx.lineTo(isoX,      isoY + hh); // bottom
+        ctx.lineTo(isoX - hw, isoY);      // left
+        ctx.closePath();
+        ctx.fillStyle = fillCol;
+        ctx.fill();
+        if (edgeCol) {
+          ctx.strokeStyle = edgeCol;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      };
+
+      // Sector-based LOD: only draw full detail for tiles near the player
+      const playerSectorX = Math.floor(g.px / (TILE * 8));
+      const playerSectorY = Math.floor(g.py / (TILE * 8));
+
       const sgx = Math.floor(g.cam.x / TILE) * TILE, sgy = Math.floor(g.cam.y / TILE) * TILE;
       for (let gx = sgx - TILE; gx < g.cam.x + cw + TILE * 2; gx += TILE) {
         for (let gy = sgy - TILE; gy < g.cam.y + ch + TILE * 2; gy += TILE) {
           const sx = gx + ox, sy = gy + oy;
-          if (sx + TILE < 0 || sx > cw || sy + TILE < 0 || sy > ch) continue;
+          if (sx + TILE < -ISO_TILE_W || sx > cw + ISO_TILE_W || sy + TILE < -ISO_TILE_H || sy > ch + ISO_TILE_H) continue;
           const inCityZone = gx >= CITY_LEFT && gx <= CITY_RIGHT && gy >= CITY_TOP && gy <= CITY_BOTTOM;
           // Graduated biome zones from city outward toward borders
           const distW = gx - BORDER;
@@ -8596,6 +8626,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const h = tileHash(gx / TILE, gy / TILE);
           const h2 = tileHash(gx / TILE + 100, gy / TILE + 100);
 
+          // Sector distance for LOD
+          const tileSectorX = Math.floor(gx / (TILE * 8));
+          const tileSectorY = Math.floor(gy / (TILE * 8));
+          const sectorDist = Math.abs(tileSectorX - playerSectorX) + Math.abs(tileSectorY - playerSectorY);
+          const isHighDetail = sectorDist <= 2;
+
           let baseR: number, baseG: number, baseB: number;
           // Zone classification for richer textures
           const inDowntown = inCityZone && gx >= CITY_LEFT + 100 && gx < CITY_LEFT + 600 && gy >= CITY_TOP + 100;
@@ -8604,27 +8640,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const inOldDistrict = inCityZone && gx < CITY_LEFT + 100;
           if (inCityZone) {
             if (inDowntown) {
-              // Cracked asphalt — downtown
               if (h < 0.25) { baseR = 72; baseG = 70; baseB = 66; }
               else if (h < 0.5) { baseR = 80; baseG = 78; baseB = 74; }
               else if (h < 0.75) { baseR = 68; baseG = 65; baseB = 62; }
               else { baseR = 88; baseG = 85; baseB = 80; }
               baseR += (h2 - 0.5) * 12; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 8;
             } else if (inNeonStrip) {
-              // Dark wet pavement, slightly reflective
               if (h < 0.35) { baseR = 55; baseG = 55; baseB = 65; }
               else if (h < 0.65) { baseR = 62; baseG = 60; baseB = 72; }
               else { baseR = 70; baseG = 68; baseB = 80; }
               baseR += (h2 - 0.5) * 8; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 14;
             } else if (inIndustrial) {
-              // Metal grating and concrete
               if (h < 0.2) { baseR = 90; baseG = 88; baseB = 82; }
               else if (h < 0.45) { baseR = 78; baseG = 74; baseB = 70; }
               else if (h < 0.7) { baseR = 82; baseG = 80; baseB = 75; }
               else { baseR = 68; baseG = 66; baseB = 64; }
               baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 10;
             } else if (inOldDistrict) {
-              // Cobblestone — old district
               if (h < 0.3) { baseR = 95; baseG = 88; baseB = 78; }
               else if (h < 0.6) { baseR = 82; baseG = 76; baseB = 68; }
               else { baseR = 105; baseG = 96; baseB = 85; }
@@ -8636,89 +8668,131 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 8;
             }
           } else if (isSandyShore) {
-            // Sandy coastal zone transitioning to beach
             const shoreBlend = 1 - (isNearWestOcean ? distW : distE) / 200;
             baseR = Math.floor(175 + h * 22 + shoreBlend * 8); baseG = Math.floor(158 + h * 18 + shoreBlend * 5); baseB = Math.floor(110 + h * 12 - shoreBlend * 8);
           } else if (isRockyFoothill) {
-            // Rocky terrain near mountains — gravelly, more stone-like
             const rockBlend = 1 - (isNearNorthMtn ? distN : distS) / 300;
             baseR = Math.floor(105 + h2 * 20 - rockBlend * 10); baseG = Math.floor(90 + h2 * 15 - rockBlend * 8); baseB = Math.floor(68 + h2 * 10 - rockBlend * 5);
           } else if (isSuburb) {
-            // Suburban/outskirts — mix of grass and pavement
             if (h < 0.3) { baseR = 72 + h2 * 12; baseG = 72 + h2 * 10; baseB = 68 + h2 * 8; }
             else { baseR = 68 + h2 * 15; baseG = 95 + h2 * 18; baseB = 42 + h2 * 10; }
           } else {
-            // Wasteland: sand / dust / scrub patches
             if (h < 0.25) { baseR = 118 + h2 * 15; baseG = 92 + h2 * 10; baseB = 58 + h2 * 8; }
             else if (h < 0.5) { baseR = 80 + h2 * 15; baseG = 110 + h2 * 20; baseB = 48 + h2 * 10; }
             else if (h < 0.75) { baseR = 100 + h2 * 12; baseG = 94 + h2 * 15; baseB = 62 + h2 * 10; }
             else { baseR = 125 + h2 * 10; baseG = 105 + h2 * 10; baseB = 68 + h2 * 8; }
           }
           const br = dayBright * (1 - pwDark * 0.7);
-          ctx.fillStyle = `rgb(${Math.floor(baseR * br)},${Math.floor(baseG * br)},${Math.floor(baseB * br)})`;
-          ctx.fillRect(sx, sy, TILE, TILE);
+          const rC = Math.floor(Math.min(255, Math.max(0, baseR * br)));
+          const gC = Math.floor(Math.min(255, Math.max(0, baseG * br)));
+          const bC = Math.floor(Math.min(255, Math.max(0, baseB * br)));
 
-          // Zone-specific detail pixels
-          const pxSize = 8;
-          if (inCityZone && inDowntown) {
-            // Cracked asphalt lines
-            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
-              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
-                const ph = tileHash(gx + px2 * 0.5, gy + py3 * 0.5);
-                if (ph > 0.82) {
-                  ctx.fillStyle = `rgba(0,0,0,0.18)`;
-                  ctx.fillRect(sx + px2, sy + py3, ph > 0.92 ? 2 : 1, pxSize);
-                } else if (ph < 0.1) {
-                  ctx.fillStyle = `rgba(180,160,130,0.12)`;
-                  ctx.fillRect(sx + px2, sy + py3, pxSize, 1);
+          // ── Isometric diamond tile ────────────────────────────────────────
+          // Draw the main flat surface as an isometric diamond
+          const hw2 = ISO_TILE_W / 2;
+          const hh2 = ISO_TILE_H / 2;
+          const tcx = sx + TILE / 2;
+          const tcy = sy + TILE / 2;
+          ctx.beginPath();
+          ctx.moveTo(tcx,       tcy - hh2);
+          ctx.lineTo(tcx + hw2, tcy);
+          ctx.lineTo(tcx,       tcy + hh2);
+          ctx.lineTo(tcx - hw2, tcy);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
+          ctx.fill();
+
+          // Edge highlight (lighter top-left edge, darker bottom-right)
+          if (isHighDetail) {
+            ctx.beginPath();
+            ctx.moveTo(tcx, tcy - hh2);
+            ctx.lineTo(tcx + hw2, tcy);
+            ctx.strokeStyle = `rgba(255,255,255,0.07)`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(tcx + hw2, tcy);
+            ctx.lineTo(tcx, tcy + hh2);
+            ctx.lineTo(tcx - hw2, tcy);
+            ctx.strokeStyle = `rgba(0,0,0,0.10)`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+          }
+
+          // ── Zone-specific surface detail (only in high-detail sectors) ──
+          if (isHighDetail) {
+            if (inCityZone && inDowntown) {
+              // Cracked asphalt — draw crack lines across the diamond
+              const ph = tileHash(gx / TILE * 3.1, gy / TILE * 2.7);
+              if (ph > 0.75) {
+                ctx.beginPath();
+                ctx.moveTo(tcx - hw2 * 0.4, tcy - 2);
+                ctx.lineTo(tcx + hw2 * 0.3, tcy + 2);
+                ctx.strokeStyle = `rgba(0,0,0,0.22)`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+              }
+              // Manhole cover
+              const mh = tileHash(gx / TILE * 7.7, gy / TILE * 5.3);
+              if (mh > 0.96) {
+                ctx.beginPath(); ctx.ellipse(tcx, tcy, 5, 3, 0, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(60,58,54,${0.9 * br})`; ctx.fill();
+                ctx.strokeStyle = `rgba(80,78,72,${0.8 * br})`; ctx.lineWidth = 0.5; ctx.stroke();
+              }
+            } else if (inCityZone && inOldDistrict) {
+              // Cobblestone diamond pattern — draw individual stone ovals
+              const cStep = 9;
+              for (let ci = -1; ci <= 1; ci++) {
+                for (let cj = -1; cj <= 1; cj++) {
+                  const px3 = tcx + ci * cStep;
+                  const py3 = tcy + cj * (cStep / 2);
+                  const ph3 = tileHash(gx + ci * 3, gy + cj * 3);
+                  if (Math.abs(px3 - tcx) + Math.abs((py3 - tcy) * 2) > hw2) continue;
+                  ctx.beginPath(); ctx.ellipse(px3, py3, 3.5, 2, 0, 0, Math.PI * 2);
+                  ctx.fillStyle = `rgba(${Math.floor((baseR - 10 + ph3 * 20) * br)},${Math.floor((baseG - 8 + ph3 * 15) * br)},${Math.floor((baseB - 6 + ph3 * 12) * br)},0.6)`;
+                  ctx.fill();
                 }
               }
-            }
-          } else if (inCityZone && inOldDistrict) {
-            // Cobblestone grid pattern
-            for (let px2 = 0; px2 < TILE; px2 += 10) {
-              ctx.fillStyle = `rgba(0,0,0,0.12)`;
-              ctx.fillRect(sx + px2, sy, 1, TILE);
-            }
-            for (let py3 = 0; py3 < TILE; py3 += 8) {
-              ctx.fillStyle = `rgba(0,0,0,0.10)`;
-              ctx.fillRect(sx, sy + py3, TILE, 1);
-            }
-          } else if (inCityZone && inIndustrial) {
-            // Metal grating
-            for (let px2 = 0; px2 < TILE; px2 += 6) {
-              ctx.fillStyle = `rgba(0,0,0,0.08)`;
-              ctx.fillRect(sx + px2, sy, 1, TILE);
-            }
-            for (let py3 = 0; py3 < TILE; py3 += 6) {
-              ctx.fillStyle = `rgba(255,255,255,0.04)`;
-              ctx.fillRect(sx, sy + py3, TILE, 1);
-            }
-          } else if (inCityZone && inNeonStrip && isNight) {
-            // Neon puddle reflections at night
-            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
-              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
-                const ph = tileHash(gx + px2, gy + py3 + 700);
-                if (ph > 0.78) {
-                  const rc = Math.floor(ph * 3) % 3;
-                  const pudCol = rc === 0 ? `rgba(255,80,150,0.12)` : rc === 1 ? `rgba(0,200,255,0.12)` : `rgba(180,0,255,0.10)`;
-                  ctx.fillStyle = pudCol;
-                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
-                }
+            } else if (inCityZone && inIndustrial) {
+              // Metal grating crosshatch on diamond
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(tcx, tcy - hh2); ctx.lineTo(tcx + hw2, tcy);
+              ctx.lineTo(tcx, tcy + hh2); ctx.lineTo(tcx - hw2, tcy);
+              ctx.closePath(); ctx.clip();
+              ctx.strokeStyle = `rgba(0,0,0,0.10)`; ctx.lineWidth = 0.5;
+              for (let gi = -hw2; gi <= hw2; gi += 6) {
+                ctx.beginPath(); ctx.moveTo(tcx + gi, tcy - hh2); ctx.lineTo(tcx + gi, tcy + hh2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(tcx - hw2, tcy + gi * 0.5); ctx.lineTo(tcx + hw2, tcy + gi * 0.5); ctx.stroke();
               }
-            }
-          } else {
-            for (let px2 = 0; px2 < TILE; px2 += pxSize) {
-              for (let py3 = 0; py3 < TILE; py3 += pxSize) {
-                const ph = tileHash(gx + px2, gy + py3);
-                if (ph > 0.7) {
-                  const vr = (ph - 0.7) * 30;
-                  ctx.fillStyle = `rgba(${Math.floor(baseR * br + vr)},${Math.floor(baseG * br + vr * 0.8)},${Math.floor(baseB * br + vr * 0.5)},0.3)`;
-                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
-                } else if (ph < 0.15) {
-                  ctx.fillStyle = `rgba(0,0,0,0.08)`;
-                  ctx.fillRect(sx + px2, sy + py3, pxSize, pxSize);
-                }
+              ctx.restore();
+              // Drain grate
+              const dh = tileHash(gx / TILE * 9.1, gy / TILE * 6.3);
+              if (dh > 0.94) {
+                ctx.beginPath(); ctx.ellipse(tcx, tcy, 4, 2.5, 0, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(40,40,44,${0.85 * br})`; ctx.fill();
+              }
+            } else if (inCityZone && inNeonStrip && isNight) {
+              // Neon puddle reflections at night
+              const ph4 = tileHash(gx / TILE * 4.1, gy / TILE * 3.7 + 20);
+              if (ph4 > 0.75) {
+                const rc2 = Math.floor(ph4 * 3) % 3;
+                const pudA = (ph4 - 0.75) * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(tcx, tcy - hh2); ctx.lineTo(tcx + hw2, tcy);
+                ctx.lineTo(tcx, tcy + hh2); ctx.lineTo(tcx - hw2, tcy);
+                ctx.closePath();
+                ctx.fillStyle = rc2 === 0 ? `rgba(255,80,150,${pudA})` : rc2 === 1 ? `rgba(0,200,255,${pudA})` : `rgba(180,0,255,${pudA * 0.8})`;
+                ctx.fill();
+              }
+            } else if (isSuburb && h > 0.35) {
+              // Grass tufts on suburban tiles
+              const gh = tileHash(gx / TILE * 5.3, gy / TILE * 4.1);
+              if (gh > 0.6) {
+                ctx.beginPath();
+                ctx.moveTo(tcx - 3, tcy + 1); ctx.lineTo(tcx - 1, tcy - 4); ctx.lineTo(tcx + 1, tcy + 1);
+                ctx.fillStyle = `rgba(${Math.floor(55 * br)},${Math.floor(110 * br)},${Math.floor(35 * br)},0.5)`;
+                ctx.fill();
               }
             }
           }
@@ -9479,27 +9553,66 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const drawRoad = (x1:number,y1:number,x2:number,y2:number,w:number,alpha:number,dashed=false) => {
         const roadBr = dayBright;
         const rGray = Math.floor(55 * roadBr);
+        const isHoriz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
         if (dashed) {
           ctx.lineWidth = w; ctx.strokeStyle = `rgb(${rGray + 10},${rGray + 5},${rGray})`;
           ctx.setLineDash([18,10]);
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
         } else {
-          ctx.lineCap = 'round';
-          // Asphalt body — use stroke for all orientations (handles diagonal roads)
+          ctx.lineCap = 'square';
+          // Sidewalk / curb behind road (wider, concrete color)
+          const sidewalkW = w + 14;
+          ctx.lineWidth = sidewalkW;
+          ctx.strokeStyle = `rgb(${Math.floor(110 * roadBr)},${Math.floor(106 * roadBr)},${Math.floor(100 * roadBr)})`;
+          ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
+          // Curb edge lines
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = `rgb(${Math.floor(130 * roadBr)},${Math.floor(125 * roadBr)},${Math.floor(118 * roadBr)})`;
+          if (isHoriz) {
+            ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - sidewalkW/2); ctx.lineTo(x2+ox,y2+oy - sidewalkW/2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + sidewalkW/2); ctx.lineTo(x2+ox,y2+oy + sidewalkW/2); ctx.stroke();
+          } else {
+            ctx.beginPath(); ctx.moveTo(x1+ox - sidewalkW/2,y1+oy); ctx.lineTo(x2+ox - sidewalkW/2,y2+oy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x1+ox + sidewalkW/2,y1+oy); ctx.lineTo(x2+ox + sidewalkW/2,y2+oy); ctx.stroke();
+          }
+          // Asphalt body
           ctx.lineWidth = w;
           ctx.strokeStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
-          // Center line
-          ctx.setLineDash([12,8]); ctx.lineWidth = 1.5;
-          ctx.strokeStyle = `rgb(${Math.floor(220 * roadBr)},${Math.floor(200 * roadBr)},${Math.floor(60 * roadBr)})`;
+          // Lane divider lines (2 lanes)
+          ctx.setLineDash([14,9]); ctx.lineWidth = 1.5;
+          ctx.strokeStyle = `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
-          // Edge highlight
-          ctx.strokeStyle = `rgba(255,255,255,${0.08 * roadBr})`;
-          ctx.lineWidth = w;
-          ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
+          // Edge white lines
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = `rgba(255,255,255,${0.18 * roadBr})`;
+          if (isHoriz) {
+            ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - w/2 + 2); ctx.lineTo(x2+ox,y2+oy - w/2 + 2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + w/2 - 2); ctx.lineTo(x2+ox,y2+oy + w/2 - 2); ctx.stroke();
+          } else {
+            ctx.beginPath(); ctx.moveTo(x1+ox - w/2 + 2,y1+oy); ctx.lineTo(x2+ox - w/2 + 2,y2+oy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x1+ox + w/2 - 2,y1+oy); ctx.lineTo(x2+ox + w/2 - 2,y2+oy); ctx.stroke();
+          }
           ctx.lineCap = 'butt';
+        }
+      };
+
+      // ── Crosswalk painter — draw at major intersections ────────────────────
+      const drawCrosswalk = (cx2: number, cy2: number, horiz: boolean, roadW: number) => {
+        const br2 = dayBright;
+        const cLen = roadW + 4;
+        const stripeW = 5, stripeGap = 4, numStripes = 5;
+        ctx.fillStyle = `rgba(240,238,225,${0.55 * br2})`;
+        if (horiz) {
+          for (let si = 0; si < numStripes; si++) {
+            ctx.fillRect(cx2 + ox - cLen / 2, cy2 + oy - roadW / 2 + si * (stripeW + stripeGap), cLen, stripeW);
+          }
+        } else {
+          for (let si = 0; si < numStripes; si++) {
+            ctx.fillRect(cx2 + ox - roadW / 2 + si * (stripeW + stripeGap), cy2 + oy - cLen / 2, stripeW, cLen);
+          }
         }
       };
       // ── Road network — all horizontal/vertical, no diagonals ──
@@ -9562,6 +9675,138 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       drawRoad(6800,CITY_BOTTOM,6800,H-BORDER,10,.05,true);
       drawRoad(8000,CITY_BOTTOM,8000,H-BORDER,8,.04,true);
       drawRoad(11000,CITY_BOTTOM,11000,H-BORDER,8,.04,true);
+
+      // ── Crosswalks at major intersections ─────────────────────────────────
+      // Main boulevard × Central avenue
+      drawCrosswalk(6350, 6310, true, 116);
+      drawCrosswalk(6350, 6310, false, 116);
+      // Main boulevard × East avenue
+      drawCrosswalk(7050, 6310, true, 116);
+      drawCrosswalk(7050, 6310, false, 84);
+      // Main boulevard × West avenue
+      drawCrosswalk(5960, 6310, true, 116);
+      drawCrosswalk(5960, 6310, false, 84);
+      // North belt × Central
+      drawCrosswalk(6350, 5960, true, 84);
+      drawCrosswalk(6350, 5960, false, 116);
+      // South loop × Central
+      drawCrosswalk(6350, 6710, true, 84);
+      drawCrosswalk(6350, 6710, false, 116);
+
+      // ── Street furniture (LOD: only near player) ───────────────────────────
+      const furnitureSeedHash = (x: number, y: number, s: number) => {
+        const v = Math.sin(x * 31.7 + y * 53.1 + s * 127.3) * 43758.5453;
+        return v - Math.floor(v);
+      };
+      // Draw a lamp post at screen coords
+      const drawLampPost = (lx2: number, ly2: number, lit: boolean) => {
+        const lbr = dayBright;
+        // Pole
+        ctx.fillStyle = `rgb(${Math.floor(70 * lbr)},${Math.floor(70 * lbr)},${Math.floor(65 * lbr)})`;
+        ctx.fillRect(lx2 - 1, ly2 - 22, 2, 22);
+        // Arm
+        ctx.fillStyle = `rgb(${Math.floor(65 * lbr)},${Math.floor(65 * lbr)},${Math.floor(60 * lbr)})`;
+        ctx.fillRect(lx2 - 1, ly2 - 22, 8, 2);
+        // Lamp head
+        ctx.fillStyle = lit ? `rgb(${Math.floor(255 * lbr)},${Math.floor(240 * lbr)},${Math.floor(160 * lbr)})` : `rgb(${Math.floor(80 * lbr)},${Math.floor(80 * lbr)},${Math.floor(75 * lbr)})`;
+        ctx.fillRect(lx2 + 5, ly2 - 25, 6, 4);
+        if (lit && (isNight || isDusk || isDawn)) {
+          const glw = ctx.createRadialGradient(lx2 + 8, ly2 - 23, 0, lx2 + 8, ly2 - 23, 28);
+          glw.addColorStop(0, `rgba(255,230,120,0.3)`);
+          glw.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = glw;
+          ctx.beginPath(); ctx.arc(lx2 + 8, ly2 - 23, 28, 0, Math.PI * 2); ctx.fill();
+        }
+      };
+      // Draw a trash can
+      const drawTrashCan = (tx2: number, ty2: number) => {
+        const tbr = dayBright;
+        ctx.fillStyle = `rgb(${Math.floor(50 * tbr)},${Math.floor(55 * tbr)},${Math.floor(50 * tbr)})`;
+        ctx.fillRect(tx2 - 3, ty2 - 6, 6, 7);
+        ctx.fillStyle = `rgb(${Math.floor(40 * tbr)},${Math.floor(45 * tbr)},${Math.floor(40 * tbr)})`;
+        ctx.fillRect(tx2 - 4, ty2 - 7, 8, 2);
+      };
+      // Draw a bench
+      const drawBench = (bx3: number, by3: number, horiz2: boolean) => {
+        const bbr = dayBright;
+        ctx.fillStyle = `rgb(${Math.floor(90 * bbr)},${Math.floor(60 * bbr)},${Math.floor(30 * bbr)})`;
+        if (horiz2) {
+          ctx.fillRect(bx3 - 10, by3 - 2, 20, 4);
+          ctx.fillRect(bx3 - 10, by3 - 7, 20, 3);
+        } else {
+          ctx.fillRect(bx3 - 2, by3 - 10, 4, 20);
+          ctx.fillRect(bx3 - 7, by3 - 10, 3, 20);
+        }
+      };
+      // Draw a fire hydrant
+      const drawFireHydrant = (hx2: number, hy2: number) => {
+        const hbr = dayBright;
+        ctx.fillStyle = `rgb(${Math.floor(180 * hbr)},${Math.floor(30 * hbr)},${Math.floor(20 * hbr)})`;
+        ctx.fillRect(hx2 - 3, hy2 - 6, 6, 7);
+        ctx.fillRect(hx2 - 4, hy2 - 8, 8, 3);
+        ctx.fillStyle = `rgb(${Math.floor(200 * hbr)},${Math.floor(40 * hbr)},${Math.floor(30 * hbr)})`;
+        ctx.fillRect(hx2 - 5, hy2 - 4, 3, 3);
+        ctx.fillRect(hx2 + 2, hy2 - 4, 3, 3);
+      };
+      // Draw a bollard
+      const drawBollard = (bx4: number, by4: number) => {
+        const bbr2 = dayBright;
+        ctx.fillStyle = `rgb(${Math.floor(200 * bbr2)},${Math.floor(180 * bbr2)},${Math.floor(20 * bbr2)})`;
+        ctx.fillRect(bx4 - 2, by4 - 8, 4, 9);
+        ctx.fillStyle = `rgb(${Math.floor(240 * bbr2)},${Math.floor(220 * bbr2)},${Math.floor(30 * bbr2)})`;
+        ctx.fillRect(bx4 - 3, by4 - 10, 6, 3);
+      };
+      // Draw a parking meter
+      const drawParkingMeter = (px5: number, py5: number) => {
+        const pmBr = dayBright;
+        ctx.fillStyle = `rgb(${Math.floor(80 * pmBr)},${Math.floor(80 * pmBr)},${Math.floor(80 * pmBr)})`;
+        ctx.fillRect(px5 - 1, py5 - 18, 2, 18);
+        ctx.fillStyle = `rgb(${Math.floor(50 * pmBr)},${Math.floor(80 * pmBr)},${Math.floor(50 * pmBr)})`;
+        ctx.fillRect(px5 - 4, py5 - 22, 8, 6);
+      };
+
+      // Furniture placement along major roads (sidewalk zone)
+      // Only render furniture for sectors near player
+      const FURN_SPACING = 60;
+      const furnitureLampRoads2 = [
+        { horiz: true,  coord: 6310, from: 5650, to: 7400, w: 116 },
+        { horiz: true,  coord: 5960, from: 5650, to: 7400, w: 84  },
+        { horiz: true,  coord: 6710, from: 5650, to: 7400, w: 84  },
+        { horiz: false, coord: 6350, from: 5900, to: 6880, w: 116 },
+        { horiz: false, coord: 7050, from: 5900, to: 6880, w: 84  },
+        { horiz: false, coord: 5960, from: 5900, to: 6880, w: 84  },
+      ];
+      const litLamps = (isNight || isDusk || isDawn);
+      for (const fr of furnitureLampRoads2) {
+        const sideOff = fr.w / 2 + 10;
+        for (let ft = fr.from; ft < fr.to; ft += FURN_SPACING) {
+          const side = Math.sin(ft * 0.031) > 0 ? sideOff : -sideOff;
+          const fx2 = fr.horiz ? ft : fr.coord + side;
+          const fy2 = fr.horiz ? fr.coord + side : ft;
+          // Check LOD — only near player
+          const fdist = Math.hypot(g.px - fx2, g.py - fy2);
+          if (fdist > 800) continue;
+          const fsx = fx2 + ox, fsy = fy2 + oy;
+          if (fsx < -20 || fsx > cw + 20 || fsy < -20 || fsy > ch + 20) continue;
+
+          const fSeed = furnitureSeedHash(fx2, fy2, 1);
+          const fSeed2 = furnitureSeedHash(fx2, fy2, 2);
+          if (fSeed < 0.35) {
+            drawLampPost(fsx, fsy, litLamps);
+          } else if (fSeed < 0.55) {
+            drawTrashCan(fsx, fsy);
+          } else if (fSeed < 0.70) {
+            drawBench(fsx, fsy, fr.horiz);
+          } else if (fSeed < 0.80) {
+            drawFireHydrant(fsx, fsy);
+          } else if (fSeed < 0.88) {
+            drawBollard(fsx, fsy);
+            if (fSeed2 > 0.5) drawBollard(fsx + (fr.horiz ? 8 : 0), fsy + (fr.horiz ? 0 : 8));
+          } else {
+            drawParkingMeter(fsx, fsy);
+          }
+        }
+      }
 
       // ── Street lights ──────────────────────────────────────────────────────
       const LAMP_SPACING = 90;
@@ -9754,119 +9999,271 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           continue;
         }
 
-        const bd = BUILDING_DEPTH;
+        // ── Isometric building cube rendering ──────────────────────────────
         const bBr = dayBright;
         const bHash = tileHash(b.x, b.y);
+        void tileHash(b.x + 50, b.y + 50);
         let wallR: number, wallG: number, wallB: number;
         let roofR: number, roofG: number, roofB: number;
+        let accentR: number, accentG: number, accentB: number;
         if (isLocked) {
           wallR = 140; wallG = 80; wallB = 50;
           roofR = 110; roofG = 60; roofB = 35;
-        } else if (bHash < 0.3) {
-          wallR = 150; wallG = 90; wallB = 70; roofR = 120; roofG = 70; roofB = 50;
-        } else if (bHash < 0.6) {
-          wallR = 130; wallG = 130; wallB = 125; roofR = 100; roofG = 100; roofB = 95;
+          accentR = 180; accentG = 100; accentB = 60;
+        } else if (bHash < 0.22) {
+          // Brick terracotta
+          wallR = 162; wallG = 88; wallB = 65; roofR = 125; roofG = 68; roofB = 48;
+          accentR = 185; accentG = 105; accentB = 75;
+        } else if (bHash < 0.44) {
+          // Concrete panel
+          wallR = 128; wallG = 128; wallB = 122; roofR = 98; roofG = 98; roofB = 92;
+          accentR = 150; accentG = 150; accentB = 144;
+        } else if (bHash < 0.66) {
+          // Blue glass / steel
+          wallR = 85; wallG = 100; wallB = 120; roofR = 65; roofG = 80; roofB = 100;
+          accentR = 110; accentG = 130; accentB = 155;
+        } else if (bHash < 0.82) {
+          // Yellow-ochre plaster
+          wallR = 175; wallG = 155; wallB = 85; roofR = 140; roofG = 120; roofB = 65;
+          accentR = 200; accentG = 178; accentB = 100;
         } else {
-          wallR = 90; wallG = 95; wallB = 105; roofR = 70; roofG = 75; roofB = 85;
+          // Dark brutalist
+          wallR = 68; wallG = 70; wallB = 72; roofR = 50; roofG = 52; roofB = 55;
+          accentR = 90; accentG = 92; accentB = 95;
         }
+
+        const isTower = b.w >= 50 || b.h >= 50;
+        const depthX = BUILDING_DEPTH * 0.55; // right-face depth in X
+        const depthY = BUILDING_DEPTH * 0.30; // right-face skew in Y
+
+        // ── Roof face (flat top viewed from slight angle) ──────────────────
+        const roofSkew = 5;
+        ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
+        ctx.beginPath();
+        ctx.moveTo(bx,          by - roofSkew);
+        ctx.lineTo(bx + b.w,    by - roofSkew);
+        ctx.lineTo(bx + b.w + depthX, by - roofSkew + depthY);
+        ctx.lineTo(bx + depthX, by - roofSkew + depthY);
+        ctx.closePath(); ctx.fill();
+        // Roof edge highlight
+        ctx.strokeStyle = `rgb(${Math.floor(Math.min(255, roofR * bBr + 20))},${Math.floor(Math.min(255, roofG * bBr + 18))},${Math.floor(Math.min(255, roofB * bBr + 15))})`;
+        ctx.lineWidth = 1; ctx.stroke();
+
+        // ── Front face (facing camera — most visible wall) ─────────────────
+        // Base front wall
         ctx.fillStyle = `rgb(${Math.floor(wallR * bBr)},${Math.floor(wallG * bBr)},${Math.floor(wallB * bBr)})`;
         ctx.fillRect(bx, by, b.w, b.h);
-        if (bHash < 0.3) {
-          for (let bry = 0; bry < b.h; bry += 6) {
-            const rowOff = (Math.floor(bry / 6) % 2) * 5;
-            for (let brx = rowOff; brx < b.w; brx += 10) {
-              ctx.fillStyle = `rgb(${Math.floor((wallR - 15) * bBr)},${Math.floor((wallG - 12) * bBr)},${Math.floor((wallB - 8) * bBr)})`;
-              ctx.fillRect(bx + brx, by + bry, 9, 5);
-              ctx.fillStyle = `rgb(${Math.floor((wallR + 10) * bBr)},${Math.floor((wallG + 5) * bBr)},${Math.floor((wallB + 5) * bBr)})`;
-              ctx.fillRect(bx + brx, by + bry + 5, 9, 1);
-              ctx.fillRect(bx + brx + 9, by + bry, 1, 6);
+
+        // Brick / panel texture on front face
+        if (bHash < 0.22) {
+          // Brick pattern on front
+          for (let bry = 0; bry < b.h; bry += 7) {
+            const rowOff = (Math.floor(bry / 7) % 2) * 6;
+            for (let brx = rowOff; brx < b.w; brx += 12) {
+              ctx.fillStyle = `rgb(${Math.floor((wallR - 18) * bBr)},${Math.floor((wallG - 14) * bBr)},${Math.floor((wallB - 10) * bBr)})`;
+              ctx.fillRect(bx + brx, by + bry, 11, 6);
+              ctx.fillStyle = `rgb(${Math.floor((wallR + 12) * bBr)},${Math.floor((wallG + 6) * bBr)},${Math.floor((wallB + 5) * bBr)})`;
+              ctx.fillRect(bx + brx, by + bry + 6, 12, 1);
+              ctx.fillRect(bx + brx + 11, by + bry, 1, 7);
             }
           }
+        } else if (bHash < 0.44) {
+          // Concrete panel grid on front
+          for (let py6 = 0; py6 < b.h; py6 += 14) {
+            ctx.fillStyle = `rgba(0,0,0,0.08)`;
+            ctx.fillRect(bx, by + py6, b.w, 1);
+          }
+          for (let px6 = 0; px6 < b.w; px6 += 20) {
+            ctx.fillStyle = `rgba(0,0,0,0.06)`;
+            ctx.fillRect(bx + px6, by, 1, b.h);
+          }
+        } else if (bHash < 0.66) {
+          // Glass curtain wall — horizontal blue bands
+          for (let py6 = 0; py6 < b.h; py6 += 9) {
+            ctx.fillStyle = py6 % 18 === 0 ? `rgba(150,190,230,${0.12 * bBr})` : `rgba(100,140,200,${0.07 * bBr})`;
+            ctx.fillRect(bx, by + py6, b.w, 8);
+            ctx.fillStyle = `rgba(0,0,0,0.12)`;
+            ctx.fillRect(bx, by + py6 + 8, b.w, 1);
+          }
         }
-        ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
-        ctx.fillRect(bx - 2, by - 3, b.w + 4, 5);
-        const isTower = b.w >= 50 || b.h >= 50;
-        const wallHBase = Math.max(28, Math.floor(Math.max(b.w, b.h) * (isTower ? 0.9 : 0.55)));
-        const bldgWallH = Math.min(isTower ? 160 : 90, wallHBase);
-        ctx.fillStyle = `rgb(${Math.floor((wallR * 0.7) * bBr)},${Math.floor((wallG * 0.7) * bBr)},${Math.floor((wallB * 0.7) * bBr)})`;
-        ctx.beginPath(); ctx.moveTo(bx, by + b.h); ctx.lineTo(bx + bd * 0.5, by + b.h + bldgWallH);
-        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bldgWallH); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = `rgb(${Math.floor((wallR * 0.6) * bBr)},${Math.floor((wallG * 0.6) * bBr)},${Math.floor((wallB * 0.6) * bBr)})`;
-        ctx.beginPath(); ctx.moveTo(bx + b.w, by); ctx.lineTo(bx + b.w + bd * 0.5, by + bd * 0.5);
-        ctx.lineTo(bx + b.w + bd * 0.5, by + b.h + bldgWallH); ctx.lineTo(bx + b.w, by + b.h); ctx.closePath(); ctx.fill();
-        const winW = 5, winH = 6, winGap = 3;
-        const sWinCols = Math.floor((b.w - 8) / (winW + winGap));
-        const sWinRows = Math.max(1, Math.floor((bldgWallH - 6) / (winH + winGap)));
-        const sWallSkewPerRow = (bd * 0.5) / bldgWallH;
-        for (let wr = 0; wr < sWinRows; wr++) {
-          for (let wc = 0; wc < sWinCols; wc++) {
-            const rowY = by + b.h + 3 + wr * (winH + winGap);
-            const rowSkew = (rowY - (by + b.h)) * sWallSkewPerRow;
-            const wx = bx + 4 + rowSkew + wc * (winW + winGap);
-            const wy = rowY;
-            const winLit = isNight && tileHash(b.x + wc * 13, b.y + wr * 7) > 0.4;
-            if (winLit) {
-              ctx.fillStyle = `rgb(${Math.floor(255 * 0.8)},${Math.floor(220 * 0.7)},${Math.floor(100 * 0.6)})`;
+
+        // Front wall outline
+        ctx.strokeStyle = `rgba(0,0,0,0.15)`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, b.w, b.h);
+
+        // ── Right-side face (darker — shadow face) ─────────────────────────
+        const sideWallR = Math.floor(wallR * 0.58 * bBr);
+        const sideWallG = Math.floor(wallG * 0.58 * bBr);
+        const sideWallB = Math.floor(wallB * 0.58 * bBr);
+        ctx.fillStyle = `rgb(${sideWallR},${sideWallG},${sideWallB})`;
+        ctx.beginPath();
+        ctx.moveTo(bx + b.w,           by);
+        ctx.lineTo(bx + b.w + depthX,  by + depthY);
+        ctx.lineTo(bx + b.w + depthX,  by + b.h + depthY);
+        ctx.lineTo(bx + b.w,           by + b.h);
+        ctx.closePath(); ctx.fill();
+        // Side face brick pattern
+        if (bHash < 0.22) {
+          for (let bry = 0; bry < b.h; bry += 7) {
+            const frac = bry / b.h;
+            const sxBase = bx + b.w + depthX * frac;
+            const syOff = depthY * frac;
+            ctx.fillStyle = `rgb(${Math.floor((wallR - 25) * bBr * 0.6)},${Math.floor((wallG - 18) * bBr * 0.6)},${Math.floor((wallB - 12) * bBr * 0.6)})`;
+            ctx.fillRect(sxBase, by + bry + syOff, depthX * (1 - frac) + 1, 6);
+            ctx.fillStyle = `rgba(0,0,0,0.1)`;
+            ctx.fillRect(sxBase, by + bry + 6 + syOff, depthX * (1 - frac) + 1, 1);
+          }
+        }
+
+        // ── Front face windows ─────────────────────────────────────────────
+        const winW = 6, winH = 7, winGapX = 4, winGapY = 5;
+        const winMarginX = 7, winMarginY = 6;
+        const winCols = Math.max(1, Math.floor((b.w - winMarginX * 2) / (winW + winGapX)));
+        const winRows = Math.max(1, Math.floor((b.h - winMarginY * 2 - 14) / (winH + winGapY)));
+        const winStartX = bx + winMarginX + ((b.w - winMarginX * 2) - winCols * (winW + winGapX) + winGapX) / 2;
+        const winStartY = by + winMarginY;
+        for (let wr = 0; wr < winRows; wr++) {
+          for (let wc = 0; wc < winCols; wc++) {
+            const wx = winStartX + wc * (winW + winGapX);
+            const wy = winStartY + wr * (winH + winGapY);
+            const winLit = tileHash(b.x + wc * 17, b.y + wr * 11);
+            const isLitWin = isNight ? winLit > 0.38 : winLit > 0.85;
+            const winPulse = isLitWin && isNight ? 0.8 + Math.sin(g.frame * 0.025 + wc + wr * 3) * 0.2 : 1;
+            if (isLitWin) {
+              if (isNight) {
+                ctx.fillStyle = `rgba(255,${Math.floor(220 * winPulse)},${Math.floor(90 * winPulse)},${0.85 * winPulse})`;
+              } else {
+                ctx.fillStyle = `rgb(${Math.floor(200 * bBr)},${Math.floor(225 * bBr)},${Math.floor(245 * bBr)})`;
+              }
             } else {
-              ctx.fillStyle = isNight ? `rgb(${Math.floor(30 * bBr)},${Math.floor(40 * bBr)},${Math.floor(55 * bBr)})` : `rgb(${Math.floor(140 * bBr)},${Math.floor(170 * bBr)},${Math.floor(200 * bBr)})`;
+              ctx.fillStyle = isNight
+                ? `rgb(${Math.floor(18 * bBr)},${Math.floor(24 * bBr)},${Math.floor(36 * bBr)})`
+                : `rgb(${Math.floor(130 * bBr)},${Math.floor(165 * bBr)},${Math.floor(200 * bBr)})`;
             }
             ctx.fillRect(wx, wy, winW, winH);
-            ctx.fillStyle = `rgb(${Math.floor((wallR - 20) * bBr)},${Math.floor((wallG - 20) * bBr)},${Math.floor((wallB - 15) * bBr)})`;
+            // Window frame
+            ctx.fillStyle = `rgb(${Math.floor((wallR - 25) * bBr)},${Math.floor((wallG - 22) * bBr)},${Math.floor((wallB - 18) * bBr)})`;
             ctx.fillRect(wx - 1, wy - 1, winW + 2, 1);
+            ctx.fillRect(wx - 1, wy + winH, winW + 2, 1);
             ctx.fillRect(wx - 1, wy, 1, winH);
             ctx.fillRect(wx + winW, wy, 1, winH);
-            ctx.fillRect(wx - 1, wy + winH, winW + 2, 1);
+            // Window cross-bar
+            ctx.fillStyle = `rgba(0,0,0,0.15)`;
+            ctx.fillRect(wx, wy + winH / 2 - 0.5, winW, 1);
+            ctx.fillRect(wx + winW / 2 - 0.5, wy, 1, winH);
+            // Night glow from lit windows
+            if (isLitWin && isNight) {
+              ctx.shadowColor = `rgba(255,200,80,0.5)`;
+              ctx.shadowBlur = 4;
+              ctx.fillStyle = `rgba(255,200,80,0.12)`;
+              ctx.fillRect(wx - 2, wy - 2, winW + 4, winH + 4);
+              ctx.shadowBlur = 0;
+            }
           }
         }
-        const eWinRows2 = Math.max(1, Math.floor((b.h - 8) / (winH + winGap)));
-        const eWallXBase = bx + b.w;
-        for (let wr = 0; wr < eWinRows2; wr++) {
-          const wy = by + 4 + wr * (winH + winGap);
-          const frac = (wy - by) / b.h;
-          const wx = eWallXBase + frac * bd * 0.5 + 2;
-          const winLit = isNight && tileHash(b.x + 99, b.y + wr * 11) > 0.45;
-          if (winLit) {
-            ctx.fillStyle = `rgb(${Math.floor(255 * 0.8)},${Math.floor(220 * 0.7)},${Math.floor(100 * 0.6)})`;
-          } else {
-            ctx.fillStyle = isNight ? `rgb(${Math.floor(30 * bBr)},${Math.floor(40 * bBr)},${Math.floor(55 * bBr)})` : `rgb(${Math.floor(140 * bBr)},${Math.floor(170 * bBr)},${Math.floor(200 * bBr)})`;
-          }
-          ctx.fillRect(wx, wy, winW - 1, winH);
-        }
-        const doorW = 8, doorH = 12;
+
+        // ── Door with frame and awning ─────────────────────────────────────
+        const doorW = 10, doorH = 14;
         const doorX = bx + b.w / 2 - doorW / 2, doorY = by + b.h - doorH;
-        ctx.fillStyle = `rgb(${Math.floor(60 * bBr)},${Math.floor(40 * bBr)},${Math.floor(25 * bBr)})`;
+        // Awning above door
+        const awningCol = isLocked ? '#aa5533' : `rgb(${Math.floor(accentR * bBr)},${Math.floor(accentG * bBr)},${Math.floor(accentB * bBr)})`;
+        ctx.fillStyle = awningCol;
+        ctx.beginPath();
+        ctx.moveTo(doorX - 5, doorY - 3);
+        ctx.lineTo(doorX + doorW + 5, doorY - 3);
+        ctx.lineTo(doorX + doorW + 3, doorY + 3);
+        ctx.lineTo(doorX - 3, doorY + 3);
+        ctx.closePath(); ctx.fill();
+        // Awning stripes
+        ctx.fillStyle = `rgba(0,0,0,0.12)`;
+        for (let ast = 0; ast < doorW + 10; ast += 4) {
+          ctx.fillRect(doorX - 5 + ast, doorY - 3, 2, 6);
+        }
+        // Door frame
+        ctx.fillStyle = `rgb(${Math.floor((wallR - 30) * bBr)},${Math.floor((wallG - 25) * bBr)},${Math.floor((wallB - 20) * bBr)})`;
+        ctx.fillRect(doorX - 1, doorY, doorW + 2, doorH + 1);
+        // Door body
+        ctx.fillStyle = `rgb(${Math.floor(55 * bBr)},${Math.floor(38 * bBr)},${Math.floor(22 * bBr)})`;
         ctx.fillRect(doorX, doorY, doorW, doorH);
-        ctx.fillStyle = `rgb(${Math.floor(180 * bBr)},${Math.floor(160 * bBr)},${Math.floor(80 * bBr)})`;
-        ctx.fillRect(doorX + doorW - 2, doorY + doorH / 2 - 1, 1, 2);
+        // Door panel detail
+        ctx.fillStyle = `rgba(255,255,255,0.06)`;
+        ctx.fillRect(doorX + 1, doorY + 2, doorW - 2, 4);
+        ctx.fillRect(doorX + 1, doorY + 8, doorW - 2, 4);
+        // Door handle
+        ctx.fillStyle = `rgb(${Math.floor(180 * bBr)},${Math.floor(160 * bBr)},${Math.floor(70 * bBr)})`;
+        ctx.fillRect(doorX + doorW - 3, doorY + doorH / 2 - 2, 2, 4);
+        // Building signage on awning
+        ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
+        ctx.font = `${b.bright ? 8 : 7}px "Share Tech Mono"`; ctx.textAlign = 'center';
+        ctx.fillText(b.label.length > 14 ? b.label.slice(0, 13) + '…' : b.label, bx + b.w / 2, by + 8);
+
+        // ── Rooftop detail ─────────────────────────────────────────────────
+        if (isTower) {
+          // Antenna/spire
+          ctx.fillStyle = `rgb(${Math.floor(60 * bBr)},${Math.floor(60 * bBr)},${Math.floor(58 * bBr)})`;
+          ctx.fillRect(bx + b.w / 2 - 1, by - roofSkew - 18, 2, 18);
+          ctx.fillStyle = `rgb(${Math.floor(180 * bBr)},${Math.floor(40 * bBr)},${Math.floor(40 * bBr)})`;
+          ctx.beginPath(); ctx.arc(bx + b.w / 2, by - roofSkew - 19, 2, 0, Math.PI * 2); ctx.fill();
+          // AC units on roof
+          const acCount = Math.min(3, Math.floor(b.w / 30));
+          for (let ai = 0; ai < acCount; ai++) {
+            const acX = bx + 8 + ai * (b.w - 16) / Math.max(1, acCount - 1);
+            const acY = by - roofSkew + 2;
+            ctx.fillStyle = `rgb(${Math.floor(100 * bBr)},${Math.floor(100 * bBr)},${Math.floor(95 * bBr)})`;
+            ctx.fillRect(acX - 4, acY, 8, 5);
+            ctx.fillStyle = `rgb(${Math.floor(80 * bBr)},${Math.floor(80 * bBr)},${Math.floor(78 * bBr)})`;
+            ctx.fillRect(acX - 3, acY + 1, 6, 2);
+          }
+        } else {
+          // Small building: water tower or vent on roof
+          const rHash = tileHash(b.x * 0.7, b.y * 0.7);
+          if (rHash > 0.55) {
+            // Vent
+            const vx2 = bx + b.w * 0.65;
+            const vy2 = by - roofSkew + 1;
+            ctx.fillStyle = `rgb(${Math.floor(85 * bBr)},${Math.floor(85 * bBr)},${Math.floor(80 * bBr)})`;
+            ctx.fillRect(vx2, vy2, 6, 5);
+            ctx.fillStyle = `rgb(${Math.floor(70 * bBr)},${Math.floor(70 * bBr)},${Math.floor(68 * bBr)})`;
+            ctx.fillRect(vx2 - 1, vy2, 1, 5);
+          }
+        }
+
+        // Interior silhouettes when player is nearby
         if (HAS_INTERIOR(b.id)) {
           const playerDist = Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2));
-          if (playerDist < 200) {
-            const silAlpha = Math.max(0, 0.15 - (playerDist - 80) * 0.001);
+          if (playerDist < 180) {
+            const silAlpha = Math.max(0, 0.14 - (playerDist - 70) * 0.001);
             if (silAlpha > 0.01) {
-              const silCount = Math.min(3, Math.floor(b.w / 50));
+              const silCount = Math.min(3, Math.floor(b.w / 45));
               for (let si = 0; si < silCount; si++) {
                 const sx = bx + 12 + si * (b.w - 24) / Math.max(1, silCount);
-                const sy = by + b.h * 0.4 + Math.sin(g.frame * 0.02 + si * 2 + b.x * 0.1) * 3;
+                const sy = by + b.h * 0.35 + Math.sin(g.frame * 0.02 + si * 2 + b.x * 0.1) * 3;
                 ctx.fillStyle = `rgba(0,0,0,${silAlpha})`;
                 ctx.fillRect(sx, sy, 5, 10);
-                ctx.beginPath(); ctx.arc(sx + 2.5, sy - 2, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(sx + 2.5, sy - 2.5, 3.5, 0, Math.PI * 2); ctx.fill();
               }
             }
           }
         }
+
+        // Near-building highlight & interaction prompt
         if (isNear) {
-          ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 2; ctx.strokeRect(bx - 1, by - 1, b.w + 2, b.h + 2);
+          ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 1.5; ctx.strokeRect(bx - 1, by - 1, b.w + 2, b.h + 2);
         }
-        ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.9)') : `rgb(${Math.floor(230 * bBr)},${Math.floor(220 * bBr)},${Math.floor(200 * bBr)})`;
-        ctx.font = `${b.bright ? 10 : 9}px "Share Tech Mono"`; ctx.textAlign = 'center';
-        ctx.fillText(b.label + (isLocked ? ' 🔒' : ''), bx + b.w / 2, by + b.h / 2 + 4);
         const costLbl = BUILDING_COST_LABEL[b.id];
         if (costLbl && !isLocked) {
           ctx.font = '7px "Share Tech Mono"';
           ctx.fillStyle = costLbl === 'FREE' ? '#66ff88' : costLbl === 'SHOP' ? '#ffcc44' : '#ffaa44';
-          ctx.fillText(costLbl, bx + b.w / 2, by + b.h / 2 + 14);
+          ctx.textAlign = 'center';
+          ctx.fillText(costLbl, bx + b.w / 2, by - roofSkew - 4);
         }
-        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 7); }
+        if (isLocked) {
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillStyle = '#ff8c3c';
+          ctx.fillText('🔒', bx + b.w / 2, by + b.h / 2);
+        }
+        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
       }
 
       // ── Shared vehicle draw helper (directional pixel art) ──
@@ -9878,76 +10275,220 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isHoriz = facing === 'left' || facing === 'right';
         const fwdX = isHoriz ? (facing === 'right' ? 1 : -1) : 0;
         const fwdY = !isHoriz ? (facing === 'down' ? 1 : -1) : 0;
-        ctx.fillStyle = 'rgba(0,0,0,.18)';
-        ctx.beginPath(); ctx.ellipse(vx, vy + 5, isHoriz ? vw2 + 2 : vh2 + 2, isHoriz ? 3 : 4, 0, 0, Math.PI * 2); ctx.fill();
+        // Parse the color for darkening side faces
+        const hexToRgb = (hex: string): [number, number, number] => {
+          const r = parseInt(hex.slice(1,3),16)||128;
+          const g2 = parseInt(hex.slice(3,5),16)||128;
+          const b2 = parseInt(hex.slice(5,7),16)||128;
+          return [r, g2, b2];
+        };
+        const [vR, vG, vB] = hexToRgb(vc.startsWith('#') ? vc : '#884422');
+        const sideFace = `rgb(${Math.floor(vR*0.65)},${Math.floor(vG*0.65)},${Math.floor(vB*0.65)})`;
+        const roofFace = `rgb(${Math.floor(vR*0.85)},${Math.floor(vG*0.85)},${Math.floor(vB*0.85)})`;
+        // Depth constants for isometric look
+        const isoDepthX = 3.5, isoDepthY = 2.0;
+        const bodyH3D = vd.category === 'bike' ? 5 : vd.category === 'car' ? 9 : 11;
+        // Ground shadow
+        ctx.fillStyle = 'rgba(0,0,0,.22)';
+        ctx.beginPath(); ctx.ellipse(vx + 2, vy + (isHoriz ? vh2 : vw2) + 4, isHoriz ? vw2 + 4 : vh2 + 4, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+
         if (vd.category === 'bike') {
           if (isHoriz) {
+            // Side shadow face (isometric depth)
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vw2, vy - vh2);
+            ctx.lineTo(vx + vw2 + isoDepthX, vy - vh2 + isoDepthY);
+            ctx.lineTo(vx + vw2 + isoDepthX, vy + vh2 + isoDepthY);
+            ctx.lineTo(vx + vw2, vy + vh2);
+            ctx.closePath(); ctx.fill();
+            // Main body top-down
             ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
-            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy - vh2 - 2, vh2 * 2, 3);
+            // Fairing / windshield
+            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy - vh2 - 3, vh2 * 2, 4);
+            // Engine detail
+            ctx.fillStyle = `rgba(0,0,0,0.25)`;
+            ctx.fillRect(vx - 3, vy - vh2 + 1, 6, vh2);
+            // Headlight
             ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx + fwdX * (vw2 - 1), vy - 1, 2, 2);
+            // Tail light
             ctx.fillStyle = '#ff4444'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - 1, 2, 2);
+            // Wheels
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx - vw2 * 0.5, vy + vh2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx + vw2 * 0.5, vy + vh2 + 2, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.55, vy + vh2 + 3, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.55, vy + vh2 + 3, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#555';
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.55, vy + vh2 + 3, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.55, vy + vh2 + 3, 1.5, 0, Math.PI * 2); ctx.fill();
           } else {
+            // Vertical bike
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vh2, vy - vw2);
+            ctx.lineTo(vx + vh2 + isoDepthX, vy - vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2 + isoDepthX, vy + vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2, vy + vw2);
+            ctx.closePath(); ctx.fill();
             ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
-            ctx.fillStyle = va; ctx.fillRect(vx - 2, vy + fwdY * (vw2 - 2), 4, 3);
+            ctx.fillStyle = va; ctx.fillRect(vx - 2, vy + fwdY * (vw2 - 2), 4, 4);
             ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx - 1, vy + fwdY * vw2, 2, 2);
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx + vh2 + 1, vy, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx - vh2 - 1, vy, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy, 3.5, 0, Math.PI * 2); ctx.fill();
           }
         } else if (vd.category === 'car') {
           if (isHoriz) {
-            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
-            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vw2 * 0.4, vy - vh2 + 1, vd.bodyW * 0.5, vh2 - 1);
-            ctx.fillStyle = va; ctx.fillRect(vx - vw2, vy - vh2, vw2 * 0.5, vd.bodyH);
+            // Right side shadow face
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy + vh2 + isoDepthY);
+            ctx.lineTo(vx + vw2,              vy + vh2);
+            ctx.closePath(); ctx.fill();
+            // Window area on side face
+            ctx.fillStyle = vd.windowColor.replace(')', ', 0.5)').replace('rgb', 'rgba');
+            ctx.fillRect(vx + vw2 + 1, vy - vh2 - bodyH3D + 2 + isoDepthY * 0.3, isoDepthX - 2, bodyH3D - 3);
+            // Roof top face (skewed parallelogram)
+            ctx.fillStyle = roofFace;
+            ctx.beginPath();
+            ctx.moveTo(vx - vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.lineTo(vx - vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.closePath(); ctx.fill();
+            // Main car body (top view / front face)
+            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2 - bodyH3D, vd.bodyW, vd.bodyH + bodyH3D);
+            // Windshield / windows
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vw2 * 0.35, vy - vh2 - bodyH3D + 2, vd.bodyW * 0.5, bodyH3D - 2);
+            // Accent stripe
+            ctx.fillStyle = va; ctx.fillRect(vx - vw2, vy - vh2 - bodyH3D, vd.bodyW, 3);
+            // Police light bar
             if (type === 'police_cruiser') {
               const blink2 = Math.floor(g.frame / 8) % 2;
-              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff'; ctx.fillRect(vx - 3, vy - vh2 - 2, 6, 2);
+              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff';
+              ctx.fillRect(vx - 5, vy - vh2 - bodyH3D - 3, 10, 3);
+              ctx.shadowColor = blink2 ? '#ff2200' : '#0022ff'; ctx.shadowBlur = 8;
+              ctx.fillRect(vx - 5, vy - vh2 - bodyH3D - 3, 10, 3);
+              ctx.shadowBlur = 0;
             }
-            if (type === 'taxi') { ctx.fillStyle = '#000'; ctx.font = '5px monospace'; ctx.textAlign = 'center'; ctx.fillText('TAXI', vx, vy - vh2 - 1); }
-            ctx.fillStyle = '#ffcc44';
-            ctx.fillRect(vx + fwdX * (vw2 - 1), vy - vh2 + 1, 2, 2);
-            ctx.fillRect(vx + fwdX * (vw2 - 1), vy + vh2 - 3, 2, 2);
-            ctx.fillStyle = '#ff3333'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - vh2 + 2, 2, 2); ctx.fillRect(vx - fwdX * (vw2 - 1), vy + vh2 - 4, 2, 2);
+            // Taxi sign
+            if (type === 'taxi') {
+              ctx.fillStyle = '#000'; ctx.font = '5px monospace'; ctx.textAlign = 'center';
+              ctx.fillText('TAXI', vx, vy - vh2 - bodyH3D - 1);
+            }
+            // Headlights
+            ctx.fillStyle = '#ffee88';
+            ctx.shadowColor = '#ffee88'; ctx.shadowBlur = 4;
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy - vh2 - 2, 2, 3);
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy + vh2 - 5, 2, 3);
+            ctx.shadowBlur = 0;
+            // Tail lights
+            ctx.fillStyle = '#ff3333';
+            ctx.fillRect(vx - fwdX * (vw2 - 1), vy - vh2 + 1, 2, 3);
+            ctx.fillRect(vx - fwdX * (vw2 - 1), vy + vh2 - 5, 2, 3);
+            // Wheels (larger for isometric feel)
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx - vw2 * 0.65, vy + vh2 + 1, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx + vw2 * 0.65, vy + vh2 + 1, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.65, vy + vh2 + 2, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.65, vy + vh2 + 2, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#555';
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.65, vy + vh2 + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.65, vy + vh2 + 2, 1.5, 0, Math.PI * 2); ctx.fill();
           } else {
+            // Vertical car
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy + vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2,              vy + vw2);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = roofFace;
+            ctx.beginPath();
+            ctx.moveTo(vx - vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.lineTo(vx - vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.closePath(); ctx.fill();
             ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
             ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vh2 + 1, vy - vw2 * 0.3, vd.bodyH - 2, vd.bodyW * 0.45);
             ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy + fwdY * (vw2 - 4), vd.bodyH, 4);
             if (type === 'police_cruiser') {
               const blink2 = Math.floor(g.frame / 8) % 2;
-              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff'; ctx.fillRect(vx - 3, vy + fwdY * (vw2 + 2), 6, 2);
+              ctx.fillStyle = blink2 ? '#ff2200' : '#0022ff';
+              ctx.fillRect(vx - 4, vy + fwdY * (vw2 + 2), 8, 3);
+              ctx.shadowColor = blink2 ? '#ff2200' : '#0022ff'; ctx.shadowBlur = 8;
+              ctx.fillRect(vx - 4, vy + fwdY * (vw2 + 2), 8, 3);
+              ctx.shadowBlur = 0;
             }
-            ctx.fillStyle = '#ffcc44';
-            ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 2), 2, 2);
-            ctx.fillRect(vx + vh2 - 3, vy + fwdY * (vw2 - 2), 2, 2);
+            ctx.fillStyle = '#ffee88';
+            ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 2), 3, 2);
+            ctx.fillRect(vx + vh2 - 4, vy + fwdY * (vw2 - 2), 3, 2);
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx - vh2 - 1, vy + vw2 * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx + vh2 + 1, vy + vw2 * 0.5, 2.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy + vw2 * 0.55, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy + vw2 * 0.55, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#555';
+            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy + vw2 * 0.55, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy + vw2 * 0.55, 1.5, 0, Math.PI * 2); ctx.fill();
           }
         } else {
-          // truck / van
+          // Truck / van — larger, boxier
           if (isHoriz) {
-            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2, vd.bodyW, vd.bodyH);
-            ctx.fillStyle = va; ctx.fillRect(vx + fwdX * (vw2 - 6), vy - vh2, 6, vd.bodyH);
-            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx + fwdX * (vw2 - 5), vy - vh2 + 1, 4, vh2);
-            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx + fwdX * (vw2 - 1), vy - 2, 2, 2); ctx.fillRect(vx + fwdX * (vw2 - 1), vy + 2, 2, 2);
-            ctx.fillStyle = '#ff3333'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - 2, 2, 4);
+            // Side shadow face
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy + vh2 + isoDepthY);
+            ctx.lineTo(vx + vw2,              vy + vh2);
+            ctx.closePath(); ctx.fill();
+            // Roof face
+            ctx.fillStyle = roofFace;
+            ctx.beginPath();
+            ctx.moveTo(vx - vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2,              vy - vh2 - bodyH3D);
+            ctx.lineTo(vx + vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.lineTo(vx - vw2 + isoDepthX,  vy - vh2 - bodyH3D + isoDepthY);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = vc; ctx.fillRect(vx - vw2, vy - vh2 - bodyH3D, vd.bodyW, vd.bodyH + bodyH3D);
+            // Cab front section
+            ctx.fillStyle = va; ctx.fillRect(vx + fwdX * (vw2 - 7), vy - vh2 - bodyH3D, 7, vd.bodyH + bodyH3D);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx + fwdX * (vw2 - 6), vy - vh2 - bodyH3D + 2, 5, bodyH3D - 2);
+            // Cargo area marking
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
+            ctx.strokeRect(vx - vw2 + (fwdX < 0 ? 7 : 0), vy - vh2 - bodyH3D + 1, vd.bodyW - 7, vd.bodyH + bodyH3D - 2);
+            ctx.fillStyle = '#ffcc44';
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy - 3, 2, 3);
+            ctx.fillRect(vx + fwdX * (vw2 - 1), vy + 1, 2, 3);
+            ctx.fillStyle = '#ff3333'; ctx.fillRect(vx - fwdX * (vw2 - 1), vy - 2, 2, 5);
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx - vw2 * 0.6, vy + vh2 + 2, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx + vw2 * 0.6, vy + vh2 + 2, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vw2 * 0.62, vy + vh2 + 3, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vw2 * 0.62, vy + vh2 + 3, 4, 0, Math.PI * 2); ctx.fill();
           } else {
+            ctx.fillStyle = sideFace;
+            ctx.beginPath();
+            ctx.moveTo(vx + vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy + vw2 + isoDepthY);
+            ctx.lineTo(vx + vh2,              vy + vw2);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = roofFace;
+            ctx.beginPath();
+            ctx.moveTo(vx - vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2,              vy - vw2);
+            ctx.lineTo(vx + vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.lineTo(vx - vh2 + isoDepthX,  vy - vw2 + isoDepthY);
+            ctx.closePath(); ctx.fill();
             ctx.fillStyle = vc; ctx.fillRect(vx - vh2, vy - vw2, vd.bodyH, vd.bodyW);
-            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy + fwdY * (vw2 - 6), vd.bodyH, 6);
-            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 5), vd.bodyH - 2, 4);
-            ctx.fillStyle = '#ffcc44'; ctx.fillRect(vx - 2, vy + fwdY * (vw2 - 1), 2, 2); ctx.fillRect(vx + 2, vy + fwdY * (vw2 - 1), 2, 2);
+            ctx.fillStyle = va; ctx.fillRect(vx - vh2, vy + fwdY * (vw2 - 7), vd.bodyH, 7);
+            ctx.fillStyle = vd.windowColor; ctx.fillRect(vx - vh2 + 1, vy + fwdY * (vw2 - 6), vd.bodyH - 2, 5);
+            ctx.fillStyle = '#ffcc44';
+            ctx.fillRect(vx - 3, vy + fwdY * (vw2 - 1), 3, 2);
+            ctx.fillRect(vx + 1, vy + fwdY * (vw2 - 1), 3, 2);
             ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy + vw2 * 0.6, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy + vw2 * 0.6, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - vh2 - 2, vy + vw2 * 0.62, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + vh2 + 2, vy + vw2 * 0.62, 4, 0, Math.PI * 2); ctx.fill();
           }
         }
       };
@@ -10726,82 +11267,261 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       ctx.globalAlpha = bodyAlpha;
       const wf = g.walkFrame;
-      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 3.5;
+      // Enlarged character sprites: ~30px tall with proper proportions
+      const lLeg = Math.sin(wf / 28 * Math.PI * 2) * 4.5;
       const rLeg = -lLeg;
-      const lArm = Math.sin(wf / 28 * Math.PI * 2 + Math.PI) * 3;
+      const lArm = Math.sin(wf / 28 * Math.PI * 2 + Math.PI) * 3.5;
       const rArm = -lArm;
-      const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1.2;
-      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : bodyBob;
+      const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1.5;
+      const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.6 : bodyBob;
       const facingRight = facingDir === 'right';
       const facingLeft = facingDir === 'left';
       const facingUp = facingDir === 'up';
-      const armOffX = facingRight ? 2 : facingLeft ? -2 : 0;
+      const facingDown = facingDir === 'down' || (!facingRight && !facingLeft && !facingUp);
+      // Isometric directional offsets — SE/SW/NE/NW
+      const isoArmOff = facingRight ? 2.5 : facingLeft ? -2.5 : 0;
+      // Perspective lean for isometric look
+      const isoLeanX = facingRight ? 1.5 : facingLeft ? -1.5 : 0;
+      const isoLeanY = facingDown ? 0.5 : facingUp ? -0.5 : 0;
 
       if (pCls === 'corporate') {
-        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
-        ctx.fillStyle = '#2a2a2a'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#333333'); ctx.fillRect(px - 7, py2 - 9 + idleBob, 14, 9);
-        ctx.fillStyle = '#eeeeee'; ctx.fillRect(px - 2, py2 - 9 + idleBob, 4, 2);
-        ctx.fillStyle = '#cc0000'; ctx.fillRect(px - 1, py2 - 7 + idleBob, 2, 5);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#333333');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
-        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
+        // Shoes / feet
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
+        // Trousers (legs)
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        // Belt
+        ctx.fillStyle = '#888877';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        // Suit jacket body
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        // White shirt / tie visible
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 10 + idleBob, 4, 3);
+        ctx.fillStyle = '#cc1111';
+        ctx.fillRect(px - 1 + isoLeanX, py2 - 8 + idleBob, 2, 7);
+        // Jacket lapels
+        ctx.fillStyle = '#222222';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 11 + idleBob, 3, 5);
+        ctx.fillRect(px + 4 + isoLeanX, py2 - 11 + idleBob, 3, 5);
+        // Shoulder pad detail
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(px - 9 + isoLeanX, py2 - 10 + idleBob, 2, 4);
+        ctx.fillRect(px + 7 + isoLeanX, py2 - 10 + idleBob, 2, 4);
+        // Arms
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        // Hands (skin color)
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        // Neck
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        // Head
+        ctx.fillStyle = '#d4906a';
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
+        // Eyes (facing front or sides)
         if (!facingUp) {
-          ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
-          ctx.fillStyle = '#c87a55'; ctx.fillRect(px - 1, py2 - 13 + idleBob, 2, 1);
+          ctx.fillStyle = '#1a0a00';
+          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          // Mouth
+          ctx.fillStyle = '#c87a55';
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
         }
-        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(px - 5, py2 - 22 + idleBob, 10, 5);
-        ctx.beginPath(); ctx.arc(px, py2 - 21 + idleBob, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#222'; ctx.fillRect(px - 6, py2 - 18 + idleBob, 1, 3); ctx.fillRect(px + 5, py2 - 18 + idleBob, 1, 3);
+        // Hair — corporate slick cut
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 26 + idleBob, 12, 6);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
+        // Glasses frames
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px - 5 + isoLeanX, py2 - 21 + idleBob, 4, 3);
+        ctx.strokeRect(px + 1 + isoLeanX, py2 - 21 + idleBob, 4, 3);
       } else if (pCls === 'outlaw') {
-        ctx.fillStyle = '#4a3322'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
-        ctx.fillStyle = '#5a4433'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b5533'); ctx.fillRect(px - 7, py2 - 9 + idleBob, 14, 9);
-        ctx.fillStyle = '#8a7744'; ctx.fillRect(px - 8, py2 - 10 + idleBob, 16, 3);
-        ctx.fillStyle = '#554422'; ctx.fillRect(px - 9 + armOffX, py2 - 4 + idleBob, 2, 6);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b5533');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
-        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
+        // Outlaw class — rugged frontier mercenary look
+        // Boots — worn leather
+        ctx.fillStyle = '#3d2010';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 7);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 7);
+        ctx.fillStyle = '#552211';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 16 + lLeg, 5, 1);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 16 + rLeg, 5, 1);
+        // Trousers — rough canvas
+        ctx.fillStyle = '#5a4030';
+        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        // Ammo/belt straps
+        ctx.fillStyle = '#7a6040';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        ctx.fillStyle = '#4a3020';
+        ctx.fillRect(px - 3 + isoLeanX, py2 - 0.5 + idleBob, 2, 2);
+        ctx.fillRect(px + 1 + isoLeanX, py2 - 0.5 + idleBob, 2, 2);
+        // Duster coat body
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        // Vest on top of duster
+        ctx.fillStyle = '#4a3020';
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 10 + idleBob, 10, 9);
+        // Duster lapel flaps
+        ctx.fillStyle = '#7a5a38';
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 3, 8);
+        ctx.fillRect(px + 5 + isoLeanX, py2 - 11 + idleBob, 3, 8);
+        // Arms — rough leather sleeves
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        // Hands
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        // Neck
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        // Head
+        ctx.fillStyle = '#d4906a';
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
-          ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
-          ctx.fillStyle = '#887744'; ctx.fillRect(px - 2, py2 - 14 + idleBob, 4, 1);
+          ctx.fillStyle = '#1a0a00';
+          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillStyle = '#887744';
+          ctx.fillRect(px - 2 + isoLeanX, py2 - 15 + idleBob, 4, 1);
         }
-        ctx.fillStyle = '#665533'; ctx.fillRect(px - 6, py2 - 23 + idleBob, 12, 7);
-        ctx.fillStyle = '#776644'; ctx.fillRect(px - 7, py2 - 18 + idleBob, 14, 2);
-        ctx.fillStyle = '#554422'; ctx.fillRect(px - 4, py2 - 24 + idleBob, 8, 2);
+        // Wide-brim hat
+        ctx.fillStyle = '#5a3a18';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 27 + idleBob, 14, 8);
+        ctx.fillStyle = '#6a4a25';
+        ctx.fillRect(px - 9 + isoLeanX, py2 - 20 + idleBob, 18, 2);
+        ctx.fillStyle = '#4a2a10';
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 30 + idleBob, 10, 4);
       } else if (pCls === 'replicant') {
-        ctx.fillStyle = '#1a3344'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
-        ctx.fillStyle = '#224455'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2a5566'); ctx.fillRect(px - 7, py2 - 9 + idleBob, 14, 9);
-        ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 5 + idleBob, 6, 1);
-        ctx.fillStyle = '#33ffaa44'; ctx.fillRect(px - 6, py2 - 8 + idleBob, 1, 6); ctx.fillRect(px + 5, py2 - 8 + idleBob, 1, 6);
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2a5566');
-        ctx.fillRect(px - 10 + armOffX, py2 - 8 + lArm + idleBob, 3, 7); ctx.fillRect(px + 7 + armOffX, py2 - 8 + rArm + idleBob, 3, 7);
-        ctx.fillStyle = '#aacccc'; ctx.beginPath(); ctx.arc(px, py2 - 15 + idleBob, 5, 0, Math.PI * 2); ctx.fill();
+        // Boots — dark metallic
+        ctx.fillStyle = '#0f1f2a';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
+        // Cyan boot trim
+        ctx.fillStyle = '#33ffaa';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 15 + lLeg, 5, 1);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 15 + rLeg, 5, 1);
+        // Tech-pants
+        ctx.fillStyle = '#1a3344';
+        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        // Knee armor plate
+        ctx.fillStyle = '#224466';
+        ctx.fillRect(px - 6 + isoLeanX, py2 + 5 + lLeg * 0.4, 5, 3);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 5 + rLeg * 0.4, 5, 3);
+        // Body suit
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#1e4a5a');
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        // Tech armor chest panel
+        ctx.fillStyle = '#224466';
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 10 + idleBob, 10, 6);
+        // Chest LED stripe
+        ctx.fillStyle = '#33ffaa';
+        ctx.fillRect(px - 4 + isoLeanX, py2 - 5 + idleBob, 8, 1);
+        // Side accent lines (neon)
+        ctx.fillStyle = '#33ffaa88';
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 8 + idleBob, 1, 8);
+        ctx.fillRect(px + 7 + isoLeanX, py2 - 8 + idleBob, 1, 8);
+        // Arms — armored
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#1e4a5a');
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        // Arm stripe neon
+        ctx.fillStyle = '#33ffaa66';
+        ctx.fillRect(px - 11 + isoArmOff + isoLeanX, py2 - 4 + lArm + idleBob, 2, 1);
+        ctx.fillRect(px + 9 + isoArmOff + isoLeanX, py2 - 4 + rArm + idleBob, 2, 1);
+        // Hands — pale synthetic
+        ctx.fillStyle = '#aacccc';
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        // Neck
+        ctx.fillStyle = '#aacccc';
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        // Head — synthetic skin (pale blue-grey)
+        ctx.fillStyle = '#aacccc';
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
-          ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
-          ctx.fillStyle = '#33ffaa88'; ctx.fillRect(px - 1, py2 - 13 + idleBob, 2, 1);
+          // Eyes — glowing cyan
+          ctx.fillStyle = '#33ffaa';
+          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.shadowColor = '#33ffaa'; ctx.shadowBlur = 3;
+          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.shadowBlur = 0;
+          // Slight smile line
+          ctx.fillStyle = '#33ffaa88';
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
         }
-        ctx.fillStyle = '#33ffaa'; ctx.fillRect(px - 5, py2 - 22 + idleBob, 10, 2);
-        ctx.fillStyle = '#224455'; ctx.fillRect(px - 5, py2 - 21 + idleBob, 10, 5);
-        ctx.fillStyle = '#33ffaa44'; ctx.fillRect(px - 3, py2 - 23 + idleBob, 6, 1);
+        // Helmet / visor band
+        ctx.fillStyle = '#33ffaa';
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 22 + idleBob, 12, 2);
+        ctx.fillStyle = '#0f2233';
+        ctx.fillRect(px - 5 + isoLeanX, py2 - 25 + idleBob, 10, 5);
+        // Antenna
+        ctx.fillStyle = '#33ffaa';
+        ctx.fillRect(px + 3 + isoLeanX, py2 - 28 + idleBob, 1, 4);
       } else {
-        ctx.fillStyle = '#224422'; ctx.fillRect(px - 6, py2 + 4 + lLeg, 4, 5); ctx.fillRect(px + 2, py2 + 4 + rLeg, 4, 5);
-        ctx.fillStyle = '#335533'; ctx.fillRect(px - 5, py2 - 1 + lLeg * 0.5, 4, 6); ctx.fillRect(px + 1, py2 - 1 + rLeg * 0.5, 4, 6);
-        const defCol = g.poisoned ? '#557722' : (costumeColor ?? (isFlash ? '#446644' : '#33553380'));
-        ctx.fillStyle = defCol; ctx.fillRect(px - 7, py2 - 9 + idleBob, 14, 9);
-        ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(px - 2, py2 - 9 + idleBob, 4, 3);
+        // Default generic / outlaw class — enlarged + isometric
+        // Boots
+        ctx.fillStyle = '#3a2510';
+        ctx.fillRect(px - 7 + isoLeanX, py2 + 10 + lLeg, 5, 6);
+        ctx.fillRect(px + 2 + isoLeanX, py2 + 10 + rLeg, 5, 6);
+        // Jeans
+        ctx.fillStyle = '#2a3555';
+        ctx.fillRect(px - 6 + isoLeanX, py2 + 1 + lLeg * 0.6, 5, 10);
+        ctx.fillRect(px + 1 + isoLeanX, py2 + 1 + rLeg * 0.6, 5, 10);
+        // Belt
+        ctx.fillStyle = '#665533';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 1 + idleBob, 14, 2);
+        // Jacket body
+        const defCol = g.poisoned ? '#557722' : (costumeColor ?? (isFlash ? '#446644' : '#556644'));
         ctx.fillStyle = defCol;
-        ctx.fillRect(px - 10 + armOffX, py2 - 9 + lArm + idleBob, 3, 8); ctx.fillRect(px + 7 + armOffX, py2 - 9 + rArm + idleBob, 3, 8);
-        ctx.fillStyle = '#d4906a'; ctx.fillRect(px - 10 + armOffX, py2 - 1 + lArm + idleBob, 3, 2); ctx.fillRect(px + 7 + armOffX, py2 - 1 + rArm + idleBob, 3, 2);
-        ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(px, py2 - 16 + idleBob, 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(px - 8 + isoLeanX, py2 - 11 + idleBob, 16, 12);
+        // Jacket collar / scarf
+        ctx.fillStyle = '#334422';
+        ctx.fillRect(px - 3 + isoLeanX, py2 - 11 + idleBob, 6, 4);
+        // Pocket detail
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(px + 2 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 4, 4);
+        // Arms
+        ctx.fillStyle = defCol;
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 - 9 + lArm + idleBob, 4, 9);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 - 9 + rArm + idleBob, 4, 9);
+        // Hands
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 12 + isoArmOff + isoLeanX, py2 + 0 + lArm + idleBob, 4, 3);
+        ctx.fillRect(px + 8 + isoArmOff + isoLeanX, py2 + 0 + rArm + idleBob, 4, 3);
+        // Neck
+        ctx.fillStyle = '#d4906a';
+        ctx.fillRect(px - 2 + isoLeanX, py2 - 13 + idleBob, 4, 4);
+        // Head
+        ctx.fillStyle = '#d4906a';
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 18 + idleBob + isoLeanY, 6, 7, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
-          ctx.fillStyle = '#1a0a00'; ctx.fillRect(px - 3, py2 - 17 + idleBob, 2, 2); ctx.fillRect(px + 1, py2 - 17 + idleBob, 2, 2);
-          ctx.fillStyle = '#c87a55'; ctx.fillRect(px - 1, py2 - 13 + idleBob, 2, 1);
+          ctx.fillStyle = '#1a0a00';
+          ctx.fillRect(px - 4 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillRect(px + 2 + isoLeanX, py2 - 20 + idleBob, 2, 2);
+          ctx.fillStyle = '#c87a55';
+          ctx.fillRect(px - 1 + isoLeanX, py2 - 15 + idleBob, 2, 1);
         }
-        ctx.fillStyle = '#332211'; ctx.fillRect(px - 5, py2 - 22 + idleBob, 10, 6);
-        ctx.beginPath(); ctx.arc(px, py2 - 21 + idleBob, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#221108'; ctx.fillRect(px - 6, py2 - 18 + idleBob, 1, 3); ctx.fillRect(px + 5, py2 - 18 + idleBob, 1, 3);
+        // Hair — shaggy/outlaw
+        ctx.fillStyle = '#332211';
+        ctx.fillRect(px - 6 + isoLeanX, py2 - 27 + idleBob, 12, 7);
+        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 25 + idleBob, 4, Math.PI, 0); ctx.fill();
+        // Headband
+        ctx.fillStyle = '#665533';
+        ctx.fillRect(px - 7 + isoLeanX, py2 - 19 + idleBob, 14, 2);
       }
 
       // ── Visible weapon on player sprite ──
