@@ -156,7 +156,7 @@ export default function Cover() {
           className="inline-flex items-center gap-2.5 mb-12 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          ALPHA
+          EARLY ACCESS
         </motion.div>
 
         {/* Headline */}
@@ -164,7 +164,7 @@ export default function Cover() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.08 }}
-          className="relative text-6xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-5"
+          className="relative text-5xl sm:text-8xl md:text-9xl font-black tracking-[-0.06em] leading-none mb-5"
           style={{ fontFamily: "Arial, Helvetica, sans-serif", fontStretch: "condensed", transform: "scaleX(0.85) scaleY(1.1)" }}
         >
           <span className="absolute inset-0 animated-title-glow select-none" aria-hidden="true">
@@ -207,13 +207,13 @@ export default function Cover() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.55 }}
-          className="flex flex-wrap justify-center gap-4 mb-5"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5 w-full sm:w-auto"
         >
           <motion.button
             onClick={login}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
-            className="cta-primary flex items-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors"
+            className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors w-full sm:w-auto"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </motion.button>
@@ -222,7 +222,7 @@ export default function Cover() {
             onClick={() => navigate('/features')}
             whileHover={{ scale: 1.04, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.07)' }}
             whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 px-8 py-3.5 rounded-lg border border-white/10 text-zinc-300 text-sm transition-colors"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg border border-white/10 text-zinc-300 text-sm transition-colors w-full sm:w-auto"
           >
             See all features <ChevronRight className="w-4 h-4" />
           </motion.button>
@@ -257,7 +257,7 @@ export default function Cover() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.85 }}
-          className="w-full max-w-2xl mb-16"
+          className="w-full max-w-2xl mt-14 sm:mt-20 mb-16"
         >
           <video
             src="/brand/other/salaryman-teaser.mp4"
