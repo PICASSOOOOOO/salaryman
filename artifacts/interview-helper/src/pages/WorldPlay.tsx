@@ -5763,47 +5763,6 @@ export default function WorldPlay() {
             }
             return;
           }
-          // Outdoors: fire ranged weapon
-          if (frozenRef.current || gamePausedRef.current) return;
-          if (g.attackCooldown > 0) return;
-          const wpn = WEAPONS.find(w => w.id === secondaryWeaponRef.current) ?? WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
-          if (wpn.type !== 'ranged') { setNarr('> No ranged weapon equipped in secondary slot.'); return; }
-          g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
-          sfxWeaponDraw(); sfxAttack();
-          const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-          const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
-          // Find nearest threat in range, else nearest peer, else fire in facing direction
-          let fireAngle = null;
-          let nearestThreatDist = Infinity;
-          for (const t of g.threats) {
-            const d = Math.hypot(g.px - t.x, g.py - t.y);
-            if (d < wpn.range && d < nearestThreatDist) {
-              nearestThreatDist = d;
-              fireAngle = Math.atan2(t.y - g.py, t.x - g.px);
-            }
-          }
-          if (fireAngle === null) {
-            let nearestPeerDist = Infinity;
-            for (const [, peer] of g.peers) {
-              if (peer.interiorBid) continue;
-              const d = Math.hypot(g.px - peer.x, g.py - peer.y);
-              if (d < wpn.range && d < nearestPeerDist) {
-                nearestPeerDist = d;
-                fireAngle = Math.atan2(peer.y - g.py, peer.x - g.px);
-              }
-            }
-          }
-          if (fireAngle === null) {
-            const facingMap: Record<string, number> = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-            fireAngle = facingMap[g.facing] ?? 0;
-          }
-          g.muzzleFlash = { angle: fireAngle, life: 5 };
-          const speed = 8;
-          if (wpn.icon === 'bomb') {
-            g.bombs.push({ x: g.px + Math.cos(fireAngle) * 30, y: g.py + Math.sin(fireAngle) * 30, timer: 45, damage: ATK, radius: wpn.range });
-          } else {
-            g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(fireAngle) * speed, dy: Math.sin(fireAngle) * speed, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK, type: wpn.icon });
-          }
         }
       }
       if ((e.key === 'o' || e.key === 'O') && decorModeRef.current) {
@@ -5999,18 +5958,45 @@ export default function WorldPlay() {
         }
         return; // On cooldown, ignore click
       } else if (rangedWpnClick && !clickedEnemy && !clickedPeer) {
-        // Ranged weapon but clicking empty ground — check if distant enemy: move toward them
-        const nearestEnemy = g.threats.reduce((best: Threat | null, t) => {
-          const d = Math.hypot(clickWorldX - t.x, clickWorldY - t.y);
-          if (d < 80 && (!best || d < Math.hypot(clickWorldX - best.x, clickWorldY - best.y))) return t;
-          return best;
-        }, null);
-        if (nearestEnemy && Math.hypot(g.px - nearestEnemy.x, g.py - nearestEnemy.y) > rangedWpnClick.range) {
-          // Move toward out-of-range enemy
-          g.moveTarget = { x: nearestEnemy.x, y: nearestEnemy.y };
-          return;
+        // Ranged weapon clicking empty ground — use auto-targeting logic (nearest threat → nearest peer → click direction)
+        if (frozenRef.current || gamePausedRef.current) return;
+        if (g.attackCooldown > 0) return;
+        let autoFireAngle: number | null = null;
+        let nearestThreatDist = Infinity;
+        for (const t of g.threats) {
+          const d = Math.hypot(g.px - t.x, g.py - t.y);
+          if (d < rangedWpnClick.range && d < nearestThreatDist) {
+            nearestThreatDist = d;
+            autoFireAngle = Math.atan2(t.y - g.py, t.x - g.px);
+          }
         }
-        // Empty ground — just move, no shot
+        if (autoFireAngle === null) {
+          let nearestPeerDist = Infinity;
+          for (const [, peer] of g.peers) {
+            if (peer.interiorBid) continue;
+            const d = Math.hypot(g.px - peer.x, g.py - peer.y);
+            if (d < rangedWpnClick.range && d < nearestPeerDist) {
+              nearestPeerDist = d;
+              autoFireAngle = Math.atan2(peer.y - g.py, peer.x - g.px);
+            }
+          }
+        }
+        if (autoFireAngle === null) {
+          // Fire toward click location
+          autoFireAngle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
+        }
+        g.attackCooldown = rangedWpnClick.cooldown; g.attackFlash = 4;
+        g.muzzleFlash = { angle: autoFireAngle, life: 5 };
+        sfxWeaponDraw(); sfxAttack();
+        const atkBonusMerchAuto = g.ownedItems.has('atk_boost') ? 5 : 0;
+        const ATKauto = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerchAuto;
+        const speedAuto = 8;
+        if (rangedWpnClick.icon === 'bomb') {
+          g.bombs.push({ x: g.px + Math.cos(autoFireAngle) * 30, y: g.py + Math.sin(autoFireAngle) * 30, timer: 45, damage: ATKauto, radius: rangedWpnClick.range });
+        } else {
+          g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(autoFireAngle) * speedAuto, dy: Math.sin(autoFireAngle) * speedAuto, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATKauto, type: rangedWpnClick.icon });
+        }
+        return; // Don't move — we fired
       } else if (clickedEnemy) {
         // Melee weapon: move toward enemy
         if (g.attackCooldown > 0) return;
