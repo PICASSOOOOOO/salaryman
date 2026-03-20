@@ -610,6 +610,12 @@ export default function Upgrade() {
                 </p>
               </div>
             )}
+
+            <div className="mt-4 text-center">
+              <p className="text-[10px] text-muted-foreground/50 font-mono tracking-wider">
+                Subscriptions billed by <span className="text-muted-foreground/70">Picassoo.AI</span> · appears as <span className="text-muted-foreground/70">PICASSO AI LLC</span> on your bank statement
+              </p>
+            </div>
           </>
         )}
 

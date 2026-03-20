@@ -1,7 +1,7 @@
 {
-  "name": "Salaryman by Picasso AI",
-  "short_name": "Salaryman",
-  "description": "Executive productivity suite with PABLO AI assistant",
+  "name": "SALARYMAN by Picassoo.AI",
+  "short_name": "SALARYMAN",
+  "description": "Executive productivity suite by Picassoo.AI — PABLO AI assistant, interview prep, and professional tools",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

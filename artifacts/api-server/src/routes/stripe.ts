@@ -82,6 +82,13 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
       brand: "Picassoo.AI",
       product_line: "SALARYMAN",
     },
+    // NOTE: The bank statement descriptor "PICASSO AI LLC" must be configured at the
+    // account level in the Stripe Dashboard (Settings → Account details → Statement descriptor).
+    // Stripe does not allow overriding the static statement descriptor per-charge for card
+    // subscriptions via API — only suffix customization is supported for card flows.
+    payment_intent_data: {
+      description: `${featureName} by Picassoo.AI — SALARYMAN`,
+    },
     subscription_data: {
       description: `${featureName} by Picassoo.AI — SALARYMAN`,
       metadata: {
