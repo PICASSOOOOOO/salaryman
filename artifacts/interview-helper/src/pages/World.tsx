@@ -8,26 +8,30 @@ import { getDefaultBoomerMode } from '../hooks/use-mobile';
 // ── World ─────────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 
+// Road grid: H roads at y=450,570,690 | V roads at x=380,610,850,1080 (road width ~18px)
+// City blocks sit between roads; buildings placed with ~16px margin from road edges
 const BUILDINGS = [
-  { id: 'pablo_store', x: 480, y: 200, w: 120, h: 80,  label: 'PABLO STORE',   bright: true  },
-  { id: 'office',      x: 680, y: 180, w: 140, h: 100, label: 'OFFICE TOWER',  bright: true  },
-  { id: 'clinic',      x: 260, y: 340, w: 100, h: 70,  label: 'MED CLINIC',    bright: false },
-  { id: 'megabank',    x: 460, y: 380, w: 120, h: 80,  label: 'BANCO OMBRA',   bright: false },
-  { id: 'market',      x: 680, y: 360, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false },
-  { id: 'hotel',       x: 880, y: 200, w: 100, h: 120, label: 'HOTEL NEON',    bright: false },
-  { id: 'bunker',      x: 300, y: 700, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
-  { id: 'scrap',       x: 580, y: 720, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
-  { id: 'radio',       x: 820, y: 680, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
+  // City buildings (CITY_TOP=407 to CITY_BOTTOM=793)
+  { id: 'pablo_store', x: 396, y: 466, w: 120, h: 80,  label: 'PABLO STORE',   bright: true  }, // block (380-610, 450-570)
+  { id: 'office',      x: 626, y: 466, w: 140, h: 90,  label: 'OFFICE TOWER',  bright: true  }, // block (610-850, 450-570)
+  { id: 'clinic',      x: 396, y: 586, w: 100, h: 70,  label: 'MED CLINIC',    bright: false }, // block (380-610, 570-690)
+  { id: 'megabank',    x: 626, y: 586, w: 120, h: 80,  label: 'BANCO OMBRA',   bright: false }, // block (610-850, 570-690)
+  { id: 'market',      x: 866, y: 586, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false }, // block (850-1080, 570-690)
+  { id: 'hotel',       x: 866, y: 466, w: 100, h: 90,  label: 'HOTEL NEON',    bright: false }, // block (850-1080, 450-570)
+  // Wasteland buildings (below city zone, Y > 793)
+  { id: 'bunker',      x: 280, y: 860, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
+  { id: 'scrap',       x: 580, y: 870, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
+  { id: 'radio',       x: 900, y: 855, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
 ];
 
 const NPCS = [
-  { name: 'WORKER', x: 560, y: 310, type: 'corp'    },
-  { name: 'BROKER', x: 750, y: 290, type: 'corp'    },
-  { name: 'UNIT-7', x: 820, y: 340, type: 'android' },
-  { name: 'DRIFTER',x: 380, y: 440, type: 'human'   },
-  { name: 'GUARD',  x: 500, y: 170, type: 'corp'    },
-  { name: 'SCAV',   x: 450, y: 760, type: 'human'   },
-  { name: 'MUTANT', x: 700, y: 800, type: 'mutant'  },
+  { name: 'WORKER', x: 460, y: 530, type: 'corp'    }, // near pablo_store
+  { name: 'BROKER', x: 720, y: 530, type: 'corp'    }, // near office
+  { name: 'UNIT-7', x: 930, y: 640, type: 'android' }, // near market
+  { name: 'DRIFTER',x: 450, y: 645, type: 'human'   }, // near clinic
+  { name: 'GUARD',  x: 695, y: 645, type: 'corp'    }, // near megabank
+  { name: 'SCAV',   x: 660, y: 945, type: 'human'   }, // near scrap yard
+  { name: 'MUTANT', x: 345, y: 950, type: 'mutant'  }, // near bunker
 ];
 const NPC_COL: Record<string,string> = { corp:'#00cc33', human:'#009922', android:'#33ffaa', mutant:'#88ff44' };
 
@@ -35,8 +39,8 @@ const NPC_COL: Record<string,string> = { corp:'#00cc33', human:'#009922', androi
 interface Threat { x:number; y:number; dx:number; dy:number; type:string; timer:number; }
 const makeThreat = (x:number, y:number, t:string): Threat => ({ x,y,dx:0,dy:0,type:t,timer:0 });
 const THREATS_INIT: Threat[] = [
-  makeThreat(620,500,'GANG'), makeThreat(420,560,'GANG'),
-  makeThreat(500,780,'MUTANT'), makeThreat(750,750,'RAIDER'),
+  makeThreat(510,510,'GANG'), makeThreat(760,630,'GANG'),
+  makeThreat(440,910,'MUTANT'), makeThreat(790,900,'RAIDER'),
 ];
 const THREAT_COL: Record<string,string> = { GANG:'#ff4444', MUTANT:'#aaff44', RAIDER:'#ff8800' };
 
@@ -718,10 +722,16 @@ export default function World() {
       ctx.fillStyle='rgba(0,255,65,.025)';ctx.font='60px "VT323"';ctx.textAlign='center';
       ctx.fillText((g.py>=CITY_TOP&&g.py<=CITY_BOTTOM)?'CITY':'WASTELAND',cw/2,ch/2);
 
-      // Roads
-      ctx.lineWidth=18;ctx.strokeStyle='rgba(0,255,65,.06)';
-      ctx.beginPath();ctx.moveTo(0,500+oy);ctx.lineTo(W+ox,500+oy);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(650+ox,0);ctx.lineTo(650+ox,H+oy);ctx.stroke();
+      // Roads — grid: 3 horizontal + 4 vertical within city zone
+      ctx.lineWidth=18; ctx.strokeStyle='rgba(0,255,65,.06)';
+      // Horizontal roads
+      for(const ry of [450,570,690]){
+        ctx.beginPath();ctx.moveTo(0,ry+oy);ctx.lineTo(W+ox,ry+oy);ctx.stroke();
+      }
+      // Vertical roads
+      for(const rx of [380,610,850,1080]){
+        ctx.beginPath();ctx.moveTo(rx+ox,CITY_TOP+oy);ctx.lineTo(rx+ox,CITY_BOTTOM+oy);ctx.stroke();
+      }
 
       // Buildings
       for(const b of BUILDINGS){
