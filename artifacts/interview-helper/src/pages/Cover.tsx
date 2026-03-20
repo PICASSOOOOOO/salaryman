@@ -198,7 +198,7 @@ export default function Cover() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.35 }}
-          className="flex flex-wrap justify-center gap-3 mb-10"
+          className="flex flex-wrap justify-center gap-3 mb-2"
         >
           <motion.button
             onClick={login}
@@ -224,7 +224,7 @@ export default function Cover() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.42 }}
-          className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mb-2"
+          className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mt-2 mb-10"
         >
           Current pricing reflects early alpha access
         </motion.p>
