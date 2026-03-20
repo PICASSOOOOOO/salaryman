@@ -3312,6 +3312,7 @@ export default function WorldPlay() {
   const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
   const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
   const [outputVolume, setOutputVolume] = useState(() => { try { const v = localStorage.getItem('sm_output_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
+  const [sfxVolState, setSfxVolState] = useState(() => { try { const v = localStorage.getItem('sm_sfx_vol'); return v ? parseFloat(v) : 0.55; } catch { return 0.55; } });
   const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
@@ -4684,9 +4685,13 @@ export default function WorldPlay() {
 
   useEffect(() => {
     setMusicVolume(outputVolume * 0.35);
-    setSfxVolume(outputVolume * 0.55);
     try { localStorage.setItem('sm_output_vol', String(outputVolume)); } catch {}
   }, [outputVolume]);
+
+  useEffect(() => {
+    setSfxVolume(sfxVolState);
+    try { localStorage.setItem('sm_sfx_vol', String(sfxVolState)); } catch {}
+  }, [sfxVolState]);
 
   useEffect(() => {
     try { localStorage.setItem('sm_radio_vol', String(radioVolume)); } catch {}
@@ -11158,43 +11163,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               💬 CHAT{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
             <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO SETTINGS</div>
             </div>
-            <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginBottom: 3 }}>PLAYBACK</div>
+            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
             </button>
-            {voice && (
-              <button onClick={() => { toggleMicMute(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
-              </button>
-            )}
-            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 4, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>RADIO</div>
-            </div>
+            <button onClick={() => { const m = toggleMuteMusic(); setMusicMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: musicMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              {musicMuted ? '🔇 SCORE' : '🎵 SCORE'}
+            </button>
             <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO {radioOn ? '— ON' : '— OFF'}
             </button>
-            <button onClick={() => { setRadioMuted(m => !m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 1, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setRadioMuted(m => !m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: radioMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.1)', color: radioMuted ? '#ff2266' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {radioMuted ? '🔇 MUTE RADIO' : '🔊 MUTE RADIO'}
             </button>
-            <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 4, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>SCORE</div>
-            </div>
-            <button onClick={() => { toggleScoreMute(); setScoreOn(v => !v); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.07)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.35)' : '1px solid rgba(0,200,255,.12)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.4)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🎵 SCORE {scoreOn ? '— ON' : '— OFF'}
-            </button>
-            <button onClick={() => { const m = toggleMusicMute(); setMusicMuted(m); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: musicMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,200,255,.1)', color: musicMuted ? '#ff2266' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {musicMuted ? '🔇 MUTE SCORE' : '🔊 MUTE SCORE'}
-            </button>
-            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              {allMuted ? '🔇 MUTE ALL' : '🔊 ALL SOUND'}
-            </button>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>VOLUMES</div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 OUTPUT VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -11205,11 +11195,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🔊 SCORE VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
             </div>
+            <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+            </div>
+            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', paddingLeft: '.3rem', marginTop: 4, marginBottom: 3 }}>COMMS</div>
+            <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
+            </button>
+            {voice && (
+              <button onClick={() => { toggleMicMute(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
+              </button>
+            )}
             {char.class.toLowerCase() === 'outlaw' && (
               <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(136,255,68,.2)', color: '#88ff44', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 CRAFTING
