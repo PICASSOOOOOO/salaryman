@@ -78,6 +78,13 @@
       "when": 1774004933656,
       "tag": "0010_little_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774007995608,
+      "tag": "0011_feature_trials",
+      "breakpoints": true
     }
   ]
 }

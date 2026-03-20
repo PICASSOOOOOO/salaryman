@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { Lock, Zap } from "lucide-react";
+import { Lock, Zap, Clock } from "lucide-react";
 import { usePlan, type FeatureKey } from "@/hooks/use-plan";
 
 interface ProGateProps {
@@ -10,8 +11,19 @@ interface ProGateProps {
 }
 
 export function ProGate({ children, feature, featureKey, inline }: ProGateProps) {
-  const { isPro, features, isOwner, loading } = usePlan();
+  const { isPro, features, isOwner, trials, loading } = usePlan();
   const [, navigate] = useLocation();
+
+  const trial = featureKey ? trials.find((t) => t.featureKey === featureKey) : undefined;
+  const hasPaidAccess = isOwner || (featureKey ? features.has(featureKey) : isPro);
+  const hasAccess = hasPaidAccess || !!trial;
+  const shouldRedirect = !loading && featureKey && !hasAccess && !inline;
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      navigate("/upgrade");
+    }
+  }, [shouldRedirect, navigate]);
 
   if (loading) {
     return inline ? (
@@ -21,10 +33,12 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
     );
   }
 
-  const hasAccess = isOwner || (featureKey ? features.has(featureKey) : isPro);
-
   if (hasAccess) {
     return <>{children}</>;
+  }
+
+  if (shouldRedirect) {
+    return null;
   }
 
   const displayName = feature ?? "Premium";
@@ -82,6 +96,21 @@ export function ProBadge() {
   );
 }
 
-export function TrialBadge() {
-  return null;
+export function TrialBadge({ featureKey }: { featureKey?: FeatureKey }) {
+  const { trials } = usePlan();
+
+  const relevantTrials = featureKey
+    ? trials.filter((t) => t.featureKey === featureKey)
+    : trials;
+
+  if (relevantTrials.length === 0) return null;
+
+  const trial = relevantTrials[0];
+
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-widest uppercase bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+      <Clock className="w-2.5 h-2.5" />
+      {trial.daysLeft} DAY{trial.daysLeft !== 1 ? "S" : ""} LEFT
+    </span>
+  );
 }

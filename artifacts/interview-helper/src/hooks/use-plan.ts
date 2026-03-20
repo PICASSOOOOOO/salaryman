@@ -4,11 +4,18 @@ import { useAuth } from "@workspace/replit-auth-web";
 export type Tier = "free" | "pro";
 export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system";
 
+export interface TrialInfo {
+  featureKey: FeatureKey;
+  trialExpiresAt: string;
+  daysLeft: number;
+}
+
 interface PlanData {
   tier: Tier;
   isOwner: boolean;
   isPro: boolean;
   features: Set<FeatureKey>;
+  trials: TrialInfo[];
   loading: boolean;
 }
 
@@ -27,6 +34,7 @@ const DEFAULT_PLAN: PlanData = {
   isOwner: false,
   isPro: false,
   features: new Set(),
+  trials: [],
   loading: true,
 };
 
@@ -53,12 +61,14 @@ export function usePlan(): PlanData {
       if (!res.ok) throw new Error("plan fetch failed");
       const data = await res.json();
       const featureSet = new Set<FeatureKey>((data.features ?? []) as FeatureKey[]);
+      const trials: TrialInfo[] = (data.trials ?? []) as TrialInfo[];
       const tier: Tier = (data.tier as Tier) ?? (featureSet.size > 0 ? "pro" : "free");
       const p: PlanData = {
         tier,
         isOwner: !!data.isOwner,
         isPro: tier === "pro" || !!data.isOwner,
         features: featureSet,
+        trials,
         loading: false,
       };
       _cachedPlan = p;

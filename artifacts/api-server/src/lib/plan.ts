@@ -1,5 +1,5 @@
-import { db, userTiersTable, userFeaturesTable, type FeatureKey, FEATURE_KEYS } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 
 export type Tier = "free" | "pro";
 
@@ -46,13 +46,42 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
   return new Set(rows.map(r => r.featureKey as FeatureKey));
 }
 
+export async function hasActiveTrial(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
+  const now = new Date();
+  if (email) {
+    const [row] = await db
+      .select()
+      .from(featureTrialsTable)
+      .where(
+        and(
+          eq(featureTrialsTable.email, email.toLowerCase()),
+          eq(featureTrialsTable.featureKey, feature),
+          gt(featureTrialsTable.trialExpiresAt, now)
+        )
+      );
+    if (row) return true;
+  }
+  const [row] = await db
+    .select()
+    .from(featureTrialsTable)
+    .where(
+      and(
+        eq(featureTrialsTable.userId, userId),
+        eq(featureTrialsTable.featureKey, feature),
+        gt(featureTrialsTable.trialExpiresAt, now)
+      )
+    );
+  return !!row;
+}
+
 export async function hasFeature(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
   if (isOwnerEmail(email)) return true;
   const [row] = await db
     .select()
     .from(userFeaturesTable)
     .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, feature)));
-  return !!row;
+  if (row) return true;
+  return hasActiveTrial(userId, email, feature);
 }
 
 export async function grantFeature(userId: string, feature: FeatureKey, grantedBy: string, stripeSubscriptionId?: string): Promise<void> {
