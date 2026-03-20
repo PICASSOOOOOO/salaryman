@@ -40,7 +40,7 @@ export default function RestrictionsPolicy() {
       <h3>4.1 European Union / EEA Users</h3>
       <p>If you are located in the EU or EEA, your use of SALARYMAN is additionally subject to applicable EU law, including the General Data Protection Regulation (GDPR). Please review our <a href="/legal/privacy">Privacy Policy</a> for details on your rights under GDPR. Certain AI features may be subject to the EU AI Act; PICASSO AI LLC is committed to complying with applicable EU AI regulations as they come into force.</p>
       <h3>4.2 California Users (CCPA)</h3>
-      <p>California residents have additional privacy rights under the California Consumer Privacy Act (CCPA). These rights include the right to know, delete, and opt out of the sale of personal information. PICASSO AI LLC does not sell personal information. For CCPA requests, contact <a href="mailto:privacy@picassoo.ai">privacy@picassoo.ai</a>.</p>
+      <p>California residents have additional privacy rights under the California Consumer Privacy Act (CCPA). These rights include the right to know, delete, and opt out of the sale of personal information. PICASSO AI LLC does not sell personal information. For CCPA requests, use our <a href="/legal/contact">Contact Us</a> page with subject "Privacy Request".</p>
       <h3>4.3 United Kingdom Users</h3>
       <p>Users in the United Kingdom are subject to UK data protection law (UK GDPR and the Data Protection Act 2018). Your rights under UK GDPR are substantially similar to EU GDPR rights described above.</p>
       <h3>4.4 Canadian Users</h3>
@@ -53,7 +53,8 @@ export default function RestrictionsPolicy() {
       <p>The Calll Home phone system is subject to applicable telecommunications laws including the Telephone Consumer Protection Act (TCPA) in the United States. You agree not to use Calll Home to make calls that violate the TCPA or equivalent laws in your jurisdiction, including making unsolicited robocalls or calls to numbers on the National Do Not Call Registry.</p>
 
       <h2>7. Contact</h2>
-      <p>For questions regarding legal or export restrictions: <a href="mailto:legal@picassoo.ai">legal@picassoo.ai</a> or the <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>For questions regarding legal or export restrictions, please use our <a href="/legal/contact">Contact Us</a> page with subject "Legal Inquiry".</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

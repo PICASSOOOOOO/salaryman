@@ -65,7 +65,7 @@ export default function PrivacyPolicy() {
         <li>Opt out of marketing communications</li>
         <li>Data portability (where technically feasible)</li>
       </ul>
-      <p>To exercise these rights, contact us at <strong>privacy@picassoo.ai</strong> or use the <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>To exercise these rights, use our <a href="/legal/contact">Contact Us</a> page and select "Privacy Request" as the subject.</p>
 
       <h2>7. Children's Privacy</h2>
       <p>SALARYMAN is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us personal information, please contact us immediately.</p>
@@ -74,7 +74,8 @@ export default function PrivacyPolicy() {
       <p>We may update this Privacy Policy from time to time. We will notify you of material changes via email or platform notice. Your continued use of the Service after changes take effect constitutes your acceptance of the revised policy.</p>
 
       <h2>9. Contact</h2>
-      <p>Privacy questions or requests may be directed to: <strong>privacy@picassoo.ai</strong> or via our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>Privacy questions or requests may be submitted via our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

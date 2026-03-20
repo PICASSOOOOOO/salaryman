@@ -56,7 +56,8 @@ export default function TermsOfService() {
       <p>PICASSO AI LLC reserves the right to modify these Terms at any time. We will provide notice of material changes via email or a prominent notice on the platform. Continued use of the Service following any changes constitutes your acceptance of the new Terms.</p>
 
       <h2>14. Contact</h2>
-      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page or email <strong>legal@picassoo.ai</strong>.</p>
+      <p>Questions about these Terms? Please visit our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

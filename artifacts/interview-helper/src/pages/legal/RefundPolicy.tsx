@@ -29,12 +29,12 @@ export default function RefundPolicy() {
       <p><strong>Donations and tips made through SALARYMAN are non-refundable.</strong> By completing a donation or tip transaction you acknowledge that these funds are transferred immediately and voluntarily, and that PICASSO AI LLC does not hold these funds on your behalf after completion.</p>
 
       <h2>5. Fraudulent &amp; Unauthorized Transactions</h2>
-      <p>If you believe a transaction was made fraudulently without your authorization, contact us immediately at <a href="mailto:billing@picassoo.ai">billing@picassoo.ai</a>. We will investigate and, if the transaction is confirmed to be unauthorized, issue a full refund. We may require verification of your identity to process fraud claims.</p>
+      <p>If you believe a transaction was made fraudulently without your authorization, contact us immediately through our <a href="/legal/contact">Contact Us</a> page with subject "Refund or Dispute". We will investigate and, if the transaction is confirmed to be unauthorized, issue a full refund. We may require verification of your identity to process fraud claims.</p>
 
       <h2>6. Dispute Resolution Process</h2>
       <p>To submit a refund or dispute request:</p>
       <ul>
-        <li>Contact us via the <a href="/legal/contact">Contact Us</a> page or email <strong>billing@picassoo.ai</strong></li>
+        <li>Contact us via the <a href="/legal/contact">Contact Us</a> page with subject "Refund or Dispute"</li>
         <li>Include your account email, transaction date, transaction ID or amount, and a description of the issue</li>
         <li>Our billing team will respond within 3–5 business days</li>
         <li>If your dispute is approved, refunds are typically processed within 5–10 business days and returned to the original payment method</li>
@@ -47,7 +47,8 @@ export default function RefundPolicy() {
       <p>Physical merchandise refunds are governed by the separate <a href="/legal/returns">Return Policy</a>.</p>
 
       <h2>9. Contact</h2>
-      <p>For refund and dispute inquiries: <a href="mailto:billing@picassoo.ai">billing@picassoo.ai</a> or the <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>For refund and dispute inquiries, please use our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

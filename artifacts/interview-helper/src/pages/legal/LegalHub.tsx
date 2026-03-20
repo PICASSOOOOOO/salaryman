@@ -4,7 +4,7 @@ import { Scale, FileText, Shield, Package, XCircle, Gift, Globe, Mail, Lock } fr
 const PAGES = [
   { path: "/legal/terms", label: "Terms of Service", icon: FileText, desc: "Rules governing use of the SALARYMAN platform." },
   { path: "/legal/privacy", label: "Privacy Policy", icon: Lock, desc: "How we collect, use, and protect your data." },
-  { path: "/legal/contact", label: "Contact Us", icon: Mail, desc: "Reach our support team via email or the contact form." },
+  { path: "/legal/contact", label: "Contact Us", icon: Mail, desc: "Reach our support team through the contact form." },
   { path: "/legal/refunds", label: "Refund & Dispute Policy", icon: Shield, desc: "Digital goods, CRYPTO currency, donations, and dispute process." },
   { path: "/legal/returns", label: "Return Policy", icon: Package, desc: "Physical merch returns via PABLO CORP Merch Dept." },
   { path: "/legal/cancellation", label: "Cancellation Policy", icon: XCircle, desc: "Battle Pass / Season Pass and recurring billing." },
@@ -56,7 +56,7 @@ export default function LegalHub() {
 
         <div className="border border-zinc-800 rounded-lg p-6 bg-zinc-900/20">
           <p className="text-xs text-zinc-600 leading-relaxed">
-            <strong className="text-zinc-500">PICASSO AI LLC</strong> operates the SALARYMAN platform and the PABLO CORP Merch Dept.
+            <strong className="text-zinc-500">PICASSO AI LLC</strong> · 375 Redondo Ave #287 · Long Beach, CA 90814 · operates the SALARYMAN platform and the PABLO CORP Merch Dept.
             By accessing any PICASSO AI LLC service you agree to the policies listed above. For questions, use the{" "}
             <button onClick={() => navigate("/legal/contact")} className="text-emerald-500/70 underline hover:text-emerald-400">Contact Us</button>{" "}
             page. These documents are provided for informational purposes and do not constitute legal advice.

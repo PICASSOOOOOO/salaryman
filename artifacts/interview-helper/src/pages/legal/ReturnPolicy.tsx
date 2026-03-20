@@ -33,7 +33,7 @@ export default function ReturnPolicy() {
       <h2>4. Return Process</h2>
       <p>To initiate a return:</p>
       <ul>
-        <li>Contact the PABLO CORP Merch Dept at <a href="mailto:merch@picassoo.ai">merch@picassoo.ai</a> or via the <a href="/legal/contact">Contact Us</a> page with subject "Merchandise Return"</li>
+        <li>Contact the PABLO CORP Merch Dept via the <a href="/legal/contact">Contact Us</a> page with subject "Merchandise Return"</li>
         <li>Include your order number, item(s) to be returned, and reason for return</li>
         <li>Our team will issue a Return Merchandise Authorization (RMA) number within 2–3 business days</li>
         <li>Package the item securely and include the RMA number on the outside of the package</li>
@@ -58,10 +58,11 @@ export default function ReturnPolicy() {
 
       <h2>9. Contact — PABLO CORP Merch Dept</h2>
       <ul>
-        <li><strong>Email:</strong> merch@picassoo.ai</li>
+        <li><strong>Contact:</strong> Use the <a href="/legal/contact">Contact Us</a> page with subject "Merchandise Return"</li>
         <li><strong>Processing hours:</strong> Mon–Fri, 10 AM–4 PM PT</li>
         <li><strong>Response time:</strong> 2–3 business days</li>
       </ul>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

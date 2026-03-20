@@ -20,8 +20,7 @@ export default function CancellationPolicy() {
       <p>You may cancel any subscription at any time using any of the following methods:</p>
       <ul>
         <li><strong>In-app:</strong> Navigate to your Profile → Subscription → Cancel Subscription</li>
-        <li><strong>Email:</strong> Send a cancellation request to <a href="mailto:billing@picassoo.ai">billing@picassoo.ai</a> with your account email and subscription name</li>
-        <li><strong>Contact form:</strong> Use the <a href="/legal/contact">Contact Us</a> page with subject "Cancel Subscription"</li>
+        <li><strong>Contact form:</strong> Use the <a href="/legal/contact">Contact Us</a> page with subject "Billing &amp; Subscription" — include your account email and subscription name</li>
       </ul>
       <p>Cancellations take effect at the end of the current billing period. We do not charge cancellation fees.</p>
 
@@ -48,7 +47,8 @@ export default function CancellationPolicy() {
       <p>PICASSO AI LLC reserves the right to change subscription pricing. We will provide at least <strong>30 days' written notice</strong> via email before any price change takes effect for existing subscribers. You may cancel your subscription during this notice period if you do not agree to the new pricing.</p>
 
       <h2>8. Contact</h2>
-      <p>For cancellation requests or billing questions: <a href="mailto:billing@picassoo.ai">billing@picassoo.ai</a> or the <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>For cancellation requests or billing questions, please use our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

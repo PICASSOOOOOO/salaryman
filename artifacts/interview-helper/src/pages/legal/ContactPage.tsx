@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LegalLayout } from "@/components/LegalLayout";
-import { Loader2, Check, AlertCircle, Mail, Phone } from "lucide-react";
+import { Loader2, Check, AlertCircle, Mail } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -128,26 +128,21 @@ export default function ContactPage() {
         <p>Need help? Our support team is here for you. Choose the channel that works best for your situation.</p>
       </div>
 
-      <h2>Support Channels</h2>
+      <h2>How to Reach Us</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30">
-          <div className="flex items-center gap-2 mb-2">
-            <Mail className="w-4 h-4 text-emerald-400/60" />
-            <span className="text-sm font-semibold text-zinc-300">Email Support</span>
-          </div>
-          <p className="text-xs text-zinc-600 mb-2">General inquiries and non-urgent issues.</p>
-          <a href="mailto:support@picassoo.ai" className="text-emerald-500/80 text-xs hover:text-emerald-400">support@picassoo.ai</a>
+      <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30 mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <Mail className="w-4 h-4 text-emerald-400/60" />
+          <span className="text-sm font-semibold text-zinc-300">Contact Form</span>
         </div>
-        <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30">
-          <div className="flex items-center gap-2 mb-2">
-            <Phone className="w-4 h-4 text-emerald-400/60" />
-            <span className="text-sm font-semibold text-zinc-300">Phone Support</span>
-          </div>
-          <p className="text-xs text-zinc-600 mb-2">Urgent billing or account issues.</p>
-          <span className="text-emerald-500/80 text-xs">+1 (800) PICASSO (742-2776)</span>
-          <p className="text-[10px] text-zinc-700 mt-1">Mon–Fri, 9 AM–5 PM PT</p>
-        </div>
+        <p className="text-xs text-zinc-600 mb-2">All correspondence is handled through the contact form below. Select your topic and we'll route your message to the right team.</p>
+      </div>
+
+      <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30 mb-8">
+        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1.5">Mailing Address</p>
+        <p className="text-sm text-zinc-300 font-mono">PICASSO AI LLC</p>
+        <p className="text-sm text-zinc-300 font-mono">375 Redondo Ave #287</p>
+        <p className="text-sm text-zinc-300 font-mono">Long Beach, CA 90814</p>
       </div>
 
       <h2>Contact Form</h2>
@@ -155,13 +150,15 @@ export default function ContactPage() {
 
       <ContactForm />
 
-      <h2>Additional Contacts</h2>
+      <h2>Department Routing</h2>
+      <p className="text-sm text-zinc-400">Use the subject dropdown in the form above to route your message to the correct department:</p>
       <ul>
-        <li><strong>Billing &amp; Subscriptions:</strong> billing@picassoo.ai</li>
-        <li><strong>Privacy Requests:</strong> privacy@picassoo.ai</li>
-        <li><strong>Legal Inquiries:</strong> legal@picassoo.ai</li>
-        <li><strong>Merch / Returns (PABLO CORP):</strong> merch@picassoo.ai</li>
-        <li><strong>Press &amp; Partnerships:</strong> press@picassoo.ai</li>
+        <li><strong>Billing &amp; Subscription</strong> — payment issues, subscription changes, invoices</li>
+        <li><strong>Refund or Dispute</strong> — unauthorized charges, refund requests</li>
+        <li><strong>Merchandise Return</strong> — PABLO CORP Merch Dept returns and exchanges</li>
+        <li><strong>Privacy Request</strong> — data access, deletion, GDPR/CCPA requests</li>
+        <li><strong>Legal Inquiry</strong> — legal questions, export compliance</li>
+        <li><strong>Technical Support</strong> — platform issues, bugs, account problems</li>
       </ul>
 
       <h2>Response Times</h2>

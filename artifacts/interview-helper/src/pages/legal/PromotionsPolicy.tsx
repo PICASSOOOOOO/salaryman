@@ -73,7 +73,8 @@ export default function PromotionsPolicy() {
       <p>Discounts and promotions on physical merchandise through PABLO CORP Merch Dept are subject to these terms plus the additional terms stated at the time of purchase. Sale items may not be returnable unless defective. See the <a href="/legal/returns">Return Policy</a> for details.</p>
 
       <h2>10. Contact</h2>
-      <p>Questions about a specific promotion? Contact us at <a href="mailto:support@picassoo.ai">support@picassoo.ai</a> or via the <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>Questions about a specific promotion? Use our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p className="text-sm text-zinc-500 mt-2">PICASSO AI LLC · 375 Redondo Ave #287 · Long Beach, CA 90814</p>
     </LegalLayout>
   );
 }

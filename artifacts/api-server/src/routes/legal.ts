@@ -111,7 +111,7 @@ router.post("/legal/contact", async (req: Request, res: Response) => {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[Legal] contact form error:", msg);
     if (msg.includes("not connected") || msg.includes("Resend")) {
-      res.status(503).json({ error: "Email service temporarily unavailable. Please try emailing support@picassoo.ai directly." });
+      res.status(503).json({ error: "Email service temporarily unavailable. Please try again later." });
     } else {
       res.status(500).json({ error: "Failed to send message. Please try again." });
     }
