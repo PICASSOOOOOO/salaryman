@@ -100,7 +100,7 @@ export function NavBar() {
                   onClick={() => navigate('/upgrade')}
                   className="font-mono text-[10px] text-zinc-600 tracking-wide hover:text-amber-400 transition-colors"
                 >
-                  {boomerMode ? 'FREE PLAN — UPGRADE' : 'STANDARD EMPLOYEE — ACTIVATE EXEC CARD'}
+                  {boomerMode ? 'UPGRADE PLAN' : 'STANDARD EMPLOYEE — ACTIVATE EXEC CARD'}
                 </button>
               </>
             )}

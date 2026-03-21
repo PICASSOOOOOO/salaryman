@@ -215,7 +215,7 @@ export default function Cover() {
             whileTap={{ scale: 0.97 }}
             className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors w-full sm:w-auto"
           >
-            Get started free <ChevronRight className="w-4 h-4" />
+            Get started <ChevronRight className="w-4 h-4" />
           </motion.button>
 
           <motion.button

@@ -631,12 +631,12 @@ export default function Home() {
                 </span>
               </div>
               <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.85rem', color: 'rgba(255,165,0,0.95)', letterSpacing: '0.04em', marginBottom: '0.75rem', lineHeight: 1.5 }}>
-                FREE TRIAL PROGRAM — SUSPENDED
+                SUBSCRIPTION LAUNCH — PENDING
               </p>
               <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', lineHeight: 1.7, marginBottom: '1.25rem' }}>
-                The 7-day free trial has been temporarily suspended. Pablo Corp's payment infrastructure is not yet operational — subscriptions will be made available once the billing system clears compliance review.
+                Pablo Corp's payment infrastructure is not yet operational — subscriptions will be made available once the billing system clears compliance review.
                 <br /><br />
-                In the meantime, free-tier access remains fully functional. Pro augmentation modules will be unlocked upon subscription launch. Thank you for your patience and continued commitment to corporate excellence.
+                In the meantime, all standard modules remain fully functional. Pro augmentation modules will be unlocked upon subscription launch. Thank you for your patience and continued commitment to corporate excellence.
               </p>
               <button
                 onClick={dismissTrialPopup}
@@ -652,7 +652,7 @@ export default function Home() {
 
       <main className="flex flex-col p-4 md:p-6 relative z-10 gap-4 flex-1 min-h-0">
 
-        {/* Free Tools Banner */}
+        {/* Tools Banner */}
         <div className="rounded-xl border border-emerald-500/15 px-4 py-2.5 flex items-center gap-3"
           style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.04), rgba(56,189,248,0.03))' }}>
           <div className="flex items-center gap-2">
@@ -660,7 +660,7 @@ export default function Home() {
               <Bot className="w-3.5 h-3.5 text-emerald-400/70" />
             </div>
             <div>
-              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.7)' }}>PABLO FREE TOOLKIT</span>
+              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.7)' }}>PABLO TOOLKIT</span>
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI Chat + Translator + Dictionary + Thesaurus + Notes — no subscription required</span>
             </div>
           </div>
@@ -669,12 +669,12 @@ export default function Home() {
         {/* ── Main Layout: Sidebar Tools (left) + PABLO Chat (right) ── */}
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
 
-          {/* Sidebar Tools — FREE */}
+          {/* Sidebar Tools */}
           <div className="lg:w-96 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(34,197,94,0.15) transparent' }}>
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR — FREE' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
               </div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
@@ -758,11 +758,11 @@ export default function Home() {
               )}
             </div>
 
-            {/* Dictionary — FREE */}
+            {/* Dictionary */}
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'DICTIONARY — FREE' : PABLO_PRODUCTS.DICTIONARY.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'DICTIONARY' : PABLO_PRODUCTS.DICTIONARY.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <input value={dictWord} onChange={e => setDictWord(e.target.value)}
@@ -869,11 +869,11 @@ export default function Home() {
               )}
             </div>
 
-            {/* Thesaurus — FREE */}
+            {/* Thesaurus */}
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'THESAURUS — FREE' : PABLO_PRODUCTS.THESAURUS.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'THESAURUS' : PABLO_PRODUCTS.THESAURUS.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <input value={thesWord} onChange={e => setThesWord(e.target.value)}
@@ -961,11 +961,11 @@ export default function Home() {
               )}
             </div>
 
-            {/* Quick Notes — FREE */}
+            {/* Quick Notes */}
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES — FREE' : PABLO_PRODUCTS.NOTES.name}</span>
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'QUICK NOTES' : PABLO_PRODUCTS.NOTES.name}</span>
               </div>
               <div className="flex gap-1.5 mb-2">
                 <div ref={noteWrapperRef} className="flex-1 relative bg-background border border-border rounded-md">

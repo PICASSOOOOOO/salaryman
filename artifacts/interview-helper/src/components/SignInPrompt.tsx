@@ -76,8 +76,8 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
           lineHeight: 1.7, marginBottom: '24px',
         }}>
           {context || (boomer
-            ? 'Sign in to access all features. It\'s free.'
-            : 'Operative credentials required. All modules locked until authenticated. Registration is free.'
+            ? 'Sign in to access all features.'
+            : 'Operative credentials required. All modules locked until authenticated.'
           )}
         </div>
 
@@ -92,7 +92,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.7)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.08)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.5)'; }}
         >
-          SIGN IN — FREE
+          SIGN IN
         </button>
 
         {onDismiss && (

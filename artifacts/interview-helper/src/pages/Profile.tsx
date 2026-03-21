@@ -382,7 +382,7 @@ export default function Profile() {
                 <div className="flex items-center justify-between bg-muted/15 border border-border rounded-xl px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      {boomerMode ? 'Free Plan' : 'Standard Employee — No Modules Active'}
+                      {boomerMode ? 'Standard Plan' : 'Standard Employee — No Modules Active'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {boomerMode ? 'Core features included — subscribe to individual tools for more' : 'Standard-issue modules available — premium modules require activation'}
