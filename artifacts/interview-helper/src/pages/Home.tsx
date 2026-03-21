@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Phone, Layers, Radio } from 'lucide-react';
+import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Layers, Radio } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAdvisorChat } from '@/hooks/use-interview';
@@ -1346,26 +1346,6 @@ export default function Home() {
 
       </main>
 
-      {isAuthenticated && (
-        <div className="hidden sm:block">
-          <button
-            onClick={() => navigate('/phone')}
-            style={{
-              position: 'fixed', bottom: 20, right: 20, zIndex: 50,
-              width: 48, height: 48, borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(34,197,94,0.1)',
-              border: '1px solid rgba(34,197,94,0.4)',
-              color: 'rgba(34,197,94,0.9)',
-              cursor: 'pointer',
-              boxShadow: '0 0 20px rgba(34,197,94,0.15)',
-            }}
-            title="CALLL HOME"
-          >
-            <Phone className="w-5 h-5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
