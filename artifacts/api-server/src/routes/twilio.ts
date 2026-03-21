@@ -129,6 +129,17 @@ async function sendMissedCallEmail(userId: string, fromNumber: string, fromName?
   }
 }
 
+router.get("/twilio/system-status", requireAuth, async (_req, res) => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  if (!accountSid || !authToken || !phoneNumber) {
+    res.status(503).json({ status: "unconfigured", error: "Twilio credentials not configured. Contact admin." });
+    return;
+  }
+  res.json({ status: "online" });
+});
+
 router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
@@ -777,6 +788,24 @@ router.post("/twilio/voicemail/webhook", async (req, res) => {
     const transcript = hasTranscription
       ? TranscriptionText
       : `[Voicemail from ${From} - ${new Date().toLocaleString()}]`;
+
+    const existingVm = CallSid
+      ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.twilioCallSid, CallSid)).limit(1)
+      : [];
+
+    if (existingVm.length > 0) {
+      await db
+        .update(voicemailsTable)
+        .set({
+          recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : existingVm[0].recordingUrl,
+          recordingSid: RecordingSid ?? existingVm[0].recordingSid,
+          durationSeconds: RecordingDuration ? Number(RecordingDuration) : existingVm[0].durationSeconds,
+          transcript: hasTranscription ? transcript : existingVm[0].transcript,
+        })
+        .where(eq(voicemailsTable.id, existingVm[0].id));
+      res.send('<Response></Response>');
+      return;
+    }
 
     const [vm] = await db
       .insert(voicemailsTable)
@@ -1620,9 +1649,13 @@ router.post("/twilio/webhook/recording", async (req, res) => {
         }
       }
 
-      const existingVm = RecordingSid
+      const existingByRecording = RecordingSid
         ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.recordingSid, RecordingSid)).limit(1)
         : [];
+      const existingByCall = existingByRecording.length === 0 && CallSid
+        ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.twilioCallSid, CallSid)).limit(1)
+        : [];
+      const existingVm = existingByRecording.length > 0 ? existingByRecording : existingByCall;
 
       if (existingVm.length === 0) {
         const [vm] = await db

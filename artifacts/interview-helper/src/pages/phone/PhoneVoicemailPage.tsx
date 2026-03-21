@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff, X, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
@@ -90,46 +90,53 @@ export default function PhoneVoicemailPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showRead, setShowRead] = useState(true);
+  const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
     fetch(apiUrl('twilio/voicemail'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.voicemails) { setVoicemails(d.voicemails); setUnread(d.unread ?? 0); } })
-      .catch(() => {})
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.voicemails) { setVoicemails(d.voicemails); setUnread(d.unread ?? 0); } }
+        else { setError(`Failed to load voicemails (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading voicemails'))
       .finally(() => setLoading(false));
-  }, [apiUrl]);
+  }, [apiUrl, navigate]);
 
   const markRead = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to mark as read'); return; }
       setVoicemails(prev => prev.map(v => v.id === id ? { ...v, isRead: true } : v));
       setUnread(prev => Math.max(0, prev - 1));
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const deleteVoicemail = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE' });
+      const r = await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete voicemail'); return; }
       setVoicemails(prev => prev.filter(v => v.id !== id));
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const callBack = async (phone: string, name?: string) => {
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }),
       });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.callSid) {
-          addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
-        }
-        navigate('/phone/active');
+      const d = await r.json();
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); return; }
+      if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
+      if (d.callSid) {
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
       }
-    } catch {}
+      navigate('/phone/active');
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const handleExpand = (id: number, isRead: boolean) => {
@@ -160,6 +167,15 @@ export default function PhoneVoicemailPage() {
         </PhoneBtn>
       }
     >
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            {error}
+          </div>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL" value={voicemails.length} />
         <StatBlock label="UNREAD" value={unread} color={unread > 0 ? amber : undefined} sub={unread > 0 ? 'new messages' : undefined} />

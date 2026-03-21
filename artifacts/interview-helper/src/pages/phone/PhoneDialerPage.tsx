@@ -36,22 +36,38 @@ export default function PhoneDialerPage() {
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
+  const handleFetchError = useCallback(async (r: Response) => {
+    if (r.status === 403) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || 'Access denied — phone system subscription required.');
+      navigate('/features');
+      return true;
+    }
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || `Request failed (${r.status})`);
+      return true;
+    }
+    return false;
+  }, [navigate]);
+
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.contacts) {
-          setRecentContacts(d.contacts.slice(0, 8));
-          setSpeedDials(d.contacts.slice(0, 4));
-        }
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.contacts) { setRecentContacts(d.contacts.slice(0, 8)); setSpeedDials(d.contacts.slice(0, 4)); } }
+        else if (!r.ok) { setError(`Failed to load contacts (${r.status})`); }
       })
-      .catch(() => {});
+      .catch(() => setError('Network error loading contacts'));
 
     fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); })
-      .catch(() => {});
-  }, [userId, apiUrl]);
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); }
+        else if (!r.ok) { setError(`Failed to load call history (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading history'));
+  }, [userId, apiUrl, navigate]);
 
   const playDTMF = (key: string) => {
     setDtmfTone(key);
@@ -73,7 +89,7 @@ export default function PhoneDialerPage() {
       osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
       osc1.start(); osc2.start();
       setTimeout(() => { osc1.stop(); osc2.stop(); }, 100);
-    } catch {}
+    } catch { /* WebAudio not available — DTMF tone silently skipped */ }
   };
 
   const pressKey = (key: string) => {
@@ -91,8 +107,8 @@ export default function PhoneDialerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
       });
+      if (await handleFetchError(r)) { setLoading(false); setCallStarting(false); return; }
       const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); setCallStarting(false); return; }
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
       }

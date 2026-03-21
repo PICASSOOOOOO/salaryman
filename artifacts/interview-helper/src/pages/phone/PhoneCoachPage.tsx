@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Bot, Send, Loader2, Lightbulb, MessageCircle, BookOpen, Brain, Target, TrendingUp } from 'lucide-react';
+import { Bot, Send, Loader2, Lightbulb, MessageCircle, BookOpen, Brain, Target, TrendingUp, AlertTriangle, X } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, amber, blue, purple, red,
@@ -13,6 +14,7 @@ interface CoachMessage {
 
 export default function PhoneCoachPage() {
   const BASE = import.meta.env.BASE_URL;
+  const [, navigate] = useLocation();
 
   const [aiTranscript, setAiTranscript] = useState('');
   const [aiCoachQuestion, setAiCoachQuestion] = useState('');
@@ -23,6 +25,7 @@ export default function PhoneCoachPage() {
   const [contactContext, setContactContext] = useState('');
   const [sugLoading, setSugLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'coach' | 'suggestions' | 'notes'>('coach');
+  const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
@@ -31,55 +34,79 @@ export default function PhoneCoachPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [coachMessages]);
 
+  const handleApiError = useCallback(async (r: Response, fallback: string) => {
+    if (r.status === 403) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || 'Access denied — phone system subscription required.');
+      navigate('/features');
+      return true;
+    }
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || fallback);
+      return true;
+    }
+    return false;
+  }, [navigate]);
+
   const askAICoach = async () => {
     if (!aiCoachQuestion.trim()) return;
     const question = aiCoachQuestion;
     setCoachMessages(prev => [...prev, { role: 'user', text: question, timestamp: Date.now() }]);
     setAiCoachQuestion('');
     setAiLoading(true);
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/ai/coach'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, transcript: aiTranscript, context: contactContext }),
       });
+      if (await handleApiError(r, 'AI coach request failed')) { setAiLoading(false); return; }
       const d = await r.json();
-      if (r.ok) setCoachMessages(prev => [...prev, { role: 'ai', text: d.response, timestamp: Date.now() }]);
-    } catch {}
+      setCoachMessages(prev => [...prev, { role: 'ai', text: d.response, timestamp: Date.now() }]);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
     setAiLoading(false);
   };
 
   const getAISuggestions = async () => {
     setSugLoading(true);
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/ai/suggest'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: aiTranscript, contactName: contactContext }),
       });
+      if (await handleApiError(r, 'Failed to get suggestions')) { setSugLoading(false); return; }
       const d = await r.json();
-      if (r.ok) { setAiSuggestions(d.suggestions); setActiveTab('suggestions'); }
-    } catch {}
+      setAiSuggestions(d.suggestions);
+      setActiveTab('suggestions');
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
     setSugLoading(false);
   };
 
   const saveTranscript = async () => {
     if (!aiTranscript.trim()) return;
+    setError('');
     try {
-      await fetch(apiUrl('twilio/ai/transcribe'), {
+      const r = await fetch(apiUrl('twilio/ai/transcribe'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: aiTranscript }),
       });
-    } catch {}
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to save transcript'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const saveDictation = async () => {
     if (!dictationText.trim()) return;
+    setError('');
     try {
-      await fetch(apiUrl('twilio/ai/dictation'), {
+      const r = await fetch(apiUrl('twilio/ai/dictation'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dictationText }),
       });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to save notes'); return; }
       setDictationText('');
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const STARTER_QUESTIONS = [
@@ -113,6 +140,15 @@ export default function PhoneCoachPage() {
         </div>
       }
     >
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            {error}
+          </div>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="MESSAGES" value={coachMessages.length} color={blue} sub="in session" />
         <StatBlock label="TRANSCRIPT" value={aiTranscript ? `${aiTranscript.split(/\s+/).length}w` : '0w'} color={crt} sub="word count" />

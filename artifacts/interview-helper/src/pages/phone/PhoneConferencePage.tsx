@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, PhoneOff, Loader2, X, MicOff } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useLocation } from 'wouter';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, red, amber, blue, purple, formatPhone,
@@ -12,6 +14,9 @@ const ROOM_COLORS = [crt, blue, purple, amber];
 export default function PhoneConferencePage() {
   const BASE = import.meta.env.BASE_URL;
   useAuth();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
 
   const [conferences, setConferences] = useState<ConferenceRoom[]>([]);
   const [confRoomName, setConfRoomName] = useState('');
@@ -26,43 +31,55 @@ export default function PhoneConferencePage() {
 
   const fetchConferences = useCallback(() => {
     fetch(apiUrl('twilio/conference/list'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.rooms) setConferences(d.rooms); })
-      .catch(() => {})
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.rooms) setConferences(d.rooms); }
+        else { setError(`Failed to load conferences (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading conferences'))
       .finally(() => setLoading(false));
-  }, [apiUrl]);
+  }, [apiUrl, navigate]);
 
   useEffect(() => { fetchConferences(); }, [fetchConferences]);
 
   const createConference = async () => {
     setCreating(true);
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/conference/create'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: confRoomName || 'New Conference' }),
       });
-      if (r.ok) { fetchConferences(); setConfRoomName(''); }
-    } catch {}
+      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); }
+      else if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || `Failed to create conference (${r.status})`); }
+      else { fetchConferences(); setConfRoomName(''); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
     setCreating(false);
   };
 
   const addToConference = async (roomName: string) => {
     if (!confAddNumber) return;
+    setError('');
     try {
-      await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/add`), {
+      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/add`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }),
       });
+      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); return; }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || `Failed to add participant (${r.status})`); return; }
       setConfAddNumber(''); setConfAddName('');
       fetchConferences();
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const endConference = async (roomName: string) => {
+    setError('');
     try {
-      await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST' });
+      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); return; }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to end conference'); return; }
       fetchConferences();
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const parseParticipants = (json: string | null): Array<{ phone: string; name: string; callSid: string; muted: boolean }> => {

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
 import { crt, amber } from '@/lib/phone-utils';
+import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
@@ -74,9 +76,11 @@ export default function CalllHomePage() {
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'unconfigured'>('checking');
+  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'unconfigured' | 'no_access'>('checking');
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+  const plan = usePlan();
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
@@ -85,17 +89,97 @@ export default function CalllHomePage() {
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
+  const hasPhoneAccess = plan.isOwner || plan.features.has('phone_system') || plan.trials.some(t => t.featureKey === 'phone_system');
+
   useEffect(() => {
-    fetch(apiUrl('twilio/phone-numbers'))
+    if (plan.loading) return;
+    if (!hasPhoneAccess) {
+      setSystemStatus('no_access');
+      return;
+    }
+    fetch(apiUrl('twilio/system-status'))
       .then(r => {
         if (r.ok) setSystemStatus('online');
+        else if (r.status === 403) setSystemStatus('no_access');
         else setSystemStatus('unconfigured');
       })
       .catch(() => setSystemStatus('unconfigured'));
-  }, [apiUrl]);
+  }, [apiUrl, plan.loading, hasPhoneAccess]);
 
   if (!isAuthenticated) {
     return <SignInPage context="Operative credentials required. PHONE SYSTEM access locked." />;
+  }
+
+  if (plan.loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: "'Share Tech Mono', monospace", color: crt(0.3),
+        fontSize: '0.55rem', letterSpacing: '0.2em',
+      }}>
+        LOADING...
+      </div>
+    );
+  }
+
+  if (!hasPhoneAccess) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
+        fontFamily: "'Share Tech Mono', monospace", color: crt(0.85),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          maxWidth: 480, width: '100%', margin: '0 32px',
+          border: `1px solid ${amber(0.25)}`, borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(255,180,0,0.05), rgba(255,180,0,0.01))',
+          padding: '40px 36px', textAlign: 'center',
+        }}>
+          <div style={{
+            width: 60, height: 60, borderRadius: 14, margin: '0 auto 20px',
+            background: amber(0.1), border: `1px solid ${amber(0.3)}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Lock size={26} style={{ color: amber(0.8) }} />
+          </div>
+          <div style={{ fontSize: '0.9rem', color: amber(0.9), letterSpacing: '0.1em', marginBottom: 10 }}>
+            PHONE SYSTEM ACCESS REQUIRED
+          </div>
+          <div style={{ fontSize: '0.55rem', color: crt(0.4), lineHeight: 1.8, marginBottom: 28, letterSpacing: '0.06em' }}>
+            Calll Home requires a <strong style={{ color: crt(0.6) }}>phone_system subscription</strong> or active trial.<br />
+            Start a 7-day free trial to access the full dialer, voicemail, and all phone features.
+          </div>
+          <button
+            onClick={() => navigate('/features')}
+            style={{
+              display: 'block', width: '100%', padding: '14px 24px',
+              background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.06)})`,
+              border: `1px solid ${amber(0.4)}`, borderRadius: 8, cursor: 'pointer',
+              color: amber(0.95), fontSize: '0.6rem', letterSpacing: '0.15em',
+              fontFamily: "'Share Tech Mono', monospace",
+              boxShadow: `0 0 20px ${amber(0.1)}`,
+              marginBottom: 10,
+            }}
+          >
+            START FREE TRIAL →
+          </button>
+          <button
+            onClick={() => navigate('/upgrade')}
+            style={{
+              display: 'block', width: '100%', padding: '10px 24px',
+              background: 'transparent', border: `1px solid ${crt(0.15)}`, borderRadius: 8, cursor: 'pointer',
+              color: crt(0.4), fontSize: '0.55rem', letterSpacing: '0.12em',
+              fontFamily: "'Share Tech Mono', monospace",
+            }}
+          >
+            VIEW PLANS
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -140,7 +224,7 @@ export default function CalllHomePage() {
                 animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none',
               }} />
               <span style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.12em' }}>
-                {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : '...'}
+                {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_access' ? 'NO ACCESS' : '...'}
               </span>
             </div>
             <span style={{ fontSize: '0.42rem', color: crt(0.15) }}>│</span>
@@ -162,7 +246,7 @@ export default function CalllHomePage() {
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <AlertTriangle size={12} />
-            Phone system not configured. Contact admin to set up Twilio credentials.
+            Twilio not configured — contact admin to set up Twilio credentials.
           </div>
         )}
 

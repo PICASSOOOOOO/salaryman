@@ -39,10 +39,13 @@ export default function PhoneSessionsPage() {
 
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.contacts) setContacts(d.contacts); })
-      .catch(() => {});
-  }, [userId, apiUrl]);
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
+        else { setError(`Failed to load contacts (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading contacts'));
+  }, [userId, apiUrl, navigate]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return contacts;
@@ -70,7 +73,10 @@ export default function PhoneSessionsPage() {
         body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
       });
       const d = await r.json();
-      if (r.ok) {
+      if (r.status === 403) {
+        setError(d.error || 'Access denied — phone system subscription required.');
+        navigate('/features');
+      } else if (r.ok) {
         const batchCalls = d.calls as BatchResult[];
         const newActiveCalls: ActiveCall[] = batchCalls
           .filter(c => c.ok && c.callSid)
@@ -91,9 +97,10 @@ export default function PhoneSessionsPage() {
   const stopDialingSession = async () => {
     if (!dialingSession) return;
     try {
-      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to stop session'); return; }
       setDialingSession(null);
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const MODES: { key: DialMode; label: string; desc: string; details: string; color: (o: number) => string; icon: string }[] = [

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Hash, Plus, Trash2, Loader2, X, Phone, Activity, Shield } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, SignalMeter, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, red, amber, blue, purple,
@@ -15,6 +17,9 @@ const ROUTING_COLORS: Record<string, (o: number) => string> = {
 
 export default function PhoneNumbersPage() {
   const BASE = import.meta.env.BASE_URL;
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
 
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,11 +33,14 @@ export default function PhoneNumbersPage() {
 
   const fetchNumbers = useCallback(() => {
     fetch(apiUrl('twilio/phone-numbers'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.numbers) setPhoneNumbers(d.numbers); })
-      .catch(() => {})
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.numbers) setPhoneNumbers(d.numbers); }
+        else { setError(`Failed to load phone numbers (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading phone numbers'))
       .finally(() => setLoading(false));
-  }, [apiUrl]);
+  }, [apiUrl, navigate]);
 
   useEffect(() => { fetchNumbers(); }, [fetchNumbers]);
 
@@ -58,9 +66,11 @@ export default function PhoneNumbersPage() {
 
   const deleteNumber = async (id: number) => {
     try {
-      await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
+      const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
+      if (r.status === 403) { navigate('/features'); return; }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete number'); return; }
       fetchNumbers();
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const ROUTING_MODES = [

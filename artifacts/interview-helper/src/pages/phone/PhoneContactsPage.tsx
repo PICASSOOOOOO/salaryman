@@ -33,10 +33,13 @@ export default function PhoneContactsPage() {
 
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.contacts) setContacts(d.contacts); })
-      .catch(() => {});
-  }, [userId, apiUrl]);
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
+        else { setError(`Failed to load contacts (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading contacts'));
+  }, [userId, apiUrl, navigate]);
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -79,6 +82,7 @@ export default function PhoneContactsPage() {
         body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
       });
       const d = await r.json();
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setLoading(false); return; }
       if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
@@ -102,6 +106,7 @@ export default function PhoneContactsPage() {
         body: JSON.stringify({ numbers, userId, callerName }),
       });
       const d = await r.json();
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setBlasting(false); return; }
       if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }
       const batchCalls = d.calls as BatchResult[];
       const failCount = batchCalls.filter(c => !c.ok).length;

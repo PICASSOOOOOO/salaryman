@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X } from 'lucide-react';
+import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useLocation } from 'wouter';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, SignalMeter, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, red, amber, blue, purple, formatPhone, formatDuration, ENDED_STATUSES,
@@ -50,12 +52,15 @@ function ElapsedTimer({ seconds }: { seconds: number }) {
 export default function PhoneActivePage() {
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
+  const [, rawNavigate] = useLocation();
+  const hubNav = useCalllHomeNavigate();
+  const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
 
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
   const [transferNumber, setTransferNumber] = useState('');
-  const [_error, _setError] = useState('');
+  const [error, setError] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeCallsRef = useRef<ActiveCall[]>(activeCalls);
@@ -66,8 +71,12 @@ export default function PhoneActivePage() {
   useEffect(() => { saveActiveCalls(activeCalls); }, [activeCalls]);
 
   const fetchHistory = useCallback(() => {
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`)).catch(() => {});
-  }, [apiUrl, userId]);
+    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`))
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); }
+      })
+      .catch((e: unknown) => { console.warn('[CalllHome] history sync error:', e instanceof Error ? e.message : e); });
+  }, [apiUrl, userId, navigate]);
 
   useEffect(() => {
     if (activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length > 0) startPolling();
@@ -94,54 +103,75 @@ export default function PhoneActivePage() {
       try {
         for (const c of current) {
           const r = await fetch(apiUrl(`twilio/call-status/${c.callSid}`));
+          if (r.status === 403) { navigate('/features'); return; }
           if (!r.ok) continue;
           const d = await r.json();
           setActiveCalls(prev => prev.map(ac => ac.callSid === c.callSid ? { ...ac, status: d.status } : ac));
         }
-      } catch {}
+      } catch (e: unknown) { console.warn('[CalllHome] poll error:', e instanceof Error ? e.message : e); }
     }, 3000);
+  };
+
+  const handleApiError = async (r: Response) => {
+    if (r.status === 403) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || 'Access denied — phone system subscription required.');
+      navigate('/features');
+      return true;
+    }
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setError(d.error || `Request failed (${r.status})`);
+      return true;
+    }
+    return false;
   };
 
   const toggleMute = async (sid: string, currentMuted: boolean) => {
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/mute`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: !currentMuted }) });
+      const r = await fetch(apiUrl(`twilio/call/${sid}/mute`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: !currentMuted }) });
+      if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, muted: !currentMuted } : c));
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const toggleHold = async (sid: string, currentHold: boolean) => {
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/hold`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hold: !currentHold }) });
+      const r = await fetch(apiUrl(`twilio/call/${sid}/hold`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hold: !currentHold }) });
+      if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, onHold: !currentHold } : c));
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const transferCall = async (sid: string) => {
     if (!transferNumber.trim()) return;
     try {
-      await fetch(apiUrl(`twilio/call/${sid}/transfer`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transferTo: transferNumber }) });
+      const r = await fetch(apiUrl(`twilio/call/${sid}/transfer`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transferTo: transferNumber }) });
+      if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'transferred' } : c));
       setTransferTarget(null); setTransferNumber('');
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const hangupOne = async (sid: string) => {
     try {
-      await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
+      if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const hangupAll = async () => {
     const sids = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).map(c => c.callSid);
     if (sids.length === 0) return;
     try {
-      await fetch(apiUrl('twilio/hangup-all'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callSids: sids }) });
+      const r = await fetch(apiUrl('twilio/hangup-all'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callSids: sids }) });
+      if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
       if (timerRef.current) clearInterval(timerRef.current);
       if (pollRef.current) clearInterval(pollRef.current);
       fetchHistory();
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
@@ -187,6 +217,15 @@ export default function PhoneActivePage() {
         ) : undefined
       }
     >
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            {error}
+          </div>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
         <StatBlock label="LIVE" value={liveCount} color={liveCount > 0 ? crt : undefined} sub={liveCount > 0 ? 'active' : 'idle'} />
         <StatBlock label="RINGING" value={ringingCount} color={ringingCount > 0 ? amber : undefined} />

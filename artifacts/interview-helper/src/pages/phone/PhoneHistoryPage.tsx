@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
@@ -25,6 +25,7 @@ export default function PhoneHistoryPage() {
   const [followupForm, setFollowupForm] = useState({ title: '', startAt: '', endAt: '' });
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -32,48 +33,57 @@ export default function PhoneHistoryPage() {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
     setLoading(true);
     fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.calls) setHistory(d.calls); })
-      .catch(() => {})
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) { const d = await r.json(); if (d?.calls) setHistory(d.calls); }
+        else { setError(`Failed to load history (${r.status})`); }
+      })
+      .catch(() => setError('Network error loading call history'))
       .finally(() => setLoading(false));
-  }, [userId, apiUrl, search]);
+  }, [userId, apiUrl, search, navigate]);
 
   useEffect(() => { fetchHistory(); }, []);
 
   const callSingle = async (phone: string, name?: string) => {
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
       });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.callSid) {
-          addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
-        }
-        navigate('/phone/active');
+      const d = await r.json();
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); return; }
+      if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
+      if (d.callSid) {
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
       }
-    } catch {}
+      navigate('/phone/active');
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const emailCallSummary = async (callId: number) => {
-    try { await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST' }); } catch {}
+    try {
+      const r = await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to send email summary'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const scheduleFollowup = async () => {
     if (!followupCallSid || !followupForm.title || !followupForm.startAt) return;
+    setError('');
     try {
       const startAt = new Date(followupForm.startAt);
       const endAt = followupForm.endAt ? new Date(followupForm.endAt) : new Date(startAt.getTime() + 30 * 60 * 1000);
-      await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
+      const r = await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }),
       });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to schedule follow-up'); return; }
       setFollowupCallSid(null);
       setFollowupForm({ title: '', startAt: '', endAt: '' });
       fetchHistory();
-    } catch {}
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 
   const filtered = useMemo(() => {
@@ -117,6 +127,15 @@ export default function PhoneHistoryPage() {
       icon={<Clock size={24} style={{ color: crt(0.8) }} />}
       statusLine={<span style={{ color: crt(0.25) }}>{stats.total} RECORDS</span>}
     >
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            {error}
+          </div>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL CALLS" value={stats.total} />
         <StatBlock label="COMPLETED" value={stats.completed} color={crt} sub={`${stats.total ? Math.round(stats.completed / stats.total * 100) : 0}%`} />

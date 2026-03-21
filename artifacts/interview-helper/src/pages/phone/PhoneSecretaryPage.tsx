@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone } from 'lucide-react';
+import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, amber, blue, red, purple,
@@ -8,21 +9,33 @@ import {
 
 export default function PhoneSecretaryPage() {
   const BASE = import.meta.env.BASE_URL;
+  const [, navigate] = useLocation();
 
   const [_secretaryConfig, setSecretaryConfig] = useState<SecretaryConfig | null>(null);
   const [secretaryForm, setSecretaryForm] = useState<Partial<SecretaryConfig>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
     fetch(apiUrl('twilio/secretary/config'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.config) { setSecretaryConfig(d.config); setSecretaryForm(d.config); }
-        else {
+      .then(async r => {
+        if (r.status === 403) { navigate('/features'); return; }
+        if (r.ok) {
+          const d = await r.json();
+          if (d?.config) { setSecretaryConfig(d.config); setSecretaryForm(d.config); }
+          else {
+            const defaults: Partial<SecretaryConfig> = {
+              isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
+              businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
+              routingInstructions: null, forwardToNumber: null, afterHoursAction: 'voicemail',
+            };
+            setSecretaryForm(defaults);
+          }
+        } else {
           const defaults: Partial<SecretaryConfig> = {
             isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
             businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
@@ -31,20 +44,37 @@ export default function PhoneSecretaryPage() {
           setSecretaryForm(defaults);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        const defaults: Partial<SecretaryConfig> = {
+          isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
+          businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
+          routingInstructions: null, forwardToNumber: null, afterHoursAction: 'voicemail',
+        };
+        setSecretaryForm(defaults);
+      })
       .finally(() => setLoading(false));
-  }, [apiUrl]);
+  }, [apiUrl, navigate]);
 
   const saveConfig = async () => {
     setSaving(true);
+    setError('');
     try {
       const r = await fetch(apiUrl('twilio/secretary/config'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(secretaryForm),
       });
-      const d = await r.json();
-      if (r.ok) { setSecretaryConfig(d.config); setSecretaryForm(d.config); setSaved(true); setTimeout(() => setSaved(false), 2500); }
-    } catch {}
+      if (r.status === 403) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Access denied — phone system subscription required.');
+        navigate('/features');
+      } else if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Failed to save configuration');
+      } else {
+        const d = await r.json();
+        setSecretaryConfig(d.config); setSecretaryForm(d.config); setSaved(true); setTimeout(() => setSaved(false), 2500);
+      }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
     setSaving(false);
   };
 
@@ -101,6 +131,15 @@ export default function PhoneSecretaryPage() {
         </PhoneBtn>
       }
     >
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'linear-gradient(90deg, rgba(255,40,40,0.08), rgba(255,40,40,0.03))', border: `1px solid ${red(0.2)}`, borderRadius: 8, fontSize: '0.65rem', color: red(0.9), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            {error}
+          </div>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="STATUS" value={isEnabled ? 'ACTIVE' : 'OFF'} color={isEnabled ? crt : undefined} sub={isEnabled ? 'answering calls' : 'disabled'} />
         <StatBlock label="PERSONALITY" value={(secretaryForm.personality ?? 'professional').toUpperCase()} color={PERSONALITIES.find(p => p.key === secretaryForm.personality)?.color || blue} />
