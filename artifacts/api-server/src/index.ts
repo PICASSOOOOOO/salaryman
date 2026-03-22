@@ -29,8 +29,15 @@ httpServer.on("error", (err: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 
+const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim()).filter(Boolean);
+
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  if (ownerEmails.length > 0) {
+    console.log(`[Access] Owner email bypass active for ${ownerEmails.length} address(es)`);
+  } else {
+    console.warn("[Access] OWNER_EMAILS is not configured — owner bypass inactive");
+  }
   seedMerchProducts().catch(err => {
     console.error("[Merch Seed] Error seeding products:", err);
   });

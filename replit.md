@@ -57,3 +57,4 @@ The project is structured as a pnpm workspace monorepo utilizing TypeScript.
 - **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage).
 - **Database:** PostgreSQL.
 - **Payment Processing:** Stripe.
+- **Owner Access:** The `OWNER_EMAILS` secret (set in Replit Secrets) lists comma-separated emails that bypass all premium feature gates. Currently configured for `alejandroduong@gmail.com` via the `isOwnerEmail()` function in `artifacts/api-server/src/lib/plan.ts`.
