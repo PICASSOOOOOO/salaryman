@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, TicketCheck } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, TicketCheck, Bug } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
+import { FeedbackModal } from './FeedbackModal';
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -21,6 +22,7 @@ export function NavBar() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -80,6 +82,12 @@ export function NavBar() {
             className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
           >
             Investors
+          </button>
+          <button
+            onClick={() => navigate('/feedback')}
+            className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
+          >
+            Feedback
           </button>
         </div>
         <div className="flex items-center gap-3">
@@ -216,6 +224,14 @@ export function NavBar() {
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
+            {/* Bug report button */}
+            <button
+              onClick={() => setShowFeedback(true)}
+              title="Report an issue"
+              className="p-1.5 text-zinc-600 hover:text-emerald-400 transition-colors rounded-md hover:bg-emerald-500/8"
+            >
+              <Bug className="w-3.5 h-3.5" />
+            </button>
             {isLoading ? (
               <div className="w-7 h-7 rounded-md bg-white/4 animate-pulse" />
             ) : isAuthenticated && user ? (
@@ -269,6 +285,14 @@ export function NavBar() {
 
         {/* Mobile: show only auth */}
         <div className="flex sm:hidden items-center gap-2">
+          {/* Bug report button — mobile */}
+          <button
+            onClick={() => setShowFeedback(true)}
+            title="Report an issue"
+            className="p-1.5 text-zinc-600 hover:text-emerald-400 transition-colors rounded-md"
+          >
+            <Bug className="w-3.5 h-3.5" />
+          </button>
           {isLoading ? null : isAuthenticated && user ? (
             <button
               onClick={() => navigate('/profile')}
@@ -317,6 +341,8 @@ export function NavBar() {
           })}
         </div>
       )}
+
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </header>
   );
 }

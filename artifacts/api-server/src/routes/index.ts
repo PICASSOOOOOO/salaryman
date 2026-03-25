@@ -35,6 +35,7 @@ import trialsRouter from "./trials";
 import organizationsRouter from "./organizations";
 import enterpriseRouter from "./enterprise";
 import ticketsRouter from "./tickets";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(trialsRouter);
 router.use(organizationsRouter);
 router.use(enterpriseRouter);
 router.use(ticketsRouter);
+router.use(feedbackRouter);
 
 export default router;

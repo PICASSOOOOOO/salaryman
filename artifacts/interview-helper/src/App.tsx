@@ -59,6 +59,7 @@ const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
+const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -218,6 +219,9 @@ function AppShell() {
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
             <Route path="/agents">{() => <Redirect to="/intel/agents" />}</Route>
             <Route path="/seo">{() => <Redirect to="/intel/seo" />}</Route>
+
+            {/* Feedback admin */}
+            <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
             <Route path="/investors" component={LegalInvestors} />
