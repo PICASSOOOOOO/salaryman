@@ -13187,8 +13187,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
         @keyframes smblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-        @keyframes scanlines { 0%{background-position:0 0} 100%{background-position:0 8px} }
-        
+
       `}</style>
       {/* Canvas — full screen game world */}
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
@@ -16943,16 +16942,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {videoCallPeers.map(peer => (
                 <div key={peer.id} style={{ aspectRatio: '4/3', background: peer.isGuest ? 'rgba(0,10,30,.8)' : 'rgba(0,0,0,.6)', borderRadius: '3px', overflow: 'hidden', position: 'relative', border: peer.isGuest ? '1px solid rgba(0,200,255,.35)' : '1px solid rgba(0,200,255,.1)', boxShadow: peer.isGuest ? '0 0 12px rgba(0,150,255,.15) inset' : 'none' }}>
                   {peer.stream ? (
-                    <video ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', filter: peer.isGuest ? 'brightness(0.85) hue-rotate(180deg) saturate(0.7) contrast(1.1)' : 'none', opacity: peer.isGuest ? 0.82 : 1 }} />
+                    <video ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', filter: peer.isGuest ? 'brightness(0.9) saturate(0.85)' : 'none', opacity: peer.isGuest ? 0.82 : 1 }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '3px' }}>
                       <div style={{ fontSize: '1.5rem', opacity: peer.isGuest ? 0.6 : 1 }}>👤</div>
                       {peer.isGuest && <div style={{ fontSize: '.35rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em' }}>ACQUIRING SIGNAL...</div>}
                     </div>
                   )}
-                  {peer.isGuest && (
-                    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,200,255,.04) 3px, rgba(0,200,255,.04) 4px)', animation: 'scanlines 2s linear infinite' }} />
-                  )}
+
                   <div style={{ position: 'absolute', bottom: 2, left: 4, fontSize: '.4rem', color: peer.isGuest ? 'rgba(0,200,255,.9)' : 'rgba(0,200,255,.7)', background: 'rgba(0,0,0,.7)', padding: '1px 4px', borderRadius: '2px' }}>
                     {peer.name}
                     {peer.isGuest && <span style={{ marginLeft: '4px', color: 'rgba(0,200,255,.5)', fontSize: '.35rem' }}>HOLOGRAM</span>}

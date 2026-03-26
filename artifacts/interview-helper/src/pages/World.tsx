@@ -90,7 +90,6 @@ function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>voi
   const sel = CLASSES.find(c=>c.id===cls)!;
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#030803', fontFamily:"'Share Tech Mono',monospace" }}>
-      <div style={{ position:'fixed', inset:0, background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents:'none', zIndex:99 }} />
       <div style={{ maxWidth:520, width:'100%', padding:'2rem', zIndex:1 }}>
         <div style={{ textAlign:'center', marginBottom:'2rem' }}>
           <div style={{ fontFamily:"'VT323',monospace", fontSize:'3.5rem', color:'#00ff41', textShadow:'0 0 18px rgba(0,255,65,.5)', letterSpacing:'.15em' }}>SALARYMAN</div>

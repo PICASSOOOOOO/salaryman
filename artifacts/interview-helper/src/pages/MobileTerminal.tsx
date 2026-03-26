@@ -262,7 +262,6 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
     <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', ...ST, WebkitTapHighlightColor: 'transparent' }}>
       <style>{`
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
-        @keyframes scanline { 0% { transform:translateY(-100%) } 100% { transform:translateY(100vh) } }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         input:focus { outline: none; }
         ::-webkit-scrollbar { width: 4px; }
@@ -270,9 +269,6 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
         ::-webkit-scrollbar-thumb { background: rgba(0,255,65,.15); }
       `}</style>
 
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,.015) 2px, rgba(0,255,65,.015) 4px)' }} />
-      </div>
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
         <div style={{ padding: '.75rem 1rem', borderBottom: '1px solid rgba(0,255,65,.2)', flexShrink: 0 }}>

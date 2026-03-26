@@ -66,20 +66,6 @@ export function PhonePageLayout({
       position: 'relative',
       paddingBottom: 100,
     }}>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0,
-        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px)`,
-      }} />
-      <div style={{
-        position: 'absolute', top: 0, left: '10%', width: '35%', height: '40%', pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at center, rgba(0,255,65,0.04) 0%, transparent 70%)',
-        filter: 'blur(60px)', zIndex: 0,
-      }} />
-      <div style={{
-        position: 'absolute', bottom: '5%', right: '5%', width: '30%', height: '35%', pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at center, rgba(0,200,255,0.025) 0%, transparent 70%)',
-        filter: 'blur(80px)', zIndex: 0,
-      }} />
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <div style={{
@@ -147,7 +133,6 @@ export function PhonePageLayout({
 
       <style>{`
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(0,255,65,0.1); } 50% { box-shadow: 0 0 16px rgba(0,255,65,0.2); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }

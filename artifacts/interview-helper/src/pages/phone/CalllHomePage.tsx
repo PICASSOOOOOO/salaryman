@@ -201,15 +201,6 @@ export default function CalllHomePage() {
       color: crt(0.85),
       position: 'relative',
     }}>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0,
-        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px)`,
-      }} />
-      <div style={{
-        position: 'absolute', top: 0, left: '10%', width: '35%', height: '40%', pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at center, rgba(0,255,65,0.04) 0%, transparent 70%)',
-        filter: 'blur(60px)', zIndex: 0,
-      }} />
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1400, margin: '0 auto', padding: '0 16px' }}>
         <div style={{
