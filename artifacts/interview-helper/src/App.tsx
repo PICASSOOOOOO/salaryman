@@ -63,6 +63,7 @@ const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
+const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -180,6 +181,7 @@ function AppShell() {
             <Route path="/admin/billboards" component={BillboardAdmin} />
             <Route path="/admin/tickets" component={AdminTickets} />
             <Route path="/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
+            <Route path="/admin/dev-tasks" component={DevTasksAdmin} />
             <Route path="/mobile" component={MobileTerminal} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 

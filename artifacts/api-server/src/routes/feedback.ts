@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, feedbackReportsTable } from "@workspace/db";
+import { db, feedbackReportsTable, devTasksTable, notificationsTable, usersTable, organizationsTable } from "@workspace/db";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 
@@ -12,6 +12,23 @@ function getUserId(req: Express.Request): string | null {
 
 function isAdmin(req: Express.Request): boolean {
   return !!req.user && isOwnerEmail(req.user.email);
+}
+
+function derivePriority(category: string): "low" | "medium" | "high" | "critical" {
+  switch (category) {
+    case "Performance": return "high";
+    case "Bug": return "high";
+    case "UI Issue": return "low";
+    case "Feature Request": return "medium";
+    default: return "medium";
+  }
+}
+
+async function getOwnerUserIds(): Promise<string[]> {
+  const rows = await db
+    .select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable);
+  return [...new Set(rows.map(r => r.ownerUserId))];
 }
 
 router.post("/feedback", async (req, res) => {
@@ -49,7 +66,35 @@ router.post("/feedback", async (req, res) => {
       appVersion: appVersion ?? null,
     }).returning();
 
-    res.status(201).json({ report: row });
+    // Auto-create dev task
+    const priority = derivePriority(cat);
+    const [devTask] = await db.insert(devTasksTable).values({
+      feedbackReportId: row.id,
+      title: row.title,
+      priority,
+      status: "open",
+      escalated: false,
+      notes: "",
+    }).returning();
+
+    // Notify owners about the new dev task
+    try {
+      const ownerIds = await getOwnerUserIds();
+      for (const ownerId of ownerIds) {
+        await db.insert(notificationsTable).values({
+          userId: ownerId,
+          type: "new_dev_task",
+          title: `New dev task: ${row.title}`,
+          body: `Category: ${cat} · Priority: ${priority}\n${description.trim().slice(0, 200)}`,
+          link: `/admin/dev-tasks`,
+          read: false,
+        });
+      }
+    } catch (notifErr) {
+      console.error("[Feedback] Failed to create dev task notifications:", notifErr);
+    }
+
+    res.status(201).json({ report: row, devTask });
   } catch (e) {
     console.error("Failed to submit feedback:", e);
     res.status(500).json({ error: "Failed to submit feedback" });
