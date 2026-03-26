@@ -12,6 +12,7 @@ import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useTranslation } from 'react-i18next';
 
 const SoundLab = lazy(() => import('./SoundLab'));
 
@@ -28,6 +29,7 @@ export default function Console() {
   const [typeMode, setTypeMode] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [consoleView, setConsoleView] = useState<'terminal' | 'lab'>('terminal');
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -153,7 +155,7 @@ export default function Console() {
   const typingProgress = displayedText.length / (getTypableText().length || 1);
 
   if (!_consoleAuth) {
-    return <SignInPage context={boomerMode ? 'Sign in to access Pablo AI and all tools.' : 'Operative credentials required. PABLO TERMINAL access locked.'} />;
+    return <SignInPage context={boomerMode ? t('console.signInContext') : t('console.signInContextCodename')} />;
   }
 
   return (
@@ -167,18 +169,18 @@ export default function Console() {
           <button onClick={() => setConsoleView('terminal')}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(34,197,94,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(34,197,94,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Terminal className="w-3.5 h-3.5 shrink-0" />
-            {boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short}
+            {boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short}
           </button>
           <button onClick={() => setConsoleView('lab')}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Music2 className="w-3.5 h-3.5 shrink-0" />
-            {boomerMode ? 'THE LAB' : PABLO_PRODUCTS.SOUND_LAB.short}
+            {boomerMode ? t('console.lab') : PABLO_PRODUCTS.SOUND_LAB.short}
           </button>
         </div>
         <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.06em' }}>
           {consoleView === 'terminal'
-            ? (boomerMode ? 'Interview Solver, Live Listen, Screen Scan, and Type Mode.' : 'Full augmentation suite. All interception and solve modules available.')
-            : (boomerMode ? 'THE LAB — Beat machines, synths, samplers, and effects.' : PABLO_PRODUCTS.SOUND_LAB.desc)}
+            ? (boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.')
+            : (boomerMode ? `${t('console.lab')} — ${t('console.labDesc')}` : PABLO_PRODUCTS.SOUND_LAB.desc)}
         </span>
         <button
           onClick={() => {
@@ -199,9 +201,9 @@ export default function Console() {
             border: boomerMode ? '1px solid rgba(255,170,0,0.4)' : '1px solid rgba(34,197,94,0.15)',
             color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(34,197,94,0.3)',
           }}
-          title={boomerMode ? 'Boomer Mode ON' : 'Boomer Mode OFF'}
+          title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
         >
-          {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
+          {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
         </button>
       </div>
 
@@ -226,11 +228,11 @@ export default function Console() {
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <div>
                     <p className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-green-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                      {boomerMode ? 'AUTO SCAN RUNNING' : 'AUTOPILOT ACTIVE'}
+                      {boomerMode ? t('console.autoScanRunning') : t('console.autoPilotActive')}
                     </p>
                     {countdown > 0 && (
                       <p className="text-[10px] text-green-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                        Next scan in {countdown}s
+                        {t('console.nextScan')} {countdown}{t('console.seconds')}
                       </p>
                     )}
                   </div>
@@ -238,7 +240,7 @@ export default function Console() {
                 <button onClick={handleStopAutoPilot}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-bold hover:bg-red-500/30 transition-colors">
                   <Square className="w-3 h-3 fill-current" />
-                  {boomerMode ? 'Stop' : 'Kill'}
+                  {boomerMode ? t('console.stop') : t('console.kill')}
                 </button>
               </motion.div>
             )}
@@ -266,7 +268,7 @@ export default function Console() {
                         : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'}`}
                   >
                     <Radio className="w-3 h-3" />
-                    {consoleConv.isConvMode ? 'End Conv' : (boomerMode ? 'Voice Chat' : 'Conv Mode')}
+                    {consoleConv.isConvMode ? t('console.endConv') : (boomerMode ? t('console.voiceChat') : t('console.convMode'))}
                   </button>
                 )}
                 <button
@@ -280,11 +282,11 @@ export default function Console() {
                         : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'}`}
                 >
                   {isRecording ? (
-                    <><StopCircle className="w-3 h-3" /> {boomerMode ? 'Stop Recording' : 'Stop'}</>
+                    <><StopCircle className="w-3 h-3" /> {boomerMode ? t('console.stopRecording') : t('console.stop')}</>
                   ) : isListenProcessing ? (
-                    <><Loader2 className="w-3 h-3 animate-spin" /> {boomerMode ? 'Processing...' : 'Processing'}</>
+                    <><Loader2 className="w-3 h-3 animate-spin" /> {t('console.processing')}</>
                   ) : (
-                    <><Mic className="w-3 h-3" /> {boomerMode ? 'Start Recording' : 'Listen'}</>
+                    <><Mic className="w-3 h-3" /> {boomerMode ? t('console.startRecording') : t('console.listen')}</>
                   )}
                 </button>
               </div>
@@ -303,15 +305,15 @@ export default function Console() {
                          consoleConv.convState === 'speaking' ? 'rgba(192,132,252,0.9)' :
                          'rgba(156,163,175,0.6)',
                 }}>
-                  {consoleConv.convState === 'listening' ? 'Listening... speak now' :
-                   consoleConv.convState === 'processing' ? 'Pablo is thinking...' :
-                   consoleConv.convState === 'speaking' ? 'Pablo is speaking...' :
-                   'Voice conversation active'}
+                  {consoleConv.convState === 'listening' ? t('console.convListening') :
+                   consoleConv.convState === 'processing' ? t('console.convThinking') :
+                   consoleConv.convState === 'speaking' ? t('console.convSpeaking') :
+                   t('console.convActive')}
                 </p>
               </div>
             ) : (
               <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                {boomerMode ? 'Record audio from your microphone and get AI answers.' : PABLO_PRODUCTS.LIVE_LISTEN.desc}
+                {boomerMode ? t('console.liveListenDesc') : PABLO_PRODUCTS.LIVE_LISTEN.desc}
               </p>
             )}
           </div>
@@ -327,19 +329,19 @@ export default function Console() {
             <div className="grid grid-cols-2 gap-1.5">
               <button onClick={handleScanOnce} disabled={isAnyBusy}
                 className={`py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}>
-                {boomerMode ? 'Scan Once' : 'Once'}
+                {boomerMode ? t('console.scanOnce') : t('console.once')}
               </button>
               <button onClick={handleChatScan} disabled={isAnyBusy}
                 className={`py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-amber-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
-                💬 {boomerMode ? 'Chat Reply' : 'Chat Reply'}
+                💬 {t('console.chatReply')}
               </button>
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={handleAutoPilot} disabled={isAnyBusy}
                 className={`flex-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
-                <Bot className="w-3 h-3" /> {boomerMode ? 'Auto Scan' : 'Auto'}
+                <Bot className="w-3 h-3" /> {boomerMode ? t('console.autoScan') : t('console.auto')}
               </button>
-              <span className="text-[9px] text-muted-foreground/40">every</span>
+              <span className="text-[9px] text-muted-foreground/40">{t('console.every')}</span>
               {[5, 10, 15].map(s => (
                 <button key={s} onClick={() => setIntervalSecs(s)} disabled={isAnyBusy}
                   className={`px-1.5 py-1.5 rounded text-[9px] font-bold transition-colors disabled:cursor-not-allowed
@@ -369,10 +371,10 @@ export default function Console() {
             </div>
             <div className="flex-1 relative p-4">
               <textarea value={question} onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Or paste the question here..."
+                placeholder={t('console.pasteQuestion')}
                 disabled={isAnyBusy}
                 className="w-full h-full bg-transparent resize-none outline-none text-foreground placeholder:text-muted-foreground/50 font-mono text-[14px] leading-relaxed disabled:opacity-50" />
-              <div className="absolute bottom-4 right-4 text-xs font-mono text-muted-foreground/30 pointer-events-none select-none">INPUT_BUFFER</div>
+              <div className="absolute bottom-4 right-4 text-xs font-mono text-muted-foreground/30 pointer-events-none select-none">{t('console.inputBuffer')}</div>
             </div>
           </div>
 
@@ -392,14 +394,14 @@ export default function Console() {
                       ? 'bg-violet-500/20 text-violet-300 border-violet-500/40 hover:bg-red-500/20 hover:text-red-300'
                       : 'bg-violet-500/10 text-violet-400 border-violet-500/30 hover:bg-violet-500/20'}`}>
                   <Keyboard className="w-3 h-3" />
-                  {typeMode ? (isTyping ? 'Stop Typing' : 'Exit') : boomerMode ? 'Start Type Mode' : `${PABLO_PRODUCTS.TYPE_MODE.short} — GO`}
+                  {typeMode ? (isTyping ? t('console.stopTyping') : t('console.exit')) : boomerMode ? t('console.startTypeMode') : `${PABLO_PRODUCTS.TYPE_MODE.short} — ${t('console.go')}`}
                 </button>
               )}
             </div>
             <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
               {typeMode
-                ? (isTyping ? 'Typing in progress — mirror this output in your editor.' : typingDone ? 'Typing complete.' : 'Type mode active.')
-                : boomerMode ? 'Solve a question first, then have the answer typed out automatically.'
+                ? (isTyping ? t('console.typingInProgress') : typingDone ? t('console.typingComplete') : t('console.typeModeActive'))
+                : boomerMode ? t('console.solveFirst')
                 : PABLO_PRODUCTS.PRINTER.desc}
             </p>
           </div>

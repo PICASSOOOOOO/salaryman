@@ -11,6 +11,8 @@ import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { FeedbackModal } from './FeedbackModal';
+import { LanguageSelector } from './LanguageSelector';
+import { useTranslation } from 'react-i18next';
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -23,6 +25,7 @@ export function NavBar() {
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -54,12 +57,18 @@ export function NavBar() {
   };
 
   const getModuleLabel = (mod: typeof MODULES[0]) => {
-    if (mod.id === 'pablo') return boomerMode ? 'PABLO' : config.navLabel;
-    return boomerMode ? mod.label : mod.codename;
+    if (mod.id === 'pablo') return boomerMode ? t('nav.pablo') : (isDiscreet ? t('discreet.navLabel') : t('nav.pablo'));
+    if (boomerMode) {
+      return t(`nav.${mod.id}`, mod.label);
+    }
+    return t(`codenames.${mod.id}`, mod.codename);
   };
 
   const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
-    return boomerMode ? sub.boomerLabel : sub.codename;
+    if (boomerMode) {
+      return t(`labels.${sub.id}`, sub.boomerLabel);
+    }
+    return t(`codenames.${sub.id}`, sub.codename);
   };
 
   const expandedModule = MODULES.find(m => m.id === activeModuleId) ?? null;
@@ -71,7 +80,7 @@ export function NavBar() {
       <div className="hidden sm:flex items-center justify-between px-4 py-0.5 border-b border-white/[0.04] bg-white/[0.01]">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-zinc-600 tracking-widest uppercase">
-            {boomerMode ? 'SALARYMAN' : 'PABLO CORP'}
+            {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
           </span>
           <span className="text-zinc-700 text-[9px]">◆</span>
           <span className="font-mono text-[9px] text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
@@ -81,7 +90,7 @@ export function NavBar() {
             onClick={() => navigate('/investors')}
             className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
           >
-            Investors
+            {t('nav.investors')}
           </button>
           <button
             onClick={() => navigate('/feedback')}
@@ -97,8 +106,10 @@ export function NavBar() {
                 <Zap className="w-2.5 h-2.5 text-amber-500" />
                 <span className="font-mono text-[10px] text-amber-400 tracking-wide">
                   {isOwner
-                    ? 'CORP ADMIN'
-                    : (boomerMode ? `${features.size} ACTIVE` : `${features.size} MODULE${features.size !== 1 ? 'S' : ''}`)}
+                    ? t('nav.corpAdmin')
+                    : (boomerMode
+                        ? `${features.size} ${t('nav.active')}`
+                        : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`)}
                 </span>
               </>
             ) : (
@@ -108,7 +119,7 @@ export function NavBar() {
                   onClick={() => navigate('/upgrade')}
                   className="font-mono text-[10px] text-zinc-600 tracking-wide hover:text-amber-400 transition-colors"
                 >
-                  {boomerMode ? 'UPGRADE PLAN' : 'STANDARD EMPLOYEE — ACTIVATE EXEC CARD'}
+                  {boomerMode ? t('nav.upgradeLabel') : t('nav.upgradeLabelCodename')}
                 </button>
               </>
             )}
@@ -125,11 +136,12 @@ export function NavBar() {
                   ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
                   : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
               }`}
-              title={boomerMode ? 'Boomer Mode ON — click to disable' : 'Boomer Mode: simpler labels'}
+              title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
             >
-              {boomerMode ? 'BOOMER MODE ✓' : 'BOOMER MODE'}
+              {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
             </button>
           )}
+          <LanguageSelector />
         </div>
       </div>
 
@@ -156,7 +168,7 @@ export function NavBar() {
           )}
           <button
             onClick={e => { e.stopPropagation(); toggleMode(); }}
-            title={isDiscreet ? 'Show real name' : 'Discreet mode'}
+            title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
             className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
           >
             {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -199,7 +211,7 @@ export function NavBar() {
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-emerald-500/70 border border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-400"
           >
             <Globe className="w-3 h-3" />
-            EXPLORE
+            {t('nav.explore')}
           </button>
 
           {/* ADMIN PANEL button — only for authenticated org members/owners */}
@@ -213,7 +225,7 @@ export function NavBar() {
               }`}
             >
               <TicketCheck className="w-3 h-3 shrink-0" />
-              {boomerMode ? 'ADMIN' : 'TICKETS'}
+              {boomerMode ? t('nav.admin') : t('nav.tickets')}
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-pink-500 text-[8px] font-mono text-white px-0.5">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -265,7 +277,7 @@ export function NavBar() {
                 </button>
                 <button
                   onClick={logout}
-                  title="Sign out"
+                  title={t('nav.logout')}
                   className="p-1.5 text-zinc-600 hover:text-red-400 transition-colors rounded-md hover:bg-red-500/8"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -277,13 +289,13 @@ export function NavBar() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                LOG IN
+                {t('nav.login')}
               </button>
             )}
           </div>
         </nav>
 
-        {/* Mobile: show only auth */}
+        {/* Mobile: show only auth + language selector */}
         <div className="flex sm:hidden items-center gap-2">
           {/* Bug report button — mobile */}
           <button
@@ -293,6 +305,7 @@ export function NavBar() {
           >
             <Bug className="w-3.5 h-3.5" />
           </button>
+          <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
             <button
               onClick={() => navigate('/profile')}
@@ -309,7 +322,7 @@ export function NavBar() {
           ) : (
             <button onClick={login} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4">
               <LogIn className="w-3 h-3" />
-              LOG IN
+              {t('nav.login')}
             </button>
           )}
         </div>
@@ -319,7 +332,7 @@ export function NavBar() {
       {expandedModule && expandedModule.subs.length > 0 && (
         <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.01] overflow-x-auto scrollbar-hide">
           <span className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase mr-2 shrink-0">
-            {boomerMode ? expandedModule.label : expandedModule.codename}
+            {boomerMode ? t(`nav.${expandedModule.id}`, expandedModule.label) : t(`codenames.${expandedModule.id}`, expandedModule.codename)}
           </span>
           {expandedModule.subs.map(sub => {
             const isSubActive = pathname === sub.path;

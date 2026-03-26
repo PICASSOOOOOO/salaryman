@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type AppMode = 'branded' | 'discreet';
 
@@ -31,7 +32,23 @@ export function useAppMode() {
     }
   });
 
-  const config = mode === 'discreet' ? DISCREET_CONFIG : BRANDED_CONFIG;
+  const { t } = useTranslation();
+
+  const config = mode === 'discreet'
+    ? {
+        name: t('discreet.name', DISCREET_CONFIG.name),
+        sub: t('discreet.sub', DISCREET_CONFIG.sub),
+        navLabel: t('discreet.navLabel', DISCREET_CONFIG.navLabel),
+        emailSender: DISCREET_CONFIG.emailSender,
+        description: t('discreet.description', DISCREET_CONFIG.description),
+      }
+    : {
+        name: t('branded.name', BRANDED_CONFIG.name),
+        sub: BRANDED_CONFIG.sub,
+        navLabel: BRANDED_CONFIG.navLabel,
+        emailSender: BRANDED_CONFIG.emailSender,
+        description: t('branded.description', BRANDED_CONFIG.description),
+      };
 
   useEffect(() => {
     document.title = config.name;

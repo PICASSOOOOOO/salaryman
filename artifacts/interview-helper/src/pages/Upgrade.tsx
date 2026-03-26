@@ -10,6 +10,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
 import { getDefaultBoomerMode } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 
 interface FeatureCard {
   key: FeatureKey;
@@ -272,6 +273,7 @@ export default function Upgrade() {
   const [activeTab, setActiveTab] = useState<Tab>("subscriptions");
   const { isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
+  const { t } = useTranslation();
   const [location] = useLocation();
 
   useEffect(() => {
@@ -348,18 +350,18 @@ export default function Upgrade() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/8 mb-4">
               <CreditCard className="w-3 h-3 text-amber-400" />
               <span className="text-[10px] font-mono tracking-widest uppercase text-amber-400">
-                {boomerMode ? "Premium Tools" : "Pablo Corp Module Store"}
+                {boomerMode ? t('upgrade.premiumTools') : t('upgrade.moduleStore')}
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-3">
               {boomerMode
-                ? "Upgrade Your Tools"
-                : "Activate Premium Modules"}
+                ? t('upgrade.upgradeYourTools')
+                : t('upgrade.activatePremiumModules')}
             </h1>
             <p className="max-w-md mx-auto text-sm text-muted-foreground">
               {boomerMode
-                ? "Subscribe to individual tools, buy cosmetics, support the project, or grab merch — only pay for what you want."
-                : "Each module is independently activated. Browse the full Pablo Corp product catalog below."}
+                ? t('upgrade.subscribeDesc')
+                : t('upgrade.moduleStoreDesc')}
             </p>
             <div className="mt-3 flex items-center justify-center gap-1.5 text-muted-foreground/40">
               <PicassoLogo size={10} gap={1} />
@@ -379,10 +381,10 @@ export default function Upgrade() {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
-                {boomerMode ? "Corporate Admin — Full Access" : "CORP ADMIN — All Modules Unlocked"}
+                {boomerMode ? t('upgrade.corpAdminFullAccess') : t('upgrade.corpAdminAllUnlocked')}
               </p>
               <p className="text-xs text-muted-foreground">
-                {boomerMode ? "All tools are active on your account." : "Admin clearance grants access to all classified modules."}
+                {boomerMode ? t('upgrade.allToolsActive') : t('upgrade.adminClearance')}
               </p>
             </div>
           </motion.div>
@@ -399,10 +401,10 @@ export default function Upgrade() {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
-                {boomerMode ? "Payment received — activating" : "Module Activation Processing"}
+                {boomerMode ? t('upgrade.paymentReceived') : t('upgrade.moduleActivating')}
               </p>
               <p className="text-xs text-muted-foreground">
-                Your subscription is being activated. This may take a moment.
+                {t('upgrade.activationPending')}
               </p>
             </div>
           </motion.div>
@@ -419,9 +421,9 @@ export default function Upgrade() {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
-                {boomerMode ? "Checkout cancelled" : "Activation cancelled"}
+                {boomerMode ? t('upgrade.checkoutCancelled') : t('upgrade.activationCancelled')}
               </p>
-              <p className="text-xs text-muted-foreground">No charge was made.</p>
+              <p className="text-xs text-muted-foreground">{t('upgrade.noCharge')}</p>
             </div>
           </motion.div>
         )}
@@ -460,7 +462,7 @@ export default function Upgrade() {
             {activeCount > 0 && !isOwner && (
               <div className="mb-4 text-center">
                 <span className="text-xs font-mono text-muted-foreground tracking-wider">
-                  {activeCount} module{activeCount !== 1 ? "s" : ""} active
+                  {t('upgrade.modulesActive', { count: activeCount })}
                 </span>
               </div>
             )}
@@ -520,11 +522,11 @@ export default function Upgrade() {
                         <span className={`text-2xl font-bold ${isActive ? card.color : "text-foreground"}`}>
                           ${card.price}
                         </span>
-                        <span className="text-xs text-muted-foreground">/ month</span>
+                        <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
                       </div>
 
                       {isActive ? (
-                        <span className="text-xs text-muted-foreground font-mono">Subscribed</span>
+                        <span className="text-xs text-muted-foreground font-mono">{t('upgrade.subscribed')}</span>
                       ) : (
                         <button
                           onClick={() => handleCheckout(card.key)}
@@ -540,8 +542,8 @@ export default function Upgrade() {
                           ) : (
                             <>
                               {isAuthenticated
-                                ? (boomerMode ? "Subscribe" : "Activate")
-                                : "Sign In"}
+                                ? (boomerMode ? t('upgrade.subscribe') : t('upgrade.activate'))
+                                : t('common.signIn')}
                               <ChevronRight className="w-3 h-3" />
                             </>
                           )}
@@ -560,7 +562,7 @@ export default function Upgrade() {
               className="bg-card border border-border rounded-2xl p-6 mb-6"
             >
               <p className="text-xs font-bold text-primary uppercase tracking-wider mb-4">
-                {boomerMode ? "Already Included — Free Forever" : "Standard Employee Allocation — Always Free"}
+                {boomerMode ? t('upgrade.alreadyIncluded') : t('upgrade.standardAllocation')}
               </p>
               <ul className="space-y-2">
                 {FREE_PERKS.map((perk) => (
@@ -612,7 +614,7 @@ export default function Upgrade() {
               <div className="mt-6 flex items-center gap-2 justify-center text-muted-foreground/40">
                 <Lock className="w-3 h-3" />
                 <p className="text-[10px] font-mono tracking-widest uppercase">
-                  {boomerMode ? "Premium tools available above" : "Classified modules sealed — activate to unlock"}
+                  {boomerMode ? t('upgrade.premiumToolsAbove') : t('upgrade.classifiedModulesSealed')}
                 </p>
               </div>
             )}

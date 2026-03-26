@@ -8,6 +8,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useTranslation } from 'react-i18next';
 
 interface DonationRecord {
   id: number;
@@ -25,6 +26,7 @@ interface AccountData {
 }
 
 function MobileInstallSection() {
+  const { t } = useTranslation();
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=ffffff&bgcolor=09090b&data=${encodeURIComponent(appUrl)}`;
   const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -42,8 +44,8 @@ function MobileInstallSection() {
           <Smartphone className="w-4 h-4 text-violet-400" />
         </div>
         <div>
-          <p className="text-sm font-bold text-foreground">Get the Mobile App</p>
-          <p className="text-xs text-muted-foreground">Install Salaryman on your phone — no App Store needed</p>
+          <p className="text-sm font-bold text-foreground">{t('profile.getMobileApp')}</p>
+          <p className="text-xs text-muted-foreground">{t('profile.installNoAppStore')}</p>
         </div>
       </div>
 
@@ -52,37 +54,37 @@ function MobileInstallSection() {
         <div className="bg-muted/20 border border-border rounded-xl p-4 space-y-3">
           {isIOS ? (
             <>
-              <p className="text-xs font-semibold text-foreground">You're on iOS — here's how:</p>
+              <p className="text-xs font-semibold text-foreground">{t('profile.iosHow')}</p>
               <ol className="space-y-2 text-xs text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                  Tap the <Share2 className="w-3 h-3 inline mx-0.5 text-violet-400" /> Share button in Safari (bottom toolbar)
+                  {t('profile.iosStep1')} <Share2 className="w-3 h-3 inline mx-0.5 text-violet-400" />
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                  Scroll down and tap <strong className="text-foreground">"Add to Home Screen"</strong>
+                  {t('profile.iosStep2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                  Tap <strong className="text-foreground">Add</strong> — Salaryman will appear on your home screen like an app
+                  {t('profile.iosStep3')}
                 </li>
               </ol>
             </>
           ) : (
             <>
-              <p className="text-xs font-semibold text-foreground">You're on Android — here's how:</p>
+              <p className="text-xs font-semibold text-foreground">{t('profile.androidHow')}</p>
               <ol className="space-y-2 text-xs text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
-                  Tap the <strong className="text-foreground">⋮</strong> menu in Chrome (top-right)
+                  {t('profile.androidStep1')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
-                  Tap <strong className="text-foreground">"Add to Home screen"</strong> or <strong className="text-foreground">"Install app"</strong>
+                  {t('profile.androidStep2')}
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
-                  Confirm — Salaryman launches like a native app
+                  {t('profile.androidStep3')}
                 </li>
               </ol>
             </>
@@ -169,6 +171,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const { isPro, isOwner, features } = usePlan();
+  const { t } = useTranslation();
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
     window.addEventListener('storage', onStorage);
@@ -277,8 +280,8 @@ export default function Profile() {
             <User className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'My Account' : 'My Account'}</h2>
-            <p className="text-sm text-muted-foreground">{boomerMode ? 'Manage your profile, memory, and saved data' : 'Manage your profile, memory, and data'}</p>
+            <h2 className="text-xl font-bold text-foreground">{t('profile.myAccount')}</h2>
+            <p className="text-sm text-muted-foreground">{boomerMode ? t('profile.manageProfileMemoryData') : t('profile.manageProfileData')}</p>
           </div>
         </div>
 
@@ -312,7 +315,7 @@ export default function Profile() {
                 </div>
                 <button onClick={logout}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 border border-border hover:border-red-500/20 transition-colors">
-                  <LogOut className="w-3.5 h-3.5" /> Sign out
+                  <LogOut className="w-3.5 h-3.5" /> {t('profile.signOut')}
                 </button>
               </div>
             </motion.section>
@@ -326,10 +329,10 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">
-                    {boomerMode ? 'Membership Status' : 'Corporate Clearance Level'}
+                    {boomerMode ? t('profile.membershipStatus') : t('profile.corporateClearanceLevel')}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {boomerMode ? 'Your current plan and subscription details' : 'Your Pablo Corp employee classification'}
+                    {boomerMode ? t('profile.currentPlanDetails') : t('profile.employeeClassification')}
                   </p>
                 </div>
               </div>
@@ -340,10 +343,10 @@ export default function Profile() {
                     <Zap className="w-4 h-4 text-amber-400" />
                     <div>
                       <p className="text-sm font-bold text-amber-300">
-                        {boomerMode ? 'Corporate Admin' : 'CORP ADMIN — All Modules Unlocked'}
+                        {boomerMode ? t('profile.corporateAdmin') : t('profile.corpAdminAllUnlocked')}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {boomerMode ? 'Owner-level access — all features unlocked' : 'Owner implant active — all protocols accessible'}
+                        {boomerMode ? t('profile.ownerAllFeaturesUnlocked') : t('profile.ownerImplantActive')}
                       </p>
                     </div>
                   </div>
@@ -375,17 +378,17 @@ export default function Profile() {
                     onClick={() => navigate('/upgrade')}
                     className="w-full flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-muted/15 border border-border text-muted-foreground text-xs font-mono hover:bg-muted/25 transition-colors"
                   >
-                    {boomerMode ? 'Add More Tools' : 'Browse Modules'}
+                    {boomerMode ? t('profile.addMoreTools') : t('profile.browseModules')}
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between bg-muted/15 border border-border rounded-xl px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      {boomerMode ? 'Standard Plan' : 'Standard Employee — No Modules Active'}
+                      {boomerMode ? t('profile.standardPlan') : t('profile.standardEmployeeNoModules')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {boomerMode ? 'Core features included — subscribe to individual tools for more' : 'Standard-issue modules available — premium modules require activation'}
+                      {boomerMode ? t('profile.coreFeaturesFree') : t('profile.standardModulesAvailable')}
                     </p>
                   </div>
                   <button
@@ -407,15 +410,15 @@ export default function Profile() {
                   <Brain className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'My Notes / AI Memory' : 'PABLO Memory'}</p>
-                  <p className="text-xs text-muted-foreground">What PABLO knows about you — edit or clear anytime</p>
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? t('profile.myNotesAiMemory') : t('profile.pabloMemory')}</p>
+                  <p className="text-xs text-muted-foreground">{t('profile.whatPabloKnows')}</p>
                 </div>
               </div>
 
               <textarea
                 value={memoryDraft}
                 onChange={e => setMemoryDraft(e.target.value)}
-                placeholder="PABLO hasn't learned anything about you yet. Start a conversation or complete the onboarding."
+                placeholder={t('profile.memoryPlaceholder')}
                 rows={6}
                 className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/40 transition-colors resize-none mb-3"
               />
@@ -429,12 +432,12 @@ export default function Profile() {
                 <div className="flex items-center gap-2 ml-auto">
                   <button onClick={() => setDeleteTarget('memory')}
                     className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                    Clear
+                    {t('profile.clear')}
                   </button>
                   <button onClick={saveMemory} disabled={savingMemory || memoryDraft === data?.memory}
                     className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/25 transition-colors disabled:opacity-40">
                     {savingMemory ? <Loader2 className="w-3 h-3 animate-spin" /> : memorySaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
-                    {memorySaved ? 'Saved' : 'Save'}
+                    {memorySaved ? t('profile.saved') : t('profile.save')}
                   </button>
                 </div>
               </div>
@@ -500,8 +503,8 @@ export default function Profile() {
                   <Database className="w-4 h-4 text-primary/70" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">My Data</p>
-                  <p className="text-xs text-muted-foreground">Export or delete your information anytime</p>
+                  <p className="text-sm font-bold text-foreground">{t('profile.myData')}</p>
+                  <p className="text-xs text-muted-foreground">{t('profile.exportOrDeleteInfo')}</p>
                 </div>
               </div>
 
@@ -531,8 +534,8 @@ export default function Profile() {
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/20 border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left">
                   <Download className="w-4 h-4 text-primary/60" />
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Export my data</p>
-                    <p className="text-xs text-muted-foreground">Download everything as a JSON file</p>
+                    <p className="text-sm font-semibold text-foreground">{t('profile.exportMyData')}</p>
+                    <p className="text-xs text-muted-foreground">{t('profile.downloadAsJson')}</p>
                   </div>
                 </button>
 
@@ -540,8 +543,8 @@ export default function Profile() {
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/20 border border-border hover:border-red-500/20 hover:bg-red-500/5 transition-colors text-left">
                   <Users className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Delete all contacts</p>
-                    <p className="text-xs text-muted-foreground">Permanently remove all saved contacts</p>
+                    <p className="text-sm font-semibold text-foreground">{t('profile.deleteAllContacts')}</p>
+                    <p className="text-xs text-muted-foreground">{t('profile.permanentlyRemoveContacts')}</p>
                   </div>
                 </button>
 
@@ -549,8 +552,8 @@ export default function Profile() {
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/15 hover:border-red-500/30 hover:bg-red-500/10 transition-colors text-left">
                   <Trash2 className="w-4 h-4 text-red-400/70" />
                   <div>
-                    <p className="text-sm font-semibold text-red-400">Delete all my data</p>
-                    <p className="text-xs text-muted-foreground">Contacts + PABLO memory — cannot be undone</p>
+                    <p className="text-sm font-semibold text-red-400">{t('profile.deleteAllMyData')}</p>
+                    <p className="text-xs text-muted-foreground">{t('profile.contactsPlusMemoryCannotUndo')}</p>
                   </div>
                 </button>
               </div>
@@ -573,7 +576,7 @@ export default function Profile() {
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
                   <Check className="w-6 h-6 text-emerald-400" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Done — data deleted.</p>
+                <p className="text-sm font-semibold text-foreground">{t('profile.dataDeleted')}</p>
               </div>
             ) : (
               <>
@@ -582,22 +585,22 @@ export default function Profile() {
                     <AlertTriangle className="w-5 h-5 text-red-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-foreground">Are you sure?</p>
+                    <p className="text-sm font-bold text-foreground">{t('profile.areYouSure')}</p>
                     <p className="text-xs text-muted-foreground">
-                      {deleteTarget === 'memory' && 'This will clear all of PABLO\'s memory about you.'}
-                      {deleteTarget === 'contacts' && 'This will permanently delete all your contacts.'}
-                      {deleteTarget === 'all' && 'This will delete your contacts and PABLO memory. Cannot be undone.'}
+                      {deleteTarget === 'memory' && t('profile.clearMemoryConfirm')}
+                      {deleteTarget === 'contacts' && t('profile.deleteContactsConfirm')}
+                      {deleteTarget === 'all' && t('profile.deleteAllConfirm')}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setDeleteTarget(null)} disabled={deleting}
                     className="flex-1 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                    Cancel
+                    {t('profile.cancel')}
                   </button>
                   <button onClick={() => deleteData(deleteTarget)} disabled={deleting}
                     className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/25 text-red-400 text-sm font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50">
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Delete'}
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('profile.delete')}
                   </button>
                 </div>
               </>

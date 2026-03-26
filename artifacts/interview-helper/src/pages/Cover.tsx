@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { PicassoLogo } from '../components/PicassoLogo';
+import { useTranslation } from 'react-i18next';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -15,6 +16,7 @@ function EmailSubscribeForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,17 +31,17 @@ function EmailSubscribeForm() {
       const data = await res.json();
       if (!res.ok) {
         setStatus('error');
-        setMessage(data.error ?? 'Something went wrong. Try again.');
+        setMessage(data.error ?? t('cover.genericError'));
       } else if (data.alreadySubscribed) {
         setStatus('duplicate');
-        setMessage("You're already on the list.");
+        setMessage(t('cover.alreadySubscribed'));
       } else {
         setStatus('success');
-        setMessage("You're on the list.");
+        setMessage(t('cover.subscribedSuccess'));
       }
     } catch {
       setStatus('error');
-      setMessage('Network error. Please try again.');
+      setMessage(t('cover.networkError'));
     }
   };
 
@@ -62,7 +64,7 @@ function EmailSubscribeForm() {
         type="email"
         value={email}
         onChange={e => setEmail(e.target.value)}
-        placeholder="you@company.com"
+        placeholder={t('cover.emailPlaceholder')}
         required
         className="flex-1 min-w-0 bg-white/4 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
       />
@@ -74,7 +76,7 @@ function EmailSubscribeForm() {
         {status === 'loading' ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <>Notify me <ArrowRight className="w-3.5 h-3.5" /></>
+          <>{t('cover.notifyMe')} <ArrowRight className="w-3.5 h-3.5" /></>
         )}
       </button>
       {status === 'error' && (
@@ -87,6 +89,7 @@ function EmailSubscribeForm() {
 export default function Cover() {
   const { login, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#09090b] relative overflow-x-hidden px-6 py-20 sm:py-28">
@@ -190,7 +193,7 @@ export default function Cover() {
           transition={{ duration: 0.6, delay: 0.35 }}
           className="text-zinc-400 text-base sm:text-lg leading-relaxed mb-6 max-w-xl"
         >
-          Real-time listening, screen intelligence, stealth typing, AI agents, a full phone system, and CRM — unified into one platform. For professionals who refuse to settle.
+          {t('cover.tagline')}
         </motion.p>
 
         <motion.p
@@ -199,7 +202,7 @@ export default function Cover() {
           transition={{ duration: 0.5, delay: 0.45 }}
           className="text-emerald-500/60 text-sm mb-14 font-mono tracking-widest uppercase"
         >
-          Attention is All You Need
+          {t('common.attentionIsAllYouNeed')}
         </motion.p>
 
         {/* CTAs */}
@@ -215,7 +218,7 @@ export default function Cover() {
             whileTap={{ scale: 0.97 }}
             className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors w-full sm:w-auto"
           >
-            Get started <ChevronRight className="w-4 h-4" />
+            {t('cover.getStarted')} <ChevronRight className="w-4 h-4" />
           </motion.button>
 
           <motion.button
@@ -224,7 +227,7 @@ export default function Cover() {
             whileTap={{ scale: 0.97 }}
             className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg border border-white/10 text-zinc-300 text-sm transition-colors w-full sm:w-auto"
           >
-            See all features <ChevronRight className="w-4 h-4" />
+            {t('cover.seeAllFeatures')} <ChevronRight className="w-4 h-4" />
           </motion.button>
         </motion.div>
 
@@ -235,7 +238,7 @@ export default function Cover() {
           transition={{ duration: 0.4, delay: 0.65 }}
           className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase mb-16"
         >
-          Current pricing reflects early alpha access
+          {t('cover.alphaNote')}
         </motion.p>
 
         {/* Email subscribe */}
@@ -245,11 +248,11 @@ export default function Cover() {
           transition={{ duration: 0.5, delay: 0.75 }}
           className="w-full flex flex-col items-center gap-4 mb-16"
         >
-          <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Every App in One</p>
+          <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">{t('common.everyAppInOne')}</p>
           <div className="relative">
             <EmailSubscribeForm />
           </div>
-          <p className="text-zinc-700 text-xs">No spam. Unsubscribe anytime.</p>
+          <p className="text-zinc-700 text-xs">{t('cover.noSpam')}</p>
         </motion.div>
 
 
@@ -260,15 +263,15 @@ export default function Cover() {
           transition={{ duration: 0.6, delay: 0.95 }}
           className="flex flex-col items-center gap-4 pb-12"
         >
-          <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">Powered by</p>
+          <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">{t('cover.poweredBy')}</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['Claude Sonnet', 'GPT-4o', 'OpenClaw', 'React', 'Node', 'Postgres', 'Stripe', 'Resend'].map((t) => (
+            {['Claude Sonnet', 'GPT-4o', 'OpenClaw', 'React', 'Node', 'Postgres', 'Stripe', 'Resend'].map((tech) => (
               <motion.span
-                key={t}
+                key={tech}
                 whileHover={{ borderColor: 'rgba(161,161,170,0.3)', color: 'rgba(161,161,170,0.7)' }}
                 className="text-[10px] font-mono text-zinc-600 border border-zinc-800 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
               >
-                {t}
+                {tech}
               </motion.span>
             ))}
           </div>
@@ -280,12 +283,12 @@ export default function Cover() {
       <div className="relative z-10 mt-8 flex justify-center">
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
           {[
-            { label: "Terms", path: "/legal/terms" },
-            { label: "Privacy", path: "/legal/privacy" },
-            { label: "Refunds", path: "/legal/refunds" },
-            { label: "Contact", path: "/legal/contact" },
-            { label: "Investors", path: "/investors" },
-            { label: "Legal", path: "/legal" },
+            { label: t('cover.terms'), path: "/legal/terms" },
+            { label: t('cover.privacy'), path: "/legal/privacy" },
+            { label: t('cover.refunds'), path: "/legal/refunds" },
+            { label: t('cover.contact'), path: "/legal/contact" },
+            { label: t('cover.investors'), path: "/investors" },
+            { label: t('cover.legal'), path: "/legal" },
           ].map(({ label, path }) => (
             <button
               key={path}

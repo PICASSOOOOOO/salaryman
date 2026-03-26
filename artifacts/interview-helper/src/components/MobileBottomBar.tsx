@@ -2,11 +2,13 @@ import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
+import { useTranslation } from 'react-i18next';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -30,6 +32,9 @@ export function MobileSubNav() {
         {currentModule.subs.map(sub => {
           const isActive = pathname === sub.path || pathname.startsWith(sub.path + '/');
           const Icon = sub.icon;
+          const label = boomerMode
+            ? t(`labels.${sub.id}`, sub.boomerLabel)
+            : t(`codenames.${sub.id}`, sub.codename);
           return (
             <button
               key={sub.id}
@@ -41,7 +46,7 @@ export function MobileSubNav() {
               }`}
             >
               <Icon className="w-3 h-3 shrink-0" />
-              {boomerMode ? sub.boomerLabel : sub.codename}
+              {label}
             </button>
           );
         })}
@@ -53,6 +58,7 @@ export function MobileSubNav() {
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -78,7 +84,9 @@ export function MobileModuleNav() {
         {MODULES.filter(mod => mod.id !== 'phone').map(mod => {
           const active = isModuleActive(mod);
           const Icon = mod.icon;
-          const label = boomerMode ? mod.label : mod.codename.split(' ')[0];
+          const label = boomerMode
+            ? t(`nav.${mod.id}`, mod.label).split(' ')[0]
+            : t(`codenames.${mod.id}`, mod.codename).split(' ')[0];
           return (
             <button
               key={mod.id}

@@ -3,6 +3,7 @@ import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play, Lock } from 'lucide-re
 import type { InterviewMode } from '@/hooks/use-interview';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
@@ -11,13 +12,15 @@ interface ActionPanelProps {
   boomerMode?: boolean;
 }
 
-const actions = [
+const actionDefs = [
   {
     id: 'hint' as InterviewMode,
-    label: PABLO_PRODUCTS.GET_HINT.name,
-    boomerLabel: 'GET A HINT',
-    description: PABLO_PRODUCTS.GET_HINT.desc,
-    boomerDesc: 'A small nudge in the right direction.',
+    labelKey: 'actionPanel.getHint',
+    descKey: 'actionPanel.getHintDesc',
+    fallbackLabel: 'GET A HINT',
+    fallbackDesc: 'A small nudge in the right direction.',
+    codenameLabel: PABLO_PRODUCTS.GET_HINT.name,
+    codenameDesc: PABLO_PRODUCTS.GET_HINT.desc,
     icon: Lightbulb,
     color: 'text-emerald-400',
     bg: 'bg-emerald-400/10',
@@ -26,10 +29,12 @@ const actions = [
   },
   {
     id: 'solution' as InterviewMode,
-    label: PABLO_PRODUCTS.FULL_SOLUTION.name,
-    boomerLabel: 'FULL SOLUTION',
-    description: PABLO_PRODUCTS.FULL_SOLUTION.desc,
-    boomerDesc: 'Get the complete answer with code.',
+    labelKey: 'actionPanel.fullSolution',
+    descKey: 'actionPanel.fullSolutionDesc',
+    fallbackLabel: 'FULL SOLUTION',
+    fallbackDesc: 'Get the complete answer with code.',
+    codenameLabel: PABLO_PRODUCTS.FULL_SOLUTION.name,
+    codenameDesc: PABLO_PRODUCTS.FULL_SOLUTION.desc,
     icon: Code2,
     color: 'text-blue-400',
     bg: 'bg-blue-400/10',
@@ -38,10 +43,12 @@ const actions = [
   },
   {
     id: 'explain' as InterviewMode,
-    label: PABLO_PRODUCTS.EXPLAIN_APPROACH.name,
-    boomerLabel: 'EXPLAIN STEP BY STEP',
-    description: PABLO_PRODUCTS.EXPLAIN_APPROACH.desc,
-    boomerDesc: 'Walk through the logic one step at a time.',
+    labelKey: 'actionPanel.explainStepByStep',
+    descKey: 'actionPanel.explainDesc',
+    fallbackLabel: 'EXPLAIN STEP BY STEP',
+    fallbackDesc: 'Walk through the logic one step at a time.',
+    codenameLabel: PABLO_PRODUCTS.EXPLAIN_APPROACH.name,
+    codenameDesc: PABLO_PRODUCTS.EXPLAIN_APPROACH.desc,
     icon: MessageSquare,
     color: 'text-purple-400',
     bg: 'bg-purple-400/10',
@@ -50,10 +57,12 @@ const actions = [
   },
   {
     id: 'complexity' as InterviewMode,
-    label: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.name,
-    boomerLabel: 'CHECK PERFORMANCE',
-    description: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.desc,
-    boomerDesc: 'Find out how fast and efficient the solution is.',
+    labelKey: 'actionPanel.checkPerformance',
+    descKey: 'actionPanel.checkPerformanceDesc',
+    fallbackLabel: 'CHECK PERFORMANCE',
+    fallbackDesc: 'Find out how fast and efficient the solution is.',
+    codenameLabel: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.name,
+    codenameDesc: PABLO_PRODUCTS.ANALYZE_COMPLEXITY.desc,
     icon: Zap,
     color: 'text-amber-400',
     bg: 'bg-amber-400/10',
@@ -62,17 +71,9 @@ const actions = [
   },
 ];
 
-const sayItAction = {
-  id: 'say_it' as InterviewMode,
-  label: PABLO_PRODUCTS.SAY_THIS.name,
-  boomerLabel: 'SAY THIS OUT LOUD',
-  description: PABLO_PRODUCTS.SAY_THIS.desc,
-  boomerDesc: '3 bullet points. Read them out loud right now.',
-  icon: Mic,
-};
-
 export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerMode = false }: ActionPanelProps) {
   const [, navigate] = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col gap-3 mt-6">
@@ -80,7 +81,7 @@ export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerM
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0 }}
-        onClick={() => hasSayThis ? onAction(sayItAction.id) : navigate('/upgrade')}
+        onClick={() => hasSayThis ? onAction('say_it') : navigate('/upgrade')}
         disabled={isStreaming && hasSayThis}
         className={`relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden ${
           hasSayThis
@@ -95,21 +96,23 @@ export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerM
         </div>
         <div className="flex-1">
           <h3 className={`font-bold ${boomerMode ? 'text-lg' : 'text-base'} leading-none mb-1 flex items-center gap-2 ${hasSayThis ? 'text-white' : 'text-amber-300'}`}>
-            {boomerMode ? sayItAction.boomerLabel : sayItAction.label}
+            {boomerMode
+              ? t('actionPanel.sayThisOutLoud')
+              : PABLO_PRODUCTS.SAY_THIS.name}
             <span className={`${boomerMode ? 'text-xs' : 'text-[10px]'} font-mono px-1.5 py-0.5 rounded ${
               hasSayThis ? 'bg-rose-500/30 text-rose-300' : 'bg-amber-500/20 text-amber-400'
-            }`}>{hasSayThis ? 'QUICK READ' : '$5/MO'}</span>
+            }`}>{hasSayThis ? t('actionPanel.quickRead') : '$5/MO'}</span>
           </h3>
           <p className={`${boomerMode ? 'text-sm' : 'text-xs'} leading-relaxed ${hasSayThis ? 'text-rose-300/80' : 'text-amber-400/60'}`}>
             {hasSayThis
-              ? (boomerMode ? sayItAction.boomerDesc : sayItAction.description)
-              : (boomerMode ? 'Subscribe to unlock — $5/month' : 'Module subscription required — $5/mo to activate')}
+              ? (boomerMode ? t('actionPanel.sayThisOutLoudDesc') : PABLO_PRODUCTS.SAY_THIS.desc)
+              : (boomerMode ? t('actionPanel.subscribeToUnlock') : t('actionPanel.moduleSubRequired'))}
           </p>
         </div>
       </motion.button>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {actions.map((action, i) => {
+        {actionDefs.map((action, i) => {
           const Icon = action.icon;
           return (
             <motion.button
@@ -129,11 +132,11 @@ export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerM
                 <Icon className={`w-5 h-5 ${action.color}`} />
               </div>
               <h3 className={`${boomerMode ? 'text-base' : 'text-sm'} font-semibold mb-1 flex items-center gap-2 text-foreground`}>
-                {boomerMode ? action.boomerLabel : action.label}
+                {boomerMode ? t(action.labelKey, action.fallbackLabel) : action.codenameLabel}
                 <Play className="w-3 h-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
               </h3>
               <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-muted-foreground/50 leading-relaxed`}>
-                {boomerMode ? action.boomerDesc : action.description}
+                {boomerMode ? t(action.descKey, action.fallbackDesc) : action.codenameDesc}
               </p>
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
