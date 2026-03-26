@@ -1804,7 +1804,7 @@ function pickBehavior(type: string, worldHour: number): BehaviorState {
 }
 interface WeaponDef { id: string; label: string; desc: string; atkBonus: number; color: string; type: 'melee' | 'ranged'; range: number; cooldown: number; icon: string; }
 interface MerchantItem { id: string; name: string; desc: string; price: number; effect: string; }
-interface Projectile { x: number; y: number; dx: number; dy: number; life: number; damage: number; type: string; }
+interface Projectile { x: number; y: number; prevX: number; prevY: number; dx: number; dy: number; life: number; damage: number; type: string; }
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface HitEffect { x: number; y: number; life: number; maxLife: number; dx: number; dy: number; }
 interface MuzzleFlash { angle: number; life: number; }
@@ -3058,6 +3058,7 @@ export default function WorldPlay() {
     attackCooldown: 0,
     attackFlash: 0,
     muzzleFlash: null as null | MuzzleFlash,
+    aimAngle: 0 as number,
     hitEffects: [] as HitEffect[],
     moveTarget: null as null | { x: number; y: number },
     deathReason: '' as string,
@@ -3093,6 +3094,7 @@ export default function WorldPlay() {
     worldTimeTick: 0,
     walkFrame: 0,
     facing: 'down' as 'up' | 'down' | 'left' | 'right',
+    facingAngle: Math.PI / 2 as number,
     idleFrame: 0,
     guardCooldowns: [] as number[],
     policeCooldowns: [] as number[],
@@ -5662,14 +5664,13 @@ export default function WorldPlay() {
             if (d < wpn.range && d < nearestThreatDist2) { nearestThreatDist2 = d; fireAngle2 = Math.atan2(t.y - g.py, t.x - g.px); }
           }
           if (fireAngle2 === null) {
-            const facingMap2: Record<string, number> = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
-            fireAngle2 = facingMap2[g.facing] ?? 0;
+            fireAngle2 = g.aimAngle;
           }
           g.muzzleFlash = { angle: fireAngle2, life: 5 };
           if (wpn.icon === 'bomb') {
             g.bombs.push({ x: g.px + Math.cos(fireAngle2) * 30, y: g.py + Math.sin(fireAngle2) * 30, timer: 45, damage: ATK2, radius: wpn.range });
           } else {
-            g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(fireAngle2) * 8, dy: Math.sin(fireAngle2) * 8, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK2, type: wpn.icon });
+            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 8, dy: Math.sin(fireAngle2) * 8, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK2, type: wpn.icon });
           }
           return;
         }
@@ -5979,7 +5980,7 @@ export default function WorldPlay() {
           if (rangedWpnClick.icon === 'bomb') {
             g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: rangedWpnClick.range });
           } else {
-            g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATK, type: rangedWpnClick.icon });
+            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATK, type: rangedWpnClick.icon });
           }
           return; // Don't move — we fired at the target
         }
@@ -6021,7 +6022,7 @@ export default function WorldPlay() {
         if (rangedWpnClick.icon === 'bomb') {
           g.bombs.push({ x: g.px + Math.cos(autoFireAngle) * 30, y: g.py + Math.sin(autoFireAngle) * 30, timer: 45, damage: ATKauto, radius: rangedWpnClick.range });
         } else {
-          g.projectiles.push({ x: g.px, y: g.py, dx: Math.cos(autoFireAngle) * speedAuto, dy: Math.sin(autoFireAngle) * speedAuto, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATKauto, type: rangedWpnClick.icon });
+          g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(autoFireAngle) * speedAuto, dy: Math.sin(autoFireAngle) * speedAuto, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATKauto, type: rangedWpnClick.icon });
         }
         return; // Don't move — we fired
       } else if (clickedEnemy) {
@@ -6047,19 +6048,40 @@ export default function WorldPlay() {
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
-      if (!decorModeRef.current) return;
       const g = gs.current;
-      if (!g.interior) return;
-      const iDef = g.interior.def;
-      const rect2 = canvas.getBoundingClientRect();
-      const cx = (e.clientX - rect2.left) * (canvas.width / rect2.width);
-      const cy = (e.clientY - rect2.top) * (canvas.height / rect2.height);
-      const iScale2 = Math.min(canvas.width / (iDef.width + 80), canvas.height / (iDef.height + 80));
-      const iox2 = (canvas.width - iDef.width * iScale2) / 2;
-      const ioy2 = (canvas.height - iDef.height * iScale2) / 2;
-      const ix = (cx - iox2) / iScale2;
-      const iy = (cy - ioy2) / iScale2;
-      setDecorGhostPos({ gridX: Math.floor(ix / FURNITURE_GRID_SIZE), gridY: Math.floor(iy / FURNITURE_GRID_SIZE) });
+      // Always track mouse aim angle in world space (for weapon aiming)
+      if (!g.interior) {
+        const rect2 = canvas.getBoundingClientRect();
+        const scaleX2 = canvas.width / rect2.width;
+        const scaleY2 = canvas.height / rect2.height;
+        const mx = (e.clientX - rect2.left) * scaleX2 + g.cam.x;
+        const my = (e.clientY - rect2.top) * scaleY2 + g.cam.y;
+        g.aimAngle = Math.atan2(my - g.py, mx - g.px);
+      } else if (decorModeRef.current) {
+        const iDef = g.interior.def;
+        const rect2 = canvas.getBoundingClientRect();
+        const cx = (e.clientX - rect2.left) * (canvas.width / rect2.width);
+        const cy = (e.clientY - rect2.top) * (canvas.height / rect2.height);
+        const iScale2 = Math.min(canvas.width / (iDef.width + 80), canvas.height / (iDef.height + 80));
+        const iox2 = (canvas.width - iDef.width * iScale2) / 2;
+        const ioy2 = (canvas.height - iDef.height * iScale2) / 2;
+        const ix = (cx - iox2) / iScale2;
+        const iy = (cy - ioy2) / iScale2;
+        setDecorGhostPos({ gridX: Math.floor(ix / FURNITURE_GRID_SIZE), gridY: Math.floor(iy / FURNITURE_GRID_SIZE) });
+      } else {
+        // Interior: track aim angle relative to player screen position
+        const rect2 = canvas.getBoundingClientRect();
+        const cx = (e.clientX - rect2.left) * (canvas.width / rect2.width);
+        const cy = (e.clientY - rect2.top) * (canvas.height / rect2.height);
+        const iDef = g.interior.def;
+        const iScale2 = Math.min(canvas.width / (iDef.width + 80), canvas.height / (iDef.height + 80));
+        const iox2 = (canvas.width - iDef.width * iScale2) / 2;
+        const ioy2 = (canvas.height - iDef.height * iScale2) / 2;
+        // Player screen position in interior
+        const ppx = iox2 + g.interior.px * iScale2;
+        const ppy = ioy2 + g.interior.py * iScale2;
+        g.aimAngle = Math.atan2(cy - ppy, cx - ppx);
+      }
     };
     canvas.addEventListener('click', handleClick);
     canvas.addEventListener('touchstart', handleTouch, { passive: false });
@@ -6462,8 +6484,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // Projectile update
-      g.projectiles = g.projectiles.map(p => ({ ...p, x: p.x + p.dx, y: p.y + p.dy, life: p.life - 1 })).filter(p => {
+      g.projectiles = g.projectiles.map(p => ({ ...p, prevX: p.x, prevY: p.y, x: p.x + p.dx, y: p.y + p.dy, life: p.life - 1 })).filter(p => {
         if (p.life <= 0) return false;
+        // Swept segment-to-point distance helper
+        const segPointDist = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
+          const abdx = bx - ax, abdy = by - ay;
+          const lenSq = abdx * abdx + abdy * abdy;
+          if (lenSq === 0) return Math.hypot(cx - ax, cy - ay);
+          const t2 = Math.max(0, Math.min(1, ((cx - ax) * abdx + (cy - ay) * abdy) / lenSq));
+          return Math.hypot(cx - (ax + t2 * abdx), cy - (ay + t2 * abdy));
+        };
         // Destroy projectile if it hits a building wall
         const pR = 3;
         const hitBuilding = BUILDINGS.some(b => {
@@ -6485,7 +6515,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         let hitAny = false;
         g.threats = g.threats.map(t => {
-          const d = Math.hypot(p.x - t.x, p.y - t.y);
+          const d = segPointDist(p.prevX, p.prevY, p.x, p.y, t.x, t.y);
           if (d < (p.type === 'laser' ? 20 : 14)) {
             hitAny = true;
             // Hit impact effect — burst sparks at impact point
@@ -6526,7 +6556,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!hitAny) {
           for (const [, peer] of g.peers) {
             if (peer.interiorBid) continue;
-            const pd = Math.hypot(p.x - peer.x, p.y - peer.y);
+            const pd = segPointDist(p.prevX, p.prevY, p.x, p.y, peer.x, peer.y);
             if (pd < (p.type === 'laser' ? 20 : 14)) {
               hitAny = true;
               const impactAngle2 = Math.atan2(p.dy, p.dx);
@@ -6937,6 +6967,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
           if (stepFrame.current % 14 === 0) sfxStep();
+          // Continuous facing angle from movement vector (separate from weapon aimAngle)
+          g.facingAngle = Math.atan2(dy, dx);
+          // 4-direction cardinal facing string (kept for vehicle sprite + backward compat)
           if (Math.abs(dx) > Math.abs(dy)) { g.facing = dx > 0 ? 'right' : 'left'; } else { g.facing = dy > 0 ? 'down' : 'up'; }
         } else {
           g.walkFrame = 0;
@@ -8526,10 +8559,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const bW = isLong ? 14 : isHvy ? 12 : 10, bH = isHvy ? 6 : 4;
                 const bCol = ipWpn.icon === 'laser' ? '#ff44aa' : ipWpn.icon === 'bomb' ? '#ffcc00' : '#334455';
                 const bGlow = ipWpn.icon === 'laser' ? '#ff44aa' : ipWpn.icon === 'bomb' ? '#ffcc00' : '#88aacc';
+                ctx.save();
+                ctx.translate(ipHandX, ipHandY);
+                ctx.rotate(g.aimAngle);
                 ctx.fillStyle = bCol; ctx.shadowColor = bGlow; ctx.shadowBlur = 2;
-                ctx.fillRect(ipHandX, ipHandY - bH / 2, bW, bH);
-                ctx.fillRect(ipHandX + 4, ipHandY + bH / 2, 2, 4);
+                ctx.fillRect(0, -bH / 2, bW, bH);
+                ctx.fillRect(4, bH / 2, 2, 4);
                 ctx.shadowBlur = 0;
+                ctx.restore();
               } else {
                 ctx.fillStyle = '#556677'; ctx.fillRect(ipHandX - 2, ipHandY - 4, 4, 8);
               }
@@ -9162,7 +9199,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               closestTarget.hp -= dmg;
               attacker.attackCd = attacker.weapon === 'ranged' ? 45 : 30;
               if (attacker.weapon === 'ranged') {
-                g.projectiles.push({ x: attacker.x, y: attacker.y, dx: (closestTarget.x - attacker.x) / closestDist * 5, dy: (closestTarget.y - attacker.y) / closestDist * 5, damage: 0, type: 'laser', life: 25 });
+                g.projectiles.push({ x: attacker.x, y: attacker.y, prevX: attacker.x, prevY: attacker.y, dx: (closestTarget.x - attacker.x) / closestDist * 5, dy: (closestTarget.y - attacker.y) / closestDist * 5, damage: 0, type: 'laser', life: 25 });
               }
               g.floaters.push({ x: closestTarget.x, y: closestTarget.y - 10, text: `−${Math.floor(dmg)}`, color: band.color, life: 35, maxLife: 35 });
               if (closestTarget.hp <= 0) {
@@ -9190,7 +9227,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.deathReason = `Killed by ${band.label} enforcement`;
               g.floaters.push({ x: g.px, y: g.py - 12, text: `${band.label} STRIKE`, color: band.color, life: 40, maxLife: 40 });
               if (m.weapon === 'ranged') {
-                g.projectiles.push({ x: m.x, y: m.y, dx: (g.px - m.x) / dToPlayer * 5, dy: (g.py - m.y) / dToPlayer * 5, damage: 0, type: 'laser', life: 25 });
+                g.projectiles.push({ x: m.x, y: m.y, prevX: m.x, prevY: m.y, dx: (g.px - m.x) / dToPlayer * 5, dy: (g.py - m.y) / dToPlayer * 5, damage: 0, type: 'laser', life: 25 });
               }
             }
           }
@@ -9209,7 +9246,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               m.attackCd = m.weapon === 'ranged' ? 45 : 30;
               g.floaters.push({ x: t.x, y: t.y - 10, text: `−${Math.floor(dmg)} ${band.label}`, color: band.color, life: 40, maxLife: 40 });
               if (m.weapon === 'ranged') {
-                g.projectiles.push({ x: m.x, y: m.y, dx: (t.x - m.x) / td * 5, dy: (t.y - m.y) / td * 5, damage: 0, type: 'laser', life: 20 });
+                g.projectiles.push({ x: m.x, y: m.y, prevX: m.x, prevY: m.y, dx: (t.x - m.x) / td * 5, dy: (t.y - m.y) / td * 5, damage: 0, type: 'laser', life: 20 });
               }
               if (t.hp <= 0) {
                 g.floaters.push({ x: t.x, y: t.y - 18, text: `${t.type} NEUTRALIZED`, color: band.color, life: 60, maxLife: 60 });
@@ -12272,10 +12309,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const rArm = -lArm;
       const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1;
       const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.4 : bodyBob;
-      const facingRight = facingDir === 'right';
-      const facingLeft = facingDir === 'left';
-      const facingUp = facingDir === 'up';
-      const facingDown = facingDir === 'down' || (!facingRight && !facingLeft && !facingUp);
+      // Derive facing quadrant from continuous facingAngle (π/4 boundary thresholds)
+      const fa = g.facingAngle;
+      const facingRight = Math.cos(fa) > 0 && Math.abs(Math.cos(fa)) >= Math.abs(Math.sin(fa));
+      const facingLeft  = Math.cos(fa) < 0 && Math.abs(Math.cos(fa)) >= Math.abs(Math.sin(fa));
+      const facingUp    = Math.sin(fa) < 0 && Math.abs(Math.sin(fa)) > Math.abs(Math.cos(fa));
+      const facingDown  = !facingRight && !facingLeft && !facingUp;
       // Isometric directional offsets — SE/SW/NE/NW
       const isoArmOff = facingRight ? 1.5 : facingLeft ? -1.5 : 0;
       // Perspective lean for isometric look
@@ -12534,18 +12573,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = '#668866'; ctx.fillRect(wHandX - 1, wHandY - 6, 3, 8);
             }
           } else if (wpn.type === 'ranged') {
-            // Ranged weapons — distinguish by icon
+            // Ranged weapons — rotate to follow mouse aim angle
             const isLongBarrel = wpn.icon === 'rifle' || wpn.icon === 'laser';
             const isHeavy = wpn.icon === 'bomb';
             const barW = isLongBarrel ? 14 : isHeavy ? 12 : 10;
             const barH = isHeavy ? 6 : 4;
             const barCol = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#334455';
             const barGlow = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#88aacc';
+            ctx.save();
+            ctx.translate(wHandX, wHandY);
+            ctx.rotate(g.aimAngle);
             ctx.fillStyle = barCol; ctx.shadowColor = barGlow; ctx.shadowBlur = 2;
-            if (facingRight) { ctx.fillRect(wHandX, wHandY - barH / 2, barW, barH); ctx.fillRect(wHandX + 4, wHandY + barH / 2, 2, 4); }
-            else if (facingLeft) { ctx.fillRect(wHandX - barW, wHandY - barH / 2, barW, barH); ctx.fillRect(wHandX - 6, wHandY + barH / 2, 2, 4); }
-            else { ctx.fillRect(wHandX - barH / 2, wHandY - barW, barH, barW); }
+            ctx.fillRect(0, -barH / 2, barW, barH);
+            ctx.fillRect(4, barH / 2, 2, 4);
             ctx.shadowBlur = 0;
+            ctx.restore();
           } else {
             // Fallback generic icon
             ctx.fillStyle = '#556677'; ctx.fillRect(wHandX - 2, wHandY - 4, 4, 8);
