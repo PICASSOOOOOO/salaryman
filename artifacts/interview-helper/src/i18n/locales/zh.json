@@ -289,7 +289,8 @@
     "alreadySubscribed": "您已在名单上。",
     "subscribedSuccess": "您已加入名单。",
     "networkError": "网络错误。请重试。",
-    "genericError": "出现错误。请重试。"
+    "genericError": "出现错误。请重试。",
+    "updateNotes": "更新说明"
   },
   "pages": {
     "contacts": "联系人",

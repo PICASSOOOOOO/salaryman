@@ -289,7 +289,8 @@
     "alreadySubscribed": "すでにリストに登録されています。",
     "subscribedSuccess": "リストに登録されました。",
     "networkError": "ネットワークエラー。もう一度お試しください。",
-    "genericError": "エラーが発生しました。もう一度お試しください。"
+    "genericError": "エラーが発生しました。もう一度お試しください。",
+    "updateNotes": "アップデートノート"
   },
   "pages": {
     "contacts": "連絡先",

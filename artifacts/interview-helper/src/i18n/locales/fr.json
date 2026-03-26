@@ -290,7 +290,8 @@
     "alreadySubscribed": "Vous êtes déjà sur la liste.",
     "subscribedSuccess": "Vous êtes sur la liste.",
     "networkError": "Erreur réseau. Veuillez réessayer.",
-    "genericError": "Quelque chose s'est mal passé. Réessayez."
+    "genericError": "Quelque chose s'est mal passé. Réessayez.",
+    "updateNotes": "Notes de mise à jour"
   },
   "pages": {
     "contacts": "Contacts",

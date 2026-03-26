@@ -5,6 +5,7 @@ import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { PicassoLogo } from '../components/PicassoLogo';
 import { useTranslation } from 'react-i18next';
+import changelogData from '../changelog.json';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -273,6 +274,33 @@ export default function Cover() {
               >
                 {tech}
               </motion.span>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Update Notes */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1.05 }}
+          className="flex flex-col items-center gap-3 pb-10 w-full max-w-md mx-auto"
+        >
+          <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">{t('cover.updateNotes')}</p>
+          <div className="w-full max-h-40 overflow-y-auto flex flex-col gap-2 px-1 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+            {[...changelogData].reverse().slice(0, 5).map((entry: { version: string; date: string; changes: string[] }) => (
+              <div key={entry.version} className="border border-zinc-800/60 rounded px-3 py-2 bg-black/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">{entry.version}</span>
+                  <span className="text-[9px] font-mono text-zinc-700">{entry.date}</span>
+                </div>
+                <ul className="flex flex-col gap-0.5">
+                  {entry.changes.map((change, i) => (
+                    <li key={i} className="text-[9px] font-mono text-zinc-600 leading-relaxed before:content-['—'] before:mr-1.5 before:text-zinc-700">
+                      {change}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
           </div>
         </motion.div>

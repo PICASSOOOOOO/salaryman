@@ -289,7 +289,8 @@
     "alreadySubscribed": "Bạn đã có trong danh sách.",
     "subscribedSuccess": "Bạn đã có trong danh sách.",
     "networkError": "Lỗi mạng. Vui lòng thử lại.",
-    "genericError": "Đã xảy ra lỗi. Vui lòng thử lại."
+    "genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "updateNotes": "Ghi chú cập nhật"
   },
   "pages": {
     "contacts": "Danh Bạ",

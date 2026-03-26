@@ -290,7 +290,8 @@
     "alreadySubscribed": "You're already on the list.",
     "subscribedSuccess": "You're on the list.",
     "networkError": "Network error. Please try again.",
-    "genericError": "Something went wrong. Try again."
+    "genericError": "Something went wrong. Try again.",
+    "updateNotes": "Update Notes"
   },
   "pages": {
     "contacts": "Contacts",

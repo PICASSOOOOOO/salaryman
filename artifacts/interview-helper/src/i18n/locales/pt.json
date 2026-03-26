@@ -290,7 +290,8 @@
     "alreadySubscribed": "Você já está na lista.",
     "subscribedSuccess": "Você está na lista.",
     "networkError": "Erro de rede. Por favor, tente novamente.",
-    "genericError": "Algo deu errado. Tente novamente."
+    "genericError": "Algo deu errado. Tente novamente.",
+    "updateNotes": "Notas de atualização"
   },
   "pages": {
     "contacts": "Contatos",

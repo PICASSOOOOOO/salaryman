@@ -290,7 +290,8 @@
     "alreadySubscribed": "Ya estás en la lista.",
     "subscribedSuccess": "Ya estás en la lista.",
     "networkError": "Error de red. Por favor, inténtalo de nuevo.",
-    "genericError": "Algo salió mal. Inténtalo de nuevo."
+    "genericError": "Algo salió mal. Inténtalo de nuevo.",
+    "updateNotes": "Notas de actualización"
   },
   "pages": {
     "contacts": "Contactos",

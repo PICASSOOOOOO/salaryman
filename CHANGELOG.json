@@ -1,0 +1,74 @@
+[
+  {
+    "version": "v.1.0a",
+    "date": "2025-10-01",
+    "commitHash": null,
+    "changes": [
+      "Initial alpha launch",
+      "CIPHER-X interview solver core",
+      "PABLO AI chat",
+      "Basic cover and auth flow"
+    ]
+  },
+  {
+    "version": "v.1.1a",
+    "date": "2025-10-18",
+    "commitHash": null,
+    "changes": [
+      "Screen scan module added",
+      "Live listen audio capture",
+      "Auto-type printer mode"
+    ]
+  },
+  {
+    "version": "v.1.2a",
+    "date": "2025-11-05",
+    "commitHash": null,
+    "changes": [
+      "Contacts and CRM module",
+      "Hiring and HR tools",
+      "Calendar and scheduling"
+    ]
+  },
+  {
+    "version": "v.1.3a",
+    "date": "2025-11-22",
+    "commitHash": null,
+    "changes": [
+      "Phone system and dialer",
+      "Voicemail and call log",
+      "Dialing sessions and AI coach"
+    ]
+  },
+  {
+    "version": "v.1.4a",
+    "date": "2025-12-10",
+    "commitHash": null,
+    "changes": [
+      "Stripe payments and module store",
+      "Invoices and billing tools",
+      "Revenue and expense tracking"
+    ]
+  },
+  {
+    "version": "v.1.5a",
+    "date": "2026-01-14",
+    "commitHash": null,
+    "changes": [
+      "Brand kit and content studio",
+      "SEO and campaign tools",
+      "AI agent network"
+    ]
+  },
+  {
+    "version": "v.1.6a",
+    "date": "2026-03-26",
+    "commitHash": null,
+    "changes": [
+      "Balance sheet and payroll modules",
+      "Discreet mode and boomer mode",
+      "Investor portal and legal pages",
+      "Auto changelog on landing page"
+    ]
+  }
+]
