@@ -83,7 +83,9 @@ export default function PhoneSessionsPage() {
           .filter(c => c.ok && c.callSid)
           .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' }));
         addActiveCallsBatch(newActiveCalls);
-        setDialingSession({ id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length });
+        const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
+        setDialingSession(session);
+        try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
         setSelected(new Set());
         navigate('/phone/active');
       } else {

@@ -6,112 +6,13 @@ import {
   Trash2, Check, Building2, Volume2, VolumeX, Radio, Voicemail, Search,
   Calendar, RefreshCw, AlertCircle, LayoutGrid, PhoneIncoming,
 } from 'lucide-react';
-
-interface CRMContact {
-  id: number;
-  name: string;
-  phone: string;
-  email: string;
-  hometown: string;
-  company?: string;
-}
-
-interface ActiveCall {
-  callSid: string;
-  phone: string;
-  name: string;
-  status: string;
-  startTime: number;
-  elapsed: number;
-  muted?: boolean;
-  onHold?: boolean;
-  direction?: string;
-}
-
-interface BatchResult {
-  ok: boolean;
-  phone: string;
-  name?: string;
-  callSid?: string;
-  error?: string;
-  status?: string;
-}
-
-interface CallRecord {
-  id: number;
-  recipientNumber: string;
-  status: string;
-  durationSeconds: number | null;
-  startedAt: string;
-  callerName: string | null;
-  twilioCallSid?: string | null;
-  direction?: string;
-  callType?: string;
-  transcript?: string | null;
-  summary?: string | null;
-  notes?: string | null;
-  calendarEventId?: number | null;
-  contactId?: number | null;
-}
-
-interface VoicemailRecord {
-  id: number;
-  fromNumber: string;
-  fromName: string | null;
-  recordingUrl: string | null;
-  durationSeconds: number | null;
-  transcript: string | null;
-  summary: string | null;
-  isRead: boolean;
-  createdAt: string;
-}
-
-interface PhoneNumber {
-  id: number;
-  number: string;
-  label: string;
-  friendlyName: string | null;
-  greeting: string | null;
-  routingMode: string;
-  isActive: boolean;
-}
-
-interface SecretaryConfig {
-  isEnabled: boolean;
-  personality: string;
-  greetingScript: string | null;
-  screeningRules: string | null;
-  businessHoursStart: string;
-  businessHoursEnd: string;
-  businessDays: string;
-  routingInstructions: string | null;
-  forwardToNumber: string | null;
-  afterHoursAction: string;
-}
-
-interface ConferenceRoom {
-  id: number;
-  roomName: string;
-  status: string;
-  participantsJson: string | null;
-}
-
-function formatDuration(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function formatPhone(num: string): string {
-  const digits = num.replace(/\D/g, '');
-  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  if (digits.length === 11 && digits[0] === '1') return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  return num;
-}
+import {
+  formatDuration, formatPhone, ENDED_STATUSES,
+  type CRMContact, type ActiveCall, type BatchResult, type CallRecord,
+  type VoicemailRecord, type PhoneNumber, type SecretaryConfig, type ConferenceRoom,
+} from '@/lib/phone-utils';
 
 type TabMode = 'contacts' | 'dialer' | 'active' | 'history' | 'voicemail' | 'conference' | 'ai' | 'secretary' | 'numbers' | 'dialing';
-
-const ENDED_STATUSES = ['completed', 'failed', 'busy', 'no-answer', 'canceled', 'transferred'];
 
 export function PhoneDialer({
   userId,
@@ -245,7 +146,7 @@ export function PhoneDialer({
     };
   }, []);
 
-  const startPolling = (calls: ActiveCall[]) => {
+  const startPolling = (_calls: ActiveCall[]) => {
     if (pollRef.current) clearInterval(pollRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -260,11 +161,19 @@ export function PhoneDialer({
         return;
       }
       try {
-        for (const c of current) {
-          const r = await fetch(apiUrl(`twilio/call-status/${c.callSid}`));
-          if (!r.ok) continue;
-          const d = await r.json();
-          setActiveCalls(prev => prev.map(ac => ac.callSid === c.callSid ? { ...ac, status: d.status } : ac));
+        const callSids = current.map(c => c.callSid);
+        const r = await fetch(apiUrl('twilio/call-status-batch'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callSids }),
+        });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.statuses) {
+          setActiveCalls(prev => prev.map(ac => {
+            const found = d.statuses.find((s: { callSid: string; status?: string }) => s.callSid === ac.callSid);
+            return found?.status ? { ...ac, status: found.status } : ac;
+          }));
         }
       } catch (e) { console.error("[CalllHome] poll error:", e); }
     }, 3000);

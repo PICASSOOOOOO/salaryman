@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle } from 'lucide-react';
+import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
@@ -9,6 +9,26 @@ import {
   loadActiveCalls, saveActiveCalls,
   type ActiveCall,
 } from '@/lib/phone-utils';
+
+const SESSION_KEY = 'phone_dialing_session';
+
+interface DialingSession {
+  id: number;
+  mode: string;
+  total: number;
+  dialed: number;
+}
+
+function loadSession(): DialingSession | null {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null'); } catch { return null; }
+}
+
+function saveSession(s: DialingSession | null) {
+  try {
+    if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {}
+}
 
 function CallWaveformVisualizer({ active, color: c }: { active: boolean; color: (o: number) => string }) {
   const bars = 24;
@@ -61,6 +81,8 @@ export default function PhoneActivePage() {
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
   const [transferNumber, setTransferNumber] = useState('');
   const [error, setError] = useState('');
+  const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
+  const [advancingNext, setAdvancingNext] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeCallsRef = useRef<ActiveCall[]>(activeCalls);
@@ -69,6 +91,7 @@ export default function PhoneActivePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => { saveActiveCalls(activeCalls); }, [activeCalls]);
+  useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
 
   const fetchHistory = useCallback(async () => {
     try {
@@ -108,18 +131,63 @@ export default function PhoneActivePage() {
         return;
       }
       try {
-        for (const c of current) {
-          const r = await fetch(apiUrl(`twilio/call-status/${c.callSid}`));
-          if (r.status === 403) { navigate('/upgrade'); return; }
-          if (!r.ok) continue;
-          const d = await r.json();
-          setActiveCalls(prev => prev.map(ac => ac.callSid === c.callSid ? { ...ac, status: d.status } : ac));
+        const callSids = current.map(c => c.callSid);
+        const r = await fetch(apiUrl('twilio/call-status-batch'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callSids }),
+        });
+        if (r.status === 403) { navigate('/upgrade'); return; }
+        if (!r.ok) { console.warn('[CalllHome] batch poll failed', r.status); return; }
+        const d = await r.json();
+        if (d.statuses) {
+          setActiveCalls(prev => prev.map(ac => {
+            const found = d.statuses.find((s: { callSid: string; status?: string }) => s.callSid === ac.callSid);
+            return found?.status ? { ...ac, status: found.status } : ac;
+          }));
         }
       } catch (e: unknown) { 
         console.warn('[CalllHome] poll error:', e instanceof Error ? e.message : e);
         setError('Could not sync call status');
       }
     }, 3000);
+  };
+
+  const advanceSession = async () => {
+    if (!dialingSession || advancingNext) return;
+    setAdvancingNext(true);
+    setError('');
+    try {
+      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST' });
+      if (r.status === 403) { navigate('/upgrade'); return; }
+      const d = await r.json();
+      if (d.completed) {
+        setDialingSession(null);
+      } else if (d.ok && d.callSid) {
+        const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' };
+        setActiveCalls(prev => [...prev, newCall]);
+        setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
+        startPolling();
+      } else if (d.skipped) {
+        setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
+        setError(`Skipped: ${d.error || 'Invalid number'}`);
+      } else {
+        setError(d.error || 'Failed to advance session');
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Network error');
+    }
+    setAdvancingNext(false);
+  };
+
+  const stopSession = async () => {
+    if (!dialingSession) return;
+    try {
+      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      setDialingSession(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not stop session');
+    }
   };
 
   const handleApiError = async (r: Response) => {
@@ -236,6 +304,57 @@ export default function PhoneActivePage() {
           <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
+
+      {dialingSession && (
+        <PhoneCard glow style={{ marginBottom: 20 }}>
+          <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                background: `linear-gradient(135deg, ${crt(0.12)}, ${crt(0.03)})`,
+                border: `1px solid ${crt(0.25)}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: 'glowPulse 2s infinite',
+              }}>
+                <Radio size={20} style={{ color: crt(0.8) }} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.2em', marginBottom: 3 }}>ACTIVE DIALING SESSION</div>
+                <div style={{ fontSize: '0.85rem', color: crt(0.9), letterSpacing: '0.05em' }}>
+                  {dialingSession.mode.toUpperCase()} · {dialingSession.dialed} / {dialingSession.total} DIALED
+                </div>
+                <div style={{ marginTop: 8, width: 220, height: 4, background: crt(0.06), borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.round((dialingSession.dialed / dialingSession.total) * 100)}%`,
+                    background: `linear-gradient(90deg, ${crt(0.4)}, ${crt(0.7)})`,
+                    borderRadius: 2, transition: 'width 0.5s ease',
+                  }} />
+                </div>
+                <div style={{ fontSize: '0.4rem', color: crt(0.25), marginTop: 4 }}>
+                  {dialingSession.total - dialingSession.dialed} contacts remaining
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+              {dialingSession.mode === 'power' && (
+                <PhoneBtn
+                  onClick={advanceSession}
+                  disabled={advancingNext || dialingSession.dialed >= dialingSession.total}
+                  color={blue}
+                  glow={dialingSession.dialed < dialingSession.total}
+                >
+                  {advancingNext ? 'DIALING...' : 'NEXT CONTACT'}
+                  <ChevronRight size={13} />
+                </PhoneBtn>
+              )}
+              <PhoneBtn onClick={stopSession} color={red}>
+                <X size={13} /> STOP SESSION
+              </PhoneBtn>
+            </div>
+          </div>
+        </PhoneCard>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 20 }}>
         <StatBlock label="LIVE" value={liveCount} color={liveCount > 0 ? crt : undefined} sub={liveCount > 0 ? 'active' : 'idle'} />
         <StatBlock label="RINGING" value={ringingCount} color={ringingCount > 0 ? amber : undefined} />

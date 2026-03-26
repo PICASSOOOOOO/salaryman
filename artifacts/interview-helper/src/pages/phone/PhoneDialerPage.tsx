@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Phone, X, Loader2, Users, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import {
   crt, red, amber, blue, purple, formatPhone, formatDuration,
-  addActiveCall,
-  type CRMContact, type CallRecord,
+  addActiveCall, addActiveCallsBatch,
+  type CRMContact, type CallRecord, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 
@@ -14,6 +14,22 @@ const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
   '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+',
 };
+
+type DialMode = 'power' | 'auto' | 'predictive';
+
+const MODES: { key: DialMode; label: string; desc: string; color: (o: number) => string; icon: string }[] = [
+  { key: 'power', label: 'POWER', desc: 'Manual queue — one at a time', color: crt, icon: '⚡' },
+  { key: 'auto', label: 'AUTO', desc: 'Auto-advance after each call', color: blue, icon: '🔄' },
+  { key: 'predictive', label: 'PREDICTIVE', desc: 'Dials 3× simultaneously', color: purple, icon: '🚀' },
+];
+
+function validatePhoneNumber(raw: string): boolean {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return true;
+  if (digits.length === 11 && digits[0] === '1') return true;
+  if (raw.startsWith('+') && digits.length >= 7 && digits.length <= 15) return true;
+  return false;
+}
 
 export default function PhoneDialerPage() {
   const BASE = import.meta.env.BASE_URL;
@@ -32,9 +48,14 @@ export default function PhoneDialerPage() {
   const [speedDials, setSpeedDials] = useState<CRMContact[]>([]);
   const [dtmfTone, setDtmfTone] = useState<string | null>(null);
   const [callStarting, setCallStarting] = useState(false);
+  const [dialingMode, setDialingMode] = useState<DialMode>('power');
   const audioCtx = useRef<AudioContext | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+
+  const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber), [manualNumber]);
+  const numberHasInput = manualNumber.trim().length > 0;
+  const showValidationError = numberHasInput && !isValidNumber;
 
   const handleFetchError = useCallback(async (r: Response) => {
     if (r.status === 403) {
@@ -103,6 +124,7 @@ export default function PhoneDialerPage() {
   };
 
   const callSingle = async (phone: string, name?: string, contactId?: number) => {
+    if (!validatePhoneNumber(phone)) { setError('Invalid phone number format'); return; }
     setError('');
     setLoading(true);
     setCallStarting(true);
@@ -121,6 +143,33 @@ export default function PhoneDialerPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error — check your connection and try again');
       setCallStarting(false);
+    }
+    setLoading(false);
+  };
+
+  const launchDialingSession = async () => {
+    const nums = recentContacts.map(c => ({ phone: c.phone, name: c.name }));
+    if (nums.length === 0) { navigate('/phone/sessions'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const r = await fetch(apiUrl('twilio/dialing/start'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }),
+      });
+      if (await handleFetchError(r)) { setLoading(false); return; }
+      const d = await r.json();
+      const batchCalls = d.calls as BatchResult[];
+      const newActiveCalls: ActiveCall[] = batchCalls
+        .filter(c => c.ok && c.callSid)
+        .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' }));
+      addActiveCallsBatch(newActiveCalls);
+      const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
+      try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
+      navigate('/phone/active');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
     }
     setLoading(false);
   };
@@ -159,26 +208,33 @@ export default function PhoneDialerPage() {
             </PhoneCardHeader>
             <div style={{ padding: '20px 24px' }}>
               <div style={{
-                background: 'rgba(0,12,0,0.9)', border: `1px solid ${crt(manualNumber ? 0.3 : 0.12)}`,
+                background: 'rgba(0,12,0,0.9)',
+                border: `1px solid ${showValidationError ? red(0.4) : crt(manualNumber ? 0.3 : 0.12)}`,
                 padding: '14px 18px', marginBottom: 8, borderRadius: 8,
                 transition: 'border-color 0.3s ease',
                 boxShadow: manualNumber ? `inset 0 0 20px ${crt(0.03)}` : 'none',
               }}>
-                <div style={{ fontSize: '0.4rem', color: crt(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
+                <div style={{ fontSize: '0.4rem', color: showValidationError ? red(0.6) : crt(0.2), letterSpacing: '0.2em', marginBottom: 4 }}>NUMBER INPUT</div>
                 <input
                   value={manualNumber}
                   onChange={e => setManualNumber(e.target.value)}
                   placeholder="Enter phone number..."
                   style={{
                     width: '100%', background: 'transparent', border: 'none',
-                    color: crt(0.95), fontSize: '1.6rem', fontFamily: "'Share Tech Mono', monospace",
+                    color: showValidationError ? red(0.8) : crt(0.95), fontSize: '1.6rem', fontFamily: "'Share Tech Mono', monospace",
                     outline: 'none', letterSpacing: '0.08em',
-                    textShadow: manualNumber ? `0 0 10px ${crt(0.2)}` : 'none',
+                    textShadow: manualNumber ? `0 0 10px ${showValidationError ? red(0.2) : crt(0.2)}` : 'none',
                   }}
-                  onKeyDown={e => { if (e.key === 'Enter' && manualNumber.trim()) callSingle(manualNumber); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && isValidNumber) callSingle(manualNumber); }}
                 />
-                {formattedDisplay && formattedDisplay !== manualNumber && (
+                {formattedDisplay && formattedDisplay !== manualNumber && !showValidationError && (
                   <div style={{ fontSize: '0.55rem', color: crt(0.3), marginTop: 4 }}>{formattedDisplay}</div>
+                )}
+                {showValidationError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <AlertCircle size={10} style={{ color: red(0.7), flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.48rem', color: red(0.7) }}>Invalid format — enter 10-digit US or E.164 number</span>
+                  </div>
                 )}
               </div>
 
@@ -221,10 +277,10 @@ export default function PhoneDialerPage() {
                   ← DEL
                 </PhoneBtn>
                 <PhoneBtn
-                  onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }}
-                  disabled={!manualNumber.trim() || loading}
-                  color={manualNumber.trim() ? (o: number) => `rgba(0,220,60,${o})` : crt}
-                  glow={!!manualNumber.trim()}
+                  onClick={() => { if (isValidNumber) callSingle(manualNumber); }}
+                  disabled={!isValidNumber || loading}
+                  color={isValidNumber ? (o: number) => `rgba(0,220,60,${o})` : crt}
+                  glow={isValidNumber}
                   style={{ flex: 2, justifyContent: 'center', height: 48 }}
                   size="lg"
                 >
@@ -277,6 +333,50 @@ export default function PhoneDialerPage() {
             <StatBlock label="CALLS TODAY" value={recentCalls.filter(c => new Date(c.startedAt).toDateString() === new Date().toDateString()).length} sub="outbound" color={blue} />
             <StatBlock label="SYSTEM" value="READY" sub="all lines open" color={crt} />
           </div>
+
+          <PhoneCard>
+            <PhoneCardHeader accent={purple(0.6)}>DIALING MODE</PhoneCardHeader>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {MODES.map(m => {
+                  const isSel = dialingMode === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      onClick={() => setDialingMode(m.key)}
+                      style={{
+                        flex: 1, padding: '10px 8px', textAlign: 'center', borderRadius: 8, cursor: 'pointer',
+                        background: isSel ? `linear-gradient(135deg, ${m.color(0.12)}, ${m.color(0.03)})` : 'rgba(0,12,0,0.5)',
+                        border: `1px solid ${isSel ? m.color(0.35) : crt(0.08)}`,
+                        transition: 'all 0.15s',
+                        boxShadow: isSel ? `0 0 10px ${m.color(0.06)}` : 'none',
+                      }}
+                    >
+                      <div style={{ fontSize: '1.1rem', marginBottom: 4 }}>{m.icon}</div>
+                      <div style={{ fontSize: '0.52rem', color: isSel ? m.color(0.9) : crt(0.5), letterSpacing: '0.08em', marginBottom: 2 }}>{m.label}</div>
+                      <div style={{ fontSize: '0.38rem', color: isSel ? m.color(0.45) : crt(0.2), lineHeight: 1.4 }}>{m.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <PhoneBtn
+                  onClick={launchDialingSession}
+                  disabled={recentContacts.length === 0 || loading}
+                  color={(o: number) => `rgba(0,220,60,${o})`}
+                  glow={recentContacts.length > 0}
+                  style={{ flex: 1, justifyContent: 'center', height: 44 }}
+                  size="lg"
+                >
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
+                  {loading ? 'STARTING...' : `LAUNCH SESSION (${recentContacts.length} contacts)`}
+                </PhoneBtn>
+                <PhoneBtn onClick={() => navigate('/phone/sessions')} style={{ flexShrink: 0 }} title="Full session controls">
+                  <ArrowRight size={13} />
+                </PhoneBtn>
+              </div>
+            </div>
+          </PhoneCard>
 
           <PhoneCard>
             <PhoneCardHeader style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -357,7 +457,7 @@ export default function PhoneDialerPage() {
             <div style={{ padding: '14px 16px' }}>
               {[
                 ['0-9, *, #', 'Dial keys (type directly)'],
-                ['Enter', 'Initiate call immediately'],
+                ['Enter', 'Initiate call (valid numbers only)'],
                 ['Backspace', 'Delete last digit'],
                 ['Esc', 'Clear number field'],
               ].map(([k, v]) => (

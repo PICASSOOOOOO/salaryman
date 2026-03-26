@@ -247,14 +247,32 @@ router.post("/twilio/call/:callSid/mute", requireAuth, async (req, res) => {
         await client.conferences(conferenceSid).participants(callSid).update({ muted: !!muted });
       }
     } else {
+      // For non-conference calls, move the call into a single-party conference so
+      // real muting (participant-level) works without hanging up or re-dialing.
+      const confName = `mute-${callSid}-${Date.now()}`;
+      await client.calls(callSid).update({
+        twiml: `<Response><Dial><Conference waitUrl="" beep="false" startConferenceOnEnter="true" endConferenceOnExit="true">${confName}</Conference></Dial></Response>`,
+      });
+      // Give Twilio a moment to create the conference, then mute if needed
       if (muted) {
-        await client.calls(callSid).update({
-          twiml: '<Response><Pause length="3600"/></Response>',
-        });
-      } else {
-        await client.calls(callSid).update({
-          twiml: `<Response><Dial>${call.to}</Dial></Response>`,
-        });
+        await new Promise(r => setTimeout(r, 600));
+        try {
+          const conferences = await client.conferences.list({ friendlyName: confName, status: "in-progress", limit: 1 });
+          if (conferences[0]) {
+            const parts = await client.conferences(conferences[0].sid).participants.list();
+            const part = parts.find(p => p.callSid === callSid);
+            if (part) {
+              await client.conferences(conferences[0].sid).participants(callSid).update({ muted: true });
+              console.log(`[CalllHome] mute: participant muted in conference ${conferences[0].sid}`);
+            } else {
+              console.warn(`[CalllHome] mute: participant ${callSid} not found in conference ${conferences[0].sid}`);
+            }
+          } else {
+            console.warn(`[CalllHome] mute: conference ${confName} not yet in-progress after bridge transition`);
+          }
+        } catch (muteErr: unknown) {
+          console.warn("[CalllHome] mute: best-effort conference mute failed:", muteErr instanceof Error ? muteErr.message : muteErr);
+        }
       }
     }
     res.json({ ok: true, muted: !!muted });
@@ -284,14 +302,42 @@ router.post("/twilio/call/:callSid/hold", requireAuth, async (req, res) => {
         await client.conferences(conferenceSid).participants(callSid).update({ hold: false });
       }
     } else {
+      // For non-conference calls, move into a temporary conference so hold/resume
+      // works via participant-level control rather than re-dialing a new outbound leg.
       if (hold) {
+        const confName = `hold-${callSid}-${Date.now()}`;
         await client.calls(callSid).update({
-          twiml: '<Response><Play loop="0">https://com.twilio.music.classical.s3.amazonaws.com/BachGavotteShort.mp3</Play></Response>',
+          twiml: `<Response><Dial><Conference waitUrl="https://com.twilio.music.classical.s3.amazonaws.com/BachGavotteShort.mp3" beep="false" startConferenceOnEnter="true" endConferenceOnExit="true">${confName}</Conference></Dial></Response>`,
         });
+        await new Promise(r => setTimeout(r, 600));
+        try {
+          const conferences = await client.conferences.list({ friendlyName: confName, status: "in-progress", limit: 1 });
+          if (conferences[0]) {
+            await client.conferences(conferences[0].sid).participants(callSid).update({ hold: true, holdUrl: "https://com.twilio.music.classical.s3.amazonaws.com/BachGavotteShort.mp3" });
+            console.log(`[CalllHome] hold: participant held in conference ${conferences[0].sid}`);
+          } else {
+            console.warn(`[CalllHome] hold: conference ${confName} not yet in-progress after bridge transition`);
+          }
+        } catch (holdErr: unknown) {
+          console.warn("[CalllHome] hold: best-effort conference hold failed:", holdErr instanceof Error ? holdErr.message : holdErr);
+        }
       } else {
-        await client.calls(callSid).update({
-          twiml: `<Response><Dial>${call.to}</Dial></Response>`,
-        });
+        // Resume: remove hold from conference participant (audio resumes in the conference bridge)
+        try {
+          const liveConfs = await client.conferences.list({ status: "in-progress", limit: 20 });
+          let resumed = false;
+          for (const conf of liveConfs) {
+            if (conf.friendlyName.startsWith(`hold-${callSid}`)) {
+              await client.conferences(conf.sid).participants(callSid).update({ hold: false });
+              console.log(`[CalllHome] hold: participant resumed in conference ${conf.sid}`);
+              resumed = true;
+              break;
+            }
+          }
+          if (!resumed) console.warn(`[CalllHome] hold: no active hold conference found for callSid ${callSid}`);
+        } catch (resumeErr: unknown) {
+          console.warn("[CalllHome] hold: best-effort resume failed:", resumeErr instanceof Error ? resumeErr.message : resumeErr);
+        }
       }
     }
     res.json({ ok: true, onHold: !!hold });
@@ -1305,6 +1351,44 @@ router.get("/twilio/call-status/:callSid", requireAuth, async (req, res) => {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] status error:", _msg);
     res.status(500).json({ error: "Failed to fetch call status" });
+  }
+});
+
+router.post("/twilio/call-status-batch", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { callSids } = req.body;
+    if (!Array.isArray(callSids) || callSids.length === 0) {
+      res.status(400).json({ error: "callSids array required" });
+      return;
+    }
+    const client = getTwilioClient();
+    const results = await Promise.allSettled(
+      callSids.map(async (callSid: string) => {
+        const owned = await verifyCallOwnership(userId, callSid);
+        if (!owned) return { callSid, error: "not authorized" };
+        const call = await client.calls(callSid).fetch();
+        const isEnded = ["completed", "failed", "busy", "no-answer", "canceled"].includes(call.status);
+        await db
+          .update(callHistoryTable)
+          .set({
+            status: call.status,
+            durationSeconds: call.duration ? parseInt(call.duration, 10) : undefined,
+            endedAt: isEnded ? new Date() : undefined,
+          })
+          .where(and(eq(callHistoryTable.twilioCallSid, callSid), eq(callHistoryTable.userId, userId)));
+        return { callSid: call.sid, status: call.status, duration: call.duration };
+      })
+    );
+    const statuses = results.map((r, i) => {
+      if (r.status === "fulfilled") return r.value;
+      return { callSid: callSids[i], error: (r.reason as Error)?.message ?? "Failed" };
+    });
+    res.json({ ok: true, statuses });
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] batch status error:", _msg);
+    res.status(500).json({ error: "Failed to fetch batch call status" });
   }
 });
 

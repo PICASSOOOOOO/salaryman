@@ -4442,6 +4442,18 @@ export default function WorldPlay() {
         g.peers.delete(m.id);
         setOnline(prev => prev.filter(p => p.id !== m.id));
         setChatMsgs(prev => [...prev, { id: seq++, from: 'SERVER', text: `${m.name} left.` }]);
+        // If this player was in a phone call with us, clean up call state
+        const curCall = phoneCallRef.current;
+        if (curCall.peerId === m.id && curCall.status !== 'idle') {
+          if (phoneRingTimerRef.current) { clearTimeout(phoneRingTimerRef.current); phoneRingTimerRef.current = null; }
+          if (curCall.roomId) {
+            peerConnectionsRef.current.forEach(p => p.close());
+            peerConnectionsRef.current.clear();
+          }
+          setPhoneCall({ status: 'idle', peerId: null, peerName: null, roomId: null });
+          phoneCallRef.current = { status: 'idle', peerId: null, peerName: null, roomId: null };
+          setNarr(`> CALL DROPPED — ${m.name} disconnected from the city.`);
+        }
       } else if (m.type === 'chat') {
         setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: m.from, text: m.text, dm: m.room === 'dm' }]);
         if (!chatOpen) setUnread(n => n + 1);
