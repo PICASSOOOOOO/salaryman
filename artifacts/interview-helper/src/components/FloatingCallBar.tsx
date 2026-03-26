@@ -1,0 +1,275 @@
+import { useState } from 'react';
+import { PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, ChevronUp, ChevronDown, X, Phone } from 'lucide-react';
+import { useActiveCallContext } from '@/contexts/ActiveCallContext';
+import { SignalMeter } from '@/pages/phone/PhoneLayout';
+import {
+  crt, red, amber, blue, ENDED_STATUSES, formatPhone, callStatusToSignalLevel,
+} from '@/lib/phone-utils';
+
+function ElapsedCompact({ seconds }: { seconds: number }) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return (
+    <span style={{
+      fontFamily: "'Share Tech Mono', monospace",
+      fontSize: '0.65rem',
+      color: crt(0.85),
+      fontVariantNumeric: 'tabular-nums',
+      letterSpacing: '0.08em',
+    }}>
+      {String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}
+    </span>
+  );
+}
+
+function TransferInput({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: (num: string) => void;
+  onCancel: () => void;
+}) {
+  const [val, setVal] = useState('');
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '8px 12px', borderTop: `1px solid ${blue(0.15)}`, background: 'rgba(0,150,255,0.04)' }}>
+      <input
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        placeholder="Transfer to number..."
+        onKeyDown={e => { if (e.key === 'Enter' && val.trim()) onConfirm(val); if (e.key === 'Escape') onCancel(); }}
+        autoFocus
+        style={{
+          flex: 1, background: 'rgba(0,0,0,0.5)', border: `1px solid ${blue(0.25)}`, borderRadius: 4,
+          color: crt(0.85), fontSize: '0.6rem', padding: '4px 8px', outline: 'none',
+          fontFamily: "'Share Tech Mono', monospace",
+        }}
+      />
+      <button
+        onClick={() => { if (val.trim()) onConfirm(val); }}
+        style={{
+          background: blue(0.15), border: `1px solid ${blue(0.35)}`, borderRadius: 4,
+          color: blue(0.9), fontSize: '0.55rem', padding: '4px 8px', cursor: 'pointer',
+          fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em',
+        }}
+      >XFER</button>
+      <button
+        onClick={onCancel}
+        style={{ background: 'none', border: 'none', color: crt(0.3), cursor: 'pointer', padding: 2 }}
+      ><X size={12} /></button>
+    </div>
+  );
+}
+
+function CallRow({
+  call,
+  onMute,
+  onHold,
+  onTransfer,
+  onHangup,
+}: {
+  call: { callSid: string; name: string; phone: string; status: string; elapsed: number; muted?: boolean; onHold?: boolean; signalLevel?: number };
+  onMute: () => void;
+  onHold: () => void;
+  onTransfer: () => void;
+  onHangup: () => void;
+}) {
+  const isLive = call.status === 'in-progress';
+  const isRinging = call.status === 'ringing';
+  const sig = call.signalLevel ?? callStatusToSignalLevel(call.status);
+  const accentColor = isLive ? crt : isRinging ? amber : crt;
+
+  const btnBase: React.CSSProperties = {
+    background: 'none',
+    border: `1px solid ${crt(0.12)}`,
+    borderRadius: 4,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 5,
+    transition: 'all 0.15s',
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '8px 14px',
+      borderBottom: `1px solid ${crt(0.05)}`,
+    }}>
+      <div style={{
+        width: 30, height: 30, borderRadius: 7, flexShrink: 0,
+        background: `linear-gradient(135deg, ${accentColor(0.1)}, transparent)`,
+        border: `1px solid ${accentColor(0.2)}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative',
+      }}>
+        {isRinging ? (
+          <Phone size={13} style={{ color: amber(0.8), animation: 'pulse 0.5s infinite' }} />
+        ) : (
+          <span style={{ fontSize: '0.75rem', color: accentColor(0.7) }}>
+            {call.name?.[0]?.toUpperCase() || '#'}
+          </span>
+        )}
+        <div style={{
+          position: 'absolute', bottom: -2, right: -2,
+          width: 7, height: 7, borderRadius: '50%',
+          background: isLive ? crt(0.9) : isRinging ? amber(0.8) : crt(0.3),
+          border: '1.5px solid rgba(0,10,0,0.9)',
+          boxShadow: isLive ? `0 0 5px ${crt(0.5)}` : 'none',
+        }} />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.65rem', color: crt(0.9), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {call.name || formatPhone(call.phone)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <span style={{ fontSize: '0.48rem', color: isLive ? crt(0.5) : isRinging ? amber(0.6) : crt(0.3), letterSpacing: '0.1em' }}>
+            {isLive ? 'LIVE' : isRinging ? 'RING' : call.status.toUpperCase().slice(0, 6)}
+          </span>
+          {isLive && <ElapsedCompact seconds={call.elapsed} />}
+          <SignalMeter level={sig} max={5} color={isLive ? crt : isRinging ? amber : undefined} />
+          {call.muted && <span style={{ fontSize: '0.42rem', color: amber(0.7) }}>MUTED</span>}
+          {call.onHold && <span style={{ fontSize: '0.42rem', color: amber(0.7) }}>HOLD</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        <button
+          onClick={onMute}
+          title={call.muted ? 'Unmute' : 'Mute'}
+          style={{ ...btnBase, borderColor: call.muted ? amber(0.4) : crt(0.12), color: call.muted ? amber(0.8) : crt(0.5) }}
+        >
+          {call.muted ? <MicOff size={12} /> : <Mic size={12} />}
+        </button>
+        <button
+          onClick={onHold}
+          title={call.onHold ? 'Resume' : 'Hold'}
+          style={{ ...btnBase, borderColor: call.onHold ? amber(0.4) : crt(0.12), color: call.onHold ? amber(0.8) : crt(0.5) }}
+        >
+          {call.onHold ? <PlayCircle size={12} /> : <PauseCircle size={12} />}
+        </button>
+        <button
+          onClick={onTransfer}
+          title="Transfer"
+          style={{ ...btnBase, borderColor: blue(0.25), color: blue(0.7) }}
+        >
+          <ArrowRightLeft size={12} />
+        </button>
+        <button
+          onClick={onHangup}
+          title="Hang Up"
+          style={{ ...btnBase, borderColor: red(0.4), color: red(0.85), background: 'rgba(255,40,40,0.05)' }}
+        >
+          <PhoneOff size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ActiveCallBar() {
+  const { activeCalls, toggleMute, toggleHold, transferCall, hangupOne } = useActiveCallContext();
+  const [expanded, setExpanded] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<string | null>(null);
+
+  const liveCalls = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status));
+
+  if (liveCalls.length === 0) return null;
+
+  const primary = liveCalls[0];
+  const hasMultiple = liveCalls.length > 1;
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        background: 'linear-gradient(160deg, rgba(2,12,10,0.95) 0%, rgba(0,8,16,0.95) 100%)',
+        borderBottom: `1px solid ${crt(0.15)}`,
+        overflow: 'hidden',
+        fontFamily: "'Share Tech Mono', monospace",
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 14px',
+          borderBottom: expanded || hasMultiple ? `1px solid ${crt(0.08)}` : 'none',
+          cursor: hasMultiple ? 'pointer' : 'default',
+          background: 'rgba(56,189,248,0.02)',
+        }}
+        onClick={() => hasMultiple && setExpanded(e => !e)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: '50%', background: red(0.9),
+            animation: 'pulse 1s infinite', boxShadow: `0 0 6px ${red(0.6)}`,
+            flexShrink: 0,
+          }} />
+          <span style={{ fontSize: '0.52rem', color: crt(0.5), letterSpacing: '0.15em' }}>
+            {liveCalls.length === 1 ? 'ACTIVE CALL' : `${liveCalls.length} ACTIVE CALLS`}
+          </span>
+          {!expanded && !hasMultiple && (
+            <>
+              <span style={{ fontSize: '0.52rem', color: crt(0.2) }}>·</span>
+              <span style={{ fontSize: '0.6rem', color: crt(0.8), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {primary.name || formatPhone(primary.phone)}
+              </span>
+              {primary.status === 'in-progress' && (
+                <>
+                  <span style={{ fontSize: '0.52rem', color: crt(0.2) }}>·</span>
+                  <ElapsedCompact seconds={primary.elapsed} />
+                </>
+              )}
+            </>
+          )}
+        </div>
+        {hasMultiple && (
+          <div style={{ color: crt(0.35), display: 'flex', alignItems: 'center' }}>
+            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </div>
+        )}
+      </div>
+
+      {(!hasMultiple || expanded) ? (
+        liveCalls.map(call => (
+          <div key={call.callSid}>
+            <CallRow
+              call={call}
+              onMute={() => toggleMute(call.callSid, !!call.muted)}
+              onHold={() => toggleHold(call.callSid, !!call.onHold)}
+              onTransfer={() => setTransferTarget(t => t === call.callSid ? null : call.callSid)}
+              onHangup={() => hangupOne(call.callSid)}
+            />
+            {transferTarget === call.callSid && (
+              <TransferInput
+                onConfirm={(num) => { transferCall(call.callSid, num); setTransferTarget(null); }}
+                onCancel={() => setTransferTarget(null)}
+              />
+            )}
+          </div>
+        ))
+      ) : (
+        <>
+          <CallRow
+            call={primary}
+            onMute={() => toggleMute(primary.callSid, !!primary.muted)}
+            onHold={() => toggleHold(primary.callSid, !!primary.onHold)}
+            onTransfer={() => setTransferTarget(t => t === primary.callSid ? null : primary.callSid)}
+            onHangup={() => hangupOne(primary.callSid)}
+          />
+          {transferTarget === primary.callSid && (
+            <TransferInput
+              onConfirm={(num) => { transferCall(primary.callSid, num); setTransferTarget(null); }}
+              onCancel={() => setTransferTarget(null)}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}

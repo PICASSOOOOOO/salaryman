@@ -8,6 +8,8 @@ import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
+import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
+import { ActiveCallBar } from "@/components/FloatingCallBar";
 
 const Home = lazy(() => import("@/pages/Home"));
 const Cover = lazy(() => import("@/pages/Cover"));
@@ -103,6 +105,13 @@ function HomeOrCover() {
   return <MemoHome />;
 }
 
+const FLOATING_BAR_ROUTES = [
+  "/",
+  "/console",
+  "/business",
+  "/intel",
+];
+
 function AppShell() {
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
@@ -118,6 +127,11 @@ function AppShell() {
   const isKeepAliveActive = isHome || isConsole;
 
   const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+
+  const isPhoneRoute = pathname === "/phone" || pathname.startsWith("/phone/");
+  const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
+  const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
+    FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
 
   useEffect(() => {
     if (isGameRoute) {
@@ -139,6 +153,7 @@ function AppShell() {
           <MobileSubNav />
         </div>
       )}
+      {showFloatingBar && <ActiveCallBar />}
       {/* Keep-alive panels */}
       <Suspense fallback={isHome ? <CRTFallback /> : null}>
         <div style={{ display: isHome ? "block" : "none" }}>
@@ -298,14 +313,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <NavBarVisibilityProvider>
-            <FeatureStateProvider>
-              <AppShell />
-            </FeatureStateProvider>
-          </NavBarVisibilityProvider>
-        </WouterRouter>
-        <Toaster />
+        <ActiveCallProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <NavBarVisibilityProvider>
+              <FeatureStateProvider>
+                <AppShell />
+              </FeatureStateProvider>
+            </NavBarVisibilityProvider>
+          </WouterRouter>
+          <Toaster />
+        </ActiveCallProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

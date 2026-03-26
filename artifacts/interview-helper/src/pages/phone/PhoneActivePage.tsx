@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform, SignalMeter, INPUT_STYLE } from './PhoneLayout';
+import { useActiveCallContext } from '@/contexts/ActiveCallContext';
 import {
   crt, red, amber, blue, purple, formatPhone, formatDuration, ENDED_STATUSES,
-  loadActiveCalls, saveActiveCalls,
+  saveActiveCalls, callStatusToSignalLevel,
   type ActiveCall,
 } from '@/lib/phone-utils';
 
@@ -77,20 +78,16 @@ export default function PhoneActivePage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
 
-  const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
+  const { activeCalls, setActiveCalls, toggleMute, toggleHold, transferCall: ctxTransfer, hangupOne, hangupAll } = useActiveCallContext();
+
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
   const [transferNumber, setTransferNumber] = useState('');
   const [error, setError] = useState('');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
   const [advancingNext, setAdvancingNext] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const activeCallsRef = useRef<ActiveCall[]>(activeCalls);
-  activeCallsRef.current = activeCalls;
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
-  useEffect(() => { saveActiveCalls(activeCalls); }, [activeCalls]);
   useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
 
   const fetchHistory = useCallback(async () => {
@@ -108,51 +105,6 @@ export default function PhoneActivePage() {
     }
   }, [apiUrl, userId, navigate]);
 
-  useEffect(() => {
-    if (activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length > 0) startPolling();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
-  const startPolling = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setActiveCalls(prev => prev.map(c => ({ ...c, elapsed: Math.floor((Date.now() - c.startTime) / 1000) })));
-    }, 1000);
-    pollRef.current = setInterval(async () => {
-      const current = activeCallsRef.current.filter(c => c.callSid && !ENDED_STATUSES.includes(c.status));
-      if (current.length === 0) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        if (timerRef.current) clearInterval(timerRef.current);
-        fetchHistory();
-        return;
-      }
-      try {
-        const callSids = current.map(c => c.callSid);
-        const r = await fetch(apiUrl('twilio/call-status-batch'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ callSids }),
-        });
-        if (r.status === 403) { navigate('/upgrade'); return; }
-        if (!r.ok) { console.warn('[CalllHome] batch poll failed', r.status); return; }
-        const d = await r.json();
-        if (d.statuses) {
-          setActiveCalls(prev => prev.map(ac => {
-            const found = d.statuses.find((s: { callSid: string; status?: string }) => s.callSid === ac.callSid);
-            return found?.status ? { ...ac, status: found.status } : ac;
-          }));
-        }
-      } catch (e: unknown) { 
-        console.warn('[CalllHome] poll error:', e instanceof Error ? e.message : e);
-        setError('Could not sync call status');
-      }
-    }, 3000);
-  };
-
   const advanceSession = async () => {
     if (!dialingSession || advancingNext) return;
     setAdvancingNext(true);
@@ -167,7 +119,6 @@ export default function PhoneActivePage() {
         const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' };
         setActiveCalls(prev => [...prev, newCall]);
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
-        startPolling();
       } else if (d.skipped) {
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
         setError(`Skipped: ${d.error || 'Invalid number'}`);
@@ -190,66 +141,49 @@ export default function PhoneActivePage() {
     }
   };
 
-  const handleApiError = async (r: Response) => {
-    if (r.status === 403) {
-      const d = await r.json().catch(() => ({}));
-      setError(d.error || 'Access denied — phone system subscription required.');
-      navigate('/upgrade');
-      return true;
+  const handleMute = async (sid: string, currentMuted: boolean) => {
+    const result = await toggleMute(sid, currentMuted);
+    if (!result.ok) {
+      if (result.status === 403) { navigate('/upgrade'); return; }
+      setError(result.error || 'Could not mute call');
     }
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      setError(d.error || `Request failed (${r.status})`);
-      return true;
+  };
+
+  const handleHold = async (sid: string, currentHold: boolean) => {
+    const result = await toggleHold(sid, currentHold);
+    if (!result.ok) {
+      if (result.status === 403) { navigate('/upgrade'); return; }
+      setError(result.error || 'Could not hold call');
     }
-    return false;
   };
 
-  const toggleMute = async (sid: string, currentMuted: boolean) => {
-    try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/mute`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: !currentMuted }) });
-      if (await handleApiError(r)) return;
-      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, muted: !currentMuted } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not mute call'); }
-  };
-
-  const toggleHold = async (sid: string, currentHold: boolean) => {
-    try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/hold`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hold: !currentHold }) });
-      if (await handleApiError(r)) return;
-      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, onHold: !currentHold } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not hold call'); }
-  };
-
-  const transferCall = async (sid: string) => {
+  const handleTransfer = async (sid: string) => {
     if (!transferNumber.trim()) return;
-    try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/transfer`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transferTo: transferNumber }) });
-      if (await handleApiError(r)) return;
-      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'transferred' } : c));
-      setTransferTarget(null); setTransferNumber('');
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — transfer failed'); }
+    const result = await ctxTransfer(sid, transferNumber);
+    if (!result.ok) {
+      if (result.status === 403) { navigate('/upgrade'); return; }
+      setError(result.error || 'Transfer failed');
+    } else {
+      setTransferTarget(null);
+      setTransferNumber('');
+    }
   };
 
-  const hangupOne = async (sid: string) => {
-    try {
-      const r = await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
-      if (await handleApiError(r)) return;
-      setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — hang up failed'); }
+  const handleHangup = async (sid: string) => {
+    const result = await hangupOne(sid);
+    if (!result.ok) {
+      if (result.status === 403) { navigate('/upgrade'); return; }
+      setError(result.error || 'Could not hang up');
+    }
   };
 
-  const hangupAll = async () => {
-    const sids = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).map(c => c.callSid);
-    if (sids.length === 0) return;
-    try {
-      const r = await fetch(apiUrl('twilio/hangup-all'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callSids: sids }) });
-      if (await handleApiError(r)) return;
-      setActiveCalls(prev => prev.map(c => ({ ...c, status: 'completed' })));
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (pollRef.current) clearInterval(pollRef.current);
-      fetchHistory();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — hang up all failed'); }
+  const handleHangupAll = async () => {
+    const result = await hangupAll();
+    if (!result.ok) {
+      if (result.status === 403) { navigate('/upgrade'); return; }
+      setError(result.error || 'Could not hang up all');
+    }
+    fetchHistory();
   };
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
@@ -289,7 +223,7 @@ export default function PhoneActivePage() {
       }
       actions={
         liveCount > 0 ? (
-          <PhoneBtn onClick={hangupAll} color={red} glow>
+          <PhoneBtn onClick={handleHangupAll} color={red} glow>
             <PhoneOff size={14} /> HANG UP ALL ({liveCount})
           </PhoneBtn>
         ) : undefined
@@ -440,6 +374,12 @@ export default function PhoneActivePage() {
                           </span>
                           <span style={{ color: crt(0.12) }}>·</span>
                           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDuration(c.elapsed)}</span>
+                          {!ended && (
+                            <SignalMeter
+                              level={c.signalLevel ?? callStatusToSignalLevel(c.status)}
+                              color={isLive ? crt : isRinging ? amber : undefined}
+                            />
+                          )}
                           {c.direction === 'inbound' && <span style={{ color: blue(0.7) }}>↙ IN</span>}
                           {c.muted && <span style={{ color: amber(0.7) }}>🔇 MUTED</span>}
                           {c.onHold && <span style={{ color: amber(0.7) }}>⏸ HOLD</span>}
@@ -447,16 +387,16 @@ export default function PhoneActivePage() {
                       </div>
                       {!ended && (
                         <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-                          <PhoneBtn onClick={() => toggleMute(c.callSid, !!c.muted)} color={c.muted ? amber : crt} size="sm" title={c.muted ? 'Unmute' : 'Mute'}>
+                          <PhoneBtn onClick={() => handleMute(c.callSid, !!c.muted)} color={c.muted ? amber : crt} size="sm" title={c.muted ? 'Unmute' : 'Mute'}>
                             {c.muted ? <MicOff size={13} /> : <Mic size={13} />}
                           </PhoneBtn>
-                          <PhoneBtn onClick={() => toggleHold(c.callSid, !!c.onHold)} color={c.onHold ? amber : crt} size="sm" title={c.onHold ? 'Resume' : 'Hold'}>
+                          <PhoneBtn onClick={() => handleHold(c.callSid, !!c.onHold)} color={c.onHold ? amber : crt} size="sm" title={c.onHold ? 'Resume' : 'Hold'}>
                             {c.onHold ? <PlayCircle size={13} /> : <PauseCircle size={13} />}
                           </PhoneBtn>
                           <PhoneBtn onClick={() => setTransferTarget(showTransfer ? null : c.callSid)} color={blue} size="sm" title="Transfer">
                             <ArrowRightLeft size={13} />
                           </PhoneBtn>
-                          <PhoneBtn onClick={() => hangupOne(c.callSid)} color={red} size="sm">
+                          <PhoneBtn onClick={() => handleHangup(c.callSid)} color={red} size="sm">
                             <PhoneOff size={13} />
                           </PhoneBtn>
                         </div>
@@ -466,8 +406,8 @@ export default function PhoneActivePage() {
                   </div>
                   {showTransfer && (
                     <div style={{ padding: '12px 20px', display: 'flex', gap: 8, background: blue(0.03), borderTop: `1px solid ${blue(0.1)}` }}>
-                      <input value={transferNumber} onChange={e => setTransferNumber(e.target.value)} placeholder="Transfer to number..." style={{ ...INPUT_STYLE, flex: 1 }} onKeyDown={e => { if (e.key === 'Enter') transferCall(c.callSid); }} />
-                      <PhoneBtn onClick={() => transferCall(c.callSid)} color={blue} disabled={!transferNumber.trim()}>TRANSFER</PhoneBtn>
+                      <input value={transferNumber} onChange={e => setTransferNumber(e.target.value)} placeholder="Transfer to number..." style={{ ...INPUT_STYLE, flex: 1 }} onKeyDown={e => { if (e.key === 'Enter') handleTransfer(c.callSid); }} />
+                      <PhoneBtn onClick={() => handleTransfer(c.callSid)} color={blue} disabled={!transferNumber.trim()}>TRANSFER</PhoneBtn>
                       <PhoneBtn onClick={() => { setTransferTarget(null); setTransferNumber(''); }} color={red} size="sm"><X size={12} /></PhoneBtn>
                     </div>
                   )}
@@ -489,10 +429,17 @@ export default function PhoneActivePage() {
                 <div style={{ margin: '16px 0 8px' }}>
                   <CallWaveformVisualizer active color={crt} />
                 </div>
-                <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 8 }}>
-                  <SignalMeter level={4} />
-                  <span style={{ fontSize: '0.42rem', color: crt(0.3), marginLeft: 6 }}>SIGNAL STRONG</span>
-                </div>
+                {(() => {
+                  const primaryCall = activeCalls.find(c => c.status === 'in-progress');
+                  const sig = primaryCall ? (primaryCall.signalLevel ?? callStatusToSignalLevel(primaryCall.status)) : 0;
+                  const sigLabel = sig >= 4 ? 'STRONG' : sig >= 2 ? 'FAIR' : sig >= 1 ? 'WEAK' : 'NO SIGNAL';
+                  return (
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 8 }}>
+                      <SignalMeter level={sig} />
+                      <span style={{ fontSize: '0.42rem', color: crt(0.3), marginLeft: 6 }}>SIGNAL {sigLabel}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </PhoneCard>
           )}

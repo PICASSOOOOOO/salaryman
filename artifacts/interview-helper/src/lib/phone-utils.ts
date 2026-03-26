@@ -35,6 +35,18 @@ export interface ActiveCall {
   muted?: boolean;
   onHold?: boolean;
   direction?: string;
+  signalLevel?: number;
+}
+
+export function callStatusToSignalLevel(status: string): number {
+  switch (status) {
+    case 'in-progress': return 5;
+    case 'ringing': return 2;
+    case 'queued':
+    case 'initiated': return 1;
+    case 'reconnecting': return 1;
+    default: return 0;
+  }
 }
 
 export interface BatchResult {
