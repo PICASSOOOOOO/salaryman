@@ -789,20 +789,20 @@ router.post("/twilio/voicemail/webhook", async (req, res) => {
       ? TranscriptionText
       : `[Voicemail from ${From} - ${new Date().toLocaleString()}]`;
 
-    const existingVm = CallSid
+    const existingBySid = RecordingSid
+      ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.recordingSid, RecordingSid)).limit(1)
+      : [];
+    const existingByCall = !existingBySid.length && CallSid
       ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.twilioCallSid, CallSid)).limit(1)
       : [];
-
-    if (existingVm.length > 0) {
-      await db
-        .update(voicemailsTable)
-        .set({
-          recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : existingVm[0].recordingUrl,
-          recordingSid: RecordingSid ?? existingVm[0].recordingSid,
-          durationSeconds: RecordingDuration ? Number(RecordingDuration) : existingVm[0].durationSeconds,
-          transcript: hasTranscription ? transcript : existingVm[0].transcript,
-        })
-        .where(eq(voicemailsTable.id, existingVm[0].id));
+    if (existingBySid.length > 0 || existingByCall.length > 0) {
+      const existingVm = (existingBySid[0] ?? existingByCall[0])!;
+      await db.update(voicemailsTable).set({
+        recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : existingVm.recordingUrl,
+        recordingSid: RecordingSid ?? existingVm.recordingSid,
+        durationSeconds: RecordingDuration ? Number(RecordingDuration) : existingVm.durationSeconds,
+        transcript: hasTranscription ? transcript : existingVm.transcript,
+      }).where(eq(voicemailsTable.id, existingVm.id));
       res.send('<Response></Response>');
       return;
     }
@@ -1649,13 +1649,13 @@ router.post("/twilio/webhook/recording", async (req, res) => {
         }
       }
 
-      const existingByRecording = RecordingSid
+      const existingVmBySid = RecordingSid
         ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.recordingSid, RecordingSid)).limit(1)
         : [];
-      const existingByCall = existingByRecording.length === 0 && CallSid
+      const existingVmByCall = !existingVmBySid.length && CallSid
         ? await db.select().from(voicemailsTable).where(eq(voicemailsTable.twilioCallSid, CallSid)).limit(1)
         : [];
-      const existingVm = existingByRecording.length > 0 ? existingByRecording : existingByCall;
+      const existingVm = existingVmBySid.length ? existingVmBySid : existingVmByCall;
 
       if (existingVm.length === 0) {
         const [vm] = await db

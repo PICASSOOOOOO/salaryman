@@ -34,7 +34,7 @@ export default function PhoneNumbersPage() {
   const fetchNumbers = useCallback(() => {
     fetch(apiUrl('twilio/phone-numbers'))
       .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
+        if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.numbers) setPhoneNumbers(d.numbers); }
         else { setError(`Failed to load phone numbers (${r.status})`); }
       })
@@ -52,13 +52,14 @@ export default function PhoneNumbersPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
+      if (r.status === 403) { rawNavigate('/upgrade'); return; }
       if (r.ok) {
         fetchNumbers();
         setForm({ number: '', label: '', greeting: '', routingMode: 'voicemail' });
         setShowForm(false);
       } else {
-        const d = await r.json();
-        setError(d.error || 'Failed to add number');
+        const d = await r.json().catch(() => ({}));
+        setError((d as { error?: string }).error || 'Failed to add number');
       }
     } catch { setError('Network error'); }
     setAdding(false);
@@ -67,9 +68,9 @@ export default function PhoneNumbersPage() {
   const deleteNumber = async (id: number) => {
     try {
       const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
-      if (r.status === 403) { navigate('/features'); return; }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete number'); return; }
-      fetchNumbers();
+      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.ok) fetchNumbers();
+      else { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete number'); }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
   };
 

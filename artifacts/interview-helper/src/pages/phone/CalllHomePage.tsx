@@ -76,11 +76,13 @@ export default function CalllHomePage() {
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
-  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'unconfigured' | 'no_access'>('checking');
+  const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
-  const plan = usePlan();
+  const { features, trials, isOwner, loading: planLoading } = usePlan();
+
+  const hasPhoneAccess = isOwner || features.has('phone_system') || trials.some(t => t.featureKey === 'phone_system');
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })), 1000);
@@ -89,37 +91,38 @@ export default function CalllHomePage() {
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
-  const hasPhoneAccess = plan.isOwner || plan.features.has('phone_system') || plan.trials.some(t => t.featureKey === 'phone_system');
-
   useEffect(() => {
-    if (plan.loading) return;
-    if (!hasPhoneAccess) {
-      setSystemStatus('no_access');
-      return;
-    }
-    fetch(apiUrl('twilio/system-status'))
+    if (!hasPhoneAccess || planLoading) return;
+    fetch(apiUrl('twilio/phone-numbers'))
       .then(r => {
         if (r.ok) setSystemStatus('online');
-        else if (r.status === 403) setSystemStatus('no_access');
+        else if (r.status === 403) setSystemStatus('no_subscription');
+        else if (r.status === 503 || r.status === 500) setSystemStatus('unconfigured');
         else setSystemStatus('unconfigured');
       })
       .catch(() => setSystemStatus('unconfigured'));
-  }, [apiUrl, plan.loading, hasPhoneAccess]);
+  }, [apiUrl, hasPhoneAccess, planLoading]);
 
   if (!isAuthenticated) {
     return <SignInPage context="Operative credentials required. PHONE SYSTEM access locked." />;
   }
 
-  if (plan.loading) {
+  if (planLoading) {
     return (
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Share Tech Mono', monospace", color: crt(0.3),
-        fontSize: '0.55rem', letterSpacing: '0.2em',
+        fontFamily: "'Share Tech Mono', monospace",
       }}>
-        LOADING...
+        <div style={{ textAlign: 'center', color: crt(0.3) }}>
+          <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em', marginBottom: 12 }}>VERIFYING ACCESS...</div>
+          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: crt(0.3), animation: `pulse 1s infinite ${i * 0.3}s` }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -129,55 +132,63 @@ export default function CalllHomePage() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-        fontFamily: "'Share Tech Mono', monospace", color: crt(0.85),
+        fontFamily: "'Share Tech Mono', monospace",
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
-          maxWidth: 480, width: '100%', margin: '0 32px',
-          border: `1px solid ${amber(0.25)}`, borderRadius: 12,
-          background: 'linear-gradient(135deg, rgba(255,180,0,0.05), rgba(255,180,0,0.01))',
-          padding: '40px 36px', textAlign: 'center',
+          maxWidth: 480, width: '100%', margin: '0 auto', padding: 32, textAlign: 'center',
         }}>
           <div style={{
-            width: 60, height: 60, borderRadius: 14, margin: '0 auto 20px',
-            background: amber(0.1), border: `1px solid ${amber(0.3)}`,
+            width: 64, height: 64, borderRadius: 16,
+            background: `linear-gradient(135deg, ${amber(0.12)}, ${amber(0.03)})`,
+            border: `1px solid ${amber(0.25)}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px',
+            boxShadow: `0 0 30px ${amber(0.08)}`,
           }}>
-            <Lock size={26} style={{ color: amber(0.8) }} />
+            <Lock size={28} style={{ color: amber(0.7) }} />
           </div>
-          <div style={{ fontSize: '0.9rem', color: amber(0.9), letterSpacing: '0.1em', marginBottom: 10 }}>
-            PHONE SYSTEM ACCESS REQUIRED
+          <div style={{ fontSize: '1.1rem', color: crt(0.85), marginBottom: 8, letterSpacing: '0.1em' }}>
+            CALLL HOME — ACCESS REQUIRED
           </div>
-          <div style={{ fontSize: '0.55rem', color: crt(0.4), lineHeight: 1.8, marginBottom: 28, letterSpacing: '0.06em' }}>
-            Calll Home requires a <strong style={{ color: crt(0.6) }}>phone_system subscription</strong> or active trial.<br />
-            Start a 7-day free trial to access the full dialer, voicemail, and all phone features.
+          <div style={{ fontSize: '0.55rem', color: crt(0.4), lineHeight: 1.7, marginBottom: 24 }}>
+            The Calll Home phone system requires an active subscription or free trial.
+            Start your 7-day free trial to get full access to the dialer, call history, voicemail, and all phone features.
           </div>
-          <button
-            onClick={() => navigate('/features')}
-            style={{
-              display: 'block', width: '100%', padding: '14px 24px',
-              background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.06)})`,
-              border: `1px solid ${amber(0.4)}`, borderRadius: 8, cursor: 'pointer',
-              color: amber(0.95), fontSize: '0.6rem', letterSpacing: '0.15em',
-              fontFamily: "'Share Tech Mono', monospace",
-              boxShadow: `0 0 20px ${amber(0.1)}`,
-              marginBottom: 10,
-            }}
-          >
-            START FREE TRIAL →
-          </button>
-          <button
-            onClick={() => navigate('/upgrade')}
-            style={{
-              display: 'block', width: '100%', padding: '10px 24px',
-              background: 'transparent', border: `1px solid ${crt(0.15)}`, borderRadius: 8, cursor: 'pointer',
-              color: crt(0.4), fontSize: '0.55rem', letterSpacing: '0.12em',
-              fontFamily: "'Share Tech Mono', monospace",
-            }}
-          >
-            VIEW PLANS
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={() => navigate('/features')}
+              style={{
+                padding: '12px 24px', fontSize: '0.6rem', letterSpacing: '0.15em',
+                background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.05)})`,
+                border: `1px solid ${amber(0.35)}`,
+                color: amber(0.9), borderRadius: 8, cursor: 'pointer',
+                fontFamily: "'Share Tech Mono', monospace",
+                boxShadow: `0 0 16px ${amber(0.08)}`,
+                transition: 'all 0.2s',
+              }}
+            >
+              START 7-DAY FREE TRIAL
+            </button>
+            <button
+              onClick={() => navigate('/upgrade')}
+              style={{
+                padding: '10px 24px', fontSize: '0.55rem', letterSpacing: '0.12em',
+                background: 'transparent',
+                border: `1px solid ${crt(0.15)}`,
+                color: crt(0.4), borderRadius: 8, cursor: 'pointer',
+                fontFamily: "'Share Tech Mono', monospace",
+                transition: 'all 0.2s',
+              }}
+            >
+              VIEW SUBSCRIPTION PLANS
+            </button>
+          </div>
+          <div style={{ marginTop: 20, fontSize: '0.42rem', color: crt(0.2) }}>
+            $95/mo after trial · Cancel anytime
+          </div>
         </div>
+        <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
       </div>
     );
   }
@@ -219,12 +230,12 @@ export default function CalllHomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 5, height: 5, borderRadius: '50%',
-                background: systemStatus === 'online' ? crt(0.7) : systemStatus === 'unconfigured' ? amber(0.7) : crt(0.2),
+                background: systemStatus === 'online' ? crt(0.7) : (systemStatus === 'unconfigured' || systemStatus === 'no_subscription') ? amber(0.7) : crt(0.2),
                 boxShadow: systemStatus === 'online' ? `0 0 6px ${crt(0.3)}` : 'none',
                 animation: systemStatus === 'online' ? 'pulse 2s infinite' : 'none',
               }} />
               <span style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.12em' }}>
-                {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_access' ? 'NO ACCESS' : '...'}
+                {systemStatus === 'online' ? 'ONLINE' : systemStatus === 'unconfigured' ? 'NO CONFIG' : systemStatus === 'no_subscription' ? 'NO ACCESS' : '...'}
               </span>
             </div>
             <span style={{ fontSize: '0.42rem', color: crt(0.15) }}>│</span>
@@ -247,6 +258,18 @@ export default function CalllHomePage() {
           }}>
             <AlertTriangle size={12} />
             Twilio not configured — contact admin to set up Twilio credentials.
+          </div>
+        )}
+        {systemStatus === 'no_subscription' && (
+          <div style={{
+            margin: '8px 0', padding: '8px 14px',
+            background: 'linear-gradient(90deg, rgba(255,180,0,0.06), rgba(255,180,0,0.02))',
+            border: `1px solid ${amber(0.2)}`, borderRadius: 6,
+            fontSize: '0.48rem', color: amber(0.7), letterSpacing: '0.08em',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <AlertTriangle size={12} />
+            Subscription verification failed. Please check your plan or start a free trial.
           </div>
         )}
 

@@ -40,7 +40,7 @@ export default function PhoneSessionsPage() {
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
       .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
+        if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
         else { setError(`Failed to load contacts (${r.status})`); }
       })
@@ -72,6 +72,7 @@ export default function PhoneSessionsPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
       });
+      if (r.status === 403) { rawNavigate('/upgrade'); return; }
       const d = await r.json();
       if (r.status === 403) {
         setError(d.error || 'Access denied — phone system subscription required.');
@@ -98,9 +99,15 @@ export default function PhoneSessionsPage() {
     if (!dialingSession) return;
     try {
       const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to stop session'); return; }
-      setDialingSession(null);
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (r.ok) {
+        setDialingSession(null);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Failed to stop session');
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Network error — could not stop session');
+    }
   };
 
   const MODES: { key: DialMode; label: string; desc: string; details: string; color: (o: number) => string; icon: string }[] = [

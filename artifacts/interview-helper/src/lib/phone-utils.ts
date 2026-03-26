@@ -9,8 +9,8 @@ export function formatPhone(num: string): string {
   const digits = num.replace(/\D/g, '');
   if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   if (digits.length === 11 && digits[0] === '1') return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  if (num.startsWith('+') && digits.length > 11) return num;
-  if (digits.length > 11) return num;
+  if (num.startsWith('+') && digits.length >= 7) return num;
+  if (digits.length >= 7 && (digits.length < 10 || digits.length > 11)) return num;
   return num;
 }
 

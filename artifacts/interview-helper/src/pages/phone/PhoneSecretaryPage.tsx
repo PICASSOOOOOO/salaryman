@@ -15,6 +15,7 @@ export default function PhoneSecretaryPage() {
   const [secretaryForm, setSecretaryForm] = useState<Partial<SecretaryConfig>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -23,7 +24,7 @@ export default function PhoneSecretaryPage() {
   useEffect(() => {
     fetch(apiUrl('twilio/secretary/config'))
       .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
+        if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) {
           const d = await r.json();
           if (d?.config) { setSecretaryConfig(d.config); setSecretaryForm(d.config); }
@@ -35,16 +36,10 @@ export default function PhoneSecretaryPage() {
             };
             setSecretaryForm(defaults);
           }
-        } else {
-          const defaults: Partial<SecretaryConfig> = {
-            isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
-            businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
-            routingInstructions: null, forwardToNumber: null, afterHoursAction: 'voicemail',
-          };
-          setSecretaryForm(defaults);
         }
       })
-      .catch(() => {
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : 'Failed to load secretary configuration');
         const defaults: Partial<SecretaryConfig> = {
           isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
           businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
@@ -64,15 +59,17 @@ export default function PhoneSecretaryPage() {
         body: JSON.stringify(secretaryForm),
       });
       if (r.status === 403) {
-        const d = await r.json().catch(() => ({}));
-        setError(d.error || 'Access denied — phone system subscription required.');
-        navigate('/features');
+        navigate('/upgrade');
+        return;
       } else if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         setError(d.error || 'Failed to save configuration');
       } else {
         const d = await r.json();
-        setSecretaryConfig(d.config); setSecretaryForm(d.config); setSaved(true); setTimeout(() => setSaved(false), 2500);
+        setSecretaryConfig(d.config);
+        setSecretaryForm(d.config);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
       }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
     setSaving(false);

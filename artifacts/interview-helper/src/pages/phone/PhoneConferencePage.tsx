@@ -32,7 +32,7 @@ export default function PhoneConferencePage() {
   const fetchConferences = useCallback(() => {
     fetch(apiUrl('twilio/conference/list'))
       .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
+        if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.rooms) setConferences(d.rooms); }
         else { setError(`Failed to load conferences (${r.status})`); }
       })
@@ -50,10 +50,15 @@ export default function PhoneConferencePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: confRoomName || 'New Conference' }),
       });
-      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); }
-      else if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || `Failed to create conference (${r.status})`); }
-      else { fetchConferences(); setConfRoomName(''); }
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.ok) {
+        fetchConferences();
+        setConfRoomName('');
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError((d as { error?: string }).error || 'Failed to create conference room');
+      }
+    } catch { setError('Network error — could not create conference room'); }
     setCreating(false);
   };
 
@@ -65,21 +70,25 @@ export default function PhoneConferencePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }),
       });
-      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); return; }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || `Failed to add participant (${r.status})`); return; }
-      setConfAddNumber(''); setConfAddName('');
-      fetchConferences();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.ok) {
+        setConfAddNumber(''); setConfAddName('');
+        fetchConferences();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError((d as { error?: string }).error || 'Failed to add participant to conference');
+      }
+    } catch { setError('Network error — could not add participant'); }
   };
 
   const endConference = async (roomName: string) => {
     setError('');
     try {
       const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST' });
-      if (r.status === 403) { const d = await r.json().catch(() => ({})); setError(d.error || 'Access denied'); navigate('/features'); return; }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to end conference'); return; }
-      fetchConferences();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.ok) fetchConferences();
+      else setError('Failed to end conference');
+    } catch { setError('Network error — could not end conference'); }
   };
 
   const parseParticipants = (json: string | null): Array<{ phone: string; name: string; callSid: string; muted: boolean }> => {

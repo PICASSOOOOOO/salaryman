@@ -53,21 +53,26 @@ export default function PhoneDialerPage() {
 
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
-      .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
-        if (r.ok) { const d = await r.json(); if (d?.contacts) { setRecentContacts(d.contacts.slice(0, 8)); setSpeedDials(d.contacts.slice(0, 4)); } }
-        else if (!r.ok) { setError(`Failed to load contacts (${r.status})`); }
+      .then(r => {
+        if (r.status === 403) { rawNavigate('/upgrade'); return null; }
+        return r.ok ? r.json() : null;
+      })
+      .then(d => {
+        if (d?.contacts) {
+          setRecentContacts(d.contacts.slice(0, 8));
+          setSpeedDials(d.contacts.slice(0, 4));
+        }
       })
       .catch(() => setError('Network error loading contacts'));
 
     fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`))
-      .then(async r => {
-        if (r.status === 403) { navigate('/features'); return; }
-        if (r.ok) { const d = await r.json(); if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); }
-        else if (!r.ok) { setError(`Failed to load call history (${r.status})`); }
+      .then(r => {
+        if (r.status === 403) { rawNavigate('/upgrade'); return null; }
+        return r.ok ? r.json() : null;
       })
-      .catch(() => setError('Network error loading history'));
-  }, [userId, apiUrl, navigate]);
+      .then(d => { if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); })
+      .catch(() => { setError('Failed to load recent calls'); });
+  }, [userId, apiUrl, rawNavigate]);
 
   const playDTMF = (key: string) => {
     setDtmfTone(key);
@@ -114,7 +119,7 @@ export default function PhoneDialerPage() {
       }
       setTimeout(() => navigate('/phone/active'), 600);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Network error');
+      setError(err instanceof Error ? err.message : 'Network error — check your connection and try again');
       setCallStarting(false);
     }
     setLoading(false);

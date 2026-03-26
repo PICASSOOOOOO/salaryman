@@ -70,12 +70,19 @@ export default function PhoneActivePage() {
 
   useEffect(() => { saveActiveCalls(activeCalls); }, [activeCalls]);
 
-  const fetchHistory = useCallback(() => {
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`))
-      .then(async r => {
-        if (r.status === 403) { navigate('/features'); }
-      })
-      .catch((e: unknown) => { console.warn('[CalllHome] history sync error:', e instanceof Error ? e.message : e); });
+  const fetchHistory = useCallback(async () => {
+    try {
+      const r = await fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`));
+      if (r.status === 403) {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Access denied — phone system subscription required.');
+        navigate('/upgrade');
+        return;
+      }
+    } catch (e: unknown) {
+      console.warn('[CalllHome] history sync error:', e instanceof Error ? e.message : e);
+      setError('Could not refresh call history');
+    }
   }, [apiUrl, userId, navigate]);
 
   useEffect(() => {
@@ -103,12 +110,15 @@ export default function PhoneActivePage() {
       try {
         for (const c of current) {
           const r = await fetch(apiUrl(`twilio/call-status/${c.callSid}`));
-          if (r.status === 403) { navigate('/features'); return; }
+          if (r.status === 403) { navigate('/upgrade'); return; }
           if (!r.ok) continue;
           const d = await r.json();
           setActiveCalls(prev => prev.map(ac => ac.callSid === c.callSid ? { ...ac, status: d.status } : ac));
         }
-      } catch (e: unknown) { console.warn('[CalllHome] poll error:', e instanceof Error ? e.message : e); }
+      } catch (e: unknown) { 
+        console.warn('[CalllHome] poll error:', e instanceof Error ? e.message : e);
+        setError('Could not sync call status');
+      }
     }, 3000);
   };
 
@@ -116,7 +126,7 @@ export default function PhoneActivePage() {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
       setError(d.error || 'Access denied — phone system subscription required.');
-      navigate('/features');
+      navigate('/upgrade');
       return true;
     }
     if (!r.ok) {
@@ -132,7 +142,7 @@ export default function PhoneActivePage() {
       const r = await fetch(apiUrl(`twilio/call/${sid}/mute`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: !currentMuted }) });
       if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, muted: !currentMuted } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not mute call'); }
   };
 
   const toggleHold = async (sid: string, currentHold: boolean) => {
@@ -140,7 +150,7 @@ export default function PhoneActivePage() {
       const r = await fetch(apiUrl(`twilio/call/${sid}/hold`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hold: !currentHold }) });
       if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, onHold: !currentHold } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not hold call'); }
   };
 
   const transferCall = async (sid: string) => {
@@ -150,7 +160,7 @@ export default function PhoneActivePage() {
       if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'transferred' } : c));
       setTransferTarget(null); setTransferNumber('');
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — transfer failed'); }
   };
 
   const hangupOne = async (sid: string) => {
@@ -158,7 +168,7 @@ export default function PhoneActivePage() {
       const r = await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
       if (await handleApiError(r)) return;
       setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — hang up failed'); }
   };
 
   const hangupAll = async () => {
@@ -171,7 +181,7 @@ export default function PhoneActivePage() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (pollRef.current) clearInterval(pollRef.current);
       fetchHistory();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — hang up all failed'); }
   };
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;

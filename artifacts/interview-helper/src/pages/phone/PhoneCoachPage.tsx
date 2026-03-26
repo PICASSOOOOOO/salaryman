@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Bot, Send, Loader2, Lightbulb, MessageCircle, BookOpen, Brain, Target, TrendingUp, AlertTriangle, X } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, amber, blue, purple, red,
@@ -14,7 +14,7 @@ interface CoachMessage {
 
 export default function PhoneCoachPage() {
   const BASE = import.meta.env.BASE_URL;
-  const [, navigate] = useLocation();
+  const navigate = useCalllHomeNavigate();
 
   const [aiTranscript, setAiTranscript] = useState('');
   const [aiCoachQuestion, setAiCoachQuestion] = useState('');
@@ -26,6 +26,7 @@ export default function PhoneCoachPage() {
   const [sugLoading, setSugLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'coach' | 'suggestions' | 'notes'>('coach');
   const [error, setError] = useState('');
+  const [saveMsg, setSaveMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
@@ -38,7 +39,7 @@ export default function PhoneCoachPage() {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
       setError(d.error || 'Access denied — phone system subscription required.');
-      navigate('/features');
+      navigate('/upgrade');
       return true;
     }
     if (!r.ok) {
@@ -92,8 +93,19 @@ export default function PhoneCoachPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: aiTranscript }),
       });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to save transcript'); }
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        const errorMsg = (d as { error?: string }).error || 'Failed to save transcript';
+        setError(errorMsg);
+        setSaveMsg({ text: errorMsg, ok: false });
+        setTimeout(() => setSaveMsg(null), 4000);
+      }
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Network error';
+      setError(errorMsg);
+      setSaveMsg({ text: errorMsg, ok: false });
+      setTimeout(() => setSaveMsg(null), 4000);
+    }
   };
 
   const saveDictation = async () => {
@@ -104,9 +116,24 @@ export default function PhoneCoachPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dictationText }),
       });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to save notes'); return; }
-      setDictationText('');
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
+      if (r.ok) {
+        setDictationText('');
+        setError('');
+        setSaveMsg({ text: 'Note saved', ok: true });
+        setTimeout(() => setSaveMsg(null), 2500);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        const errorMsg = (d as { error?: string }).error || 'Failed to save note';
+        setError(errorMsg);
+        setSaveMsg({ text: errorMsg, ok: false });
+        setTimeout(() => setSaveMsg(null), 4000);
+      }
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Network error — note not saved';
+      setError(errorMsg);
+      setSaveMsg({ text: errorMsg, ok: false });
+      setTimeout(() => setSaveMsg(null), 4000);
+    }
   };
 
   const STARTER_QUESTIONS = [
@@ -303,6 +330,11 @@ export default function PhoneCoachPage() {
 
             {activeTab === 'notes' && (
               <div style={{ padding: 16 }}>
+                {saveMsg && (
+                  <div style={{ marginBottom: 10, padding: '8px 12px', background: saveMsg.ok ? 'rgba(0,220,60,0.06)' : 'rgba(255,40,40,0.08)', border: `1px solid ${saveMsg.ok ? 'rgba(0,220,60,0.2)' : 'rgba(255,40,40,0.2)'}`, borderRadius: 6, fontSize: '0.55rem', color: saveMsg.ok ? 'rgba(0,220,60,0.9)' : 'rgba(255,80,80,0.9)' }}>
+                    {saveMsg.text}
+                  </div>
+                )}
                 <label style={{ fontSize: '0.42rem', color: amber(0.4), letterSpacing: '0.2em', display: 'block', marginBottom: 6 }}>QUICK CALL NOTES</label>
                 <textarea
                   value={dictationText}
