@@ -58,7 +58,7 @@ export function RadioPlayer({ playing, mounted, muted, stationId, volume = 1 }: 
     };
 
     audio.addEventListener('ended', onEnded);
-    loadTrack(0);
+    loadTrack(tracks.length > 0 ? Math.floor(Math.random() * tracks.length) : 0);
 
     return () => {
       audio.removeEventListener('ended', onEnded);
@@ -70,7 +70,7 @@ export function RadioPlayer({ playing, mounted, muted, stationId, volume = 1 }: 
 
   useEffect(() => {
     if (!audioRef.current || tracks.length === 0) return;
-    loadTrack(0);
+    loadTrack(Math.floor(Math.random() * tracks.length));
   }, [stationId]);
 
   useEffect(() => {
