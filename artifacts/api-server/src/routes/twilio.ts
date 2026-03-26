@@ -163,9 +163,47 @@ router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/twilio/token", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const apiKeySid = process.env.TWILIO_API_KEY_SID;
+    const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
+    const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
+    if (!accountSid || !apiKeySid || !apiKeySecret) {
+      res.status(503).json({ error: "Twilio API key not configured. Set TWILIO_API_KEY_SID and TWILIO_API_KEY_SECRET." });
+      return;
+    }
+    if (!twimlAppSid) {
+      res.status(503).json({ error: "TWILIO_TWIML_APP_SID not configured. Create a TwiML Application in Twilio Console and set this env var." });
+      return;
+    }
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
+    const token = new AccessToken(accountSid, apiKeySid, apiKeySecret, { identity: userId, ttl: 3600 });
+    const voiceGrant = new VoiceGrant({ incomingAllow: true, outgoingApplicationSid: twimlAppSid });
+    token.addGrant(voiceGrant);
+    res.json({ token: token.toJwt(), identity: userId });
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] token error:", _msg);
+    res.status(500).json({ error: _msg });
+  }
+});
+
+router.post("/twilio/twiml/client-voice", async (req, res) => {
+  const confName = (req.body?.To ?? req.query?.To ?? "") as string;
+  res.set("Content-Type", "text/xml");
+  if (confName && confName.startsWith("conf-")) {
+    res.send(`<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`);
+  } else {
+    res.send(`<Response><Say>Unable to connect. Please try again.</Say></Response>`);
+  }
+});
+
 router.post("/twilio/call", requireAuth, async (req, res) => {
   try {
-    const { recipientNumber, callerName, contactName, contactId, conferenceMode } = req.body;
+    const { recipientNumber, callerName, contactName, contactId } = req.body;
     const userId = getAuthUserId(req);
     if (!recipientNumber || !userId) {
       res.status(400).json({ error: "recipientNumber required" });
@@ -179,13 +217,8 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
 
-    let twiml: string;
-    if (conferenceMode) {
-      const confName = `conf-${userId}-${Date.now()}`;
-      twiml = `<Response><Dial><Conference>${confName}</Conference></Dial></Response>`;
-    } else {
-      twiml = `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`;
-    }
+    const confName = `conf-${userId}-${Date.now()}`;
+    const twiml = `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${confName}</Conference></Dial></Response>`;
 
     const _protocol = "https";
     const _host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
@@ -211,12 +244,12 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
         twilioCallSid: call.sid,
         status: call.status ?? "initiated",
         direction: "outbound",
-        callType: conferenceMode ? "conference" : "single",
+        callType: "conference",
         contactId: contactId ? Number(contactId) : undefined,
       })
       .returning();
 
-    res.json({ ok: true, callSid: call.sid, callId: record.id, status: call.status, to: e164 });
+    res.json({ ok: true, callSid: call.sid, callId: record.id, status: call.status, to: e164, conferenceName: confName });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] call error:", _msg);
@@ -529,7 +562,7 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
     const callerName = getAuthUserId(req);
 
     let dialCount = mode === "predictive" ? Math.min(3, numbers.length) : 1;
-    const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string }> = [];
+    const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
     const _dialingHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
 
@@ -541,12 +574,10 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
         continue;
       }
       try {
-        let twiml: string;
-        if (mode === "auto" && settings?.recordingUrl) {
-          twiml = `<Response><Play>${settings.recordingUrl}</Play></Response>`;
-        } else {
-          twiml = `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`;
-        }
+        const confName = `conf-${userId}-${Date.now()}-${i}`;
+        const twiml = mode === "auto" && settings?.recordingUrl
+          ? `<Response><Play>${settings.recordingUrl}</Play><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${confName}</Conference></Dial></Response>`
+          : `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${confName}</Conference></Dial></Response>`;
         const call = await client.calls.create({
           to: e164,
           from: fromNumber,
@@ -566,7 +597,7 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
           direction: "outbound",
           callType: mode + "_dialing",
         });
-        results.push({ ok: true, phone: e164, name: entry.name, callSid: call.sid });
+        results.push({ ok: true, phone: e164, name: entry.name, callSid: call.sid, conferenceName: confName });
       } catch (e: unknown) {
         results.push({ ok: false, phone: entry.phone, error: e instanceof Error ? e.message : "Failed" });
       }
@@ -618,10 +649,11 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
     const fromNumber = getTwilioNumber();
     const _nextHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
     const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
+    const confName = `conf-${userId}-${Date.now()}`;
     const call = await client.calls.create({
       to: e164,
       from: fromNumber,
-      twiml: `<Response><Dial>${fromNumber}</Dial></Response>`,
+      twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${confName}</Conference></Dial></Response>`,
       ...(_nextStatusUrl && {
         statusCallback: _nextStatusUrl,
         statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -633,7 +665,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
       status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
     });
     await db.update(dialingSessionsTable).set({ dialedCount: dialed + 1 }).where(eq(dialingSessionsTable.id, sessionId));
-    res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1 });
+    res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1, conferenceName: confName });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] dialing next error:", msg);
@@ -1282,10 +1314,11 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
       numbers.map(async (entry: { phone: string; name?: string }) => {
         const e164 = toE164(entry.phone);
         if (!e164) return { ok: false, phone: entry.phone, error: "Invalid number" };
+        const batchConfName = `conf-${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const call = await client.calls.create({
           to: e164,
           from: fromNumber,
-          twiml: `<Response><Say voice="alice">Calll Home connecting you now.</Say><Dial>${fromNumber}</Dial></Response>`,
+          twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="">${batchConfName}</Conference></Dial></Response>`,
           ...(statusCallbackUrl && {
             statusCallback: statusCallbackUrl,
             statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1304,7 +1337,7 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
             callType: "batch",
           })
           .returning();
-        return { ok: true, phone: e164, name: entry.name, callSid: call.sid, callId: record.id, status: call.status };
+        return { ok: true, phone: e164, name: entry.name, callSid: call.sid, callId: record.id, status: call.status, conferenceName: batchConfName };
       })
     );
     const calls = results.map((r, i) => {

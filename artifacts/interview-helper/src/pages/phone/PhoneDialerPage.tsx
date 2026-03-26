@@ -9,6 +9,7 @@ import {
   type CRMContact, type CallRecord, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useTwilioDevice } from '@/lib/useTwilioDevice';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -39,6 +40,7 @@ export default function PhoneDialerPage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
+  const { connectToConference, disconnect: disconnectDevice } = useTwilioDevice({ BASE });
 
   const [manualNumber, setManualNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -138,7 +140,12 @@ export default function PhoneDialerPage() {
       if (await handleFetchError(r)) { setLoading(false); setCallStarting(false); return; }
       const d = await r.json();
       if (d.callSid) {
-        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName });
+        if (d.conferenceName) {
+          connectToConference(d.conferenceName).catch(err => {
+            console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
+          });
+        }
       }
       setTimeout(() => navigate('/phone/active'), 600);
     } catch (err: unknown) {
@@ -162,11 +169,17 @@ export default function PhoneDialerPage() {
       });
       if (await handleFetchError(r)) { setLoading(false); return; }
       const d = await r.json();
-      const batchCalls = d.calls as BatchResult[];
+      const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)
-        .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' }));
+        .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
+      const firstConf = batchCalls.find(c => c.ok && c.conferenceName)?.conferenceName;
+      if (firstConf) {
+        connectToConference(firstConf).catch(err => {
+          console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
+        });
+      }
       const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
       try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
       navigate('/phone/active');

@@ -36,6 +36,7 @@ export interface ActiveCall {
   onHold?: boolean;
   direction?: string;
   signalLevel?: number;
+  conferenceName?: string;
 }
 
 export function callStatusToSignalLevel(status: string): number {

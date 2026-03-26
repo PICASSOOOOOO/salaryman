@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -10,6 +10,7 @@ import {
   saveActiveCalls, callStatusToSignalLevel,
   type ActiveCall,
 } from '@/lib/phone-utils';
+import { useTwilioDevice } from '@/lib/useTwilioDevice';
 
 const SESSION_KEY = 'phone_dialing_session';
 
@@ -77,6 +78,7 @@ export default function PhoneActivePage() {
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
+  const { connectToConference } = useTwilioDevice({ BASE });
 
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, transferCall: ctxTransfer, hangupOne, hangupAll } = useActiveCallContext();
 
@@ -85,6 +87,7 @@ export default function PhoneActivePage() {
   const [error, setError] = useState('');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
   const [advancingNext, setAdvancingNext] = useState(false);
+  const connectedConferenceRef = useRef<string | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -105,6 +108,19 @@ export default function PhoneActivePage() {
     }
   }, [apiUrl, userId, navigate]);
 
+  useEffect(() => {
+    const newlyAnswered = activeCalls.find(ac => {
+      return ac.status === 'in-progress' && ac.conferenceName && ac.conferenceName !== connectedConferenceRef.current;
+    });
+    if (newlyAnswered?.conferenceName) {
+      const confName = newlyAnswered.conferenceName;
+      connectedConferenceRef.current = confName;
+      connectToConference(confName).catch(err => {
+        console.warn('[CalllHome] auto-reconnect to answered conference failed:', err instanceof Error ? err.message : err);
+      });
+    }
+  }, [activeCalls, connectToConference]);
+
   const advanceSession = async () => {
     if (!dialingSession || advancingNext) return;
     setAdvancingNext(true);
@@ -119,6 +135,11 @@ export default function PhoneActivePage() {
         const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' };
         setActiveCalls(prev => [...prev, newCall]);
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
+        if (d.conferenceName) {
+          connectToConference(d.conferenceName).catch(err => {
+            console.warn('[CalllHome] browser device connect failed on next:', err instanceof Error ? err.message : err);
+          });
+        }
       } else if (d.skipped) {
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
         setError(`Skipped: ${d.error || 'Invalid number'}`);

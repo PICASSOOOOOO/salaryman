@@ -11,6 +11,7 @@ import {
   type CRMContact, type ActiveCall, type BatchResult, type CallRecord,
   type VoicemailRecord, type PhoneNumber, type SecretaryConfig, type ConferenceRoom,
 } from '@/lib/phone-utils';
+import { useTwilioDevice } from '@/lib/useTwilioDevice';
 
 type TabMode = 'contacts' | 'dialer' | 'active' | 'history' | 'voicemail' | 'conference' | 'ai' | 'secretary' | 'numbers' | 'dialing';
 
@@ -81,6 +82,7 @@ export function PhoneDialer({
   const purple = (opacity: number) => `rgba(180,0,255,${opacity})`;
 
   const apiUrl = (path: string) => `${BASE}api/${path}`;
+  const { connectToConference } = useTwilioDevice({ BASE });
 
   const fetchContacts = useCallback(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
@@ -216,12 +218,23 @@ export function PhoneDialer({
       });
       const d = await r.json();
       if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }
-      const newCalls: ActiveCall[] = (d.calls as BatchResult[])
-        .filter((c: BatchResult) => c.ok && c.callSid)
-        .map((c: BatchResult) => ({ callSid: c.callSid!, phone: c.phone, name: c.name || '', status: c.status || 'initiated', startTime: Date.now(), elapsed: 0 }));
-      const failCount = d.calls.filter((c: BatchResult) => !c.ok).length;
+      const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
+      const newCalls: ActiveCall[] = batchCalls
+        .filter((c) => c.ok && c.callSid)
+        .map((c) => ({ callSid: c.callSid!, phone: c.phone, name: c.name || '', status: c.status || 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: c.conferenceName }));
+      const failCount = batchCalls.filter((c) => !c.ok).length;
       if (failCount > 0) setError(`${failCount} call(s) failed to initiate`);
-      if (newCalls.length > 0) { setActiveCalls(prev => [...prev, ...newCalls]); startPolling(newCalls); setTab('active'); }
+      if (newCalls.length > 0) {
+        setActiveCalls(prev => [...prev, ...newCalls]);
+        startPolling(newCalls);
+        const firstConf = batchCalls.find(c => c.ok && c.conferenceName)?.conferenceName;
+        if (firstConf) {
+          connectToConference(firstConf).catch(err => {
+            console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
+          });
+        }
+        setTab('active');
+      }
       setSelected(new Set());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
@@ -240,9 +253,14 @@ export function PhoneDialer({
       });
       const d = await r.json();
       if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
-      const newCall: ActiveCall = { callSid: d.callSid, phone: d.to || phone, name: name || '', status: d.status || 'initiated', startTime: Date.now(), elapsed: 0 };
+      const newCall: ActiveCall = { callSid: d.callSid, phone: d.to || phone, name: name || '', status: d.status || 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: d.conferenceName };
       setActiveCalls(prev => [...prev, newCall]);
       startPolling([newCall]);
+      if (d.conferenceName) {
+        connectToConference(d.conferenceName).catch(err => {
+          console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
+        });
+      }
       setTab('active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
@@ -343,8 +361,9 @@ export function PhoneDialer({
       });
       const d = await r.json();
       if (r.ok) {
-        setDialingSession({ id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: d.calls.filter((c: BatchResult) => c.ok).length });
-        const newCalls: ActiveCall[] = d.calls.filter((c: BatchResult) => c.ok).map((c: BatchResult) => ({ callSid: c.callSid ?? '', phone: c.phone, name: c.name || '', status: 'initiated', startTime: Date.now(), elapsed: 0 }));
+        const dialCalls = d.calls as (BatchResult & { conferenceName?: string })[];
+        setDialingSession({ id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: dialCalls.filter((c) => c.ok).length });
+        const newCalls: ActiveCall[] = dialCalls.filter((c) => c.ok).map((c) => ({ callSid: c.callSid ?? '', phone: c.phone, name: c.name || '', status: 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: c.conferenceName }));
         if (newCalls.length > 0) { setActiveCalls(prev => [...prev, ...newCalls]); startPolling(newCalls); }
         setTab('active');
         setSelected(new Set());
