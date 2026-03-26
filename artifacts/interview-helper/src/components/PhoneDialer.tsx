@@ -52,6 +52,8 @@ export function PhoneDialer({
 
   const [dialingMode, setDialingMode] = useState<'power' | 'auto' | 'predictive'>('power');
   const [dialingSession, setDialingSession] = useState<{ id: number; mode: string; total: number; dialed: number } | null>(null);
+  const [dialConcurrency, setDialConcurrency] = useState(3);
+  const [dialDelay, setDialDelay] = useState(5);
 
   const [aiTranscript, setAiTranscript] = useState('');
   const [aiCoachQuestion, setAiCoachQuestion] = useState('');
@@ -357,7 +359,7 @@ export function PhoneDialer({
     try {
       const r = await fetch(apiUrl('twilio/dialing/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
+        body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }),
       });
       const d = await r.json();
       if (r.ok) {
@@ -868,6 +870,33 @@ export function PhoneDialer({
                 {dialingMode === 'power' && <div style={{ fontSize: '0.45rem', color: crt(0.5) }}>POWER DIALING: Calls the next number automatically when agent is free. One call at a time.</div>}
                 {dialingMode === 'auto' && <div style={{ fontSize: '0.45rem', color: crt(0.5) }}>AUTO DIALING: Plays recorded message on answer, then connects agent. Hands-free outreach.</div>}
                 {dialingMode === 'predictive' && <div style={{ fontSize: '0.45rem', color: crt(0.5) }}>PREDICTIVE DIALING: Dials multiple numbers simultaneously using answer-rate prediction to minimize idle time.</div>}
+              </div>
+
+              <div style={{ border: `1px solid ${crt(0.2)}`, padding: '8px', marginBottom: 8, background: crt(0.03) }}>
+                <div style={{ fontSize: '0.42rem', color: crt(0.7), letterSpacing: '0.1em', marginBottom: 6, borderBottom: `1px solid ${crt(0.12)}`, paddingBottom: 4 }}>⚙ SPEED CONTROL</div>
+                {dialingMode === 'predictive' ? (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>SIMULTANEOUS LINES</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), fontFamily: "'Share Tech Mono', monospace", minWidth: 16, textAlign: 'right' }}>{dialConcurrency}</span>
+                    </div>
+                    <input type="range" min={2} max={5} step={1} value={dialConcurrency} onChange={e => setDialConcurrency(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
+                      <span>2 LINES</span><span>5 LINES</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>DELAY BETWEEN CALLS</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), fontFamily: "'Share Tech Mono', monospace", minWidth: 24, textAlign: 'right' }}>{dialDelay}s</span>
+                    </div>
+                    <input type="range" min={0} max={30} step={1} value={dialDelay} onChange={e => setDialDelay(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
+                      <span>0s (MAX SPEED)</span><span>30s</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {dialingSession ? (

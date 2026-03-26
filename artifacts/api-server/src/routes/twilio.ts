@@ -561,7 +561,8 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
     const fromNumber = getTwilioNumber();
     const callerName = getAuthUserId(req);
 
-    let dialCount = mode === "predictive" ? Math.min(3, numbers.length) : 1;
+    const settingsConcurrency = typeof settings?.concurrency === "number" ? Math.min(Math.max(settings.concurrency, 2), 5) : 3;
+    let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, numbers.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
     const _dialingHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
@@ -665,7 +666,10 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
       status: call.status ?? "initiated", direction: "outbound", callType: session.mode + "_dialing",
     });
     await db.update(dialingSessionsTable).set({ dialedCount: dialed + 1 }).where(eq(dialingSessionsTable.id, sessionId));
-    res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1, conferenceName: confName });
+    const sessionSettings = JSON.parse(session.settingsJson ?? "{}");
+    const rawDelay = typeof sessionSettings.delayBetweenCalls === "number" ? sessionSettings.delayBetweenCalls : 5;
+    const delayBetweenCalls = Math.min(Math.max(rawDelay, 0), 30);
+    res.json({ ok: true, callSid: call.sid, phone: e164, name: entry.name, remaining: queue.length - dialed - 1, conferenceName: confName, delayBetweenCalls });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] dialing next error:", msg);
