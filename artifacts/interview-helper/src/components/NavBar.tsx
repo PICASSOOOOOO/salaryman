@@ -305,6 +305,23 @@ export function NavBar() {
           >
             <Bug className="w-3.5 h-3.5" />
           </button>
+          {!location.startsWith('/world') && (
+            <button
+              onClick={() => {
+                const nb = !boomerMode;
+                setBoomerMode(nb);
+                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
+              }}
+              className={`font-mono text-[10px] tracking-wide px-1.5 py-0.5 rounded border transition-colors ${
+                boomerMode
+                  ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
+                  : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
+              }`}
+              title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
+            >
+              {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
+            </button>
+          )}
           <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
             <button
