@@ -9616,33 +9616,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return h - Math.floor(h);
       };
 
-      // ── Isometric tile helper ────────────────────────────────────────────────
-      // drawIsoTile: draw a flat diamond-shaped isometric tile at world coords (gx, gy)
-      // The diamond is drawn using the 2:1 isometric projection
-      const drawIsoTile = (gx: number, gy: number, fillCol: string, edgeCol?: string) => {
-        const hw = ISO_TILE_W / 2; // half-width = 32
-        const hh = ISO_TILE_H / 2; // half-height = 16
-        // Center of this tile in screen space (tile corner gx,gy maps to screen)
-        const cx = gx + ox + TILE / 2;
-        const cy = gy + oy + TILE / 2;
-        // Apply isometric skew: top-down tile at cx,cy projected to diamond
-        const isoX = cx;
-        const isoY = cy;
-        ctx.beginPath();
-        ctx.moveTo(isoX,      isoY - hh); // top
-        ctx.lineTo(isoX + hw, isoY);      // right
-        ctx.lineTo(isoX,      isoY + hh); // bottom
-        ctx.lineTo(isoX - hw, isoY);      // left
-        ctx.closePath();
-        ctx.fillStyle = fillCol;
-        ctx.fill();
-        if (edgeCol) {
-          ctx.strokeStyle = edgeCol;
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-      };
-
       // Sector-based LOD: only draw full detail for tiles near the player
       const playerSectorX = Math.floor(g.px / (TILE * 8));
       const playerSectorY = Math.floor(g.py / (TILE * 8));
