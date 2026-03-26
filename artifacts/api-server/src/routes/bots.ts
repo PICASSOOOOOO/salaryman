@@ -1,0 +1,758 @@
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { eq, and, desc } from "drizzle-orm";
+import {
+  db,
+  botsTable,
+  botPlatformConnectionsTable,
+  botMemoryTable,
+  botScheduledTasksTable,
+  botConversationLogsTable,
+  botMarketplaceTable,
+  botSubscriptionsTable,
+  type PlatformType,
+  type PermissionKey,
+} from "@workspace/db";
+import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
+import { getConnector } from "../lib/bot-connectors";
+import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
+
+const router = Router();
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  next();
+}
+
+function getUserId(req: Request): string {
+  return (req as Request & { user?: { id?: string } }).user?.id ?? "";
+}
+
+function parseParam(val: string | string[] | undefined): string {
+  if (Array.isArray(val)) return val[0] ?? "";
+  return val ?? "";
+}
+
+router.get("/bots", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const bots = await db
+      .select()
+      .from(botsTable)
+      .where(eq(botsTable.ownerId, userId))
+      .orderBy(desc(botsTable.createdAt));
+
+    const botsWithConnections = await Promise.all(
+      bots.map(async (bot) => {
+        const connections = await db
+          .select()
+          .from(botPlatformConnectionsTable)
+          .where(eq(botPlatformConnectionsTable.botId, bot.id));
+        return {
+          ...bot,
+          connections: connections.map(c => ({ ...c, credentials: undefined })),
+        };
+      })
+    );
+
+    res.json({ bots: botsWithConnections });
+  } catch (err) {
+    console.error("Error listing bots:", err);
+    res.status(500).json({ error: "Failed to list bots" });
+  }
+});
+
+router.post("/bots", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute } = req.body;
+
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: "Bot name is required" });
+      return;
+    }
+
+    const [bot] = await db
+      .insert(botsTable)
+      .values({
+        ownerId: userId,
+        name: name.trim(),
+        personality: personality || "You are a helpful assistant.",
+        systemPrompt: systemPrompt || "",
+        permissions: permissions || ["ai_chat"],
+        maxTokensPerResponse: maxTokensPerResponse || 4096,
+        rateLimitPerMinute: rateLimitPerMinute || 10,
+      })
+      .returning();
+
+    res.json({ bot });
+  } catch (err) {
+    console.error("Error creating bot:", err);
+    res.status(500).json({ error: "Failed to create bot" });
+  }
+});
+
+router.get("/bots/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const rawConnections = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(eq(botPlatformConnectionsTable.botId, botId));
+    const connections = rawConnections.map(c => ({ ...c, credentials: undefined }));
+
+    const memories = await db
+      .select()
+      .from(botMemoryTable)
+      .where(eq(botMemoryTable.botId, botId))
+      .orderBy(desc(botMemoryTable.updatedAt));
+
+    const tasks = await db
+      .select()
+      .from(botScheduledTasksTable)
+      .where(eq(botScheduledTasksTable.botId, botId));
+
+    res.json({ bot: { ...bot, connections, memories, scheduledTasks: tasks } });
+  } catch (err) {
+    console.error("Error fetching bot:", err);
+    res.status(500).json({ error: "Failed to fetch bot" });
+  }
+});
+
+router.put("/bots/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute, status } = req.body;
+
+    const [existing] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!existing) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const updates: Partial<Record<string, unknown>> = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (personality !== undefined) updates.personality = personality;
+    if (systemPrompt !== undefined) updates.systemPrompt = systemPrompt;
+    if (permissions !== undefined) updates.permissions = permissions;
+    if (maxTokensPerResponse !== undefined) updates.maxTokensPerResponse = maxTokensPerResponse;
+    if (rateLimitPerMinute !== undefined) updates.rateLimitPerMinute = rateLimitPerMinute;
+    if (status !== undefined) {
+      updates.status = status;
+      if (status === "active" && existing.status !== "active") {
+        await startBot(botId);
+      } else if (status === "paused" && existing.status === "active") {
+        await stopBot(botId);
+      }
+    }
+
+    const [updated] = await db
+      .update(botsTable)
+      .set(updates)
+      .where(eq(botsTable.id, botId))
+      .returning();
+
+    res.json({ bot: updated });
+  } catch (err) {
+    console.error("Error updating bot:", err);
+    res.status(500).json({ error: "Failed to update bot" });
+  }
+});
+
+router.delete("/bots/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+
+    const [existing] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!existing) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    await stopBot(botId);
+    await db.delete(botsTable).where(eq(botsTable.id, botId));
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting bot:", err);
+    res.status(500).json({ error: "Failed to delete bot" });
+  }
+});
+
+router.post("/bots/:id/connect", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { platform, credentials } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const connector = getConnector(platform as PlatformType);
+    if (!connector) {
+      res.status(400).json({ error: `Platform '${platform}' is not supported yet` });
+      return;
+    }
+
+    const encryptedCreds = encryptCredentials(credentials);
+    const webhookSecret = generateWebhookSecret();
+
+    const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const webhookUrl = `${proto}://${host}/api/bots/webhook/${platform}/${botId}`;
+
+    const existing = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(
+        and(
+          eq(botPlatformConnectionsTable.botId, botId),
+          eq(botPlatformConnectionsTable.platform, platform)
+        )
+      );
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(botPlatformConnectionsTable)
+        .set({ credentials: encryptedCreds, webhookSecret, webhookUrl, status: "connected" })
+        .where(eq(botPlatformConnectionsTable.id, existing[0].id))
+        .returning();
+      const { credentials: _, webhookSecret: __, ...safeConn } = updated;
+      res.json({ connection: safeConn, webhookSecret, webhookUrl });
+    } else {
+      const [connection] = await db
+        .insert(botPlatformConnectionsTable)
+        .values({
+          botId,
+          platform,
+          credentials: encryptedCreds,
+          webhookSecret,
+          webhookUrl,
+          status: "connected",
+        })
+        .returning();
+      const { credentials: _, webhookSecret: __, ...safeConn } = connection;
+      res.json({ connection: safeConn, webhookSecret, webhookUrl });
+    }
+
+    if (bot.status === "active") {
+      try {
+        await startBot(botId);
+      } catch (err) {
+        console.error("Failed to restart bot after connecting platform:", err);
+      }
+    }
+  } catch (err) {
+    console.error("Error connecting platform:", err);
+    res.status(500).json({ error: "Failed to connect platform" });
+  }
+});
+
+router.post("/bots/:id/disconnect", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { platform } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const connector = getConnector(platform as PlatformType);
+    if (connector) await connector.stop(botId);
+
+    await db
+      .update(botPlatformConnectionsTable)
+      .set({ status: "disconnected" })
+      .where(
+        and(
+          eq(botPlatformConnectionsTable.botId, botId),
+          eq(botPlatformConnectionsTable.platform, platform)
+        )
+      );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error disconnecting platform:", err);
+    res.status(500).json({ error: "Failed to disconnect platform" });
+  }
+});
+
+router.get("/bots/:id/logs", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const limit = parseInt(req.query.limit as string, 10) || 50;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const logs = await db
+      .select()
+      .from(botConversationLogsTable)
+      .where(eq(botConversationLogsTable.botId, botId))
+      .orderBy(desc(botConversationLogsTable.createdAt))
+      .limit(limit);
+
+    res.json({ logs: logs.reverse() });
+  } catch (err) {
+    console.error("Error fetching bot logs:", err);
+    res.status(500).json({ error: "Failed to fetch logs" });
+  }
+});
+
+router.get("/bots/:id/memory", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const memories = await db
+      .select()
+      .from(botMemoryTable)
+      .where(eq(botMemoryTable.botId, botId))
+      .orderBy(desc(botMemoryTable.updatedAt));
+
+    res.json({ memories });
+  } catch (err) {
+    console.error("Error fetching bot memory:", err);
+    res.status(500).json({ error: "Failed to fetch memory" });
+  }
+});
+
+router.delete("/bots/:id/memory/:memoryId", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const memoryId = parseInt(parseParam(req.params.memoryId), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    await db.delete(botMemoryTable).where(
+      and(eq(botMemoryTable.id, memoryId), eq(botMemoryTable.botId, botId))
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting memory:", err);
+    res.status(500).json({ error: "Failed to delete memory" });
+  }
+});
+
+router.get("/bots/:id/tasks", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const tasks = await db
+      .select()
+      .from(botScheduledTasksTable)
+      .where(eq(botScheduledTasksTable.botId, botId));
+
+    res.json({ tasks });
+  } catch (err) {
+    console.error("Error listing tasks:", err);
+    res.status(500).json({ error: "Failed to list tasks" });
+  }
+});
+
+router.post("/bots/:id/tasks", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { cronExpression, taskDescription, enabled } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const [task] = await db
+      .insert(botScheduledTasksTable)
+      .values({
+        botId,
+        cronExpression,
+        taskDescription,
+        enabled: enabled ?? true,
+      })
+      .returning();
+
+    if (bot.status === "active") {
+      try { await stopBot(botId); await startBot(botId); } catch (err) {
+        console.error("Failed to refresh scheduler after task create:", err);
+      }
+    }
+
+    res.json({ task });
+  } catch (err) {
+    console.error("Error creating scheduled task:", err);
+    res.status(500).json({ error: "Failed to create task" });
+  }
+});
+
+router.delete("/bots/:id/tasks/:taskId", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const taskId = parseInt(parseParam(req.params.taskId), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    await db.delete(botScheduledTasksTable).where(
+      and(eq(botScheduledTasksTable.id, taskId), eq(botScheduledTasksTable.botId, botId))
+    );
+
+    if (bot.status === "active") {
+      try { await stopBot(botId); await startBot(botId); } catch (err) {
+        console.error("Failed to refresh scheduler after task delete:", err);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting task:", err);
+    res.status(500).json({ error: "Failed to delete task" });
+  }
+});
+
+router.put("/bots/:id/tasks/:taskId", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const taskId = parseInt(parseParam(req.params.taskId), 10);
+    const { cronExpression, taskDescription, enabled } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (cronExpression !== undefined) updates.cronExpression = cronExpression;
+    if (taskDescription !== undefined) updates.taskDescription = taskDescription;
+    if (enabled !== undefined) updates.enabled = enabled;
+
+    const [updated] = await db
+      .update(botScheduledTasksTable)
+      .set(updates)
+      .where(and(eq(botScheduledTasksTable.id, taskId), eq(botScheduledTasksTable.botId, botId)))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Task not found" });
+      return;
+    }
+
+    if (bot.status === "active") {
+      try {
+        await stopBot(botId);
+        await startBot(botId);
+      } catch (err) {
+        console.error("Failed to restart bot after task update:", err);
+      }
+    }
+
+    res.json({ task: updated });
+  } catch (err) {
+    console.error("Error updating task:", err);
+    res.status(500).json({ error: "Failed to update task" });
+  }
+});
+
+router.get("/bots/marketplace/list", async (_req, res) => {
+  try {
+    const rawItems = await db
+      .select()
+      .from(botMarketplaceTable)
+      .where(eq(botMarketplaceTable.active, true))
+      .orderBy(desc(botMarketplaceTable.featured));
+
+    const items = rawItems.map(({ personality, systemPrompt, ...rest }) => rest);
+    res.json({ items });
+  } catch (err) {
+    console.error("Error listing marketplace:", err);
+    res.status(500).json({ error: "Failed to list marketplace" });
+  }
+});
+
+router.post("/bots/marketplace/activate", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { marketplaceItemId } = req.body;
+
+    const [item] = await db
+      .select()
+      .from(botMarketplaceTable)
+      .where(eq(botMarketplaceTable.id, marketplaceItemId));
+
+    if (!item) {
+      res.status(404).json({ error: "Marketplace item not found" });
+      return;
+    }
+
+    const existing = await db
+      .select()
+      .from(botSubscriptionsTable)
+      .where(
+        and(
+          eq(botSubscriptionsTable.userId, userId),
+          eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+        )
+      );
+
+    if (existing.length > 0 && existing[0].botId) {
+      res.json({ bot: { id: existing[0].botId }, alreadyActive: true });
+      return;
+    }
+
+    const [bot] = await db
+      .insert(botsTable)
+      .values({
+        ownerId: userId,
+        name: item.name,
+        personality: item.personality,
+        systemPrompt: item.systemPrompt,
+        permissions: item.permissions,
+        marketplaceItemId: item.id,
+      })
+      .returning();
+
+    if (existing.length > 0) {
+      await db
+        .update(botSubscriptionsTable)
+        .set({ botId: bot.id, status: "active" })
+        .where(
+          and(
+            eq(botSubscriptionsTable.userId, userId),
+            eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+          )
+        );
+    } else {
+      await db.insert(botSubscriptionsTable).values({
+        userId,
+        marketplaceItemId: item.id,
+        botId: bot.id,
+        status: "active",
+      });
+    }
+
+    res.json({ bot, activated: true });
+  } catch (err) {
+    console.error("Error activating marketplace bot:", err);
+    res.status(500).json({ error: "Failed to activate bot" });
+  }
+});
+
+router.get("/bots/marketplace/subscriptions", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const subs = await db
+      .select()
+      .from(botSubscriptionsTable)
+      .where(eq(botSubscriptionsTable.userId, userId));
+
+    res.json({ subscriptions: subs });
+  } catch (err) {
+    console.error("Error fetching subscriptions:", err);
+    res.status(500).json({ error: "Failed to fetch subscriptions" });
+  }
+});
+
+const webhookRateLimits = new Map<number, { count: number; resetAt: number }>();
+
+function checkBotRateLimit(bot: { id: number; rateLimitPerMinute: number }): boolean {
+  const now = Date.now();
+  let entry = webhookRateLimits.get(bot.id);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + 60_000 };
+    webhookRateLimits.set(bot.id, entry);
+  }
+  entry.count++;
+  return entry.count <= bot.rateLimitPerMinute;
+}
+
+async function verifyWebhookAuth(platform: string, botId: number, req: Request): Promise<boolean> {
+  const [conn] = await db
+    .select()
+    .from(botPlatformConnectionsTable)
+    .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, platform)));
+
+  if (!conn || conn.status !== "connected") return false;
+
+  if (platform === "telegram") {
+    const secretToken = req.headers["x-telegram-bot-api-secret-token"] as string | undefined;
+    if (conn.webhookSecret) {
+      return verifyTelegramWebhook(secretToken, conn.webhookSecret);
+    }
+    return false;
+  }
+
+  if (platform === "whatsapp") {
+    const twilioSignature = req.headers["x-twilio-signature"] as string | undefined;
+    if (conn.webhookSecret && twilioSignature) {
+      let creds: { authToken?: string };
+      try {
+        creds = JSON.parse(decryptCredentials(conn.credentials));
+      } catch {
+        return false;
+      }
+      const authToken = creds.authToken || process.env.TWILIO_AUTH_TOKEN || "";
+      if (!authToken) return false;
+      const webhookUrl = conn.webhookUrl || "";
+      return verifyTwilioSignature(twilioSignature, webhookUrl, req.body || {}, authToken);
+    }
+    if (!conn.webhookSecret) return false;
+    return false;
+  }
+
+  return false;
+}
+
+router.post("/bots/webhook/:platform/:botId", async (req, res) => {
+  try {
+    const botId = parseInt(parseParam(req.params.botId), 10);
+    const platform = parseParam(req.params.platform) as PlatformType;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(eq(botsTable.id, botId));
+
+    if (!bot || bot.status !== "active") {
+      res.status(404).json({ error: "Bot not found or inactive" });
+      return;
+    }
+
+    const verified = await verifyWebhookAuth(platform, botId, req);
+    if (!verified) {
+      res.status(403).json({ error: "Webhook verification failed" });
+      return;
+    }
+
+    if (!checkBotRateLimit(bot)) {
+      res.status(429).json({ error: "Rate limit exceeded" });
+      return;
+    }
+
+    let text = "";
+    let externalUserId = "";
+
+    if (platform === "whatsapp") {
+      text = req.body.Body || "";
+      externalUserId = (req.body.From || "").replace("whatsapp:", "");
+    } else if (platform === "telegram") {
+      text = req.body.message?.text || "";
+      externalUserId = String(req.body.message?.chat?.id || "");
+    }
+
+    if (!text) {
+      res.json({ ok: true });
+      return;
+    }
+
+    const response = await processIncomingMessage(bot, {
+      platform,
+      externalUserId,
+      text,
+    });
+
+    const connector = getConnector(platform);
+    if (connector) {
+      await connector.send(botId, externalUserId, { text: response });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+export default router;

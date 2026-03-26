@@ -4,6 +4,8 @@ import { attachWorldServer } from './worldServer';
 import { dispatchWeeklySummaries } from './routes/reporting';
 import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
+import { seedBotMarketplace } from './lib/seed-bots-marketplace';
+import { rehydrateActiveBots } from './lib/bot-engine';
 
 const rawPort = process.env["PORT"];
 
@@ -43,6 +45,12 @@ httpServer.listen(port, () => {
   });
   seedPicassoOrg().catch(err => {
     console.error("[Picasso Seed] Error seeding Picasso org:", err);
+  });
+  seedBotMarketplace().catch(err => {
+    console.error("[Bot Marketplace Seed] Error seeding marketplace:", err);
+  });
+  rehydrateActiveBots().catch(err => {
+    console.error("[Bot Engine] Rehydration error:", err);
   });
 });
 

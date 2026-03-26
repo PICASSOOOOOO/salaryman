@@ -4,6 +4,7 @@ import {
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
+  Store, Plug,
 } from 'lucide-react';
 
 export type Module = {
@@ -117,6 +118,19 @@ export const MODULES: Module[] = [
       { id: 'numbers', path: '/phone/numbers', label: 'PHONE NUMBERS', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
     ],
   },
+  {
+    id: 'bots',
+    path: '/bots',
+    label: 'BOTS',
+    codename: 'CLAW FACTORY',
+    icon: Bot,
+    defaultPath: '/bots',
+    subs: [
+      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT STORE', codename: 'MARKET', icon: Store },
+      { id: 'my-bots', path: '/bots/my', label: 'MY BOTS', boomerLabel: 'MY BOTS', codename: 'MY AGENTS', icon: Bot },
+      { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
+    ],
+  },
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
@@ -126,5 +140,6 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/creative')) return MODULES[3];
   if (pathname.startsWith('/intel')) return MODULES[4];
   if (pathname.startsWith('/phone')) return MODULES[5];
+  if (pathname.startsWith('/bots')) return MODULES[6];
   return null;
 }

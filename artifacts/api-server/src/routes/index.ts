@@ -36,6 +36,7 @@ import organizationsRouter from "./organizations";
 import enterpriseRouter from "./enterprise";
 import ticketsRouter from "./tickets";
 import feedbackRouter from "./feedback";
+import botsRouter from "./bots";
 
 const router: IRouter = Router();
 
@@ -76,5 +77,6 @@ router.use(organizationsRouter);
 router.use(enterpriseRouter);
 router.use(ticketsRouter);
 router.use(feedbackRouter);
+router.use(botsRouter);
 
 export default router;

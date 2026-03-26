@@ -62,6 +62,7 @@ const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
+const BotFactory = lazy(() => import("@/pages/BotFactory"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -221,6 +222,10 @@ function AppShell() {
               const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
               return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
+
+            {/* BOTS module */}
+            <Route path="/bots" component={BotFactory} />
+            <Route path="/bots/:rest*" component={BotFactory} />
 
             {/* Old flat routes — redirect to new module paths */}
             <Route path="/contacts">{() => <Redirect to="/business/contacts" />}</Route>
