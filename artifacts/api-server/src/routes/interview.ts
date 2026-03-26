@@ -3,7 +3,8 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { SolveInterviewQuestionBody } from "@workspace/api-zod";
 import { streamWithRouter } from "../lib/ai-router";
-import { requireFeature } from "../middlewares/requirePro";
+import { requireFeature, requirePro } from "../middlewares/requirePro";
+import multer from "multer";
 
 const router: IRouter = Router();
 
@@ -198,6 +199,306 @@ router.post("/interview/listen", requireFeature("live_listen"), async (req, res)
   } catch (err) {
     console.error("Error in /listen:", err);
     res.write(`data: ${JSON.stringify({ error: "Failed to process audio" })}\n\n`);
+  }
+
+  res.end();
+});
+
+const MAX_MEDIA_SIZE = 25 * 1024 * 1024;
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_MEDIA_SIZE },
+});
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp', 'heic', 'svg', 'cr2', 'nef', 'raw']);
+const AUDIO_EXTENSIONS = new Set(['wav', 'mp3', 'aac', 'ogg', 'flac', 'wma', 'm4a', 'aiff', 'aif', 'opus', 'amr']);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', '3gp', 'mpeg', 'mpg', 'm4v']);
+
+type MediaType = 'image' | 'audio' | 'video' | 'unknown';
+
+function detectMediaTypeByMagicBytes(buffer: Buffer): MediaType {
+  if (buffer.length < 12) return 'unknown';
+
+  // PNG
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'image';
+  // JPEG
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image';
+  // GIF
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) return 'image';
+  // BMP
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d) return 'image';
+  // TIFF (little-endian or big-endian)
+  if ((buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) ||
+      (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a)) return 'image';
+  // WebP (RIFF....WEBP)
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) return 'image';
+
+  // WAV (RIFF....WAVE)
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x41 && buffer[10] === 0x56 && buffer[11] === 0x45) return 'audio';
+  // MP3 (frame sync or ID3)
+  if ((buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) ||
+      (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33)) return 'audio';
+  // FLAC
+  if (buffer[0] === 0x66 && buffer[1] === 0x4c && buffer[2] === 0x61 && buffer[3] === 0x43) return 'audio';
+  // OGG
+  if (buffer[0] === 0x4f && buffer[1] === 0x67 && buffer[2] === 0x67 && buffer[3] === 0x53) return 'audio';
+  // AIFF
+  if (buffer[0] === 0x46 && buffer[1] === 0x4f && buffer[2] === 0x52 && buffer[3] === 0x4d) return 'audio';
+
+  // MP4/MOV/M4A/M4V/3GP (ftyp box)
+  if (buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70) {
+    const brand = buffer.subarray(8, 12).toString('ascii').toLowerCase();
+    if (brand.startsWith('m4a') || brand.startsWith('m4b')) return 'audio';
+    return 'video';
+  }
+  // WebM/MKV (EBML header)
+  if (buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) return 'video';
+  // AVI (RIFF....AVI )
+  if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x41 && buffer[9] === 0x56 && buffer[10] === 0x49) return 'video';
+
+  return 'unknown';
+}
+
+function detectMediaType(buffer: Buffer, filename: string, mimeType?: string): MediaType {
+  const byMagic = detectMediaTypeByMagicBytes(buffer);
+  if (byMagic !== 'unknown') return byMagic;
+
+  if (mimeType) {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType.startsWith('video/')) return 'video';
+  }
+
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  if (IMAGE_EXTENSIONS.has(ext)) return 'image';
+  if (AUDIO_EXTENSIONS.has(ext)) return 'audio';
+  if (VIDEO_EXTENSIONS.has(ext)) return 'video';
+  return 'unknown';
+}
+
+async function extractVideoFrames(videoBuffer: Buffer, count = 4): Promise<Buffer[]> {
+  const { spawn } = await import('child_process');
+  const { writeFile, readFile, unlink, readdir } = await import('fs/promises');
+  const { randomUUID } = await import('crypto');
+  const { tmpdir } = await import('os');
+  const { join } = await import('path');
+
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `vid-${id}.mp4`);
+  const outPattern = join(tmpdir(), `frame-${id}-%03d.jpg`);
+
+  try {
+    await writeFile(inputPath, videoBuffer);
+
+    await new Promise<void>((resolve, reject) => {
+      const ff = spawn('ffmpeg', [
+        '-i', inputPath,
+        '-vf', `select='eq(n,0)+eq(n,30)+eq(n,60)+eq(n,90)',setpts=N/FRAME_RATE/TB`,
+        '-frames:v', String(count),
+        '-q:v', '3',
+        '-y',
+        outPattern,
+      ]);
+      ff.stderr.on('data', () => {});
+      ff.on('close', (code) => code === 0 ? resolve() : reject(new Error(`ffmpeg frame extraction exited ${code}`)));
+      ff.on('error', reject);
+    });
+
+    const dir = tmpdir();
+    const files = (await readdir(dir)).filter(f => f.startsWith(`frame-${id}-`)).sort();
+    const frames: Buffer[] = [];
+    for (const f of files) {
+      frames.push(await readFile(join(dir, f)));
+      await unlink(join(dir, f)).catch(() => {});
+    }
+    return frames;
+  } finally {
+    await unlink(inputPath).catch(() => {});
+  }
+}
+
+async function extractAudioFromVideo(videoBuffer: Buffer): Promise<Buffer> {
+  const { spawn } = await import('child_process');
+  const { writeFile, readFile, unlink } = await import('fs/promises');
+  const { randomUUID } = await import('crypto');
+  const { tmpdir } = await import('os');
+  const { join } = await import('path');
+
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `vid-audio-${id}.mp4`);
+  const outputPath = join(tmpdir(), `vid-audio-${id}.wav`);
+
+  try {
+    await writeFile(inputPath, videoBuffer);
+    await new Promise<void>((resolve, reject) => {
+      const ff = spawn('ffmpeg', [
+        '-i', inputPath, '-vn', '-f', 'wav', '-ar', '16000', '-ac', '1', '-acodec', 'pcm_s16le', '-y', outputPath,
+      ]);
+      ff.stderr.on('data', () => {});
+      ff.on('close', (code) => code === 0 ? resolve() : reject(new Error(`ffmpeg audio extract exited ${code}`)));
+      ff.on('error', reject);
+    });
+    return await readFile(outputPath);
+  } finally {
+    await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
+router.post("/interview/analyze-media", requirePro(), upload.single('file'), async (req, res) => {
+  let fileBuffer: Buffer;
+  let filename: string;
+  let mimeType: string | undefined;
+
+  if (req.file) {
+    fileBuffer = req.file.buffer;
+    filename = req.file.originalname;
+    mimeType = req.file.mimetype;
+  } else {
+    const body = req.body as { file?: string; filename?: string; mimeType?: string };
+    if (!body.file || typeof body.file !== 'string' || !body.filename) {
+      res.status(400).json({ error: "Missing file data or filename" });
+      return;
+    }
+    fileBuffer = Buffer.from(body.file, 'base64');
+    filename = body.filename;
+    mimeType = body.mimeType;
+  }
+
+  if (fileBuffer.length > MAX_MEDIA_SIZE) {
+    res.status(413).json({ error: `File too large. Max size is 25 MB.` });
+    return;
+  }
+
+  const mediaType = detectMediaType(fileBuffer, filename, mimeType);
+  if (mediaType === 'unknown') {
+    res.status(400).json({ error: `Unsupported file format. Upload an image, audio, or video file.` });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const sendSSE = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    if (mediaType === 'image') {
+      sendSSE({ phase: 'analyzing', label: 'Analyzing image...' });
+
+      const ext = filename.split('.').pop()?.toLowerCase() ?? 'png';
+      const mime = mimeType || (ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+      const dataUrl = `data:${mime};base64,${fileBuffer.toString('base64')}`;
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_completion_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+            { type: "text", text: `Analyze this image in detail for research purposes. Cover:\n1. Overall description — what is shown\n2. Objects, people, text, or symbols identified\n3. Composition and visual style analysis\n4. Any data, charts, or information that can be extracted\n5. Technical details (estimated resolution quality, format observations)\n\nBe thorough and specific. This is for research, not casual description.` },
+          ],
+        }],
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) sendSSE({ content });
+      }
+    } else if (mediaType === 'audio') {
+      sendSSE({ phase: 'transcribing', label: 'Transcribing audio...' });
+
+      const { buffer: compatBuffer, format } = await ensureCompatibleFormat(fileBuffer);
+      const transcript = await speechToText(compatBuffer, format);
+
+      if (!transcript?.trim()) {
+        sendSSE({ content: "**Transcription:** No speech detected in this audio file.\n\n" });
+        sendSSE({ done: true });
+        res.end();
+        return;
+      }
+
+      sendSSE({ content: `**Transcription:**\n\n${transcript}\n\n---\n\n` });
+      sendSSE({ phase: 'analyzing', label: 'Analyzing audio content...' });
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_completion_tokens: 2048,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Analyze this audio transcription for research purposes:\n\n"${transcript}"\n\nProvide:\n1. Content summary\n2. Key topics and themes\n3. Tone and communication style analysis\n4. Language identification\n5. Notable quotes or important statements\n6. Any actionable insights` },
+        ],
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) sendSSE({ content });
+      }
+    } else if (mediaType === 'video') {
+      sendSSE({ phase: 'extracting', label: 'Extracting frames and audio...' });
+
+      let frames: Buffer[] = [];
+      let audioTranscript = '';
+
+      try {
+        frames = await extractVideoFrames(fileBuffer, 4);
+      } catch (err) {
+        console.error("Frame extraction failed:", err);
+      }
+
+      try {
+        const audioBuffer = await extractAudioFromVideo(fileBuffer);
+        if (audioBuffer.length > 1000) {
+          const { buffer: compatBuffer, format } = await ensureCompatibleFormat(audioBuffer);
+          audioTranscript = await speechToText(compatBuffer, format);
+        }
+      } catch (err) {
+        console.error("Audio extraction failed:", err);
+      }
+
+      if (audioTranscript?.trim()) {
+        sendSSE({ content: `**Audio Transcription:**\n\n${audioTranscript}\n\n---\n\n` });
+      }
+
+      sendSSE({ phase: 'analyzing', label: 'Analyzing video content...' });
+
+      const imageMessages: Array<{ type: "image_url"; image_url: { url: string; detail: "low" } }> = frames.map(f => ({
+        type: "image_url" as const,
+        image_url: { url: `data:image/jpeg;base64,${f.toString('base64')}`, detail: "low" as const },
+      }));
+
+      const analysisPrompt = `Analyze this video for research purposes. ${frames.length > 0 ? `I've extracted ${frames.length} key frames for visual analysis.` : 'No frames could be extracted.'} ${audioTranscript ? `The audio transcript is: "${audioTranscript}"` : 'No audio could be extracted.'}\n\nProvide:\n1. Visual content summary — what is shown across the frames\n2. Scene transitions and key moments\n3. ${audioTranscript ? 'Audio/speech content analysis and how it relates to the visuals' : 'Visual-only analysis since no audio was detected'}\n4. Overall research summary combining visual and audio elements\n5. Key takeaways and notable details`;
+
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_completion_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: [
+            ...imageMessages,
+            { type: "text", text: analysisPrompt },
+          ],
+        }],
+        stream: true,
+      });
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) sendSSE({ content });
+      }
+    }
+
+    sendSSE({ done: true });
+  } catch (err) {
+    console.error("Error in /analyze-media:", err);
+    sendSSE({ error: "Failed to analyze media file" });
   }
 
   res.end();

@@ -195,6 +195,13 @@ export const PABLO_PRODUCTS = {
     short: "OBJECTIVE-7",
     desc: "Goal and milestone tracking module. Set quarterly targets, log progress, and mark objectives complete.",
   },
+  MEDIA_LAB: {
+    name: "SPECTRA-X MEDIA LAB",
+    short: "SPECTRA-X",
+    boomerName: "Media Analyzer",
+    boomerShort: "Media Lab",
+    desc: "Research-grade media analysis unit. Upload images, audio, or video files for deep AI analysis — transcription, visual breakdown, and combined research summaries.",
+  },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
     OPTIC_9: { name: 'OPTIC-9 RETINAL SCANNER', price: 5, trial: 7 },

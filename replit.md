@@ -13,6 +13,7 @@ Key capabilities include:
 - Robust communication features including WebRTC video chat, proximity voice chat, terminal-based phone calls, and private messaging.
 - A spatial audio engine for immersive soundscapes.
 - A subscription model for premium features like Live Listen, Screen Scan, Say This, and Calll Home.
+- Media Analyzer (SPECTRA-X) integrated into the Console — upload images, audio, or video for AI analysis via Pablo. Images use GPT-4o vision, audio is transcribed and summarized, video gets frame extraction + audio transcription + combined analysis.
 - Integrated productivity tools such as invoice and contract generators, and a file manager.
 
 ## User Preferences

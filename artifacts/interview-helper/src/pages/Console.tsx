@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2, Radio } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2, Radio, Upload, FileImage, FileAudio, FileVideo, X } from 'lucide-react';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
+import { useMediaAnalyzer, detectMediaFileType, validateMediaFile } from '@/hooks/use-media-analyzer';
 import { ActionPanel } from '@/components/ActionPanel';
 import { StatusIndicator } from '@/components/StatusIndicator';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -25,7 +26,7 @@ export default function Console() {
   const [question, setQuestion] = useState('');
   const [language, setLanguage] = useState('Python');
   const [copied, setCopied] = useState(false);
-  const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan'>('solve');
+  const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
   const [typeMode, setTypeMode] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [consoleView, setConsoleView] = useState<'terminal' | 'lab'>('terminal');
@@ -43,6 +44,9 @@ export default function Console() {
   const { scanStatus, answer: scanAnswer, autoPilot, countdown, lastScanMode, intervalSecs, setIntervalSecs, scanOnce, scanChat, startAutoPilot, stopStream, reset: resetScan, isConnecting, isAnalyzing } = useScreenScan();
   const { displayedText, isTyping, isDone: typingDone, start: startTyping, stop: stopTyping, reset: resetTyping } = useTypingSimulator();
   const { messages: convMessages, sendVoice: sendConsoleVoice, isStreaming: convStreaming } = useAdvisorChat();
+  const media = useMediaAnalyzer();
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const consoleConv = useVoiceConversation({
     onSend: sendConsoleVoice,
@@ -53,9 +57,10 @@ export default function Console() {
     ? convMessages.filter(m => m.role === 'assistant' && m.content).map(m => m.content).join('\n\n---\n\n')
     : '';
 
-  const displayResponse = consoleConv.isConvMode ? lastConvResponse : activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
+  const displayResponse = consoleConv.isConvMode ? lastConvResponse : activePanel === 'media' ? media.response : activePanel === 'listen' ? listenAnswer : activePanel === 'scan' ? scanAnswer : response;
   const displayStatus = consoleConv.isConvMode
     ? (consoleConv.convState === 'processing' || convStreaming ? 'streaming' : consoleConv.convState === 'idle' && !lastConvResponse ? 'idle' : 'done')
+    : activePanel === 'media' ? (media.isAnalyzing ? 'analyzing' : media.status === 'done' ? 'done' : media.status === 'error' ? 'error' : 'idle')
     : activePanel === 'listen' ? listenStatus : activePanel === 'scan' ? scanStatus : status;
   const canTypeMode = !!displayResponse && (displayStatus === 'done' || displayStatus === 'ready');
 
@@ -145,13 +150,38 @@ export default function Console() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const { isAuthenticated: _consoleAuth } = useAuth();
+  const isAnyBusy = isStreaming || isRecording || isListenProcessing || isConnecting || isAnalyzing || media.isAnalyzing;
+
+  const handleMediaFile = useCallback((file: File) => {
+    setActivePanel('media');
+    setTypeMode(false);
+    reset(); resetListen(); resetScan();
+    media.analyze(file);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isAnyBusy) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleMediaFile(file);
+  }, [handleMediaFile, isAnyBusy]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
   const handleReset = () => {
-    reset(); resetListen(); stopStream(); resetTyping();
+    reset(); resetListen(); stopStream(); resetTyping(); media.reset();
     setTypeMode(false); setActivePanel('solve');
   };
-
-  const { isAuthenticated: _consoleAuth } = useAuth();
-  const isAnyBusy = isStreaming || isRecording || isListenProcessing || isConnecting || isAnalyzing;
   const typingProgress = displayedText.length / (getTypableText().length || 1);
 
   if (!_consoleAuth) {
@@ -355,6 +385,73 @@ export default function Console() {
           </div>
           </ProGate>
 
+          {/* MEDIA ANALYZER */}
+          <div
+            className={`rounded-xl border p-3 transition-all ${isDragging ? 'border-purple-400/60 bg-purple-500/15 ring-2 ring-purple-400/20' : 'border-purple-500/20 bg-purple-500/5'}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <Upload className="w-3.5 h-3.5 text-purple-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-purple-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+                  {boomerMode ? 'MEDIA ANALYZER' : PABLO_PRODUCTS.MEDIA_LAB.short}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {media.isAnalyzing && (
+                  <span className="flex items-center gap-1 text-[10px] text-purple-300 font-mono">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {media.phase || 'Processing...'}
+                  </span>
+                )}
+                <button
+                  onClick={() => mediaInputRef.current?.click()}
+                  disabled={isAnyBusy}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
+                    bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20`}
+                >
+                  <Upload className="w-3 h-3" />
+                  {boomerMode ? 'Upload File' : 'Upload'}
+                </button>
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,audio/*,video/*,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp,.heic,.svg,.cr2,.nef,.wav,.mp3,.aac,.ogg,.flac,.wma,.m4a,.aiff,.opus,.amr,.mp4,.mov,.avi,.mkv,.webm,.flv,.wmv,.3gp,.mpeg,.mpg,.m4v"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleMediaFile(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </div>
+            {media.fileName && activePanel === 'media' ? (
+              <div className="flex items-center gap-2 mt-1">
+                {media.fileType === 'image' ? <FileImage className="w-3 h-3 text-purple-300/70" /> :
+                 media.fileType === 'audio' ? <FileAudio className="w-3 h-3 text-purple-300/70" /> :
+                 media.fileType === 'video' ? <FileVideo className="w-3 h-3 text-purple-300/70" /> :
+                 <Upload className="w-3 h-3 text-purple-300/70" />}
+                <span className="text-[10px] text-purple-300/70 font-mono truncate max-w-[200px]">{media.fileName}</span>
+                <span className="text-[9px] text-purple-400/50 font-mono uppercase">{media.fileType}</span>
+                {!media.isAnalyzing && (
+                  <button onClick={() => { media.reset(); setActivePanel('solve'); }} className="ml-auto">
+                    <X className="w-3 h-3 text-purple-400/40 hover:text-purple-400 transition-colors" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className={`${boomerMode ? 'text-xs' : 'text-[10px]'} text-muted-foreground`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                {isDragging
+                  ? (boomerMode ? 'Drop your file here...' : 'Release to analyze...')
+                  : boomerMode ? 'Drag & drop or upload an image, audio, or video file for AI analysis.'
+                  : PABLO_PRODUCTS.MEDIA_LAB.desc}
+              </p>
+            )}
+          </div>
+
           {/* PROBLEM DESCRIPTION — free tier (CIPHER-X code understanding) */}
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden relative group transition-colors focus-within:border-primary/50">
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
@@ -483,7 +580,7 @@ export default function Console() {
                 ) : (
                   <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-full">
                     <MarkdownRenderer content={displayResponse} />
-                    {(isStreaming || isListenProcessing || isAnalyzing) && (
+                    {(isStreaming || isListenProcessing || isAnalyzing || media.isAnalyzing) && (
                       <div className="mt-4"><span className="w-2 h-4 bg-primary animate-pulse rounded-sm inline-block" /></div>
                     )}
                   </motion.div>
