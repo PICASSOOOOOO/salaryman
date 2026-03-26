@@ -3000,6 +3000,7 @@ export default function WorldPlay() {
   const frozenRef     = useRef(false);
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
   const chatOpenRef   = useRef(false);
+  const isOwnerPlanRef = useRef(isOwnerPlan);
   const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
   const zoomRef       = useRef(ISO_ZOOM_LOCKED);
   const targetZoomRef = useRef(ISO_ZOOM_LOCKED);
@@ -3014,6 +3015,9 @@ export default function WorldPlay() {
   // Redirect to menu if no character
   useEffect(() => { if (!char) navigate('/world'); }, [char]);
   if (!char) return null;
+
+  // Keep isOwnerPlanRef in sync so keydown closure always reads the latest value
+  useEffect(() => { isOwnerPlanRef.current = isOwnerPlan; }, [isOwnerPlan]);
 
   // Auto-focus game container so keyboard events fire immediately
   useEffect(() => { gameRef.current?.focus(); }, []);
@@ -5640,7 +5644,8 @@ export default function WorldPlay() {
       }
       if (e.key === 'p' || e.key === 'P') {
         const g = gs.current;
-        if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        if (isOwnerPlanRef.current) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        else if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
         else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Screen cracked. Circuitry fried. Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); }
         else if (g.atPublicTerminal) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
         else { setNarr('> NO DEVICE — You don\'t have a personal terminal. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].'); }
@@ -6241,7 +6246,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     if (!pabloIn.trim() || pabloLoad) return;
     const txt = pabloIn.trim(); setPabloIn('');
     setPabloMsgs(m => [...m, { role: 'user', text: txt }]);
-    const canAccess = (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
+    const canAccess = isOwnerPlanRef.current || (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
     if (!canAccess) { setPabloMsgs(m => [...m, { role: 'pablo', text: gs.current.deviceBroken ? 'Device damaged. Visit CITY CLINIC for repair (ƒ5,000) or find a PUBLIC TERMINAL.' : 'No device. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].' }]); return; }
 
     // ── meet commands ───────────────────────────────────────────────────
@@ -6324,7 +6329,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   }, [pabloIn, pabloLoad, buildPabloContext, char.name, joinVideoCall, videoCallRoom]);
 
   const sendPabloVoice = useCallback(async (transcript: string): Promise<string> => {
-    const canAccess = (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
+    const canAccess = isOwnerPlanRef.current || (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
     if (!canAccess) {
       const errText = gs.current.deviceBroken ? 'Device damaged. Visit CITY CLINIC for repair.' : 'No device. Find a PUBLIC TERMINAL.';
       setPabloMsgs(m => [...m, { role: 'user', text: transcript }, { role: 'pablo', text: errText }]);
