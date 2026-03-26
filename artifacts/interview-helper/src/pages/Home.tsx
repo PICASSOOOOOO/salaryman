@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
+import { speakWithTTS } from '@/lib/tts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Bot, ArrowRight, Clock, X, Globe, Brain, Loader2, Send, MessageSquare, Mic, MicOff, Volume2, Layers, Radio } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -84,46 +85,28 @@ function usePabloVoice() {
     setIsHolding(false);
   }, []);
 
-  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  useEffect(() => {
-    const resolve = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const en = voices.filter(v => v.lang.startsWith('en'));
-      const natural = en.filter(v => /natural|premium|enhanced/i.test(v.name));
-      cachedVoiceRef.current = natural.find(v => /male|guy|david|james|daniel/i.test(v.name))
-        || natural[0]
-        || en.find(v => /male|guy|david|james|daniel/i.test(v.name))
-        || en[0]
-        || null;
-    };
-    resolve();
-    window.speechSynthesis.addEventListener('voiceschanged', resolve);
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', resolve);
-  }, []);
+  const ttsHandleRef = useRef<{ cancel: () => void } | null>(null);
 
   const speakResponse = useCallback((text: string) => {
-    const clean = text.replace(/[#*`_~\[\]()>]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ');
-    const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s => s.trim()).filter(Boolean) || [clean];
-
-    window.speechSynthesis.cancel();
+    if (ttsHandleRef.current) {
+      ttsHandleRef.current.cancel();
+      ttsHandleRef.current = null;
+    }
     setIsSpeaking(true);
-
-    const speakNext = (idx: number) => {
-      if (idx >= sentences.length) { setIsSpeaking(false); return; }
-      const u = new SpeechSynthesisUtterance(sentences[idx]);
-      u.lang = 'en-US';
-      u.rate = 0.85;
-      u.pitch = 1.0;
-      if (cachedVoiceRef.current) u.voice = cachedVoiceRef.current;
-      u.onend = () => setTimeout(() => speakNext(idx + 1), 180);
-      u.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(u);
-    };
-    speakNext(0);
+    ttsHandleRef.current = speakWithTTS(text, () => {
+      ttsHandleRef.current = null;
+      setIsSpeaking(false);
+    }, (_err) => {
+      ttsHandleRef.current = null;
+      setIsSpeaking(false);
+    });
   }, []);
 
   const stopSpeaking = useCallback(() => {
-    window.speechSynthesis.cancel();
+    if (ttsHandleRef.current) {
+      ttsHandleRef.current.cancel();
+      ttsHandleRef.current = null;
+    }
     setIsSpeaking(false);
   }, []);
 

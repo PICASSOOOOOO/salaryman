@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { speakWithTTS } from '../lib/tts';
 
 export type ConvState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -22,42 +23,6 @@ interface SpeechRecognitionLike {
   onerror: ((ev: { error: string }) => void) | null;
   start(): void;
   stop(): void;
-}
-
-let cachedVoice: SpeechSynthesisVoice | null = null;
-function resolveVoice(): void {
-  const voices = window.speechSynthesis.getVoices();
-  const en = voices.filter(v => v.lang.startsWith('en'));
-  const natural = en.filter(v => /natural|premium|enhanced/i.test(v.name));
-  cachedVoice = natural.find(v => /male|guy|david|james|daniel/i.test(v.name))
-    || natural[0]
-    || en.find(v => /male|guy|david|james|daniel/i.test(v.name))
-    || en[0]
-    || null;
-}
-if (typeof window !== 'undefined') {
-  resolveVoice();
-  window.speechSynthesis.addEventListener('voiceschanged', resolveVoice);
-}
-
-function speakText(text: string, onEnd: () => void): void {
-  const clean = text.replace(/[#*`_~\[\]()>]/g, '').replace(/\n{2,}/g, '. ').replace(/\n/g, ' ');
-  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s => s.trim()).filter(Boolean) || [clean];
-
-  window.speechSynthesis.cancel();
-
-  const speakNext = (idx: number) => {
-    if (idx >= sentences.length) { onEnd(); return; }
-    const u = new SpeechSynthesisUtterance(sentences[idx]);
-    u.lang = 'en-US';
-    u.rate = 0.85;
-    u.pitch = 1.0;
-    if (cachedVoice) u.voice = cachedVoice;
-    u.onend = () => setTimeout(() => speakNext(idx + 1), 180);
-    u.onerror = onEnd;
-    window.speechSynthesis.speak(u);
-  };
-  speakNext(0);
 }
 
 let sharedAudioCtx: AudioContext | null = null;
@@ -102,10 +67,18 @@ export function useVoiceConversation({
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConvModeRef = useRef(false);
   const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const ttsHandleRef = useRef<{ cancel: () => void } | null>(null);
 
   useEffect(() => {
     isConvModeRef.current = isConvMode;
   }, [isConvMode]);
+
+  const cancelTTS = useCallback(() => {
+    if (ttsHandleRef.current) {
+      ttsHandleRef.current.cancel();
+      ttsHandleRef.current = null;
+    }
+  }, []);
 
   const clearAllTimers = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -190,7 +163,8 @@ export function useVoiceConversation({
         if (response) {
           onResponseReceived?.(response);
           setConvState('speaking');
-          speakText(response, () => {
+          ttsHandleRef.current = speakWithTTS(response, () => {
+            ttsHandleRef.current = null;
             if (!isConvModeRef.current || !activeRef.current) {
               setConvState('idle');
               return;
@@ -198,6 +172,14 @@ export function useVoiceConversation({
             playReadyChime();
             setConvState('listening');
             scheduleRestart(300, () => startListening());
+          }, (_err) => {
+            ttsHandleRef.current = null;
+            if (!isConvModeRef.current || !activeRef.current) {
+              setConvState('idle');
+              return;
+            }
+            setConvState('listening');
+            scheduleRestart(1000, () => startListening());
           });
         } else {
           setConvState('listening');
@@ -240,20 +222,20 @@ export function useVoiceConversation({
     setIsConvMode(true);
     activeRef.current = true;
     isConvModeRef.current = true;
-    window.speechSynthesis.cancel();
+    cancelTTS();
     playReadyChime();
     setConvState('listening');
     scheduleRestart(200, () => startListening());
-  }, [startListening, scheduleRestart]);
+  }, [startListening, scheduleRestart, cancelTTS]);
 
   const stopConversation = useCallback(() => {
     activeRef.current = false;
     isConvModeRef.current = false;
     setIsConvMode(false);
     stopListening();
-    window.speechSynthesis.cancel();
+    cancelTTS();
     setConvState('idle');
-  }, [stopListening]);
+  }, [stopListening, cancelTTS]);
 
   useEffect(() => {
     return () => {
@@ -261,7 +243,7 @@ export function useVoiceConversation({
       isConvModeRef.current = false;
       clearAllTimers();
       if (recRef.current) { try { recRef.current.stop(); } catch {} recRef.current = null; }
-      window.speechSynthesis.cancel();
+      if (ttsHandleRef.current) { ttsHandleRef.current.cancel(); ttsHandleRef.current = null; }
     };
   }, [clearAllTimers]);
 

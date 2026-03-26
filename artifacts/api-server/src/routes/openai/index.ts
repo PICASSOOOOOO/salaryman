@@ -14,6 +14,29 @@ import {
 
 const router: IRouter = Router();
 
+router.post("/tts", async (req, res) => {
+  const { text } = req.body as { text?: string };
+  if (!text || typeof text !== "string") {
+    res.status(400).json({ error: "text is required" });
+    return;
+  }
+  try {
+    const mp3 = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: "onyx",
+      input: text,
+      response_format: "mp3",
+    });
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", buffer.length);
+    res.end(buffer);
+  } catch (err) {
+    console.error("TTS error:", err);
+    res.status(502).json({ error: "TTS failed" });
+  }
+});
+
 router.get("/openai/conversations", async (_req, res) => {
   const all = await db.select().from(conversations).orderBy(conversations.createdAt);
   res.json(all);
