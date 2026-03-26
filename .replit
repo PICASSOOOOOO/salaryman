@@ -41,4 +41,24 @@ expertMode = true
 TWILIO_PHONE_NUMBER = "+18884024561"
 TWILIO_ACCOUNT_SID = "AC8367e2fd8959023c6233f1131cc88a7d"
 TWILIO_AUTH_TOKEN = "61ee3f8eb4d4a9d807704f07fb3e1ba9"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 80
+
+[[ports]]
+localPort = 8082
+externalPort = 3001
+
+[[ports]]
+localPort = 21129
+externalPort = 3000
+
+[[ports]]
+localPort = 21130
+externalPort = 3002
         
