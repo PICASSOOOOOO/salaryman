@@ -162,7 +162,7 @@ router.get("/dev-tasks/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task ID" }); return; }
 
   const [task] = await db.select().from(devTasksTable).where(eq(devTasksTable.id, id));
@@ -192,7 +192,7 @@ router.patch("/dev-tasks/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task ID" }); return; }
 
   const [task] = await db.select().from(devTasksTable).where(eq(devTasksTable.id, id));
@@ -255,7 +255,7 @@ router.post("/dev-tasks/:id/notes", async (req: Request, res: Response) => {
     return;
   }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task ID" }); return; }
 
   const [task] = await db.select().from(devTasksTable).where(eq(devTasksTable.id, id));
@@ -285,7 +285,7 @@ router.post("/dev-tasks/:id/escalate", async (req: Request, res: Response) => {
     return;
   }
 
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task ID" }); return; }
 
   const [task] = await db.select().from(devTasksTable).where(eq(devTasksTable.id, id));
