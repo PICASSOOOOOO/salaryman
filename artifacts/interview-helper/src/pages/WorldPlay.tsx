@@ -2145,7 +2145,10 @@ const THREATS_INIT: Threat[] = [
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
 const EXP_TABLE: number[] = [];
-for (let i = 0; i < 100; i++) EXP_TABLE.push(Math.floor(250 + i * 200 + i * i * 6));
+for (let i = 0; i < 100; i++) {
+  const late = Math.max(0, i - 12);
+  EXP_TABLE.push(Math.floor(250 + i * 200 + i * i * 6 + late * late * 30));
+}
 const MAX_LEVEL = 100;
 const expToLevel = (lvl: number) => EXP_TABLE[Math.min(lvl - 1, EXP_TABLE.length - 1)];
 const EXP_PER_QUARTER_HEART = 1_000_000;
@@ -2163,7 +2166,7 @@ interface ExpGainState {
   floaters: Array<{ x: number; y: number; text: string; color: string; life: number; maxLife: number }>;
 }
 
-const LEVEL_MILESTONES = new Set([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100]);
+const LEVEL_MILESTONES = new Set([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
 
 function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, setLevelUpText: (t: string) => void, setShowLevelUp: (v: boolean) => void, setNarr: (n: string) => void, setExp: (e: number) => void, setLevel: (l: number) => void, setHp: (h: number) => void) {
   g.totalExpEarned += earned;
@@ -2184,11 +2187,15 @@ function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, s
   let newExp = g.exp + earned; let newLevel = g.level;
   while (newLevel < MAX_LEVEL && newExp >= expToLevel(newLevel)) {
     newExp -= expToLevel(newLevel); newLevel++;
-    g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
     const isMilestone = LEVEL_MILESTONES.has(newLevel);
+    if (isMilestone) {
+      g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
+    } else {
+      g.hp = Math.min(g.maxHp, g.hp + 5);
+    }
     const lText = isMilestone
-      ? `Level ${newLevel} — HP ${g.maxHp} — New threshold reached`
-      : `Level ${newLevel} — HP +10`;
+      ? `Level ${newLevel} — HEART CONTAINER +1 — Max HP ${g.maxHp}`
+      : `Level ${newLevel} — HP +5`;
     setLevelUpText(lText); setShowLevelUp(true);
     setTimeout(() => setShowLevelUp(false), isMilestone ? 4000 : 2500);
     setNarr(`> ${lText}`);
@@ -3851,14 +3858,14 @@ export default function WorldPlay() {
         return;
       }
       if (!isFree) { g.salary -= wsRent; setSalary(g.salary); }
-      g.hp = g.maxHp; g.energy = Math.min(100, g.energy + 50);
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.5)); g.energy = Math.min(100, g.energy + 50);
       g.hunger = Math.min(100, g.hunger + 20); g.thirst = Math.min(100, g.thirst + 20);
       setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst);
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       const daysLeft = Math.max(0, 7 - daysSinceReg);
       setNarr(isFree
-        ? `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. FREE rest. HP fully restored. Energy +50. Progress saved. ${daysLeft} free day${daysLeft !== 1 ? 's' : ''} remaining before ƒ${wsRent}/rest kicks in.`
-        : `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. ƒ${wsRent} FIAT rent charged. HP fully restored. Energy +50. Progress saved. The city takes its cut.`
+        ? `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. FREE rest. HP +50%. Energy +50. Progress saved. ${daysLeft} free day${daysLeft !== 1 ? 's' : ''} remaining before ƒ${wsRent}/rest kicks in.`
+        : `> ${char.workstationLabel?.toUpperCase() ?? 'WORKSTATION'} — ${char.workstationSlot ?? 'Your slot'}. ƒ${wsRent} FIAT rent charged. HP +50%. Energy +50. Progress saved. The city takes its cut.`
       );
       sfxHeal();
       return;
@@ -3868,11 +3875,11 @@ export default function WorldPlay() {
     if (bid === 'minx_arms') {
       if (g.housingTier === 'minx_arms') {
         setFloorPanel({ bid, dir: BUILDING_FLOORS.minx_arms, selectedFloor: 0 });
-        g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
-        g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
+        g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
+        g.poisoned = false; setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
         sfxSave();
         doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-        setNarr(`> MINX ARMS HOTEL — Room 408. Nightly rate. HP restored. Progress saved.`);
+        setNarr(`> MINX ARMS HOTEL — Room 408. Nightly rate. HP +60%. Progress saved.`);
       } else {
         sfxEnter();
         setNarr('> MINX ARMS HOTEL — Cheap hotel. Rooms by the night. No vacancy sign flickers. Visit the REAL ESTATE OFFICE to book a room.');
@@ -3880,14 +3887,14 @@ export default function WorldPlay() {
     }
     else if (bid === 'eastside_flat') {
       if (isOwnerHome) {
-        setNarr(`> EASTSIDE FLATS — Unit ${aptUnit}. Weekly lease. The landlord bot hums. You collapse into your bed. HP restored. Progress saved.`);
+        setNarr(`> EASTSIDE FLATS — Unit ${aptUnit}. Weekly lease. The landlord bot hums. You collapse into your bed. HP +60%. Progress saved.`);
       } else {
         sfxEnter();
         setNarr('> EASTSIDE FLATS — Apartment block. Weekly leases. Visit the REAL ESTATE OFFICE to rent a unit.');
       }
       setFloorPanel({ bid, dir: BUILDING_FLOORS.eastside_flat, selectedFloor: 0 });
-      g.hp = g.maxHp; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
-      g.poisoned = false; setHp(g.maxHp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 50);
+      g.poisoned = false; setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
       sfxSave();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
     }
@@ -3973,10 +3980,10 @@ export default function WorldPlay() {
       }
     }
     else if (bid === 'safe_house') {
-      g.hp = g.maxHp; g.energy = 100; g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40);
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.65)); g.energy = Math.min(100, g.energy + 60); g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40);
       setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. Full HP. Full energy. Hunger +40. Thirst +40. Progress saved. KAEL VOSS stands watch. "Nobody gets in unless I say," he says. "Rest. You earned it."');
+      setNarr('> SAFE HOUSE — Your bed is still here. Threadbare blanket, steel frame, but it\'s yours. You sleep deeply. HP +65%. Energy +60. Hunger +40. Thirst +40. Progress saved. KAEL VOSS stands watch. "Nobody gets in unless I say," he says. "Rest. You earned it."');
     }
     else if (bid === 'rust_porch') {
       if (g.salary >= 4000) {
@@ -4001,10 +4008,10 @@ export default function WorldPlay() {
       setNarr('> TERMINUS SHELTER — ANSEL DUNN hands you a ration without speaking. You eat. You sleep on the floor. HP +40. Hunger +35. Thirst +35. Progress saved. "I feed between thirty and sixty people a day," he says. "You\'re number forty-one." He says this like it\'s routine. It is.');
     }
     else if (bid === 'bastion_keep') {
-      const mhp = g.maxHp; g.hp = mhp; g.energy = 100; g.salary += 2000;
-      setHp(mhp); setEnergy(100); setSalary(g.salary); sfxHeal();
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.energy = Math.min(100, g.energy + 60); g.salary += 2000;
+      setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
       doSave({ ...g, salary: g.salary });
-      setNarr('> BASTION KEEP — Stone walls. Reinforced perimeter. PETRA VANCE stands guard like someone who has never stopped standing guard. "Rest here. No charge." You sleep on a military cot. HP fully restored. Energy maxed. +ƒ2,000 FIAT (she pressed salvage credits into your hand). "Payment for showing up. Nobody else does." You saved.');
+      setNarr('> BASTION KEEP — Stone walls. Reinforced perimeter. PETRA VANCE stands guard like someone who has never stopped standing guard. "Rest here. No charge." You sleep on a military cot. HP +60%. Energy +60. +ƒ2,000 FIAT (she pressed salvage credits into your hand). "Payment for showing up. Nobody else does." You saved.');
     }
     else if (bid === 'vend')    {
       sfxHeal(); setShowVend(true);
@@ -4028,7 +4035,7 @@ export default function WorldPlay() {
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
     else if (bid === 'oxide_labs'){ g.salary += 5000; setSalary(g.salary); sfxCoin(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ5,000 in the drawer. I won\'t need it." +ƒ5,000 FIAT.'); }
-    else if (bid === 'crystal' || bid === 'crystal2' || bid === 'crystal3') {
+    else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
       sfxSave();
@@ -4042,6 +4049,22 @@ export default function WorldPlay() {
           const line = DOG_REST_LINES[Math.floor(Math.random() * DOG_REST_LINES.length)];
           crystalMsg += ` ${g.dogCompanion.name} recovers fully. > [${g.dogCompanion.name}]: "${line}"`;
         }
+      }
+      setNarr(crystalMsg);
+    }
+    else if (bid === 'crystal2' || bid === 'crystal3') {
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6));
+      g.hunger = Math.min(100, g.hunger + 50); g.thirst = Math.min(100, g.thirst + 50);
+      g.energy = Math.min(100, g.energy + 40); g.poisoned = false;
+      setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false);
+      sfxSave();
+      doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+      let crystalMsg = `> SAVE POINT — The crystal pulses. HP +60%. Stats partially restored. Progress saved. LVL:${g.level} EXP:${g.exp}.`;
+      if (g.dogCompanion.active && g.dogCompanion.injured) {
+        g.dogCompanion.hp = Math.min(DOG_MAX_HP, g.dogCompanion.hp + Math.floor(DOG_MAX_HP * 0.5));
+        g.dogCompanion.injured = false;
+        setDogHp(g.dogCompanion.hp); setDogInjured(false);
+        crystalMsg += ` ${g.dogCompanion.name} partially healed.`;
       }
       setNarr(crystalMsg);
     }
@@ -4059,7 +4082,7 @@ export default function WorldPlay() {
       setNarr('> PRINT SHOP — Unauthorized print run. ƒ2,500 FIAT. The machine jams on page three. Jam paper reads: OPERATION MINX — CLASSIFIED.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'east_bunker') { g.energy = Math.min(100, g.energy + 20); g.hp = Math.min(g.maxHp, g.hp + 15); setEnergy(g.energy); setHp(Math.floor(g.hp)); sfxHeal(); setNarr('> EAST BUNKER — Reinforced walls. Emergency rations. Energy +20. HP +15. Sign reads: EMERGENCY RESERVE — PABLO CORP PROPERTY.'); }
+    else if (bid === 'east_bunker') { g.energy = Math.min(100, g.energy + 15); g.hp = Math.min(g.maxHp, g.hp + 8); setEnergy(g.energy); setHp(Math.floor(g.hp)); sfxHeal(); setNarr('> EAST BUNKER — Reinforced walls. Emergency rations. Energy +15. HP +8. Sign reads: EMERGENCY RESERVE — PABLO CORP PROPERTY.'); }
     else if (bid === 'north_gate') { g.energy = Math.min(100, g.energy + 10); setEnergy(g.energy); sfxHeal(); setNarr('> NORTH GATE — Edge of Minx City. You catch your breath. Energy +10. Guards patrol silently. Beyond is open territory.'); }
     else if (bid === 'outpost_alpha') {
       g.hunger = Math.min(100, g.hunger + 40); g.thirst = Math.min(100, g.thirst + 40); g.energy = Math.min(100, g.energy + 20);
@@ -4073,14 +4096,14 @@ export default function WorldPlay() {
     }
     else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ6,000 FIAT in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
-      g.hp = Math.min(g.maxHp, g.hp + 30); setHp(g.hp); sfxHeal();
-      setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +30. Someone left coffee. Still warm.');
+      g.hp = Math.min(g.maxHp, g.hp + 12); setHp(g.hp); sfxHeal();
+      setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +12. Someone left coffee. Still warm.');
     }
     else if (bid === 'machine_bunker') {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.machine_bunker, selectedFloor: 0 });
-      g.hp = Math.min(g.maxHp, g.hp + 40); g.energy = Math.min(100, g.energy + 25);
+      g.hp = Math.min(g.maxHp, g.hp + 18); g.energy = Math.min(100, g.energy + 20);
       setHp(g.hp); setEnergy(g.energy); sfxHeal();
-      setNarr('> MACHINE BUNKER — A reinforced hatch in the hillside. Stairs descend into blue-lit corridors. The air hums with capacitor discharge. Recharge bays line the walls. HP +40. Energy +25.');
+      setNarr('> MACHINE BUNKER — A reinforced hatch in the hillside. Stairs descend into blue-lit corridors. The air hums with capacitor discharge. Recharge bays line the walls. HP +18. Energy +20.');
     }
     else if (['sub_west','sub_central','sub_east','sub_north'].includes(bid)) {
       sfxEnter();
@@ -4135,10 +4158,10 @@ export default function WorldPlay() {
       }
     }
     else if (bid === 'north_bunker') {
-      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
-      setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.5)); g.hunger = Math.min(100, g.hunger + 50); g.thirst = Math.min(100, g.thirst + 50); g.energy = Math.min(100, g.energy + 40); g.poisoned = false;
+      setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr('> NORTH BUNKER — Fully stocked emergency shelter. All stats fully restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. PABLO CORP AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
+      setNarr('> NORTH BUNKER — Emergency shelter. HP +50%. Stats partially restored. Progress saved. "NORTH QUARTER EMERGENCY RESERVE. PABLO CORP AUDIT ZONE. DO NOT OCCUPY." You occupied it.');
     }
     else if (IS_PUBLIC_TERMINAL(bid)) {
       sfxEnter();
@@ -4154,18 +4177,17 @@ export default function WorldPlay() {
       }
     }
     else if (['crystal4','crystal5','crystal6','crystal7'].includes(bid)) {
-      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
-      setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxSave();
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6));
+      g.hunger = Math.min(100, g.hunger + 50); g.thirst = Math.min(100, g.thirst + 50);
+      g.energy = Math.min(100, g.energy + 40); g.poisoned = false;
+      setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false); sfxSave();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      let c2Msg = `> SAVE POINT — Crystal pulse. All stats restored. Saved. LVL:${g.level}`;
-      if (g.dogCompanion.active) {
-        const wasInjured = g.dogCompanion.injured;
-        g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
-        setDogHp(DOG_MAX_HP); setDogInjured(false);
-        if (wasInjured) {
-          const line = DOG_REST_LINES[Math.floor(Math.random() * DOG_REST_LINES.length)];
-          c2Msg += ` ${g.dogCompanion.name} fully healed. > [${g.dogCompanion.name}]: "${line}"`;
-        }
+      let c2Msg = `> SAVE POINT — Crystal pulse. HP +60%. Stats partially restored. Saved. LVL:${g.level}`;
+      if (g.dogCompanion.active && g.dogCompanion.injured) {
+        g.dogCompanion.hp = Math.min(DOG_MAX_HP, g.dogCompanion.hp + Math.floor(DOG_MAX_HP * 0.5));
+        g.dogCompanion.injured = false;
+        setDogHp(g.dogCompanion.hp); setDogInjured(false);
+        c2Msg += ` ${g.dogCompanion.name} partially healed.`;
       }
       setNarr(c2Msg);
     }
@@ -4183,10 +4205,10 @@ export default function WorldPlay() {
       setNarr(`> RUINS ALPHA — Pre-collapse architecture. High-rises reduced to rubble. You dig through concrete and find a sealed cache. +ƒ${loot.toLocaleString()} FIAT in old denomination tokens. Still valid.`);
     }
     else if (bid === 'southern_hub') {
-      g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
-      setHp(g.hp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false); sfxHeal();
+      g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.energy = Math.min(100, g.energy + 50); g.poisoned = false;
+      setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. Everything restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
+      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. HP +60%. Stats partially restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
     }
   }, []);
 
@@ -7428,7 +7450,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isIndoorsRegen = !!g.interior;
         const nearBldRegen = g.interior?.bid ?? '';
         const isRestLocRegen = REST_LOCATION_IDS.has(nearBldRegen);
-        const regenAmount = isRestLocRegen ? 6 : isIndoorsRegen ? 3 : 2;
+        const regenAmount = isRestLocRegen ? 3 : isIndoorsRegen ? 1 : 0;
         g.hp = Math.min(g.maxHp, g.hp + regenAmount);
         setHp(Math.floor(g.hp));
       }
@@ -9035,7 +9057,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
             () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
             () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
-            () => { g.hp = Math.min(g.maxHp, g.hp + 15); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed free stim-packs city-wide. "Productivity metric: normalized." HP +15.'; },
+            () => { g.hp = Math.min(g.maxHp, g.hp + 8); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed diluted stim-packs city-wide. "Productivity metric: normalized." HP +8.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
             () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
@@ -9044,7 +9066,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
             () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
-            () => { g.hp = Math.min(g.maxHp, g.hp + 20); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +20. Someone was looking out for you.'; },
+            () => { g.hp = Math.min(g.maxHp, g.hp + 10); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +10. Someone was looking out for you.'; },
             () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
             () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
             () => { g.thirst = Math.min(100, g.thirst + 50); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> SCAVENGE — Sealed water bottle found in a collapsed storefront. Label faded. Contents clear. Thirst +50.'; },
