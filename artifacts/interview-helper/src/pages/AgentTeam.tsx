@@ -48,8 +48,8 @@ function StatusDot({ status }: { status: 'online' | 'offline' | 'unknown' }) {
   if (status === 'online') {
     return (
       <span className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-emerald-400 text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ONLINE</span>
+        <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+        <span className="text-sky-400 text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ONLINE</span>
       </span>
     );
   }
@@ -97,8 +97,8 @@ export default function AgentTeam() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Cpu className="w-5 h-5 text-emerald-400" />
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                <Cpu className="w-5 h-5 text-sky-400" />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: boomerMode ? undefined : "'VT323', monospace", letterSpacing: boomerMode ? undefined : '0.1em', fontSize: boomerMode ? undefined : '1.4rem' }}>
@@ -127,15 +127,15 @@ export default function AgentTeam() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
               <div className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0 font-bold text-[10px]">1</span>
+                <span className="w-5 h-5 rounded bg-sky-500/15 border border-sky-500/25 text-sky-400 flex items-center justify-center shrink-0 font-bold text-[10px]">1</span>
                 <span>{boomerMode ? 'You send a message to PABLO' : 'Request classified by intent type'}</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
+                <span className="w-5 h-5 rounded bg-sky-500/15 border border-sky-500/25 text-sky-400 flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
                 <span>{boomerMode ? 'PABLO picks the right specialist automatically' : 'Optimal agent selected, health-checked'}</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0 font-bold text-[10px]">3</span>
+                <span className="w-5 h-5 rounded bg-sky-500/15 border border-sky-500/25 text-sky-400 flex items-center justify-center shrink-0 font-bold text-[10px]">3</span>
                 <span>{boomerMode ? 'If one AI is down, another takes over automatically' : 'Fallback chain activates if primary is unreachable'}</span>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function AgentTeam() {
                         ? 'border-orange-500/20'
                         : agent.provider === 'openclaw'
                         ? 'border-cyan-500/20'
-                        : 'border-emerald-500/20'
+                        : 'border-sky-500/20'
                     }`}
                   >
                     <div className="flex items-start gap-4">
@@ -177,13 +177,13 @@ export default function AgentTeam() {
                           ? 'bg-orange-500/10 border-orange-500/30'
                           : agent.provider === 'openclaw'
                           ? 'bg-cyan-500/10 border-cyan-500/30'
-                          : 'bg-emerald-500/10 border-emerald-500/30'
+                          : 'bg-sky-500/10 border-sky-500/30'
                       }`}>
                         {agent.provider === 'claude'
                           ? <Brain className="w-6 h-6 text-orange-400" />
                           : agent.provider === 'openclaw'
                           ? <Cpu className="w-6 h-6 text-cyan-400" />
-                          : <Zap className="w-6 h-6 text-emerald-400" />
+                          : <Zap className="w-6 h-6 text-sky-400" />
                         }
                       </div>
 
@@ -210,7 +210,7 @@ export default function AgentTeam() {
                               ? 'bg-orange-500/10 text-orange-400 border-orange-500/25'
                               : agent.provider === 'openclaw'
                               ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25'
-                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                              : 'bg-sky-500/10 text-sky-400 border-sky-500/25'
                           }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                             {agent.provider === 'claude' ? 'ANTHROPIC' : agent.provider === 'openclaw' ? 'OPENCLAW' : 'OPENAI'}
                           </span>

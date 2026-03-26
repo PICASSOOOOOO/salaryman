@@ -253,7 +253,7 @@ export default function PhoneNumbersPage() {
                     </div>
                   </div>
                   {isExpanded && (
-                    <div style={{ padding: '14px 20px 18px', background: 'rgba(0,255,65,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
+                    <div style={{ padding: '14px 20px 18px', background: 'rgba(56,189,248,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div>
                           <div style={{ fontSize: '0.42rem', color: crt(0.3), letterSpacing: '0.2em', marginBottom: 6 }}>NUMBER DETAILS</div>

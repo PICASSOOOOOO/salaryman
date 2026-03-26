@@ -566,23 +566,23 @@ export default function Home() {
 
       {/* City Info Bar */}
       <div className="relative z-10 px-4 py-3 shrink-0"
-        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(0,180,50,0.02))', borderBottom: '1px solid rgba(34,197,94,0.1)' }}>
+        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(10,80,120,0.02))', borderBottom: '1px solid rgba(56,189,248,0.1)' }}>
         <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0">
-            <Terminal className="w-4 h-4" style={{ color: 'rgba(34,197,94,0.5)' }} />
+            <Terminal className="w-4 h-4" style={{ color: 'rgba(56,189,248,0.5)' }} />
             <div>
-              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(34,197,94,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · ALPHA {__BUILD_VERSION__}</div>
+              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(56,189,248,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · ALPHA {__BUILD_VERSION__}</div>
             </div>
           </div>
           <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(34,197,94,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(0,255,65,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(0,255,65,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt).toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt).toLocaleString()}` : '—'}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
@@ -653,14 +653,14 @@ export default function Home() {
       <main className="flex flex-col p-4 md:p-6 relative z-10 gap-4 flex-1 min-h-0">
 
         {/* Tools Banner */}
-        <div className="rounded-xl border border-emerald-500/15 px-4 py-2.5 flex items-center gap-3"
-          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.04), rgba(56,189,248,0.03))' }}>
+        <div className="rounded-xl border border-sky-500/15 px-4 py-2.5 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg, rgba(56,189,248,0.04), rgba(56,189,248,0.03))' }}>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Bot className="w-3.5 h-3.5 text-emerald-400/70" />
+            <div className="w-6 h-6 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+              <Bot className="w-3.5 h-3.5 text-sky-400/70" />
             </div>
             <div>
-              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(34,197,94,0.7)' }}>PABLO TOOLKIT</span>
+              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.7)' }}>PABLO TOOLKIT</span>
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI Chat + Translator + Dictionary + Thesaurus + Notes — no subscription required</span>
             </div>
           </div>
@@ -670,7 +670,7 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
 
           {/* Sidebar Tools */}
-          <div className="lg:w-96 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(34,197,94,0.15) transparent' }}>
+          <div className="lg:w-96 shrink-0 space-y-3 lg:overflow-y-auto lg:max-h-[calc(100vh-180px)]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(56,189,248,0.15) transparent' }}>
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
@@ -1047,14 +1047,14 @@ export default function Home() {
             </div>
 
             {/* Feature Module Quick-Access Tiles */}
-            <div className="rounded-xl border border-green-500/15 bg-green-500/3 p-3">
+            <div className="rounded-xl border border-sky-500/15 bg-sky-500/3 p-3">
               <div className="flex items-center gap-2 mb-2.5">
-                <Layers className="w-3.5 h-3.5" style={{ color: 'rgba(34,197,94,0.5)' }} />
-                <span className="text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em', color: 'rgba(34,197,94,0.6)' }}>MODULES</span>
+                <Layers className="w-3.5 h-3.5" style={{ color: 'rgba(56,189,248,0.5)' }} />
+                <span className="text-xs font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em', color: 'rgba(56,189,248,0.6)' }}>MODULES</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {([
-                  { label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, desc: 'Interview solver & screen scan', path: '/console', color: 'rgba(34,197,94,0.5)', bg: 'rgba(34,197,94,0.05)', border: 'rgba(34,197,94,0.15)', icon: '⌥' },
+                  { label: boomerMode ? 'CONSOLE' : PABLO_PRODUCTS.CONSOLE.short, desc: 'Interview solver & screen scan', path: '/console', color: 'rgba(56,189,248,0.5)', bg: 'rgba(56,189,248,0.05)', border: 'rgba(56,189,248,0.15)', icon: '⌥' },
                   { label: boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short, desc: 'CRM & relationship intel', path: '/contacts', color: 'rgba(100,180,255,0.6)', bg: 'rgba(100,180,255,0.05)', border: 'rgba(100,180,255,0.15)', icon: '◈' },
                   { label: boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short, desc: 'Recruit & manage staff', path: '/hiring', color: 'rgba(255,160,50,0.6)', bg: 'rgba(255,160,50,0.05)', border: 'rgba(255,160,50,0.15)', icon: '▣' },
                   { label: boomerMode ? 'DOCUMENTS' : PABLO_PRODUCTS.PRINTER.short, desc: 'Invoices, contracts & files', path: '/documents', color: 'rgba(180,100,255,0.6)', bg: 'rgba(180,100,255,0.05)', border: 'rgba(180,100,255,0.15)', icon: '◻' },
@@ -1104,7 +1104,7 @@ export default function Home() {
                   <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider border ${
                     currentAgent.provider === 'claude'
                       ? 'bg-orange-500/10 text-orange-400 border-orange-500/30'
-                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                      : 'bg-sky-500/10 text-sky-400 border-sky-500/30'
                   }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                     {boomerMode
                       ? (currentAgent.provider === 'claude' ? 'CODE EXPERT' : 'QUICK ASSIST')
@@ -1126,8 +1126,8 @@ export default function Home() {
                 {chatMessages.length === 0 ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="h-full flex flex-col items-center justify-center gap-4 py-8">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                      <Bot className="w-7 h-7 text-emerald-400/60" />
+                    <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+                      <Bot className="w-7 h-7 text-sky-400/60" />
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium text-foreground mb-1">Hey, I'm PABLO</p>
@@ -1136,7 +1136,7 @@ export default function Home() {
                     <div className="flex flex-col gap-2 w-full max-w-xs">
                       {CHAT_STARTERS.map(s => (
                         <button key={s} onClick={() => handleSendChat(s)}
-                          className="text-left text-xs px-3 py-2 rounded-xl bg-muted/40 hover:bg-emerald-500/10 hover:text-emerald-300 border border-border hover:border-emerald-500/30 text-muted-foreground transition-colors">
+                          className="text-left text-xs px-3 py-2 rounded-xl bg-muted/40 hover:bg-sky-500/10 hover:text-sky-300 border border-border hover:border-sky-500/30 text-muted-foreground transition-colors">
                           {s}
                         </button>
                       ))}
@@ -1145,7 +1145,7 @@ export default function Home() {
                 ) : (
                   <>
                     {businessMemory && (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-[11px] text-emerald-400/70">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-500/5 border border-sky-500/15 text-[11px] text-sky-400/70">
                         <Brain className="w-3 h-3 shrink-0" />
                         <span className="flex-1 line-clamp-1">{businessMemory.split('\n')[0].replace(/^[•\-*]\s*/, '')}</span>
                         <button onClick={clearMemory} className="text-muted-foreground/40 hover:text-red-400 transition-colors text-[10px]">forget</button>
@@ -1163,7 +1163,7 @@ export default function Home() {
                             <>
                               <MarkdownRenderer content={msg.content} />
                               {chatStreaming && i === chatMessages.length - 1 && (
-                                <span className="inline-block w-1.5 h-3.5 bg-emerald-400 ml-0.5 animate-pulse rounded-sm align-middle" />
+                                <span className="inline-block w-1.5 h-3.5 bg-sky-400 ml-0.5 animate-pulse rounded-sm align-middle" />
                               )}
                             </>
                           ) : msg.content}
@@ -1175,7 +1175,7 @@ export default function Home() {
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider border ${
                                 msg.agent.provider === 'claude'
                                   ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20'
-                                  : 'bg-emerald-500/10 text-emerald-400/70 border-emerald-500/20'
+                                  : 'bg-sky-500/10 text-sky-400/70 border-sky-500/20'
                               }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                                 {boomerMode
                                   ? (msg.agent.provider === 'claude' ? 'Code Expert' : 'Quick Assist')
@@ -1184,7 +1184,7 @@ export default function Home() {
                               </span>
                             )}
                             <button onClick={() => voice.speakResponse(msg.content)}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border border-sky-500/20 bg-sky-500/10 text-sky-400/70 hover:text-sky-400 hover:bg-sky-500/20 transition-colors"
                               style={{ fontFamily: "'Share Tech Mono', monospace" }}
                               title="Hear PABLO say this">
                               <Volume2 className="w-3 h-3" /> {boomerMode ? 'HEAR THIS' : 'PLAY'}
@@ -1197,18 +1197,18 @@ export default function Home() {
                             initial={{ opacity: 0, scale: 0.95, y: 4 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             onClick={() => handlePABLOAction(msg.action!)}
-                            className="mt-2 max-w-[85%] w-full flex items-center gap-3 px-4 py-3 rounded-2xl rounded-tl-md bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all group text-left"
+                            className="mt-2 max-w-[85%] w-full flex items-center gap-3 px-4 py-3 rounded-2xl rounded-tl-md bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 hover:border-sky-500/50 transition-all group text-left"
                           >
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/30 transition-colors">
-                              <ArrowRight className="w-4 h-4 text-emerald-400" />
+                            <div className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-500/30 flex items-center justify-center shrink-0 group-hover:bg-sky-500/30 transition-colors">
+                              <ArrowRight className="w-4 h-4 text-sky-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-emerald-300 truncate">{msg.action.label}</p>
+                              <p className="text-sm font-semibold text-sky-300 truncate">{msg.action.label}</p>
                               {msg.action.description && (
-                                <p className="text-[11px] text-emerald-400/60 truncate">{msg.action.description}</p>
+                                <p className="text-[11px] text-sky-400/60 truncate">{msg.action.description}</p>
                               )}
                             </div>
-                            <ArrowRight className="w-4 h-4 text-emerald-400/40 group-hover:text-emerald-400 transition-colors shrink-0" />
+                            <ArrowRight className="w-4 h-4 text-sky-400/40 group-hover:text-sky-400 transition-colors shrink-0" />
                           </motion.button>
                         )}
                       </motion.div>
@@ -1219,10 +1219,10 @@ export default function Home() {
               </div>
 
               {conv.isConvMode && (
-                <div className="border-t border-emerald-500/20 px-3 py-2 shrink-0">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <div className="border-t border-sky-500/20 px-3 py-2 shrink-0">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-500/5 border border-sky-500/20">
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      conv.convState === 'listening' ? 'bg-emerald-400 animate-pulse' :
+                      conv.convState === 'listening' ? 'bg-sky-400 animate-pulse' :
                       conv.convState === 'processing' ? 'bg-amber-400 animate-pulse' :
                       conv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
                       'bg-gray-400'
@@ -1252,7 +1252,7 @@ export default function Home() {
 
               {/* Chat input + Voice PABLO */}
               <div className="border-t border-border p-3 shrink-0">
-                <div className="flex items-end gap-2 bg-muted/30 rounded-xl border border-border focus-within:border-emerald-500/40 transition-colors px-3 py-2">
+                <div className="flex items-end gap-2 bg-muted/30 rounded-xl border border-border focus-within:border-sky-500/40 transition-colors px-3 py-2">
                   <textarea
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
@@ -1265,7 +1265,7 @@ export default function Home() {
                   />
 
                   <button onClick={() => handleSendChat()} disabled={!chatInput.trim() || chatStreaming || conv.isConvMode}
-                    className="shrink-0 w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    className="shrink-0 w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/30 text-sky-400 flex items-center justify-center hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     {chatStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
                 </div>
@@ -1306,8 +1306,8 @@ export default function Home() {
                       disabled={chatStreaming && !conv.isConvMode}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed
                         ${conv.isConvMode
-                          ? 'bg-emerald-500/25 border-emerald-500/50 text-emerald-400 animate-pulse'
-                          : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-400'}`}
+                          ? 'bg-sky-500/25 border-sky-500/50 text-sky-400 animate-pulse'
+                          : 'bg-sky-500/10 border-sky-500/25 text-sky-400/60 hover:bg-sky-500/20 hover:text-sky-400'}`}
                       style={{ fontFamily: "'Share Tech Mono', monospace" }}
                       title={conv.isConvMode ? 'End conversation mode' : 'Hands-free back-and-forth with PABLO'}
                     >

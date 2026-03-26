@@ -69,15 +69,15 @@ interface Summary {
 }
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
-  open: '#00ff41',
+  open: '#38bdf8',
   in_progress: '#00ccff',
-  resolved: '#88ff44',
-  closed: 'rgba(0,255,65,0.3)',
+  resolved: '#7dd3fc',
+  closed: 'rgba(56,189,248,0.3)',
 };
 
 const PRIORITY_COLORS: Record<TicketPriority, string> = {
-  low: 'rgba(0,255,65,0.4)',
-  medium: '#00ff41',
+  low: 'rgba(56,189,248,0.4)',
+  medium: '#38bdf8',
   high: '#ff8800',
   urgent: '#ff4444',
 };
@@ -183,48 +183,48 @@ function TicketDetail({
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ ...ST, background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', padding: '.3rem .8rem', cursor: 'pointer', fontSize: '.55rem', marginBottom: '1rem', letterSpacing: '.1em' }}>
+      <button onClick={onBack} style={{ ...ST, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', padding: '.3rem .8rem', cursor: 'pointer', fontSize: '.55rem', marginBottom: '1rem', letterSpacing: '.1em' }}>
         ← BACK TO LIST
       </button>
 
-      <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', background: 'rgba(0,10,2,.7)', marginBottom: '1rem' }}>
+      <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '1.5rem', background: 'rgba(6,13,20,.7)', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
-            <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>
+            <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>
               TICKET #{localTicket.id}
             </div>
-            <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.4rem' }}>
+            <div style={{ ...VT, fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.4rem' }}>
               {localTicket.subject}
             </div>
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
               <StatusBadge status={localTicket.status} />
               <PriorityBadge priority={localTicket.priority} />
-              <span style={{ ...ST, fontSize: '.5rem', color: 'rgba(0,255,65,.4)', border: '1px solid rgba(0,255,65,.1)', padding: '2px 6px', borderRadius: 2, letterSpacing: '.08em' }}>
+              <span style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.4)', border: '1px solid rgba(56,189,248,.1)', padding: '2px 6px', borderRadius: 2, letterSpacing: '.08em' }}>
                 {CATEGORY_LABELS[localTicket.category]}
               </span>
             </div>
           </div>
-          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.25)', textAlign: 'right' }}>
+          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', textAlign: 'right' }}>
             <div>{new Date(localTicket.createdAt).toLocaleString()}</div>
             {localTicket.submittedByName && <div style={{ marginTop: '.2rem' }}>by {localTicket.submittedByName}</div>}
             {localTicket.submittedByEmail && <div>{localTicket.submittedByEmail}</div>}
           </div>
         </div>
 
-        <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(0,255,65,.7)', background: 'rgba(0,255,65,.04)', border: '1px solid rgba(0,255,65,.08)', padding: '1rem', whiteSpace: 'pre-wrap', lineHeight: 1.6, marginBottom: '1rem' }}>
+        <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.7)', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.08)', padding: '1rem', whiteSpace: 'pre-wrap', lineHeight: 1.6, marginBottom: '1rem' }}>
           {localTicket.description}
         </div>
 
-        {msg && <div style={{ ...ST, fontSize: '.6rem', color: '#00ff41', marginBottom: '.5rem' }}>{msg}</div>}
+        {msg && <div style={{ ...ST, fontSize: '.6rem', color: '#38bdf8', marginBottom: '.5rem' }}>{msg}</div>}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.75rem' }}>
           <div>
-            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>STATUS</div>
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>STATUS</div>
             <select
               value={localTicket.status}
               onChange={e => patch({ status: e.target.value })}
               disabled={updating}
-              style={{ ...ST, width: '100%', background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
+              style={{ ...ST, width: '100%', background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
             >
               <option value="open">Open</option>
               <option value="in_progress">In Progress</option>
@@ -233,12 +233,12 @@ function TicketDetail({
             </select>
           </div>
           <div>
-            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PRIORITY</div>
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PRIORITY</div>
             <select
               value={localTicket.priority}
               onChange={e => patch({ priority: e.target.value })}
               disabled={updating}
-              style={{ ...ST, width: '100%', background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
+              style={{ ...ST, width: '100%', background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -247,12 +247,12 @@ function TicketDetail({
             </select>
           </div>
           <div>
-            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>ASSIGNED TO</div>
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>ASSIGNED TO</div>
             <select
               value={localTicket.assignedToUserId ?? ''}
               onChange={e => patch({ assignedToUserId: e.target.value || null })}
               disabled={updating}
-              style={{ ...ST, width: '100%', background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
+              style={{ ...ST, width: '100%', background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}
             >
               <option value="">Unassigned</option>
               {activeMembers.map(m => (
@@ -265,25 +265,25 @@ function TicketDetail({
         </div>
       </div>
 
-      <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '1.5rem', background: 'rgba(0,10,2,.5)' }}>
-        <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '1rem' }}>INTERNAL NOTES ({localComments.length})</div>
+      <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '1.5rem', background: 'rgba(6,13,20,.5)' }}>
+        <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '1rem' }}>INTERNAL NOTES ({localComments.length})</div>
 
         {localComments.length === 0 && (
-          <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(0,255,65,.2)', marginBottom: '1rem' }}>No notes yet.</div>
+          <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.2)', marginBottom: '1rem' }}>No notes yet.</div>
         )}
 
         <div style={{ display: 'grid', gap: '.75rem', marginBottom: '1.25rem' }}>
           {localComments.map(c => (
-            <div key={c.id} style={{ border: '1px solid rgba(0,255,65,.08)', padding: '.75rem', background: 'rgba(0,255,65,.02)' }}>
+            <div key={c.id} style={{ border: '1px solid rgba(56,189,248,.08)', padding: '.75rem', background: 'rgba(56,189,248,.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.4rem' }}>
-                <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.4)' }}>
+                <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.4)' }}>
                   {c.userId === currentUserId ? 'YOU' : c.userId.slice(0, 8)}
                 </span>
-                <span style={{ ...ST, fontSize: '.4rem', color: 'rgba(0,255,65,.25)' }}>
+                <span style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.25)' }}>
                   {new Date(c.createdAt).toLocaleString()}
                 </span>
               </div>
-              <div style={{ ...ST, fontSize: '.65rem', color: 'rgba(0,255,65,.8)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{c.body}</div>
+              <div style={{ ...ST, fontSize: '.65rem', color: 'rgba(56,189,248,.8)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{c.body}</div>
             </div>
           ))}
         </div>
@@ -294,12 +294,12 @@ function TicketDetail({
             onChange={e => setCommentBody(e.target.value)}
             placeholder="Add internal note..."
             rows={3}
-            style={{ ...ST, width: '100%', background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', fontSize: '.65rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+            style={{ ...ST, width: '100%', background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', fontSize: '.65rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
           />
           <button
             onClick={postComment}
             disabled={posting || !commentBody.trim()}
-            style={{ ...ST, background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', padding: '.4rem 1rem', cursor: posting ? 'wait' : 'pointer', fontSize: '.6rem', letterSpacing: '.1em', opacity: !commentBody.trim() ? 0.4 : 1 }}
+            style={{ ...ST, background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', padding: '.4rem 1rem', cursor: posting ? 'wait' : 'pointer', fontSize: '.6rem', letterSpacing: '.1em', opacity: !commentBody.trim() ? 0.4 : 1 }}
           >
             {posting ? 'POSTING...' : 'ADD NOTE'}
           </button>
@@ -336,23 +336,23 @@ function SubmitTicketModal({ orgId, onClose, onSubmitted }: { orgId: number; onC
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: '#000a02', border: '1px solid rgba(0,255,65,.3)', padding: '2rem', width: '100%', maxWidth: 540 }}>
+      <div style={{ background: '#060d14', border: '1px solid rgba(56,189,248,.3)', padding: '2rem', width: '100%', maxWidth: 540 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ ...VT, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.15em' }}>NEW TICKET</div>
-          <button onClick={onClose} style={{ ...ST, background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+          <div style={{ ...VT, fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.15em' }}>NEW TICKET</div>
+          <button onClick={onClose} style={{ ...ST, background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
         </div>
         {error && <div style={{ ...ST, fontSize: '.6rem', color: '#ff6666', background: 'rgba(255,0,0,.05)', border: '1px solid rgba(255,80,80,.2)', padding: '.5rem', marginBottom: '1rem' }}>{error}</div>}
         <div style={{ display: 'grid', gap: '1rem' }}>
           <div>
-            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>SUBJECT</div>
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>SUBJECT</div>
             <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief description of the issue..."
-              style={{ ...ST, width: '100%', background: '#000', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', fontSize: '.7rem', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ ...ST, width: '100%', background: '#000', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', fontSize: '.7rem', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>CATEGORY</div>
+              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>CATEGORY</div>
               <select value={category} onChange={e => setCategory(e.target.value as TicketCategory)}
-                style={{ ...ST, width: '100%', background: '#000', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', fontSize: '.65rem', cursor: 'pointer' }}>
+                style={{ ...ST, width: '100%', background: '#000', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', fontSize: '.65rem', cursor: 'pointer' }}>
                 <option value="bug">Bug</option>
                 <option value="support">Support</option>
                 <option value="feature_request">Feature Request</option>
@@ -361,9 +361,9 @@ function SubmitTicketModal({ orgId, onClose, onSubmitted }: { orgId: number; onC
               </select>
             </div>
             <div>
-              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PRIORITY</div>
+              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PRIORITY</div>
               <select value={priority} onChange={e => setPriority(e.target.value as TicketPriority)}
-                style={{ ...ST, width: '100%', background: '#000', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', fontSize: '.65rem', cursor: 'pointer' }}>
+                style={{ ...ST, width: '100%', background: '#000', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', fontSize: '.65rem', cursor: 'pointer' }}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -372,12 +372,12 @@ function SubmitTicketModal({ orgId, onClose, onSubmitted }: { orgId: number; onC
             </div>
           </div>
           <div>
-            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>DESCRIPTION</div>
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>DESCRIPTION</div>
             <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Detailed description..." rows={5}
-              style={{ ...ST, width: '100%', background: '#000', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', fontSize: '.65rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ ...ST, width: '100%', background: '#000', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', fontSize: '.65rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <button onClick={submit} disabled={submitting}
-            style={{ ...ST, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', padding: '.6rem 1.5rem', cursor: submitting ? 'wait' : 'pointer', fontSize: '.65rem', letterSpacing: '.15em' }}>
+            style={{ ...ST, background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', padding: '.6rem 1.5rem', cursor: submitting ? 'wait' : 'pointer', fontSize: '.65rem', letterSpacing: '.15em' }}>
             {submitting ? 'SUBMITTING...' : 'SUBMIT TICKET'}
           </button>
         </div>
@@ -429,8 +429,8 @@ function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
   const acceptedInvites = invites.filter(i => i.status === 'accepted');
 
   return (
-    <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '1.5rem', background: 'rgba(0,10,2,.5)' }}>
-      <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '1rem' }}>INVITE EMPLOYEE TO {orgName}</div>
+    <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '1.5rem', background: 'rgba(6,13,20,.5)' }}>
+      <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '1rem' }}>INVITE EMPLOYEE TO {orgName}</div>
 
       <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem' }}>
         <input
@@ -439,12 +439,12 @@ function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
           onKeyDown={e => e.key === 'Enter' && sendInvite()}
           placeholder="employee@company.com"
           type="email"
-          style={{ ...ST, flex: 1, background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.4rem .6rem', fontSize: '.65rem', outline: 'none' }}
+          style={{ ...ST, flex: 1, background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.4rem .6rem', fontSize: '.65rem', outline: 'none' }}
         />
         <button
           onClick={sendInvite}
           disabled={sending || !inviteEmail.trim()}
-          style={{ ...ST, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', padding: '.4rem 1rem', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.1em', opacity: !inviteEmail.trim() ? 0.4 : 1 }}
+          style={{ ...ST, background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', padding: '.4rem 1rem', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.1em', opacity: !inviteEmail.trim() ? 0.4 : 1 }}
         >
           {sending ? '...' : 'SEND INVITE'}
         </button>
@@ -452,16 +452,16 @@ function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
 
       {error && <div style={{ ...ST, fontSize: '.6rem', color: '#ff6666', marginBottom: '.75rem' }}>{error}</div>}
       {msg && (
-        <div style={{ ...ST, fontSize: '.55rem', color: '#00ff41', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', marginBottom: '1rem', wordBreak: 'break-all' }}>
+        <div style={{ ...ST, fontSize: '.55rem', color: '#38bdf8', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.15)', padding: '.5rem', marginBottom: '1rem', wordBreak: 'break-all' }}>
           {msg}
         </div>
       )}
 
       {pendingInvites.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>PENDING ({pendingInvites.length})</div>
+          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>PENDING ({pendingInvites.length})</div>
           {pendingInvites.map(inv => (
-            <div key={inv.id} style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.5)', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.05)' }}>
+            <div key={inv.id} style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.05)' }}>
               {inv.inviteEmail ?? inv.inviteUsername ?? '—'} · {new Date(inv.expiresAt) < new Date() ? <span style={{ color: '#ff6666' }}>EXPIRED</span> : 'PENDING'}
             </div>
           ))}
@@ -470,10 +470,10 @@ function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
 
       {acceptedInvites.length > 0 && (
         <div>
-          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>ACCEPTED ({acceptedInvites.length})</div>
+          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>ACCEPTED ({acceptedInvites.length})</div>
           {acceptedInvites.map(inv => (
-            <div key={inv.id} style={{ ...ST, fontSize: '.55rem', color: '#00ff41', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.05)' }}>
-              {inv.inviteEmail ?? inv.inviteUsername ?? '—'} · <span style={{ color: '#88ff44' }}>JOINED</span>
+            <div key={inv.id} style={{ ...ST, fontSize: '.55rem', color: '#38bdf8', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.05)' }}>
+              {inv.inviteEmail ?? inv.inviteUsername ?? '—'} · <span style={{ color: '#7dd3fc' }}>JOINED</span>
             </div>
           ))}
         </div>
@@ -555,8 +555,8 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#000a02', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ ...ST, color: 'rgba(0,255,65,.4)', fontSize: '.8rem', letterSpacing: '.2em' }}>LOADING...</span>
+      <div style={{ minHeight: '100vh', background: '#060d14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ ...ST, color: 'rgba(56,189,248,.4)', fontSize: '.8rem', letterSpacing: '.2em' }}>LOADING...</span>
       </div>
     );
   }
@@ -568,17 +568,17 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
   const isOwner = org ? org.ownerUserId === user?.id : false;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000a02', color: '#00ff41', padding: '1.5rem' }}>
+    <div style={{ minHeight: '100vh', background: '#060d14', color: '#38bdf8', padding: '1.5rem' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '.5rem' }}>
           <div>
-            <div style={{ ...VT, fontSize: '2.2rem', letterSpacing: '.2em', color: '#00ff41' }}>ADMIN PANEL</div>
-            {org && <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginTop: '.2rem' }}>{org.name} · {isOwner ? 'OWNER' : 'EMPLOYEE'}</div>}
+            <div style={{ ...VT, fontSize: '2.2rem', letterSpacing: '.2em', color: '#38bdf8' }}>ADMIN PANEL</div>
+            {org && <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginTop: '.2rem' }}>{org.name} · {isOwner ? 'OWNER' : 'EMPLOYEE'}</div>}
           </div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             {view !== 'list' && (
-              <button onClick={() => setView('list')} style={{ ...ST, background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', padding: '.35rem .8rem', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.1em' }}>
+              <button onClick={() => setView('list')} style={{ ...ST, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', padding: '.35rem .8rem', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.1em' }}>
                 TICKETS
               </button>
             )}
@@ -592,13 +592,13 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                 + NEW TICKET
               </button>
             )}
-            <button onClick={() => navigate('/')} style={{ ...ST, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.3)', padding: '.35rem .8rem', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.1em' }}>
+            <button onClick={() => navigate('/')} style={{ ...ST, background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', padding: '.35rem .8rem', cursor: 'pointer', fontSize: '.55rem', letterSpacing: '.1em' }}>
               ← BACK
             </button>
           </div>
         </div>
 
-        <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)', marginBottom: '1.5rem' }} />
+        <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(56,189,248,.3), transparent)', marginBottom: '1.5rem' }} />
 
         {error && (
           <div style={{ ...ST, fontSize: '.65rem', color: '#ff6666', background: 'rgba(255,0,0,.05)', border: '1px solid rgba(255,80,80,.2)', padding: '1rem', marginBottom: '1rem' }}>
@@ -607,7 +607,7 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
         )}
 
         {!error && !loading && !org && (
-          <div style={{ ...ST, fontSize: '.7rem', color: 'rgba(0,255,65,.4)', padding: '2rem', textAlign: 'center', border: '1px solid rgba(0,255,65,.1)' }}>
+          <div style={{ ...ST, fontSize: '.7rem', color: 'rgba(56,189,248,.4)', padding: '2rem', textAlign: 'center', border: '1px solid rgba(56,189,248,.1)' }}>
             You are not a member of any organization. Ask your company owner to invite you.
           </div>
         )}
@@ -618,9 +618,9 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                   {[
-                    { label: 'OPEN', value: summary.open, color: '#00ff41' },
+                    { label: 'OPEN', value: summary.open, color: '#38bdf8' },
                     { label: 'ASSIGNED TO ME', value: summary.assignedToMe, color: '#00ccff' },
-                    { label: 'RESOLVED TODAY', value: summary.resolvedToday, color: '#88ff44' },
+                    { label: 'RESOLVED TODAY', value: summary.resolvedToday, color: '#7dd3fc' },
                   ].map(card => (
                     <div key={card.label} style={{ border: `1px solid ${card.color}20`, padding: '1rem', background: `${card.color}05` }}>
                       <div style={{ ...ST, fontSize: '.45rem', color: `${card.color}60`, letterSpacing: '.12em', marginBottom: '.4rem' }}>{card.label}</div>
@@ -630,9 +630,9 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                 </div>
 
                 <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>FILTER:</span>
+                  <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>FILTER:</span>
                   <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    style={{ ...ST, background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}>
+                    style={{ ...ST, background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}>
                     <option value="">All Statuses</option>
                     <option value="open">Open</option>
                     <option value="in_progress">In Progress</option>
@@ -640,7 +640,7 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                     <option value="closed">Closed</option>
                   </select>
                   <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                    style={{ ...ST, background: '#000a02', color: '#00ff41', border: '1px solid rgba(0,255,65,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}>
+                    style={{ ...ST, background: '#060d14', color: '#38bdf8', border: '1px solid rgba(56,189,248,.2)', padding: '.3rem .5rem', fontSize: '.6rem', cursor: 'pointer' }}>
                     <option value="">All Categories</option>
                     <option value="bug">Bug</option>
                     <option value="support">Support</option>
@@ -648,16 +648,16 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                     <option value="billing">Billing</option>
                     <option value="other">Other</option>
                   </select>
-                  <label style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.5)', display: 'flex', alignItems: 'center', gap: '.3rem', cursor: 'pointer' }}>
+                  <label style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', display: 'flex', alignItems: 'center', gap: '.3rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={filterAssignedToMe} onChange={e => setFilterAssignedToMe(e.target.checked)} />
                     Assigned to me
                   </label>
                 </div>
 
                 {loading ? (
-                  <div style={{ ...ST, color: 'rgba(0,255,65,.3)', fontSize: '.7rem', padding: '2rem', textAlign: 'center' }}>LOADING TICKETS...</div>
+                  <div style={{ ...ST, color: 'rgba(56,189,248,.3)', fontSize: '.7rem', padding: '2rem', textAlign: 'center' }}>LOADING TICKETS...</div>
                 ) : tickets.length === 0 ? (
-                  <div style={{ ...ST, fontSize: '.65rem', color: 'rgba(0,255,65,.3)', padding: '2rem', textAlign: 'center', border: '1px solid rgba(0,255,65,.08)' }}>
+                  <div style={{ ...ST, fontSize: '.65rem', color: 'rgba(56,189,248,.3)', padding: '2rem', textAlign: 'center', border: '1px solid rgba(56,189,248,.08)' }}>
                     No tickets found.
                   </div>
                 ) : (
@@ -666,26 +666,26 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                       <div
                         key={t.id}
                         onClick={() => openTicketDetail(t)}
-                        style={{ border: '1px solid rgba(0,255,65,.1)', padding: '1rem', background: 'rgba(0,10,2,.6)', cursor: 'pointer', transition: 'border-color .2s' }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(0,255,65,.3)')}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(0,255,65,.1)')}
+                        style={{ border: '1px solid rgba(56,189,248,.1)', padding: '1rem', background: 'rgba(6,13,20,.6)', cursor: 'pointer', transition: 'border-color .2s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(56,189,248,.3)')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(56,189,248,.1)')}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '.5rem' }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '.3rem' }}>
-                              <span style={{ ...ST, fontSize: '.4rem', color: 'rgba(0,255,65,.3)' }}>#{t.id}</span>
+                              <span style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.3)' }}>#{t.id}</span>
                               <StatusBadge status={t.status} />
                               <PriorityBadge priority={t.priority} />
-                              <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.35)', border: '1px solid rgba(0,255,65,.1)', padding: '1px 5px', borderRadius: 2 }}>
+                              <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', border: '1px solid rgba(56,189,248,.1)', padding: '1px 5px', borderRadius: 2 }}>
                                 {CATEGORY_LABELS[t.category]}
                               </span>
                             </div>
-                            <div style={{ ...ST, fontSize: '.75rem', color: '#00ff41', marginBottom: '.2rem' }}>{t.subject}</div>
-                            <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 500 }}>
+                            <div style={{ ...ST, fontSize: '.75rem', color: '#38bdf8', marginBottom: '.2rem' }}>{t.subject}</div>
+                            <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 500 }}>
                               {t.description}
                             </div>
                           </div>
-                          <div style={{ ...ST, fontSize: '.4rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
+                          <div style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.25)', textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
                             <div>{new Date(t.createdAt).toLocaleDateString()}</div>
                             {t.submittedByName && <div style={{ marginTop: '.2rem' }}>{t.submittedByName}</div>}
                             {t.assignedToUserId && <div style={{ color: '#00ccff', marginTop: '.2rem' }}>ASSIGNED</div>}
@@ -723,7 +723,7 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
           />
         )}
 
-        <div style={{ marginTop: '2rem', ...ST, fontSize: '.4rem', color: 'rgba(0,255,65,.1)', letterSpacing: '.1em' }}>
+        <div style={{ marginTop: '2rem', ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.1)', letterSpacing: '.1em' }}>
           SALARYMAN ADMIN PANEL · TICKET MANAGEMENT SYSTEM
         </div>
       </div>

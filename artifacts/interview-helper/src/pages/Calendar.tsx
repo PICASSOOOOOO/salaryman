@@ -112,7 +112,7 @@ function CRTBorder({ children, className = "" }: { children: React.ReactNode; cl
     <div
       className={className}
       style={{
-        border: "1px solid rgba(34,197,94,0.25)",
+        border: "1px solid rgba(56,189,248,0.25)",
         background: "rgba(9,9,11,0.95)",
         boxShadow: "0 0 20px rgba(255,255,255,0.05), inset 0 0 40px rgba(0,0,0,0.5)",
       }}
@@ -164,15 +164,15 @@ function ApptModal({
       <CRTBorder className="w-full max-w-md">
         <div
           className="flex items-center justify-between px-5 py-3"
-          style={{ borderBottom: "1px solid rgba(34,197,94,0.2)" }}
+          style={{ borderBottom: "1px solid rgba(56,189,248,0.2)" }}
         >
           <span
             className="display-text text-xs tracking-widest"
-            style={{ color: "rgba(34,197,94,0.6)" }}
+            style={{ color: "rgba(56,189,248,0.6)" }}
           >
             {isEdit ? "[ EDIT MISSION ]" : "[ NEW MISSION ]"}
           </span>
-          <button onClick={onClose} style={{ color: "rgba(34,197,94,0.4)" }}>
+          <button onClick={onClose} style={{ color: "rgba(56,189,248,0.4)" }}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -181,7 +181,7 @@ function ApptModal({
           <div>
             <label
               className="display-text text-xs block mb-1"
-              style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+              style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
             >
               TITLE *
             </label>
@@ -189,8 +189,8 @@ function ApptModal({
               className="w-full display-text text-sm px-3 py-2 outline-none"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#22c55e",
+                border: "1px solid rgba(56,189,248,0.25)",
+                color: "#38bdf8",
                 fontFamily: "'Share Tech Mono', monospace",
               }}
               value={form.title}
@@ -204,7 +204,7 @@ function ApptModal({
             <div>
               <label
                 className="display-text text-xs block mb-1"
-                style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+                style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
               >
                 DATE
               </label>
@@ -213,8 +213,8 @@ function ApptModal({
                 className="w-full display-text text-xs px-2 py-2 outline-none"
                 style={{
                   background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(34,197,94,0.25)",
-                  color: "#22c55e",
+                  border: "1px solid rgba(56,189,248,0.25)",
+                  color: "#38bdf8",
                   fontFamily: "'Share Tech Mono', monospace",
                   colorScheme: "dark",
                 }}
@@ -225,7 +225,7 @@ function ApptModal({
             <div>
               <label
                 className="display-text text-xs block mb-1"
-                style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+                style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
               >
                 START
               </label>
@@ -234,8 +234,8 @@ function ApptModal({
                 className="w-full display-text text-xs px-2 py-2 outline-none"
                 style={{
                   background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(34,197,94,0.25)",
-                  color: "#22c55e",
+                  border: "1px solid rgba(56,189,248,0.25)",
+                  color: "#38bdf8",
                   fontFamily: "'Share Tech Mono', monospace",
                   colorScheme: "dark",
                 }}
@@ -246,7 +246,7 @@ function ApptModal({
             <div>
               <label
                 className="display-text text-xs block mb-1"
-                style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+                style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
               >
                 END
               </label>
@@ -255,8 +255,8 @@ function ApptModal({
                 className="w-full display-text text-xs px-2 py-2 outline-none"
                 style={{
                   background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(34,197,94,0.25)",
-                  color: "#22c55e",
+                  border: "1px solid rgba(56,189,248,0.25)",
+                  color: "#38bdf8",
                   fontFamily: "'Share Tech Mono', monospace",
                   colorScheme: "dark",
                 }}
@@ -269,7 +269,7 @@ function ApptModal({
           <div>
             <label
               className="display-text text-xs block mb-1"
-              style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+              style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
             >
               <MapPin className="w-3 h-3 inline mr-1" />LOCATION
             </label>
@@ -277,8 +277,8 @@ function ApptModal({
               className="w-full display-text text-sm px-3 py-2 outline-none"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#22c55e",
+                border: "1px solid rgba(56,189,248,0.25)",
+                color: "#38bdf8",
                 fontFamily: "'Share Tech Mono', monospace",
               }}
               value={form.location}
@@ -290,7 +290,7 @@ function ApptModal({
           <div>
             <label
               className="display-text text-xs block mb-1"
-              style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+              style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
             >
               <FileText className="w-3 h-3 inline mr-1" />NOTES
             </label>
@@ -298,8 +298,8 @@ function ApptModal({
               className="w-full display-text text-sm px-3 py-2 outline-none resize-none"
               style={{
                 background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#22c55e",
+                border: "1px solid rgba(56,189,248,0.25)",
+                color: "#38bdf8",
                 fontFamily: "'Share Tech Mono', monospace",
                 height: "70px",
               }}
@@ -312,7 +312,7 @@ function ApptModal({
           <div>
             <label
               className="display-text text-xs block mb-1"
-              style={{ color: "rgba(34,197,94,0.5)", letterSpacing: "0.1em" }}
+              style={{ color: "rgba(56,189,248,0.5)", letterSpacing: "0.1em" }}
             >
               <Bell className="w-3 h-3 inline mr-1" />REMINDER ALARM
             </label>
@@ -320,8 +320,8 @@ function ApptModal({
               className="w-full display-text text-xs px-3 py-2 outline-none"
               style={{
                 background: "rgba(9,9,11,0.95)",
-                border: "1px solid rgba(34,197,94,0.25)",
-                color: "#22c55e",
+                border: "1px solid rgba(56,189,248,0.25)",
+                color: "#38bdf8",
                 fontFamily: "'Share Tech Mono', monospace",
               }}
               value={form.reminderMinutes}
@@ -386,9 +386,9 @@ function ApptModal({
               disabled={saving || !form.title.trim()}
               className="flex-1 flex items-center justify-center gap-2 py-2 display-text text-xs transition-all"
               style={{
-                background: form.title.trim() ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(34,197,94,0.4)",
-                color: form.title.trim() ? "#22c55e" : "rgba(34,197,94,0.3)",
+                background: form.title.trim() ? "rgba(56,189,248,0.1)" : "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(56,189,248,0.4)",
+                color: form.title.trim() ? "#38bdf8" : "rgba(56,189,248,0.3)",
                 letterSpacing: "0.1em",
                 cursor: form.title.trim() ? "pointer" : "default",
               }}
@@ -433,26 +433,26 @@ function ApptPill({
       onClick={e => { e.stopPropagation(); onClick(); }}
       className="w-full text-left transition-all"
       style={{
-        background: "rgba(34,197,94,0.1)",
-        border: "1px solid rgba(34,197,94,0.35)",
+        background: "rgba(56,189,248,0.1)",
+        border: "1px solid rgba(56,189,248,0.35)",
         padding: compact ? "1px 4px" : "3px 6px",
         marginBottom: "2px",
         display: "block",
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.18)";
+        (e.currentTarget as HTMLButtonElement).style.background = "rgba(56,189,248,0.18)";
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.1)";
+        (e.currentTarget as HTMLButtonElement).style.background = "rgba(56,189,248,0.1)";
       }}
     >
       <div
         className="display-text truncate"
         style={{
           fontSize: compact ? "0.55rem" : "0.65rem",
-          color: "#22c55e",
+          color: "#38bdf8",
           letterSpacing: "0.05em",
-          textShadow: "0 0 8px rgba(34,197,94,0.4)",
+          textShadow: "0 0 8px rgba(56,189,248,0.4)",
         }}
       >
         {formatTime(appt.startAt)} {appt.title}
@@ -496,7 +496,7 @@ function MonthView({
     <div className="flex-1 overflow-auto">
       <div
         className="grid"
-        style={{ gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid rgba(34,197,94,0.15)" }}
+        style={{ gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid rgba(56,189,248,0.15)" }}
       >
         {DAY_NAMES.map(d => (
           <div
@@ -504,9 +504,9 @@ function MonthView({
             className="py-1 text-center display-text"
             style={{
               fontSize: "0.6rem",
-              color: "rgba(34,197,94,0.4)",
+              color: "rgba(56,189,248,0.4)",
               letterSpacing: "0.12em",
-              borderRight: "1px solid rgba(34,197,94,0.08)",
+              borderRight: "1px solid rgba(56,189,248,0.08)",
             }}
           >
             {d}
@@ -539,8 +539,8 @@ function MonthView({
               className="cursor-pointer transition-all"
               style={{
                 minHeight: "90px",
-                borderRight: "1px solid rgba(34,197,94,0.08)",
-                borderBottom: "1px solid rgba(34,197,94,0.08)",
+                borderRight: "1px solid rgba(56,189,248,0.08)",
+                borderBottom: "1px solid rgba(56,189,248,0.08)",
                 padding: "4px",
                 background: isSelected
                   ? "rgba(255,255,255,0.05)"
@@ -557,11 +557,11 @@ function MonthView({
                 className="display-text text-xs mb-1 w-6 h-6 flex items-center justify-center"
                 style={{
                   fontSize: "0.7rem",
-                  color: isToday ? "#030803" : isSelected ? "#22c55e" : "rgba(34,197,94,0.5)",
-                  background: isToday ? "#22c55e" : "transparent",
+                  color: isToday ? "#030803" : isSelected ? "#38bdf8" : "rgba(56,189,248,0.5)",
+                  background: isToday ? "#38bdf8" : "transparent",
                   borderRadius: "2px",
                   fontWeight: isToday ? "bold" : "normal",
-                  textShadow: isToday ? "none" : isSelected ? "0 0 8px rgba(34,197,94,0.5)" : "none",
+                  textShadow: isToday ? "none" : isSelected ? "0 0 8px rgba(56,189,248,0.5)" : "none",
                 }}
               >
                 {cell.getDate()}
@@ -572,7 +572,7 @@ function MonthView({
               {dayAppts.length > 3 && (
                 <div
                   className="display-text"
-                  style={{ fontSize: "0.5rem", color: "rgba(34,197,94,0.35)", letterSpacing: "0.08em" }}
+                  style={{ fontSize: "0.5rem", color: "rgba(56,189,248,0.35)", letterSpacing: "0.08em" }}
                 >
                   +{dayAppts.length - 3} more
                 </div>
@@ -611,7 +611,7 @@ function WeekView({
   return (
     <div className="flex-1 overflow-auto">
       <div className="grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
-        <div style={{ borderBottom: "1px solid rgba(34,197,94,0.15)" }} />
+        <div style={{ borderBottom: "1px solid rgba(56,189,248,0.15)" }} />
         {days.map(d => {
           const isToday = isSameDay(d, today);
           return (
@@ -619,17 +619,17 @@ function WeekView({
               key={d.toISOString()}
               className="text-center py-1"
               style={{
-                borderBottom: "1px solid rgba(34,197,94,0.15)",
-                borderLeft: "1px solid rgba(34,197,94,0.08)",
+                borderBottom: "1px solid rgba(56,189,248,0.15)",
+                borderLeft: "1px solid rgba(56,189,248,0.08)",
               }}
             >
               <span
                 className="display-text"
                 style={{
                   fontSize: "0.55rem",
-                  color: isToday ? "#22c55e" : "rgba(34,197,94,0.4)",
+                  color: isToday ? "#38bdf8" : "rgba(56,189,248,0.4)",
                   letterSpacing: "0.1em",
-                  textShadow: isToday ? "0 0 8px rgba(34,197,94,0.6)" : "none",
+                  textShadow: isToday ? "0 0 8px rgba(56,189,248,0.6)" : "none",
                 }}
               >
                 {DAY_NAMES[d.getDay()]} {d.getDate()}
@@ -662,7 +662,7 @@ function WeekView({
               >
                 <span
                   className="display-text"
-                  style={{ fontSize: "0.5rem", color: "rgba(34,197,94,0.25)", letterSpacing: "0.06em" }}
+                  style={{ fontSize: "0.5rem", color: "rgba(56,189,248,0.25)", letterSpacing: "0.06em" }}
                 >
                   {h === 0 ? "" : h < 12 ? `${h}A` : h === 12 ? "12P" : `${h - 12}P`}
                 </span>
@@ -675,7 +675,7 @@ function WeekView({
               <div
                 key={d.toISOString()}
                 style={{
-                  borderLeft: "1px solid rgba(34,197,94,0.08)",
+                  borderLeft: "1px solid rgba(56,189,248,0.08)",
                   position: "relative",
                   cursor: "pointer",
                 }}
@@ -709,8 +709,8 @@ function WeekView({
                         height: `${Math.max(heightPct * 100, 2)}%`,
                         left: "2px",
                         right: "2px",
-                        background: "rgba(34,197,94,0.14)",
-                        border: "1px solid rgba(34,197,94,0.4)",
+                        background: "rgba(56,189,248,0.14)",
+                        border: "1px solid rgba(56,189,248,0.4)",
                         padding: "2px 4px",
                         textAlign: "left",
                         overflow: "hidden",
@@ -719,7 +719,7 @@ function WeekView({
                     >
                       <div
                         className="display-text truncate"
-                        style={{ fontSize: "0.55rem", color: "#22c55e", letterSpacing: "0.04em" }}
+                        style={{ fontSize: "0.55rem", color: "#38bdf8", letterSpacing: "0.04em" }}
                       >
                         {formatTime(a.startAt)} {a.title}
                       </div>
@@ -753,14 +753,14 @@ function DayView({
       <div
         className="px-4 py-2 display-text text-xs"
         style={{
-          borderBottom: "1px solid rgba(34,197,94,0.15)",
-          color: "rgba(34,197,94,0.5)",
+          borderBottom: "1px solid rgba(56,189,248,0.15)",
+          color: "rgba(56,189,248,0.5)",
           letterSpacing: "0.12em",
         }}
       >
         {DAY_NAMES[date.getDay()]} {MONTH_NAMES[date.getMonth()]} {date.getDate()}, {date.getFullYear()}
         {dayAppts.length > 0 && (
-          <span style={{ color: "rgba(34,197,94,0.35)", marginLeft: "12px" }}>
+          <span style={{ color: "rgba(56,189,248,0.35)", marginLeft: "12px" }}>
             {dayAppts.length} MISSION{dayAppts.length > 1 ? "S" : ""}
           </span>
         )}
@@ -783,7 +783,7 @@ function DayView({
               >
                 <span
                   className="display-text"
-                  style={{ fontSize: "0.55rem", color: "rgba(34,197,94,0.25)", letterSpacing: "0.06em" }}
+                  style={{ fontSize: "0.55rem", color: "rgba(56,189,248,0.25)", letterSpacing: "0.06em" }}
                 >
                   {h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`}
                 </span>
@@ -792,7 +792,7 @@ function DayView({
           </div>
           <div
             style={{
-              borderLeft: "1px solid rgba(34,197,94,0.1)",
+              borderLeft: "1px solid rgba(56,189,248,0.1)",
               position: "relative",
               height: `${24 * 64}px`,
               cursor: "pointer",
@@ -830,8 +830,8 @@ function DayView({
                     height: `${heightPct * 100}%`,
                     left: "8px",
                     right: "8px",
-                    background: "rgba(34,197,94,0.1)",
-                    border: "1px solid rgba(34,197,94,0.4)",
+                    background: "rgba(56,189,248,0.1)",
+                    border: "1px solid rgba(56,189,248,0.4)",
                     padding: "4px 8px",
                     textAlign: "left",
                     overflow: "hidden",
@@ -840,13 +840,13 @@ function DayView({
                 >
                   <div
                     className="display-text"
-                    style={{ fontSize: "0.7rem", color: "#22c55e", letterSpacing: "0.05em" }}
+                    style={{ fontSize: "0.7rem", color: "#38bdf8", letterSpacing: "0.05em" }}
                   >
                     {a.title}
                   </div>
                   <div
                     className="display-text"
-                    style={{ fontSize: "0.6rem", color: "rgba(34,197,94,0.55)" }}
+                    style={{ fontSize: "0.6rem", color: "rgba(56,189,248,0.55)" }}
                   >
                     {formatTime(a.startAt)} – {formatTime(a.endAt)} · {formatDuration(a.startAt, a.endAt)}
                     {a.location && ` · ${a.location}`}
@@ -1149,7 +1149,7 @@ export default function Calendar() {
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 py-2 gap-4 flex-wrap"
-          style={{ borderBottom: "1px solid rgba(34,197,94,0.15)" }}
+          style={{ borderBottom: "1px solid rgba(56,189,248,0.15)" }}
         >
           <div className="flex items-center gap-3">
             <div
@@ -1157,19 +1157,19 @@ export default function Calendar() {
               style={{
                 width: "28px",
                 height: "28px",
-                border: "1px solid rgba(34,197,94,0.5)",
-                background: "rgba(34,197,94,0.08)",
+                border: "1px solid rgba(56,189,248,0.5)",
+                background: "rgba(56,189,248,0.08)",
               }}
             >
-              <CalendarIcon className="w-3.5 h-3.5" style={{ color: "#22c55e" }} />
+              <CalendarIcon className="w-3.5 h-3.5" style={{ color: "#38bdf8" }} />
             </div>
             <div>
               <h1
                 className="display-text leading-none"
                 style={{
                   fontSize: "1rem",
-                  color: "#22c55e",
-                  textShadow: "0 0 10px rgba(34,197,94,0.6)",
+                  color: "#38bdf8",
+                  textShadow: "0 0 10px rgba(56,189,248,0.6)",
                   letterSpacing: "0.12em",
                 }}
               >
@@ -1177,7 +1177,7 @@ export default function Calendar() {
               </h1>
               <p
                 className="display-text leading-none mt-0.5"
-                style={{ fontSize: "0.6rem", color: "rgba(34,197,94,0.35)", letterSpacing: "0.1em" }}
+                style={{ fontSize: "0.6rem", color: "rgba(56,189,248,0.35)", letterSpacing: "0.1em" }}
               >
                 {boomerMode ? "Scheduling" : PABLO_PRODUCTS.CALENDAR.desc.split(".")[0].toUpperCase()}
               </p>
@@ -1186,7 +1186,7 @@ export default function Calendar() {
 
           <div className="flex items-center gap-2">
             {/* View toggle */}
-            <div className="flex" style={{ border: "1px solid rgba(34,197,94,0.25)" }}>
+            <div className="flex" style={{ border: "1px solid rgba(56,189,248,0.25)" }}>
               {(["month", "week", "day"] as ViewMode[]).map(v => (
                 <button
                   key={v}
@@ -1195,9 +1195,9 @@ export default function Calendar() {
                   style={{
                     fontSize: "0.6rem",
                     letterSpacing: "0.1em",
-                    color: view === v ? "#030803" : "rgba(34,197,94,0.5)",
-                    background: view === v ? "rgba(34,197,94,0.85)" : "transparent",
-                    borderRight: v !== "day" ? "1px solid rgba(34,197,94,0.2)" : "none",
+                    color: view === v ? "#030803" : "rgba(56,189,248,0.5)",
+                    background: view === v ? "rgba(56,189,248,0.85)" : "transparent",
+                    borderRight: v !== "day" ? "1px solid rgba(56,189,248,0.2)" : "none",
                     textTransform: "uppercase",
                   }}
                 >
@@ -1210,7 +1210,7 @@ export default function Calendar() {
               <button
                 onClick={() => navigate(-1)}
                 className="p-1"
-                style={{ color: "rgba(34,197,94,0.5)", border: "1px solid rgba(34,197,94,0.2)" }}
+                style={{ color: "rgba(56,189,248,0.5)", border: "1px solid rgba(56,189,248,0.2)" }}
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
@@ -1219,8 +1219,8 @@ export default function Calendar() {
                 className="px-2 py-1 display-text"
                 style={{
                   fontSize: "0.6rem",
-                  color: "rgba(34,197,94,0.6)",
-                  border: "1px solid rgba(34,197,94,0.2)",
+                  color: "rgba(56,189,248,0.6)",
+                  border: "1px solid rgba(56,189,248,0.2)",
                   letterSpacing: "0.08em",
                 }}
               >
@@ -1229,7 +1229,7 @@ export default function Calendar() {
               <button
                 onClick={() => navigate(1)}
                 className="p-1"
-                style={{ color: "rgba(34,197,94,0.5)", border: "1px solid rgba(34,197,94,0.2)" }}
+                style={{ color: "rgba(56,189,248,0.5)", border: "1px solid rgba(56,189,248,0.2)" }}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -1237,7 +1237,7 @@ export default function Calendar() {
 
             <span
               className="display-text text-xs"
-              style={{ color: "rgba(34,197,94,0.6)", letterSpacing: "0.1em", minWidth: "180px", textAlign: "center" }}
+              style={{ color: "rgba(56,189,248,0.6)", letterSpacing: "0.1em", minWidth: "180px", textAlign: "center" }}
             >
               {navLabel}
             </span>
@@ -1264,10 +1264,10 @@ export default function Calendar() {
               style={{
                 fontSize: "0.65rem",
                 letterSpacing: "0.1em",
-                color: "#22c55e",
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.4)",
-                textShadow: "0 0 8px rgba(34,197,94,0.4)",
+                color: "#38bdf8",
+                background: "rgba(56,189,248,0.1)",
+                border: "1px solid rgba(56,189,248,0.4)",
+                textShadow: "0 0 8px rgba(56,189,248,0.4)",
               }}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1281,8 +1281,8 @@ export default function Calendar() {
           <div
             className="px-4 py-1 display-text text-xs flex items-center gap-4"
             style={{
-              borderBottom: "1px solid rgba(34,197,94,0.08)",
-              color: "rgba(34,197,94,0.3)",
+              borderBottom: "1px solid rgba(56,189,248,0.08)",
+              color: "rgba(56,189,248,0.3)",
               letterSpacing: "0.08em",
             }}
           >
@@ -1298,7 +1298,7 @@ export default function Calendar() {
           <div className="flex-1 flex items-center justify-center">
             <div
               className="display-text text-sm"
-              style={{ color: "rgba(34,197,94,0.4)", letterSpacing: "0.15em" }}
+              style={{ color: "rgba(56,189,248,0.4)", letterSpacing: "0.15em" }}
             >
               LOADING TEMPORAL DATA...
             </div>
@@ -1344,7 +1344,7 @@ export default function Calendar() {
           >
             <div
               className="display-text text-xs text-center"
-              style={{ color: "rgba(34,197,94,0.2)", letterSpacing: "0.12em" }}
+              style={{ color: "rgba(56,189,248,0.2)", letterSpacing: "0.12em" }}
             >
               NO MISSIONS SCHEDULED · CLICK ANY DAY OR [+ NEW] TO ADD ONE
             </div>
@@ -1477,9 +1477,9 @@ export default function Calendar() {
                       }}
                       className="w-full flex items-center justify-center gap-2 py-2 display-text text-xs"
                       style={{
-                        background: "rgba(34,197,94,0.06)",
-                        border: "1px solid rgba(34,197,94,0.3)",
-                        color: "rgba(34,197,94,0.7)",
+                        background: "rgba(56,189,248,0.06)",
+                        border: "1px solid rgba(56,189,248,0.3)",
+                        color: "rgba(56,189,248,0.7)",
                         letterSpacing: "0.08em",
                       }}
                     >
@@ -1550,23 +1550,23 @@ export default function Calendar() {
             <CRTBorder className="w-full max-w-sm">
               <div
                 className="flex items-center justify-between px-5 py-3"
-                style={{ borderBottom: "1px solid rgba(34,197,94,0.2)" }}
+                style={{ borderBottom: "1px solid rgba(56,189,248,0.2)" }}
               >
                 <span
                   className="display-text text-xs tracking-widest"
-                  style={{ color: "rgba(34,197,94,0.6)" }}
+                  style={{ color: "rgba(56,189,248,0.6)" }}
                 >
                   <Mail className="w-3 h-3 inline mr-1" />
                   [ SEND CONFIRMATION ]
                 </span>
-                <button onClick={() => setEmailModal(null)} style={{ color: "rgba(34,197,94,0.4)" }}>
+                <button onClick={() => setEmailModal(null)} style={{ color: "rgba(56,189,248,0.4)" }}>
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="p-5 flex flex-col gap-4">
                 <div
                   className="display-text text-xs"
-                  style={{ color: "rgba(34,197,94,0.6)", letterSpacing: "0.08em" }}
+                  style={{ color: "rgba(56,189,248,0.6)", letterSpacing: "0.08em" }}
                 >
                   {emailModal.title}
                 </div>
@@ -1574,8 +1574,8 @@ export default function Calendar() {
                   className="w-full display-text text-sm px-3 py-2 outline-none"
                   style={{
                     background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(34,197,94,0.25)",
-                    color: "#22c55e",
+                    border: "1px solid rgba(56,189,248,0.25)",
+                    color: "#38bdf8",
                     fontFamily: "'Share Tech Mono', monospace",
                   }}
                   value={emailInput}
@@ -1588,9 +1588,9 @@ export default function Calendar() {
                   disabled={emailSending || !emailInput.trim()}
                   className="flex items-center justify-center gap-2 py-2 display-text text-xs"
                   style={{
-                    background: "rgba(34,197,94,0.1)",
-                    border: "1px solid rgba(34,197,94,0.35)",
-                    color: "#22c55e",
+                    background: "rgba(56,189,248,0.1)",
+                    border: "1px solid rgba(56,189,248,0.35)",
+                    color: "#38bdf8",
                     letterSpacing: "0.1em",
                   }}
                 >

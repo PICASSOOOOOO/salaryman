@@ -120,46 +120,46 @@ export function RadioHud({ visible, on, fading, topOffset, onToggle, stationId, 
     <div style={{
       position: 'absolute', top: topOffset, right: '.8rem', zIndex: 210,
       fontFamily: "'VT323',monospace", background: 'rgba(0,6,2,.92)',
-      border: `1px solid ${on ? 'rgba(0,255,65,.55)' : 'rgba(0,255,65,.2)'}`,
+      border: `1px solid ${on ? 'rgba(56,189,248,.55)' : 'rgba(56,189,248,.2)'}`,
       padding: '.4rem .7rem', minWidth: 200,
-      boxShadow: on ? '0 0 12px rgba(0,255,65,.15)' : 'none',
+      boxShadow: on ? '0 0 12px rgba(56,189,248,.15)' : 'none',
       transition: 'border-color .3s, box-shadow .3s, opacity .5s',
       opacity: fading ? 0 : 1,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem', cursor: 'pointer' }} onClick={onToggle}>
         <div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>RADIO {station.freq}</div>
-          <div style={{ fontSize: '1rem', color: on ? '#00ff41' : 'rgba(0,255,65,.35)', letterSpacing: '.12em', lineHeight: 1 }}>{station.name}</div>
-          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginTop: '2px' }}>{station.genre}</div>
+          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.15em', marginBottom: '2px' }}>RADIO {station.freq}</div>
+          <div style={{ fontSize: '1rem', color: on ? '#38bdf8' : 'rgba(56,189,248,.35)', letterSpacing: '.12em', lineHeight: 1 }}>{station.name}</div>
+          <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginTop: '2px' }}>{station.genre}</div>
         </div>
         <div style={{
           width: 28, height: 14, borderRadius: 7,
-          background: on ? 'rgba(0,255,65,.25)' : 'rgba(0,255,65,.08)',
-          border: `1px solid ${on ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.15)'}`,
+          background: on ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.08)',
+          border: `1px solid ${on ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.15)'}`,
           position: 'relative', transition: 'all .2s',
         }}>
           <div style={{
             width: 10, height: 10, borderRadius: '50%',
-            background: on ? '#00ff41' : 'rgba(0,255,65,.2)',
+            background: on ? '#38bdf8' : 'rgba(56,189,248,.2)',
             position: 'absolute', top: 1, left: on ? 15 : 2,
             transition: 'all .2s',
-            boxShadow: on ? '0 0 6px rgba(0,255,65,.6)' : 'none',
+            boxShadow: on ? '0 0 6px rgba(56,189,248,.6)' : 'none',
           }} />
         </div>
       </div>
       {on && (
         <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem', alignItems: 'center' }}>
-          <button onClick={e => { e.stopPropagation(); onPrevStation(); }} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>◀</button>
-          <div style={{ flex: 1, fontSize: '.4rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em', textAlign: 'center' }}>STATION {RADIO_STATIONS.findIndex(s => s.id === stationId) + 1}/{RADIO_STATIONS.length}</div>
-          <button onClick={e => { e.stopPropagation(); onNextStation(); }} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>▶</button>
+          <button onClick={e => { e.stopPropagation(); onPrevStation(); }} style={{ background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>◀</button>
+          <div style={{ flex: 1, fontSize: '.4rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', textAlign: 'center' }}>STATION {RADIO_STATIONS.findIndex(s => s.id === stationId) + 1}/{RADIO_STATIONS.length}</div>
+          <button onClick={e => { e.stopPropagation(); onNextStation(); }} style={{ background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', padding: '1px 6px', fontSize: '.7rem', fontFamily: "'VT323',monospace" }}>▶</button>
         </div>
       )}
       <div style={{ marginTop: '4px', display: 'flex', gap: '.3rem' }}>
-        <button onClick={e => { e.stopPropagation(); onToggleMusicMute(); }} style={{ flex: 1, background: musicMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${musicMuted ? 'rgba(255,68,68,.3)' : 'rgba(0,255,65,.12)'}`, color: musicMuted ? 'rgba(255,68,68,.5)' : 'rgba(0,255,65,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
+        <button onClick={e => { e.stopPropagation(); onToggleMusicMute(); }} style={{ flex: 1, background: musicMuted ? 'rgba(255,68,68,.08)' : 'transparent', border: `1px solid ${musicMuted ? 'rgba(255,68,68,.3)' : 'rgba(56,189,248,.12)'}`, color: musicMuted ? 'rgba(255,68,68,.5)' : 'rgba(56,189,248,.3)', cursor: 'pointer', padding: '2px 4px', fontSize: '.38rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.06em' }}>
           {musicMuted ? '🔇 MUTE' : '🔊 MUTE'}
         </button>
       </div>
-      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', marginTop: '3px' }}>[R] TOGGLE · [&lt;/&gt;] STATION · {on ? 'ON AIR' : 'OFF'}</div>
+      <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', marginTop: '3px' }}>[R] TOGGLE · [&lt;/&gt;] STATION · {on ? 'ON AIR' : 'OFF'}</div>
     </div>
   );
 }

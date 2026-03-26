@@ -271,7 +271,7 @@ export default function PhoneHistoryPage() {
               </div>
 
               {expandedId === h.id && (h.transcript || h.notes || h.summary) && (
-                <div style={{ padding: '14px 20px 18px', background: 'rgba(0,255,65,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
+                <div style={{ padding: '14px 20px 18px', background: 'rgba(56,189,248,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
                   <div style={{ display: 'grid', gridTemplateColumns: h.transcript ? '1fr 1fr' : '1fr', gap: 16 }}>
                     {h.summary && (
                       <div>

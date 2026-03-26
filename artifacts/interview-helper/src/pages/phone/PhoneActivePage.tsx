@@ -276,7 +276,7 @@ export default function PhoneActivePage() {
                 <div key={c.callSid || i} style={{
                   borderBottom: `1px solid ${crt(0.06)}`,
                   opacity: ended ? 0.4 : 1,
-                  background: isLive ? 'rgba(0,255,65,0.02)' : isRinging ? 'rgba(255,180,0,0.02)' : 'transparent',
+                  background: isLive ? 'rgba(56,189,248,0.02)' : isRinging ? 'rgba(255,180,0,0.02)' : 'transparent',
                   transition: 'all 0.3s ease',
                 }}>
                   <div style={{ padding: '16px 20px' }}>

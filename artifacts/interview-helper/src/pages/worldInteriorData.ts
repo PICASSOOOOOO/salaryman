@@ -156,7 +156,7 @@ export const FURNITURE_CATALOG: FurnitureItemDef[] = [
     variants: [
       { id: 'pink', label: 'PINK', color: 'rgb(255,60,150)', accent: 'rgba(255,60,150,0.3)' },
       { id: 'blue', label: 'BLUE', color: 'rgb(60,130,255)', accent: 'rgba(60,130,255,0.3)' },
-      { id: 'green', label: 'GREEN', color: 'rgb(0,255,65)', accent: 'rgba(0,255,65,0.3)' },
+      { id: 'green', label: 'TEAL', color: 'rgb(56,189,248)', accent: 'rgba(56,189,248,0.3)' },
       { id: 'orange', label: 'ORANGE', color: 'rgb(255,140,0)', accent: 'rgba(255,140,0,0.3)' },
     ] },
   { id: 'table_lamp', name: 'TABLE LAMP', category: 'lighting', gridW: 1, gridH: 1, price: 1200, desc: 'Small bedside table lamp.',
@@ -183,7 +183,7 @@ export const FURNITURE_CATALOG: FurnitureItemDef[] = [
   { id: 'neon_sign_wall', name: 'NEON SIGN', category: 'wall_art', gridW: 3, gridH: 1, price: 5000, desc: 'Custom neon sign. Glows all night.',
     wallMounted: true,
     variants: [
-      { id: 'open', label: 'OPEN', color: 'rgb(0,255,65)', accent: 'rgba(0,255,65,0.4)' },
+      { id: 'open', label: 'OPEN', color: 'rgb(56,189,248)', accent: 'rgba(56,189,248,0.4)' },
       { id: 'no_vacancy', label: 'NO VACANCY', color: 'rgb(255,60,60)', accent: 'rgba(255,60,60,0.4)' },
       { id: 'coffee', label: 'COFFEE', color: 'rgb(255,180,60)', accent: 'rgba(255,180,60,0.4)' },
       { id: 'bar', label: 'BAR', color: 'rgb(200,60,255)', accent: 'rgba(200,60,255,0.4)' },
@@ -226,7 +226,7 @@ export const FURNITURE_CATALOG: FurnitureItemDef[] = [
   { id: 'gaming_setup', name: 'GAMING SETUP', category: 'electronics', gridW: 3, gridH: 2, price: 18000, desc: 'Full gaming rig. Triple monitors. RGB.',
     variants: [
       { id: 'rgb', label: 'RGB GLOW', color: 'rgb(20,20,30)', accent: 'rgb(255,50,255)' },
-      { id: 'mono', label: 'MONOCHROME', color: 'rgb(20,20,25)', accent: 'rgb(0,255,65)' },
+      { id: 'mono', label: 'MONOCHROME', color: 'rgb(20,20,25)', accent: 'rgb(56,189,248)' },
     ] },
   { id: 'speaker_system', name: 'SPEAKER SYSTEM', category: 'electronics', gridW: 1, gridH: 1, price: 6500, desc: 'High-fidelity speaker system.',
     variants: [
@@ -241,7 +241,7 @@ export const FURNITURE_CATALOG: FurnitureItemDef[] = [
   { id: 'security_panel', name: 'SECURITY PANEL', category: 'electronics', gridW: 1, gridH: 1, price: 8000, desc: 'Home security monitoring panel.',
     wallMounted: true,
     variants: [
-      { id: 'black', label: 'BLACK', color: 'rgb(20,20,25)', accent: 'rgb(0,255,65)' },
+      { id: 'black', label: 'BLACK', color: 'rgb(20,20,25)', accent: 'rgb(56,189,248)' },
     ] },
   // ── RUGS ──────────────────────────────────────────────────────────────────
   { id: 'rug_sm', name: 'AREA RUG (S)', category: 'rugs', gridW: 2, gridH: 2, price: 1500, desc: 'Small area rug. Adds warmth to any room.',
@@ -337,7 +337,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
   minx_arms: {
     id: 'minx_arms', label: 'MINX ARMS HOTEL — ROOM 408',
     width: 280, height: 220,
-    wallColor: 'rgba(20,30,20,.95)', floorColor: 'rgba(8,14,8,.9)', accentColor: 'rgba(0,255,65,.3)',
+    wallColor: 'rgba(12,18,28,.95)', floorColor: 'rgba(6,10,18,.9)', accentColor: 'rgba(56,189,248,.2)',
     exitX: 130, exitY: 205, exitW: 30, exitH: 15,
     ambientText: 'Fluorescent light buzzes. The curtains don\'t fully close. Hotel room. Nightly rate.',
     workers: [
@@ -383,7 +383,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     exitX: 155, exitY: 245, exitW: 30, exitH: 15,
     ambientText: 'Neon hums. Screens flicker. Insert FIAT to play.',
     objects: [
-      { x: 20, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'CYBER SERPENT', color: 'rgba(0,255,65,.5)', gameId: 'cyber_serpent' },
+      { x: 20, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'CYBER SERPENT', color: 'rgba(56,189,248,.5)', gameId: 'cyber_serpent' },
       { x: 80, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'VOID INVADERS', color: 'rgba(255,60,60,.5)', gameId: 'void_invaders' },
       { x: 220, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'BARREL RUNNER', color: 'rgba(255,170,0,.5)', gameId: 'barrel_runner' },
       { x: 280, y: 25, w: 40, h: 55, type: 'arcade_machine' as const, label: 'NEON BREAKER', color: 'rgba(255,60,255,.5)', gameId: 'neon_breaker' },

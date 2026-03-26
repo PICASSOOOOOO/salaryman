@@ -707,7 +707,7 @@ export interface Clothing {
 export type Costume = Clothing;
 
 export const CLOTHES: Clothing[] = [
-  { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#00ff41' },
+  { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#38bdf8' },
   { id: 'corpo_suit', name: 'CORPO SUIT', desc: 'Sharp. Professional. PABLO-approved.', price: 15000, color: '#3366ff' },
   { id: 'wasteland_gear', name: 'WASTELAND GEAR', desc: 'Reinforced. Dusty. Functional.', price: 12000, color: '#aa8844' },
   { id: 'replicant_civvies', name: 'CIVVIES', desc: 'Plain hoodie. Jeans. Nothing to see here.', price: 0, color: '#3a4a5a' },

@@ -58,43 +58,43 @@ export default function BillboardAdmin() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000a02', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', background: '#060d14', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", padding: '2rem' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', letterSpacing: '.2em', margin: 0 }}>BILLBOARD ADMIN</h1>
           <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)' }}>{user?.email ?? 'unknown'}</span>
-            <button onClick={() => navigate('/dashboard')} style={{ padding: '.4rem 1rem', background: 'transparent', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+            <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)' }}>{user?.email ?? 'unknown'}</span>
+            <button onClick={() => navigate('/dashboard')} style={{ padding: '.4rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
               ← DASHBOARD
             </button>
           </div>
         </div>
-        <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)', marginBottom: '1rem' }} />
+        <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(56,189,248,.3), transparent)', marginBottom: '1rem' }} />
         {authError && <div style={{ padding: '.5rem', background: 'rgba(255,0,0,.05)', border: '1px solid rgba(255,80,80,.3)', marginBottom: '1rem', fontSize: '.6rem', color: '#ff6666' }}>Admin access required. Only owner accounts can modify billboard settings.</div>}
-        {msg && <div style={{ padding: '.5rem', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.2)', marginBottom: '1rem', fontSize: '.7rem' }}>{msg}</div>}
+        {msg && <div style={{ padding: '.5rem', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', marginBottom: '1rem', fontSize: '.7rem' }}>{msg}</div>}
         {loading ? (
-          <div style={{ color: 'rgba(0,255,65,.4)', fontSize: '.8rem' }}>Loading billboard data...</div>
+          <div style={{ color: 'rgba(56,189,248,.4)', fontSize: '.8rem' }}>Loading billboard data...</div>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {boards.map(b => (
-              <div key={b.id} style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1rem', background: 'rgba(0,10,5,.6)' }}>
+              <div key={b.id} style={{ border: '1px solid rgba(56,189,248,.15)', padding: '1rem', background: 'rgba(0,10,5,.6)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '.5rem' }}>
                   <div>
                     <div style={{ fontSize: '.8rem', color: '#00ccff', letterSpacing: '.1em' }}>{b.label}</div>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)' }}>ID: {b.locationId} · DB #{b.id}</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)' }}>ID: {b.locationId} · DB #{b.id}</div>
                   </div>
-                  <div style={{ fontSize: '.6rem', color: b.ownerPlayerName && !b.expired ? '#ff00ff' : 'rgba(0,255,65,.4)' }}>
+                  <div style={{ fontSize: '.6rem', color: b.ownerPlayerName && !b.expired ? '#ff00ff' : 'rgba(56,189,248,.4)' }}>
                     {b.ownerPlayerName && !b.expired ? `OWNED: ${b.ownerPlayerName}` : 'AVAILABLE'}
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.5rem', marginBottom: '.5rem' }}>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)' }}>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)' }}>
                     Price: ç{b.priceFlorin.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)' }}>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)' }}>
                     Expires: {b.rentedUntil ? new Date(b.rentedUntil).toLocaleDateString() : '—'}
                   </div>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)' }}>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)' }}>
                     Expired: {b.expired ? 'YES' : 'NO'}
                   </div>
                 </div>
@@ -121,7 +121,7 @@ export default function BillboardAdmin() {
             ))}
           </div>
         )}
-        <div style={{ marginTop: '1.5rem', fontSize: '.4rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.08em' }}>
+        <div style={{ marginTop: '1.5rem', fontSize: '.4rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em' }}>
           {CITY_NAME} BILLBOARD ADMINISTRATION · {boards.length} slots configured
         </div>
       </div>

@@ -27,19 +27,19 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-300 font-mono">
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-sky-500/3 blur-[100px]" />
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-10">
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-emerald-400 transition-colors uppercase tracking-widest"
+            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-sky-400 transition-colors uppercase tracking-widest"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to SALARYMAN
           </button>
-          <div className="flex items-center gap-2 text-emerald-400/70 text-xs tracking-widest uppercase">
+          <div className="flex items-center gap-2 text-sky-400/70 text-xs tracking-widest uppercase">
             <Scale className="w-3.5 h-3.5" />
             PICASSO AI LLC Legal
           </div>
@@ -58,7 +58,7 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
                         onClick={() => navigate(link.path)}
                         className={`w-full text-left text-xs px-3 py-1.5 rounded transition-colors ${
                           active
-                            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
+                            ? "bg-sky-500/15 text-sky-300 border border-sky-500/20"
                             : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50"
                         }`}
                       >
@@ -92,7 +92,7 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
               <button
                 key={link.path}
                 onClick={() => navigate(link.path)}
-                className="hover:text-emerald-500/70 transition-colors"
+                className="hover:text-sky-500/70 transition-colors"
               >
                 {link.label}
               </button>
@@ -107,10 +107,10 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
         .prose-legal h3 { font-size: 0.875rem; font-weight: 600; color: #d4d4d8; margin-top: 1.5rem; margin-bottom: 0.5rem; }
         .prose-legal ul { list-style: none; padding: 0; margin-bottom: 1rem; }
         .prose-legal ul li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; color: #a1a1aa; font-size: 0.875rem; line-height: 1.6; }
-        .prose-legal ul li::before { content: "›"; position: absolute; left: 0; color: rgba(34,197,94,0.5); }
-        .prose-legal a { color: rgba(34,197,94,0.8); text-decoration: underline; }
-        .prose-legal a:hover { color: rgba(34,197,94,1); }
-        .prose-legal .highlight-box { background: rgba(34,197,94,0.05); border: 1px solid rgba(34,197,94,0.15); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
+        .prose-legal ul li::before { content: "›"; position: absolute; left: 0; color: rgba(56,189,248,0.5); }
+        .prose-legal a { color: rgba(56,189,248,0.8); text-decoration: underline; }
+        .prose-legal a:hover { color: rgba(56,189,248,1); }
+        .prose-legal .highlight-box { background: rgba(56,189,248,0.05); border: 1px solid rgba(56,189,248,0.15); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; }
         .prose-legal .highlight-box p { margin-bottom: 0; }
         .prose-legal strong { color: #e4e4e7; }
       `}</style>

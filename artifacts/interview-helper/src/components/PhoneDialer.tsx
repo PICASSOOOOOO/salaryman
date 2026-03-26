@@ -173,7 +173,7 @@ export function PhoneDialer({
   const [followupCallSid, setFollowupCallSid] = useState<string | null>(null);
   const [followupForm, setFollowupForm] = useState({ title: '', startAt: '', endAt: '' });
 
-  const crt = (opacity: number) => `rgba(0,255,65,${opacity})`;
+  const crt = (opacity: number) => `rgba(56,189,248,${opacity})`;
   const red = (opacity: number) => `rgba(255,40,40,${opacity})`;
   const amber = (opacity: number) => `rgba(255,180,0,${opacity})`;
   const blue = (opacity: number) => `rgba(0,150,255,${opacity})`;

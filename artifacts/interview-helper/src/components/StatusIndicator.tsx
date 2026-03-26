@@ -27,8 +27,8 @@ export function StatusIndicator({ status }: { status: SolverStatus }) {
     done: {
       icon: CheckCircle2,
       text: 'Done',
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-400/10 border-emerald-400/20'
+      color: 'text-sky-400',
+      bg: 'bg-sky-400/10 border-sky-400/20'
     },
     error: {
       icon: AlertCircle,

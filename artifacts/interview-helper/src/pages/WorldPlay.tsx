@@ -1072,7 +1072,7 @@ const NPCS: NpcDef[] = [
     whisper: 'Papers! THE MINX! Read what they do not want you to know!', backstory: 'Street-corner android hawker for THE MINX. Loud. Persistent. Has been tasered by PABLO CORP security 11 times.',
     voiceLines: ['EXTRA! EXTRA! Read all about it!', 'THE MINX! Independent journalism! 100 FIAT!', 'Eleven times they shut me down. Twelve times I came back.'] },
 ];
-const NPC_COL: Record<string, string> = { corp: '#00cc33', human: '#009922', android: '#33ffaa', mutant: '#88ff44' };
+const NPC_COL: Record<string, string> = { corp: '#38bdf8', human: '#7dd3fc', android: '#67e8f9', mutant: '#7dd3fc' };
 
 type NpcPhase = 'home' | 'commute_work' | 'work' | 'commute_home' | 'wander';
 
@@ -1878,7 +1878,7 @@ const PUBLIC_OFFICE_TERMINALS = new Set(['TERMINAL 1','TERMINAL 2','TERMINAL 3',
 type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string; goldPrice?: number };
 type VendCategory = { id: string; label: string; col: string; items: VendItem[] };
 const VEND_CATALOG: VendCategory[] = [
-  { id: 'food', label: 'FOOD', col: '#00ff41', items: [
+  { id: 'food', label: 'FOOD', col: '#38bdf8', items: [
     { id: 'power_pellet',  name: 'POWER PELLET',    desc: 'Off-brand ration. Hunger+30 Thirst+20.',              price: 800,    consumable: true, effect: 'hunger30 thirst20' },
     { id: 'synth_ramen',   name: 'SYNTH RAMEN',     desc: 'Hot. Questionable protein. Hunger+50 Energy+15.',      price: 1200,   consumable: true, effect: 'hunger50 energy15' },
     { id: 'recycled_water',name: 'RECYCLED WATER',  desc: 'Distilled twice. Probably fine. Thirst+40.',           price: 400,    consumable: true, effect: 'thirst40' },
@@ -1958,7 +1958,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'armored_moped',   name: 'ARMORED MOPED',   desc: '+50% speed, 15% damage resistance.',                  price: 120000 },
     { id: 'motorcycle',      name: 'MOTORCYCLE',      desc: '+124% speed. Premium vehicle. 40% faster than sprint. Costs 10oz GOLD.', price: 1000000, goldPrice: 10 },
   ]},
-  { id: 'furniture', label: 'FURNITURE', col: '#88ff44', items: [
+  { id: 'furniture', label: 'FURNITURE', col: '#7dd3fc', items: [
     { id: 'futon',          name: 'FUTON',            desc: 'Save & rest from any owned property.',                price: 5000  },
     { id: 'neon_sign',      name: 'NEON SIGN',        desc: '+10% passive income. Visible from two blocks.',       price: 8000  },
     { id: 'security_cam',   name: 'SECURITY CAM',     desc: 'Alerts you when threats approach your location.',     price: 12000 },
@@ -2200,7 +2200,7 @@ function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, s
 }
 const THREAT_COL: Record<string, string> = {
   RUST_SYNDICATE: '#ff4444', VOID_RUNNERS: '#ff8800', STATIC_MONKS: '#aaff22',
-  MUTANT: '#88ff44', RAIDER: '#ff66ff', GANG: '#ff4444',
+  MUTANT: '#7dd3fc', RAIDER: '#ff66ff', GANG: '#ff4444',
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
   SPY: '#ffffaa', PABLO_GUARD: '#5599ff', MINX_CITY: '#cc44ff',
   VAGRANT: '#887766', STRAY_DOG: '#aa8855', SCAVENGER: '#99aa66',
@@ -2325,7 +2325,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     ? 'rgba(180,20,40,.3)'
     : isTowerFloor
     ? 'rgba(120,60,255,.35)'
-    : isOwnedByPlayer ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.25)';
+    : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.25)';
 
   if (isOwnedByPlayer && companyName) {
     const deskX = Math.floor(w * 0.27);
@@ -2586,7 +2586,7 @@ const BAND_CONFIGS: Record<BandType, { color: string; label: string; minSize: nu
   POLICE:       { color: '#4488ff', label: 'POLICE',     minSize: 3, maxSize: 5, hp: 80,  atkDmg: 25, rangedRange: 150 },
   RAIDERS:      { color: '#ff6622', label: 'RAIDERS',    minSize: 4, maxSize: 7, hp: 60,  atkDmg: 18, rangedRange: 120 },
   BIKERS:       { color: '#cc44ff', label: 'BIKERS',     minSize: 3, maxSize: 6, hp: 70,  atkDmg: 22, rangedRange: 100 },
-  MUTANT_PACK:  { color: '#88ff44', label: 'MUTANTS',    minSize: 5, maxSize: 8, hp: 100, atkDmg: 30, rangedRange: 80 },
+  MUTANT_PACK:  { color: '#7dd3fc', label: 'MUTANTS',    minSize: 5, maxSize: 8, hp: 100, atkDmg: 30, rangedRange: 80 },
   MERCS:        { color: '#ffaa00', label: 'MERCS',      minSize: 3, maxSize: 5, hp: 90,  atkDmg: 28, rangedRange: 160 },
   SCAVENGERS:   { color: '#66ccaa', label: 'SCAVENGERS', minSize: 4, maxSize: 6, hp: 50,  atkDmg: 15, rangedRange: 110 },
 };
@@ -2787,30 +2787,30 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
       alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{ maxWidth: 520, width: '90%', textAlign: 'center', padding: '2rem' }}>
-        <div style={{ marginBottom: '1.5rem', ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,0.3)', letterSpacing: '.2em' }}>
+        <div style={{ marginBottom: '1.5rem', ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '.2em' }}>
           PABLO CORP — CLASSIFIED BRIEFING
         </div>
         <div style={{ minHeight: 320, display: 'flex', flexDirection: 'column', gap: '.6rem', justifyContent: 'center' }}>
           {INTRO_LINES.slice(0, lineIdx).map((l, i) => (
-            <div key={i} style={{ ...VT, fontSize: '1.35rem', color: l === '' ? 'transparent' : 'rgba(0,255,65,0.75)', letterSpacing: '.1em', lineHeight: 1.3 }}>
+            <div key={i} style={{ ...VT, fontSize: '1.35rem', color: l === '' ? 'transparent' : 'rgba(56,189,248,0.75)', letterSpacing: '.1em', lineHeight: 1.3 }}>
               {l || '\u00A0'}
             </div>
           ))}
           {lineIdx < INTRO_LINES.length && (
-            <div style={{ ...VT, fontSize: '1.35rem', color: '#00ff41', letterSpacing: '.1em', lineHeight: 1.3 }}>
+            <div style={{ ...VT, fontSize: '1.35rem', color: '#38bdf8', letterSpacing: '.1em', lineHeight: 1.3 }}>
               {displayed}<span style={{ opacity: blink ? 1 : 0 }}>█</span>
             </div>
           )}
         </div>
         {done && (
           <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '.8rem', alignItems: 'center' }}>
-            <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(0,255,65,0.5)', letterSpacing: '.15em' }}>
+            <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(56,189,248,0.5)', letterSpacing: '.15em' }}>
               OPERATIVE {charName.toUpperCase()} — STANDING BY
             </div>
             <button onClick={skip} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.15em',
-              padding: '.5rem 2rem', background: 'rgba(0,255,65,0.1)',
-              border: '1px solid rgba(0,255,65,0.6)', color: '#00ff41',
+              padding: '.5rem 2rem', background: 'rgba(56,189,248,0.1)',
+              border: '1px solid rgba(56,189,248,0.6)', color: '#38bdf8',
               cursor: 'pointer',
             }}>
               BEGIN INTAKE ▸
@@ -2821,7 +2821,7 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
           <button onClick={skip} style={{
             marginTop: '2.5rem', ...ST, fontSize: '.65rem', letterSpacing: '.12em',
             padding: '.25rem .8rem', background: 'transparent',
-            border: '1px solid rgba(0,255,65,0.2)', color: 'rgba(0,255,65,0.3)',
+            border: '1px solid rgba(56,189,248,0.2)', color: 'rgba(56,189,248,0.3)',
             cursor: 'pointer',
           }}>
             SKIP ▸
@@ -2943,14 +2943,14 @@ let seq = 0;
 function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string) => void; onCancel: () => void }) {
   const [v, setV] = useState('');
   return (
-    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
-      <div style={{ width: 300, border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
-        <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.1em', marginBottom: '.25rem' }}>🔒 {label}</div>
-        <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em', marginBottom: '.8rem' }}>SECURITY CODE REQUIRED</div>
-        <input value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && v.trim() && onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.9rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box', marginBottom: '.7rem' }} />
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+      <div style={{ width: 300, border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
+        <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.1em', marginBottom: '.25rem' }}>🔒 {label}</div>
+        <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', marginBottom: '.8rem' }}>SECURITY CODE REQUIRED</div>
+        <input value={v} onChange={e => setV(e.target.value)} onKeyDown={e => e.key === 'Enter' && v.trim() && onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.9rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box', marginBottom: '.7rem' }} />
         <div style={{ display: 'flex', gap: '.5rem' }}>
-          <button onClick={() => v.trim() && onOk(v.trim())} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>UNLOCK</button>
-          <button onClick={onCancel} style={{ padding: '.4rem .75rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.3)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>✕</button>
+          <button onClick={() => v.trim() && onOk(v.trim())} style={{ flex: 1, padding: '.4rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>UNLOCK</button>
+          <button onClick={onCancel} style={{ padding: '.4rem .75rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>✕</button>
         </div>
       </div>
     </div>
@@ -3371,7 +3371,7 @@ export default function WorldPlay() {
   const unlockedWeaponsRef = useRef<Set<string>>(unlockedWeapons);
   const [showMerchant, setShowMerchant] = useState<{ name: string; items: MerchantItem[] } | null>(null);
   const WEAPONS: WeaponDef[] = [
-    { id: 'FISTS', label: LORE_WEAPON_NAMES['FISTS']?.label ?? 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#00ff41', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
+    { id: 'FISTS', label: LORE_WEAPON_NAMES['FISTS']?.label ?? 'FISTS', desc: 'Bare knuckles. Melee only.', atkBonus: 0, color: '#38bdf8', type: 'melee', range: 72, cooldown: 35, icon: 'fists' },
     { id: 'KNIFE', label: LORE_WEAPON_NAMES['KNIFE']?.label ?? 'KNIFE', desc: 'Quick stab. +3 ATK. Fast cooldown.', atkBonus: 3, color: '#cccccc', type: 'melee', range: 60, cooldown: 20, icon: 'knife' },
     { id: 'REVOLVER', label: LORE_WEAPON_NAMES['REVOLVER']?.label ?? 'REVOLVER', desc: 'Six-shot sidearm. +5 ATK.', atkBonus: 5, color: '#aabbcc', type: 'ranged', range: 160, cooldown: 35, icon: 'revolver' },
     { id: 'PISTOL', label: LORE_WEAPON_NAMES['PISTOL']?.label ?? 'PISTOL', desc: 'Semi-auto sidearm. +7 ATK. Suits standard.', atkBonus: 7, color: '#88aaff', type: 'ranged', range: 180, cooldown: 22, icon: 'pistol' },
@@ -4510,7 +4510,7 @@ export default function WorldPlay() {
         g.salary += lootMoney; setSalary(g.salary);
         g.floaters.push({ x: g.px, y: g.py - 40, text: `KILLED ${m.targetName}`, color: '#ff4444', life: 70, maxLife: 70 });
         if (lootMoney > 0) g.floaters.push({ x: g.px, y: g.py - 55, text: `+ƒ${lootMoney.toLocaleString()} LOOTED`, color: '#ffdd44', life: 60, maxLife: 60 });
-        if (lootItem) g.floaters.push({ x: g.px, y: g.py - 70, text: `LOOT: ${lootItem.name}`, color: '#33ffaa', life: 70, maxLife: 70 });
+        if (lootItem) g.floaters.push({ x: g.px, y: g.py - 70, text: `LOOT: ${lootItem.name}`, color: '#67e8f9', life: 70, maxLife: 70 });
         const lootItems: { name: string; desc: string }[] = [];
         if (lootItem) lootItems.push(lootItem);
         setLootPanel({ source: m.targetName ?? 'Enemy', money: lootMoney, items: lootItems });
@@ -4535,7 +4535,7 @@ export default function WorldPlay() {
         }
       } else if (m.type === 'npc_loot') {
         if (m.item) {
-          g.floaters.push({ x: g.px, y: g.py - 20, text: `LOOT: ${m.item.name}`, color: '#33ffaa', life: 65, maxLife: 65 });
+          g.floaters.push({ x: g.px, y: g.py - 20, text: `LOOT: ${m.item.name}`, color: '#67e8f9', life: 65, maxLife: 65 });
           setLootPanel({ source: 'NPC KILL', money: 0, items: [m.item] });
           setTimeout(() => setLootPanel(null), 3000);
         }
@@ -7263,7 +7263,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             nearestThreat.hp -= 45;
             g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: '[ CORP HIT ]', color: '#4488ff', life: 38, maxLife: 38 });
             if (nearestThreat.hp <= 0) {
-              g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#00ff41', life: 90, maxLife: 90 });
+              g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#38bdf8', life: 90, maxLife: 90 });
               g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 1800 });
               g.deadBodies.push({ x: nearestThreat.x, y: nearestThreat.y, type: nearestThreat.type, diedAtFrame: g.frame });
               g.threats = g.threats.filter(t => t !== nearestThreat);
@@ -7590,7 +7590,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = `rgb(0,${Math.floor(200 * tp)},${Math.floor(60 * tp)})`;
             ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 10);
             const scanY = (g.frame * 0.5) % (obj.h - 10);
-            ctx.fillStyle = 'rgba(0,255,65,0.15)';
+            ctx.fillStyle = 'rgba(56,189,248,0.15)';
             ctx.fillRect(osx + 3, osy + 3 + scanY, obj.w - 6, 2);
             ctx.fillStyle = 'rgb(40,40,45)';
             ctx.fillRect(osx + 2, osy + obj.h - 5, obj.w - 4, 3);
@@ -7759,7 +7759,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgb(40,30,50)';
             ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h * 0.55);
             const ap = Math.sin(g.frame * 0.06 + (obj.gameId ?? '').length * 1.5) * 0.3 + 0.7;
-            const gc = obj.color ?? 'rgba(0,255,65,.5)';
+            const gc = obj.color ?? 'rgba(56,189,248,.5)';
             ctx.fillStyle = gc.replace(/[\d.]+\)$/, `${ap})`);
             ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h * 0.5 - 4);
             const scanY3 = (g.frame * 0.8 + (obj.gameId ?? '').length * 20) % (obj.h * 0.5 - 4);
@@ -7893,7 +7893,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = ri % 2 === 0 ? 'rgba(0,120,200,.3)' : 'rgba(0,80,140,.25)';
               ctx.fillRect(osx + 2, ry, obj.w - 4, rh);
               if (Math.random() > 0.6) {
-                ctx.fillStyle = 'rgba(0,255,65,.7)';
+                ctx.fillStyle = 'rgba(56,189,248,.7)';
                 ctx.fillRect(osx + obj.w - 5, ry + rh / 2 - 1, 2, 2);
               }
             }
@@ -8022,10 +8022,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const lock = g.locks.get(lockKey);
             if (lock) {
               const isOwn = g.officeTerminalRenting?.label === obj.label;
-              ctx.strokeStyle = isOwn ? 'rgba(0,255,65,.8)' : 'rgba(255,60,40,.8)';
+              ctx.strokeStyle = isOwn ? 'rgba(56,189,248,.8)' : 'rgba(255,60,40,.8)';
               ctx.lineWidth = 1.5;
               ctx.strokeRect(osx - 1, osy - 1, obj.w + 2, obj.h + 2);
-              ctx.fillStyle = isOwn ? 'rgba(0,255,65,.7)' : 'rgba(255,60,40,.7)';
+              ctx.fillStyle = isOwn ? 'rgba(56,189,248,.7)' : 'rgba(255,60,40,.7)';
               ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
               ctx.fillText(isOwn ? '● YOUR SESSION' : `● ${lock.ownerName}`, osx + obj.w / 2, osy - 3);
             } else {
@@ -8171,9 +8171,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return !(clampedX2 >= pf.gridX + pw2 || clampedX2 + fw2 <= pf.gridX ||
                        clampedY2 >= pf.gridY + ph2 || clampedY2 + fh2 <= pf.gridY);
             });
-            ctx.fillStyle = hasCol2 ? 'rgba(255,60,60,0.35)' : 'rgba(0,255,65,0.25)';
+            ctx.fillStyle = hasCol2 ? 'rgba(255,60,60,0.35)' : 'rgba(56,189,248,0.25)';
             ctx.fillRect(gx3, gy3, fw2px, fh2px);
-            ctx.strokeStyle = hasCol2 ? 'rgba(255,60,60,0.8)' : 'rgba(0,255,65,0.8)';
+            ctx.strokeStyle = hasCol2 ? 'rgba(255,60,60,0.8)' : 'rgba(56,189,248,0.8)';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(gx3, gy3, fw2px, fh2px);
             ctx.fillStyle = 'rgba(255,255,255,0.8)';
@@ -8181,7 +8181,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText(selItem.name, gx3 + fw2px / 2, gy3 + fh2px / 2 + 2);
           }
           const dmPulse = 0.4 + Math.sin(g.frame * 0.06) * 0.3;
-          ctx.fillStyle = `rgba(0,255,65,${dmPulse * 0.9})`;
+          ctx.fillStyle = `rgba(56,189,248,${dmPulse * 0.9})`;
           ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('◆ DECORATION MODE — [O] catalog · [R] rotate · Click to place · [Del] remove · [F] exit', iDef.width / 2, -18);
         }
@@ -8251,7 +8251,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           else if (isConferenceTable) prompt = '[E] EXAMINE';
           else if (isWindow) prompt = '[E] LOOK OUT';
           if (prompt) {
-            ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.4)';
+            ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.4)';
             ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText(prompt, npx, npy);
           }
@@ -8259,11 +8259,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         const exX = iDef.exitX, exY = iDef.exitY;
         const exitPulse = 0.4 + Math.sin(g.frame * 0.06) * 0.3;
-        ctx.fillStyle = `rgba(0,255,65,${exitPulse * 0.15})`;
+        ctx.fillStyle = `rgba(56,189,248,${exitPulse * 0.15})`;
         ctx.fillRect(exX, exY, iDef.exitW, iDef.exitH);
-        ctx.strokeStyle = `rgba(0,255,65,${exitPulse * 0.6})`;
+        ctx.strokeStyle = `rgba(56,189,248,${exitPulse * 0.6})`;
         ctx.lineWidth = 1; ctx.strokeRect(exX, exY, iDef.exitW, iDef.exitH);
-        ctx.fillStyle = `rgba(0,255,65,${exitPulse * 0.8})`;
+        ctx.fillStyle = `rgba(56,189,248,${exitPulse * 0.8})`;
         ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
         ctx.fillText('EXIT', exX + iDef.exitW / 2, exY + iDef.exitH / 2 + 3);
 
@@ -8295,7 +8295,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         if (g.near === '__interior_exit') {
-          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.3)';
+          ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.3)';
           ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E] EXIT', exX + iDef.exitW / 2, exY - 6);
         }
@@ -8430,7 +8430,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = '#d4906a'; ctx.beginPath(); ctx.arc(opx, opy - 7, 4, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#222244'; ctx.fillRect(opx - 4, opy - 13, 8, 5);
           }
-          ctx.shadowColor = opCls2 === 'corporate' ? '#00ff41' : opCls2 === 'outlaw' ? '#88ff44' : opCls2 === 'replicant' ? '#33ffaa' : '#44aaff';
+          ctx.shadowColor = opCls2 === 'corporate' ? '#38bdf8' : opCls2 === 'outlaw' ? '#7dd3fc' : opCls2 === 'replicant' ? '#67e8f9' : '#44aaff';
           ctx.shadowBlur = 3;
           ctx.fillStyle = 'rgba(0,200,255,.7)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(peer.name, opx, opy - 18);
@@ -8466,7 +8466,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const ipBob = ipWalkF === 0 ? Math.sin(g.idleFrame * 0.08) * 0.5 : Math.abs(Math.sin(ipWalkF / 28 * Math.PI * 2)) * 1;
           const ipFlash = g.invincible % 4 < 2;
           ctx.globalAlpha = ipFlash ? 1 : 0.4;
-          ctx.shadowColor = g.poisoned ? '#88ff44' : (ipCostumeColor ?? (ipCls === 'corporate' ? '#00ff41' : ipCls === 'outlaw' ? '#88ff44' : '#33ffaa'));
+          ctx.shadowColor = g.poisoned ? '#7dd3fc' : (ipCostumeColor ?? (ipCls === 'corporate' ? '#38bdf8' : ipCls === 'outlaw' ? '#7dd3fc' : '#67e8f9'));
           ctx.shadowBlur = 4;
           ctx.fillStyle = 'rgba(0,0,0,0.15)';
           ctx.beginPath(); ctx.ellipse(ppx, ppy + 5, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
@@ -8581,7 +8581,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText(iDef.label, iDef.width / 2, -8);
 
         if (iDef.ambientText) {
-          ctx.fillStyle = 'rgba(0,255,65,.2)';
+          ctx.fillStyle = 'rgba(56,189,248,.2)';
           ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(iDef.ambientText, iDef.width / 2, iDef.height + 14);
         }
@@ -8869,7 +8869,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 150) : 0;
           const total = salaryPerMin + bonus;
           g.salary += total; setSalary(g.salary);
-          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#00ff41', life: 80, maxLife: 80 });
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#38bdf8', life: 80, maxLife: 80 });
           sfxCoin();
           addBankTx(INCOME_LABEL, total, g.salary);
           reportMissionProgress('fiatEarned', total);
@@ -10861,11 +10861,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           grad.addColorStop(1, 'rgba(4,8,4,.97)');
           ctx.fillStyle = grad; ctx.fillRect(bx, by, b.w, b.h);
           // Border — purple/green depending on state
-          ctx.strokeStyle = isNear ? 'rgba(0,255,65,.9)' : `rgba(140,0,220,${pulse + .3})`;
+          ctx.strokeStyle = isNear ? 'rgba(56,189,248,.9)' : `rgba(140,0,220,${pulse + .3})`;
           ctx.lineWidth = isNear ? 2.5 : 1.5; ctx.strokeRect(bx, by, b.w, b.h);
           // Corner brackets
           const cs2 = 12; ctx.lineWidth = 2;
-          ctx.strokeStyle = isNear ? 'rgba(0,255,65,.9)' : 'rgba(140,0,220,.7)';
+          ctx.strokeStyle = isNear ? 'rgba(56,189,248,.9)' : 'rgba(140,0,220,.7)';
           [[bx, by, 1, 1], [bx + b.w, by, -1, 1], [bx, by + b.h, 1, -1], [bx + b.w, by + b.h, -1, -1]].forEach(([cx2, cy2, sx, sy]) => {
             ctx.beginPath(); ctx.moveTo(cx2, cy2 + (sy as number) * cs2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2 + (sx as number) * cs2, cy2); ctx.stroke();
           });
@@ -10890,16 +10890,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillRect(silX - 4, silY, 8, 14); // body
           ctx.beginPath(); ctx.arc(silX, silY - 3, 4, 0, Math.PI * 2); ctx.fill(); // head
           // Antenna / spire
-          ctx.strokeStyle = `rgba(0,255,65,${.4 + Math.sin(g.frame * 0.05) * .2})`;
+          ctx.strokeStyle = `rgba(56,189,248,${.4 + Math.sin(g.frame * 0.05) * .2})`;
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.moveTo(bx + b.w / 2, by); ctx.lineTo(bx + b.w / 2, by - 20); ctx.stroke();
-          ctx.fillStyle = `rgba(0,255,65,${.6 + Math.sin(g.frame * 0.1) * .4})`;
+          ctx.fillStyle = `rgba(56,189,248,${.6 + Math.sin(g.frame * 0.1) * .4})`;
           ctx.beginPath(); ctx.arc(bx + b.w / 2, by - 21, 2.5, 0, Math.PI * 2); ctx.fill();
           // Label
-          ctx.fillStyle = isNear ? '#00ff41' : 'rgba(180,0,255,.8)';
+          ctx.fillStyle = isNear ? '#38bdf8' : 'rgba(180,0,255,.8)';
           ctx.font = 'bold 11px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('SHADOW TOWER', bx + b.w / 2, by + b.h / 2 + 4);
-          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
           continue; // skip default building drawing
         }
 
@@ -10924,28 +10924,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const cx2 = bx + b.w / 2, cy2 = by + b.h / 2;
           const pulse2 = 0.5 + Math.sin(g.frame * 0.06 + bx * 0.01) * 0.5;
           if (IS_VAN(b.id)) {
-            ctx.fillStyle = `rgba(0,255,65,${0.08 + pulse2 * 0.04})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.08 + pulse2 * 0.04})`;
             ctx.fillRect(bx, by, b.w, b.h);
-            ctx.strokeStyle = `rgba(0,255,65,${0.3 + pulse2 * 0.2})`;
+            ctx.strokeStyle = `rgba(56,189,248,${0.3 + pulse2 * 0.2})`;
             ctx.lineWidth = 1; ctx.strokeRect(bx, by, b.w, b.h);
-            ctx.fillStyle = `rgba(0,255,65,${0.15 + pulse2 * 0.1})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.15 + pulse2 * 0.1})`;
             ctx.fillRect(bx + b.w - 8, by + 4, 6, b.h - 8);
-            ctx.fillStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.5 + pulse2 * 0.3})`;
             ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('VAN', cx2, cy2 + 3);
-            ctx.fillStyle = `rgba(0,255,65,${0.3 + pulse2 * 0.2})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.3 + pulse2 * 0.2})`;
             ctx.font = '6px "Share Tech Mono"';
             ctx.fillText('TERMINAL', cx2, cy2 + 11);
           } else {
-            ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 6 + pulse2 * 6;
+            ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 6 + pulse2 * 6;
             ctx.fillStyle = `rgba(0,20,10,${0.85})`;
             ctx.fillRect(cx2 - 7, cy2 - 8, 14, 12);
-            ctx.strokeStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.strokeStyle = `rgba(56,189,248,${0.5 + pulse2 * 0.3})`;
             ctx.lineWidth = 1.5; ctx.strokeRect(cx2 - 7, cy2 - 8, 14, 12);
             const scanY = cy2 - 7 + ((g.frame * 0.5) % 10);
-            ctx.fillStyle = `rgba(0,255,65,${0.06 + pulse2 * 0.04})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.06 + pulse2 * 0.04})`;
             ctx.fillRect(cx2 - 6, scanY, 12, 1);
-            ctx.fillStyle = `rgba(0,255,65,${0.4 + pulse2 * 0.4})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.4 + pulse2 * 0.4})`;
             ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('>', cx2, cy2);
             ctx.fillStyle = `rgba(0,80,40,${0.6})`;
@@ -10953,11 +10953,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = `rgba(0,60,30,${0.5})`;
             ctx.fillRect(cx2 - 5, cy2 + 8, 10, 2);
             ctx.shadowBlur = 0;
-            ctx.fillStyle = `rgba(0,255,65,${0.5 + pulse2 * 0.3})`;
+            ctx.fillStyle = `rgba(56,189,248,${0.5 + pulse2 * 0.3})`;
             ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('TERMINAL', cx2, cy2 + 18);
           }
-          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
+          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E] TERMINAL', cx2, by - 6); }
           ctx.shadowBlur = 0;
           continue;
         }
@@ -11157,7 +11157,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = `rgb(${Math.floor(180 * bBr)},${Math.floor(160 * bBr)},${Math.floor(70 * bBr)})`;
         ctx.fillRect(doorX + doorW - 3, doorY + doorH / 2 - 2, 2, 4);
         // Building signage on awning
-        ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#00ff41' : 'rgba(0,255,65,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
+        ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#38bdf8' : 'rgba(56,189,248,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
         ctx.font = `${b.bright ? 8 : 7}px "Share Tech Mono"`; ctx.textAlign = 'center';
         {
           const isHQ = COMPANY_HQ_BUILDING_IDS.has(b.id);
@@ -11223,7 +11223,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         // Near-building highlight & interaction prompt
         if (isNear) {
-          ctx.strokeStyle = '#00ff41'; ctx.lineWidth = 1.5; ctx.strokeRect(bx - 1, by - 1, b.w + 2, b.h + 2);
+          ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.5; ctx.strokeRect(bx - 1, by - 1, b.w + 2, b.h + 2);
         }
         const costLbl = BUILDING_COST_LABEL[b.id];
         if (costLbl && !isLocked) {
@@ -11237,7 +11237,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#ff8c3c';
           ctx.fillText('🔒', bx + b.w / 2, by + b.h / 2);
         }
-        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
+        if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
       }
 
       // ── Shared vehicle draw helper (directional pixel art) ──
@@ -11663,7 +11663,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const nDist = Math.hypot(g.px - sPos.x, g.py - sPos.y);
         const isNearNpc = nDist < NPC_RANGE;
         const gangPatrolColor = n.role === 'gang_patrol' ? (n.faction === 'rust_syndicate' ? '#ff3c3c' : n.faction === 'void_runners' ? '#ff8c00' : n.faction === 'static_monks' ? '#c8ff00' : n.faction === 'eastern_bloc' ? '#3c64ff' : '#888888') : null;
-        const nCol = isFleeing ? '#ff4444' : isSpectating ? '#ffaa00' : gangPatrolColor ?? (n.role === 'blade_runner' ? '#cc44ff' : n.role === 'police' ? '#4488ff' : n.role === 'corpo_military' ? '#ff6644' : (NPC_COL[n.type] ?? '#009922'));
+        const nCol = isFleeing ? '#ff4444' : isSpectating ? '#ffaa00' : gangPatrolColor ?? (n.role === 'blade_runner' ? '#cc44ff' : n.role === 'police' ? '#4488ff' : n.role === 'corpo_military' ? '#ff6644' : (NPC_COL[n.type] ?? '#7dd3fc'));
         ctx.shadowColor = nCol; ctx.shadowBlur = isNearNpc ? 6 : 0;
         const isFemale = (n as { gender?: string }).gender === 'f';
         const idle = n.idleBehavior ?? 'WALKING';
@@ -11809,11 +11809,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const pillY = ny2 - 28, pillH = 16, pillR = 4;
           ctx.roundRect(nx2 - tw / 2 - 5, pillY, tw + 10, pillH, pillR);
           ctx.fill();
-          ctx.fillStyle = isNearNpc ? nCol : 'rgba(0,255,65,.45)';
+          ctx.fillStyle = isNearNpc ? nCol : 'rgba(56,189,248,.45)';
           ctx.fillText(nm, nx2, ny2 - 16);
         }
         if (isNearNpc && !nb) {
-          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.85)' : 'rgba(0,255,65,.3)';
+          ctx.fillStyle = g.blink ? 'rgba(56,189,248,.85)' : 'rgba(56,189,248,.3)';
           ctx.font = '13px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E]', nx2, ny2 - 32);
         }
@@ -11874,7 +11874,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (px2 < -20 || px2 > cw + 20 || py2 < -20 || py2 > ch + 20) continue;
         const spk = g.speakingSet.has(op.id);
         const opCls = (op.class ?? '').toLowerCase();
-        const opGlow = opCls === 'corporate' ? '#00ff41' : opCls === 'outlaw' ? '#88ff44' : opCls === 'replicant' ? '#aaaacc' : '#44aaff';
+        const opGlow = opCls === 'corporate' ? '#38bdf8' : opCls === 'outlaw' ? '#7dd3fc' : opCls === 'replicant' ? '#aaaacc' : '#44aaff';
         if (spk) { ctx.shadowColor = 'rgba(0,255,180,.6)'; ctx.shadowBlur = 10; }
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(px2, py2 + 7, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -11932,7 +11932,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const barW = 22, barH = 3, barY = py2 - 28;
           ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(px2 - barW / 2, barY, barW, barH);
           const hpPct = Math.max(0, Math.min(1, op.hp / op.maxHp));
-          ctx.fillStyle = hpPct > 0.5 ? '#00ff41' : hpPct > 0.25 ? '#ffaa00' : '#ff3333';
+          ctx.fillStyle = hpPct > 0.5 ? '#4ade80' : hpPct > 0.25 ? '#ffaa00' : '#ff3333';
           ctx.fillRect(px2 - barW / 2, barY, barW * hpPct, barH);
         }
       }
@@ -11987,7 +11987,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (m.hp < m.maxHp) {
             const hpPct = m.hp / m.maxHp;
             ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(mx2 - 6, my2 - 14, 12, 2);
-            ctx.fillStyle = hpPct > 0.5 ? '#44ff44' : hpPct > 0.25 ? '#ffaa00' : '#ff4444';
+            ctx.fillStyle = hpPct > 0.5 ? '#4ade80' : hpPct > 0.25 ? '#ffaa00' : '#ff4444';
             ctx.fillRect(mx2 - 6, my2 - 14, 12 * hpPct, 2);
           }
           ctx.restore();
@@ -12261,10 +12261,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         const ac = g.activeCostume; if (ac === 'default') return null; const c = CLOTHES.find(cl => cl.id === ac); return c ? c.color : null;
       })();
-      const factionGlow = costumeColor ?? (pCls === 'corporate' ? '#00ff41' : pCls === 'outlaw' ? '#88ff44' : pCls === 'replicant' ? '#33ffaa' : '#00ff41');
+      const factionGlow = costumeColor ?? (pCls === 'corporate' ? '#38bdf8' : pCls === 'outlaw' ? '#7dd3fc' : pCls === 'replicant' ? '#67e8f9' : '#38bdf8');
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
-      ctx.shadowColor = g.poisoned ? '#88ff44' : factionGlow; ctx.shadowBlur = 6;
+      ctx.shadowColor = g.poisoned ? '#7dd3fc' : factionGlow; ctx.shadowBlur = 6;
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.beginPath(); ctx.ellipse(px, py2 + 9, g.vehicle ? 10 : 7, g.vehicle ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
       const facingDir = g.facing;
@@ -12703,7 +12703,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const pnTw = ctx.measureText(char.name).width;
       ctx.fillStyle = 'rgba(0,0,0,.55)';
       ctx.beginPath(); ctx.roundRect(px - pnTw / 2 - 5, py2 - 36, pnTw + 10, 18, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(0,255,65,.7)';
+      ctx.fillStyle = 'rgba(56,189,248,.7)';
       ctx.fillText(char.name, px, py2 - 22);
 
       // ── Dog companion sprite ───────────────────────────────────────────────
@@ -12811,9 +12811,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const scrX = bx - screenW / 2, scrY = postY - screenH - 2;
 
         ctx.fillStyle = '#1a1a2e'; ctx.fillRect(postX, postY, postW, postH);
-        ctx.strokeStyle = 'rgba(0,255,65,.3)'; ctx.lineWidth = 1; ctx.strokeRect(postX, postY, postW, postH);
+        ctx.strokeStyle = 'rgba(56,189,248,.3)'; ctx.lineWidth = 1; ctx.strokeRect(postX, postY, postW, postH);
 
-        const scrGlow = isNearBb ? '#00ff41' : hasOwner ? '#ff00ff' : '#00ccff';
+        const scrGlow = isNearBb ? '#38bdf8' : hasOwner ? '#ff00ff' : '#00ccff';
         ctx.shadowColor = scrGlow; ctx.shadowBlur = isNearBb ? 16 : 8;
         ctx.fillStyle = '#0a0a1a'; ctx.fillRect(scrX, scrY, screenW, screenH);
         ctx.strokeStyle = scrGlow; ctx.lineWidth = isNearBb ? 2 : 1;
@@ -12855,7 +12855,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText(bb.label, bx, by + 8);
 
         if (isNearBb) {
-          ctx.fillStyle = g.blink ? 'rgba(0,255,65,.9)' : 'rgba(0,255,65,.35)';
+          ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)';
           ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[E] BILLBOARD', bx, scrY - 6);
         }
@@ -12994,12 +12994,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         tunnelGrad.addColorStop(1, 'rgba(0,0,0,.95)');
         ctx.fillStyle = tunnelGrad;
         ctx.fillRect(0, 0, cw, ch);
-        ctx.fillStyle = '#00ff41';
+        ctx.fillStyle = '#38bdf8';
         ctx.font = '16px "VT323"';
         ctx.textAlign = 'center';
         ctx.fillText('TRAVERSING SEWER NETWORK...', cw/2, ch/2 - 20);
         ctx.font = '10px "Share Tech Mono"';
-        ctx.fillStyle = 'rgba(0,255,65,.4)';
+        ctx.fillStyle = 'rgba(56,189,248,.4)';
         ctx.fillText('Dark water flows beneath Minx City.', cw/2, ch/2 + 10);
         const pipes = g.frame * 0.05;
         for (let pi = 0; pi < 8; pi++) {
@@ -13042,7 +13042,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
           for (const b of BUILDINGS) {
             const isLk = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
-            mctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(0,255,65,.9)' : 'rgba(0,180,55,.55)';
+            mctx.fillStyle = isLk ? 'rgba(255,130,50,.7)' : b.bright ? 'rgba(56,189,248,.9)' : 'rgba(0,180,55,.55)';
             mctx.fillRect(toMX(b.x), toMY(b.y), Math.max(3, b.w * scale), Math.max(2, b.h * scale));
           }
 
@@ -13120,7 +13120,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
 
           // Player — white glowing triangle
-          mctx.fillStyle = '#ffffff'; mctx.shadowColor = '#00ff41'; mctx.shadowBlur = 8;
+          mctx.fillStyle = '#ffffff'; mctx.shadowColor = '#38bdf8'; mctx.shadowBlur = 8;
           mctx.beginPath(); mctx.moveTo(mmCX, mmCY - 6); mctx.lineTo(mmCX - 4, mmCY + 4); mctx.lineTo(mmCX + 4, mmCY + 4); mctx.closePath(); mctx.fill();
           mctx.shadowBlur = 0;
 
@@ -13131,13 +13131,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.restore();
 
           // Circle border
-          mctx.strokeStyle = 'rgba(0,255,65,.45)'; mctx.lineWidth = 2;
-          mctx.shadowColor = 'rgba(0,255,65,.35)'; mctx.shadowBlur = 10;
+          mctx.strokeStyle = 'rgba(56,189,248,.45)'; mctx.lineWidth = 2;
+          mctx.shadowColor = 'rgba(56,189,248,.35)'; mctx.shadowBlur = 10;
           mctx.beginPath(); mctx.arc(mmCX, mmCY, mmR - 1, 0, Math.PI * 2); mctx.stroke();
           mctx.shadowBlur = 0;
 
           // Compass labels
-          mctx.fillStyle = 'rgba(0,255,65,.6)'; mctx.textAlign = 'center'; mctx.font = 'bold 10px "Share Tech Mono",monospace';
+          mctx.fillStyle = 'rgba(56,189,248,.6)'; mctx.textAlign = 'center'; mctx.font = 'bold 10px "Share Tech Mono",monospace';
           mctx.fillText('N', mmCX, 14);
           mctx.fillText('S', mmCX, mmD - 6);
           mctx.font = '9px "Share Tech Mono",monospace';
@@ -13152,9 +13152,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,.85)';
         ctx.fillRect(0, 0, cw, ch);
-        ctx.font = 'bold 24px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillStyle = '#00ff41';
+        ctx.font = 'bold 24px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillStyle = '#38bdf8';
         ctx.fillText('METRO IN TRANSIT', cw / 2, ch / 2 - 20);
-        ctx.font = '14px "Share Tech Mono"'; ctx.fillStyle = 'rgba(0,255,65,.6)';
+        ctx.font = '14px "Share Tech Mono"'; ctx.fillStyle = 'rgba(56,189,248,.6)';
         const dest = g.subwayTransitDest?.label ?? '???';
         ctx.fillText(`Destination: ${dest}`, cw / 2, ch / 2 + 10);
         const dots = '.'.repeat((Math.floor(g.frame / 20) % 4) + 1);
@@ -13162,7 +13162,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         for (let si = 0; si < 8; si++) {
           const sx = (Math.sin(g.frame * 0.03 + si * 0.8) * 0.5 + 0.5) * cw;
           const sy = ch / 2 + 60 + si * 4;
-          ctx.fillStyle = `rgba(0,255,65,${0.1 + Math.sin(g.frame * 0.05 + si) * 0.05})`;
+          ctx.fillStyle = `rgba(56,189,248,${0.1 + Math.sin(g.frame * 0.05 + si) * 0.05})`;
           ctx.fillRect(sx - 40, sy, 80, 1);
         }
         ctx.restore();
@@ -13188,8 +13188,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   }, [char, speaking]);
 
   const hpRatio = gs.current.maxHp > 0 ? hp / gs.current.maxHp : 0;
-  const hpColor = hpRatio > 0.6 ? '#00ff41' : hpRatio > 0.3 ? '#ffcc00' : hpRatio > 0.15 ? '#ff8800' : '#ff2222';
-  const hpGlow = hpRatio > 0.6 ? 'rgba(0,255,65,.5)' : hpRatio > 0.3 ? 'rgba(255,204,0,.5)' : hpRatio > 0.15 ? 'rgba(255,136,0,.5)' : 'rgba(255,0,0,.6)';
+  const hpColor = hpRatio > 0.6 ? '#4ade80' : hpRatio > 0.3 ? '#ffcc00' : hpRatio > 0.15 ? '#ff8800' : '#ff2222';
+  const hpGlow = hpRatio > 0.6 ? 'rgba(74,222,128,.5)' : hpRatio > 0.3 ? 'rgba(255,204,0,.5)' : hpRatio > 0.15 ? 'rgba(255,136,0,.5)' : 'rgba(255,0,0,.6)';
   const nearB = near ? BUILDINGS.find(b => b.id === near) : null;
 
   return (
@@ -13197,7 +13197,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ref={gameRef}
       tabIndex={0}
       onClick={() => gameRef.current?.focus()}
-      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#030803', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none' }}
+      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d14', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none' }}
     >
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
@@ -13236,7 +13236,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* TOP-LEFT — hearts, gold, fiat, zone, character class */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 340 }}>
         {/* Hearts row — Zelda-style HP */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.35)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 220 }}>
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.35)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 220 }}>
           {(() => {
             const maxHp = gs.current.maxHp || 100;
             const displayHearts = Math.min(10, Math.ceil(maxHp / 10));
@@ -13260,7 +13260,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           {[
             { label: 'HNG', value: hunger, color: hunger <= 30 ? '#ff4422' : '#ff8844', border: hunger <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(255,136,68,.35)' },
             { label: 'THR', value: thirst, color: thirst <= 30 ? '#ff4422' : '#44aaff', border: thirst <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(68,170,255,.35)' },
-            { label: 'NRG', value: energy, color: energy <= 30 ? '#ff4422' : '#ffdd22', border: energy <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(255,221,34,.35)' },
+            { label: 'NRG', value: energy, color: energy <= 30 ? '#ff4422' : '#22d3ee', border: energy <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(34,211,238,.35)' },
           ].map(({ label, value, color, border }) => {
             const isLow = value <= 30;
             const flash = isLow && Math.floor(Date.now() / 500) % 2 === 0;
@@ -13280,48 +13280,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>{goldBalance}oz</span>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.3)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.3)', padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
               {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
             </span>
           </div>
         </div>
         {/* Zone + Weather compact row */}
         <div style={{ display: 'flex', gap: '4px' }}>
-          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone.startsWith('WASTELAND') ? 'rgba(170,255,68,.35)' : 'rgba(0,255,65,.3)'}`, padding: '.25rem .5rem' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: zone.startsWith('WASTELAND') ? '#88ff44' : '#00ff41', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
+          <div style={{ background: 'rgba(0,8,0,.92)', border: `1px solid ${zone.startsWith('WASTELAND') ? 'rgba(170,255,68,.35)' : 'rgba(56,189,248,.3)'}`, padding: '.25rem .5rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: zone.startsWith('WASTELAND') ? '#7dd3fc' : '#38bdf8', letterSpacing: '.04em' }}>{boomerize(zone, boomerMode)}</span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,150,255,.3)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
             {weatherStr && weatherStr !== 'CLEAR' && (
               <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#6699ff' }}>{weatherStr.replace('_', ' ')}</span>
             )}
-            {weatherStr === 'CLEAR' && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(0,255,65,.5)' }}>CLEAR</span>}
+            {weatherStr === 'CLEAR' && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(56,189,248,.5)' }}>CLEAR</span>}
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })() }}>
               {(() => { const wt = gs.current.worldTime; const icon = (wt >= 6 && wt < 18) ? '☀' : '☾'; const hr12 = Math.floor(wt) % 12 || 12; const mins = Math.floor((wt % 1) * 60); const ampm = wt >= 12 && wt < 24 ? 'PM' : 'AM'; return `${icon} ${hr12}:${mins.toString().padStart(2,'0')} ${ampm}`; })()}
             </span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(0,255,65,.45)', borderLeft: '1px solid rgba(0,255,65,.15)', paddingLeft: '.3rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(56,189,248,.45)', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem' }}>
               {seasonStr.slice(0,3)} {tempC}°C
             </span>
           </div>
           {calendarStr && (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.25)', padding: '.25rem .5rem' }}>
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(0,255,65,.6)', letterSpacing: '.04em' }}>{calendarStr}</span>
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.25)', padding: '.25rem .5rem' }}>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.04em' }}>{calendarStr}</span>
             </div>
           )}
         </div>
         {/* Liberation progress compact HUD */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(0,255,65,.2)', padding: '.25rem .5rem' }}>
-          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>LIB</span>
-          <div style={{ width: 48, height: 4, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.15)', borderRadius: 1, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', borderRadius: 1, transition: 'width 1s ease' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
+          <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>LIB</span>
+          <div style={{ width: 48, height: 4, background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.15)', borderRadius: 1, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', borderRadius: 1, transition: 'width 1s ease' }} />
           </div>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', minWidth: 28, textAlign: 'right' }}>{liberationProgress}%</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 28, textAlign: 'right' }}>{liberationProgress}%</span>
         </div>
         {/* Gold Standard toggle */}
-        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(0,255,65,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(0,255,65,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
+        <button onClick={() => setGoldStandardToggle(!goldStandardToggle)} style={{ background: goldStandardToggle ? 'rgba(255,215,0,.1)' : 'rgba(0,8,0,.92)', border: `1px solid ${goldStandardToggle ? 'rgba(255,215,0,.5)' : 'rgba(56,189,248,.25)'}`, color: goldStandardToggle ? '#FFD700' : 'rgba(56,189,248,.55)', padding: '.25rem .6rem', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>
           ⊕
         </button>
         {seasonPassLevel !== null && (
@@ -13338,7 +13338,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-        <canvas ref={minimapRef} width={450} height={450} style={{ width: 200, height: 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(0,255,65,.15)', border: '2px solid rgba(0,255,65,.3)' }} />
+        <canvas ref={minimapRef} width={450} height={450} style={{ width: 200, height: 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)' }} />
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
@@ -13384,9 +13384,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }}
             style={{
               padding: '.5rem .9rem',
-              background: showTopMenu ? 'rgba(0,255,65,.1)' : 'rgba(0,5,0,.92)',
-              border: `1px solid ${showTopMenu ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.25)'}`,
-              color: showTopMenu ? '#00ff41' : 'rgba(0,255,65,.55)',
+              background: showTopMenu ? 'rgba(56,189,248,.1)' : 'rgba(0,5,0,.92)',
+              border: `1px solid ${showTopMenu ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.25)'}`,
+              color: showTopMenu ? '#38bdf8' : 'rgba(56,189,248,.55)',
               cursor: 'pointer',
               fontFamily: "'VT323',monospace",
               fontSize: '1.1rem',
@@ -13411,33 +13411,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             🌐 TRANSLATE
           </button>
           {showTopMenu && (
-          <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem', zIndex: 200 }}>
-            <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
+          <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(56,189,248,.35)', padding: '.4rem', zIndex: 200 }}>
+            <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
             <button onClick={() => {
               const g = gs.current;
               if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => !v); setShowTopMenu(false); }
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
-            }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(0,255,65,.12)' : 'rgba(0,255,65,.04)', border: showPablo ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.25)', color: showPablo ? '#00ff41' : (hasDevice && !deviceBroken) ? '#00ff41' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.04)', border: showPablo ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.25)', color: showPablo ? '#38bdf8' : (hasDevice && !deviceBroken) ? '#38bdf8' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🤖 PABLO AI [P] — FREE{deviceBroken ? ' ⚠' : ''}
             </button>
-            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
+            <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
             </div>
-            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(0,255,65,.15)', color: showStats ? '#ffaa00' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowStats(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showStats ? 'rgba(255,170,0,.08)' : 'transparent', border: showStats ? '1px solid rgba(255,170,0,.3)' : '1px solid rgba(56,189,248,.15)', color: showStats ? '#ffaa00' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📊 STATS & NET WORTH
             </button>
-            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(0,255,65,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(56,189,248,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
             </button>
-            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               👤 CLOTHES
             </button>
-            <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(0,255,65,.1)' : 'transparent', border: showMap ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: showMap ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(56,189,248,.1)' : 'transparent', border: showMap ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: showMap ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🗺 MAP [M]
             </button>
-            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>VIDEO</div>
+            <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>VIDEO</div>
             </div>
             <button onClick={() => {
               const g = gs.current;
@@ -13451,67 +13451,67 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setNarr('> NO TERMINAL — You need a terminal or PABLO device to make video calls.');
               }
               setShowTopMenu(false);
-            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: videoCallRoom ? 'rgba(0,255,65,.1)' : 'transparent', border: videoCallRoom ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: videoCallRoom ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: videoCallRoom ? 'rgba(56,189,248,.1)' : 'transparent', border: videoCallRoom ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: videoCallRoom ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📹 CONFERENCE [C] {videoCallRoom ? '— LIVE' : '— OFF'}
             </button>
-            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(0,255,65,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: chatOpen ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
+            <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(56,189,248,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: chatOpen ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
               💬 CHAT{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
-            <div style={{ borderTop: '1px solid rgba(0,255,65,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO SETTINGS</div>
+            <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>AUDIO SETTINGS</div>
             </div>
-            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(56,189,248,.15)', color: allMuted ? '#ff2266' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               {allMuted ? '🔇 MUTE ALL — ON' : '🔊 MUTE ALL — OFF'}
             </button>
             <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn && !radioOn) { playMusic(); } else { pauseMusic(); } }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.08)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.4)' : '1px solid rgba(0,200,255,.15)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
             </button>
-            <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { handleRadioToggle(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.08)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📻 RADIO — {radioOn ? 'ON' : 'OFF'}
             </button>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎵 SCORE VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎵 SCORE VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => setOutputVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
             </div>
             <div style={{ padding: '.3rem .5rem', marginBottom: 2 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
-                <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
               </div>
-              <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+              <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
             </div>
-            <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <button onClick={() => { toggleVoice(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: voice ? 'rgba(56,189,248,.08)' : 'transparent', border: '1px solid rgba(56,189,248,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#38bdf8') : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🎙 {voice ? (micMuted ? '⊘ MUTED' : speaking ? '● LIVE' : '○ LIVE') : 'MIC [V]'}
             </button>
             {voice && (
-              <button onClick={() => { toggleMicMute(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { toggleMicMute(); setShowTopMenu(false); }} style={{ width: '100%', padding: '.35rem .6rem', marginBottom: 3, background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(56,189,248,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
               </button>
             )}
             {char.class.toLowerCase() === 'outlaw' && (
-              <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(136,255,68,.2)', color: '#88ff44', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 CRAFTING
               </button>
             )}
-            <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 3, paddingTop: 5 }}>
-              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+            <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 3, paddingTop: 5 }}>
+              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 💾 SAVE & EXIT
               </button>
               <button onClick={() => { doSaveRef.current(buildSaveData()); window.open(`${window.location.origin}${import.meta.env.BASE_URL}mobile`, '_blank'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginTop: 3, background: 'transparent', border: '1px solid rgba(0,180,255,.15)', color: 'rgba(0,180,255,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -13519,10 +13519,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </button>
             </div>
             {online.length > 0 && (
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: 5, paddingTop: 5 }}>
-                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.1em', marginBottom: 4 }}>{online.length} ONLINE</div>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 5, paddingTop: 5 }}>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.1em', marginBottom: 4 }}>{online.length} ONLINE</div>
                 {online.slice(0, 5).map(p => (
-                  <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); setShowTopMenu(false); }} style={{ fontSize: '.6rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(0,255,65,.65)', lineHeight: 1.8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
+                  <div key={p.id} onClick={() => { setDmTarget(dmTarget?.id === p.id ? null : p); setChatOpen(true); setShowTopMenu(false); }} style={{ fontSize: '.6rem', color: speakIds.has(p.id) ? '#00ffcc' : 'rgba(56,189,248,.65)', lineHeight: 1.8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.2rem', overflow: 'hidden' }}>
                     {speakIds.has(p.id) && <span style={{ fontSize: '.55rem' }}>🎙</span>}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                   </div>
@@ -13572,7 +13572,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-CENTER — controls hint (compact) */}
       <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 90, pointerEvents: 'none' }}>
-        <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
+        <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>WASD · E enter · F attack · C chat · P terminal · ESC close</div>
       </div>
 
       {/* ── PROPERTY STATS PANEL ── */}
@@ -13584,17 +13584,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ padding: '.4rem .55rem', maxHeight: '30vh', overflowY: 'auto' }}>
             {Object.keys(ownerStats).length === 0 ? (
-              <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.07em', padding: '.3rem 0' }}>No buildings claimed yet.</div>
+              <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.07em', padding: '.3rem 0' }}>No buildings claimed yet.</div>
             ) : Object.entries(ownerStats).sort((a, b) => b[1].count - a[1].count).map(([owner, data]) => (
-              <div key={owner} style={{ borderBottom: '1px solid rgba(0,255,65,.07)', padding: '.3rem 0' }}>
+              <div key={owner} style={{ borderBottom: '1px solid rgba(56,189,248,.07)', padding: '.3rem 0' }}>
                 <div style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#ffaa00', letterSpacing: '.08em' }}>{owner}</div>
                 {data.company && <div style={{ fontSize: '.45rem', color: 'rgba(255,170,0,.45)', letterSpacing: '.07em' }}>{data.company}</div>}
-                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '2px' }}>{data.count} building{data.count !== 1 ? 's' : ''} claimed</div>
-                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
+                <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', marginTop: '2px' }}>{data.count} building{data.count !== 1 ? 's' : ''} claimed</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.05em', marginTop: '1px' }}>{data.buildings.join(', ')}</div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '.3rem .55rem', borderTop: '1px solid rgba(0,255,65,.07)', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em' }}>
+          <div style={{ padding: '.3rem .55rem', borderTop: '1px solid rgba(56,189,248,.07)', fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.07em' }}>
             Total buildings: {BUILDINGS.filter(b => b.id !== 'pablo_tower').length} · Claimed: {Object.values(ownerStats).reduce((a, v) => a + v.count, 0)}
           </div>
         </div>
@@ -13669,13 +13669,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── CHAT PANEL ── */}
       {chatOpen && (
-        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 360, maxHeight: '42vh', background: 'rgba(0,5,0,.97)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.4)' : 'rgba(0,255,65,.3)'}`, display: 'flex', flexDirection: 'column', zIndex: 200 }}>
-          <div style={{ padding: '.35rem .55rem', borderBottom: `1px solid ${dmTarget ? 'rgba(100,200,255,.2)' : 'rgba(0,255,65,.15)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#00ff41', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
+        <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: 360, maxHeight: '42vh', background: 'rgba(0,5,0,.97)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.4)' : 'rgba(56,189,248,.3)'}`, display: 'flex', flexDirection: 'column', zIndex: 200 }}>
+          <div style={{ padding: '.35rem .55rem', borderBottom: `1px solid ${dmTarget ? 'rgba(100,200,255,.2)' : 'rgba(56,189,248,.15)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: dmTarget ? '#66ccff' : '#38bdf8', letterSpacing: '.1em' }}>{dmTarget ? `PRIVATE MSG → ${dmTarget.name}` : 'WORLD CHAT'}</span>
             <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
               <button onClick={() => setShowDmPicker(!showDmPicker)} style={{ fontSize: '.44rem', color: 'rgba(100,200,255,.6)', border: '1px solid rgba(100,200,255,.25)', background: showDmPicker ? 'rgba(100,200,255,.1)' : 'transparent', cursor: 'pointer', padding: '2px 6px', letterSpacing: '.05em' }}>PRIVATE MSG</button>
-              {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
-              <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; setShowDmPicker(false); }} style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
+              {dmTarget && <button onClick={() => setDmTarget(null)} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', border: 'none', background: 'transparent', cursor: 'pointer' }}>× DM</button>}
+              <button onClick={() => { setChatOpen(false); chatOpenRef.current = false; setShowDmPicker(false); }} style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
             </div>
           </div>
           {showDmPicker && online.length > 0 && (
@@ -13695,17 +13695,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           )}
           <div style={{ flex: 1, overflowY: 'auto', padding: '.45rem', display: 'flex', flexDirection: 'column', gap: '.22rem', minHeight: 60 }}>
             {chatMsgs.length === 0
-              ? <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.18)' }}>No messages yet.</div>
+              ? <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.18)' }}>No messages yet.</div>
               : chatMsgs.slice(-40).map(m => (
-                <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(0,255,65,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(0,255,65,.65)', paddingLeft: m.dm ? '.3rem' : 0, borderLeft: m.dm ? '2px solid rgba(100,200,255,.25)' : 'none' }}>
-                  <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
+                <div key={m.id} style={{ fontSize: '.63rem', lineHeight: 1.5, color: m.from === 'SERVER' ? 'rgba(56,189,248,.28)' : m.dm ? 'rgba(100,200,255,.75)' : 'rgba(56,189,248,.65)', paddingLeft: m.dm ? '.3rem' : 0, borderLeft: m.dm ? '2px solid rgba(100,200,255,.25)' : 'none' }}>
+                  <span style={{ color: m.dm ? 'rgba(100,200,255,.5)' : 'rgba(56,189,248,.38)', fontFamily: "'VT323',monospace", fontSize: '.72rem' }}>{m.dm ? '[PM] ' : ''}{m.from.slice(0, 10)}</span>{' '}{m.text}
                 </div>
               ))
             }
           </div>
-          <div style={{ padding: '.32rem', borderTop: `1px solid ${dmTarget ? 'rgba(100,200,255,.15)' : 'rgba(0,255,65,.12)'}`, display: 'flex', gap: '.32rem' }}>
-            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }}} placeholder={dmTarget ? `Private msg to ${dmTarget.name}...` : 'World chat...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.25)' : 'rgba(0,255,65,.18)'}`, color: dmTarget ? '#66ccff' : '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: dmTarget ? '#66ccff' : '#00ff41' }} />
-            <button onClick={() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }} style={{ background: dmTarget ? 'rgba(100,200,255,.08)' : 'rgba(0,255,65,.08)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.3)' : 'rgba(0,255,65,.28)'}`, color: dmTarget ? '#66ccff' : '#00ff41', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
+          <div style={{ padding: '.32rem', borderTop: `1px solid ${dmTarget ? 'rgba(100,200,255,.15)' : 'rgba(56,189,248,.12)'}`, display: 'flex', gap: '.32rem' }}>
+            <input value={chatIn} onChange={e => setChatIn(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }}} placeholder={dmTarget ? `Private msg to ${dmTarget.name}...` : 'World chat...'} style={{ flex: 1, background: 'rgba(0,10,0,.9)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.25)' : 'rgba(56,189,248,.18)'}`, color: dmTarget ? '#66ccff' : '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.62rem', padding: '.25rem .4rem', outline: 'none', caretColor: dmTarget ? '#66ccff' : '#38bdf8' }} />
+            <button onClick={() => { if (!chatIn.trim()) return; const t = chatIn.trim(); setChatIn(''); if (dmTarget) { wsSend({ type: 'chat', room: 'dm', text: t, toId: dmTarget.id }); upsertCrmContact(dmTarget); } else wsSend({ type: 'chat', room: 'world', text: t }); }} style={{ background: dmTarget ? 'rgba(100,200,255,.08)' : 'rgba(56,189,248,.08)', border: `1px solid ${dmTarget ? 'rgba(100,200,255,.3)' : 'rgba(56,189,248,.28)'}`, color: dmTarget ? '#66ccff' : '#38bdf8', cursor: 'pointer', padding: '0 .4rem', fontSize: '.62rem' }}>↵</button>
           </div>
         </div>
       )}
@@ -13716,7 +13716,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.3rem' }}>INCOMING CALL</div>
           <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(255,100,100,.7)', marginBottom: '.35rem' }}>From: {phoneCall.peerName}</div>
           <div style={{ display: 'flex', gap: '.3rem' }}>
-            <button onClick={() => { phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>ACCEPT</button>
+            <button onClick={() => { phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>ACCEPT</button>
             <button onClick={() => { phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId); }} style={{ flex: 1, padding: '.25rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem' }}>DECLINE</button>
           </div>
         </div>
@@ -13724,9 +13724,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── ACTIVE CALL HUD ── */}
       {phoneCall.status === 'connected' && !showPablo && (
-        <div style={{ position: 'absolute', top: 80, right: 16, width: 180, background: 'rgba(0,5,0,.95)', border: '1px solid rgba(0,255,65,.35)', padding: '.4rem .5rem', zIndex: 250 }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#00ff41', letterSpacing: '.08em' }}>IN CALL</div>
-          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(0,255,65,.5)' }}>{phoneCall.peerName}</div>
+        <div style={{ position: 'absolute', top: 80, right: 16, width: 180, background: 'rgba(0,5,0,.95)', border: '1px solid rgba(56,189,248,.35)', padding: '.4rem .5rem', zIndex: 250 }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#38bdf8', letterSpacing: '.08em' }}>IN CALL</div>
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.5)' }}>{phoneCall.peerName}</div>
           <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.3rem', width: '100%', padding: '.2rem', background: 'rgba(255,50,50,.08)', border: '1px solid rgba(255,50,50,.3)', color: '#ff4444', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.6rem' }}>END CALL</button>
         </div>
       )}
@@ -13761,18 +13761,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const tabS = (active: boolean): React.CSSProperties => ({
-          padding: '.3rem .6rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.12)',
-          background: active ? 'rgba(0,255,65,.08)' : 'transparent',
-          color: active ? '#00ff41' : 'rgba(0,255,65,.3)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em',
+          padding: '.3rem .6rem', border: active ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.12)',
+          background: active ? 'rgba(56,189,248,.08)' : 'transparent',
+          color: active ? '#38bdf8' : 'rgba(56,189,248,.3)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em',
         });
         const StatRow = ({ label, val, col, bar }: { label: string; val: string | number; col?: string; bar?: number }) => (
           <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '.4rem', alignItems: 'center', marginBottom: '.18rem' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-              <span style={{ ...VT, fontSize: '.9rem', color: col ?? '#00ff41', letterSpacing: '.05em' }}>{val}</span>
+              <span style={{ ...VT, fontSize: '.9rem', color: col ?? '#38bdf8', letterSpacing: '.05em' }}>{val}</span>
               {bar !== undefined && (
-                <div style={{ flex: 1, height: 4, background: 'rgba(0,255,65,.08)', maxWidth: 100 }}>
-                  <div style={{ height: '100%', width: `${bar}%`, background: bar > 40 ? (col ?? '#00ff41') : '#ff4444', transition: 'width .3s' }} />
+                <div style={{ flex: 1, height: 4, background: 'rgba(56,189,248,.08)', maxWidth: 100 }}>
+                  <div style={{ height: '100%', width: `${bar}%`, background: bar > 40 ? (col ?? '#38bdf8') : '#ff4444', transition: 'width .3s' }} />
                 </div>
               )}
             </div>
@@ -13785,24 +13785,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 250, paddingRight: '3%' }}
             onClick={e => { if (e.target === e.currentTarget) { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); } }}>
-            <div style={{ width: 440, maxWidth: '90vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.5)', boxShadow: '0 0 40px rgba(0,255,65,.08)' }}>
+            <div style={{ width: 440, maxWidth: '90vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(56,189,248,.5)', boxShadow: '0 0 40px rgba(56,189,248,.08)' }}>
 
               {/* ── Header ── */}
-              <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL HUB'}</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em' }}>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL HUB'}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em' }}>
                     {`OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ ...VT, fontSize: '.85rem', color: '#00ff41', letterSpacing: '.08em' }}>● ONLINE</div>
-                  <button onClick={() => { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); }} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.35)', cursor: 'pointer', fontSize: '.7rem', display: 'block', marginTop: '.15rem' }}>ESC ✕</button>
+                  <div style={{ ...VT, fontSize: '.85rem', color: '#38bdf8', letterSpacing: '.08em' }}>● ONLINE</div>
+                  <button onClick={() => { setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false); }} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.7rem', display: 'block', marginTop: '.15rem' }}>ESC ✕</button>
                 </div>
               </div>
 
               {/* ── Tabs ── */}
-              <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '.2rem', padding: '.3rem .5rem', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
                 {(['chat','stats','call','crm','city','share','translate','merch','plan','company','audio'] as const).map(t => (
                   <button key={t} onClick={() => {
                     setPabloTab(t);
@@ -13824,32 +13824,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>OPERATIVE STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>OPERATIVE STATUS</div>
                     <StatRow label="HP" val={`${Math.floor(hp)}/${g.maxHp}`} col={hpColor} bar={(hp / g.maxHp) * 100} />
-                    <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#00ff41' : hunger > 25 ? '#aaff22' : '#ff6622'} bar={hunger} />
-                    <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#33aaff' : thirst > 25 ? '#aaff22' : '#ff6622'} bar={thirst} />
-                    <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#ffcc00' : energy > 25 ? '#aaff22' : '#ff4444'} bar={energy} />
+                    <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#f59e0b' : hunger > 25 ? '#fb923c' : '#ef4444'} bar={hunger} />
+                    <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#38bdf8' : thirst > 25 ? '#fb923c' : '#ef4444'} bar={thirst} />
+                    <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#22d3ee' : energy > 25 ? '#fb923c' : '#ef4444'} bar={energy} />
                     <StatRow label="LEVEL" val={`${level} / ${MAX_LEVEL}`} col="#ffcc00" />
                     <StatRow label="EXP" val={level >= MAX_LEVEL ? 'MAX' : `${exp}/${expToLevel(level)}`} col="#ffcc00" bar={level >= MAX_LEVEL ? 100 : Math.min(100, (exp / expToLevel(level)) * 100)} />
                     <StatRow label="DEF" val={(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus} col="#44aaff" />
                     <StatRow label="PERCEPTION" val={gs.current.perception ?? 5} col="#cc88ff" />
                     <StatRow label="TOTAL EXP" val={gs.current.totalExpEarned?.toLocaleString() ?? '0'} col="#ffcc00" />
-                    {poisoned && <StatRow label="STATUS" val="POISONED" col="#88ff44" />}
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
+                    {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>NET WORTH & FINANCES</div>
                       <StatRow label="NET WORTH" val={`ƒ${netWorth.toLocaleString()}`} col="#FFD700" />
-                      <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#33ffaa" />
-                      <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col="#00ff41" />
+                      <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#67e8f9" />
+                      <StatRow label="FIAT" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz`} col="#FFD700" />
-                      <StatRow label="SALARY" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#33ffaa" />
+                      <StatRow label="SALARY" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#67e8f9" />
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
-                      <StatRow label="ZONE" val={curZone} col={curZone === CITY_NAME ? '#00ff41' : '#88ff44'} />
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
+                      <StatRow label="ZONE" val={curZone} col={curZone === CITY_NAME ? '#38bdf8' : '#7dd3fc'} />
                       {calendarStr && <StatRow label="CALENDAR" val={calendarStr} />}
-                      {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#00ff41'} />}
-                      <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#00ff41'} />
-                      <StatRow label="TEMP" val={`${tempC}°C`} col={tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : '#00ff41'} />
+                      {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#38bdf8'} />}
+                      <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#38bdf8'} />
+                      <StatRow label="TEMP" val={`${tempC}°C`} col={tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : '#38bdf8'} />
                     </div>
                   </div>
                 )}
@@ -13857,13 +13857,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* PHONE CALL TAB */}
                 {pabloTab === 'call' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>TTC · THE TELEPHONE COMPANY</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>TTC · THE TELEPHONE COMPANY</div>
                     {phoneCall.status === 'incoming' && (
                       <div style={{ border: '1px solid rgba(255,100,100,.5)', background: 'rgba(255,50,50,.08)', padding: '.5rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
                         <div style={{ ...VT, fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em' }}>INCOMING CALL</div>
                         <div style={{ fontSize: '.6rem', color: 'rgba(255,100,100,.8)' }}>From: {phoneCall.peerName}</div>
                         <div style={{ display: 'flex', gap: '.4rem' }}>
-                          <button onClick={() => phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId)} style={{ flex: 1, padding: '.35rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>ACCEPT</button>
+                          <button onClick={() => phoneCall.peerId && handlePhoneCallAccept(phoneCall.peerId)} style={{ flex: 1, padding: '.35rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>ACCEPT</button>
                           <button onClick={() => phoneCall.peerId && handlePhoneCallDecline(phoneCall.peerId)} style={{ flex: 1, padding: '.35rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>DECLINE</button>
                         </div>
                       </div>
@@ -13876,34 +13876,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     )}
                     {phoneCall.status === 'connected' && (
-                      <div style={{ border: '1px solid rgba(0,255,65,.4)', background: 'rgba(0,255,65,.06)', padding: '.5rem', textAlign: 'center' }}>
-                        <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.1em' }}>CONNECTED</div>
-                        <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.7)', marginTop: '.2rem' }}>In call with {phoneCall.peerName}</div>
+                      <div style={{ border: '1px solid rgba(56,189,248,.4)', background: 'rgba(56,189,248,.06)', padding: '.5rem', textAlign: 'center' }}>
+                        <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.1em' }}>CONNECTED</div>
+                        <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.7)', marginTop: '.2rem' }}>In call with {phoneCall.peerName}</div>
                         <button onClick={() => { handlePhoneCallEnd(); leaveVideoCall(); }} style={{ marginTop: '.4rem', padding: '.3rem .8rem', background: 'rgba(255,50,50,.12)', border: '1px solid rgba(255,50,50,.5)', color: '#ff4444', cursor: 'pointer', ...VT, fontSize: '.85rem' }}>END CALL</button>
                       </div>
                     )}
                     {phoneCall.status === 'idle' && (
                       <>
-                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginBottom: '.2rem' }}>Select a player to call. Both parties must be at a terminal or have a terminal device.</div>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginBottom: '.2rem' }}>Select a player to call. Both parties must be at a terminal or have a terminal device.</div>
                         {online.length === 0 ? (
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.18)', padding: '.5rem', textAlign: 'center' }}>No other players online.</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.18)', padding: '.5rem', textAlign: 'center' }}>No other players online.</div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
                             {online.map(p => (
-                              <button key={p.id} onClick={() => { handlePhoneCallInvite(p.id); upsertCrmContact(p); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.35rem .5rem', background: 'rgba(0,255,65,.03)', border: '1px solid rgba(0,255,65,.15)', color: '#00ff41', cursor: 'pointer', ...ST, fontSize: '.58rem' }}>
+                              <button key={p.id} onClick={() => { handlePhoneCallInvite(p.id); upsertCrmContact(p); }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.35rem .5rem', background: 'rgba(56,189,248,.03)', border: '1px solid rgba(56,189,248,.15)', color: '#38bdf8', cursor: 'pointer', ...ST, fontSize: '.58rem' }}>
                                 <span>{p.name}</span>
-                                <span style={{ color: 'rgba(0,255,65,.3)', fontSize: '.48rem' }}>CALL →</span>
+                                <span style={{ color: 'rgba(56,189,248,.3)', fontSize: '.48rem' }}>CALL →</span>
                               </button>
                             ))}
                           </div>
                         )}
                       </>
                     )}
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.15)', paddingTop: '.4rem', marginTop: '.3rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.3rem' }}>TTC · POWER DIALER</div>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.15)', paddingTop: '.4rem', marginTop: '.3rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', marginBottom: '.3rem' }}>TTC · POWER DIALER</div>
                       <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6 }}>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.3rem', marginTop: '.2rem', fontSize: '.42rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.6 }}>
                       {`TTC ALPHA ${__BUILD_VERSION__} · CRM Power Dialer + PSTN via Twilio`}
                     </div>
                   </div>
@@ -13913,28 +13913,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {pabloTab === 'crm' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em' }}>CONTACTS</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em' }}>CONTACTS</div>
                       <div style={{ fontSize: '.42rem', color: 'rgba(100,200,255,.5)', border: '1px solid rgba(100,200,255,.25)', padding: '1px 6px', letterSpacing: '.1em' }}>IN GAME</div>
                     </div>
                     {crmContacts.length === 0 ? (
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.18)', padding: '1rem', textAlign: 'center', lineHeight: 1.8 }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.18)', padding: '1rem', textAlign: 'center', lineHeight: 1.8 }}>
                         No contacts yet. Interact with other players to add them to your CRM.<br/>
-                        <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.12)' }}>Contacts are added automatically when you chat, call, or trade with players.</span>
+                        <span style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.12)' }}>Contacts are added automatically when you chat, call, or trade with players.</span>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', maxHeight: 300, overflowY: 'auto' }}>
                         {crmContacts.map(contact => (
-                          <div key={contact.id} style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.4rem .5rem', background: crmEditId === contact.id ? 'rgba(0,255,65,.05)' : 'transparent' }}>
+                          <div key={contact.id} style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.4rem .5rem', background: crmEditId === contact.id ? 'rgba(56,189,248,.05)' : 'transparent' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
                               <div>
-                                <span style={{ ...VT, fontSize: '.8rem', color: '#00ff41' }}>{contact.name}</span>
-                                <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginLeft: '.4rem' }}>{contact.playerClass.toUpperCase()}</span>
+                                <span style={{ ...VT, fontSize: '.8rem', color: '#38bdf8' }}>{contact.name}</span>
+                                <span style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', marginLeft: '.4rem' }}>{contact.playerClass.toUpperCase()}</span>
                               </div>
-                              <button onClick={() => { setCrmEditId(crmEditId === contact.id ? null : contact.id); if (crmEditId !== contact.id) { setCrmNoteInput(contact.notes); setCrmCatInput(contact.category); } }} style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '1px 5px', cursor: 'pointer' }}>
+                              <button onClick={() => { setCrmEditId(crmEditId === contact.id ? null : contact.id); if (crmEditId !== contact.id) { setCrmNoteInput(contact.notes); setCrmCatInput(contact.category); } }} style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.35)', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', padding: '1px 5px', cursor: 'pointer' }}>
                                 {crmEditId === contact.id ? 'CLOSE' : 'EDIT'}
                               </button>
                             </div>
-                            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', display: 'flex', gap: '.5rem' }}>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', display: 'flex', gap: '.5rem' }}>
                               <span>Met: {new Date(contact.firstMet).toLocaleDateString()}</span>
                               <span>Seen: {new Date(contact.lastSeen).toLocaleDateString()}</span>
                               <span>×{contact.interactionCount}</span>
@@ -13953,16 +13953,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               <div style={{ fontSize: '.4rem', color: 'rgba(255,200,60,.4)', marginTop: '.15rem' }}>Category: {contact.category}</div>
                             )}
                             {contact.notes && !crmEditId && (
-                              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginTop: '.15rem', fontStyle: 'italic' }}>"{contact.notes}"</div>
+                              <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', marginTop: '.15rem', fontStyle: 'italic' }}>"{contact.notes}"</div>
                             )}
                             {crmEditId === contact.id && (
-                              <div style={{ marginTop: '.3rem', display: 'flex', flexDirection: 'column', gap: '.25rem', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
+                              <div style={{ marginTop: '.3rem', display: 'flex', flexDirection: 'column', gap: '.25rem', borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.3rem' }}>
                                 <div style={{ display: 'flex', gap: '.2rem' }}>
                                   <input value={crmTagInput} onChange={e => setCrmTagInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter' && crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} placeholder="Add tag..." style={{ flex: 1, background: 'rgba(0,8,0,.9)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.7)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
                                   <button onClick={() => { if (crmTagInput.trim()) { setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, tags: [...c.tags, crmTagInput.trim().toUpperCase()] } : c)); setCrmTagInput(''); } }} style={{ fontSize: '.38rem', background: 'rgba(100,200,255,.08)', border: '1px solid rgba(100,200,255,.2)', color: 'rgba(100,200,255,.5)', cursor: 'pointer', padding: '1px 5px' }}>+TAG</button>
                                 </div>
                                 <input value={crmCatInput} onChange={e => setCrmCatInput(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, category: crmCatInput.trim() || 'general' } : c)); }} placeholder="Category..." style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(255,200,60,.15)', color: 'rgba(255,200,60,.6)', fontSize: '.42rem', padding: '2px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace" }} />
-                                <textarea value={crmNoteInput} onChange={e => setCrmNoteInput(e.target.value)} onKeyDown={e => e.stopPropagation()} onBlur={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, notes: crmNoteInput } : c))} placeholder="Notes..." rows={2} style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontSize: '.42rem', padding: '3px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace", resize: 'none' }} />
+                                <textarea value={crmNoteInput} onChange={e => setCrmNoteInput(e.target.value)} onKeyDown={e => e.stopPropagation()} onBlur={() => setCrmContacts(prev => prev.map(c => c.id === contact.id ? { ...c, notes: crmNoteInput } : c))} placeholder="Notes..." rows={2} style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontSize: '.42rem', padding: '3px 5px', outline: 'none', fontFamily: "'Share Tech Mono',monospace", resize: 'none' }} />
                                 <button onClick={() => { if (confirm('Remove this contact?')) setCrmContacts(prev => prev.filter(c => c.id !== contact.id)); setCrmEditId(null); }} style={{ fontSize: '.38rem', color: '#ff4444', background: 'rgba(255,50,50,.06)', border: '1px solid rgba(255,50,50,.2)', padding: '2px 5px', cursor: 'pointer', alignSelf: 'flex-start' }}>REMOVE CONTACT</button>
                               </div>
                             )}
@@ -13970,7 +13970,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ))}
                       </div>
                     )}
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem', marginTop: '.1rem', fontSize: '.42rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.6 }}>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.3rem', marginTop: '.1rem', fontSize: '.42rem', color: 'rgba(56,189,248,.12)', lineHeight: 1.6 }}>
                       {`IN-GAME CRM ALPHA ${__BUILD_VERSION__} · Contacts are stored locally · External CRM sync coming soon`}
                     </div>
                   </div>
@@ -13984,26 +13984,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{CITY_NAME} — NETWORK STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{CITY_NAME} — NETWORK STATUS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
-                      <StatRow label="SERVER" val="PST · ONLINE" col="#00ff41" />
-                      <StatRow label="ONLINE" val={onlinePlayerCount !== null ? `${onlinePlayerCount} ACTIVE` : '— LOADING'} col="#00ff41" />
+                      <StatRow label="SERVER" val="PST · ONLINE" col="#38bdf8" />
+                      <StatRow label="ONLINE" val={onlinePlayerCount !== null ? `${onlinePlayerCount} ACTIVE` : '— LOADING'} col="#38bdf8" />
                       <StatRow label="FACTION" val="PABLO CORP" col="#b400ff" />
                       <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
                     </div>
                     {/* ── Liberation Progress ─────────────────────────── */}
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>CITY LIBERATION</div>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>CITY LIBERATION</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.3rem' }}>
-                        <div style={{ flex: 1, height: 8, background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.2)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
-                          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : liberationProgress >= 50 ? '#aaff22' : '#00ff41', borderRadius: 2, transition: 'width 1s ease', boxShadow: `0 0 6px ${liberationProgress >= 75 ? 'rgba(255,200,0,.4)' : 'rgba(0,255,65,.3)'}` }} />
+                        <div style={{ flex: 1, height: 8, background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.2)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${liberationProgress}%`, background: liberationProgress >= 75 ? '#ffcc00' : liberationProgress >= 50 ? '#aaff22' : '#38bdf8', borderRadius: 2, transition: 'width 1s ease', boxShadow: `0 0 6px ${liberationProgress >= 75 ? 'rgba(255,200,0,.4)' : 'rgba(56,189,248,.3)'}` }} />
                           {[25, 50, 75].map(mark => (
                             <div key={mark} style={{ position: 'absolute', left: `${mark}%`, top: 0, width: 1, height: '100%', background: 'rgba(255,255,255,.2)' }} />
                           ))}
                         </div>
-                        <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: liberationProgress >= 75 ? '#ffcc00' : '#00ff41', minWidth: 40, textAlign: 'right' }}>{liberationProgress}%</span>
+                        <span style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: liberationProgress >= 75 ? '#ffcc00' : '#38bdf8', minWidth: 40, textAlign: 'right' }}>{liberationProgress}%</span>
                       </div>
-                      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
+                      <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.7 }}>
                         {liberationProgress < 25
                           ? '▸ Pablo Corp tightens its grip on Minx City. Resistance is scattered.'
                           : liberationProgress < 50
@@ -14015,40 +14015,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           : '▸ 100%: PABLO CORP HAS FALLEN. Minx City is free.'}
                       </div>
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
-                      <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.8 }}>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
+                      <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(56,189,248,.65)', lineHeight: 1.8 }}>
                         {curZone === CITY_NAME
                           ? `${CITY_NAME} — Corporate zone. PABLO CORP patrols active. Standard services available.`
                           : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory.` : 'Open wasteland.'} Survival conditions. Stay mobile.`}
                       </div>
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PRODUCTIVITY TOOLS</div>
-                      <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.5rem', fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.9 }}>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PRODUCTIVITY TOOLS</div>
+                      <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.5rem', fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.9 }}>
                         All tools are free on every terminal — personal or public.<br/>
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.PROBLEM_DESC.name}</span> — {PABLO_PRODUCTS.PROBLEM_DESC.desc}<br/>
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.SCAN_SCREEN.name}</span> — {PABLO_PRODUCTS.SCAN_SCREEN.desc}<br/>
                         ▸ <span style={{ color: '#33aaff' }}>{PABLO_PRODUCTS.LIVE_LISTEN.name}</span> — {PABLO_PRODUCTS.LIVE_LISTEN.desc}<br/>
-                        ▸ <span style={{ color: '#00ff41' }}>PABLO AI</span> — Neural assistant (this terminal)
+                        ▸ <span style={{ color: '#38bdf8' }}>PABLO AI</span> — Neural assistant (this terminal)
                       </div>
                     </div>
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PREMIUM MODULES</div>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>PREMIUM MODULES</div>
                       {Object.entries(SUBSCRIPTION_PRICING).map(([key, tier]) => (
-                        <div key={key} style={{ border: 'rgba(0,255,65,.2)', padding: '.4rem .5rem', marginBottom: '.3rem', background: 'rgba(0,255,65,.04)' }}>
+                        <div key={key} style={{ border: 'rgba(56,189,248,.2)', padding: '.4rem .5rem', marginBottom: '.3rem', background: 'rgba(56,189,248,.04)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ ...VT, fontSize: '.8rem', color: '#00ff41', letterSpacing: '.06em' }}>
+                            <span style={{ ...VT, fontSize: '.8rem', color: '#38bdf8', letterSpacing: '.06em' }}>
                               {'✓ '}{tier.name}
                             </span>
-                            <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)' }}>
+                            <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)' }}>
                               {'UNLOCKED'}
                             </span>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.15)', marginTop: '.25rem', lineHeight: 1.6 }}>
                       PABLO CORP — 24 towers, 24 cities, one network. All transmissions logged. All terminals monitored.
                     </div>
                   </div>
@@ -14057,15 +14057,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* TRANSLATOR TAB — free live translation tool */}
                 {pabloTab === 'translate' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>UNIVERSAL TRANSLATOR — FREE</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>UNIVERSAL TRANSLATOR — FREE</div>
                     <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
-                      <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
+                      <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
                         {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                           <option key={code} value={code}>{name}</option>
                         ))}
                       </select>
-                      <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }} style={{ padding: '.3rem .5rem', background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }} title="Swap languages">⇄</button>
-                      <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
+                      <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }} style={{ padding: '.3rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }} title="Swap languages">⇄</button>
+                      <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)} style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.3rem .4rem', outline: 'none' }}>
                         {[['en','English'],['es','Spanish'],['fr','French'],['de','German'],['pt','Portuguese'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['vi','Vietnamese'],['th','Thai'],['tl','Filipino'],['id','Indonesian'],['ms','Malay'],['ar','Arabic'],['ru','Russian'],['hi','Hindi'],['it','Italian'],['nl','Dutch'],['sv','Swedish'],['pl','Polish'],['tr','Turkish']].map(([code,name]) => (
                           <option key={code} value={code}>{name}</option>
                         ))}
@@ -14096,11 +14096,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         recognition.onend = () => { setTranslatorListening(false); translatorRecRef.current = null; };
                         recognition.onerror = () => { setTranslatorListening(false); translatorRecRef.current = null; };
                         recognition.start();
-                      }} style={{ padding: '.3rem .6rem', background: translatorListening ? 'rgba(255,68,68,.12)' : 'rgba(0,255,65,.07)', border: `1px solid ${translatorListening ? 'rgba(255,68,68,.4)' : 'rgba(0,255,65,.3)'}`, color: translatorListening ? '#ff4444' : '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }}>
+                      }} style={{ padding: '.3rem .6rem', background: translatorListening ? 'rgba(255,68,68,.12)' : 'rgba(56,189,248,.07)', border: `1px solid ${translatorListening ? 'rgba(255,68,68,.4)' : 'rgba(56,189,248,.3)'}`, color: translatorListening ? '#ff4444' : '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.8rem' }}>
                         {translatorListening ? '⏹ STOP' : '🎙 SPEAK'}
                       </button>
                     </div>
-                    <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type or speak text to translate..." style={{ width: '100%', minHeight: 60, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.4rem', outline: 'none', resize: 'vertical', caretColor: '#00ff41' }} />
+                    <textarea value={translatorText} onChange={e => setTranslatorText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Type or speak text to translate..." style={{ width: '100%', minHeight: 60, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', padding: '.4rem', outline: 'none', resize: 'vertical', caretColor: '#38bdf8' }} />
                     <button onClick={async () => {
                       if (!translatorText.trim()) return;
                       setTranslatorResult('Translating...');
@@ -14111,13 +14111,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       } catch {
                         setTranslatorResult('Translation service unavailable. Try again.');
                       }
-                    }} style={{ padding: '.4rem .6rem', background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.08em' }}>
+                    }} style={{ padding: '.4rem .6rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.08em' }}>
                       TRANSLATE ▶
                     </button>
                     {translatorResult && translatorResult !== 'Translating...' && (
-                      <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', background: 'rgba(0,8,0,.95)', minHeight: 40 }}>
+                      <div style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', background: 'rgba(0,8,0,.95)', minHeight: 40 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
-                          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>TRANSLATION OUTPUT</div>
+                          <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>TRANSLATION OUTPUT</div>
                           <button onClick={() => {
                             const u = new SpeechSynthesisUtterance(translatorResult);
                             const langMap: Record<string,string> = { en:'en-US',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-BR',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',vi:'vi-VN',th:'th-TH',tl:'fil-PH',id:'id-ID',ms:'ms-MY',ar:'ar-SA',ru:'ru-RU',hi:'hi-IN',it:'it-IT',nl:'nl-NL',sv:'sv-SE',pl:'pl-PL',tr:'tr-TR' };
@@ -14125,19 +14125,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             u.rate = 0.9;
                             window.speechSynthesis.cancel();
                             window.speechSynthesis.speak(u);
-                          }} style={{ padding: '.2rem .5rem', background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem', letterSpacing: '.06em' }}>
+                          }} style={{ padding: '.2rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem', letterSpacing: '.06em' }}>
                             🔊 HEAR IT
                           </button>
                         </div>
-                        <div style={{ fontSize: '.65rem', color: '#00ff41', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
+                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
                       </div>
                     )}
                     {translatorResult === 'Translating...' && (
-                      <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.5rem', background: 'rgba(0,8,0,.95)', minHeight: 40 }}>
-                        <div style={{ fontSize: '.65rem', color: '#00ff41', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
+                      <div style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem', background: 'rgba(0,8,0,.95)', minHeight: 40 }}>
+                        <div style={{ fontSize: '.65rem', color: '#38bdf8', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>{translatorResult}</div>
                       </div>
                     )}
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6, marginTop: '.2rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.6, marginTop: '.2rem' }}>
                       Free on all terminals. Speak into your mic or type text. Supports 15 languages. Powered by MyMemory API.
                     </div>
                   </div>
@@ -14145,24 +14145,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                 {pabloTab === 'share' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>SCREEN SHARE</div>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7, marginBottom: '.3rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>SCREEN SHARE</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginBottom: '.3rem' }}>
                       Share your screen or a URL with nearby operatives. Content will be visible on the nearest display.
                     </div>
-                    <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
+                    <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
                     {screenShareUrl && /^https?:\/\//.test(screenShareUrl) && (
-                      <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,20,0,.5)', padding: '.4rem' }}>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
-                        <div style={{ width: '100%', height: 180, background: '#0a0a0a', border: '1px solid rgba(0,255,65,.1)', overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(5,12,22,.5)', padding: '.4rem' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
+                        <div style={{ width: '100%', height: 180, background: '#0a0a0a', border: '1px solid rgba(56,189,248,.1)', overflow: 'hidden' }}>
                           <iframe src={screenShareUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Screen Share" sandbox="allow-scripts allow-same-origin" />
                         </div>
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '.4rem' }}>
-                      <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.1em', cursor: 'pointer' }}>BROADCAST</button>
+                      <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.9rem', letterSpacing: '.1em', cursor: 'pointer' }}>BROADCAST</button>
                       <button onClick={() => { setShowScreenShare(true); setShowPablo(false); }} style={{ padding: '.45rem .6rem', background: 'rgba(0,200,255,.08)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.8)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>FULLSCREEN</button>
                     </div>
-                    <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.15)', marginTop: '.15rem', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.15)', marginTop: '.15rem', lineHeight: 1.6 }}>
                       Screen share is available on all terminals — personal device and public kiosks. All shared content is logged by PABLO CORP.
                     </div>
                   </div>
@@ -14200,15 +14200,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
                       <div>
-                        <div style={{ ...VT, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.2em', marginBottom: '.15rem' }}>PABLO CORP</div>
-                        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>MERCHANDISE DEPARTMENT · MINX CITY</div>
+                        <div style={{ ...VT, fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.2em', marginBottom: '.15rem' }}>PABLO CORP</div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em' }}>MERCHANDISE DEPARTMENT · MINX CITY</div>
                       </div>
-                      <div style={{ height: 1, background: 'rgba(0,255,65,.12)' }} />
+                      <div style={{ height: 1, background: 'rgba(56,189,248,.12)' }} />
                       {merchLoading && (
-                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em' }}>LOADING CATALOG ▮</div>
+                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em' }}>LOADING CATALOG ▮</div>
                       )}
                       {!merchLoading && merchProducts.length === 0 && (
-                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', lineHeight: 1.7 }}>
                           CATALOG UNAVAILABLE — Try again later or visit pablo-corp.com
                         </div>
                       )}
@@ -14218,21 +14218,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         const selectedSize = sizes.length > 0 ? (merchSelectedSize[p.id] || sizes[0]) : null;
                         const priceUSD = ((p.price ?? 0) / 100).toFixed(2);
                         return (
-                          <div key={p.id} style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '.6rem .7rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                          <div key={p.id} style={{ border: '1px solid rgba(56,189,248,.2)', background: 'rgba(56,189,248,.03)', padding: '.6rem .7rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                             {images[0] && (
-                              <div style={{ width: '100%', height: 110, overflow: 'hidden', background: '#0a0a0a', borderBottom: '1px solid rgba(0,255,65,.1)' }}>
+                              <div style={{ width: '100%', height: 110, overflow: 'hidden', background: '#0a0a0a', borderBottom: '1px solid rgba(56,189,248,.1)' }}>
                                 <img src={images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
                               </div>
                             )}
-                            <div style={{ ...VT, fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.1em' }}>{p.name}</div>
-                            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.65 }}>{p.description}</div>
+                            <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.1em' }}>{p.name}</div>
+                            <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.65 }}>{p.description}</div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '.1rem' }}>
                               <div style={{ ...VT, fontSize: '1.1rem', color: '#ffcc00', letterSpacing: '.1em' }}>${priceUSD}</div>
                               {sizes.length > 0 && (
                                 <div style={{ display: 'flex', gap: '.2rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                   {sizes.map((s: string) => (
                                     <button key={s} onClick={() => setMerchSelectedSize(prev => ({ ...prev, [p.id]: s }))}
-                                      style={{ padding: '.15rem .35rem', background: selectedSize === s ? 'rgba(0,255,65,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.2)', color: selectedSize === s ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', ...VT, fontSize: '.75rem', letterSpacing: '.06em' }}>
+                                      style={{ padding: '.15rem .35rem', background: selectedSize === s ? 'rgba(56,189,248,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.2)', color: selectedSize === s ? '#38bdf8' : 'rgba(56,189,248,.4)', cursor: 'pointer', ...VT, fontSize: '.75rem', letterSpacing: '.06em' }}>
                                       {s}
                                     </button>
                                   ))}
@@ -14246,7 +14246,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           </div>
                         );
                       })}
-                      <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7, marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.7, marginTop: '.2rem' }}>
                         Purchases are processed via Stripe. Shipping collected at checkout. All transactions logged by PABLO CORP.
                       </div>
                     </div>
@@ -14256,10 +14256,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {/* AUDIO SETTINGS TAB */}
                 {pabloTab === 'audio' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>AUDIO SETTINGS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>AUDIO SETTINGS</div>
 
                     {/* Master mute */}
-                    <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: allMuted ? '#ff2266' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                    <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.4rem .6rem', background: allMuted ? 'rgba(255,34,102,.06)' : 'transparent', border: '1px solid rgba(56,189,248,.15)', color: allMuted ? '#ff2266' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                       {allMuted ? '🔇 MUTE ALL — ON' : '🔊 MUTE ALL — OFF'}
                     </button>
 
@@ -14276,44 +14276,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
 
                     {/* Radio on/off + volume */}
-                    <button onClick={() => handleRadioToggle()} style={{ width: '100%', padding: '.4rem .6rem', background: radioOn ? 'rgba(0,255,65,.08)' : 'transparent', border: radioOn ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.15)', color: radioOn ? '#00ff41' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                    <button onClick={() => handleRadioToggle()} style={{ width: '100%', padding: '.4rem .6rem', background: radioOn ? 'rgba(56,189,248,.08)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                       📻 RADIO — {radioOn ? 'ON' : 'OFF'}
                     </button>
                     <div style={{ padding: '.2rem .5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
-                        <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+                        <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>📻 RADIO VOL</span>
+                        <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
                       </div>
-                      <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => setRadioVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
                     </div>
 
                     {/* SFX volume */}
                     <div style={{ padding: '.2rem .5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
-                        <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
+                        <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
+                        <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
                       </div>
-                      <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => setSfxVolState(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
                     </div>
 
                     {/* Mic on/off + volume */}
-                    <button onClick={() => toggleVoice()} style={{ width: '100%', padding: '.4rem .6rem', background: voice ? 'rgba(0,255,65,.08)' : 'transparent', border: '1px solid rgba(0,255,65,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#00ff41') : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                    <button onClick={() => toggleVoice()} style={{ width: '100%', padding: '.4rem .6rem', background: voice ? 'rgba(56,189,248,.08)' : 'transparent', border: '1px solid rgba(56,189,248,.15)', color: voice ? (micMuted ? '#ff8844' : speaking ? '#00ffcc' : '#38bdf8') : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                       🎙 {voice ? (micMuted ? '⊘ MIC MUTED' : speaking ? '● MIC LIVE' : '○ MIC ON') : 'MIC — OFF'}
                     </button>
                     {voice && (
-                      <button onClick={() => toggleMicMute()} style={{ width: '100%', padding: '.35rem .6rem', background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(0,255,65,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(0,255,65,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                      <button onClick={() => toggleMicMute()} style={{ width: '100%', padding: '.35rem .6rem', background: micMuted ? 'rgba(255,136,68,.08)' : 'transparent', border: `1px solid ${micMuted ? 'rgba(255,136,68,.3)' : 'rgba(56,189,248,.15)'}`, color: micMuted ? '#ff8844' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                         {micMuted ? '🔇 UNMUTE MIC' : '🔊 MUTE MIC'}
                       </button>
                     )}
                     <div style={{ padding: '.2rem .5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
-                        <span style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
+                        <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>🎙 MIC VOL</span>
+                        <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(micVolume * 100)}%</span>
                       </div>
-                      <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#00ff41', height: 4, cursor: 'pointer' }} />
+                      <input type="range" min="0" max="100" value={Math.round(micVolume * 100)} onChange={e => setMicVolume(parseInt(e.target.value) / 100)} style={{ width: '100%', accentColor: '#38bdf8', height: 4, cursor: 'pointer' }} />
                     </div>
 
-                    <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.6, marginTop: '.1rem' }}>
+                    <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.6, marginTop: '.1rem' }}>
                       All audio settings are saved locally and persist across sessions.
                     </div>
                   </div>
@@ -14329,12 +14329,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   ];
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>PLAN & PREMIUM MODULES</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>PLAN & PREMIUM MODULES</div>
 
-                      <div style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '.6rem .8rem' }}>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>CURRENT STATUS</div>
+                      <div style={{ border: '1px solid rgba(56,189,248,.2)', background: 'rgba(56,189,248,.03)', padding: '.6rem .8rem' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>CURRENT STATUS</div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ ...VT, fontSize: '1.1rem', color: isPro ? '#00ff41' : 'rgba(0,255,65,.5)', letterSpacing: '.1em' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: isPro ? '#38bdf8' : 'rgba(56,189,248,.5)', letterSpacing: '.1em' }}>
                             {isPro ? 'PRO OPERATIVE' : 'STANDARD ACCESS'}
                           </div>
                           {isTrial && (
@@ -14345,29 +14345,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         </div>
                       </div>
 
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.1rem' }}>AVAILABLE MODULES</div>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.1rem' }}>AVAILABLE MODULES</div>
                       {FEATURES_CATALOG.map(f => {
                         const hasIt = isOwnerPlan || planFeatures.has(f.key as 'live_listen' | 'screen_scan' | 'say_this' | 'phone_system');
                         const companyPays = orgData?.featureGrants?.some((g: { featureKey: string }) => g.featureKey === f.key) && orgData?.member?.featureBilling === 'company';
                         return (
-                          <div key={f.key} style={{ border: `1px solid ${hasIt ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.1)'}`, background: hasIt ? 'rgba(0,255,65,.04)' : 'transparent', padding: '.55rem .7rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                          <div key={f.key} style={{ border: `1px solid ${hasIt ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.1)'}`, background: hasIt ? 'rgba(56,189,248,.04)' : 'transparent', padding: '.55rem .7rem', display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
-                                <div style={{ ...VT, fontSize: '.95rem', color: hasIt ? '#00ff41' : 'rgba(0,255,65,.45)', letterSpacing: '.07em' }}>{f.name}</div>
-                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{f.codename}</div>
+                                <div style={{ ...VT, fontSize: '.95rem', color: hasIt ? '#38bdf8' : 'rgba(56,189,248,.45)', letterSpacing: '.07em' }}>{f.name}</div>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>{f.codename}</div>
                               </div>
                               <div style={{ textAlign: 'right' }}>
                                 {hasIt ? (
                                   <div>
-                                    <div style={{ fontSize: '.55rem', color: '#00ff41', letterSpacing: '.06em' }}>✓ ACTIVE</div>
-                                    {companyPays && <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.45)', letterSpacing: '.06em' }}>ORG BILLING</div>}
+                                    <div style={{ fontSize: '.55rem', color: '#38bdf8', letterSpacing: '.06em' }}>✓ ACTIVE</div>
+                                    {companyPays && <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>ORG BILLING</div>}
                                   </div>
                                 ) : (
                                   <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.6)', letterSpacing: '.06em' }}>{f.price}</div>
                                 )}
                               </div>
                             </div>
-                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.6 }}>{f.desc}</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.6 }}>{f.desc}</div>
                             {!hasIt && (
                               <button
                                 onClick={async () => {
@@ -14389,12 +14389,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         );
                       })}
 
-                      <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.5rem', marginTop: '.2rem' }}>
-                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY BILLING</div>
-                        <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
+                      <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.5rem', marginTop: '.2rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY BILLING</div>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.7 }}>
                           If your employer has activated company billing for your account, your premium modules will be funded by your organization. Manage your company in the COMPANY tab.
                         </div>
-                        <button onClick={() => { setPabloTab('company'); fetchOrgData(); }} style={{ marginTop: '.4rem', padding: '.3rem .6rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.25)', color: 'rgba(0,255,65,.6)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.85rem', letterSpacing: '.1em' }}>
+                        <button onClick={() => { setPabloTab('company'); fetchOrgData(); }} style={{ marginTop: '.4rem', padding: '.3rem .6rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.25)', color: 'rgba(56,189,248,.6)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.85rem', letterSpacing: '.1em' }}>
                           → COMPANY MANAGEMENT
                         </button>
                       </div>
@@ -14458,17 +14458,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>COMPANY MANAGEMENT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>COMPANY MANAGEMENT</div>
 
                       {orgLoading && (
-                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em' }}>LOADING ▮</div>
+                        <div style={{ ...VT, fontSize: '1rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em' }}>LOADING ▮</div>
                       )}
 
                       {!orgLoading && !orgData && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                          <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,255,65,.02)', padding: '.7rem' }}>
-                            <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTER YOUR ORGANIZATION</div>
-                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7, marginBottom: '.5rem' }}>
+                          <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(56,189,248,.02)', padding: '.7rem' }}>
+                            <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTER YOUR ORGANIZATION</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.7, marginBottom: '.5rem' }}>
                               Register your company in MINX CITY to onboard employees, manage departments, and enable enterprise billing for premium features.
                             </div>
                             <input
@@ -14477,24 +14477,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                               onKeyDown={e => e.stopPropagation()}
                               placeholder="COMPANY NAME..."
                               maxLength={80}
-                              style={{ width: '100%', padding: '.4rem .6rem', marginBottom: '.3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', outline: 'none', boxSizing: 'border-box', caretColor: '#00ff41' }}
+                              style={{ width: '100%', padding: '.4rem .6rem', marginBottom: '.3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', outline: 'none', boxSizing: 'border-box', caretColor: '#38bdf8' }}
                             />
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.3rem', marginBottom: '.3rem' }}>
-                              <select value={orgCreateIndustry} onChange={e => setOrgCreateIndustry(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                              <select value={orgCreateIndustry} onChange={e => setOrgCreateIndustry(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
                                 <option value="">INDUSTRY...</option>
                                 {['Technology','Finance','Healthcare','Media','Legal','Real Estate','Logistics','Manufacturing','Retail','Other'].map(i => <option key={i} value={i}>{i}</option>)}
                               </select>
-                              <select value={orgCreateSize} onChange={e => setOrgCreateSize(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
+                              <select value={orgCreateSize} onChange={e => setOrgCreateSize(e.target.value)} style={{ padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', outline: 'none', cursor: 'pointer' }}>
                                 <option value="">SIZE...</option>
                                 {['1-10','11-50','51-200','201-500','500+'].map(s => <option key={s} value={s}>{s} employees</option>)}
                               </select>
                             </div>
                             {orgCreateError && <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', marginBottom: '.3rem' }}>⚠ {orgCreateError}</div>}
-                            <button onClick={handleCreateOrg} style={{ width: '100%', padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.12em' }}>
+                            <button onClick={handleCreateOrg} style={{ width: '100%', padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.12em' }}>
                               REGISTER ORGANIZATION →
                             </button>
                           </div>
-                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.2)', lineHeight: 1.7 }}>
                             Already have an invite? Ask your manager for an invite link or code to join their organization.
                           </div>
                         </div>
@@ -14502,33 +14502,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                       {!orgLoading && orgData && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                          <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.7rem' }}>
+                          <div style={{ border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', padding: '.7rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div>
-                                <div style={{ ...VT, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.12em' }}>{orgData.org.name}</div>
-                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.1rem' }}>
+                                <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.12em' }}>{orgData.org.name}</div>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em', marginTop: '.1rem' }}>
                                   {[orgData.org.industry, orgData.org.size ? `${orgData.org.size} EMPLOYEES` : null].filter(Boolean).join(' · ')}
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{orgData.member?.role ?? 'MEMBER'}</div>
-                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', marginTop: '.1rem' }}>{orgData.member?.department ?? 'NO DEPT'}</div>
+                                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{orgData.member?.role ?? 'MEMBER'}</div>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', marginTop: '.1rem' }}>{orgData.member?.department ?? 'NO DEPT'}</div>
                               </div>
                             </div>
                           </div>
 
-                          <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
-                            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY FEATURES ({orgData.featureGrants?.length ?? 0} ACTIVE)</div>
+                          <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.55rem .7rem' }}>
+                            <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>COMPANY FEATURES ({orgData.featureGrants?.length ?? 0} ACTIVE)</div>
                             {orgData.featureGrants?.length === 0 ? (
-                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.6 }}>No company-wide features activated.</div>
+                              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', lineHeight: 1.6 }}>No company-wide features activated.</div>
                             ) : (
                               orgData.featureGrants.map(g => (
-                                <div key={g.featureKey} style={{ fontSize: '.5rem', color: '#00ff41', lineHeight: 1.8 }}>✓ {g.featureKey.replace(/_/g,' ').toUpperCase()}</div>
+                                <div key={g.featureKey} style={{ fontSize: '.5rem', color: '#38bdf8', lineHeight: 1.8 }}>✓ {g.featureKey.replace(/_/g,' ').toUpperCase()}</div>
                               ))
                             )}
                             {orgData.member?.role === 'owner' && (
-                              <div style={{ marginTop: '.4rem', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.4rem' }}>
-                                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', marginBottom: '.3rem' }}>Subscribe on behalf of your organization — all employees set to company billing will gain access.</div>
+                              <div style={{ marginTop: '.4rem', borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem' }}>
+                                <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', marginBottom: '.3rem' }}>Subscribe on behalf of your organization — all employees set to company billing will gain access.</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.25rem' }}>
                                   {(['live_listen','screen_scan','say_this','phone_system'] as const).map(fk => {
                                     const alreadyActive = orgData.featureGrants?.some(g => g.featureKey === fk);
@@ -14548,7 +14548,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                             else { alert(d.error ?? 'Billing error'); }
                                           } catch { alert('Network error'); }
                                         }}
-                                        style={{ padding: '.2rem .4rem', background: alreadyActive ? 'rgba(0,255,65,.05)' : 'rgba(0,255,65,.12)', border: `1px solid ${alreadyActive ? 'rgba(0,255,65,.2)' : 'rgba(0,255,65,.45)'}`, color: alreadyActive ? 'rgba(0,255,65,.3)' : '#00ff41', cursor: alreadyActive ? 'default' : 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em' }}
+                                        style={{ padding: '.2rem .4rem', background: alreadyActive ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: `1px solid ${alreadyActive ? 'rgba(56,189,248,.2)' : 'rgba(56,189,248,.45)'}`, color: alreadyActive ? 'rgba(56,189,248,.3)' : '#38bdf8', cursor: alreadyActive ? 'default' : 'pointer', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em' }}
                                       >
                                         {alreadyActive ? '✓ ' : '+'}{fk.replace(/_/g,' ').toUpperCase()}
                                       </button>
@@ -14561,36 +14561,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                           {isOwnerOrManager && (
                             <>
-                              <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
-                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INVITE EMPLOYEE</div>
+                              <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.55rem .7rem' }}>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INVITE EMPLOYEE</div>
                                 <div style={{ display: 'flex', gap: '.3rem' }}>
                                   <input
                                     value={orgInviteInput}
                                     onChange={e => setOrgInviteInput(e.target.value)}
                                     onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') handleInvite(); }}
                                     placeholder="Email or username..."
-                                    style={{ flex: 1, padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', outline: 'none', caretColor: '#00ff41' }}
+                                    style={{ flex: 1, padding: '.35rem .4rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', outline: 'none', caretColor: '#38bdf8' }}
                                   />
-                                  <button onClick={handleInvite} style={{ padding: '.3rem .6rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem' }}>INVITE</button>
+                                  <button onClick={handleInvite} style={{ padding: '.3rem .6rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.9rem' }}>INVITE</button>
                                 </div>
                                 {orgInviteResult && (
-                                  <div style={{ marginTop: '.3rem', fontSize: '.45rem', color: orgInviteResult.startsWith('✓') ? '#00ff41' : '#ff4444', lineHeight: 1.6, wordBreak: 'break-all' }}>
+                                  <div style={{ marginTop: '.3rem', fontSize: '.45rem', color: orgInviteResult.startsWith('✓') ? '#38bdf8' : '#ff4444', lineHeight: 1.6, wordBreak: 'break-all' }}>
                                     {orgInviteResult}
                                   </div>
                                 )}
                               </div>
 
-                              <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.55rem .7rem' }}>
-                                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>EMPLOYEE ROSTER ({activeMembers.length})</div>
+                              <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.55rem .7rem' }}>
+                                <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>EMPLOYEE ROSTER ({activeMembers.length})</div>
                                 {activeMembers.length === 0 ? (
-                                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.6 }}>No active members yet. Invite employees above.</div>
+                                  <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', lineHeight: 1.6 }}>No active members yet. Invite employees above.</div>
                                 ) : (
                                   activeMembers.map(m => (
-                                    <div key={m.userId} style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.45rem .5rem', marginBottom: '.3rem', background: 'rgba(0,255,65,.02)' }}>
+                                    <div key={m.userId} style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.45rem .5rem', marginBottom: '.3rem', background: 'rgba(56,189,248,.02)' }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
                                         <div>
-                                          <div style={{ fontSize: '.55rem', color: '#00ff41', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{m.userId.slice(0, 12)}{m.userId.length > 12 ? '…' : ''}</div>
-                                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em' }}>
+                                          <div style={{ fontSize: '.55rem', color: '#38bdf8', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{m.userId.slice(0, 12)}{m.userId.length > 12 ? '…' : ''}</div>
+                                          <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em' }}>
                                             {m.role.toUpperCase()} · {m.department ?? 'NO DEPT'} · BILLING: {m.featureBilling.toUpperCase()}
                                           </div>
                                         </div>
@@ -14602,7 +14602,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         <select
                                           value={m.featureBilling}
                                           onChange={e => handleUpdateMember(m.userId, { featureBilling: e.target.value })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="individual">Individual Billing</option>
                                           <option value="company">Company Billing</option>
                                         </select>
@@ -14610,7 +14610,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                           <select
                                             value={m.role}
                                             onChange={e => handleUpdateMember(m.userId, { role: e.target.value })}
-                                            style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                            style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                             <option value="employee">Employee</option>
                                             <option value="manager">Manager</option>
                                           </select>
@@ -14618,7 +14618,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         <select
                                           value={m.department ?? ''}
                                           onChange={e => handleUpdateMember(m.userId, { department: e.target.value || '' })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="">DEPT: NONE</option>
                                           {['Engineering','Sales','Marketing','Operations','Finance','Legal','HR','Design','Support','Executive'].map(d => (
                                             <option key={d} value={d}>{d}</option>
@@ -14627,7 +14627,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                                         <select
                                           value={m.spawnLocation ?? ''}
                                           onChange={e => handleUpdateMember(m.userId, { spawnLocation: e.target.value || '' })}
-                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
+                                          style={{ padding: '.2rem .3rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', outline: 'none', cursor: 'pointer' }}>
                                           <option value="">LOCATION: ANY</option>
                                           {['Downtown','Harbor','Uptown','Financial District','Tech Quarter','Shadow Tower','Research Park'].map(loc => (
                                             <option key={loc} value={loc}>{loc}</option>
@@ -14642,9 +14642,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           )}
 
                           {!isOwnerOrManager && (
-                            <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem .7rem' }}>
-                              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.2rem' }}>YOUR ASSIGNMENT</div>
-                              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8 }}>
+                            <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.55rem .7rem' }}>
+                              <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.2rem' }}>YOUR ASSIGNMENT</div>
+                              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.8 }}>
                                 Department: {orgData.member?.department ?? 'Unassigned'}<br/>
                                 Location: {orgData.member?.spawnLocation ?? 'Unassigned'}<br/>
                                 Billing: {orgData.member?.featureBilling === 'company' ? 'Company pays for your features' : 'You pay individually'}
@@ -14662,38 +14662,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
                       {pabloMsgs.length === 0 && (
-                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8 }}>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', lineHeight: 1.8 }}>
                           &gt; PABLO AI ONLINE<br/>
                           &gt; Ask anything. I know Minx City. Some of it I won't tell you.
                         </div>
                       )}
                       {pabloMsgs.map((m, i) => (
-                        <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none' }}>
-                          <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(0,255,65,.3)', marginRight: '.25rem' }}>
+                        <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(56,189,248,.5)' : '#38bdf8', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(56,189,248,.25)' : 'none' }}>
+                          <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(56,189,248,.3)', marginRight: '.25rem' }}>
                             {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO AI]'}
                           </span>
                           {m.text}
                         </div>
                       ))}
                       {pabloLoad && (
-                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>PABLO AI . . .</div>
+                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>PABLO AI . . .</div>
                       )}
                     </div>
                     {worldConv.isConvMode && (
-                      <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', padding: '.3rem .4rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                      <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', padding: '.3rem .4rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                         <div style={{
                           width: 8, height: 8, borderRadius: '50%',
-                          background: worldConv.convState === 'listening' ? '#00ff41' :
+                          background: worldConv.convState === 'listening' ? '#38bdf8' :
                                       worldConv.convState === 'processing' ? '#ffcc00' :
-                                      worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(0,255,65,.3)',
+                                      worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.3)',
                           animation: worldConv.convState !== 'idle' ? 'pulse 1.5s infinite' : 'none',
-                          boxShadow: worldConv.convState === 'listening' ? '0 0 8px rgba(0,255,65,.6)' :
+                          boxShadow: worldConv.convState === 'listening' ? '0 0 8px rgba(56,189,248,.6)' :
                                      worldConv.convState === 'speaking' ? '0 0 8px rgba(204,136,255,.6)' : 'none',
                         }} />
                         <span style={{ ...ST, fontSize: '.5rem', flex: 1,
-                          color: worldConv.convState === 'listening' ? '#00ff41' :
+                          color: worldConv.convState === 'listening' ? '#38bdf8' :
                                  worldConv.convState === 'processing' ? '#ffcc00' :
-                                 worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(0,255,65,.4)',
+                                 worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.4)',
                         }}>
                           {worldConv.convState === 'listening' ? 'LISTENING...' :
                            worldConv.convState === 'processing' ? 'PABLO IS THINKING...' :
@@ -14706,23 +14706,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         </button>
                       </div>
                     )}
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
                       <input
                         value={pabloIn}
                         onChange={e => setPabloIn(e.target.value)}
                         onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
                         placeholder={worldConv.isConvMode ? 'Voice active — speak to PABLO...' : 'Ask PABLO AI anything...'}
                         disabled={worldConv.isConvMode}
-                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#00ff41', opacity: worldConv.isConvMode ? 0.4 : 1 }}
+                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#38bdf8', opacity: worldConv.isConvMode ? 0.4 : 1 }}
                       />
                       {worldConv.isSupported && (
                         <button
                           onClick={() => worldConv.isConvMode ? worldConv.stopConversation() : worldConv.startConversation()}
                           disabled={pabloLoad}
                           style={{
-                            background: worldConv.isConvMode ? 'rgba(0,255,65,.15)' : 'rgba(0,255,65,.05)',
-                            border: worldConv.isConvMode ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.2)',
-                            color: worldConv.isConvMode ? '#00ff41' : 'rgba(0,255,65,.5)',
+                            background: worldConv.isConvMode ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.05)',
+                            border: worldConv.isConvMode ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.2)',
+                            color: worldConv.isConvMode ? '#38bdf8' : 'rgba(56,189,248,.5)',
                             cursor: 'pointer', padding: '0 .4rem', ...VT, fontSize: '.75rem',
                             animation: worldConv.isConvMode ? 'pulse 2s infinite' : 'none',
                           }}
@@ -14730,14 +14730,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         >🎙</button>
                       )}
                       <button onClick={sendPablo} disabled={pabloLoad || worldConv.isConvMode}
-                        style={{ background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem', opacity: worldConv.isConvMode ? 0.4 : 1 }}>↵</button>
+                        style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem', opacity: worldConv.isConvMode ? 0.4 : 1 }}>↵</button>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Footer */}
-              <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
+              <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(56,189,248,.1)', fontSize: '.55rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
                 {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
               </div>
             </div>
@@ -14747,34 +14747,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── DIALOG ── */}
       {dialog && (
-        <div style={{ position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)', width: 480, maxWidth: '88vw', background: 'rgba(0,6,0,.97)', border: '1px solid rgba(0,255,65,.45)', padding: '.9rem 1rem', zIndex: 200, cursor: 'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>PABLO CORP TRANSMISSION</div>
-          <div style={{ fontSize: '.75rem', color: '#00ff41', lineHeight: 1.7, letterSpacing: '.03em', minHeight: '2rem' }}>{dialog.lines[dialog.idx]}</div>
-          <div style={{ marginTop: '.4rem', textAlign: 'right', fontSize: '.45rem', color: 'rgba(0,255,65,.28)' }}>[{dialog.idx + 1}/{dialog.lines.length}] CLICK or SPACE ▶</div>
+        <div style={{ position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)', width: 480, maxWidth: '88vw', background: 'rgba(0,6,0,.97)', border: '1px solid rgba(56,189,248,.45)', padding: '.9rem 1rem', zIndex: 200, cursor: 'pointer' }} onClick={advDialog}>
+          <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>PABLO CORP TRANSMISSION</div>
+          <div style={{ fontSize: '.75rem', color: '#38bdf8', lineHeight: 1.7, letterSpacing: '.03em', minHeight: '2rem' }}>{dialog.lines[dialog.idx]}</div>
+          <div style={{ marginTop: '.4rem', textAlign: 'right', fontSize: '.45rem', color: 'rgba(56,189,248,.28)' }}>[{dialog.idx + 1}/{dialog.lines.length}] CLICK or SPACE ▶</div>
         </div>
       )}
 
       {/* ── PABLO CORP STORE ACTIVATION ── */}
       {showStore && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div style={{ width: 400, maxWidth: '90vw', border: '1px solid rgba(0,255,65,.55)', background: 'rgba(0,10,0,.98)', padding: '1.65rem' }}>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', textShadow: '0 0 12px rgba(0,255,65,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
-            <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
+          <div style={{ width: 400, maxWidth: '90vw', border: '1px solid rgba(56,189,248,.55)', background: 'rgba(0,10,0,.98)', padding: '1.65rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#38bdf8', textShadow: '0 0 12px rgba(56,189,248,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
+            <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
               {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
-                <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(0,255,65,.15)' : '1px solid rgba(0,255,65,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.05)' : 'transparent' }}>
-                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.45)' : '#00ff41', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
-                  {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(0,255,65,.32)' : 'rgba(0,255,65,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
+                <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(56,189,248,.15)' : '1px solid rgba(56,189,248,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.05)' : 'transparent' }}>
+                  <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.45)' : '#38bdf8', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
+                  {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.32)' : 'rgba(56,189,248,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
-              <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(0,255,65,.18)', color: 'rgba(0,255,65,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
+              <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(56,189,248,.18)', color: 'rgba(56,189,248,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
             {orgData && (
-              <div style={{ marginTop: '.65rem', padding: '.4rem .6rem', border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,255,65,.03)', fontSize: '.48rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
-                🏢 Your company <strong style={{ color: '#00ff41' }}>{orgData.org?.name}</strong> may cover this. Ask your manager to enable company billing in the Terminal → COMPANY tab.
+              <div style={{ marginTop: '.65rem', padding: '.4rem .6rem', border: '1px solid rgba(56,189,248,.15)', background: 'rgba(56,189,248,.03)', fontSize: '.48rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
+                🏢 Your company <strong style={{ color: '#38bdf8' }}>{orgData.org?.name}</strong> may cover this. Ask your manager to enable company billing in the Terminal → COMPANY tab.
               </div>
             )}
           </div>
@@ -14786,9 +14786,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,3,0,.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
           <div style={{ width: 460, maxWidth: '90vw', border: '1px solid rgba(140,0,220,.45)', background: 'rgba(6,0,12,.99)', padding: '1.65rem' }}>
             {char.hasBusiness && char.bizType === 'real' && (
-              <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.04)', textAlign: 'center' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em' }}>{getBusinessLocationLabel(gs.current.px, gs.current.py)} ENTERPRISE</div>
-                <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
+              <div style={{ marginBottom: '.8rem', padding: '.4rem .7rem', border: '1px solid rgba(56,189,248,.25)', background: 'rgba(56,189,248,.04)', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>{getBusinessLocationLabel(gs.current.px, gs.current.py)} ENTERPRISE</div>
+                <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em', marginTop: '.15rem' }}>{char.company} — {char.name}</div>
               </div>
             )}
             {char.hasBusiness && char.bizType === 'minx' && (
@@ -14799,29 +14799,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#00ff41', letterSpacing: '.14em' }}>SHADOW TOWER</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#38bdf8', letterSpacing: '.14em' }}>SHADOW TOWER</div>
                 <div style={{ fontSize: '.52rem', color: 'rgba(140,0,220,.7)', letterSpacing: '.08em', marginTop: '.15rem' }}>FLOORS 1–39 — REAL ENTERPRISE LEASE ONLY. FLOOR 40+ RESTRICTED.</div>
               </div>
               <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                 {rentedOffice && (
-                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'SHADOW TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.22)', color: 'rgba(0,255,65,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+                  <button onClick={() => { const lk = lockMap.get('pablo_tower'); setPwPrompt({ bid: 'pablo_tower', label: 'SHADOW TOWER', mode: lk ? 'enter' : 'set' }); setShowOffice(false); }} style={{ fontSize: '.48rem', padding: '2px 7px', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.22)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
                     {lockMap.get('pablo_tower') ? '🔒 LOCKED' : 'SET CODE'}
                   </button>
                 )}
-                <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.32)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>ESC</button>
+                <button onClick={() => setShowOffice(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.32)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>ESC</button>
               </div>
             </div>
-            {rentedOffice && <div style={{ marginBottom: '.85rem', padding: '.38rem .6rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.05)', fontSize: '.58rem', color: '#00ff41' }}>▸ ACTIVE LEASE: {rentedOffice}</div>}
+            {rentedOffice && <div style={{ marginBottom: '.85rem', padding: '.38rem .6rem', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.05)', fontSize: '.58rem', color: '#38bdf8' }}>▸ ACTIVE LEASE: {rentedOffice}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
               {OFFICE_TIERS.map(({ label, price, desc }) => {
                 const isRented = rentedOffice === label;
                 const canAfford = salary >= price;
                 return (
-                  <div key={label} style={{ border: isRented ? '1px solid rgba(0,255,65,.65)' : '1px solid rgba(0,255,65,.16)', padding: '.7rem', background: isRented ? 'rgba(0,255,65,.06)' : 'transparent', position: 'relative' }}>
-                    {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#00ff41', fontFamily: "'VT323',monospace" }}>LEASED</div>}
-                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isRented ? '#00ff41' : 'rgba(0,255,65,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
-                    <div style={{ fontSize: '.62rem', color: isRented ? '#00ff41' : canAfford ? 'rgba(0,255,65,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ƒ{price.toLocaleString()} FIAT</div>
-                    <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.32)', lineHeight: 1.6 }}>{desc}</div>
+                  <div key={label} style={{ border: isRented ? '1px solid rgba(56,189,248,.65)' : '1px solid rgba(56,189,248,.16)', padding: '.7rem', background: isRented ? 'rgba(56,189,248,.06)' : 'transparent', position: 'relative' }}>
+                    {isRented && <div style={{ position: 'absolute', top: 4, right: 5, fontSize: '.45rem', color: '#38bdf8', fontFamily: "'VT323',monospace" }}>LEASED</div>}
+                    <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isRented ? '#38bdf8' : 'rgba(56,189,248,.62)', letterSpacing: '.07em', marginBottom: '.18rem' }}>{label}</div>
+                    <div style={{ fontSize: '.62rem', color: isRented ? '#38bdf8' : canAfford ? 'rgba(56,189,248,.52)' : 'rgba(255,100,100,.5)', fontFamily: "'VT323',monospace", marginBottom: '.28rem' }}>ƒ{price.toLocaleString()} FIAT</div>
+                    <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.32)', lineHeight: 1.6 }}>{desc}</div>
                     <button onClick={() => {
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
                       if (char.bizType !== 'real') { sfxError(); setNarr('> SHADOW TOWER — Office leases require a registered REAL ENTERPRISE. Fictitious entities operate from storefronts.'); return; }
@@ -14829,7 +14829,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const g = gs.current; g.salary -= price; setSalary(g.salary);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
                       setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
-                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(0,255,65,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(0,255,65,.38)' : '1px solid rgba(0,255,65,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#00ff41' : 'rgba(0,255,65,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
+                    }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(56,189,248,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(56,189,248,.38)' : '1px solid rgba(56,189,248,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#38bdf8' : 'rgba(56,189,248,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
                       {isRented ? 'CANCEL' : char.bizType !== 'real' ? 'REAL BIZ REQUIRED' : canAfford ? 'RENT' : 'NO FUNDS'}
                     </button>
                   </div>
@@ -14850,11 +14850,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {showWhiteboard && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
-          <div style={{ width: 420, maxWidth: '92vw', maxHeight: '80vh', border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,10,0,.98)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.15em' }}>WHITEBOARD</div>
-              <button onClick={() => setShowWhiteboard(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 420, maxWidth: '92vw', maxHeight: '80vh', border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>WHITEBOARD</div>
+              <button onClick={() => setShowWhiteboard(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '.6rem', minHeight: 200, background: 'rgba(240,240,245,.95)' }}>
               {whiteboardLines.length === 0 && <div style={{ color: 'rgba(100,100,100,.5)', fontSize: '.7rem', fontStyle: 'italic', textAlign: 'center', paddingTop: '2rem' }}>Empty whiteboard. Start writing below.</div>}
@@ -14862,9 +14862,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div key={i} style={{ fontSize: '.75rem', color: '#1a1a2e', fontFamily: "'Share Tech Mono',monospace", lineHeight: 1.6, padding: '2px 4px', borderBottom: '1px solid rgba(200,60,60,.15)' }}>{line}</div>
               ))}
             </div>
-            <div style={{ padding: '.5rem', borderTop: '1px solid rgba(0,255,65,.2)', display: 'flex', gap: '.4rem' }}>
-              <input value={whiteboardInput} onChange={e => setWhiteboardInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} placeholder="Write on the whiteboard..." autoFocus style={{ flex: 1, padding: '.4rem .5rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none' }} />
-              <button onClick={() => { if (whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} style={{ padding: '.4rem .7rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>POST</button>
+            <div style={{ padding: '.5rem', borderTop: '1px solid rgba(56,189,248,.2)', display: 'flex', gap: '.4rem' }}>
+              <input value={whiteboardInput} onChange={e => setWhiteboardInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} placeholder="Write on the whiteboard..." autoFocus style={{ flex: 1, padding: '.4rem .5rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none' }} />
+              <button onClick={() => { if (whiteboardInput.trim()) { setWhiteboardLines(prev => [...prev, `[${char.name}] ${whiteboardInput.trim()}`]); setWhiteboardInput(''); } }} style={{ padding: '.4rem .7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>POST</button>
               <button onClick={() => setWhiteboardLines([])} style={{ padding: '.4rem .5rem', background: 'transparent', border: '1px solid rgba(255,60,60,.3)', color: 'rgba(255,60,60,.6)', fontFamily: "'VT323',monospace", fontSize: '.8rem', cursor: 'pointer' }}>CLEAR</button>
             </div>
           </div>
@@ -14872,36 +14872,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {showScreenShare && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
-          <div style={{ width: 440, maxWidth: '92vw', border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 440, maxWidth: '92vw', border: '1px solid rgba(56,189,248,.5)', background: 'rgba(0,10,0,.98)', padding: '1.4rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.15em' }}>SCREEN SHARE</div>
-              <button onClick={() => setShowScreenShare(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>SCREEN SHARE</div>
+              <button onClick={() => setShowScreenShare(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
             </div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby operatives</div>
-            <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby operatives</div>
+            <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
             {screenShareUrl && (
-              <div style={{ border: '1px solid rgba(0,255,65,.15)', background: 'rgba(0,20,0,.5)', padding: '.6rem', marginBottom: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
-                <div style={{ width: '100%', height: 200, background: '#0a0a0a', border: '1px solid rgba(0,255,65,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(5,12,22,.5)', padding: '.6rem', marginBottom: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginBottom: '.3rem' }}>PREVIEW</div>
+                <div style={{ width: '100%', height: 200, background: '#0a0a0a', border: '1px solid rgba(56,189,248,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   {/^https?:\/\//.test(screenShareUrl) ? (
                     <iframe src={screenShareUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Screen Share" sandbox="allow-scripts allow-same-origin" />
                   ) : (
-                    <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.7rem' }}>Enter a valid URL to preview</div>
+                    <div style={{ color: 'rgba(56,189,248,.5)', fontSize: '.7rem' }}>Enter a valid URL to preview</div>
                   )}
                 </div>
               </div>
             )}
             <div style={{ display: 'flex', gap: '.5rem' }}>
-              <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); setShowScreenShare(false); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>SHARE</button>
-              <button onClick={() => setShowScreenShare(false)} style={{ padding: '.45rem .7rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+              <button onClick={() => { if (screenShareUrl.trim()) { setNarr(`> SCREEN SHARE — Broadcasting: ${screenShareUrl.trim()}`); setShowScreenShare(false); } }} style={{ flex: 1, padding: '.45rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.95rem', letterSpacing: '.1em', cursor: 'pointer' }}>SHARE</button>
+              <button onClick={() => setShowScreenShare(false)} style={{ padding: '.45rem .7rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
             </div>
           </div>
         </div>
       )}
 
       {elevatorPrompt && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,255,.5)', background: 'rgba(0,8,12,.98)', padding: '1.4rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,255,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>▲▼ ELEVATOR</div>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,200,255,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
@@ -15054,7 +15054,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {doorLockPrompt && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,4,0,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
           <div style={{ width: 360, maxWidth: '90vw', border: '1px solid rgba(0,200,100,.5)', background: 'rgba(0,8,6,.98)', padding: '1.4rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,100,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🔒 DOOR LOCK</div>
             <div style={{ fontSize: '.5rem', color: 'rgba(0,200,100,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
@@ -15135,16 +15135,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── FLOOR PANEL / ELEVATOR ── */}
       {floorPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 320 }}>
-          <div style={{ width: 'min(540px, 96vw)', border: '1px solid rgba(0,255,65,.35)', background: 'rgba(2,14,4,.97)', fontFamily: "'Share Tech Mono',monospace", color: '#00ff41', padding: '1.8rem 2rem', maxHeight: '86vh', overflowY: 'auto' }}>
+          <div style={{ width: 'min(540px, 96vw)', border: '1px solid rgba(56,189,248,.35)', background: 'rgba(2,14,4,.97)', fontFamily: "'Share Tech Mono',monospace", color: '#38bdf8', padding: '1.8rem 2rem', maxHeight: '86vh', overflowY: 'auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#00ff41', letterSpacing: '.2em' }}>{floorPanel.dir.label}</div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.15em', marginTop: '.2rem' }}>BUILDING DIRECTORY · ELEVATOR PANEL</div>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.2em' }}>{floorPanel.dir.label}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.15em', marginTop: '.2rem' }}>BUILDING DIRECTORY · ELEVATOR PANEL</div>
               </div>
-              <button onClick={() => setFloorPanel(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>✕ ESC</button>
+              <button onClick={() => setFloorPanel(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: 0 }}>✕ ESC</button>
             </div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg,transparent,rgba(0,255,65,.3),transparent)', marginBottom: '.9rem' }} />
+            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg,transparent,rgba(56,189,248,.3),transparent)', marginBottom: '.9rem' }} />
             {/* Zone tag */}
             {(() => {
               const zone = getBuildingZone(floorPanel.bid);
@@ -15159,7 +15159,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               );
             })()}
             {/* History */}
-            <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, marginBottom: '1rem', padding: '.6rem', border: '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.02)' }}>
+            <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.55)', lineHeight: 1.7, marginBottom: '1rem', padding: '.6rem', border: '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.02)' }}>
               {floorPanel.dir.history}
             </div>
             {/* Floor list */}
@@ -15174,7 +15174,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               ) : null;
             })()}
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', marginBottom: '.5rem' }}>── SELECT FLOOR ──</div>
             {floorPanel.dir.floors.map((fl, fi) => {
               const g = gs.current;
               const floorKey = `${floorPanel.bid}_${fl.floor}`;
@@ -15184,20 +15184,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div key={fi}
                 onClick={() => setFloorPanel(prev => prev ? { ...prev, selectedFloor: fi } : null)}
                 style={{
-                  padding: '.55rem .7rem', marginBottom: '.3rem', border: `1px solid ${floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.6)' : occupant ? 'rgba(255,100,0,.2)' : 'rgba(0,255,65,.12)'}`,
-                  background: floorPanel.selectedFloor === fi ? 'rgba(0,255,65,.07)' : occupant ? 'rgba(255,100,0,.02)' : 'transparent', cursor: 'pointer',
+                  padding: '.55rem .7rem', marginBottom: '.3rem', border: `1px solid ${floorPanel.selectedFloor === fi ? 'rgba(56,189,248,.6)' : occupant ? 'rgba(255,100,0,.2)' : 'rgba(56,189,248,.12)'}`,
+                  background: floorPanel.selectedFloor === fi ? 'rgba(56,189,248,.07)' : occupant ? 'rgba(255,100,0,.02)' : 'transparent', cursor: 'pointer',
                   transition: 'all .15s',
                 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: floorPanel.selectedFloor === fi ? '.4rem' : 0 }}>
-                  <span style={{ color: '#00ff41', fontSize: '.5rem', letterSpacing: '.1em' }}>FL {String(fl.floor).padStart(2,'0')}</span>
+                  <span style={{ color: '#38bdf8', fontSize: '.5rem', letterSpacing: '.1em' }}>FL {String(fl.floor).padStart(2,'0')}</span>
                   <span style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                     {occupant && <span style={{ fontSize: '.38rem', color: isMyFloor ? '#FFD700' : 'rgba(255,100,0,.7)', letterSpacing: '.05em' }}>{isMyFloor ? '★ YOUR FLOOR' : `⊘ ${occupant}`}</span>}
-                    <span style={{ color: floorPanel.selectedFloor === fi ? '#00ff41' : 'rgba(0,255,65,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
+                    <span style={{ color: floorPanel.selectedFloor === fi ? '#38bdf8' : 'rgba(56,189,248,.5)', fontSize: '.5rem', letterSpacing: '.08em' }}>{fl.name}</span>
                   </span>
                 </div>
                 {floorPanel.selectedFloor === fi && (
                   <div>
-                    <div style={{ fontSize: '.43rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7, marginTop: '.2rem', paddingTop: '.3rem', borderTop: '1px solid rgba(0,255,65,.12)' }}>
+                    <div style={{ fontSize: '.43rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.7, marginTop: '.2rem', paddingTop: '.3rem', borderTop: '1px solid rgba(56,189,248,.12)' }}>
                       {fl.desc}
                     </div>
                     <button
@@ -15268,9 +15268,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       }}
                       style={{
                         marginTop: '.4rem', width: '100%', padding: '.4rem', cursor: fl.restricted ? 'not-allowed' : 'pointer',
-                        background: fl.restricted ? 'rgba(255,60,60,.08)' : 'rgba(0,255,65,.08)',
-                        border: `1px solid ${fl.restricted ? 'rgba(255,60,60,.4)' : 'rgba(0,255,65,.4)'}`,
-                        color: fl.restricted ? '#ff4444' : '#00ff41',
+                        background: fl.restricted ? 'rgba(255,60,60,.08)' : 'rgba(56,189,248,.08)',
+                        border: `1px solid ${fl.restricted ? 'rgba(255,60,60,.4)' : 'rgba(56,189,248,.4)'}`,
+                        color: fl.restricted ? '#ff4444' : '#38bdf8',
                         fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.12em',
                       }}
                     >
@@ -15329,7 +15329,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               );
             })}
-            <div style={{ marginTop: '.8rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
+            <div style={{ marginTop: '.8rem', fontSize: '.55rem', color: 'rgba(56,189,248,.2)', textAlign: 'center', letterSpacing: '.1em' }}>CLICK FLOOR TO EXPAND · ESC TO EXIT BUILDING</div>
           </div>
         </div>
       )}
@@ -15358,8 +15358,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position: 'absolute', top: powerPct < 100 ? '5.2rem' : '3.5rem', left: '.8rem', zIndex: 200, fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', border: `1px solid ${billCol}44`, background: 'rgba(0,0,0,.85)', padding: '.3rem .55rem', color: billCol, letterSpacing: '.08em', maxWidth: 220 }}>
             <div style={{ fontSize: '.42rem', color: `${billCol}88`, letterSpacing: '.12em', marginBottom: '.15rem' }}>BILLS & OBLIGATIONS</div>
-            {hasWorkstation && <div style={{ color: 'rgba(0,255,65,.5)' }}>WORKSTATION RENT: ƒ{wsRentCost}/rest</div>}
-            {(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht && ht.rent > 0 ? <div style={{ color: 'rgba(0,255,65,.4)' }}>HOUSING RENT: ƒ{ht.rent.toLocaleString()}/{ht.rentPeriod === 'week' ? 'week' : 'night'}</div> : null; })()}
+            {hasWorkstation && <div style={{ color: 'rgba(56,189,248,.5)' }}>WORKSTATION RENT: ƒ{wsRentCost}/rest</div>}
+            {(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht && ht.rent > 0 ? <div style={{ color: 'rgba(56,189,248,.4)' }}>HOUSING RENT: ƒ{ht.rent.toLocaleString()}/{ht.rentPeriod === 'week' ? 'week' : 'night'}</div> : null; })()}
             {loanDue > 0 && (
               <>
                 <div style={{ color: loanOverdue ? '#ff4444' : '#ffaa00' }}>LOAN: ƒ{loanPrincipal.toLocaleString()} + ƒ{loanInterest.toLocaleString()} INT{loanOverdue ? ' [OVERDUE]' : ''}</div>
@@ -15368,8 +15368,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             )}
             {realEstateCount > 0 && <>
               <div style={{ color: '#cc44ff', fontSize: '.42rem', letterSpacing: '.12em', marginTop: '.15rem' }}>REAL ESTATE PORTFOLIO</div>
-              {(() => { const counts: Record<string, number> = {}; for (const r of g.realEstate) counts[r] = (counts[r] ?? 0) + 1; return Object.entries(counts).map(([id, c]) => { const inc = REAL_ESTATE_INCOME[id] ?? 0; const name = VEND_CATALOG.find(v => v.id === 'realestate')?.items.find(i => i.id === id)?.name ?? id.toUpperCase(); return <div key={id} style={{ color: '#33ffaa', fontSize: '.42rem' }}>{name}{c > 1 ? ` x${c}` : ''}: +ƒ{(inc * c).toLocaleString()}/cycle</div>; }); })()}
-              <div style={{ color: '#33ffaa', fontSize: '.42rem', borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.1rem', paddingTop: '.1rem' }}>TOTAL: +ƒ{(() => { let t = 0; for (const r of g.realEstate) t += REAL_ESTATE_INCOME[r] ?? 0; if (g.ownedItems.has('neon_sign')) t = Math.floor(t * 1.1); return t.toLocaleString(); })()}/cycle{g.ownedItems.has('neon_sign') ? ' (+10% NEON)' : ''}</div>
+              {(() => { const counts: Record<string, number> = {}; for (const r of g.realEstate) counts[r] = (counts[r] ?? 0) + 1; return Object.entries(counts).map(([id, c]) => { const inc = REAL_ESTATE_INCOME[id] ?? 0; const name = VEND_CATALOG.find(v => v.id === 'realestate')?.items.find(i => i.id === id)?.name ?? id.toUpperCase(); return <div key={id} style={{ color: '#67e8f9', fontSize: '.42rem' }}>{name}{c > 1 ? ` x${c}` : ''}: +ƒ{(inc * c).toLocaleString()}/cycle</div>; }); })()}
+              <div style={{ color: '#67e8f9', fontSize: '.42rem', borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.1rem', paddingTop: '.1rem' }}>TOTAL: +ƒ{(() => { let t = 0; for (const r of g.realEstate) t += REAL_ESTATE_INCOME[r] ?? 0; if (g.ownedItems.has('neon_sign')) t = Math.floor(t * 1.1); return t.toLocaleString(); })()}/cycle{g.ownedItems.has('neon_sign') ? ' (+10% NEON)' : ''}</div>
             </>}
             {g.officeTerminalRenting && <div style={{ color: '#ff8844' }}>TERMINAL RENTAL: −ƒ{PUBLIC_OFFICE_TERMINAL_RATE}/min ({g.officeTerminalRenting.label})</div>}
           </div>
@@ -15386,15 +15386,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── QUICK JOB PANEL ──────────────────────────────────────────────── */}
       {jobPanel && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}>
-          <div style={{ width: 360, border: '1px solid rgba(0,255,65,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "'Share Tech Mono',monospace" }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#00ff41', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', marginBottom: '1rem' }}>
-              Pay: <strong style={{ color: '#ffdd44' }}>${jobPanel.pay}</strong> · Duration: <strong style={{ color: '#00ff41' }}>{jobPanel.seconds}s</strong>
+          <div style={{ width: 360, border: '1px solid rgba(56,189,248,.4)', background: 'rgba(0,8,2,.97)', padding: '1.6rem', fontFamily: "'Share Tech Mono',monospace" }}>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em', marginBottom: '.3rem' }}>QUICK JOB AVAILABLE</div>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#38bdf8', letterSpacing: '.15em', marginBottom: '.4rem' }}>{jobPanel.label}</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginBottom: '1rem' }}>
+              Pay: <strong style={{ color: '#ffdd44' }}>${jobPanel.pay}</strong> · Duration: <strong style={{ color: '#38bdf8' }}>{jobPanel.seconds}s</strong>
             </div>
             {/* Progress bar */}
-            <div style={{ height: 6, background: 'rgba(0,255,65,.1)', marginBottom: '1rem', position: 'relative', border: '1px solid rgba(0,255,65,.2)' }}>
-              <div style={{ height: '100%', background: '#00ff41', width: `${(jobPanel.progress / jobPanel.seconds) * 100}%`, transition: 'width 0.25s' }} />
+            <div style={{ height: 6, background: 'rgba(56,189,248,.1)', marginBottom: '1rem', position: 'relative', border: '1px solid rgba(56,189,248,.2)' }}>
+              <div style={{ height: '100%', background: '#38bdf8', width: `${(jobPanel.progress / jobPanel.seconds) * 100}%`, transition: 'width 0.25s' }} />
             </div>
             {jobPanel.progress < jobPanel.seconds ? (
               <div style={{ display: 'flex', gap: '.75rem' }}>
@@ -15415,11 +15415,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
                     }
                   }, 250);
-                }} style={{ flex: 1, padding: '.6rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.1em' }}>
+                }} style={{ flex: 1, padding: '.6rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.1em' }}>
                   START JOB
                 </button>
                 <button onClick={() => { if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; } setJobPanel(null); }}
-                  style={{ padding: '.6rem 1rem', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem' }}>
+                  style={{ padding: '.6rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '1.2rem' }}>
                   CANCEL
                 </button>
               </div>
@@ -15512,30 +15512,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowVend(false); }}>
-            <div style={{ width:760, maxHeight:'90vh', display:'flex', flexDirection:'column', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+            <div style={{ width:760, maxHeight:'90vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
               {/* Header */}
-              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(56,189,248,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
-                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#00ff41', letterSpacing:'.18em' }}>VENDING MACHINE</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>PABLO CORP AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
+                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#38bdf8', letterSpacing:'.18em' }}>VENDING MACHINE</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em' }}>PABLO CORP AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
-                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>FIAT BALANCE</div>
-                  <button onClick={() => setShowVend(false)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC</button>
+                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#38bdf8' }}>ƒ{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.4rem', color:'rgba(56,189,248,.3)' }}>FIAT BALANCE</div>
+                  <button onClick={() => setShowVend(false)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
               {/* Category tabs */}
-              <div style={{ display:'flex', borderBottom:'1px solid rgba(0,255,65,.12)', flexShrink:0, overflowX:'auto' }}>
+              <div style={{ display:'flex', borderBottom:'1px solid rgba(56,189,248,.12)', flexShrink:0, overflowX:'auto' }}>
                 {VEND_CATALOG.map(c => (
                   <button key={c.id} onClick={() => setVendTab(c.id as typeof vendTab)}
-                    style={{ padding:'.45rem .9rem', background: vendTab === c.id ? 'rgba(0,255,65,.1)' : 'transparent', border:'none', borderRight:'1px solid rgba(0,255,65,.1)', color: vendTab === c.id ? c.col : 'rgba(0,255,65,.28)', cursor:'pointer', ...VT2, fontSize:'1rem', letterSpacing:'.1em', whiteSpace:'nowrap', flexShrink:0 }}>
+                    style={{ padding:'.45rem .9rem', background: vendTab === c.id ? 'rgba(56,189,248,.1)' : 'transparent', border:'none', borderRight:'1px solid rgba(56,189,248,.1)', color: vendTab === c.id ? c.col : 'rgba(56,189,248,.28)', cursor:'pointer', ...VT2, fontSize:'1rem', letterSpacing:'.1em', whiteSpace:'nowrap', flexShrink:0 }}>
                     {c.label}
                   </button>
                 ))}
               </div>
               {/* Items grid */}
-              <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem', scrollbarWidth:'thin', scrollbarColor:'rgba(0,255,65,.2) transparent' }}>
+              <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem', scrollbarWidth:'thin', scrollbarColor:'rgba(56,189,248,.2) transparent' }}>
                 {cat.id === 'pro' ? (
                   /* PRO upgrade special card */
                   <div style={{ border:`1px solid rgba(255,153,0,.35)`, padding:'1.2rem', background:'rgba(255,153,0,.04)' }}>
@@ -15566,23 +15566,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const isReEstate = cat.id === 'realestate';
                       const alreadyHas = !item.consumable && owned;
                       return (
-                        <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.25)' : 'rgba(0,255,65,.12)'}`, background: alreadyHas ? 'rgba(0,255,65,.04)' : 'transparent' }}>
+                        <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${alreadyHas ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.12)'}`, background: alreadyHas ? 'rgba(56,189,248,.04)' : 'transparent' }}>
                           <div>
                             <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.2rem' }}>
-                              <span style={{ ...VT2, fontSize:'1.05rem', color: alreadyHas ? '#00ff41' : cat.col, letterSpacing:'.08em' }}>{item.name}</span>
-                              {alreadyHas && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.25)', padding:'1px 5px' }}>OWNED</span>}
+                              <span style={{ ...VT2, fontSize:'1.05rem', color: alreadyHas ? '#38bdf8' : cat.col, letterSpacing:'.08em' }}>{item.name}</span>
+                              {alreadyHas && <span style={{ fontSize:'.38rem', color:'rgba(56,189,248,.5)', border:'1px solid rgba(56,189,248,.25)', padding:'1px 5px' }}>OWNED</span>}
                               {isReEstate && <span style={{ fontSize:'.38rem', color:'rgba(204,68,255,.6)', border:'1px solid rgba(204,68,255,.2)', padding:'1px 5px' }}>PASSIVE INCOME</span>}
                               {isGoldOnly && <span style={{ fontSize:'.38rem', color:'rgba(255,215,0,.7)', border:'1px solid rgba(255,215,0,.25)', padding:'1px 5px' }}>GOLD ONLY</span>}
-                              {item.consumable && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.4)', border:'1px solid rgba(0,255,65,.15)', padding:'1px 5px' }}>CONSUMABLE</span>}
+                              {item.consumable && <span style={{ fontSize:'.38rem', color:'rgba(56,189,248,.4)', border:'1px solid rgba(56,189,248,.15)', padding:'1px 5px' }}>CONSUMABLE</span>}
                             </div>
-                            <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
+                            <div style={{ fontSize:'.46rem', color:'rgba(56,189,248,.4)', lineHeight:1.6 }}>{item.desc}</div>
                           </div>
                           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
-                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? (isGoldOnly ? '#ffd700' : '#00ff41') : 'rgba(255,80,80,.6)' }}>{isGoldOnly ? `${goldReq}oz GOLD` : `ƒ${item.price.toLocaleString()}`}</div>
+                            <div style={{ ...VT2, fontSize:'1rem', color: canAfford ? (isGoldOnly ? '#ffd700' : '#38bdf8') : 'rgba(255,80,80,.6)' }}>{isGoldOnly ? `${goldReq}oz GOLD` : `ƒ${item.price.toLocaleString()}`}</div>
                             <button
                               onClick={() => doVendBuy(item)}
                               disabled={alreadyHas}
-                              style={{ padding:'.25rem .7rem', background: alreadyHas ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${alreadyHas ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: alreadyHas ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: alreadyHas ? 'not-allowed' : 'pointer', ...VT2, fontSize:'.95rem', letterSpacing:'.08em', ...S2 }}>
+                              style={{ padding:'.25rem .7rem', background: alreadyHas ? 'transparent' : canAfford ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${alreadyHas ? 'rgba(56,189,248,.15)' : canAfford ? 'rgba(56,189,248,.4)' : 'rgba(255,80,80,.3)'}`, color: alreadyHas ? 'rgba(56,189,248,.25)' : canAfford ? '#38bdf8' : 'rgba(255,80,80,.5)', cursor: alreadyHas ? 'not-allowed' : 'pointer', ...VT2, fontSize:'.95rem', letterSpacing:'.08em', ...S2 }}>
                               {alreadyHas ? 'OWNED' : canAfford ? 'BUY' : isGoldOnly ? 'NEED GOLD' : 'EARN FIAT'}
                             </button>
                           </div>
@@ -15594,12 +15594,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               {/* Owned items strip */}
               {ownedItems.size > 0 && (
-                <div style={{ padding:'.5rem 1rem', borderTop:'1px solid rgba(0,255,65,.1)', flexShrink:0 }}>
-                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.25)', letterSpacing:'.1em', marginBottom:'.3rem' }}>INVENTORY</div>
+                <div style={{ padding:'.5rem 1rem', borderTop:'1px solid rgba(56,189,248,.1)', flexShrink:0 }}>
+                  <div style={{ fontSize:'.4rem', color:'rgba(56,189,248,.25)', letterSpacing:'.1em', marginBottom:'.3rem' }}>INVENTORY</div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'.3rem' }}>
                     {[...ownedItems].map(id => {
                       const found = VEND_CATALOG.flatMap(c => c.items).find(i => i.id === id);
-                      return found ? <span key={id} style={{ fontSize:'.42rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.18)', padding:'2px 7px' }}>{found.name}</span> : null;
+                      return found ? <span key={id} style={{ fontSize:'.42rem', color:'rgba(56,189,248,.5)', border:'1px solid rgba(56,189,248,.18)', padding:'2px 7px' }}>{found.name}</span> : null;
                     })}
                   </div>
                 </div>
@@ -15646,29 +15646,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowTrade(null); }}>
-            <div style={{ width:720, maxHeight:'88vh', overflow:'auto', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace" }}>
+            <div style={{ width:720, maxHeight:'88vh', overflow:'auto', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace" }}>
               {/* Header */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'.8rem' }}>
                 <div>
-                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.6rem', color:'#00ff41', letterSpacing:'.18em' }}>{loc}</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.35)', letterSpacing:'.12em', marginTop:'.15rem' }}>
+                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.6rem', color:'#38bdf8', letterSpacing:'.18em' }}>{loc}</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.35)', letterSpacing:'.12em', marginTop:'.15rem' }}>
                     COMMODITY EXCHANGE · PRICES FLUCTUATE · {isCity ? 'BUY CITY → SELL WASTELAND' : 'BUY WASTELAND → SELL CITY'}
                   </div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.1rem', color:'#00ff41' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', marginTop:'.1rem' }}>ƒ{salary.toLocaleString()} FIAT</div>
-                  <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.95rem' }}>ESC</button>
+                  <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.1rem', color:'#38bdf8' }}>CARGO {totalCargo}/{MAX_CARGO}</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', marginTop:'.1rem' }}>ƒ{salary.toLocaleString()} FIAT</div>
+                  <button onClick={() => setShowTrade(null)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', fontFamily:"'VT323',monospace", fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
               {/* Best routes banner */}
               {bestRoutes.length > 0 && (
-                <div style={{ border:'1px solid rgba(0,255,65,.12)', padding:'.5rem .7rem', marginBottom:'.8rem', background:'rgba(0,255,65,.03)' }}>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.14em', marginBottom:'.3rem' }}>ROUTE ANALYSIS — TOP TRADES FROM HERE</div>
+                <div style={{ border:'1px solid rgba(56,189,248,.12)', padding:'.5rem .7rem', marginBottom:'.8rem', background:'rgba(56,189,248,.03)' }}>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', letterSpacing:'.14em', marginBottom:'.3rem' }}>ROUTE ANALYSIS — TOP TRADES FROM HERE</div>
                   <div style={{ display:'flex', gap:'1.2rem', flexWrap:'wrap' }}>
                     {bestRoutes.map(r => (
-                      <div key={r.id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)' }}>
-                        {r.name} → <span style={{ color:'#00ff41' }}>+ƒ{(isCity ? r.cityRoute : r.wasteRoute).toLocaleString()}/unit</span>
+                      <div key={r.id} style={{ fontSize:'.48rem', color:'rgba(56,189,248,.55)' }}>
+                        {r.name} → <span style={{ color:'#38bdf8' }}>+ƒ{(isCity ? r.cityRoute : r.wasteRoute).toLocaleString()}/unit</span>
                       </div>
                     ))}
                   </div>
@@ -15676,7 +15676,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               {/* Commodity rows */}
               <div style={{ display:'flex', flexDirection:'column', gap:'.45rem' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', fontSize:'.4rem', color:'rgba(0,255,65,.25)', letterSpacing:'.1em', paddingBottom:'.3rem', borderBottom:'1px solid rgba(0,255,65,.1)' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', fontSize:'.4rem', color:'rgba(56,189,248,.25)', letterSpacing:'.1em', paddingBottom:'.3rem', borderBottom:'1px solid rgba(56,189,248,.1)' }}>
                   <div>COMMODITY</div><div style={{ textAlign:'right' }}>BUY</div><div style={{ textAlign:'right' }}>SELL</div><div style={{ textAlign:'right' }}>BEST SELL</div><div style={{ textAlign:'center' }}>HOLD</div>
                 </div>
                 {COMMODITIES.map(c => {
@@ -15688,28 +15688,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const canSell = held > 0;
                   const profit = remSell - buyPrice;
                   return (
-                    <div key={c.id} style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', alignItems:'center', padding:'.4rem .3rem', border:held > 0 ? '1px solid rgba(0,255,65,.22)' : '1px solid transparent', background:held > 0 ? 'rgba(0,255,65,.03)' : 'transparent' }}>
+                    <div key={c.id} style={{ display:'grid', gridTemplateColumns:'1fr 100px 100px 100px 50px', gap:'.3rem', alignItems:'center', padding:'.4rem .3rem', border:held > 0 ? '1px solid rgba(56,189,248,.22)' : '1px solid transparent', background:held > 0 ? 'rgba(56,189,248,.03)' : 'transparent' }}>
                       <div>
                         <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
-                          <span style={{ fontFamily:"'VT323',monospace", fontSize:'.95rem', color: c.illegal ? 'rgba(255,180,0,.8)' : '#00ff41', letterSpacing:'.07em' }}>{c.name}</span>
+                          <span style={{ fontFamily:"'VT323',monospace", fontSize:'.95rem', color: c.illegal ? 'rgba(255,180,0,.8)' : '#38bdf8', letterSpacing:'.07em' }}>{c.name}</span>
                           {c.illegal && <span style={{ fontSize:'.35rem', padding:'1px 4px', border:'1px solid rgba(255,160,0,.4)', color:'rgba(255,160,0,.6)', letterSpacing:'.08em' }}>CONTRABAND</span>}
                         </div>
-                        <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.28)', marginTop:'.05rem', lineHeight:1.5 }}>{c.desc}</div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(56,189,248,.28)', marginTop:'.05rem', lineHeight:1.5 }}>{c.desc}</div>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(0,255,65,.08)' : 'transparent', border: canBuy ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canBuy ? '#00ff41' : 'rgba(0,255,65,.2)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                        <button onClick={() => doBuy(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canBuy ? 'rgba(56,189,248,.08)' : 'transparent', border: canBuy ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canBuy ? '#38bdf8' : 'rgba(56,189,248,.2)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canBuy ? 'pointer' : 'default', letterSpacing:'.05em' }}>
                           ƒ{buyPrice.toLocaleString()}
                         </button>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(0,255,65,.08)' : 'transparent', border: canSell ? '1px solid rgba(0,255,65,.4)' : '1px solid rgba(0,255,65,.1)', color: canSell ? '#00ff41' : 'rgba(0,255,65,.18)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
+                        <button onClick={() => doSell(c.id)} style={{ width:'100%', padding:'.22rem .3rem', background: canSell ? 'rgba(56,189,248,.08)' : 'transparent', border: canSell ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.1)', color: canSell ? '#38bdf8' : 'rgba(56,189,248,.18)', fontFamily:"'VT323',monospace", fontSize:'.82rem', cursor: canSell ? 'pointer' : 'default', letterSpacing:'.05em' }}>
                           {canSell ? `+ƒ${sellPrice.toLocaleString()}` : '——'}
                         </button>
                       </div>
-                      <div style={{ textAlign:'right', fontSize:'.48rem', color: profit > 0 ? 'rgba(0,255,65,.55)' : 'rgba(255,80,80,.45)' }}>
+                      <div style={{ textAlign:'right', fontSize:'.48rem', color: profit > 0 ? 'rgba(56,189,248,.55)' : 'rgba(255,80,80,.45)' }}>
                         {profit > 0 ? `+ƒ${profit.toLocaleString()}` : `–ƒ${Math.abs(profit).toLocaleString()}`}
                       </div>
-                      <div style={{ textAlign:'center', fontFamily:"'VT323',monospace", fontSize:'1.1rem', color: held > 0 ? '#00ff41' : 'rgba(0,255,65,.2)' }}>
+                      <div style={{ textAlign:'center', fontFamily:"'VT323',monospace", fontSize:'1.1rem', color: held > 0 ? '#38bdf8' : 'rgba(56,189,248,.2)' }}>
                         {held > 0 ? held : '·'}
                       </div>
                     </div>
@@ -15718,15 +15718,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               {/* Cargo manifest */}
               {totalCargo > 0 && (
-                <div style={{ marginTop:'.8rem', borderTop:'1px solid rgba(0,255,65,.1)', paddingTop:'.6rem' }}>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.25)', letterSpacing:'.12em', marginBottom:'.35rem' }}>CARGO MANIFEST</div>
+                <div style={{ marginTop:'.8rem', borderTop:'1px solid rgba(56,189,248,.1)', paddingTop:'.6rem' }}>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.25)', letterSpacing:'.12em', marginBottom:'.35rem' }}>CARGO MANIFEST</div>
                   <div style={{ display:'flex', gap:'.8rem', flexWrap:'wrap' }}>
                     {Object.entries(gs.current.cargo).filter(([,q]) => q > 0).map(([id, qty]) => {
                       const c = COMMODITIES.find(x => x.id === id)!;
                       if (!c) return null;
                       const sellHere = isCity ? cp[id].citySell : cp[id].wasteSell;
                       return (
-                        <div key={id} style={{ fontSize:'.48rem', color:'rgba(0,255,65,.55)', border:'1px solid rgba(0,255,65,.18)', padding:'.22rem .5rem' }}>
+                        <div key={id} style={{ fontSize:'.48rem', color:'rgba(56,189,248,.55)', border:'1px solid rgba(56,189,248,.18)', padding:'.22rem .5rem' }}>
                           {qty}× {c.name} → sell here for ƒ{sellHere.toLocaleString()}/unit
                         </div>
                       );
@@ -15734,7 +15734,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                 </div>
               )}
-              <div style={{ marginTop:'.7rem', fontSize:'.38rem', color:'rgba(0,255,65,.15)', letterSpacing:'.08em' }}>
+              <div style={{ marginTop:'.7rem', fontSize:'.38rem', color:'rgba(56,189,248,.15)', letterSpacing:'.08em' }}>
                 BUY = you pay · SELL = you receive · BEST SELL = value at the other exchange · Max cargo {MAX_CARGO} units · ESC to close
               </div>
             </div>
@@ -15751,19 +15751,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 360 }}
           onClick={() => { setShowMap(false); setMapZoom(1); }}>
-          <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
+          <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.2em' }}>{CITY_NAME} MAP</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>{CITY_NAME} MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-                <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>+</button>
-                <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>−</button>
-                <span style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)' }}>{Math.round(mapZoom * 100)}%</span>
-                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SERVER: {CITY_NAME} · PST</div>
-                <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
+                <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>+</button>
+                <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>−</button>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)' }}>{Math.round(mapZoom * 100)}%</span>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SERVER: {CITY_NAME} · PST</div>
+                <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
-            <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(0,255,65,.1)', background: '#00020a', cursor: 'crosshair' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy2 * 2}`} preserveAspectRatio="xMidYMid meet"
+            <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(56,189,248,.1)', background: '#00020a', cursor: 'crosshair' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy2 * 2}`} preserveAspectRatio="xMidYMid meet"
               onWheel={(e) => { e.preventDefault(); setMapZoom(z => e.deltaY < 0 ? Math.min(4, z * 1.2) : Math.max(0.25, z / 1.2)); }}
               onClick={(evt) => {
                 const svg = evt.currentTarget;
@@ -15783,11 +15783,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <rect x={W - BORDER} y={0} width={BORDER} height={H} fill="rgba(0,30,80,.5)" />
               <rect x={0} y={0} width={W} height={BORDER} fill="rgba(80,60,30,.5)" />
               <rect x={0} y={H - BORDER} width={W} height={BORDER} fill="rgba(80,60,30,.5)" />
-              <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
-              <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(0,255,65,.2)" strokeWidth={2} strokeDasharray="10 5" />
+              <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
+              <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
-              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
-              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(0,255,65,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
+              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
+              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
               <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
               {CITY_ZONES.map(z => (
                 <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} stroke="none" />
@@ -15797,15 +15797,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const isTower = scale === 'tower';
                 const isLarge = scale === 'large';
                 const zone = CITY_ZONES.find(z => b.x >= z.x && b.x < z.x + z.w && b.y >= z.y && b.y < z.y + z.h);
-                const zoneFill = zone?.type === 'residential' ? 'rgba(0,180,80,.18)' : zone?.type === 'industrial' ? 'rgba(180,120,0,.18)' : zone?.type === 'transit' ? 'rgba(0,160,200,.18)' : b.bright ? 'rgba(0,255,65,.28)' : 'rgba(0,180,55,.14)';
-                const zoneStroke = isTower ? 'rgba(160,80,255,.9)' : isLarge ? 'rgba(0,200,255,.55)' : b.bright ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.22)';
+                const zoneFill = zone?.type === 'residential' ? 'rgba(0,180,80,.18)' : zone?.type === 'industrial' ? 'rgba(180,120,0,.18)' : zone?.type === 'transit' ? 'rgba(0,160,200,.18)' : b.bright ? 'rgba(56,189,248,.28)' : 'rgba(0,180,55,.14)';
+                const zoneStroke = isTower ? 'rgba(160,80,255,.9)' : isLarge ? 'rgba(0,200,255,.55)' : b.bright ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.22)';
                 const strokeW = isTower ? 2 : isLarge ? 1.5 : 1;
                 return (
                   <g key={b.id}>
                     {isTower && <rect x={b.x - 2} y={b.y - 2} width={b.w + 4} height={b.h + 4} fill="none" stroke="rgba(120,0,200,.25)" strokeWidth={4} />}
                     <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={zoneFill} stroke={zoneStroke} strokeWidth={strokeW} />
                     {isTower && <rect x={b.x + 2} y={b.y + 2} width={b.w - 4} height={b.h - 4} fill="none" stroke="rgba(180,100,255,.2)" strokeWidth={1} strokeDasharray="4 3" />}
-                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(0,255,65,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
+                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(56,189,248,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
                   </g>
                 );
               })}
@@ -15815,9 +15815,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <text x={bb.x} y={bb.y + 3} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={5} fontFamily="Share Tech Mono">BB</text>
                 </g>
               ))}
-              <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#00ff41" strokeWidth={2} />
-              <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#00ff41" />
-              <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#00ff41" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
+              <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#38bdf8" strokeWidth={2} />
+              <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#38bdf8" />
+              <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#38bdf8" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
               {gs.current.threats.map((t, ti) => (
                 <circle key={ti} cx={t.x} cy={t.y} r={5} fill={THREAT_COL[t.type] ?? '#ff4444'} opacity={0.6} />
               ))}
@@ -15833,14 +15833,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </svg>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-              {[['#00ff41','CITY BUILDING'],['rgba(200,150,255,.9)','TOWER'],['rgba(0,200,255,.8)','LARGE BLDG'],['rgba(0,180,80,.4)','RESIDENTIAL'],['rgba(180,120,0,.4)','INDUSTRIAL'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO CORP GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
+              {[['#38bdf8','CITY BUILDING'],['rgba(200,150,255,.9)','TOWER'],['rgba(0,200,255,.8)','LARGE BLDG'],['rgba(0,180,80,.4)','RESIDENTIAL'],['rgba(180,120,0,.4)','INDUSTRIAL'],['rgba(255,130,50,.6)','LOCKED'],['#00ccff','BILLBOARD'],['#ff4444','THREAT'],['#ffffaa','SPY'],['#5599ff','PABLO CORP GUARD'],['#ffcc44','MISSION']].map(([c,l]) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <div style={{ width: 8, height: 8, background: c, borderRadius: 1 }} />
-                  <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em' }}>{l}</span>
+                  <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.07em' }}>{l}</span>
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
+            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.07em', flexShrink: 0 }}>
               PLAYER: ({Math.round(gs.current.px)}, {Math.round(gs.current.py)}) · {zone} · LVL {level} · ƒ{salary.toLocaleString()} FIAT · Click map to travel · [M] or [ESC] to close
             </div>
           </div>
@@ -15859,17 +15859,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.82)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:370 }}
             onClick={() => setDecorCatalogOpen(false)}>
-            <div style={{ width:640, maxHeight:'85vh', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,4,8,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace", display:'flex', flexDirection:'column', overflow:'hidden' }}
+            <div style={{ width:640, maxHeight:'85vh', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,4,8,.98)', padding:'1.2rem', fontFamily:"'Share Tech Mono',monospace", display:'flex', flexDirection:'column', overflow:'hidden' }}
               onClick={e => e.stopPropagation()}>
-              <div style={{ color:'rgb(0,255,65)', fontSize:'.85rem', letterSpacing:'.15em', borderBottom:'1px solid rgba(0,255,65,.2)', paddingBottom:'.5rem', marginBottom:'.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ color:'rgb(56,189,248)', fontSize:'.85rem', letterSpacing:'.15em', borderBottom:'1px solid rgba(56,189,248,.2)', paddingBottom:'.5rem', marginBottom:'.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 FURNITURE CATALOG
-                <span style={{ fontSize:'.6rem', color:'rgba(0,255,65,.5)', letterSpacing:'.08em' }}>{ownedFurnSet.size} OWNED — Purchase from Furniture Vending to unlock</span>
+                <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.5)', letterSpacing:'.08em' }}>{ownedFurnSet.size} OWNED — Purchase from Furniture Vending to unlock</span>
               </div>
               {decorSelectedItem && (
-                <div style={{ background: selectedOwned ? 'rgba(0,255,65,.08)' : 'rgba(255,100,0,.06)', border:`1px solid ${selectedOwned?'rgba(0,255,65,.3)':'rgba(255,150,0,.4)'}`, padding:'.5rem', marginBottom:'.6rem', fontSize:'.7rem', color:'rgba(0,255,65,.9)' }}>
+                <div style={{ background: selectedOwned ? 'rgba(56,189,248,.08)' : 'rgba(255,100,0,.06)', border:`1px solid ${selectedOwned?'rgba(56,189,248,.3)':'rgba(255,150,0,.4)'}`, padding:'.5rem', marginBottom:'.6rem', fontSize:'.7rem', color:'rgba(56,189,248,.9)' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                    <b style={{ color:'rgb(0,255,65)' }}>SELECTED: {decorSelectedItem.name}</b>
-                    <span style={{ fontSize:'.6rem', color: selectedOwned ? 'rgb(0,255,65)' : 'rgb(255,140,0)', padding:'.1rem .4rem', border:`1px solid ${selectedOwned?'rgba(0,255,65,.4)':'rgba(255,140,0,.4)'}`, background: selectedOwned ? 'rgba(0,255,65,.1)' : 'rgba(255,140,0,.1)' }}>
+                    <b style={{ color:'rgb(56,189,248)' }}>SELECTED: {decorSelectedItem.name}</b>
+                    <span style={{ fontSize:'.6rem', color: selectedOwned ? 'rgb(56,189,248)' : 'rgb(255,140,0)', padding:'.1rem .4rem', border:`1px solid ${selectedOwned?'rgba(56,189,248,.4)':'rgba(255,140,0,.4)'}`, background: selectedOwned ? 'rgba(56,189,248,.1)' : 'rgba(255,140,0,.1)' }}>
                       {selectedOwned ? '✓ OWNED' : `ƒ${decorSelectedItem.price.toLocaleString()} — BUY FROM SHOP`}
                     </span>
                   </div>
@@ -15878,7 +15878,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ marginTop:'.4rem', display:'flex', gap:'.5rem', flexWrap:'wrap' }}>
                     {decorSelectedItem.variants.map(v => (
                       <button key={v.id} onClick={() => setDecorSelectedVariant(v.id)}
-                        style={{ padding:'.2rem .5rem', border:`1px solid ${decorSelectedVariant===v.id?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:decorSelectedVariant===v.id?'rgba(0,255,65,.2)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'.3rem' }}>
+                        style={{ padding:'.2rem .5rem', border:`1px solid ${decorSelectedVariant===v.id?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorSelectedVariant===v.id?'rgba(56,189,248,.2)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'.3rem' }}>
                         <span style={{ width:10, height:10, display:'inline-block', background:v.color, border:'1px solid rgba(255,255,255,.3)', flexShrink:0 }} />
                         {v.label}
                       </button>
@@ -15889,7 +15889,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                   {selectedOwned ? (
                     <button onClick={() => { setDecorCatalogOpen(false); setNarr(`> PLACE ${decorSelectedItem.name.toUpperCase()} — Click on interior floor to place. [R] rotate.`); }}
-                      style={{ marginTop:'.5rem', padding:'.3rem .8rem', background:'rgba(0,255,65,.2)', border:'1px solid rgba(0,255,65,.5)', color:'rgb(0,255,65)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.65rem', cursor:'pointer' }}>
+                      style={{ marginTop:'.5rem', padding:'.3rem .8rem', background:'rgba(56,189,248,.2)', border:'1px solid rgba(56,189,248,.5)', color:'rgb(56,189,248)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.65rem', cursor:'pointer' }}>
                       PLACE ITEM →
                     </button>
                   ) : (
@@ -15901,12 +15901,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               )}
               <div style={{ display:'flex', gap:'.3rem', flexWrap:'wrap', marginBottom:'.5rem' }}>
                 <button onClick={() => setDecorCategory(null)}
-                  style={{ padding:'.2rem .5rem', border:`1px solid ${!decorCategory?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:!decorCategory?'rgba(0,255,65,.15)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                  style={{ padding:'.2rem .5rem', border:`1px solid ${!decorCategory?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:!decorCategory?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
                   ALL
                 </button>
                 {categories.map(cat => (
                   <button key={cat} onClick={() => setDecorCategory(cat)}
-                    style={{ padding:'.2rem .5rem', border:`1px solid ${decorCategory===cat?'rgb(0,255,65)':'rgba(0,255,65,.25)'}`, background:decorCategory===cat?'rgba(0,255,65,.15)':'transparent', color:'rgba(0,255,65,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
+                    style={{ padding:'.2rem .5rem', border:`1px solid ${decorCategory===cat?'rgb(56,189,248)':'rgba(56,189,248,.25)'}`, background:decorCategory===cat?'rgba(56,189,248,.15)':'transparent', color:'rgba(56,189,248,.9)', fontFamily:"'Share Tech Mono',monospace", fontSize:'.6rem', cursor:'pointer' }}>
                     {catLabels[cat]}
                   </button>
                 ))}
@@ -15918,21 +15918,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const primaryVariant = fi.variants[0];
                   return (
                     <div key={fi.id} onClick={() => { setDecorSelectedItem(fi); setDecorSelectedVariant(fi.variants[0]?.id ?? ''); }}
-                      style={{ border:`1px solid ${isSelected?'rgb(0,255,65)':isOwned?'rgba(0,255,65,.3)':'rgba(0,255,65,.12)'}`, background:isSelected?'rgba(0,255,65,.1)':isOwned?'rgba(0,255,65,.05)':'rgba(0,255,65,.02)', padding:'.5rem', cursor:'pointer', transition:'border-color .15s', position:'relative' }}>
-                      {isOwned && <span style={{ position:'absolute', top:3, right:3, fontSize:'.45rem', color:'rgb(0,255,65)', background:'rgba(0,255,65,.15)', padding:'1px 3px' }}>OWNED</span>}
+                      style={{ border:`1px solid ${isSelected?'rgb(56,189,248)':isOwned?'rgba(56,189,248,.3)':'rgba(56,189,248,.12)'}`, background:isSelected?'rgba(56,189,248,.1)':isOwned?'rgba(56,189,248,.05)':'rgba(56,189,248,.02)', padding:'.5rem', cursor:'pointer', transition:'border-color .15s', position:'relative' }}>
+                      {isOwned && <span style={{ position:'absolute', top:3, right:3, fontSize:'.45rem', color:'rgb(56,189,248)', background:'rgba(56,189,248,.15)', padding:'1px 3px' }}>OWNED</span>}
                       <div style={{ display:'flex', alignItems:'center', gap:'.4rem', marginBottom:'.3rem' }}>
-                        <div style={{ width:20, height:20, background:primaryVariant?.color??'#333', border:`1px solid ${isOwned?'rgba(0,255,65,.4)':'rgba(255,255,255,.2)'}`, flexShrink:0 }} />
-                        <div style={{ color:isSelected?'rgb(0,255,65)':isOwned?'rgba(0,255,65,.9)':'rgba(0,255,65,.6)', fontSize:'.65rem', fontWeight:'bold', lineHeight:1.2 }}>{fi.name}</div>
+                        <div style={{ width:20, height:20, background:primaryVariant?.color??'#333', border:`1px solid ${isOwned?'rgba(56,189,248,.4)':'rgba(255,255,255,.2)'}`, flexShrink:0 }} />
+                        <div style={{ color:isSelected?'rgb(56,189,248)':isOwned?'rgba(56,189,248,.9)':'rgba(56,189,248,.6)', fontSize:'.65rem', fontWeight:'bold', lineHeight:1.2 }}>{fi.name}</div>
                       </div>
                       <div style={{ color:'rgba(0,200,255,.5)', fontSize:'.5rem', marginBottom:'.2rem' }}>{fi.desc}</div>
-                      <div style={{ color:isOwned?'rgba(0,255,65,.5)':'rgba(0,255,65,.3)', fontSize:'.5rem' }}>
+                      <div style={{ color:isOwned?'rgba(56,189,248,.5)':'rgba(56,189,248,.3)', fontSize:'.5rem' }}>
                         {fi.gridW}×{fi.gridH} · {isOwned ? 'READY TO PLACE' : `ƒ${fi.price.toLocaleString()}`}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div style={{ marginTop:'.7rem', borderTop:'1px solid rgba(0,255,65,.15)', paddingTop:'.5rem', color:'rgba(0,200,255,.5)', fontSize:'.6rem' }}>
+              <div style={{ marginTop:'.7rem', borderTop:'1px solid rgba(56,189,248,.15)', paddingTop:'.5rem', color:'rgba(0,200,255,.5)', fontSize:'.6rem' }}>
                 [O] or [Esc] close · Buy items from Furniture Vending · Select owned item → choose variant → PLACE ITEM
               </div>
             </div>
@@ -15993,15 +15993,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </button>
               )}
               {isOwner && !expired && (
-                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.5rem', background: 'rgba(0,10,5,.5)' }}>
-                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', marginBottom: '.4rem', letterSpacing: '.1em' }}>UPDATE YOUR AD</div>
+                <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.5rem', background: 'rgba(0,10,5,.5)' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginBottom: '.4rem', letterSpacing: '.1em' }}>UPDATE YOUR AD</div>
                   <input value={bbAdText} onChange={e => setBbAdText(e.target.value)} placeholder="Ad text (max 60 chars)"
                     maxLength={60}
-                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.3rem', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.3rem', boxSizing: 'border-box' }} />
                   <input value={bbAdUrl} onChange={e => setBbAdUrl(e.target.value)} placeholder="Image URL (optional)"
-                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.4rem', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', padding: '.3rem', background: 'rgba(0,10,5,.8)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginBottom: '.4rem', boxSizing: 'border-box' }} />
                   <button onClick={() => { if (bbInfo) updateBillboardContent(bbInfo.id); }}
-                    style={{ width: '100%', padding: '.4rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>
+                    style={{ width: '100%', padding: '.4rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>
                     UPDATE AD
                   </button>
                 </div>
@@ -16021,21 +16021,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onClick={() => setShowWeapons(v => !v)}
           style={{
             width: 80, height: 80, borderRadius: 8,
-            background: showWeapons ? 'rgba(0,255,65,.14)' : 'rgba(0,5,0,.92)',
-            border: `2px solid ${showWeapons ? 'rgba(0,255,65,.6)' : 'rgba(0,255,65,.28)'}`,
+            background: showWeapons ? 'rgba(56,189,248,.14)' : 'rgba(0,5,0,.92)',
+            border: `2px solid ${showWeapons ? 'rgba(56,189,248,.6)' : 'rgba(56,189,248,.28)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 0 14px rgba(0,255,65,.15)',
+            cursor: 'pointer', boxShadow: '0 0 14px rgba(56,189,248,.15)',
             transition: 'all .15s ease', gap: 2,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#00ff41' }}>⚔</span>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.02em' }}>{activeWeapon}</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === activeWeapon)?.color ?? '#38bdf8' }}>⚔</span>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{activeWeapon}</span>
           </div>
-          <div style={{ width: '70%', height: 1, background: 'rgba(0,255,65,.15)' }} />
+          <div style={{ width: '70%', height: 1, background: 'rgba(56,189,248,.15)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === secondaryWeapon)?.color ?? '#00ff41' }}>🔫</span>
-            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.7)', letterSpacing: '.02em' }}>{secondaryWeapon}</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: WEAPONS.find(w => w.id === secondaryWeapon)?.color ?? '#38bdf8' }}>🔫</span>
+            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.02em' }}>{secondaryWeapon}</span>
           </div>
         </div>
         {showWeapons && (() => {
@@ -16045,7 +16045,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const rangedWpns = available.filter(w => w.type === 'ranged');
           const renderSlot = (label: string, wpns: typeof WEAPONS, current: string, onSelect: (id: string) => void) => (
             <div>
-              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', padding: '3px 4px', borderBottom: '1px solid rgba(0,255,65,.12)', marginBottom: '2px' }}>{label}</div>
+              <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', padding: '3px 4px', borderBottom: '1px solid rgba(56,189,248,.12)', marginBottom: '2px' }}>{label}</div>
               {wpns.map(w => {
                 const isActive = current === w.id;
                 return (
@@ -16055,36 +16055,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     style={{
                       display: 'flex', alignItems: 'center', gap: '.4rem',
                       padding: '.3rem .45rem', cursor: 'pointer',
-                      background: isActive ? 'rgba(0,255,65,.14)' : 'transparent',
-                      border: `1px solid ${isActive ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.08)'}`,
+                      background: isActive ? 'rgba(56,189,248,.14)' : 'transparent',
+                      border: `1px solid ${isActive ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.08)'}`,
                       transition: 'all .1s ease',
                     }}
                   >
                     <span style={{ fontSize: '1.1rem', width: 22, textAlign: 'center' }}>{iconMap[w.icon] ?? '?'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isActive ? w.color : 'rgba(0,255,65,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: isActive ? w.color : 'rgba(56,189,248,.7)', letterSpacing: '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {isActive ? '▸ ' : ''}{w.label}
                       </div>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', marginTop: 1 }}>+{w.atkBonus} ATK</div>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: 1 }}>+{w.atkBonus} ATK</div>
                     </div>
                   </div>
                 );
               })}
-              {wpns.length === 0 && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', padding: '.3rem .45rem' }}>No {label.toLowerCase()} weapons</div>}
+              {wpns.length === 0 && <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.2)', padding: '.3rem .45rem' }}>No {label.toLowerCase()} weapons</div>}
             </div>
           );
           return (
             <div style={{
               position: 'absolute', bottom: 88, right: 0, width: 210,
-              background: 'rgba(0,5,0,.97)', border: '1px solid rgba(0,255,65,.4)',
-              boxShadow: '0 0 24px rgba(0,255,65,.12)', padding: '.35rem',
+              background: 'rgba(0,5,0,.97)', border: '1px solid rgba(56,189,248,.4)',
+              boxShadow: '0 0 24px rgba(56,189,248,.12)', padding: '.35rem',
               display: 'flex', flexDirection: 'column', gap: '3px',
             }}>
               {renderSlot('MELEE SLOT [SPACE]', meleeWpns, activeWeapon, (id) => {
                 setActiveWeapon(id); activeWeaponRef.current = id;
                 setNarr(`> MELEE EQUIPPED: ${WEAPONS.find(w => w.id === id)?.label}. ${WEAPONS.find(w => w.id === id)?.desc}`);
               })}
-              <div style={{ height: 1, background: 'rgba(0,255,65,.15)', margin: '4px 0' }} />
+              <div style={{ height: 1, background: 'rgba(56,189,248,.15)', margin: '4px 0' }} />
               {renderSlot('RANGED SLOT [F]', rangedWpns, secondaryWeapon, (id) => {
                 setSecondaryWeapon(id); secondaryWeaponRef.current = id;
                 setNarr(`> RANGED EQUIPPED: ${WEAPONS.find(w => w.id === id)?.label}. ${WEAPONS.find(w => w.id === id)?.desc}`);
@@ -16150,16 +16150,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowMerchant(null); frozenRef.current = false; } }}>
-            <div style={{ width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
-              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(0,255,65,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+            <div style={{ width:500, maxHeight:'85vh', display:'flex', flexDirection:'column', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace" }}>
+              <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(56,189,248,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
-                  <div style={{ ...VTM, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.14em' }}>{showMerchant.name} — MERCHANT</div>
-                  <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em' }}>{showMerchant.items.some(i => i.effect.startsWith('passport_')) ? 'DOCUMENTS · FORGERIES · FIAT ONLY' : 'WEAPONS · UPGRADES · FIAT ONLY'}</div>
+                  <div style={{ ...VTM, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.14em' }}>{showMerchant.name} — MERCHANT</div>
+                  <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em' }}>{showMerchant.items.some(i => i.effect.startsWith('passport_')) ? 'DOCUMENTS · FORGERIES · FIAT ONLY' : 'WEAPONS · UPGRADES · FIAT ONLY'}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ ...VTM, fontSize:'1.1rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
-                  <div style={{ fontSize:'.4rem', color:'rgba(0,255,65,.3)' }}>FIAT BALANCE</div>
-                  <button onClick={() => { setShowMerchant(null); frozenRef.current = false; }} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VTM, fontSize:'.95rem' }}>ESC</button>
+                  <div style={{ ...VTM, fontSize:'1.1rem', color:'#38bdf8' }}>ƒ{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.4rem', color:'rgba(56,189,248,.3)' }}>FIAT BALANCE</div>
+                  <button onClick={() => { setShowMerchant(null); frozenRef.current = false; }} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VTM, fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
               <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem' }}>
@@ -16168,20 +16168,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const owned = g.ownedItems.has(item.id);
                     const canAfford = g.salary >= item.price;
                     return (
-                      <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${owned ? 'rgba(0,255,65,.25)' : 'rgba(0,255,65,.12)'}`, background: owned ? 'rgba(0,255,65,.04)' : 'transparent' }}>
+                      <div key={item.id} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'.6rem', alignItems:'center', padding:'.6rem .7rem', border:`1px solid ${owned ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.12)'}`, background: owned ? 'rgba(56,189,248,.04)' : 'transparent' }}>
                         <div>
                           <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.2rem' }}>
-                            <span style={{ ...VTM, fontSize:'1.05rem', color: owned ? '#00ff41' : '#ff9900', letterSpacing:'.08em' }}>{item.name}</span>
-                            {owned && <span style={{ fontSize:'.38rem', color:'rgba(0,255,65,.5)', border:'1px solid rgba(0,255,65,.25)', padding:'1px 5px' }}>OWNED</span>}
+                            <span style={{ ...VTM, fontSize:'1.05rem', color: owned ? '#38bdf8' : '#ff9900', letterSpacing:'.08em' }}>{item.name}</span>
+                            {owned && <span style={{ fontSize:'.38rem', color:'rgba(56,189,248,.5)', border:'1px solid rgba(56,189,248,.25)', padding:'1px 5px' }}>OWNED</span>}
                           </div>
-                          <div style={{ fontSize:'.46rem', color:'rgba(0,255,65,.4)', lineHeight:1.6 }}>{item.desc}</div>
+                          <div style={{ fontSize:'.46rem', color:'rgba(56,189,248,.4)', lineHeight:1.6 }}>{item.desc}</div>
                         </div>
                         <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'.3rem', flexShrink:0 }}>
-                          <div style={{ ...VTM, fontSize:'1rem', color: canAfford ? '#00ff41' : 'rgba(255,80,80,.6)' }}>ƒ{item.price.toLocaleString()}</div>
+                          <div style={{ ...VTM, fontSize:'1rem', color: canAfford ? '#38bdf8' : 'rgba(255,80,80,.6)' }}>ƒ{item.price.toLocaleString()}</div>
                           <button
                             onClick={() => doMerchBuy(item)}
                             disabled={owned}
-                            style={{ padding:'.25rem .7rem', background: owned ? 'transparent' : canAfford ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${owned ? 'rgba(0,255,65,.15)' : canAfford ? 'rgba(0,255,65,.4)' : 'rgba(255,80,80,.3)'}`, color: owned ? 'rgba(0,255,65,.25)' : canAfford ? '#00ff41' : 'rgba(255,80,80,.5)', cursor: owned ? 'not-allowed' : 'pointer', ...VTM, fontSize:'.95rem', letterSpacing:'.08em' }}>
+                            style={{ padding:'.25rem .7rem', background: owned ? 'transparent' : canAfford ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${owned ? 'rgba(56,189,248,.15)' : canAfford ? 'rgba(56,189,248,.4)' : 'rgba(255,80,80,.3)'}`, color: owned ? 'rgba(56,189,248,.25)' : canAfford ? '#38bdf8' : 'rgba(255,80,80,.5)', cursor: owned ? 'not-allowed' : 'pointer', ...VTM, fontSize:'.95rem', letterSpacing:'.08em' }}>
                             {owned ? 'OWNED' : canAfford ? 'BUY' : 'NO FIAT'}
                           </button>
                         </div>
@@ -16206,8 +16206,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {lootPanel && (
         <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 400, pointerEvents: 'auto', minWidth: 220, maxWidth: 320 }} onClick={() => setLootPanel(null)}>
-          <div style={{ background: 'rgba(0,0,0,.92)', border: `1px solid ${lootPanel.money < 0 ? '#ff2222' : '#00ff41'}`, borderRadius: 4, padding: '12px 16px', fontFamily: "'VT323',monospace" }}>
-            <div style={{ fontSize: '.7rem', letterSpacing: '.15em', color: lootPanel.money < 0 ? '#ff4444' : '#00ff41', marginBottom: 8, textAlign: 'center' }}>
+          <div style={{ background: 'rgba(0,0,0,.92)', border: `1px solid ${lootPanel.money < 0 ? '#ff2222' : '#38bdf8'}`, borderRadius: 4, padding: '12px 16px', fontFamily: "'VT323',monospace" }}>
+            <div style={{ fontSize: '.7rem', letterSpacing: '.15em', color: lootPanel.money < 0 ? '#ff4444' : '#38bdf8', marginBottom: 8, textAlign: 'center' }}>
               {lootPanel.money < 0 ? '▼ LOOT LOST ▼' : '▲ LOOT ACQUIRED ▲'}
             </div>
             <div style={{ fontSize: '.55rem', color: '#889', textAlign: 'center', marginBottom: 6 }}>{lootPanel.source}</div>
@@ -16217,11 +16217,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
             )}
             {lootPanel.items.map((it, i) => (
-              <div key={i} style={{ fontSize: '.55rem', color: '#33ffaa', textAlign: 'center', marginTop: 2 }}>
+              <div key={i} style={{ fontSize: '.55rem', color: '#67e8f9', textAlign: 'center', marginTop: 2 }}>
                 + {it.name}{it.desc ? ` — ${it.desc}` : ''}
               </div>
             ))}
-            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', textAlign: 'center', marginTop: 8, letterSpacing: '.1em' }}>TAP TO DISMISS</div>
+            <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.3)', textAlign: 'center', marginTop: 8, letterSpacing: '.1em' }}>TAP TO DISMISS</div>
           </div>
         </div>
       )}
@@ -16232,17 +16232,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const VTB: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const STB: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const tabBtn = (active: boolean): React.CSSProperties => ({
-          padding: '.4rem .75rem', border: active ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)',
-          background: active ? 'rgba(0,255,65,.08)' : 'transparent',
-          color: active ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', ...VTB, fontSize: '.95rem', letterSpacing: '.08em',
+          padding: '.4rem .75rem', border: active ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.15)',
+          background: active ? 'rgba(56,189,248,.08)' : 'transparent',
+          color: active ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', ...VTB, fontSize: '.95rem', letterSpacing: '.08em',
         });
         const inp: React.CSSProperties = {
-          background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41',
-          padding: '.4rem .65rem', outline: 'none', ...STB, fontSize: '.85rem', caretColor: '#00ff41', boxSizing: 'border-box',
+          background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8',
+          padding: '.4rem .65rem', outline: 'none', ...STB, fontSize: '.85rem', caretColor: '#38bdf8', boxSizing: 'border-box',
         };
         const actBtn = (enabled: boolean): React.CSSProperties => ({
-          padding: '.45rem 1.2rem', border: enabled ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.1)',
-          background: 'rgba(0,255,65,.06)', color: enabled ? '#00ff41' : 'rgba(0,255,65,.2)',
+          padding: '.45rem 1.2rem', border: enabled ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.1)',
+          background: 'rgba(56,189,248,.06)', color: enabled ? '#38bdf8' : 'rgba(56,189,248,.2)',
           cursor: enabled ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em', whiteSpace: 'nowrap',
         });
         const doDeposit = () => {
@@ -16310,7 +16310,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const CAT_COLORS: Record<string, string> = {
           atm_fee: '#ff8844', loan_interest: '#ff6666', loan_origination: '#ffaa44',
           property_tax: '#ff4488', resale_fee: '#ff88cc', exchange_spread: '#88aaff',
-          deposit_tax: '#ffaa44', wire_tax: '#ffcc44', income: '#44ff88', general: 'rgba(0,255,65,.5)',
+          deposit_tax: '#ffaa44', wire_tax: '#ffcc44', income: '#44ff88', general: 'rgba(56,189,248,.5)',
         };
         const CAT_LABELS: Record<string, string> = {
           atm_fee: 'ATM', loan_interest: 'LOAN', loan_origination: 'ORIG',
@@ -16320,19 +16320,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div onClick={e => { if (e.target === e.currentTarget) { setShowBank(false); frozenRef.current = false; } }}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 310 }}>
-            <div style={{ width: '92%', maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(0,255,65,.4)', overflow: 'hidden' }}>
-              <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ width: '92%', maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: 'rgba(0,5,0,.99)', border: '1px solid rgba(56,189,248,.4)', overflow: 'hidden' }}>
+              <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <div style={{ ...VTB, fontSize: '1.9rem', color: '#00ff41', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em' }}>PAX PABLO CORP · {CITY_NAME} BRANCH 01</div>
+                  <div style={{ ...VTB, fontSize: '1.9rem', color: '#38bdf8', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em' }}>PAX PABLO CORP · {CITY_NAME} BRANCH 01</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
-                  <div style={{ ...VTB, fontSize: '1.05rem', color: '#00ff41', letterSpacing: '.1em' }}>{char.name}</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
+                  <div style={{ ...VTB, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.1em' }}>{char.name}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)' }}>{char.class.toUpperCase()} · {char.company}</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
                 {(['accounts','loans','wire','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
                     {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
@@ -16340,79 +16340,79 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ))}
                 <div style={{ flex: 1 }} />
                 <button onClick={() => { setShowBank(false); frozenRef.current = false; }}
-                  style={{ ...VTB, fontSize: '1rem', color: 'rgba(0,255,65,.35)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '.3rem .75rem', cursor: 'pointer' }}>ESC ×</button>
+                  style={{ ...VTB, fontSize: '1rem', color: 'rgba(56,189,248,.35)', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', padding: '.3rem .75rem', cursor: 'pointer' }}>ESC ×</button>
               </div>
               <div style={{ padding: '.75rem 1.1rem', overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
 
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#00ff41', sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
-                      { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#00ff41', sub: 'APY: 0.8% / CYCLE' },
+                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
+                      { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#38bdf8', sub: 'APY: 0.8% / CYCLE' },
 
                     ].map(({ label, val, color, sub }) => (
-                      <div key={label} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.55rem' }}>
-                        <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
+                      <div key={label} style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.55rem' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
                         <div style={{ ...VTB, fontSize: '1.6rem', color, letterSpacing: '.06em' }}>{val}</div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', marginTop: '.1rem' }}>{sub}</div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.1rem' }}>{sub}</div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankDepAmt} onChange={e => setBankDepAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doDeposit} style={actBtn(parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) <= salary)}>DEPOSIT ↓</button>
                       {parseInt(bankDepAmt) >= 5000 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>PABLO CORP TAX: ƒ{Math.floor((parseInt(bankDepAmt)||0)*.12).toLocaleString()} (12%)</span>}
-                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)' }}>No tax (under ƒ5k)</span>}
+                      {parseInt(bankDepAmt) > 0 && parseInt(bankDepAmt) < 5000 && <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)' }}>No tax (under ƒ5k)</span>}
                     </div>
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>WITHDRAW — SAVINGS → CHECKING</div>
                     <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                       <input value={bankWithAmt} onChange={e => setBankWithAmt(e.target.value.replace(/\D/g,''))} placeholder="AMOUNT..." style={{ ...inp, maxWidth: 180 }} />
                       <button onClick={doWithdraw} style={actBtn(parseInt(bankWithAmt) > 0 && parseInt(bankWithAmt) <= savings)}>WITHDRAW ↑</button>
                       {parseInt(bankWithAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>ATM FEE: ƒ{Math.ceil((parseInt(bankWithAmt)||0) * ATM_WITHDRAW_FEE_RATE).toLocaleString()} ({(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}%)</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.8 }}>
                     Savings earn 0.8% APY per cycle (~3 min). PABLO CORP takes 15% of all interest. Deposits ≥ ƒ5,000 subject to 12% Capital Deployment Tax. All withdrawals incur a {(ATM_WITHDRAW_FEE_RATE*100).toFixed(0)}% ATM processing fee. BANCO OMBRA is not liable for seizures during martial law.
                   </div>
                 </>)}
 
                 {bankTab === 'loans' && (<>
-                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — BANCO OMBRA</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.8 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.65rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>CREDIT SERVICES — BANCO OMBRA</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.8 }}>
                       Tiered lending: 15-28% interest (flat or compounding). Repay before due date or face 5% salary penalty/cycle. Larger loans carry origination fees up to 6%.
                     </div>
                   </div>
                   {!bankLoan ? (
                     <>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: '.4rem' }}>
                         {LOAN_TIERS.map(tier => {
                           const interest = calcLoanInterest(tier);
                           const fee = calcOriginationFee(tier);
                           const durationMin = Math.round(tier.durationFrames / 60 / 60);
                           return (
-                            <button key={tier.amount} onClick={() => doLoan(tier)} style={{ padding: '.6rem .35rem', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', cursor: 'pointer', textAlign: 'center' }}>
-                              <div style={{ ...VTB, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.06em' }}>{tier.label}</div>
-                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', marginTop: '.1rem' }}>{(tier.baseInterestRate * 100).toFixed(0)}% {tier.compounding ? 'COMPOUND' : 'FLAT'}</div>
-                              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>
+                            <button key={tier.amount} onClick={() => doLoan(tier)} style={{ padding: '.6rem .35rem', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', cursor: 'pointer', textAlign: 'center' }}>
+                              <div style={{ ...VTB, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.06em' }}>{tier.label}</div>
+                              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>{(tier.baseInterestRate * 100).toFixed(0)}% {tier.compounding ? 'COMPOUND' : 'FLAT'}</div>
+                              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>
                               {fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
-                              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.22)', marginTop: '.08rem' }}>DUE ~{durationMin} MIN</div>
+                              <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.22)', marginTop: '.08rem' }}>DUE ~{durationMin} MIN</div>
                             </button>
                           );
                         })}
                       </div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.7 }}>
                         Collateral: NONE REQUIRED. One active loan at a time. Larger loans use compounding interest (quarterly). PABLO CORP reserves right to restructure debt without notice.
                       </div>
                     </>
                   ) : (
-                    <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(0,255,65,.3)'}`, padding: '.75rem' }}>
-                      <div style={{ fontSize: '.55rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
+                    <div style={{ border: `1px solid ${isOverdue ? 'rgba(255,80,80,.4)' : 'rgba(56,189,248,.3)'}`, padding: '.75rem' }}>
+                      <div style={{ fontSize: '.55rem', color: isOverdue ? 'rgba(255,100,100,.6)' : 'rgba(56,189,248,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
                         {isOverdue ? 'LOAN OVERDUE — PABLO CORP DEBT COLLECTION ACTIVE' : 'ACTIVE LOAN'}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.65rem' }}>
@@ -16421,15 +16421,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           { l: 'INTEREST', v: `ƒ${bankLoan.interest.toLocaleString()}` },
                           { l: 'TOTAL DUE', v: `ƒ${(bankLoan.amount + bankLoan.interest).toLocaleString()}` },
                         ].map(({ l, v }) => (
-                          <div key={l} style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.45rem' }}>
-                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
-                            <div style={{ ...VTB, fontSize: '1.15rem', color: isOverdue ? '#ff6666' : '#00ff41' }}>{v}</div>
+                          <div key={l} style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.45rem' }}>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
+                            <div style={{ ...VTB, fontSize: '1.15rem', color: isOverdue ? '#ff6666' : '#38bdf8' }}>{v}</div>
                           </div>
                         ))}
                       </div>
                       {isOverdue && <div style={{ fontSize: '.46rem', color: 'rgba(255,100,100,.6)', lineHeight: 1.7, border: '1px solid rgba(255,60,60,.2)', padding: '.45rem', marginBottom: '.55rem' }}>OVERDUE — 5% salary penalty per survival cycle until repaid. Repay immediately.</div>}
                       <button onClick={doRepay} disabled={salary < bankLoan.amount + bankLoan.interest}
-                        style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
+                        style={{ padding: '.5rem 1.3rem', border: salary >= bankLoan.amount + bankLoan.interest ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.06)', color: salary >= bankLoan.amount + bankLoan.interest ? '#38bdf8' : 'rgba(56,189,248,.2)', cursor: salary >= bankLoan.amount + bankLoan.interest ? 'pointer' : 'default', ...VTB, fontSize: '1.1rem', letterSpacing: '.1em' }}>
                         REPAY IN FULL — ƒ{(bankLoan.amount + bankLoan.interest).toLocaleString()}
                       </button>
                       {salary < bankLoan.amount + bankLoan.interest && <div style={{ fontSize: '.55rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ƒ{((bankLoan.amount + bankLoan.interest) - salary).toLocaleString()} more FIAT.</div>}
@@ -16438,17 +16438,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>)}
 
                 {bankTab === 'wire' && (<>
-                  <div style={{ border: '1px solid rgba(0,255,65,.13)', padding: '.65rem' }}>
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% PABLO CORP Wire Tax deducted from sender. Logged. Irreversible.</div>
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.65rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% PABLO CORP Wire Tax deducted from sender. Logged. Irreversible.</div>
                   </div>
                   {online.filter(p => p.name !== char.name).length > 0 && (
-                    <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '.55rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
+                    <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.55rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem' }}>
                         {online.filter(p => p.name !== char.name).map(p => (
                           <button key={p.id} onClick={() => setBankWireTo(p.name)}
-                            style={{ padding: '.28rem .65rem', border: bankWireTo === p.name ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.2)', background: bankWireTo === p.name ? 'rgba(0,255,65,.07)' : 'transparent', color: bankWireTo === p.name ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', ...STB, fontSize: '.72rem' }}>
+                            style={{ padding: '.28rem .65rem', border: bankWireTo === p.name ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.2)', background: bankWireTo === p.name ? 'rgba(56,189,248,.07)' : 'transparent', color: bankWireTo === p.name ? '#38bdf8' : 'rgba(56,189,248,.4)', cursor: 'pointer', ...STB, fontSize: '.72rem' }}>
                             {p.name} · {p.class.toUpperCase()}
                           </button>
                         ))}
@@ -16457,25 +16457,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
                     <div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
                       <input value={bankWireTo} onChange={e => setBankWireTo(e.target.value.toUpperCase())} placeholder="OPERATIVE NAME..." style={inp} maxLength={32} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>
                       <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                         <input value={bankWireAmt} onChange={e => setBankWireAmt(e.target.value.replace(/\D/g,''))} placeholder="0" style={{ ...inp, maxWidth: 180 }} />
                         {parseInt(bankWireAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>FEE: ƒ{Math.ceil((parseInt(bankWireAmt)||0)*.03).toLocaleString()} · TOTAL: ƒ{(parseInt(bankWireAmt) + Math.ceil((parseInt(bankWireAmt)||0)*.03)).toLocaleString()}</span>}
                       </div>
                     </div>
                     <button onClick={doWire} disabled={!bankWireTo.trim() || !(parseInt(bankWireAmt) > 0)}
-                      style={{ alignSelf: 'flex-start', padding: '.48rem 1.4rem', border: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.06)', color: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '#00ff41' : 'rgba(0,255,65,.2)', cursor: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? 'pointer' : 'default', ...VTB, fontSize: '1.15rem', letterSpacing: '.1em' }}>
+                      style={{ alignSelf: 'flex-start', padding: '.48rem 1.4rem', border: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.06)', color: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '#38bdf8' : 'rgba(56,189,248,.2)', cursor: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? 'pointer' : 'default', ...VTB, fontSize: '1.15rem', letterSpacing: '.1em' }}>
                       SEND WIRE ▶
                     </button>
                   </div>
                 </>)}
 
                 {bankTab === 'history' && (<>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>TRANSACTION HISTORY — ALL FEES, TAXES & INTEREST</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>TRANSACTION HISTORY — ALL FEES, TAXES & INTEREST</div>
                   {(() => {
                     const totalFees = bankHistory.filter(t => ['atm_fee','loan_interest','loan_origination','property_tax','resale_fee','exchange_spread','deposit_tax','wire_tax'].includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
                     return totalFees > 0 ? (
@@ -16485,22 +16485,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     ) : null;
                   })()}
                   {bankHistory.length === 0
-                    ? <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', padding: '.8rem', textAlign: 'center' }}>No transactions recorded yet. Deposit, withdraw, take a loan, or send a wire to begin your history.</div>
+                    ? <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', padding: '.8rem', textAlign: 'center' }}>No transactions recorded yet. Deposit, withdraw, take a loan, or send a wire to begin your history.</div>
                     : <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(0,255,65,.15)' }}>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', width: 40 }}>TYPE</div>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(56,189,248,.15)' }}>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', width: 40 }}>TYPE</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>DESCRIPTION</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', textAlign: 'right' }}>AMOUNT</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', textAlign: 'right' }}>BALANCE</div>
                         </div>
                         {bankHistory.map((tx, i) => (
-                          <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(0,255,65,.02)' : 'transparent', borderBottom: '1px solid rgba(0,255,65,.05)', alignItems: 'center' }}>
+                          <div key={tx.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(56,189,248,.02)' : 'transparent', borderBottom: '1px solid rgba(56,189,248,.05)', alignItems: 'center' }}>
                             {CAT_LABELS[tx.category] ? (
-                              <div style={{ fontSize: '.38rem', color: CAT_COLORS[tx.category] ?? 'rgba(0,255,65,.5)', border: `1px solid ${CAT_COLORS[tx.category] ?? 'rgba(0,255,65,.2)'}44`, padding: '1px 4px', width: 40, textAlign: 'center' }}>{CAT_LABELS[tx.category]}</div>
+                              <div style={{ fontSize: '.38rem', color: CAT_COLORS[tx.category] ?? 'rgba(56,189,248,.5)', border: `1px solid ${CAT_COLORS[tx.category] ?? 'rgba(56,189,248,.2)'}44`, padding: '1px 4px', width: 40, textAlign: 'center' }}>{CAT_LABELS[tx.category]}</div>
                             ) : <div style={{ width: 40 }} />}
-                            <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
-                            <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#00ff41' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ƒ{Math.abs(tx.amount).toLocaleString()}</div>
-                            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
+                            <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.52)', letterSpacing: '.03em' }}>{tx.desc}</div>
+                            <div style={{ ...VTB, fontSize: '.95rem', color: tx.amount >= 0 ? '#38bdf8' : '#ff6666', textAlign: 'right' }}>{tx.amount >= 0 ? '+' : ''}ƒ{Math.abs(tx.amount).toLocaleString()}</div>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', textAlign: 'right', whiteSpace: 'nowrap' }}>ƒ{tx.bal.toLocaleString()}</div>
                           </div>
                         ))}
                       </div>
@@ -16508,7 +16508,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>)}
               </div>
               {/* Footer */}
-              <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.1)', fontSize: '.55rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '.4rem 1.1rem', borderTop: '1px solid rgba(56,189,248,.1)', fontSize: '.55rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span>BANCO OMBRA IS NOT RESPONSIBLE FOR DEPOSITS SEIZED BY PABLO CORP DURING MARTIAL LAW PERIODS. ALL TRANSACTIONS FINAL.</span>
                 <span>ESC TO CLOSE</span>
               </div>
@@ -16526,8 +16526,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const hamletLabel = hamletB?.label ?? 'SHELTER';
         const isShelter = SHELTER_BUILDINGS.includes(hamletBid);
         const isCampsite = CAMPSITE_IDS.includes(hamletBid);
-        const spawnColor = isUnemployed ? 'rgba(255,200,60,' : 'rgba(0,255,65,';
-        const accentColor = isUnemployed ? '#ffcc44' : '#00ff41';
+        const spawnColor = isUnemployed ? 'rgba(255,200,60,' : 'rgba(56,189,248,';
+        const accentColor = isUnemployed ? '#ffcc44' : '#38bdf8';
         return (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 450, flexDirection: 'column', gap: '1rem' }}>
           <div style={{ textAlign: 'center', maxWidth: 500, padding: '2rem' }}>
@@ -16608,7 +16608,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   ? `> ${hamletLabel} — Your hamlet. No corporate ties. Walk to the EXIT to step outside. Register a business at PABLO TOWER when you're ready.`
                   : `> ${(() => { const ht = HOUSING_TIERS.find(t => t.id === g.housingTier); return ht ? ht.label : hamletLabel; })()} — Your place. Walk to the EXIT to step outside.`);
               }}
-              style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(0,255,65,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(0,255,65,.5)'}`, color: accentColor, fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
+              style={{ padding: '.65rem 2rem', background: isUnemployed ? 'rgba(255,200,60,.08)' : 'rgba(56,189,248,.08)', border: `1px solid ${isUnemployed ? 'rgba(255,200,60,.5)' : 'rgba(56,189,248,.5)'}`, color: accentColor, fontFamily: "'VT323',monospace", fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer' }}
             >
               WAKE UP
             </button>
@@ -16697,7 +16697,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {arcadeGameId && (
-        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace" }}>LOADING...</div>}>
+        <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace" }}>LOADING...</div>}>
           <ArcadeGame
             gameId={arcadeGameId}
             salary={salary}
@@ -16715,14 +16715,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {showSoundLab && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 620, background: 'rgba(0,0,0,.0)' }}>
-          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>{`LOADING ${boomerMode ? 'THE LAB' : '1999'}...`}</div>}>
+          <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,6,2,.98)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.2rem', letterSpacing: '.2em' }}>{`LOADING ${boomerMode ? 'THE LAB' : '1999'}...`}</div>}>
             <SoundLabOverlay onClose={() => { setShowSoundLab(false); gameRef.current?.focus(); }} />
           </Suspense>
         </div>
       )}
 
       {showCosmeticStore && (
-        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING STORE...</div>}>
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000800', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING STORE...</div>}>
           <CosmeticStore
             onClose={() => { setShowCosmeticStore(false); gameRef.current?.focus(); }}
             onEquipChange={(equipped) => {
@@ -16736,31 +16736,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showSecretLabPrompt && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 650, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}
           onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}>
-          <div style={{ background: 'rgba(0,6,2,.97)', border: '1px solid rgba(0,255,65,.2)', borderRadius: '6px', padding: '28px 36px', minWidth: 340, maxWidth: '92vw', textAlign: 'center' }}
+          <div style={{ background: 'rgba(0,6,2,.97)', border: '1px solid rgba(56,189,248,.2)', borderRadius: '6px', padding: '28px 36px', minWidth: 340, maxWidth: '92vw', textAlign: 'center' }}
             onClick={e => e.stopPropagation()}>
             {showSecretLabPrompt === 'buy' && (<>
-              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SECRET STAIRCASE</div>
-              <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.55rem', marginBottom: '16px', lineHeight: 1.6 }}>
-                A hidden basement studio awaits below.<br/>Cost: <span style={{ color: '#00ff41' }}>500,000 FIAT</span>
+              <div style={{ color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SECRET STAIRCASE</div>
+              <div style={{ color: 'rgba(56,189,248,.5)', fontSize: '.55rem', marginBottom: '16px', lineHeight: 1.6 }}>
+                A hidden basement studio awaits below.<br/>Cost: <span style={{ color: '#38bdf8' }}>500,000 FIAT</span>
               </div>
-              <div style={{ color: 'rgba(0,255,65,.35)', fontSize: '.45rem', marginBottom: '12px' }}>Current balance: {salary.toLocaleString()} FIAT</div>
+              <div style={{ color: 'rgba(56,189,248,.35)', fontSize: '.45rem', marginBottom: '12px' }}>Current balance: {salary.toLocaleString()} FIAT</div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
-                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
                 <button onClick={() => {
                   const g = gs.current;
                   if (g.salary < 500000) { setNarr('> INSUFFICIENT FIAT — You need 500,000 FIAT.'); setShowSecretLabPrompt(null); gameRef.current?.focus(); return; }
                   g.salary -= 500000; setSalary(g.salary);
                   setShowSecretLabPrompt('setpw');
                 }}
-                  style={{ padding: '6px 18px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
                   PURCHASE — 500K
                 </button>
               </div>
             </>)}
             {showSecretLabPrompt === 'setpw' && (<>
-              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SET STUDIO PASSWORD</div>
-              <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.5rem', marginBottom: '14px' }}>Choose a password to protect your studio.</div>
+              <div style={{ color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>SET STUDIO PASSWORD</div>
+              <div style={{ color: 'rgba(56,189,248,.5)', fontSize: '.5rem', marginBottom: '14px' }}>Choose a password to protect your studio.</div>
               <input value={secretLabPwInput} onChange={e => setSecretLabPwInput(e.target.value)}
                 placeholder="Enter password..."
                 autoFocus
@@ -16772,7 +16772,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setShowSoundLab(true);
                   }
                 }}
-                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
               <button onClick={() => {
                 if (!secretLabPwInput.trim()) return;
                 const g = gs.current;
@@ -16780,12 +16780,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 setShowSecretLabPrompt(null);
                 setShowSoundLab(true);
               }}
-                style={{ padding: '6px 24px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
+                style={{ padding: '6px 24px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>
                 CONFIRM & ENTER
               </button>
             </>)}
             {showSecretLabPrompt === 'password' && (<>
-              <div style={{ color: '#00ff41', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>ENTER STUDIO PASSWORD</div>
+              <div style={{ color: '#38bdf8', fontSize: '1.1rem', letterSpacing: '.15em', marginBottom: '10px' }}>ENTER STUDIO PASSWORD</div>
               <input value={secretLabPwInput} onChange={e => setSecretLabPwInput(e.target.value)}
                 type="password" placeholder="Password..."
                 autoFocus
@@ -16800,10 +16800,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     }
                   }
                 }}
-                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,255,65,.05)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
+                style={{ width: '100%', padding: '8px 12px', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', outline: 'none', borderRadius: '3px', marginBottom: '12px', textAlign: 'center' }} />
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button onClick={() => { setShowSecretLabPrompt(null); gameRef.current?.focus(); }}
-                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
+                  style={{ padding: '6px 18px', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>CANCEL</button>
                 <button onClick={() => {
                   const g = gs.current;
                   if (g.secretLab && secretLabPwInput === g.secretLab.password) {
@@ -16813,7 +16813,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setNarr('> WRONG PASSWORD.');
                   }
                 }}
-                  style={{ padding: '6px 18px', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>ENTER</button>
+                  style={{ padding: '6px 18px', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.08em', borderRadius: '3px' }}>ENTER</button>
               </div>
             </>)}
           </div>
@@ -17129,41 +17129,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}>
-            <div style={{ background: '#050505', border: '2px solid rgba(0,255,65,.45)', width: 'min(580px,92vw)', fontFamily: '"VT323", monospace', color: '#00ff41', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden' }}>
+            <div style={{ background: '#050505', border: '2px solid rgba(56,189,248,.45)', width: 'min(580px,92vw)', fontFamily: '"VT323", monospace', color: '#38bdf8', display: 'flex', flexDirection: 'column', maxHeight: '85vh', overflow: 'hidden' }}>
               {/* Header */}
-              <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
+              <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
                   <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>{CITY_NAME} METRO</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
                 </div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
               </div>
               {/* Origin */}
-              <div style={{ padding: '.55rem 1.1rem', borderBottom: '1px solid rgba(0,255,65,.1)', fontSize: '.5rem', color: 'rgba(0,255,65,.32)', letterSpacing: '.1em', flexShrink: 0 }}>
-                CURRENT STATION: <span style={{ color: '#00ff41' }}>{origin?.label ?? 'UNKNOWN'}</span>
+              <div style={{ padding: '.55rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.1)', fontSize: '.5rem', color: 'rgba(56,189,248,.32)', letterSpacing: '.1em', flexShrink: 0 }}>
+                CURRENT STATION: <span style={{ color: '#38bdf8' }}>{origin?.label ?? 'UNKNOWN'}</span>
               </div>
               {/* Station list */}
               <div style={{ padding: '.7rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '.55rem', overflowY: 'auto' }}>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', letterSpacing: '.12em', marginBottom: '.25rem' }}>SELECT DESTINATION</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.12em', marginBottom: '.25rem' }}>SELECT DESTINATION</div>
                 {STATIONS.map(s => {
                   const isCurrent = s.id === subwayOrigin;
                   return (
                     <button key={s.id} onClick={() => doRide(s)} disabled={isCurrent}
-                      style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.55rem', alignItems: 'center', padding: '.6rem .8rem', background: isCurrent ? 'rgba(0,255,65,.06)' : 'rgba(0,255,65,.02)', border: isCurrent ? '1px solid rgba(0,255,65,.45)' : '1px solid rgba(0,255,65,.18)', color: '#00ff41', cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-                      <div style={{ fontSize: '.7rem', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.4)' }}>●</div>
+                      style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.55rem', alignItems: 'center', padding: '.6rem .8rem', background: isCurrent ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.02)', border: isCurrent ? '1px solid rgba(56,189,248,.45)' : '1px solid rgba(56,189,248,.18)', color: '#38bdf8', cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                      <div style={{ fontSize: '.7rem', color: isCurrent ? '#38bdf8' : 'rgba(56,189,248,.4)' }}>●</div>
                       <div>
-                        <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#00ff41' : 'rgba(0,255,65,.7)' }}>{s.label}</div>
-                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.28)', marginTop: '.1rem' }}>{s.sub}</div>
+                        <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#38bdf8' : 'rgba(56,189,248,.7)' }}>{s.label}</div>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.28)', marginTop: '.1rem' }}>{s.sub}</div>
                       </div>
-                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(0,255,65,.3)' : 'rgba(0,255,65,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
+                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(56,189,248,.3)' : 'rgba(56,189,248,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
                     </button>
                   );
                 })}
               </div>
               {/* Footer */}
-              <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(0,255,65,.12)', fontSize: '.55rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '.45rem 1.1rem', borderTop: '1px solid rgba(56,189,248,.12)', fontSize: '.55rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.06em', display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <span>ALL PASSENGERS SUBJECT TO IDENTITY VERIFICATION. PABLO CORP MONITORS ALL TRANSIT ACTIVITY.</span>
-                <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
+                <button onClick={() => setShowSubway(false)} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>[ ESC ]</button>
               </div>
             </div>
           </div>
@@ -17201,36 +17201,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           sfxCoin();
           setNarr(`> CRAFTED: ${recipe.result.name}. ${recipe.desc}`);
-          g.floaters.push({ x: g.px, y: g.py - 30, text: `CRAFTED: ${recipe.result.name}`, color: '#88ff44', life: 60, maxLife: 60 });
+          g.floaters.push({ x: g.px, y: g.py - 30, text: `CRAFTED: ${recipe.result.name}`, color: '#7dd3fc', life: 60, maxLife: 60 });
         };
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowCrafting(false); frozenRef.current = false; } }}>
-            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(136,255,68,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.6rem', color:'#88ff44', letterSpacing:'.18em', marginBottom:'.6rem' }}>OUTLAW CRAFTING</div>
-              <div style={{ fontSize:'.42rem', color:'rgba(136,255,68,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>CONVERT SCAVENGED MATERIALS INTO SUPPLIES</div>
+            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(56,189,248,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#7dd3fc', letterSpacing:'.18em', marginBottom:'.6rem' }}>OUTLAW CRAFTING</div>
+              <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>CONVERT SCAVENGED MATERIALS INTO SUPPLIES</div>
               {!isOutlaw && <div style={{ color:'#ff4444', fontSize:'.8rem', padding:'.5rem', border:'1px solid rgba(255,68,68,.3)' }}>CRAFTING IS RESTRICTED TO THE OUTLAWS FACTION</div>}
               {isOutlaw && CRAFT_RECIPES.map(recipe => {
                 const canCraft = Object.entries(recipe.materials).every(([matId, qty]) => (g.cargo[matId] ?? 0) >= qty);
                 return (
-                  <div key={recipe.id} style={{ border:'1px solid rgba(136,255,68,.2)', padding:'.6rem', marginBottom:'.4rem' }}>
+                  <div key={recipe.id} style={{ border:'1px solid rgba(56,189,248,.2)', padding:'.6rem', marginBottom:'.4rem' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div>
-                        <div style={{ ...VT2, fontSize:'1.1rem', color:'#88ff44' }}>{recipe.name}</div>
-                        <div style={{ fontSize:'.5rem', color:'rgba(136,255,68,.4)', marginTop:'.15rem' }}>{recipe.desc}</div>
-                        <div style={{ fontSize:'.45rem', color:'rgba(136,255,68,.3)', marginTop:'.1rem' }}>
+                        <div style={{ ...VT2, fontSize:'1.1rem', color:'#7dd3fc' }}>{recipe.name}</div>
+                        <div style={{ fontSize:'.5rem', color:'rgba(56,189,248,.4)', marginTop:'.15rem' }}>{recipe.desc}</div>
+                        <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.3)', marginTop:'.1rem' }}>
                           NEEDS: {Object.entries(recipe.materials).map(([id, qty]) => `${id.replace(/_/g,' ').toUpperCase()} ×${qty} (have: ${g.cargo[id] ?? 0})`).join(' · ')}
                         </div>
                       </div>
                       <button onClick={() => doCraft(recipe)} disabled={!canCraft}
-                        style={{ padding:'.4rem .8rem', background: canCraft ? 'rgba(136,255,68,.1)' : 'transparent', border:`1px solid ${canCraft ? 'rgba(136,255,68,.5)' : 'rgba(136,255,68,.15)'}`, color: canCraft ? '#88ff44' : 'rgba(136,255,68,.25)', cursor: canCraft ? 'pointer' : 'default', ...VT2, fontSize:'.9rem' }}>
+                        style={{ padding:'.4rem .8rem', background: canCraft ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${canCraft ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.15)'}`, color: canCraft ? '#7dd3fc' : 'rgba(56,189,248,.25)', cursor: canCraft ? 'pointer' : 'default', ...VT2, fontSize:'.9rem' }}>
                         CRAFT
                       </button>
                     </div>
                   </div>
                 );
               })}
-              <button onClick={() => { setShowCrafting(false); frozenRef.current = false; }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(136,255,68,.2)', color:'rgba(136,255,68,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+              <button onClick={() => { setShowCrafting(false); frozenRef.current = false; }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );
@@ -17377,8 +17377,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </div>
               <div style={{ display:'flex', gap:'.8rem', marginBottom:'1rem' }}>
                 <div style={{ flex:1, textAlign:'center' }}>
-                  <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.4)', marginBottom:'.2rem' }}>FIAT</div>
-                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#00ff41' }}>ƒ{salary.toLocaleString()}</div>
+                  <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.4)', marginBottom:'.2rem' }}>FIAT</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#38bdf8' }}>ƒ{salary.toLocaleString()}</div>
                 </div>
                 <div style={{ flex:1, textAlign:'center' }}>
                   <div style={{ fontSize:'.45rem', color:'rgba(255,215,0,.4)', marginBottom:'.2rem' }}>GOLD</div>
@@ -17400,7 +17400,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ display:'flex', gap:'.8rem', marginTop:'.5rem' }}>
                   {[1, 5, 10].map(amt => (
                     <button key={`sell${amt}`} onClick={() => doSellGold(amt)} disabled={g.goldBalance < amt}
-                      style={{ flex:1, padding:'.5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.25)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                      style={{ flex:1, padding:'.5rem', background:'rgba(56,189,248,.05)', border:'1px solid rgba(56,189,248,.25)', color:'#38bdf8', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
                       SELL {amt}oz
                     </button>
                   ))}
@@ -17418,12 +17418,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <div style={{ width:12, height:12, borderRadius:'50%', background: asset.color, flexShrink:0 }} />
                       <div style={{ flex:1 }}>
                         <div style={{ ...VT2, fontSize:'1rem', color: asset.color }}>{asset.label}</div>
-                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#38bdf8' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
                       </div>
                       <button onClick={() => doBuyAsset(asset)} disabled={g.salary < price}
                         style={{ padding:'.3rem .6rem', background:'rgba(255,255,255,.05)', border:`1px solid ${asset.color}44`, color: asset.color, cursor:'pointer', ...VT2, fontSize:'.9rem' }}>BUY</button>
                       <button onClick={() => doSellAsset(asset)} disabled={held <= 0}
-                        style={{ padding:'.3rem .6rem', background:'rgba(0,255,65,.03)', border:'1px solid rgba(0,255,65,.2)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
+                        style={{ padding:'.3rem .6rem', background:'rgba(56,189,248,.03)', border:'1px solid rgba(56,189,248,.2)', color:'#38bdf8', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
                     </div>
                   );
                 })}
@@ -17463,12 +17463,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           {stock.isReal && <span style={{ fontSize:'.35rem', color:'#ff9900', border:'1px solid rgba(255,153,0,.3)', padding:'0 .3rem', borderRadius:2 }}>REAL</span>}
                         </div>
                         <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{stock.company} · {stock.industry}</div>
-                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
+                        <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>ƒ{price.toLocaleString()} · <span style={{ color: pctChange >= 0 ? '#38bdf8' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</span> · HELD: {held}</div>
                       </div>
                       <button onClick={() => doBuyStock(stock)} disabled={g.salary < price}
                         style={{ padding:'.3rem .6rem', background:'rgba(68,170,255,.05)', border:'1px solid rgba(68,170,255,.3)', color:'#44aaff', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>BUY</button>
                       <button onClick={() => doSellStock(stock)} disabled={held <= 0}
-                        style={{ padding:'.3rem .6rem', background:'rgba(0,255,65,.03)', border:'1px solid rgba(0,255,65,.2)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
+                        style={{ padding:'.3rem .6rem', background:'rgba(56,189,248,.03)', border:'1px solid rgba(56,189,248,.2)', color:'#38bdf8', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>SELL</button>
                     </div>
                   );
                 })}
@@ -17555,28 +17555,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowHousingPanel(false); }}>
-            <div style={{ width:580, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(0,255,65,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
-              <div style={{ padding:'.6rem', border:'1px solid rgba(0,255,65,.15)', background:'rgba(0,255,65,.03)', marginBottom:'1rem' }}>
+            <div style={{ width:580, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(56,189,248,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
+              <div style={{ padding:'.6rem', border:'1px solid rgba(56,189,248,.15)', background:'rgba(56,189,248,.03)', marginBottom:'1rem' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
-                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#00ff41' }}>CURRENT: {currentTier.label}</div>
+                  <div style={{ ...VT2, fontSize:'1.1rem', color:'#38bdf8' }}>CURRENT: {currentTier.label}</div>
                   <div style={{ fontSize:'.38rem', color: TIER_COLOR[currentTier.tier] ?? 'rgba(255,255,255,.3)', border:`1px solid ${TIER_COLOR[currentTier.tier] ?? 'rgba(255,255,255,.2)'}`, padding:'1px 5px' }}>{TIER_LABEL[currentTier.tier]}</div>
                 </div>
-                <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.4)', marginTop:'.2rem' }}>{currentTier.desc}</div>
+                <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.4)', marginTop:'.2rem' }}>{currentTier.desc}</div>
                 {currentTier.rent > 0 && (
                   <div style={{ marginTop:'.4rem' }}>
                     <div style={{ fontSize:'.42rem', color: daysUntilDue <= 1 ? '#ff4444' : 'rgba(255,255,255,.4)' }}>
                       RENT: ƒ{effectiveRent(currentTier).toLocaleString()} / {currentTier.rentPeriod === 'week' ? 'week' : 'night'} {zoneRentMult !== 1 ? <span style={{ color:'rgba(255,200,0,.5)' }}>(zone x{zoneRentMult.toFixed(1)})</span> : null} · {daysUntilDue > 0 ? `DUE IN ${daysUntilDue} DAY${daysUntilDue !== 1 ? 'S' : ''}` : 'OVERDUE'}
                     </div>
                     <button onClick={doPayRent} disabled={g.salary < effectiveRent(currentTier) || daysUntilDue > 3}
-                      style={{ marginTop:'.3rem', padding:'.3rem .8rem', background:'rgba(0,255,65,.08)', border:'1px solid rgba(0,255,65,.3)', color:'#00ff41', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>
+                      style={{ marginTop:'.3rem', padding:'.3rem .8rem', background:'rgba(56,189,248,.08)', border:'1px solid rgba(56,189,248,.3)', color:'#38bdf8', cursor:'pointer', ...VT2, fontSize:'.9rem' }}>
                       PAY RENT EARLY — ƒ{effectiveRent(currentTier).toLocaleString()}
                     </button>
                   </div>
                 )}
               </div>
               <div style={{ padding:'.4rem .6rem', border:'1px solid rgba(255,255,255,.08)', background:'rgba(255,255,255,.02)', marginBottom:'.8rem', fontSize:'.4rem', color:'rgba(255,255,255,.35)' }}>
-                FIAT WEALTH: <span style={{ color:'rgba(0,255,65,.6)' }}>ƒ{playerWealth.toLocaleString()}</span> · GOLD NET WORTH: <span style={{ color:'rgba(255,215,0,.6)' }}>{homeGoldNetWorth.toFixed(1)}oz</span> · LEVEL: <span style={{ color:'rgba(0,200,255,.6)' }}>{g.level}</span>
+                FIAT WEALTH: <span style={{ color:'rgba(56,189,248,.6)' }}>ƒ{playerWealth.toLocaleString()}</span> · GOLD NET WORTH: <span style={{ color:'rgba(255,215,0,.6)' }}>{homeGoldNetWorth.toFixed(1)}oz</span> · LEVEL: <span style={{ color:'rgba(0,200,255,.6)' }}>{g.level}</span>
               </div>
               <div style={{ padding:'.4rem .6rem', border:'1px solid rgba(255,255,255,.06)', background:'rgba(255,255,255,.01)', marginBottom:'.8rem', fontSize:'.38rem', color:'rgba(255,255,255,.25)' }}>
                 CITY ZONE: {getBuildingZone(g.hamletBuildingId ?? 'bunker')?.name ?? 'UNZONED'} · ZONE RENT INDEX: x{getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker').toFixed(1)}
@@ -17591,7 +17591,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div key={tier.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)', opacity: isCurrent ? 0.4 : 1 }}>
                     <div style={{ flex:1 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
-                        <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(0,255,65,.5)' : eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
+                        <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(56,189,248,.5)' : eligible && !locked ? '#38bdf8' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
                         <div style={{ fontSize:'.36rem', color: TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.3)', border:`1px solid ${TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.2)'}`, padding:'1px 4px' }}>{TIER_LABEL[tier.tier]}</div>
                       </div>
                       <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{tier.desc}</div>
@@ -17601,14 +17601,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                     {!isCurrent && (
                       <button onClick={() => doUpgrade(tier)} disabled={!eligible || !!locked || (moveCost > 0 && g.salary < moveCost)}
-                        style={{ padding:'.3rem .8rem', background: eligible && !locked ? 'rgba(0,255,65,.08)' : 'transparent', border:`1px solid ${eligible && !locked ? 'rgba(0,255,65,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible && !locked ? '#00ff41' : 'rgba(255,255,255,.2)', cursor: eligible && !locked ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
+                        style={{ padding:'.3rem .8rem', background: eligible && !locked ? 'rgba(56,189,248,.08)' : 'transparent', border:`1px solid ${eligible && !locked ? 'rgba(56,189,248,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible && !locked ? '#38bdf8' : 'rgba(255,255,255,.2)', cursor: eligible && !locked ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
                         {tier.rent === 0 ? 'MOVE' : 'LEASE'}
                       </button>
                     )}
                   </div>
                 );
               })}
-              <button onClick={() => setShowHousingPanel(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
+              <button onClick={() => setShowHousingPanel(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );
@@ -17617,7 +17617,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── BRANCHING DIALOGUE PANEL ──────────────────────────────────────── */}
       {showDialoguePanel && dialogueNode && (() => {
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const npcColor = '#33ffaa';
+        const npcColor = '#67e8f9';
         const handleChoice = (nextId: string | null, fromShopNode?: boolean) => {
           if (!nextId || !gs.current.activeDialogue) {
             setShowDialoguePanel(false); setDialogueNode(null);
@@ -17684,8 +17684,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowCostume(false); }}>
-            <div style={{ width:500, border:'1px solid rgba(0,255,65,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.5rem', color:'#00ff41', letterSpacing:'.18em', marginBottom:'.8rem' }}>CLOTHES</div>
+            <div style={{ width:500, border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+              <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em', marginBottom:'.8rem' }}>CLOTHES</div>
               <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
                 {CLOTHES.map(c => {
                   const owned = ownedClothes.has(c.id);
@@ -17700,20 +17700,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       setNarr(`> CLOTHES — Not enough FIAT. ${c.name} costs ƒ${c.price.toLocaleString()}.`);
                     }
                   }}
-                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.5rem .8rem', background: equipped ? 'rgba(0,255,65,.1)' : 'transparent', border:`1px solid ${equipped ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.12)'}`, color: equipped ? '#00ff41' : owned ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.3)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
+                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.5rem .8rem', background: equipped ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${equipped ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.12)'}`, color: equipped ? '#38bdf8' : owned ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.3)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
                     <span style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
-                      <span style={{ width:12, height:12, background:c.color, borderRadius:2, display:'inline-block', border:'1px solid rgba(0,255,65,.2)' }} />
+                      <span style={{ width:12, height:12, background:c.color, borderRadius:2, display:'inline-block', border:'1px solid rgba(56,189,248,.2)' }} />
                       {c.name}
-                      <span style={{ fontSize:'.6rem', color:'rgba(0,255,65,.3)' }}>{c.desc}</span>
+                      <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.3)' }}>{c.desc}</span>
                     </span>
                     {equipped && <span style={{ fontSize:'.8rem' }}>EQUIPPED</span>}
                     {!owned && c.price > 0 && <span style={{ fontSize:'.75rem', color: salary >= c.price ? '#ffcc44' : '#ff4444' }}>ƒ{c.price.toLocaleString()}</span>}
-                    {owned && !equipped && <span style={{ fontSize:'.7rem', color:'rgba(0,255,65,.3)' }}>OWNED</span>}
+                    {owned && !equipped && <span style={{ fontSize:'.7rem', color:'rgba(56,189,248,.3)' }}>OWNED</span>}
                   </button>
                   );
                 })}
               </div>
-              <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
+              <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
             </div>
           </div>
         );
@@ -17803,26 +17803,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position: 'absolute', inset: 0, zIndex: 900, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={e => { if (e.target === e.currentTarget) setShowAdmin(false); }}>
-            <div style={{ width: 440, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(0,255,65,.4)', boxShadow: '0 0 40px rgba(0,255,65,.12)', padding: '1.2rem' }}>
+            <div style={{ width: 440, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(56,189,248,.4)', boxShadow: '0 0 40px rgba(56,189,248,.12)', padding: '1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>DEPT. OF BUSINESS AFFAIRS</div>
-                <button onClick={() => setShowAdmin(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.1em' }}>DEPT. OF BUSINESS AFFAIRS</div>
+                <button onClick={() => setShowAdmin(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
               </div>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL 2 — BUSINESS REGISTRATION</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL 2 — BUSINESS REGISTRATION</div>
 
               {(g.businesses ?? []).length > 0 && (
                 <div style={{ marginBottom: '.8rem' }}>
-                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTERED BUSINESSES ({(g.businesses ?? []).length})</div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTERED BUSINESSES ({(g.businesses ?? []).length})</div>
                   {(g.businesses ?? []).map((biz, bi) => (
-                    <div key={bi} style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.5rem .7rem', background: 'rgba(0,255,65,.03)', marginBottom: '.3rem' }}>
-                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.07em' }}>{biz.companyName}</div>
-                      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.4)', marginTop: '.1rem' }}>
+                    <div key={bi} style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem .7rem', background: 'rgba(56,189,248,.03)', marginBottom: '.3rem' }}>
+                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.07em' }}>{biz.companyName}</div>
+                      <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>
                         {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
                         Registered: {new Date(biz.registeredAt).toLocaleDateString()}
                       </div>
                     </div>
                   ))}
-                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7, marginTop: '.3rem' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.7, marginTop: '.3rem' }}>
                     All businesses on record with PABLO CORP municipal database. All transactions logged.
                   </div>
                 </div>
@@ -17837,27 +17837,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
                     {bizCount === 0 ? `Register your first business in ${getBusinessLocationLabel(gs.current.px, gs.current.py)}.` : `Register business slot ${nextSlot}. Level ${g.level} ✓ · Net worth ${goldNetWorth.toFixed(1)}oz ✓.`} Minx City businesses (fronts, guilds, operations): ƒ{MINX_FEE.toLocaleString()}. Real enterprises (goods, services, trade): ƒ{REAL_FEE.toLocaleString()}.
                   </div>
                   <div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS NAME</div>
                     <input
                       value={adminBizName}
                       onChange={e => setAdminBizName(e.target.value)}
                       placeholder="Enter business name..."
                       maxLength={40}
-                      style={{ width: '100%', padding: '.4rem .5rem', background: 'rgba(0,5,0,.9)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.06em', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '.4rem .5rem', background: 'rgba(0,5,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.06em', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS TYPE</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>BUSINESS TYPE</div>
                     <div style={{ display: 'flex', gap: '.4rem' }}>
                       {(['minx', 'real'] as const).map(t => (
                         <button key={t} onClick={() => { setAdminBizType(t); setAdminBizIndustry(''); }} style={{
-                          flex: 1, padding: '.5rem', background: adminBizType === t ? 'rgba(0,255,65,.12)' : 'transparent',
-                          border: `1px solid ${adminBizType === t ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.15)'}`,
-                          color: adminBizType === t ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer',
+                          flex: 1, padding: '.5rem', background: adminBizType === t ? 'rgba(56,189,248,.12)' : 'transparent',
+                          border: `1px solid ${adminBizType === t ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.15)'}`,
+                          color: adminBizType === t ? '#38bdf8' : 'rgba(56,189,248,.4)', cursor: 'pointer',
                           fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.08em',
                         }}>
                           {t === 'minx' ? `MINX CITY BUSINESS — ƒ${MINX_FEE.toLocaleString()}` : `REAL ENTERPRISE — ƒ${REAL_FEE.toLocaleString()}`}
@@ -17866,13 +17866,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INDUSTRY</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INDUSTRY</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.25rem', maxHeight: '30vh', overflow: 'auto' }}>
                       {industries.map(ind => (
                         <button key={ind} onClick={() => setAdminBizIndustry(ind)} style={{
-                          padding: '.3rem .4rem', background: adminBizIndustry === ind ? 'rgba(0,255,65,.1)' : 'transparent',
-                          border: `1px solid ${adminBizIndustry === ind ? 'rgba(0,255,65,.4)' : 'rgba(0,255,65,.1)'}`,
-                          color: adminBizIndustry === ind ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer',
+                          padding: '.3rem .4rem', background: adminBizIndustry === ind ? 'rgba(56,189,248,.1)' : 'transparent',
+                          border: `1px solid ${adminBizIndustry === ind ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.1)'}`,
+                          color: adminBizIndustry === ind ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer',
                           fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', textAlign: 'left',
                         }}>
                           {ind}
@@ -17887,13 +17887,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                   <button onClick={doRegister} style={{
                     width: '100%', padding: '.5rem', marginTop: '.3rem',
-                    background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.4)',
-                    color: '#00ff41', cursor: 'pointer', fontFamily: "'VT323',monospace",
+                    background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.4)',
+                    color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace",
                     fontSize: '1.1rem', letterSpacing: '.1em',
                   }}>
                     REGISTER — ƒ{regFee.toLocaleString()}
                   </button>
-                  <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', textAlign: 'center' }}>
                     Your FIAT balance: ƒ{salary.toLocaleString()}
                   </div>
                 </div>
@@ -17916,21 +17916,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position: 'absolute', inset: 0, zIndex: 900, background: 'rgba(0,0,0,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={e => { if (e.target === e.currentTarget) setShowAdminDept(null); }}>
-            <div style={{ width: 460, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(0,255,65,.4)', boxShadow: '0 0 40px rgba(0,255,65,.12)', padding: '1.2rem' }}>
+            <div style={{ width: 460, maxHeight: '80vh', overflow: 'auto', background: 'rgba(0,8,0,.98)', border: '1px solid rgba(56,189,248,.4)', boxShadow: '0 0 40px rgba(56,189,248,.12)', padding: '1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ ...VT2, fontSize: '1.4rem', color: '#00ff41', letterSpacing: '.1em' }}>{dept.title}</div>
-                <button onClick={() => setShowAdminDept(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                <div style={{ ...VT2, fontSize: '1.4rem', color: '#38bdf8', letterSpacing: '.1em' }}>{dept.title}</div>
+                <button onClick={() => setShowAdminDept(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
               </div>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL {dept.floor} — {dept.subtitle}</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.8rem' }}>MINX ADMINISTRATION BUILDING · FL {dept.floor} — {dept.subtitle}</div>
 
               {showAdminDept === 'open_records' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
                     Public records terminal. Search municipal databases for property deeds, business filings, and citizen registries.
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
-                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>YOUR RECORDS</div>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.7rem', background: 'rgba(56,189,248,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.08em', marginBottom: '.4rem' }}>YOUR RECORDS</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 2 }}>
                       Name: {char.name}<br/>
                       Class: {char.class?.toUpperCase()}<br/>
                       Level: {g.level}<br/>
@@ -17938,9 +17938,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       Criminal Record: {(g as any).wantedLevel > 0 ? 'ACTIVE WARRANTS' : 'CLEAN'}
                     </div>
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
-                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>PROPERTY RECORDS</div>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.7rem', background: 'rgba(56,189,248,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.08em', marginBottom: '.4rem' }}>PROPERTY RECORDS</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 2 }}>
                       Housing: {g.housingTier ? g.housingTier.toUpperCase().replace(/_/g, ' ') : 'NO RESIDENCE ON FILE'}<br/>
                       Businesses: {(gs.current.businesses ?? []).length > 0 ? (gs.current.businesses ?? []).map((b: OwnedBusiness) => b.companyName).join(', ') : 'NONE REGISTERED'}
                     </div>
@@ -17950,7 +17950,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {showAdminDept === 'open_permits' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
                     Permits and zoning applications. All construction, modification, and land-use changes require department approval.
                   </div>
                   {[
@@ -17959,12 +17959,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     { name: 'WEAPONS PERMIT', desc: 'Legal carry authorization within city limits.', status: g.level >= 5 ? 'ELIGIBLE' : `REQUIRES LEVEL 5 (CURRENT: ${g.level})` },
                     { name: 'ZONING VARIANCE', desc: 'Exception request for non-conforming land use.', status: 'APPLICATIONS CLOSED' },
                   ].map(p => (
-                    <div key={p.name} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.55rem .7rem', background: 'rgba(0,255,65,.02)' }}>
+                    <div key={p.name} style={{ border: '1px solid rgba(56,189,248,.12)', padding: '.55rem .7rem', background: 'rgba(56,189,248,.02)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ ...VT2, fontSize: '.9rem', color: '#00ff41', letterSpacing: '.08em' }}>{p.name}</span>
-                        <span style={{ fontSize: '.42rem', color: p.status === 'ELIGIBLE' ? 'rgba(0,255,65,.6)' : 'rgba(255,100,60,.5)', letterSpacing: '.08em' }}>{p.status}</span>
+                        <span style={{ ...VT2, fontSize: '.9rem', color: '#38bdf8', letterSpacing: '.08em' }}>{p.name}</span>
+                        <span style={{ fontSize: '.42rem', color: p.status === 'ELIGIBLE' ? 'rgba(56,189,248,.6)' : 'rgba(255,100,60,.5)', letterSpacing: '.08em' }}>{p.status}</span>
                       </div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.35)', marginTop: '.2rem' }}>{p.desc}</div>
+                      <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem' }}>{p.desc}</div>
                     </div>
                   ))}
                 </div>
@@ -17972,21 +17972,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {showAdminDept === 'open_revenue' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.7 }}>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7 }}>
                     Tax assessment and debt resolution. Outstanding debts and levies are processed here.
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
-                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>FINANCIAL SUMMARY</div>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 2 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.7rem', background: 'rgba(56,189,248,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.08em', marginBottom: '.4rem' }}>FINANCIAL SUMMARY</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 2 }}>
                       FIAT Balance: ƒ{salary.toLocaleString()}<br/>
                       Gold Holdings: {goldBalance}oz<br/>
                       Outstanding Debt: ƒ0<br/>
                       Tax Status: CURRENT
                     </div>
                   </div>
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.7rem', background: 'rgba(0,255,65,.03)' }}>
-                    <div style={{ ...VT2, fontSize: '1rem', color: '#00ff41', letterSpacing: '.08em', marginBottom: '.4rem' }}>TAX RATES</div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', lineHeight: 2 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.7rem', background: 'rgba(56,189,248,.03)' }}>
+                    <div style={{ ...VT2, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.08em', marginBottom: '.4rem' }}>TAX RATES</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', lineHeight: 2 }}>
                       Transaction Tax: 1-5% (scales with size)<br/>
                       Property Tax: ƒ25,000–100,000 / in-game month<br/>
                       Business License Renewal: ƒ10,000 / in-game quarter<br/>
@@ -17996,7 +17996,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               )}
 
-              <button onClick={() => setShowAdminDept(null)} style={{ marginTop: '1rem', width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', ...VT2, fontSize: '.95rem' }}>ESC — CLOSE</button>
+              <button onClick={() => setShowAdminDept(null)} style={{ marginTop: '1rem', width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', ...VT2, fontSize: '.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>
         );
@@ -18066,7 +18066,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
                 <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
                   <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>PORTFOLIO VALUE</div>
-                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#00ff41' }}>ƒ{totalPortfolioValue.toLocaleString()}</div>
+                  <div style={{ ...VT2, fontSize:'1.2rem', color:'#38bdf8' }}>ƒ{totalPortfolioValue.toLocaleString()}</div>
                 </div>
                 <div style={{ flex:1, border:'1px solid rgba(204,68,255,.15)', padding:'.4rem', textAlign:'center' }}>
                   <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>TAXES PAID</div>
@@ -18095,19 +18095,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             <div style={{ fontSize:'.4rem', color:'rgba(204,68,255,.3)' }}>{deed.zone} · Purchased: ƒ{deed.purchasePrice.toLocaleString()}</div>
                           </div>
                           <div style={{ textAlign:'right' }}>
-                            <div style={{ ...VT2, fontSize:'1rem', color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>ƒ{currentVal.toLocaleString()}</div>
-                            <div style={{ fontSize:'.38rem', color: pctChange >= 0 ? '#00ff41' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</div>
+                            <div style={{ ...VT2, fontSize:'1rem', color: pctChange >= 0 ? '#38bdf8' : '#ff4444' }}>ƒ{currentVal.toLocaleString()}</div>
+                            <div style={{ fontSize:'.38rem', color: pctChange >= 0 ? '#38bdf8' : '#ff4444' }}>{pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%</div>
                           </div>
                         </div>
                         <div style={{ display:'flex', gap:'.5rem', fontSize:'.38rem', color:'rgba(204,68,255,.3)', marginBottom:'.3rem' }}>
                           <span>TAX/CYCLE: <span style={{ color:'#ff4488' }}>ƒ{taxPerCycle.toLocaleString()}</span></span>
-                          <span>INCOME: <span style={{ color:'#00ff41' }}>+ƒ{(isRented ? Math.floor(deed.income * 1.5) : deed.income).toLocaleString()}</span>{isRented ? ' (RENTAL)' : ''}</span>
+                          <span>INCOME: <span style={{ color:'#38bdf8' }}>+ƒ{(isRented ? Math.floor(deed.income * 1.5) : deed.income).toLocaleString()}</span>{isRented ? ' (RENTAL)' : ''}</span>
                           <span>TOTAL TAX PAID: <span style={{ color:'#ff4488' }}>ƒ{deed.taxesPaid.toLocaleString()}</span></span>
                         </div>
                         <div style={{ display:'flex', gap:'.3rem' }}>
                           {!isRented && (
                             <button onClick={() => doRegisterRental(deed.id, listing)}
-                              style={{ padding:'.15rem .5rem', background:'rgba(0,255,65,.05)', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
+                              style={{ padding:'.15rem .5rem', background:'rgba(56,189,248,.05)', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.5)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.42rem' }}>
                               REGISTER RENTAL ({listing ? Math.floor(listing.price * 0.1) : 1} GOLD)
                             </button>
                           )}
@@ -18135,7 +18135,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         </div>
                         <div style={{ textAlign:'right' }}>
                           <div style={{ ...VT2, fontSize:'.85rem', color:'#FFD700' }}>{listing.price} GOLD</div>
-                          <div style={{ fontSize:'.38rem', color:'rgba(0,255,65,.3)' }}>+ƒ{listing.income.toLocaleString()}/cycle</div>
+                          <div style={{ fontSize:'.38rem', color:'rgba(56,189,248,.3)' }}>+ƒ{listing.income.toLocaleString()}/cycle</div>
                           <div style={{ fontSize:'.35rem', color:'#ff4488' }}>TAX: ƒ{taxPerCycle.toLocaleString()}/cycle</div>
                         </div>
                       </div>
@@ -18180,11 +18180,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize:'.52rem', color:'rgba(255,200,60,.45)', lineHeight:1.7, marginBottom:'.6rem' }}>{quest.description}</div>
                   <div style={{ fontSize:'.45rem', color:'rgba(255,200,60,.3)', letterSpacing:'.12em', marginBottom:'.4rem' }}>OBJECTIVES</div>
                   {quest.tasks.map(task => (
-                    <div key={task.id} style={{ display:'flex', alignItems:'center', gap:'.5rem', padding:'.3rem .4rem', marginBottom:'.2rem', background: task.done ? 'rgba(0,255,65,.04)' : 'transparent', border:`1px solid ${task.done ? 'rgba(0,255,65,.15)' : 'rgba(255,200,60,.1)'}` }}>
-                      <div style={{ width:12, height:12, border:`1px solid ${task.done ? '#00ff41' : 'rgba(255,200,60,.4)'}`, background: task.done ? 'rgba(0,255,65,.3)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.5rem', flexShrink:0 }}>
-                        {task.done && <span style={{ color:'#00ff41' }}>✓</span>}
+                    <div key={task.id} style={{ display:'flex', alignItems:'center', gap:'.5rem', padding:'.3rem .4rem', marginBottom:'.2rem', background: task.done ? 'rgba(56,189,248,.04)' : 'transparent', border:`1px solid ${task.done ? 'rgba(56,189,248,.15)' : 'rgba(255,200,60,.1)'}` }}>
+                      <div style={{ width:12, height:12, border:`1px solid ${task.done ? '#38bdf8' : 'rgba(255,200,60,.4)'}`, background: task.done ? 'rgba(56,189,248,.3)' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.5rem', flexShrink:0 }}>
+                        {task.done && <span style={{ color:'#38bdf8' }}>✓</span>}
                       </div>
-                      <div style={{ fontSize:'.55rem', color: task.done ? 'rgba(0,255,65,.5)' : 'rgba(255,200,60,.6)', textDecoration: task.done ? 'line-through' : 'none', flex:1 }}>{task.label}</div>
+                      <div style={{ fontSize:'.55rem', color: task.done ? 'rgba(56,189,248,.5)' : 'rgba(255,200,60,.6)', textDecoration: task.done ? 'line-through' : 'none', flex:1 }}>{task.label}</div>
                       {task.mapMarker && !task.done && (
                         <div style={{ fontSize:'.4rem', color:'rgba(0,200,255,.5)', border:'1px solid rgba(0,200,255,.2)', padding:'1px 4px', flexShrink:0 }}>MAP</div>
                       )}
@@ -18192,16 +18192,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   ))}
                   {char.hasBusiness && quest.id === 'establish_business' && (
                     <div style={{ marginTop:'.6rem', borderTop:'1px solid rgba(255,200,60,.1)', paddingTop:'.5rem' }}>
-                      <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.1em', marginBottom:'.3rem' }}>PABLO CORP AUTOMATION</div>
+                      <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.3)', letterSpacing:'.1em', marginBottom:'.3rem' }}>PABLO CORP AUTOMATION</div>
                       <button onClick={() => {
                         completeQuestTask('establish_business', 'pablo_auto');
                         setShowQuests(false);
                         setShowPablo(true);
                         setNarr('> PABLO AI — Business setup automation initiated. Use the PABLO CORP device to configure your enterprise.');
-                      }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(0,255,65,.06)', border:'1px solid rgba(0,255,65,.25)', color:'rgba(0,255,65,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
+                      }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(56,189,248,.06)', border:'1px solid rgba(56,189,248,.25)', color:'rgba(56,189,248,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
                         USE PABLO AI TO AUTOMATE BUSINESS SETUP
                       </button>
-                      <div style={{ fontSize:'.42rem', color:'rgba(0,255,65,.2)', marginTop:'.2rem' }}>
+                      <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.2)', marginTop:'.2rem' }}>
                         Optional: Let PABLO AI handle signage, workspace configuration, and registration paperwork.
                       </div>
                     </div>
@@ -18211,12 +18211,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {completedQuests.length > 0 && (
                 <>
-                  <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em', marginTop:'.6rem', marginBottom:'.4rem' }}>COMPLETED</div>
+                  <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em', marginTop:'.6rem', marginBottom:'.4rem' }}>COMPLETED</div>
                   {completedQuests.map(quest => (
-                    <div key={quest.id} style={{ border:'1px solid rgba(0,255,65,.12)', padding:'.5rem .6rem', marginBottom:'.3rem', background:'rgba(0,255,65,.02)' }}>
+                    <div key={quest.id} style={{ border:'1px solid rgba(56,189,248,.12)', padding:'.5rem .6rem', marginBottom:'.3rem', background:'rgba(56,189,248,.02)' }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(0,255,65,.4)', letterSpacing:'.1em' }}>{quest.title}</div>
-                        <div style={{ fontSize:'.45rem', color:'rgba(0,255,65,.3)', border:'1px solid rgba(0,255,65,.15)', padding:'1px 5px' }}>DONE</div>
+                        <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(56,189,248,.4)', letterSpacing:'.1em' }}>{quest.title}</div>
+                        <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.3)', border:'1px solid rgba(56,189,248,.15)', padding:'1px 5px' }}>DONE</div>
                       </div>
                     </div>
                   ))}

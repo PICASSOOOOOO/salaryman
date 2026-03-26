@@ -338,7 +338,7 @@ export default function CalllHomePage() {
       <style>{`
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(0,255,65,0.1); } 50% { box-shadow: 0 0 16px rgba(0,255,65,0.2); } }
+        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,0.1); } 50% { box-shadow: 0 0 16px rgba(56,189,248,0.2); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
       `}</style>
     </div>

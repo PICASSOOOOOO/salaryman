@@ -93,8 +93,8 @@ const STATUS_COLORS: Record<string, string> = {
   draft: 'text-zinc-400 bg-zinc-800 border-zinc-700',
   scheduled: 'text-amber-300 bg-amber-900/30 border-amber-700/50',
   sending: 'text-blue-300 bg-blue-900/30 border-blue-700/50',
-  sent: 'text-emerald-300 bg-emerald-900/30 border-emerald-700/50',
-  completed: 'text-emerald-300 bg-emerald-900/30 border-emerald-700/50',
+  sent: 'text-sky-300 bg-sky-900/30 border-sky-700/50',
+  completed: 'text-sky-300 bg-sky-900/30 border-sky-700/50',
 };
 
 const STATUS_ICONS: Record<string, React.FC<any>> = {
@@ -445,7 +445,7 @@ function EmailCompose({
         </button>
         {initial && initial.status !== 'sent' && (
           <button onClick={() => handleSend(initial.id)} disabled={sending}
-            className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-bold hover:bg-emerald-500/30 transition-colors disabled:opacity-40">
+            className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {sending ? 'Sending...' : `Send to ${recipientCount} contacts`}
           </button>
@@ -718,7 +718,7 @@ function SmsCompose({
         </button>
         {initial && initial.status !== 'sent' && (
           <button onClick={() => handleSend(initial.id)} disabled={sending}
-            className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-bold hover:bg-emerald-500/30 transition-colors disabled:opacity-40">
+            className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 text-sm font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {sending ? 'Sending...' : `Send to ${recipientCount} contacts`}
           </button>
@@ -1076,7 +1076,7 @@ export default function Campaigns() {
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-emerald-400" /> Recent SMS Campaigns</h3>
+                  <h3 className="font-bold text-foreground flex items-center gap-2"><MessageSquare className="w-4 h-4 text-sky-400" /> Recent SMS Campaigns</h3>
                   <button onClick={() => setTab('sms-campaigns')} className="text-xs text-primary hover:underline">View all</button>
                 </div>
                 {smsCampaigns.length === 0 ? (
@@ -1137,7 +1137,7 @@ export default function Campaigns() {
                             {c.status === 'sent' && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                                 <span>{c.totalSent} sent</span>
-                                {c.totalOpened > 0 && <span className="text-emerald-400">{Math.round((c.totalOpened / c.totalSent) * 100)}% opened</span>}
+                                {c.totalOpened > 0 && <span className="text-sky-400">{Math.round((c.totalOpened / c.totalSent) * 100)}% opened</span>}
                                 {c.totalClicked > 0 && <span className="text-blue-400">{Math.round((c.totalClicked / c.totalSent) * 100)}% clicked</span>}
                                 {c.totalBounced > 0 && <span className="text-red-400">{c.totalBounced} bounced</span>}
                                 {c.totalUnsubscribed > 0 && <span className="text-amber-400">{c.totalUnsubscribed} unsub</span>}
@@ -1218,7 +1218,7 @@ export default function Campaigns() {
                             {c.status === 'sent' && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                                 <span>{c.totalSent} sent</span>
-                                {c.totalDelivered > 0 && <span className="text-emerald-400">{c.totalDelivered} delivered</span>}
+                                {c.totalDelivered > 0 && <span className="text-sky-400">{c.totalDelivered} delivered</span>}
                                 {c.totalFailed > 0 && <span className="text-red-400">{c.totalFailed} failed</span>}
                                 {c.totalReplied > 0 && <span className="text-blue-400">{c.totalReplied} replied</span>}
                               </div>
@@ -1267,7 +1267,7 @@ export default function Campaigns() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-foreground flex items-center gap-2">
-                  <Inbox className="w-4 h-4 text-emerald-400" /> Direct SMS Inbox
+                  <Inbox className="w-4 h-4 text-sky-400" /> Direct SMS Inbox
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Send and receive individual SMS messages with your contacts.</p>
               </div>

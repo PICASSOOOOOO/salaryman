@@ -34,7 +34,7 @@ const STAGE_COLORS: Record<Stage, string> = {
   Lead: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   Proposal: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   Negotiation: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-  Won: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Won: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   Lost: 'bg-red-500/20 text-red-300 border-red-500/30',
 };
 
@@ -204,7 +204,7 @@ export default function Deals() {
           {[
             { label: 'Total Deals', value: deals.length, color: 'text-zinc-300' },
             { label: 'Pipeline Value', value: `$${pipelineValue.toLocaleString()}`, color: 'text-amber-400' },
-            { label: 'Won Value', value: `$${totalValue.toLocaleString()}`, color: 'text-emerald-400' },
+            { label: 'Won Value', value: `$${totalValue.toLocaleString()}`, color: 'text-sky-400' },
             { label: 'Active Deals', value: deals.filter(d => !['Won', 'Lost'].includes(d.stage)).length, color: 'text-blue-400' },
           ].map(s => (
             <div key={s.label} className="bg-card border border-border rounded-xl p-4">
@@ -306,7 +306,7 @@ export default function Deals() {
                         </div>
                       </div>
                       {deal.value && (
-                        <p className="text-xs font-mono text-emerald-400 mb-1">${deal.value.toLocaleString()}</p>
+                        <p className="text-xs font-mono text-sky-400 mb-1">${deal.value.toLocaleString()}</p>
                       )}
                       {deal.contactName && (
                         <p className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -369,7 +369,7 @@ export default function Deals() {
                   </div>
                 </div>
                 {deal.value && (
-                  <p className="font-mono text-sm text-emerald-400 shrink-0">${deal.value.toLocaleString()}</p>
+                  <p className="font-mono text-sm text-sky-400 shrink-0">${deal.value.toLocaleString()}</p>
                 )}
                 <span className={`text-[10px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full border shrink-0 ${STAGE_COLORS[deal.stage as Stage] ?? ''}`}>
                   {deal.stage}

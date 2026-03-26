@@ -27,7 +27,7 @@ interface BrandKit {
 const PROJECT_TYPES: { value: ProjectType; label: string; icon: React.FC<any>; color: string }[] = [
   { value: 'general',    label: 'General',       icon: LayoutDashboard, color: 'text-slate-400'  },
   { value: 'job_search', label: 'Job Search',    icon: Briefcase,       color: 'text-blue-400'   },
-  { value: 'software',   label: 'Software',      icon: Code2,           color: 'text-emerald-400'},
+  { value: 'software',   label: 'Software',      icon: Code2,           color: 'text-sky-400'},
   { value: 'research',   label: 'Research',      icon: FlaskConical,    color: 'text-violet-400' },
   { value: 'sales',      label: 'Sales / CRM',   icon: Megaphone,       color: 'text-orange-400' },
   { value: 'creative',   label: 'Creative',      icon: Lightbulb,       color: 'text-yellow-400' },
@@ -307,7 +307,7 @@ function KnowledgeTab() {
     <div className="space-y-4">
       <div className="bg-card border border-border rounded-2xl p-5">
         <div className="flex items-center gap-3 mb-3">
-          <Brain className="w-4 h-4 text-emerald-400" />
+          <Brain className="w-4 h-4 text-sky-400" />
           <p className="text-sm font-semibold text-foreground">Your Knowledge Vault</p>
         </div>
         <p className="text-xs text-muted-foreground mb-4">
@@ -318,24 +318,24 @@ function KnowledgeTab() {
         {adding ? (
           <div className="space-y-3 border-t border-border pt-4">
             <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="What's this about? (title)"
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-emerald-500/40" />
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-sky-500/40" />
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={5}
               placeholder="Write anything — code, facts, meeting notes, research, ideas..."
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-emerald-500/40 resize-none font-mono" />
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none focus:border-sky-500/40 resize-none font-mono" />
             <div className="flex gap-2 flex-wrap">
               {CATS.map(c => (
                 <button key={c} onClick={() => setCategory(c)}
-                  className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${category === c ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'}`}>{c}</button>
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${category === c ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'}`}>{c}</button>
               ))}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setAdding(false)} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
-              <button onClick={createNote} className="ml-auto px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm font-semibold">Save to vault</button>
+              <button onClick={createNote} className="ml-auto px-4 py-2 rounded-xl bg-sky-500/15 border border-sky-500/25 text-sky-300 text-sm font-semibold">Save to vault</button>
             </div>
           </div>
         ) : (
           <button onClick={() => setAdding(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-colors text-muted-foreground hover:text-emerald-300 text-sm w-full">
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-sky-500/40 hover:bg-sky-500/5 transition-colors text-muted-foreground hover:text-sky-300 text-sm w-full">
             <Plus className="w-4 h-4" /> Add to knowledge vault
           </button>
         )}

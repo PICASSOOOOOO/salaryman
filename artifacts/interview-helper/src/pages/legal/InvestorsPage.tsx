@@ -64,11 +64,11 @@ function InvestorForm() {
 
   if (status === "success") {
     return (
-      <div className="flex items-start gap-4 px-6 py-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+      <div className="flex items-start gap-4 px-6 py-5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
         <Check className="w-5 h-5 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold text-sm mb-1">Inquiry received.</p>
-          <p className="text-emerald-400/70 text-xs leading-relaxed">
+          <p className="text-sky-400/70 text-xs leading-relaxed">
             Thank you, {form.name}. We read every investor inquiry personally and will be in touch if there's a fit. Check your inbox at {form.email} for a confirmation.
           </p>
         </div>
@@ -81,7 +81,7 @@ function InvestorForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">
-            Your Name <span className="text-emerald-500/60">*</span>
+            Your Name <span className="text-sky-500/60">*</span>
           </label>
           <input
             type="text"
@@ -89,12 +89,12 @@ function InvestorForm() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Full Name"
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all font-mono"
           />
         </div>
         <div>
           <label className="block text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">
-            Email Address <span className="text-emerald-500/60">*</span>
+            Email Address <span className="text-sky-500/60">*</span>
           </label>
           <input
             type="email"
@@ -102,7 +102,7 @@ function InvestorForm() {
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             placeholder="you@fund.com"
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all font-mono"
           />
         </div>
       </div>
@@ -116,7 +116,7 @@ function InvestorForm() {
             value={form.company}
             onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
             placeholder="Acme Capital"
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all font-mono"
           />
         </div>
         <div>
@@ -126,7 +126,7 @@ function InvestorForm() {
           <select
             value={form.investmentRange}
             onChange={(e) => setForm((f) => ({ ...f, investmentRange: e.target.value }))}
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all font-mono"
           >
             <option value="">Select a range...</option>
             {INVESTMENT_RANGES.map((r) => (
@@ -137,7 +137,7 @@ function InvestorForm() {
       </div>
       <div>
         <label className="block text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">
-          Message / Notes <span className="text-emerald-500/60">*</span>
+          Message / Notes <span className="text-sky-500/60">*</span>
         </label>
         <textarea
           required
@@ -145,7 +145,7 @@ function InvestorForm() {
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           placeholder="Tell us about your investment thesis, why SALARYMAN resonates with you, or any questions you have..."
-          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all resize-none font-mono"
+          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all resize-none font-mono"
         />
       </div>
       {status === "error" && (
@@ -157,7 +157,7 @@ function InvestorForm() {
       <button
         type="submit"
         disabled={status === "loading"}
-        className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-all disabled:opacity-50 font-mono tracking-wide"
+        className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-sm font-medium hover:bg-sky-500/25 transition-all disabled:opacity-50 font-mono tracking-wide"
       >
         {status === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         {status === "loading" ? "Sending..." : "Submit Inquiry"}
@@ -175,8 +175,8 @@ export default function InvestorsPage() {
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-300 font-mono">
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-emerald-500/3 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-emerald-500/2 blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-sky-500/3 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-sky-500/2 blur-[100px]" />
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-12">
@@ -184,20 +184,20 @@ export default function InvestorsPage() {
         <div className="flex items-center justify-between mb-12">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-emerald-400 transition-colors uppercase tracking-widest"
+            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-sky-400 transition-colors uppercase tracking-widest"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to SALARYMAN
           </button>
-          <div className="flex items-center gap-2 text-emerald-400/70 text-xs tracking-widest uppercase">
+          <div className="flex items-center gap-2 text-sky-400/70 text-xs tracking-widest uppercase">
             <Scale className="w-3.5 h-3.5" />
             PICASSO AI LLC
           </div>
         </div>
 
         <div className="mb-4">
-          <span className="inline-flex items-center gap-2 text-[9px] font-mono tracking-widest uppercase text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-2.5 py-1 rounded">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="inline-flex items-center gap-2 text-[9px] font-mono tracking-widest uppercase text-sky-500/70 border border-sky-500/25 bg-sky-500/8 px-2.5 py-1 rounded">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
             ALPHA {__BUILD_VERSION__} · Alpha Stage
           </span>
         </div>
@@ -246,7 +246,7 @@ export default function InvestorsPage() {
                 { label: "Hiring Module", desc: "Candidate pipeline, job descriptions, and interview tooling" },
               ].map((item) => (
                 <div key={item.label} className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/20">
-                  <p className="text-[10px] font-mono tracking-widest uppercase text-emerald-400/70 mb-1">{item.label}</p>
+                  <p className="text-[10px] font-mono tracking-widest uppercase text-sky-400/70 mb-1">{item.label}</p>
                   <p className="text-xs text-zinc-500 leading-relaxed">{item.desc}</p>
                 </div>
               ))}
@@ -266,9 +266,9 @@ export default function InvestorsPage() {
                 {
                   icon: Layers,
                   label: "Built & Live",
-                  color: "text-emerald-400",
-                  border: "border-emerald-500/20",
-                  bg: "bg-emerald-500/5",
+                  color: "text-sky-400",
+                  border: "border-sky-500/20",
+                  bg: "bg-sky-500/5",
                   items: [
                     "Live AI listening (ECHO-7)",
                     "Screen scanner (OPTIC-9)",
@@ -383,7 +383,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-1">Current Stage</p>
-                  <p className="text-emerald-400">Alpha — live and shipping</p>
+                  <p className="text-sky-400">Alpha — live and shipping</p>
                 </div>
               </div>
             </div>
@@ -405,7 +405,7 @@ export default function InvestorsPage() {
               ].map((item) => (
                 <div key={item.label} className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/20 text-center">
                   <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-1">{item.label}</p>
-                  <p className="text-base font-bold text-emerald-400 mb-1">{item.value}</p>
+                  <p className="text-base font-bold text-sky-400 mb-1">{item.value}</p>
                   <p className="text-xs text-zinc-600">{item.desc}</p>
                 </div>
               ))}
@@ -435,7 +435,7 @@ export default function InvestorsPage() {
         <footer className="mt-16 pt-8 border-t border-zinc-900 text-center">
           <button
             onClick={() => navigate("/legal")}
-            className="text-[10px] font-mono text-zinc-700 hover:text-emerald-500/70 transition-colors uppercase tracking-widest mb-2 block mx-auto"
+            className="text-[10px] font-mono text-zinc-700 hover:text-sky-500/70 transition-colors uppercase tracking-widest mb-2 block mx-auto"
           >
             Legal & Policy Center
           </button>
@@ -451,7 +451,7 @@ export default function InvestorsPage() {
 function SectionLabel({ label, icon: Icon }: { label: string; icon: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <Icon className="w-3.5 h-3.5 text-emerald-400/50" />
+      <Icon className="w-3.5 h-3.5 text-sky-400/50" />
       <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.2em]">{label}</span>
     </div>
   );

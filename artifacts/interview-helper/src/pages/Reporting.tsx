@@ -12,8 +12,8 @@ import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 
-const ACCENT = '#22c55e';
-const ACCENT_DIM = 'rgba(34,197,94,0.5)';
+const ACCENT = '#38bdf8';
+const ACCENT_DIM = 'rgba(56,189,248,0.5)';
 
 interface Summary {
   openPositions: number;
@@ -53,11 +53,11 @@ interface WebhookConfig {
 
 const STAGE_ORDER = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
 const STAGE_COLORS: Record<string, string> = {
-  applied: 'rgba(34,197,94,0.7)',
-  screening: 'rgba(34,197,94,0.7)',
-  interview: 'rgba(34,197,94,0.7)',
-  offer: 'rgba(34,197,94,0.7)',
-  hired: '#22c55e',
+  applied: 'rgba(56,189,248,0.7)',
+  screening: 'rgba(56,189,248,0.7)',
+  interview: 'rgba(56,189,248,0.7)',
+  offer: 'rgba(56,189,248,0.7)',
+  hired: '#38bdf8',
   rejected: 'rgba(239,68,68,0.5)',
 };
 
@@ -81,7 +81,7 @@ function ModernTooltip({ active, payload, label }: any) {
       <div className="text-[10px] font-mono text-zinc-500 mb-1">{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} className="text-xs font-mono text-zinc-300">
-          {p.name}: <span className="text-emerald-400">{p.value}</span>
+          {p.name}: <span className="text-sky-400">{p.value}</span>
         </div>
       ))}
     </div>
@@ -138,7 +138,7 @@ function ActivityChart({ hiresPerMonth, applicantsPerMonth }: { hiresPerMonth: M
           <YAxis tick={{ fill: 'rgba(161,161,170,0.5)', fontSize: 9, fontFamily: 'monospace' }} tickLine={false} axisLine={false} allowDecimals={false} />
           <Tooltip content={<ModernTooltip />} />
           <Legend wrapperStyle={{ fontSize: '0.6rem', fontFamily: 'monospace', textTransform: 'uppercase', color: 'rgba(161,161,170,0.6)' }} />
-          <Line type="monotone" dataKey="applicants" stroke="rgba(34,197,94,0.5)" strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} activeDot={{ r: 4 }} name="Applicants" />
+          <Line type="monotone" dataKey="applicants" stroke="rgba(56,189,248,0.5)" strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} activeDot={{ r: 4 }} name="Applicants" />
           <Line type="monotone" dataKey="hires" stroke={ACCENT} strokeWidth={2} dot={{ fill: ACCENT, r: 3 }} activeDot={{ r: 4 }} name="Hires" />
         </LineChart>
       </ResponsiveContainer>
@@ -221,9 +221,9 @@ function ZapierSection() {
     <label className="flex items-center gap-3 cursor-pointer">
       <div
         onClick={() => onChange(!checked)}
-        className={`relative w-8 h-[18px] rounded-full border transition-all ${checked ? 'bg-emerald-500/20 border-emerald-500/50' : 'bg-white/4 border-white/10'}`}
+        className={`relative w-8 h-[18px] rounded-full border transition-all ${checked ? 'bg-sky-500/20 border-sky-500/50' : 'bg-white/4 border-white/10'}`}
       >
-        <div className={`absolute top-[2px] w-3 h-3 rounded-full transition-all ${checked ? 'left-[16px] bg-emerald-400' : 'left-[2px] bg-zinc-600'}`} />
+        <div className={`absolute top-[2px] w-3 h-3 rounded-full transition-all ${checked ? 'left-[16px] bg-sky-400' : 'left-[2px] bg-zinc-600'}`} />
       </div>
       <span className={`text-xs font-mono uppercase tracking-wide ${checked ? 'text-zinc-300' : 'text-zinc-600'}`}>{label}</span>
     </label>
@@ -250,7 +250,7 @@ function ZapierSection() {
             value={config.webhookUrl}
             onChange={e => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
             placeholder="https://hooks.zapier.com/hooks/catch/..."
-            className="flex-1 bg-white/4 border border-white/8 rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-emerald-500/30 font-mono transition-colors"
+            className="flex-1 bg-white/4 border border-white/8 rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-sky-500/30 font-mono transition-colors"
           />
           {config.webhookUrl && (
             <button
@@ -276,7 +276,7 @@ function ZapierSection() {
         <button
           onClick={save}
           disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-mono uppercase tracking-wide hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 text-xs font-mono uppercase tracking-wide hover:bg-sky-500/20 transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
           {saved ? 'Saved' : 'Save Config'}
@@ -296,10 +296,10 @@ function ZapierSection() {
         {testResult && (
           <div className="flex items-center gap-2">
             {testResult.ok
-              ? <CheckCircle className="w-3 h-3 text-emerald-400" />
+              ? <CheckCircle className="w-3 h-3 text-sky-400" />
               : <AlertCircle className="w-3 h-3 text-red-400/70" />
             }
-            <span className={`text-xs font-mono ${testResult.ok ? 'text-emerald-400' : 'text-red-400/70'}`}>
+            <span className={`text-xs font-mono ${testResult.ok ? 'text-sky-400' : 'text-red-400/70'}`}>
               {testResult.msg}
             </span>
           </div>
@@ -337,8 +337,8 @@ function ReportingContent() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <BarChart2 className="w-4 h-4 text-emerald-400" />
+          <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+            <BarChart2 className="w-4 h-4 text-sky-400" />
           </div>
           <h1 className="font-['Share_Tech_Mono',monospace] text-base text-zinc-100 tracking-widest uppercase">
             {boomerMode ? 'Reporting' : 'Intel-9 Command Brief'}

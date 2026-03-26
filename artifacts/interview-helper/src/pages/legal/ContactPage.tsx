@@ -37,11 +37,11 @@ function ContactForm() {
 
   if (status === "success") {
     return (
-      <div className="flex items-start gap-3 px-5 py-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+      <div className="flex items-start gap-3 px-5 py-4 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 text-sm">
         <Check className="w-4 h-4 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold mb-1">Message sent successfully.</p>
-          <p className="text-emerald-400/70 text-xs">Our support team will review your request and respond to {form.email} within 1–2 business days.</p>
+          <p className="text-sky-400/70 text-xs">Our support team will review your request and respond to {form.email} within 1–2 business days.</p>
         </div>
       </div>
     );
@@ -58,7 +58,7 @@ function ContactForm() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Full Name"
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
           />
         </div>
         <div>
@@ -69,7 +69,7 @@ function ContactForm() {
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             placeholder="you@company.com"
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
           />
         </div>
       </div>
@@ -79,7 +79,7 @@ function ContactForm() {
           required
           value={form.subject}
           onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
         >
           <option value="" disabled>Select a topic...</option>
           <option value="Billing & Subscription">Billing &amp; Subscription</option>
@@ -100,7 +100,7 @@ function ContactForm() {
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           placeholder="Describe your issue or question in detail..."
-          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all resize-none"
+          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all resize-none"
         />
       </div>
       {status === "error" && (
@@ -112,7 +112,7 @@ function ContactForm() {
       <button
         type="submit"
         disabled={status === "loading"}
-        className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+        className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-sm font-medium hover:bg-sky-500/25 transition-all disabled:opacity-50"
       >
         {status === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         {status === "loading" ? "Sending..." : "Send Message"}
@@ -132,7 +132,7 @@ export default function ContactPage() {
 
       <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30 mb-8">
         <div className="flex items-center gap-2 mb-2">
-          <Mail className="w-4 h-4 text-emerald-400/60" />
+          <Mail className="w-4 h-4 text-sky-400/60" />
           <span className="text-sm font-semibold text-zinc-300">Contact Form</span>
         </div>
         <p className="text-xs text-zinc-600 mb-2">All correspondence is handled through the contact form below. Select your topic and we'll route your message to the right team.</p>

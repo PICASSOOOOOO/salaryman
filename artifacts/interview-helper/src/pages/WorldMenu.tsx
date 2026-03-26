@@ -40,9 +40,9 @@ function fmtPlaytime(frames: number): string {
 }
 
 const CLASS_COLOR: Record<string, string> = {
-  corporate: '#00ff41',
-  outlaw: '#88ff44',
-  replicant: '#33ffaa',
+  corporate: '#38bdf8',
+  outlaw: '#7dd3fc',
+  replicant: '#67e8f9',
 };
 
 const CLASS_BADGE: Record<string, string> = {
@@ -66,7 +66,7 @@ const CLASSES = [
     def: '6',
     networth: 'ƒ0',
     perks: 'Full city passport · PABLO CORP base ƒ100/min · Control military & police',
-    color: '#00ff41',
+    color: '#38bdf8',
   },
   {
     id: 'outlaw' as CharClass,
@@ -80,7 +80,7 @@ const CLASSES = [
     def: '8',
     networth: 'ƒ0',
     perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · PABLO base ƒ25/min',
-    color: '#88ff44',
+    color: '#7dd3fc',
   },
   {
     id: 'replicant' as CharClass,
@@ -94,7 +94,7 @@ const CLASSES = [
     def: '12',
     networth: 'ƒ0',
     perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · PABLO base ƒ50/min',
-    color: '#33ffaa',
+    color: '#67e8f9',
   },
 ];
 
@@ -146,12 +146,12 @@ const FLAVOR = [
 ];
 
 const GUIDE_SECTIONS: { id: GuideSection; label: string; col: string }[] = [
-  { id: 'world',       label: CITY_NAME,   col: '#00ff41' },
+  { id: 'world',       label: CITY_NAME,   col: '#38bdf8' },
   { id: 'combat',      label: 'COMBAT',       col: '#ffcc00' },
   { id: 'survival',    label: 'SURVIVAL',     col: '#33aaff' },
   { id: 'territories', label: 'TERRITORIES',  col: '#ff4444' },
-  { id: 'landmarks',   label: 'LANDMARKS',    col: '#88ff44' },
-  { id: 'terminals',   label: 'TERMINALS',    col: '#33ffaa' },
+  { id: 'landmarks',   label: 'LANDMARKS',    col: '#7dd3fc' },
+  { id: 'terminals',   label: 'TERMINALS',    col: '#67e8f9' },
   { id: 'controls',    label: 'CONTROLS',     col: '#cc88ff' },
 ];
 
@@ -180,21 +180,21 @@ const TIMEZONE_OPTIONS = [
 
 function Row({ label, val, col }: { label: string; val: string; col?: string }) {
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.07)', padding: '.4rem 0', gap: '1rem', alignItems: 'flex-start' }}>
-      <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', minWidth: 110, paddingTop: '.12rem', flexShrink: 0 }}>{label}</div>
-      <div style={{ fontSize: '.78rem', color: col ?? 'rgba(0,255,65,.7)', letterSpacing: '.04em', lineHeight: 1.75 }}>{val}</div>
+    <div style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.07)', padding: '.4rem 0', gap: '1rem', alignItems: 'flex-start' }}>
+      <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', minWidth: 110, paddingTop: '.12rem', flexShrink: 0 }}>{label}</div>
+      <div style={{ fontSize: '.78rem', color: col ?? 'rgba(56,189,248,.7)', letterSpacing: '.04em', lineHeight: 1.75 }}>{val}</div>
     </div>
   );
 }
 
 function SectionHead({ children }: { children: string }) {
   return (
-    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.6rem', marginTop: '.3rem', textShadow: '0 0 14px rgba(0,255,65,.35)' }}>{children}</div>
+    <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.12em', marginBottom: '.6rem', marginTop: '.3rem', textShadow: '0 0 14px rgba(56,189,248,.35)' }}>{children}</div>
   );
 }
 
 function Divider() {
-  return <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.22), transparent)', margin: '.65rem 0' }} />;
+  return <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(56,189,248,.22), transparent)', margin: '.65rem 0' }} />;
 }
 
 
@@ -208,26 +208,26 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'world') return (
     <div style={S}>
       <SectionHead>MINX CITY</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         You feel it before you see it. A hum in the air — low, constant, electric. Neon crawls up every surface like a rash that won't heal. The buildings are too tall. The streets are too clean in some places and not clean enough in others. Somewhere above you, always above you, a tower watches. Sixty-two floors of glass and silence.
       </div>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         This is Minx City. One of twenty-four. Each server carries a different name — Neon Lagos, Sector Berlin, Old Shanghai, the Havana Grid — but the architecture of control is identical. Same tower. Same corp. Same currency that replaced whatever came before. The collapse was not an accident. It was a transition. And the transition is complete.
       </div>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         South of the glow, the city ends. Not with a wall — with an absence. The light stops. The pavement cracks. The sky shifts from neon to smoke. Out there, people still live. Some of them remember what came before. Most of them just remember what they lost.
       </div>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         The corp doesn't talk about the wasteland. The wasteland doesn't talk about the corp. Both are lying. There is a frequency buried in the static — a signal older than the collapse. Someone is broadcasting. Nobody knows who. Nobody knows why. But everyone hears it eventually.
       </div>
       <Divider />
       <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
-      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#33ffaa" />
+      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#67e8f9" />
       <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0 and earns through PABLO CORP government assistance (class base), business profits, or real enterprise salary." col="#ffcc00" />
       <Row label="PABLO CORP ASSISTANCE" val="All operatives receive a PABLO CORP government base salary once they enter the world. Corporate: ƒ100/min. Replicants: ƒ50/min. Outlaws: ƒ25/min. This ticks every 60 seconds on top of any business or real enterprise income. No one leaves Minx City empty-handed — PABLO CORP makes sure of it." col="#cc44ff" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
-      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+      <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         Twenty-four cities. Twenty-four towers. The same story told in every timezone. You are in one of them now. The only question that matters: what will you do before the lights go out again?
       </div>
     </div>
@@ -236,20 +236,20 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'combat') return (
     <div style={S}>
       <SectionHead>COMBAT SYSTEM</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Enemies patrol their territories. When you enter range they chase. Stand your ground or run — your call. Press [F] to attack. Anything inside 72px takes damage.
       </div>
       <Divider />
       <Row label="[F] ATTACK" val="Melee swing. Hits all enemies within ~72px. ATK = 20 + (LVL−1)×5. Cooldown: 0.5s. Yellow flash ring confirms the hit zone." col="#ffcc00" />
       <Row label="ENEMY DAMAGE" val="Enemies deal 0.4 HP per frame when in contact. Invincibility frames (0.3s) prevent instant stacking." col="#ff4444" />
-      <Row label="KILL" val="Enemy HP → 0: they vanish. EXP awarded. Respawn at spawn point in 7 seconds." col="#00ff41" />
-      <Row label="POISON" val="MUTANTS and STATIC_MONKS have a 12% chance to poison on contact. HP drains 1.5/sec while poisoned. Cure: SAVE POINT or respawn." col="#88ff44" />
+      <Row label="KILL" val="Enemy HP → 0: they vanish. EXP awarded. Respawn at spawn point in 7 seconds." col="#38bdf8" />
+      <Row label="POISON" val="MUTANTS and STATIC_MONKS have a 12% chance to poison on contact. HP drains 1.5/sec while poisoned. Cure: SAVE POINT or respawn." col="#7dd3fc" />
       <Divider />
       <SectionHead>EXP & LEVELS</SectionHead>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '.3rem', margin: '.5rem 0' }}>
         {EXP_TABLE.slice(0, 10).map((n, i) => (
-          <div key={i} style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.35rem .4rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', marginBottom: '.1rem' }}>LVL {i+1}→{i+2}</div>
+          <div key={i} style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.35rem .4rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', marginBottom: '.1rem' }}>LVL {i+1}→{i+2}</div>
             <div style={{ ...VT, fontSize: '.85rem', color: '#ffcc00' }}>{n}</div>
           </div>
         ))}
@@ -258,10 +258,10 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="EXP TABLE" val="250 → 456 → 674 → 906 → 1150 → 1406 → 1674 → 1956 → 2250 → 2556 ..." col="#ffcc00" />
       <Divider />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '.3rem', marginTop: '.5rem' }}>
-        {[['IRON_RATS','#ff4444','30','20'],['VOID_DOGS','#ff8800','40','28'],['MUTANT','#88ff44','35','30'],['STATIC_MONKS','#aaff22','50','35'],['RAIDER','#ff66ff','45','40']].map(([n,c,hp,exp]) => (
+        {[['IRON_RATS','#ff4444','30','20'],['VOID_DOGS','#ff8800','40','28'],['MUTANT','#7dd3fc','35','30'],['STATIC_MONKS','#aaff22','50','35'],['RAIDER','#ff66ff','45','40']].map(([n,c,hp,exp]) => (
           <div key={n} style={{ border: `1px solid ${c}33`, padding: '.4rem .45rem', background: `${c}09` }}>
             <div style={{ ...VT, fontSize: '.85rem', color: c as string, letterSpacing: '.06em' }}>{n}</div>
-            <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.3)', marginTop: '.2rem' }}>HP {hp} · EXP {exp}</div>
+            <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.3)', marginTop: '.2rem' }}>HP {hp} · EXP {exp}</div>
           </div>
         ))}
       </div>
@@ -271,12 +271,12 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'survival') return (
     <div style={S}>
       <SectionHead>SURVIVAL METERS</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Three meters govern your operational status. Let any one drop to zero and you start taking consequences. The wasteland accelerates the drain on all three.
       </div>
       <Divider />
       {[
-        { label: 'HUNGER', col: '#00ff41', drain: '−1.5/tick (city) · −2.5/tick (wasteland)', crit: 'HP drains when HUNGER = 0', restore: 'VENDING MACHINE +30 · PABLO STORE consumables' },
+        { label: 'HUNGER', col: '#38bdf8', drain: '−1.5/tick (city) · −2.5/tick (wasteland)', crit: 'HP drains when HUNGER = 0', restore: 'VENDING MACHINE +30 · PABLO STORE consumables' },
         { label: 'THIRST', col: '#33aaff', drain: '−2/tick (city) · −3/tick (wasteland)', crit: 'HP drains when THIRST = 0', restore: 'VENDING MACHINE +30' },
         { label: 'ENERGY', col: '#ffcc00', drain: '−1/tick (city) · −1.5/tick (wasteland)', crit: 'Salary −5/tick when ENERGY < 20', restore: 'HOTEL NEON +30 · PIXEL ARCADE +20' },
       ].map(m => (
@@ -284,7 +284,7 @@ function GuideContent({ section }: { section: GuideSection }) {
           <div style={{ ...VT, fontSize: '1.1rem', color: m.col, letterSpacing: '.1em', marginBottom: '.3rem' }}>{m.label}</div>
           <Row label="DRAIN" val={m.drain} col={m.col} />
           <Row label="CRITICAL" val={m.crit} col="#ff6644" />
-          <Row label="RESTORE" val={m.restore} col="rgba(0,255,65,.6)" />
+          <Row label="RESTORE" val={m.restore} col="rgba(56,189,248,.6)" />
         </div>
       ))}
       <Divider />
@@ -323,19 +323,19 @@ function GuideContent({ section }: { section: GuideSection }) {
     return (
       <div style={S}>
         <SectionHead>GANG TERRITORIES</SectionHead>
-        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
           Gangs carved up the wasteland after the collapse. They don't care who you are. Step into their zone and the HUD lights up. Each zone has its own threat profile and entry narration.
         </div>
         <Divider />
         {territories.map(g => {
           const discovered = visitedFactions.has(g.fid);
           if (!discovered) return (
-            <div key={g.fid} style={{ border: '1px solid rgba(0,255,65,.1)', background: 'rgba(0,255,65,.02)', padding: '.7rem .8rem', marginBottom: '.5rem' }}>
+            <div key={g.fid} style={{ border: '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.02)', padding: '.7rem .8rem', marginBottom: '.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
-                <div style={{ width: 10, height: 10, background: 'rgba(0,255,65,.15)' }} />
-                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>??? TERRITORY</div>
+                <div style={{ width: 10, height: 10, background: 'rgba(56,189,248,.15)' }} />
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em' }}>??? TERRITORY</div>
               </div>
-              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.12)', marginTop: '.3rem' }}>[ ENTER THIS ZONE TO REVEAL INTEL ]</div>
+              <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.12)', marginTop: '.3rem' }}>[ ENTER THIS ZONE TO REVEAL INTEL ]</div>
             </div>
           );
           return (
@@ -343,17 +343,17 @@ function GuideContent({ section }: { section: GuideSection }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem', marginBottom: '.5rem' }}>
                 <div style={{ width: 10, height: 10, background: g.col, boxShadow: `0 0 8px ${g.col}` }} />
                 <div style={{ ...VT, fontSize: '1.3rem', color: g.col, letterSpacing: '.1em' }}>{g.id}</div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>{g.zone}</div>
               </div>
               <Row label="ENTRY" val={g.entry} col={g.col} />
-              <Row label="ENEMIES" val={g.enemies} col="rgba(0,255,65,.6)" />
+              <Row label="ENEMIES" val={g.enemies} col="rgba(56,189,248,.6)" />
               <Row label="LORE" val={g.lore} />
             </div>
           );
         })}
         <Divider />
         <Row label="HUD INDICATOR" val="Zone name + warning appear in the bottom-left panel when you cross into gang territory." col="#ff8800" />
-        <Row label="WASTELAND RULE" val="All survival meters drain faster across the entire wasteland, not just in gang zones." col="#88ff44" />
+        <Row label="WASTELAND RULE" val="All survival meters drain faster across the entire wasteland, not just in gang zones." col="#7dd3fc" />
       </div>
     );
   }
@@ -361,33 +361,33 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'landmarks') {
     const cityLandmarks = [
       { bid: 'pablo_tower', name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
-      { bid: 'clinic',      name: 'CITY CLINIC',      col: '#00ff41', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
-      { bid: 'megabank',    name: 'BANCO OMBRA', col: '#00ff41', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
-      { bid: 'hotel',       name: 'HOTEL NEON',      col: '#00ff41', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
-      { bid: 'arcade',      name: 'PIXEL ARCADE',    col: '#00ff41', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
-      { bid: 'vend',        name: 'VENDING MACHINE', col: '#00ff41', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
+      { bid: 'clinic',      name: 'CITY CLINIC',      col: '#38bdf8', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
+      { bid: 'megabank',    name: 'BANCO OMBRA', col: '#38bdf8', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
+      { bid: 'hotel',       name: 'HOTEL NEON',      col: '#38bdf8', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
+      { bid: 'arcade',      name: 'PIXEL ARCADE',    col: '#38bdf8', effect: '+20 Energy. One machine still running: NEON DRIFT.',                    secret: 'Free play. Coin slot taped over since the collapse.' },
+      { bid: 'vend',        name: 'VENDING MACHINE', col: '#38bdf8', effect: '+30 Hunger · +30 Thirst. Vending machine near city wall.',          secret: 'Brand: PABLO FRESH. Ingredients unknown.' },
       { bid: 'crystal',     name: 'SAVE POINT',      col: '#aaffff', effect: 'Full restore: HP, Hunger, Thirst, Energy. Cures POISON. Saves progress to device.', secret: '"Brave the darkness, warrior." — inscription, provenance unknown.' },
       { bid: 'pablo_store', name: 'PABLO STORE',     col: '#cc44ff', effect: 'Buy PABLO devices. Obtain OPERATOR CLEARANCE ($4–6/mo, 7-day trial). Access augmentation modules.',      secret: 'CIVILIAN ACCESS is monitored. PABLO notes who hasn\'t upgraded.' },
     ];
     const wasteLandmarks = [
-      { bid: 'bunker',     name: 'BUNKER-09',    col: '#88ff44', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
-      { bid: 'scrap',      name: 'SCRAP YARD',   col: '#88ff44', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
-      { bid: 'radio',      name: 'PIRATE RADIO', col: '#88ff44', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
-      { bid: 'oxide_labs', name: 'OXIDE LABS',   col: '#88ff44', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
+      { bid: 'bunker',     name: 'BUNKER-09',    col: '#7dd3fc', effect: 'Lore only. "WW-87 / INSERT COIN." Terminal shows: GAME OVER.', secret: 'Nobody has inserted a coin in years.' },
+      { bid: 'scrap',      name: 'SCRAP YARD',   col: '#7dd3fc', effect: '+ƒ20 salary. PCB labeled \'87 found.',                         secret: 'Worth more than a full day\'s work at a corp.' },
+      { bid: 'radio',      name: 'PIRATE RADIO', col: '#7dd3fc', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
+      { bid: 'oxide_labs', name: 'OXIDE LABS',   col: '#7dd3fc', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
     ];
     const renderLandmark = (b: { bid: string; name: string; col: string; effect: string; secret: string }) => {
       const discovered = visitedLocations.has(b.bid);
       return (
-        <div key={b.bid} style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
-          <div style={{ ...VT, fontSize: '.9rem', color: discovered ? b.col : 'rgba(0,255,65,.15)', minWidth: 120, flexShrink: 0 }}>{discovered ? b.name : '???'}</div>
+        <div key={b.bid} style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
+          <div style={{ ...VT, fontSize: '.9rem', color: discovered ? b.col : 'rgba(56,189,248,.15)', minWidth: 120, flexShrink: 0 }}>{discovered ? b.name : '???'}</div>
           <div style={{ flex: 1 }}>
             {discovered ? (
               <>
-                <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.65)', lineHeight: 1.7 }}>{b.effect}</div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
+                <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.65)', lineHeight: 1.7 }}>{b.effect}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
               </>
             ) : (
-              <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.12)', lineHeight: 1.7 }}>[ VISIT TO REVEAL ]</div>
+              <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.12)', lineHeight: 1.7 }}>[ VISIT TO REVEAL ]</div>
             )}
           </div>
         </div>
@@ -396,14 +396,14 @@ function GuideContent({ section }: { section: GuideSection }) {
     return (
       <div style={S}>
         <SectionHead>LANDMARKS</SectionHead>
-        <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+        <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
           Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other operatives.
         </div>
         <Divider />
-        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
+        <div style={{ fontSize: '.44rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
         {cityLandmarks.map(renderLandmark)}
         <Divider />
-        <div style={{ fontSize: '.44rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
+        <div style={{ fontSize: '.44rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
         {wasteLandmarks.map(renderLandmark)}
         <Divider />
         <Row label="BUILDING LOCKS" val="Any operative can lock a building with a passcode. Locked buildings show 🔒 and display owner name + company. Only the password holder can enter." col="#ff8800" />
@@ -414,44 +414,44 @@ function GuideContent({ section }: { section: GuideSection }) {
   if (section === 'terminals') return (
     <div style={S}>
       <SectionHead>TERMINALS & DEVICES</SectionHead>
-      <div style={{ fontSize: '.56rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         PABLO AI is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
       </div>
       <Divider />
       <SectionHead>PERSONAL DEVICE</SectionHead>
-      <Row label="AVAILABILITY" val="Suits start with a personal handheld device. Outlaws and Replicants must find or purchase one." col="#33ffaa" />
-      <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#00ff41" />
+      <Row label="AVAILABILITY" val="Suits start with a personal handheld device. Outlaws and Replicants must find or purchase one." col="#67e8f9" />
+      <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#38bdf8" />
       <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
       <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VENDING MACHINE (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
       <Divider />
       <SectionHead>PUBLIC TERMINALS</SectionHead>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
+      <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         Public terminals are physical objects in the game world. Walk up and press [E] to access. PABLO AI is free on all of them. Use these when your personal device is broken, missing, or if you never had one.
       </div>
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
       {[
-        { name: 'WEST PAYPHONE',    loc: 'Western Minx City, near Metro West',       col: '#33ffaa' },
-        { name: 'CENTRAL KIOSK',    loc: 'Central city, near Hotel Famicom',          col: '#33ffaa' },
-        { name: 'EAST PAYPHONE',    loc: 'East district, near Print Shop',            col: '#33ffaa' },
-        { name: 'NEON KIOSK',       loc: 'Near Club Neon, east side',                 col: '#33ffaa' },
-        { name: 'NORTH PAYPHONE',   loc: 'North quarter, near North Gate',            col: '#33ffaa' },
+        { name: 'WEST PAYPHONE',    loc: 'Western Minx City, near Metro West',       col: '#67e8f9' },
+        { name: 'CENTRAL KIOSK',    loc: 'Central city, near Hotel Famicom',          col: '#67e8f9' },
+        { name: 'EAST PAYPHONE',    loc: 'East district, near Print Shop',            col: '#67e8f9' },
+        { name: 'NEON KIOSK',       loc: 'Near Club Neon, east side',                 col: '#67e8f9' },
+        { name: 'NORTH PAYPHONE',   loc: 'North quarter, near North Gate',            col: '#67e8f9' },
       ].map(t => (
         <Row key={t.name} label={t.name} val={t.loc} col={t.col} />
       ))}
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
-      <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
-      <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO AI access." col="#88ff44" />
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
+      <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO AI access." col="#7dd3fc" />
+      <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO AI access." col="#7dd3fc" />
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
-      <div style={{ fontSize: '.75rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
+      <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
         Armored vans parked in the wasteland. Each contains a working terminal and a cot for rest. Energy +15 on entry.
       </div>
-      <Row label="WEST VAN" val="Western wasteland, south of Iron Rats territory." col="#88ff44" />
-      <Row label="CENTRAL VAN" val="Deep wasteland, near Terminus Shelter." col="#88ff44" />
-      <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#88ff44" />
+      <Row label="WEST VAN" val="Western wasteland, south of Iron Rats territory." col="#7dd3fc" />
+      <Row label="CENTRAL VAN" val="Deep wasteland, near Terminus Shelter." col="#7dd3fc" />
+      <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#7dd3fc" />
       <Divider />
-      <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
+      <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
         PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
       </div>
     </div>
@@ -461,7 +461,7 @@ function GuideContent({ section }: { section: GuideSection }) {
     <div style={S}>
       <SectionHead>CONTROLS</SectionHead>
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['WASD / ARROWS', 'Move operative'],
@@ -470,14 +470,14 @@ function GuideContent({ section }: { section: GuideSection }) {
           ['F / SPACE', 'Melee attack (72px range)'],
           ['CLICK', 'Ranged attack (requires ranged weapon)'],
         ].map(([key, desc]) => (
-          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL & DEVICE ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL & DEVICE ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['P', 'Open PABLO device (personal terminal)'],
@@ -485,28 +485,28 @@ function GuideContent({ section }: { section: GuideSection }) {
           ['ESC', 'Close any open panel or dialog'],
           ['SPACE / ENTER', 'Advance dialog text'],
         ].map(([key, desc]) => (
-          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MAP & NAVIGATION ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MAP & NAVIGATION ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['M', 'Toggle world map overlay'],
           ['SCROLL WHEEL', 'Zoom in / out (0.8× – 2.5×)'],
           ['R', 'Toggle radio (near radio buildings)'],
         ].map(([key, desc]) => (
-          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
       <Divider />
-      <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── SOCIAL & BUSINESS ──</div>
+      <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── SOCIAL & BUSINESS ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
           ['C', 'Open world chat'],
@@ -516,9 +516,9 @@ function GuideContent({ section }: { section: GuideSection }) {
           ['E at STORE', 'Browse inventory / buy items / sell cargo'],
           ['E at EXCHANGE', 'Trade commodities (buy low, sell high)'],
         ].map(([key, desc]) => (
-          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
+          <div key={key} style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', padding: '.3rem 0', borderBottom: '1px solid rgba(56,189,248,.06)' }}>
             <div style={{ ...VT, fontSize: '1rem', color: '#cc88ff', letterSpacing: '.08em', minWidth: 110, flexShrink: 0 }}>{key}</div>
-            <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.75 }}>{desc}</div>
+            <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.75 }}>{desc}</div>
           </div>
         ))}
       </div>
@@ -923,27 +923,27 @@ export default function WorldMenu() {
         opacity: 0.06, filter: 'sepia(1) hue-rotate(80deg) saturate(3)',
       }} />
       <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents: 'none', zIndex: 99 }} />
-      <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(0,255,65,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Top bar */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderBottom: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-          <button onClick={() => navigate('/')} style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.5)', border: '1px solid rgba(0,255,65,.25)', background: 'rgba(0,255,65,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>← BACK</button>
+      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderBottom: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+          <button onClick={() => navigate('/')} style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.5)', border: '1px solid rgba(56,189,248,.25)', background: 'rgba(56,189,248,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>← BACK</button>
           &nbsp;·&nbsp;
           SALARYMAN OS ALPHA {__BUILD_VERSION__} &nbsp;·&nbsp;
           <select
             value={selectedTimezone}
             onChange={e => setSelectedTimezone(e.target.value)}
-            style={{ background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', padding: '2px 6px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', padding: '2px 6px', cursor: 'pointer', outline: 'none' }}
           >
             {TIMEZONE_OPTIONS.map(tz => (
-              <option key={tz.id} value={tz.id} style={{ background: '#030803', color: '#00ff41' }}>
+              <option key={tz.id} value={tz.id} style={{ background: '#030803', color: '#38bdf8' }}>
                 {tz.label}
               </option>
             ))}
           </select>
         </span>
-        <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(0,255,65,.2)', letterSpacing: '.1em' }}>
+        <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>
           {players === -1 ? 'SERVER FULL — MAX 50' : players !== null ? `${players}/50 ONLINE` : 'CONNECTING...'}
           {tick % 2 === 0 ? ' ▮' : ' ▯'}
         </span>
@@ -955,28 +955,28 @@ export default function WorldMenu() {
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '.2rem' }}>
             <PicassoLogo size={32} gap={3} />
-            <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
+            <div style={{ ...VT, fontSize: 'clamp(2.5rem, 7vw, 5rem)', color: '#38bdf8', textShadow: '0 0 30px rgba(56,189,248,.4)', letterSpacing: '.18em', lineHeight: 1 }}>SALARYMAN</div>
             <PicassoLogo size={32} gap={3} />
           </div>
-          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSO AI — PABLO CORP WORLD</div>
-          <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,255,65,.3), transparent)' }} />
+          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.2em', marginTop: '.4rem', ...VT }}>BY PICASSO AI — PABLO CORP WORLD</div>
+          <div style={{ marginTop: '.5rem', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(56,189,248,.3), transparent)' }} />
           <div style={{ marginTop: '.3rem', fontSize: '.6rem', color: 'rgba(255,200,60,.35)', letterSpacing: '.12em', ...VT }}>⚠ PABLO CORP IMMIGRATION INTERFACE ALPHA {__BUILD_VERSION__}</div>
-          <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
+          <div style={{ marginTop: '.4rem', fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', minHeight: '1.2em' }}>{FLAVOR[flavorIdx]}</div>
         </div>
 
         {/* ── HELP ── */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '.6rem', marginBottom: '1rem' }}>
-          <button onClick={() => setShowHelp(v => !v)} style={{ padding: '.35rem .7rem', background: showHelp ? 'rgba(0,255,65,.08)' : 'rgba(0,255,65,.04)', border: showHelp ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.2)', color: showHelp ? '#00ff41' : 'rgba(0,255,65,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
+          <button onClick={() => setShowHelp(v => !v)} style={{ padding: '.35rem .7rem', background: showHelp ? 'rgba(56,189,248,.08)' : 'rgba(56,189,248,.04)', border: showHelp ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.2)', color: showHelp ? '#38bdf8' : 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
             WHAT IS THIS?
           </button>
         </div>
 
         {showHelp && (
-          <div style={{ width: '100%', maxWidth: 720, marginBottom: '1rem', padding: '.75rem', border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,12,0,.95)', fontSize: '.6rem', color: 'rgba(0,255,65,.55)', lineHeight: 1.7, letterSpacing: '.04em' }}>
-            <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', marginBottom: '.5rem' }}>WELCOME TO SALARYMAN</div>
+          <div style={{ width: '100%', maxWidth: 720, marginBottom: '1rem', padding: '.75rem', border: '1px solid rgba(56,189,248,.2)', background: 'rgba(5,15,25,.95)', fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 1.7, letterSpacing: '.04em' }}>
+            <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', marginBottom: '.5rem' }}>WELCOME TO SALARYMAN</div>
             <div>This is a multiplayer cyberpunk city simulation. You play as a worker in MINX CITY, a corporate dystopia run by PABLO CORP Walk around the city, talk to characters, chat with real players, earn money, and build your career.</div>
             <div style={{ marginTop: '.4rem' }}>Walk around the city, talk to characters, earn money, level up, and explore every district of MINX CITY.</div>
-            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(0,255,65,.35)' }}>
+            <div style={{ marginTop: '.5rem', fontSize: '.55rem', color: 'rgba(56,189,248,.35)' }}>
               <div><b>WASD</b> = Move your character around the city</div>
               <div><b>E</b> = Interact with buildings, shops, and people</div>
               <div><b>C</b> = Open chat to talk to other real players</div>
@@ -985,25 +985,25 @@ export default function WorldMenu() {
               <div><b>ESC</b> = Open the pause menu with settings</div>
             </div>
             <div style={{ marginTop: '.5rem' }}>
-              <div><b style={{ color: '#00ff41' }}>HP</b> = Your health. Stay away from threats or you lose it.</div>
-              <div><b style={{ color: '#00ff41' }}>FIAT (ƒ)</b> = The in-game currency. You earn it through salary and spend it in stores.</div>
-              <div><b style={{ color: '#00ff41' }}>XP</b> = Experience points. Accumulate them to level up and unlock things.</div>
-              <div><b style={{ color: '#00ff41' }}>NPC</b> = Non-player characters. The people in the city who are not real players.</div>
+              <div><b style={{ color: '#38bdf8' }}>HP</b> = Your health. Stay away from threats or you lose it.</div>
+              <div><b style={{ color: '#38bdf8' }}>FIAT (ƒ)</b> = The in-game currency. You earn it through salary and spend it in stores.</div>
+              <div><b style={{ color: '#38bdf8' }}>XP</b> = Experience points. Accumulate them to level up and unlock things.</div>
+              <div><b style={{ color: '#38bdf8' }}>NPC</b> = Non-player characters. The people in the city who are not real players.</div>
             </div>
           </div>
         )}
 
         {/* ── PABLO TOOLS GRID ── */}
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
+          <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.5rem' }}>
             <button onClick={() => navigate('/hiring')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
               <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{PABLO_PRODUCTS.PRESENTER.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(180,100,255,.5)', lineHeight: 1.6 }}>{boomerMode ? 'Create slide decks and presentations with AI.' : PABLO_PRODUCTS.PRESENTER.desc}</div>
             </button>
-            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+            <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
               <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'PABLO AI' : PABLO_PRODUCTS.PROBLEM_DESC.short}</div>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Ask anything. Get answers instantly.' : 'Code analysis and problem solving.'}</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Ask anything. Get answers instantly.' : 'Code analysis and problem solving.'}</div>
             </button>
             <button onClick={() => navigate('/contacts')} style={{ padding: '.65rem .5rem', background: 'rgba(100,180,255,.06)', border: '1px solid rgba(100,180,255,.4)', color: '#55bbff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
               <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short}</div>
@@ -1029,30 +1029,30 @@ export default function WorldMenu() {
               <div style={{ ...VT, fontSize: '.9rem', letterSpacing: '.08em', marginBottom: '.15rem' }}>{boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short}</div>
               <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', lineHeight: 1.5 }}>{boomerMode ? 'Post jobs and track candidates.' : 'Post positions and manage candidates.'}</div>
             </button>
-            <button onClick={() => navigate('/dashboard')} style={{ padding: '.5rem .5rem', background: 'rgba(0,255,65,.03)', border: '1px solid rgba(0,255,65,.15)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+            <button onClick={() => navigate('/dashboard')} style={{ padding: '.5rem .5rem', background: 'rgba(56,189,248,.03)', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
               <div style={{ ...VT, fontSize: '.9rem', letterSpacing: '.08em', marginBottom: '.15rem' }}>{boomerMode ? 'DASHBOARD' : 'CMD DECK'}</div>
-              <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.5 }}>{boomerMode ? 'Your workspace and project overview.' : 'Projects, knowledge base, brand kit.'}</div>
+              <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.5 }}>{boomerMode ? 'Your workspace and project overview.' : 'Projects, knowledge base, brand kit.'}</div>
             </button>
           </div>
         </div>
 
         {/* ── TAB BAR ── */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(0,255,65,.18)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(56,189,248,.18)', overflow: 'hidden' }}>
           {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['pass', 'CORP QUARTER'], ['merch', 'MERCH DEPT'], ['slush', "PABLO'S SLUSH FUND"]] as const).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id as 'enter' | 'guide' | 'pass' | 'merch' | 'slush')}
               style={{
                 padding: '.55rem 1.8rem',
-                background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : id === 'pass' ? 'rgba(255,204,0,.1)' : 'rgba(0,255,65,.1)') : 'transparent',
+                background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : id === 'pass' ? 'rgba(255,204,0,.1)' : 'rgba(56,189,248,.1)') : 'transparent',
                 border: 'none',
-                borderRight: id !== 'slush' ? '1px solid rgba(0,255,65,.18)' : 'none',
-                color: tab === id ? (id === 'slush' ? '#ffcc44' : id === 'pass' ? '#ffcc00' : '#00ff41') : (id === 'slush' ? 'rgba(255,200,50,.35)' : id === 'pass' ? 'rgba(255,204,0,.4)' : 'rgba(0,255,65,.3)'),
+                borderRight: id !== 'slush' ? '1px solid rgba(56,189,248,.18)' : 'none',
+                color: tab === id ? (id === 'slush' ? '#ffcc44' : id === 'pass' ? '#ffcc00' : '#38bdf8') : (id === 'slush' ? 'rgba(255,200,50,.35)' : id === 'pass' ? 'rgba(255,204,0,.4)' : 'rgba(56,189,248,.3)'),
                 ...VT,
                 fontSize: '1.2rem',
                 letterSpacing: '.14em',
                 cursor: 'pointer',
-                textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : id === 'pass' ? '0 0 10px rgba(255,204,0,.4)' : '0 0 10px rgba(0,255,65,.4)') : 'none',
+                textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : id === 'pass' ? '0 0 10px rgba(255,204,0,.4)' : '0 0 10px rgba(56,189,248,.4)') : 'none',
                 transition: 'all .12s',
               }}
             >
@@ -1068,7 +1068,7 @@ export default function WorldMenu() {
             {/* ── CONTEXT-SENSITIVE ENTRY BUTTONS ─────────────────────────── */}
             {screen === 'saves' && !showCinematic && showEntryButtons && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '1.5rem' }}>
-                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.14em', marginBottom: '.2rem' }}>SELECT OPERATION MODE</div>
+                <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.14em', marginBottom: '.2rem' }}>SELECT OPERATION MODE</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                   {/* WAKE UP — new game (locked on mobile) */}
                   <button
@@ -1086,9 +1086,9 @@ export default function WorldMenu() {
                     disabled={isMobile}
                     style={{
                       padding: '1.2rem 1rem',
-                      background: isMobile ? 'rgba(255,60,60,.04)' : 'rgba(0,255,65,.06)',
-                      border: `1px solid ${isMobile ? 'rgba(255,60,60,.25)' : 'rgba(0,255,65,.5)'}`,
-                      color: isMobile ? 'rgba(255,60,60,.4)' : '#00ff41',
+                      background: isMobile ? 'rgba(255,60,60,.04)' : 'rgba(56,189,248,.06)',
+                      border: `1px solid ${isMobile ? 'rgba(255,60,60,.25)' : 'rgba(56,189,248,.5)'}`,
+                      color: isMobile ? 'rgba(255,60,60,.4)' : '#38bdf8',
                       cursor: isMobile ? 'not-allowed' : 'pointer',
                       textAlign: 'left', fontFamily: 'inherit',
                       transition: 'all .15s',
@@ -1101,7 +1101,7 @@ export default function WorldMenu() {
                       </div>
                     )}
                     <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>WAKE UP</div>
-                    <div style={{ fontSize: '.48rem', color: isMobile ? 'rgba(255,60,60,.3)' : 'rgba(0,255,65,.45)', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: '.48rem', color: isMobile ? 'rgba(255,60,60,.3)' : 'rgba(56,189,248,.45)', lineHeight: 1.7 }}>
                       {isMobile ? 'This mode requires a desktop browser.' : 'Fresh start. New story. Build your way up from nothing.'}
                     </div>
                   </button>
@@ -1122,8 +1122,8 @@ export default function WorldMenu() {
                     style={{
                       padding: '1.2rem 1rem',
                       background: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.06)' : !isAuthenticated ? 'rgba(255,200,50,.04)' : 'transparent',
-                      border: `1px solid ${(isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.5)' : !isAuthenticated ? 'rgba(255,200,50,.3)' : 'rgba(0,255,65,.15)'}`,
-                      color: (isAuthenticated && cloudSaves.length > 0) ? '#33aaff' : !isAuthenticated ? 'rgba(255,200,50,.6)' : 'rgba(0,255,65,.2)',
+                      border: `1px solid ${(isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.5)' : !isAuthenticated ? 'rgba(255,200,50,.3)' : 'rgba(56,189,248,.15)'}`,
+                      color: (isAuthenticated && cloudSaves.length > 0) ? '#33aaff' : !isAuthenticated ? 'rgba(255,200,50,.6)' : 'rgba(56,189,248,.2)',
                       cursor: (isAuthenticated && cloudSaves.length === 0) ? 'default' : 'pointer',
                       textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
                     }}
@@ -1137,7 +1137,7 @@ export default function WorldMenu() {
                       if (bType === 'minx' || bType === 'fictitious' || latest.hasBusiness) return "YOU'RE LATE TO WORK";
                       return 'FIND A JOB';
                     })()}</div>
-                    <div style={{ fontSize: '.48rem', color: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.45)' : !isAuthenticated ? 'rgba(255,200,50,.35)' : 'rgba(0,255,65,.15)', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: '.48rem', color: (isAuthenticated && cloudSaves.length > 0) ? 'rgba(0,180,255,.45)' : !isAuthenticated ? 'rgba(255,200,50,.35)' : 'rgba(56,189,248,.15)', lineHeight: 1.7 }}>
                       {isAuthenticated && cloudSaves.length > 0
                         ? (() => {
                           const latest = cloudSaves[0]?.data as Record<string, unknown> | undefined;
@@ -1180,14 +1180,14 @@ export default function WorldMenu() {
                         style={{
                           padding: '1.2rem 1rem',
                           background: canResurrect ? 'rgba(255,40,40,.06)' : 'transparent',
-                          border: `1px solid ${canResurrect ? 'rgba(255,60,60,.5)' : 'rgba(0,255,65,.1)'}`,
-                          color: canResurrect ? '#ff6666' : 'rgba(0,255,65,.15)',
+                          border: `1px solid ${canResurrect ? 'rgba(255,60,60,.5)' : 'rgba(56,189,248,.1)'}`,
+                          color: canResurrect ? '#ff6666' : 'rgba(56,189,248,.15)',
                           cursor: canResurrect ? 'pointer' : 'default',
                           textAlign: 'left', fontFamily: 'inherit', transition: 'all .15s',
                         }}
                       >
                         <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>RESURRECT</div>
-                        <div style={{ fontSize: '.48rem', color: canResurrect ? 'rgba(255,80,80,.45)' : 'rgba(0,255,65,.12)', lineHeight: 1.7 }}>
+                        <div style={{ fontSize: '.48rem', color: canResurrect ? 'rgba(255,80,80,.45)' : 'rgba(56,189,248,.12)', lineHeight: 1.7 }}>
                           {canResurrect ? 'You died. DR. WRIGHT patched you up. Return to your last position.'
                            : diedLastSession && !isAuthenticated ? 'You died — sign in to resurrect your operative.'
                            : diedLastSession ? 'You died — no save data found. Start a new story.'
@@ -1201,13 +1201,13 @@ export default function WorldMenu() {
                   <div
                     style={{
                       padding: '1.2rem 1rem', background: 'transparent',
-                      border: '1px solid rgba(0,255,65,.08)',
-                      color: 'rgba(0,255,65,.12)',
+                      border: '1px solid rgba(56,189,248,.08)',
+                      color: 'rgba(56,189,248,.12)',
                       textAlign: 'left', fontFamily: 'inherit', position: 'relative',
                     }}
                   >
                     <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem', opacity: .4 }}>STORY MODE</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.1)', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.1)', lineHeight: 1.7 }}>
                       Single-player campaign. Chapter-based progression.
                     </div>
                     <div style={{
@@ -1224,7 +1224,7 @@ export default function WorldMenu() {
             {/* ── CINEMATIC INTRO — "Wake up, you're late for work" ─────────── */}
             {showCinematic && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-                <div style={{ width: '100%', background: 'rgba(0,0,0,.8)', border: '1px solid rgba(0,255,65,.25)', padding: '2rem 1.5rem', textAlign: 'center' }}>
+                <div style={{ width: '100%', background: 'rgba(0,0,0,.8)', border: '1px solid rgba(56,189,248,.25)', padding: '2rem 1.5rem', textAlign: 'center' }}>
                   {[
                     '...',
                     '> ALARM CLOCK: 06:00 AM',
@@ -1240,9 +1240,9 @@ export default function WorldMenu() {
                   ].slice(0, cinematicLine + 1).map((line, i) => (
                     <div key={i} style={{
                       ...VT, fontSize: '1.1rem',
-                      color: i === cinematicLine ? '#00ff41' : 'rgba(0,255,65,.35)',
+                      color: i === cinematicLine ? '#38bdf8' : 'rgba(56,189,248,.35)',
                       letterSpacing: '.08em', lineHeight: 2.2,
-                      textShadow: i === cinematicLine ? '0 0 12px rgba(0,255,65,.4)' : 'none',
+                      textShadow: i === cinematicLine ? '0 0 12px rgba(56,189,248,.4)' : 'none',
                       transition: 'color .3s',
                     }}>{line}</div>
                   ))}
@@ -1251,8 +1251,8 @@ export default function WorldMenu() {
                   <button
                     onClick={() => setCinematicLine(l => l + 1)}
                     style={{
-                      padding: '.55rem 2rem', background: 'rgba(0,255,65,.08)',
-                      border: '1px solid rgba(0,255,65,.4)', color: '#00ff41',
+                      padding: '.55rem 2rem', background: 'rgba(56,189,248,.08)',
+                      border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8',
                       ...VT, fontSize: '1.1rem', letterSpacing: '.14em', cursor: 'pointer',
                     }}
                   >
@@ -1262,10 +1262,10 @@ export default function WorldMenu() {
                   <button
                     onClick={() => { localStorage.setItem('sm_cinematic_seen', '1'); setShowCinematic(false); setScreen('new'); setStep(1); }}
                     style={{
-                      padding: '.7rem 2.5rem', background: 'rgba(0,255,65,.12)',
-                      border: '1px solid rgba(0,255,65,.7)', color: '#00ff41',
+                      padding: '.7rem 2.5rem', background: 'rgba(56,189,248,.12)',
+                      border: '1px solid rgba(56,189,248,.7)', color: '#38bdf8',
                       ...VT, fontSize: '1.4rem', letterSpacing: '.18em', cursor: 'pointer',
-                      textShadow: '0 0 12px rgba(0,255,65,.5)',
+                      textShadow: '0 0 12px rgba(56,189,248,.5)',
                     }}
                   >
                     WHO ARE YOU {tick % 2 === 0 ? '▶' : '▷'}
@@ -1273,7 +1273,7 @@ export default function WorldMenu() {
                 )}
                 <button
                   onClick={() => { localStorage.setItem('sm_cinematic_seen', '1'); setShowCinematic(false); setScreen('new'); setStep(1); }}
-                  style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.42rem', letterSpacing: '.1em' }}
+                  style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.42rem', letterSpacing: '.1em' }}
                 >
                   SKIP INTRO →
                 </button>
@@ -1285,15 +1285,15 @@ export default function WorldMenu() {
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
                 {/* Header */}
-                <div style={{ borderBottom: '1px solid rgba(0,255,65,.12)', paddingBottom: '.7rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ borderBottom: '1px solid rgba(56,189,248,.12)', paddingBottom: '.7rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <div>
-                    <button onClick={() => setShowEntryButtons(true)} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.5rem', letterSpacing: '.1em', padding: 0, marginBottom: '.3rem', display: 'block' }}>← BACK TO IMMIGRATION</button>
-                    <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE FILES</div>
-                    <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
+                    <button onClick={() => setShowEntryButtons(true)} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.5rem', letterSpacing: '.1em', padding: 0, marginBottom: '.3rem', display: 'block' }}>← BACK TO IMMIGRATION</button>
+                    <div style={{ ...VT, fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.15em' }}>SAVE FILES</div>
+                    <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
                       {user?.firstName ? `OPERATIVE: ${(user.firstName + (user.lastName ? ` ${user.lastName}` : '')).toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
                     </div>
                   </div>
-                  {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}
+                  {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}
                 </div>
 
                 {!atPhysicalTerminal && (
@@ -1305,12 +1305,12 @@ export default function WorldMenu() {
                 {/* 4 save slots */}
                 {[0, 1, 2, 3].map(slot => {
                   const save = cloudSaves.find(s => s.slotIndex === slot);
-                  const col = save ? CLASS_COLOR[save.charClass] ?? '#00ff41' : 'rgba(0,255,65,.2)';
+                  const col = save ? CLASS_COLOR[save.charClass] ?? '#38bdf8' : 'rgba(56,189,248,.2)';
                   const isConfirming = deleteConfirm === slot;
                   const slotLocked = slot > 0 && !atPhysicalTerminal;
 
                   return (
-                    <div key={slot} style={{ border: `1px solid ${save ? col + '33' : 'rgba(0,255,65,.1)'}`, background: save ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.3)', transition: 'border-color .2s', opacity: slotLocked ? 0.35 : 1, pointerEvents: slotLocked ? 'none' : 'auto' }}>
+                    <div key={slot} style={{ border: `1px solid ${save ? col + '33' : 'rgba(56,189,248,.1)'}`, background: save ? 'rgba(0,0,0,.6)' : 'rgba(0,0,0,.3)', transition: 'border-color .2s', opacity: slotLocked ? 0.35 : 1, pointerEvents: slotLocked ? 'none' : 'auto' }}>
                       {save ? (
                         /* ── OCCUPIED SLOT ── */
                         <div style={{ display: 'flex', gap: 0 }}>
@@ -1326,7 +1326,7 @@ export default function WorldMenu() {
                           <div style={{ flex: 1, padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                               <div style={{ ...VT, fontSize: '1.6rem', color: col, letterSpacing: '.1em' }}>{save.charName}</div>
-                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.08em' }}>{fmtTime(save.lastSavedAt)}</div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.08em' }}>{fmtTime(save.lastSavedAt)}</div>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.4rem' }}>
                               {[
@@ -1336,12 +1336,12 @@ export default function WorldMenu() {
                                 { l: 'ZONE', v: save.lastZone },
                               ].map(({ l, v }) => (
                                 <div key={l} style={{ borderLeft: `2px solid ${col}44`, paddingLeft: '.5rem' }}>
-                                  <div style={{ fontSize: '.36rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.1em' }}>{l}</div>
+                                  <div style={{ fontSize: '.36rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em' }}>{l}</div>
                                   <div style={{ fontSize: '.55rem', color: col, letterSpacing: '.04em', marginTop: '.1rem' }}>{v}</div>
                                 </div>
                               ))}
                             </div>
-                            <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em' }}>
+                            <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.08em' }}>
                               PLAYTIME: {fmtPlaytime(save.playtime)}
                             </div>
                           </div>
@@ -1352,7 +1352,7 @@ export default function WorldMenu() {
                               <>
                                 <div style={{ fontSize: '.4rem', color: 'rgba(255,100,100,.7)', letterSpacing: '.06em', textAlign: 'center', marginBottom: '.2rem' }}>ERASE?</div>
                                 <button onClick={() => handleDelete(slot)} style={{ padding: '.4rem .8rem', background: 'rgba(255,40,40,.12)', border: '1px solid rgba(255,60,60,.5)', color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.65rem', letterSpacing: '.08em' }}>CONFIRM</button>
-                                <button onClick={() => setDeleteConfirm(null)} style={{ padding: '.4rem .8rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.65rem', letterSpacing: '.08em' }}>CANCEL</button>
+                                <button onClick={() => setDeleteConfirm(null)} style={{ padding: '.4rem .8rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.65rem', letterSpacing: '.08em' }}>CANCEL</button>
                               </>
                             ) : (
                               <>
@@ -1368,13 +1368,13 @@ export default function WorldMenu() {
                           onClick={() => { setSelectedSlot(slot); setScreen('new'); setStep(1); }}
                           style={{ width: '100%', padding: '1.3rem 1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1.2rem', textAlign: 'left', fontFamily: 'inherit' }}
                         >
-                          <div style={{ width: 80, height: 60, border: '1px dashed rgba(0,255,65,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <div style={{ fontSize: '1.5rem', color: 'rgba(0,255,65,.15)' }}>+</div>
+                          <div style={{ width: 80, height: 60, border: '1px dashed rgba(56,189,248,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <div style={{ fontSize: '1.5rem', color: 'rgba(56,189,248,.15)' }}>+</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.14em', marginBottom: '.3rem' }}>SLOT {slot + 1} — EMPTY</div>
-                            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em' }}>START NEW STORY</div>
-                            <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.15)', marginTop: '.2rem', letterSpacing: '.06em' }}>Choose your class · Build your legend</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.14em', marginBottom: '.3rem' }}>SLOT {slot + 1} — EMPTY</div>
+                            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>START NEW STORY</div>
+                            <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.15)', marginTop: '.2rem', letterSpacing: '.06em' }}>Choose your class · Build your legend</div>
                           </div>
                         </button>
                       )}
@@ -1383,7 +1383,7 @@ export default function WorldMenu() {
                 })}
 
                 {/* Guest note */}
-                <div style={{ borderTop: '1px solid rgba(0,255,65,.06)', paddingTop: '.65rem', fontSize: '.42rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.06em', lineHeight: 1.7 }}>
+                <div style={{ borderTop: '1px solid rgba(56,189,248,.06)', paddingTop: '.65rem', fontSize: '.42rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.06em', lineHeight: 1.7 }}>
                   Saves are tied to your account and sync across devices. Progress is preserved per story slot. Each slot is a separate operative with its own history.
                 </div>
               </div>
@@ -1392,15 +1392,15 @@ export default function WorldMenu() {
             {/* ── NOT LOGGED IN — prompt to sign in for saves ──────────────── */}
             {!authLoading && !isAuthenticated && screen === 'saves' && !showEntryButtons && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
-                  <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
-                  <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.8, maxWidth: 440 }}>
+                <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
+                  <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.8, maxWidth: 440 }}>
                     Sign in to unlock save slots. Your FIAT, level, and operative history are stored to your account — resume any story from any device.
                   </div>
-                  <button onClick={login} style={{ padding: '.65rem 2rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', fontFamily: 'inherit', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', textShadow: '0 0 8px rgba(0,255,65,.4)' }}>
+                  <button onClick={login} style={{ padding: '.65rem 2rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', fontFamily: 'inherit', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', textShadow: '0 0 8px rgba(56,189,248,.4)' }}>
                     SIGN IN TO SAVE
                   </button>
-                  <button onClick={() => setScreen('new')} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.25)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>
+                  <button onClick={() => setScreen('new')} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.25)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em' }}>
                     PLAY AS GUEST (no saves)
                   </button>
                   <div style={{ fontSize: '.42rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.06em', lineHeight: 1.7, marginTop: '.3rem', maxWidth: 400 }}>
@@ -1413,10 +1413,10 @@ export default function WorldMenu() {
             {/* ── Back button when in 'new' screen ─────────────────────────── */}
             {screen === 'new' && isAuthenticated && step === 1 && (
               <div style={{ width: '100%', maxWidth: 820, marginBottom: '-.8rem' }}>
-                <button onClick={() => setScreen('saves')} style={{ background: 'none', border: 'none', color: 'rgba(0,255,65,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em', padding: 0 }}>
+                <button onClick={() => setScreen('saves')} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em', padding: 0 }}>
                   ← BACK TO SAVE FILES
                 </button>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', marginTop: '.2rem' }}>NEW STORY — SLOT {selectedSlot + 1}</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginTop: '.2rem' }}>NEW STORY — SLOT {selectedSlot + 1}</div>
               </div>
             )}
 
@@ -1424,39 +1424,39 @@ export default function WorldMenu() {
             {screen === 'new' && step === 1 && (
               <div style={{ width: '100%', maxWidth: 820, display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SELECT CLASS</div>
+                  <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.15em', marginBottom: '.2rem' }}>SELECT CLASS</div>
                   {CLASSES.map(c => (
-                    <button key={c.id} onClick={() => setCls(c.id)} style={{ padding: '.75rem .9rem', border: cls === c.id ? `1px solid ${c.color}` : '1px solid rgba(0,255,65,.15)', background: cls === c.id ? 'rgba(0,255,65,.07)' : 'rgba(0,255,65,.01)', color: cls === c.id ? c.color : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'all .12s', ...S }}>
-                      <div style={{ flexShrink: 0, width: 8, height: 8, background: cls === c.id ? c.color : 'rgba(0,255,65,.2)', boxShadow: cls === c.id ? `0 0 8px ${c.color}` : 'none' }} />
+                    <button key={c.id} onClick={() => setCls(c.id)} style={{ padding: '.75rem .9rem', border: cls === c.id ? `1px solid ${c.color}` : '1px solid rgba(56,189,248,.15)', background: cls === c.id ? 'rgba(56,189,248,.07)' : 'rgba(56,189,248,.01)', color: cls === c.id ? c.color : 'rgba(56,189,248,.35)', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'all .12s', ...S }}>
+                      <div style={{ flexShrink: 0, width: 8, height: 8, background: cls === c.id ? c.color : 'rgba(56,189,248,.2)', boxShadow: cls === c.id ? `0 0 8px ${c.color}` : 'none' }} />
                       <div>
                         <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', lineHeight: 1 }}>{c.label}</div>
-                        <div style={{ fontSize: '.65rem', color: cls === c.id ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', marginTop: '.15rem', letterSpacing: '.06em' }}>{c.tagline}</div>
+                        <div style={{ fontSize: '.65rem', color: cls === c.id ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)', marginTop: '.15rem', letterSpacing: '.06em' }}>{c.tagline}</div>
                       </div>
                     </button>
                   ))}
                 </div>
 
                 <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
-                  <div style={{ border: `1px solid ${selected.color}44`, background: 'rgba(0,255,65,.04)', padding: '1rem' }}>
+                  <div style={{ border: `1px solid ${selected.color}44`, background: 'rgba(56,189,248,.04)', padding: '1rem' }}>
                     <div style={{ ...VT, fontSize: '1.4rem', color: selected.color, letterSpacing: '.12em', marginBottom: '.5rem' }}>{selected.label}</div>
-                    <div style={{ fontSize: '.72rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
+                    <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
                       {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['GOV BASE', selected.salary], ['START FIAT', selected.networth], ['START', selected.start]].map(([k, v]) => (
-                        <div key={k} style={{ border: '1px solid rgba(0,255,65,.12)', padding: '.4rem .5rem' }}>
-                          <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
+                        <div key={k} style={{ border: '1px solid rgba(56,189,248,.12)', padding: '.4rem .5rem' }}>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
                           <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
                         </div>
                       ))}
                     </div>
                     {selected.perks && (
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.07em', borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.5rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.07em', borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.5rem' }}>
                         ★ {selected.perks}
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.35rem' }}>YOUR NAME</div>
+                    <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.15em', marginBottom: '.35rem' }}>YOUR NAME</div>
                     <input
                       value={name}
                       onChange={e => { setName(e.target.value); setNameError(''); }}
@@ -1464,12 +1464,12 @@ export default function WorldMenu() {
                       maxLength={28}
                       placeholder="WHAT'S YOUR NAME"
                       autoFocus
-                      style={{ width: '100%', padding: '.65rem .8rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${nameError ? 'rgba(255,60,60,.6)' : name ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)'}`, color: '#00ff41', ...S, fontSize: '1rem', letterSpacing: '.1em', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '.65rem .8rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${nameError ? 'rgba(255,60,60,.6)' : name ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)'}`, color: '#38bdf8', ...S, fontSize: '1rem', letterSpacing: '.1em', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }}
                     />
                     {nameError && (
                       <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', marginTop: '.3rem', ...VT }}>⚠ {nameError}</div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em', marginTop: '.25rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.08em', marginTop: '.25rem' }}>
                       Enter your full name — first and last. Some names are restricted.
                     </div>
                   </div>
@@ -1477,12 +1477,12 @@ export default function WorldMenu() {
                   <button
                     onClick={handleProceed}
                     disabled={!name.trim() || !!nameError}
-                    style={{ width: '100%', padding: '.75rem', background: (name.trim() && !nameError) ? 'rgba(0,255,65,.1)' : 'transparent', border: (name.trim() && !nameError) ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.1)', color: (name.trim() && !nameError) ? '#00ff41' : 'rgba(0,255,65,.15)', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (name.trim() && !nameError) ? 'pointer' : 'default', transition: 'all .15s' }}
+                    style={{ width: '100%', padding: '.75rem', background: (name.trim() && !nameError) ? 'rgba(56,189,248,.1)' : 'transparent', border: (name.trim() && !nameError) ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.1)', color: (name.trim() && !nameError) ? '#38bdf8' : 'rgba(56,189,248,.15)', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (name.trim() && !nameError) ? 'pointer' : 'default', transition: 'all .15s' }}
                   >
                     NEXT — REGISTER ENTERPRISE {(name.trim() && !nameError) ? (tick % 2 === 0 ? '▶' : '▷') : ''}
                   </button>
 
-                  <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.08em', lineHeight: 1.8 }}>
+                  <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.08em', lineHeight: 1.8 }}>
                     WASD — move &nbsp;·&nbsp; E — enter/talk &nbsp;·&nbsp; F — attack &nbsp;·&nbsp; C — chat &nbsp;·&nbsp; V — voice &nbsp;·&nbsp; P — PABLO device
                   </div>
                 </div>
@@ -1493,9 +1493,9 @@ export default function WorldMenu() {
               <div style={{ width: '100%', maxWidth: 680, display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
 
                 {/* Header */}
-                <div style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,255,65,.03)', padding: '1rem' }}>
-                  <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em', marginBottom: '.4rem' }}>OPERATIONAL REGISTRATION — {name.trim().toUpperCase()}</div>
-                  <div style={{ fontSize: '.7rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.9 }}>
+                <div style={{ border: '1px solid rgba(56,189,248,.2)', background: 'rgba(56,189,248,.03)', padding: '1rem' }}>
+                  <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.15em', marginBottom: '.4rem' }}>OPERATIONAL REGISTRATION — {name.trim().toUpperCase()}</div>
+                  <div style={{ fontSize: '.7rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.9 }}>
                     Are you starting or registering a business in Minx City?
                   </div>
                   <div style={{ fontSize: '.6rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.1em', marginTop: '.5rem', ...VT }}>{tick % 2 === 0 ? '▮' : '▯'} YOUR SHIFT STARTED 3 HOURS AGO — CLOCK IN OR GET WRITTEN UP</div>
@@ -1507,11 +1507,11 @@ export default function WorldMenu() {
                     { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Real company. Stake territory. Data stored on our servers for paid members. Your brand in-world.' },
                     { id: 'unemployed' as const, label: 'UNEMPLOYED / NO AFFILIATION', desc: 'No company. No cover. You walk Minx City alone. Skip the paperwork.' },
                   ]).map(t => (
-                    <button key={t.id} onClick={() => { setBizType(t.id); setMinxError(''); }} style={{ padding: '.9rem', border: bizType === t.id ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.15)', background: bizType === t.id ? 'rgba(0,255,65,.07)' : 'transparent', color: bizType === t.id ? '#00ff41' : 'rgba(0,255,65,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
+                    <button key={t.id} onClick={() => { setBizType(t.id); setMinxError(''); }} style={{ padding: '.9rem', border: bizType === t.id ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.15)', background: bizType === t.id ? 'rgba(56,189,248,.07)' : 'transparent', color: bizType === t.id ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
                       <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', marginBottom: '.25rem' }}>
                         {t.label}
                       </div>
-                      <div style={{ fontSize: '.62rem', color: bizType === t.id ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.2)', lineHeight: 1.7 }}>
+                      <div style={{ fontSize: '.62rem', color: bizType === t.id ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)', lineHeight: 1.7 }}>
                         {t.desc}
                       </div>
                     </button>
@@ -1519,9 +1519,9 @@ export default function WorldMenu() {
                 </div>
 
                 {bizType === 'minx' && (
-                  <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — NAME YOUR FRONT CORPORATION</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.3)', lineHeight: 1.7 }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — NAME YOUR FRONT CORPORATION</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', lineHeight: 1.7 }}>
                       Invent a company name. Your operative will be listed under this corporate shell. PABLO CORP cannot trace it. Rival operatives will see this name above your head.
                     </div>
                     <input
@@ -1529,7 +1529,7 @@ export default function WorldMenu() {
                       onChange={e => { setMinxCompany(e.target.value); setMinxError(''); }}
                       maxLength={60}
                       placeholder="e.g. NEON CAPITAL SOLUTIONS, PHANTOM FREIGHT CO."
-                      style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${minxError ? 'rgba(255,60,60,.6)' : minxCompany ? 'rgba(0,255,65,.5)' : 'rgba(0,255,65,.3)'}`, color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box', letterSpacing: '.06em' }}
+                      style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: `1px solid ${minxError ? 'rgba(255,60,60,.6)' : minxCompany ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.3)'}`, color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box', letterSpacing: '.06em' }}
                     />
                     {minxError && (
                       <div style={{ fontSize: '.48rem', color: 'rgba(255,80,80,.8)', letterSpacing: '.08em', ...VT }}>⚠ {minxError}</div>
@@ -1540,7 +1540,7 @@ export default function WorldMenu() {
                 {bizType === 'unemployed' && (
                   <div style={{ border: '1px solid rgba(255,200,60,.2)', background: 'rgba(255,200,60,.04)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em' }}>NO AFFILIATION</div>
-                    <div style={{ fontSize: '.52rem', color: 'rgba(0,255,65,.35)', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.7 }}>
                       You'll enter Minx City without a corporate shield. No company name above your head. Just you, the streets, and whatever the corp has planned. Your progress and FIAT balance will not be saved between sessions. PABLO CORP has no record of you — which is either very good or very bad.
                     </div>
                     <div style={{ marginTop: '.5rem', fontSize: '.46rem', color: 'rgba(255,120,120,.3)', lineHeight: 1.7 }}>
@@ -1550,29 +1550,29 @@ export default function WorldMenu() {
                 )}
 
                 {bizType === 'real' && (
-                  <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
+                  <div style={{ border: '1px solid rgba(56,189,248,.2)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '.65rem' }}>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.15em' }}>COMPANY PEDIGREE</div>
                     <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
-                      <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                      <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY NAME</div>
+                      <input value={company} onChange={e => setCompany(e.target.value)} maxLength={60} placeholder="YOUR COMPANY NAME..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                       <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
-                        <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>INDUSTRY</div>
+                        <select value={industry} onChange={e => setIndustry(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
                           {REAL_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
                         </select>
                       </div>
                       <div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
-                        <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>COMPANY SIZE</div>
+                        <select value={bizSize} onChange={e => setBizSize(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
                           {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(0,255,65,.15)' }}>(OPTIONAL)</span></div>
-                      <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#00ff41', boxSizing: 'border-box' }} />
+                      <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(56,189,248,.15)' }}>(OPTIONAL)</span></div>
+                      <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />
                     </div>
                   </div>
                 )}
@@ -1580,19 +1580,19 @@ export default function WorldMenu() {
                 {bizType !== 'unemployed' && (() => {
                   const ws = getWorkstation(bizType === 'real' ? 'real' : 'minx', industry, minxCompany.trim().toUpperCase() || 'UNKNOWN');
                   return (
-                    <div style={{ border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '.85rem' }}>
-                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>
+                    <div style={{ border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', padding: '.85rem' }}>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginBottom: '.4rem' }}>WORKSTATION ASSIGNMENT</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.3rem' }}>
                         <div>
-                          <div style={{ ...VT, fontSize: '1.15rem', color: '#00ff41', letterSpacing: '.1em' }}>{ws.label}</div>
-                          <div style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.5)', letterSpacing: '.07em', marginTop: '.08rem' }}>{ws.slot}</div>
+                          <div style={{ ...VT, fontSize: '1.15rem', color: '#38bdf8', letterSpacing: '.1em' }}>{ws.label}</div>
+                          <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.07em', marginTop: '.08rem' }}>{ws.slot}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41' }}>FREE</div>
-                          <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.3)', marginTop: '.05rem' }}>ƒ500/rest after day 7</div>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: '#38bdf8' }}>FREE</div>
+                          <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.3)', marginTop: '.05rem' }}>ƒ500/rest after day 7</div>
                         </div>
                       </div>
-                      <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.3rem' }}>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.6, borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.3rem' }}>
                         The city assigns every registered operator a bed, desk and terminal at no cost. First 7 days are free. After that ƒ500 per rest — the lowest rate in Minx City.
                       </div>
                     </div>
@@ -1600,17 +1600,17 @@ export default function WorldMenu() {
                 })()}
 
                 <div style={{ display: 'flex', gap: '.6rem' }}>
-                  <button onClick={() => setStep(1)} style={{ padding: '.65rem 1.2rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', ...VT, fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>← BACK</button>
+                  <button onClick={() => setStep(1)} style={{ padding: '.65rem 1.2rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', ...VT, fontSize: '1rem', letterSpacing: '.1em', cursor: 'pointer' }}>← BACK</button>
                   <button
                     onClick={handleEnterWorld}
                     disabled={submitting || checkingName}
-                    style={{ flex: 1, padding: '.75rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.7)', color: '#00ff41', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (submitting || checkingName) ? 'wait' : 'pointer', textShadow: '0 0 12px rgba(0,255,65,.4)' }}
+                    style={{ flex: 1, padding: '.75rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.7)', color: '#38bdf8', ...VT, fontSize: '1.5rem', letterSpacing: '.2em', cursor: (submitting || checkingName) ? 'wait' : 'pointer', textShadow: '0 0 12px rgba(56,189,248,.4)' }}
                   >
                     {submitting ? 'REGISTERING...' : checkingName ? 'VERIFYING NAME...' : `START ${tick % 2 === 0 ? '▶' : '▷'}`}
                   </button>
                 </div>
 
-                <div style={{ fontSize: '.46rem', color: 'rgba(0,255,65,.15)', lineHeight: 1.8 }}>
+                <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.8 }}>
                   {bizType === 'unemployed'
                     ? 'Session-local only. No rent. No commitment. You can register later at PABLO TOWER.'
                     : 'Business data stored persistently for paid subscribers. Free workstation available immediately on entry.'}
@@ -1635,9 +1635,9 @@ export default function WorldMenu() {
 
             {/* Success screen */}
             {donationSuccess && (
-              <div style={{ border: '1px solid rgba(0,255,65,.5)', background: 'rgba(0,255,65,.06)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.8rem' }}>
-                <div style={{ ...VT, fontSize: '1.8rem', color: '#00ff41', letterSpacing: '.15em', textShadow: '0 0 14px rgba(0,255,65,.5)' }}>TRANSACTION CONFIRMED</div>
-                <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.9, fontFamily: "'Share Tech Mono',monospace", maxWidth: 480 }}>
+              <div style={{ border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.06)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.8rem' }}>
+                <div style={{ ...VT, fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.15em', textShadow: '0 0 14px rgba(56,189,248,.5)' }}>TRANSACTION CONFIRMED</div>
+                <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.9, fontFamily: "'Share Tech Mono',monospace", maxWidth: 480 }}>
                   Credits received and laundered through the appropriate shell corporations. PABLO CORP has noted your contribution in the classified donor registry. Your operative file has been updated. We'll pretend this never happened.
                 </div>
                 {donorTitle && (
@@ -1648,7 +1648,7 @@ export default function WorldMenu() {
                 )}
                 <button
                   onClick={() => setDonationSuccess(false)}
-                  style={{ marginTop: '.4rem', padding: '.4rem 1.2rem', background: 'transparent', border: '1px solid rgba(0,255,65,.3)', color: 'rgba(0,255,65,.5)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.55rem', letterSpacing: '.1em' }}
+                  style={{ marginTop: '.4rem', padding: '.4rem 1.2rem', background: 'transparent', border: '1px solid rgba(56,189,248,.3)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.55rem', letterSpacing: '.1em' }}
                 >
                   CLOSE TRANSMISSION
                 </button>
@@ -1831,7 +1831,7 @@ export default function WorldMenu() {
 
             {/* Left sub-nav */}
             <div style={{ flexShrink: 0, width: 130, display: 'flex', flexDirection: 'column', gap: '.3rem', position: 'sticky', top: 0 }}>
-              <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.14em', marginBottom: '.35rem' }}>SECTIONS</div>
+              <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em', marginBottom: '.35rem' }}>SECTIONS</div>
               {GUIDE_SECTIONS.map(gs => (
                 <button
                   key={gs.id}
@@ -1839,8 +1839,8 @@ export default function WorldMenu() {
                   style={{
                     padding: '.45rem .6rem',
                     background: guideSection === gs.id ? `${gs.col}14` : 'transparent',
-                    border: guideSection === gs.id ? `1px solid ${gs.col}66` : '1px solid rgba(0,255,65,.1)',
-                    color: guideSection === gs.id ? gs.col : 'rgba(0,255,65,.3)',
+                    border: guideSection === gs.id ? `1px solid ${gs.col}66` : '1px solid rgba(56,189,248,.1)',
+                    color: guideSection === gs.id ? gs.col : 'rgba(56,189,248,.3)',
                     ...VT,
                     fontSize: '.95rem',
                     letterSpacing: '.1em',
@@ -1853,9 +1853,9 @@ export default function WorldMenu() {
                   {gs.label}
                 </button>
               ))}
-              <div style={{ marginTop: '.6rem', border: '1px solid rgba(0,255,65,.1)', padding: '.5rem .6rem' }}>
-                <div style={{ fontSize: '.58rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>QUICK START</div>
-                <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.8 }}>
+              <div style={{ marginTop: '.6rem', border: '1px solid rgba(56,189,248,.1)', padding: '.5rem .6rem' }}>
+                <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>QUICK START</div>
+                <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.8 }}>
                   1. Pick a class<br />
                   2. Name your operative<br />
                   3. Register enterprise<br />
@@ -1870,12 +1870,12 @@ export default function WorldMenu() {
             <div style={{
               flex: 1,
               background: 'rgba(0,6,0,.6)',
-              border: '1px solid rgba(0,255,65,.14)',
+              border: '1px solid rgba(56,189,248,.14)',
               padding: '1rem 1.2rem',
               maxHeight: '62vh',
               overflowY: 'auto',
               scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(0,255,65,.2) transparent',
+              scrollbarColor: 'rgba(56,189,248,.2) transparent',
             }}>
               <GuideContent section={guideSection} />
             </div>
@@ -2013,10 +2013,10 @@ export default function WorldMenu() {
 
                         {/* Free track */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                          <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', ...S, minWidth: 32 }}>FREE</div>
+                          <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', ...S, minWidth: 32 }}>FREE</div>
                           {tier.freeReward ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flex: 1 }}>
-                              <div style={{ fontSize: '.5rem', color: tier.freeReward.color ?? '#00ff41', ...S, flex: 1 }}>
+                              <div style={{ fontSize: '.5rem', color: tier.freeReward.color ?? '#38bdf8', ...S, flex: 1 }}>
                                 {tier.freeReward.icon} {tier.freeReward.label}
                                 {tier.freeReward.kind === 'fiat' && ` · ƒ${Number(tier.freeReward.value).toLocaleString()}`}
                               </div>
@@ -2024,12 +2024,12 @@ export default function WorldMenu() {
                                 <button
                                   onClick={() => handleClaimReward(tier.level, 'free')}
                                   disabled={passClaiming === `${tier.level}-free`}
-                                  style={{ padding: '.2rem .6rem', background: 'rgba(0,255,65,.12)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em', flexShrink: 0 }}
+                                  style={{ padding: '.2rem .6rem', background: 'rgba(56,189,248,.12)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em', flexShrink: 0 }}
                                 >
                                   CLAIM
                                 </button>
                               )}
-                              {claimedFree && <span style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.4)', ...S }}>✓ CLAIMED</span>}
+                              {claimedFree && <span style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.4)', ...S }}>✓ CLAIMED</span>}
                             </div>
                           ) : (
                             <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.18)', ...S }}>—</div>
@@ -2079,18 +2079,18 @@ export default function WorldMenu() {
                     return (
                       <div key={mission.id} style={{
                         padding: '.7rem .9rem',
-                        background: mp.completed ? 'rgba(0,255,65,.04)' : 'rgba(255,204,0,.03)',
-                        border: `1px solid ${mp.completed ? 'rgba(0,255,65,.2)' : isDaily ? 'rgba(255,204,0,.18)' : 'rgba(180,100,255,.22)'}`,
+                        background: mp.completed ? 'rgba(56,189,248,.04)' : 'rgba(255,204,0,.03)',
+                        border: `1px solid ${mp.completed ? 'rgba(56,189,248,.2)' : isDaily ? 'rgba(255,204,0,.18)' : 'rgba(180,100,255,.22)'}`,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.3rem', alignItems: 'flex-start' }}>
-                          <div style={{ ...VT, fontSize: '1.1rem', color: mp.completed ? '#00ff41' : isDaily ? '#ffcc00' : '#cc88ff', letterSpacing: '.1em' }}>{mission.label}</div>
-                          <div style={{ fontSize: '.38rem', color: mp.completed ? 'rgba(0,255,65,.5)' : isDaily ? 'rgba(255,204,0,.4)' : 'rgba(180,100,255,.5)', border: `1px solid ${isDaily ? 'rgba(255,204,0,.25)' : 'rgba(180,100,255,.3)'}`, padding: '1px 5px', ...S, letterSpacing: '.08em' }}>
+                          <div style={{ ...VT, fontSize: '1.1rem', color: mp.completed ? '#38bdf8' : isDaily ? '#ffcc00' : '#cc88ff', letterSpacing: '.1em' }}>{mission.label}</div>
+                          <div style={{ fontSize: '.38rem', color: mp.completed ? 'rgba(56,189,248,.5)' : isDaily ? 'rgba(255,204,0,.4)' : 'rgba(180,100,255,.5)', border: `1px solid ${isDaily ? 'rgba(255,204,0,.25)' : 'rgba(180,100,255,.3)'}`, padding: '1px 5px', ...S, letterSpacing: '.08em' }}>
                             {isDaily ? 'DAILY' : 'WEEKLY'}
                           </div>
                         </div>
                         <div style={{ fontSize: '.48rem', color: 'rgba(255,204,0,.4)', marginBottom: '.4rem', ...S, lineHeight: 1.6 }}>{mission.description}</div>
                         <div style={{ height: 5, background: 'rgba(255,204,0,.08)', border: '1px solid rgba(255,204,0,.15)', overflow: 'hidden', marginBottom: '.3rem' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: mp.completed ? '#00ff41' : isDaily ? '#ffcc00' : '#cc88ff', transition: 'width .3s' }} />
+                          <div style={{ height: '100%', width: `${pct}%`, background: mp.completed ? '#38bdf8' : isDaily ? '#ffcc00' : '#cc88ff', transition: 'width .3s' }} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <div style={{ fontSize: '.42rem', color: 'rgba(255,204,0,.4)', ...S }}>
@@ -2098,7 +2098,7 @@ export default function WorldMenu() {
                           </div>
                           <div style={{ fontSize: '.42rem', color: '#ffcc00', ...S }}>+{mission.xpReward} XP</div>
                         </div>
-                        {mp.completed && <div style={{ fontSize: '.42rem', color: '#00ff41', marginTop: '.2rem', ...S }}>✓ COMPLETED</div>}
+                        {mp.completed && <div style={{ fontSize: '.42rem', color: '#38bdf8', marginTop: '.2rem', ...S }}>✓ COMPLETED</div>}
                       </div>
                     );
                   })}
@@ -2194,22 +2194,22 @@ export default function WorldMenu() {
           return (
             <div style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
-                <div style={{ ...VT, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)', color: '#00ff41', letterSpacing: '.2em', textShadow: '0 0 18px rgba(0,255,65,.3)' }}>PABLO CORP MERCH DEPT</div>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.14em', marginTop: '.2rem', ...S }}>REAL-WORLD SALARYMAN GOODS · SHIPS WORLDWIDE · STRIPE SECURED</div>
+                <div style={{ ...VT, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)', color: '#38bdf8', letterSpacing: '.2em', textShadow: '0 0 18px rgba(56,189,248,.3)' }}>PABLO CORP MERCH DEPT</div>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginTop: '.2rem', ...S }}>REAL-WORLD SALARYMAN GOODS · SHIPS WORLDWIDE · STRIPE SECURED</div>
               </div>
-              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(0,255,65,.3), transparent)' }} />
+              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(56,189,248,.3), transparent)' }} />
 
               {wmMerchLoading && (
-                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.15em' }}>LOADING CATALOG ▮</div>
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.15em' }}>LOADING CATALOG ▮</div>
               )}
 
               {!wmMerchLoading && wmMerchProducts.length === 0 && (
-                <div style={{ border: '1px solid rgba(0,255,65,.15)', padding: '1.5rem', textAlign: 'center' }}>
-                  <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>CATALOG UNAVAILABLE</div>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', lineHeight: 1.7 }}>
+                <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '1.5rem', textAlign: 'center' }}>
+                  <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>CATALOG UNAVAILABLE</div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.7 }}>
                     The merch terminal is offline. Try again later.
                   </div>
-                  <button onClick={loadMerch} style={{ marginTop: '.8rem', padding: '.4rem 1.2rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em' }}>
+                  <button onClick={loadMerch} style={{ marginTop: '.8rem', padding: '.4rem 1.2rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em' }}>
                     RETRY CONNECTION
                   </button>
                 </div>
@@ -2223,7 +2223,7 @@ export default function WorldMenu() {
                     const selectedSize = sizes.length > 0 ? (wmMerchSelectedSize[p.id] || sizes[0]) : null;
                     const priceUSD = ((p.price ?? 0) / 100).toFixed(2);
                     return (
-                      <div key={p.id} style={{ border: '1px solid rgba(0,255,65,.2)', background: 'rgba(0,10,0,.8)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      <div key={p.id} style={{ border: '1px solid rgba(56,189,248,.2)', background: 'rgba(0,10,0,.8)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         {images[0] && (
                           <div style={{ width: '100%', height: 200, overflow: 'hidden', background: '#060d06' }}>
                             <img src={images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88, filter: 'brightness(0.9) saturate(0.8)' }} />
@@ -2231,18 +2231,18 @@ export default function WorldMenu() {
                         )}
                         <div style={{ padding: '.75rem .9rem', display: 'flex', flexDirection: 'column', gap: '.45rem', flex: 1 }}>
                           <div>
-                            <div style={{ ...VT, fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.1em', lineHeight: 1.2 }}>{p.name}</div>
-                            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.07em', marginTop: '.1rem', textTransform: 'uppercase' }}>{p.category}</div>
+                            <div style={{ ...VT, fontSize: '1.2rem', color: '#38bdf8', letterSpacing: '.1em', lineHeight: 1.2 }}>{p.name}</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.07em', marginTop: '.1rem', textTransform: 'uppercase' }}>{p.category}</div>
                           </div>
-                          <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.7 }}>{p.description}</div>
+                          <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.7 }}>{p.description}</div>
 
                           {sizes.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '.4rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>SIZE</div>
+                              <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>SIZE</div>
                               <div style={{ display: 'flex', gap: '.2rem', flexWrap: 'wrap' }}>
                                 {sizes.map((s: string) => (
                                   <button key={s} onClick={() => setWmMerchSelectedSize(prev => ({ ...prev, [p.id]: s }))}
-                                    style={{ padding: '.2rem .45rem', background: selectedSize === s ? 'rgba(0,255,65,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(0,255,65,.7)' : '1px solid rgba(0,255,65,.22)', color: selectedSize === s ? '#00ff41' : 'rgba(0,255,65,.45)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.06em' }}>
+                                    style={{ padding: '.2rem .45rem', background: selectedSize === s ? 'rgba(56,189,248,.18)' : 'transparent', border: selectedSize === s ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.22)', color: selectedSize === s ? '#38bdf8' : 'rgba(56,189,248,.45)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.06em' }}>
                                     {s}
                                   </button>
                                 ))}
@@ -2250,7 +2250,7 @@ export default function WorldMenu() {
                             </div>
                           )}
 
-                          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '.4rem', borderTop: '1px solid rgba(0,255,65,.1)' }}>
+                          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '.4rem', borderTop: '1px solid rgba(56,189,248,.1)' }}>
                             <div style={{ ...VT, fontSize: '1.35rem', color: '#ffcc00', letterSpacing: '.12em' }}>${priceUSD}</div>
                             <button onClick={() => handleBuy(p)} disabled={wmMerchBuying === p.id}
                               style={{ padding: '.35rem .9rem', background: wmMerchBuying === p.id ? 'rgba(255,204,0,.04)' : 'rgba(255,204,0,.1)', border: '1px solid rgba(255,204,0,.55)', color: '#ffcc00', cursor: wmMerchBuying === p.id ? 'default' : 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.12em', opacity: wmMerchBuying === p.id ? 0.5 : 1, transition: 'all .1s' }}>
@@ -2264,11 +2264,11 @@ export default function WorldMenu() {
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', paddingTop: '.75rem', display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
-                <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.1em', lineHeight: 1.8 }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.75rem', display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', lineHeight: 1.8 }}>
                   All purchases processed via Stripe. Shipping collected at checkout. Orders are fulfilled manually — allow 2–3 weeks for delivery. No automated fulfillment or inventory tracking. Returns handled through Stripe dashboard.
                 </div>
-                <div style={{ fontSize: '.38rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.08em' }}>
+                <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.08em' }}>
                   PABLO CORP MERCHANDISE DIVISION · MINX CITY · ALL TRANSACTIONS LOGGED
                 </div>
               </div>
@@ -2279,40 +2279,40 @@ export default function WorldMenu() {
       </div>
 
       {/* Bottom bar */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(0,255,65,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.15)', letterSpacing: '.1em' }}>
+      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em' }}>
           {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 TOWERS · 24 CITIES · PABLO CORP INTERNATIONAL
         </span>
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
           <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>₿ CRYPTO STORE</button>
-          <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(0,255,65,.2)', background: 'transparent', border: '1px solid rgba(0,255,65,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
+          <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', background: 'transparent', border: '1px solid rgba(56,189,248,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
         </div>
       </div>
 
       {showWelcomeDialog && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.92)', padding: '1rem' }}>
           <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', maxWidth: 560, width: '100%' }}>
-            <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#00ff41', textShadow: '0 0 30px rgba(0,255,65,.5)', letterSpacing: '.15em' }}>Welcome to Minx City.</div>
-            <div style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 500, ...S }}>
+            <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#38bdf8', textShadow: '0 0 30px rgba(56,189,248,.5)', letterSpacing: '.15em' }}>Welcome to Minx City.</div>
+            <div style={{ fontSize: '.8rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 500, ...S }}>
               The gates are open. Your record has been filed.<br />PABLO CORP is watching. Stay sharp, operative.
             </div>
 
             {bizType === 'real' && (
-              <div style={{ width: '100%', border: '1px solid rgba(0,255,65,.3)', background: 'rgba(0,255,65,.04)', padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
-                <div style={{ ...VT, fontSize: '1.2rem', color: '#00ff41', letterSpacing: '.12em' }}>ENTERPRISE UPGRADE AVAILABLE</div>
-                <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, ...S }}>
+              <div style={{ width: '100%', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', padding: '1rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+                <div style={{ ...VT, fontSize: '1.2rem', color: '#38bdf8', letterSpacing: '.12em' }}>ENTERPRISE UPGRADE AVAILABLE</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.8, ...S }}>
                   Your real company is registered. Activate premium modules for your entire team — Live Listen, Screen Scan, Say This, and the Phone System. Company billing routes purchases to your company's payment method.
                 </div>
                 <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate('/upgrade')}
-                    style={{ flex: 1, padding: '.55rem 1rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.6)', color: '#00ff41', ...VT, fontSize: '1rem', letterSpacing: '.12em', cursor: 'pointer' }}>
+                    style={{ flex: 1, padding: '.55rem 1rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', ...VT, fontSize: '1rem', letterSpacing: '.12em', cursor: 'pointer' }}>
                     VIEW PLANS →
                   </button>
                   <button
                     onClick={() => navigate('/world/play')}
-                    style={{ padding: '.55rem 1rem', background: 'transparent', border: '1px solid rgba(0,255,65,.2)', color: 'rgba(0,255,65,.4)', ...VT, fontSize: '.85rem', letterSpacing: '.1em', cursor: 'pointer' }}>
+                    style={{ padding: '.55rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', ...VT, fontSize: '.85rem', letterSpacing: '.1em', cursor: 'pointer' }}>
                     SKIP FOR NOW
                   </button>
                 </div>
@@ -2323,10 +2323,10 @@ export default function WorldMenu() {
               <button
                 onClick={() => navigate('/world/play')}
                 style={{
-                  padding: '.9rem 3rem', background: 'rgba(0,255,65,.12)',
-                  border: '1px solid rgba(0,255,65,.7)', color: '#00ff41',
+                  padding: '.9rem 3rem', background: 'rgba(56,189,248,.12)',
+                  border: '1px solid rgba(56,189,248,.7)', color: '#38bdf8',
                   ...VT, fontSize: '1.6rem', letterSpacing: '.2em', cursor: 'pointer',
-                  textShadow: '0 0 12px rgba(0,255,65,.5)',
+                  textShadow: '0 0 12px rgba(56,189,248,.5)',
                   animation: 'smblink 1.2s step-end infinite',
                 }}
               >

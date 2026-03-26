@@ -105,7 +105,7 @@ export interface ConferenceRoom {
   participantsJson: string | null;
 }
 
-export const crt = (opacity: number) => `rgba(0,255,65,${opacity})`;
+export const crt = (opacity: number) => `rgba(56,189,248,${opacity})`;
 export const red = (opacity: number) => `rgba(255,40,40,${opacity})`;
 export const amber = (opacity: number) => `rgba(255,180,0,${opacity})`;
 export const blue = (opacity: number) => `rgba(0,150,255,${opacity})`;

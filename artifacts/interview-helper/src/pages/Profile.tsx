@@ -149,13 +149,13 @@ function MobileInstallSection() {
           href={`${appUrl}${import.meta.env.BASE_URL}mobile`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors"
+          className="flex items-center gap-3 p-3 rounded-xl border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 transition-colors"
         >
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-sm">
+          <div className="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/25 flex items-center justify-center text-sm">
             📱
           </div>
           <div className="flex-1">
-            <p className="text-xs font-bold text-emerald-400">Mobile Game Terminal</p>
+            <p className="text-xs font-bold text-sky-400">Mobile Game Terminal</p>
             <p className="text-[10px] text-muted-foreground">Check stats, chat with Pablo AI, and view your business overview from your phone</p>
           </div>
         </a>
@@ -406,8 +406,8 @@ export default function Profile() {
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                  <Brain className="w-4 h-4 text-emerald-400" />
+                <div className="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+                  <Brain className="w-4 h-4 text-sky-400" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-foreground">{boomerMode ? t('profile.myNotesAiMemory') : t('profile.pabloMemory')}</p>
@@ -420,7 +420,7 @@ export default function Profile() {
                 onChange={e => setMemoryDraft(e.target.value)}
                 placeholder={t('profile.memoryPlaceholder')}
                 rows={6}
-                className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/40 transition-colors resize-none mb-3"
+                className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/40 transition-colors resize-none mb-3"
               />
 
               <div className="flex items-center justify-between">
@@ -435,7 +435,7 @@ export default function Profile() {
                     {t('profile.clear')}
                   </button>
                   <button onClick={saveMemory} disabled={savingMemory || memoryDraft === data?.memory}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/25 transition-colors disabled:opacity-40">
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/25 text-sky-300 text-xs font-semibold hover:bg-sky-500/25 transition-colors disabled:opacity-40">
                     {savingMemory ? <Loader2 className="w-3 h-3 animate-spin" /> : memorySaved ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />}
                     {memorySaved ? t('profile.saved') : t('profile.save')}
                   </button>
@@ -520,7 +520,7 @@ export default function Profile() {
                   </div>
                   <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                      <Brain className="w-3.5 h-3.5 text-sky-400" />
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Memory</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">{data?.memory ? data.memory.split('\n').filter(Boolean).length : 0}
@@ -573,8 +573,8 @@ export default function Profile() {
           >
             {deleted ? (
               <div className="flex flex-col items-center gap-3 py-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                  <Check className="w-6 h-6 text-emerald-400" />
+                <div className="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+                  <Check className="w-6 h-6 text-sky-400" />
                 </div>
                 <p className="text-sm font-semibold text-foreground">{t('profile.dataDeleted')}</p>
               </div>

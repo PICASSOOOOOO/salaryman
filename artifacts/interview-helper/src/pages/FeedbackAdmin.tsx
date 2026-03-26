@@ -21,7 +21,7 @@ const STATUSES = ["all", "open", "acknowledged", "resolved"];
 const STATUS_STYLES: Record<string, string> = {
   open: 'bg-red-500/15 text-red-400 border-red-500/25',
   acknowledged: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  resolved: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  resolved: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
 };
 
 const CATEGORY_STYLES: Record<string, string> = {
@@ -95,7 +95,7 @@ export default function FeedbackAdmin() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Bug className="w-5 h-5 text-emerald-400" />
+            <Bug className="w-5 h-5 text-sky-400" />
             <div>
               <h1 className="font-mono text-lg text-zinc-100 tracking-widest uppercase">Feedback Reports</h1>
               <p className="font-mono text-[10px] text-zinc-600 tracking-wide">{total} total submissions</p>
@@ -206,7 +206,7 @@ export default function FeedbackAdmin() {
                               href={safeUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="block font-mono text-[11px] text-emerald-400 hover:underline mt-0.5 break-all"
+                              className="block font-mono text-[11px] text-sky-400 hover:underline mt-0.5 break-all"
                             >
                               {safeUrl}
                             </a>

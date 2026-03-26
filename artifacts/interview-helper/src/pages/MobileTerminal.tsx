@@ -76,8 +76,8 @@ function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string):
 }
 
 const CLASS_COLOR: Record<string, string> = {
-  corporate: '#00ff41',
-  outlaw: '#88ff44',
+  corporate: '#38bdf8',
+  outlaw: '#7dd3fc',
   replicant: '#33ffaa',
 };
 
@@ -101,10 +101,10 @@ function StatBar({ label, value, max, color }: { label: string; value: number; m
   return (
     <div style={{ marginBottom: '.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.2rem' }}>
-        <span style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.1em', ...ST }}>{label}</span>
+        <span style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em', ...ST }}>{label}</span>
         <span style={{ ...VT, fontSize: '.85rem', color, letterSpacing: '.05em' }}>{Math.floor(value)}/{max}</span>
       </div>
-      <div style={{ height: 6, background: 'rgba(0,255,65,.08)', width: '100%' }}>
+      <div style={{ height: 6, background: 'rgba(56,189,248,.08)', width: '100%' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: pct > 40 ? color : '#ff4444', transition: 'width .3s' }} />
       </div>
     </div>
@@ -113,9 +113,9 @@ function StatBar({ label, value, max, color }: { label: string; value: number; m
 
 function StatRow({ label, val, col }: { label: string; val: string | number; col?: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.35rem 0', borderBottom: '1px solid rgba(0,255,65,.06)' }}>
-      <span style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', ...ST }}>{label}</span>
-      <span style={{ ...VT, fontSize: '.85rem', color: col ?? '#00ff41', letterSpacing: '.05em' }}>{val}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '.35rem 0', borderBottom: '1px solid rgba(56,189,248,.06)' }}>
+      <span style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', ...ST }}>{label}</span>
+      <span style={{ ...VT, fontSize: '.85rem', color: col ?? '#38bdf8', letterSpacing: '.05em' }}>{val}</span>
     </div>
   );
 }
@@ -212,8 +212,8 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
   if (loading) {
     return (
       <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', ...ST }}>
-        <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em', animation: 'pulse 1.5s infinite' }}>CONNECTING...</div>
-        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.25)', marginTop: '.5rem', letterSpacing: '.1em' }}>TERMINAL HUB · MOBILE</div>
+        <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em', animation: 'pulse 1.5s infinite' }}>CONNECTING...</div>
+        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', marginTop: '.5rem', letterSpacing: '.1em' }}>TERMINAL HUB · MOBILE</div>
       </div>
     );
   }
@@ -238,13 +238,13 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
   if (!activeSave) {
     return (
       <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...ST }}>
-        <div style={{ ...VT, fontSize: '2rem', color: '#00ff41', letterSpacing: '.2em', marginBottom: '.5rem', textShadow: '0 0 20px rgba(0,255,65,.3)' }}>NO SAVE DATA</div>
-        <div style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '1.2rem', textAlign: 'center' }}>
+        <div style={{ ...VT, fontSize: '2rem', color: '#38bdf8', letterSpacing: '.2em', marginBottom: '.5rem', textShadow: '0 0 20px rgba(56,189,248,.3)' }}>NO SAVE DATA</div>
+        <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginBottom: '1.2rem', textAlign: 'center' }}>
           No operative record found. Start the game on desktop to create your character.
         </div>
         <button
           onClick={() => navigate('/world')}
-          style={{ padding: '.6rem 1.5rem', background: 'rgba(0,255,65,.08)', border: '1px solid rgba(0,255,65,.5)', color: '#00ff41', ...VT, fontSize: '1.1rem', letterSpacing: '.15em', cursor: 'pointer' }}
+          style={{ padding: '.6rem 1.5rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', ...VT, fontSize: '1.1rem', letterSpacing: '.15em', cursor: 'pointer' }}
         >
           GO TO GAME
         </button>
@@ -253,7 +253,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
   }
 
   const sd = activeSave.data;
-  const charColor = CLASS_COLOR[activeSave.charClass] ?? '#00ff41';
+  const charColor = CLASS_COLOR[activeSave.charClass] ?? '#38bdf8';
   const govBaseSalary = sd.governmentBaseSalary ??
     (activeSave.charClass === 'corporate' ? 25000 : activeSave.charClass === 'replicant' ? 18000 : activeSave.charClass === 'outlaw' ? 10000 : activeSave.salary);
   const signupTime = sd.createdAt ?? activeSave.createdAt;
@@ -265,29 +265,29 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         input:focus { outline: none; }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: rgba(0,255,65,.03); }
-        ::-webkit-scrollbar-thumb { background: rgba(0,255,65,.15); }
+        ::-webkit-scrollbar-track { background: rgba(56,189,248,.03); }
+        ::-webkit-scrollbar-thumb { background: rgba(56,189,248,.15); }
       `}</style>
 
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
-        <div style={{ padding: '.75rem 1rem', borderBottom: '1px solid rgba(0,255,65,.2)', flexShrink: 0 }}>
+        <div style={{ padding: '.75rem 1rem', borderBottom: '1px solid rgba(56,189,248,.2)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ ...VT, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em', textShadow: '0 0 12px rgba(0,255,65,.3)' }}>TERMINAL HUB</div>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · ALPHA {__BUILD_VERSION__}</div>
+              <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em', textShadow: '0 0 12px rgba(56,189,248,.3)' }}>TERMINAL HUB</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · ALPHA {__BUILD_VERSION__}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ ...VT, fontSize: '.75rem', color: '#00ff41', letterSpacing: '.08em' }}>● ONLINE</div>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em' }}>REMOTE LINK</div>
+              <div style={{ ...VT, fontSize: '.75rem', color: '#38bdf8', letterSpacing: '.08em' }}>● ONLINE</div>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em' }}>REMOTE LINK</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.5rem', padding: '.4rem .55rem', border: '1px solid rgba(0,255,65,.12)', background: 'rgba(0,255,65,.03)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginTop: '.5rem', padding: '.4rem .55rem', border: '1px solid rgba(56,189,248,.12)', background: 'rgba(56,189,248,.03)' }}>
             <div style={{ width: 8, height: 8, background: charColor, boxShadow: `0 0 6px ${charColor}` }} />
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: charColor, letterSpacing: '.1em' }}>{activeSave.charName}</div>
-              <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>
+              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
                 {activeSave.charClass.toUpperCase()} · LVL {activeSave.level} · {activeSave.lastZone}
               </div>
             </div>
@@ -298,10 +298,10 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                   if (s) { setActiveSave(s); setPabloMsgs([]); }
                 }}
                 value={activeSave.slotIndex}
-                style={{ marginLeft: 'auto', background: 'rgba(0,255,65,.06)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.55rem', padding: '.15rem .3rem', cursor: 'pointer' }}
+                style={{ marginLeft: 'auto', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.55rem', padding: '.15rem .3rem', cursor: 'pointer' }}
               >
                 {saves.map(s => (
-                  <option key={s.slotIndex} value={s.slotIndex} style={{ background: '#001a00', color: '#00ff41' }}>
+                  <option key={s.slotIndex} value={s.slotIndex} style={{ background: '#001a00', color: '#38bdf8' }}>
                     SLOT {s.slotIndex + 1}: {s.charName}
                   </option>
                 ))}
@@ -310,7 +310,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.12)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0 }}>
           {([
             { id: 'chat' as TabId, label: '🤖 PABLO AI', boomerLabel: '🤖 AI CHAT', locked: false },
             { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
@@ -320,9 +320,9 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               key={t.id}
               onClick={() => setTab(t.id)}
               style={{
-                flex: 1, padding: '.5rem .3rem', border: 'none', borderBottom: tab === t.id ? '2px solid #00ff41' : '2px solid transparent',
-                background: tab === t.id ? 'rgba(0,255,65,.06)' : 'transparent',
-                color: tab === t.id ? '#00ff41' : 'rgba(0,255,65,.3)', cursor: 'pointer',
+                flex: 1, padding: '.5rem .3rem', border: 'none', borderBottom: tab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
+                background: tab === t.id ? 'rgba(56,189,248,.06)' : 'transparent',
+                color: tab === t.id ? '#38bdf8' : 'rgba(56,189,248,.3)', cursor: 'pointer',
                 ...VT, fontSize: '.9rem', letterSpacing: '.1em',
               }}
             >
@@ -339,22 +339,22 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                   ⏳ TRIAL · {trialDaysLeft}d REMAINING
                 </div>
               )}
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>OPERATIVE STATUS REPORT</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>OPERATIVE STATUS REPORT</div>
 
-              <StatBar label="HP" value={sd.hp ?? 100} max={sd.maxHp ?? 100} color="#00ff41" />
-              <StatBar label="HUNGER" value={sd.hunger ?? 100} max={100} color="#00ff41" />
+              <StatBar label="HP" value={sd.hp ?? 100} max={sd.maxHp ?? 100} color="#38bdf8" />
+              <StatBar label="HUNGER" value={sd.hunger ?? 100} max={100} color="#38bdf8" />
               <StatBar label="THIRST" value={sd.thirst ?? 100} max={100} color="#33aaff" />
               <StatBar label="ENERGY" value={sd.energy ?? 100} max={100} color="#ffcc00" />
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL STATUS</div>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL STATUS</div>
                 <StatRow label="FIAT (ƒ)" val={`ƒ${computeDecayedSalary(govBaseSalary, signupTime).toLocaleString()}`} col="#ffcc00" />
                 <StatRow label="SAVINGS" val={`ƒ${(sd.savings ?? 0).toLocaleString()}`} col="#ffcc00" />
                 {(sd.goldBalance ?? 0) > 0 && <StatRow label="GOLD" val={`${sd.goldBalance} oz`} col="#ffaa00" />}
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>COMBAT PROFILE</div>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>COMBAT PROFILE</div>
                 <StatRow label="LEVEL" val={activeSave.level} col={charColor} />
                 <StatRow label="ATK" val={sd.atk ?? '?'} />
                 <StatRow label="EXP" val={`${sd.exp ?? 0}`} />
@@ -362,17 +362,17 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                 {sd.poisoned && <StatRow label="STATUS" val="POISONED" col="#ff4444" />}
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>LOCATION & TIME</div>
-                <StatRow label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === CITY_NAME ? '#00ff41' : '#88ff44'} />
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>LOCATION & TIME</div>
+                <StatRow label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === CITY_NAME ? '#38bdf8' : '#7dd3fc'} />
                 <StatRow label="PLAYTIME" val={fmtPlaytime(activeSave.playtime)} />
                 <StatRow label="LAST SAVE" val={fmtTime(activeSave.lastSavedAt)} />
                 {sd.passport && <StatRow label="PASSPORT" val="ACTIVE" col="#33ffaa" />}
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>EQUIPMENT</div>
-                <StatRow label="DEVICE" val={sd.hasDevice ? (sd.deviceBroken ? 'DAMAGED' : 'ACTIVE') : 'NONE'} col={sd.hasDevice ? (sd.deviceBroken ? '#ff4444' : '#00ff41') : '#ff4444'} />
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>EQUIPMENT</div>
+                <StatRow label="DEVICE" val={sd.hasDevice ? (sd.deviceBroken ? 'DAMAGED' : 'ACTIVE') : 'NONE'} col={sd.hasDevice ? (sd.deviceBroken ? '#ff4444' : '#38bdf8') : '#ff4444'} />
                 {sd.deviceDurability !== undefined && <StatRow label="DURABILITY" val={`${sd.deviceDurability}%`} />}
               </div>
             </div>
@@ -382,7 +382,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                 {pabloMsgs.length === 0 && (
-                  <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.22)', lineHeight: 1.8, padding: '.5rem 0' }}>
+                  <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.22)', lineHeight: 1.8, padding: '.5rem 0' }}>
                     &gt; PABLO AI ONLINE — MOBILE LINK<br />
                     &gt; Remote terminal access active.<br />
                     &gt; Ask anything. I know Minx City.
@@ -393,36 +393,36 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                     key={i}
                     style={{
                       fontSize: '.7rem', lineHeight: 1.7,
-                      color: m.role === 'user' ? 'rgba(0,255,65,.5)' : '#00ff41',
+                      color: m.role === 'user' ? 'rgba(56,189,248,.5)' : '#38bdf8',
                       paddingLeft: m.role === 'pablo' ? '.55rem' : 0,
-                      borderLeft: m.role === 'pablo' ? '2px solid rgba(0,255,65,.25)' : 'none',
+                      borderLeft: m.role === 'pablo' ? '2px solid rgba(56,189,248,.25)' : 'none',
                       padding: m.role === 'pablo' ? '.4rem .55rem' : '.2rem 0',
-                      background: m.role === 'pablo' ? 'rgba(0,255,65,.03)' : 'transparent',
+                      background: m.role === 'pablo' ? 'rgba(56,189,248,.03)' : 'transparent',
                     }}
                   >
-                    <span style={{ ...VT, fontSize: '.8rem', color: 'rgba(0,255,65,.3)', marginRight: '.3rem' }}>
+                    <span style={{ ...VT, fontSize: '.8rem', color: 'rgba(56,189,248,.3)', marginRight: '.3rem' }}>
                       {m.role === 'user' ? `[${activeSave.charName.slice(0, 10)}]` : '[PABLO]'}
                     </span>
                     {m.text}
                   </div>
                 ))}
                 {pabloLoad && (
-                  <div style={{ ...VT, fontSize: '.95rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', animation: 'pulse 1s infinite' }}>PABLO . . .</div>
+                  <div style={{ ...VT, fontSize: '.95rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', animation: 'pulse 1s infinite' }}>PABLO . . .</div>
                 )}
                 <div ref={chatEndRef} />
               </div>
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', padding: '.5rem .75rem', display: 'flex', gap: '.35rem', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', padding: '.5rem .75rem', display: 'flex', gap: '.35rem', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
                 <input
                   value={pabloIn}
                   onChange={e => setPabloIn(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') sendPablo(); }}
                   placeholder="Ask PABLO anything..."
-                  style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.2)', color: '#00ff41', ...ST, fontSize: '.7rem', padding: '.45rem .6rem', caretColor: '#00ff41' }}
+                  style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.7rem', padding: '.45rem .6rem', caretColor: '#38bdf8' }}
                 />
                 <button
                   onClick={sendPablo}
                   disabled={pabloLoad}
-                  style={{ background: 'rgba(0,255,65,.07)', border: '1px solid rgba(0,255,65,.3)', color: '#00ff41', cursor: 'pointer', padding: '0 .75rem', ...VT, fontSize: '1.2rem' }}
+                  style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .75rem', ...VT, fontSize: '1.2rem' }}
                 >
                   ↵
                 </button>
@@ -437,19 +437,19 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                   ⏳ TRIAL · {trialDaysLeft}d REMAINING
                 </div>
               )}
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>BUSINESS OVERVIEW</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>BUSINESS OVERVIEW</div>
 
               {sd.hasBusiness || sd.companyName ? (
                 <>
-                  <div style={{ border: '1px solid rgba(0,255,65,.2)', padding: '.75rem', marginBottom: '.6rem', background: 'rgba(0,255,65,.03)' }}>
-                    <div style={{ ...VT, fontSize: '1.1rem', color: '#00ff41', letterSpacing: '.1em', marginBottom: '.3rem' }}>
+                  <div style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.75rem', marginBottom: '.6rem', background: 'rgba(56,189,248,.03)' }}>
+                    <div style={{ ...VT, fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.1em', marginBottom: '.3rem' }}>
                       {sd.companyName ?? 'UNREGISTERED'}
                     </div>
-                    {sd.industry && <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.4)', letterSpacing: '.08em' }}>{sd.industry}</div>}
-                    {sd.companySize && <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', marginTop: '.2rem' }}>{sd.companySize}</div>}
+                    {sd.industry && <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{sd.industry}</div>}
+                    {sd.companySize && <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', marginTop: '.2rem' }}>{sd.companySize}</div>}
                   </div>
 
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL OVERVIEW</div>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>FINANCIAL OVERVIEW</div>
                   <StatRow label="BALANCE" val={`ƒ${(activeSave.salary ?? 0).toLocaleString()}`} col="#ffcc00" />
                   <StatRow label="SAVINGS" val={`ƒ${(sd.savings ?? 0).toLocaleString()}`} col="#ffcc00" />
                   {sd.loan && (
@@ -457,40 +457,40 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                   )}
 
                   {sd.cargo && Array.isArray(sd.cargo) && sd.cargo.length > 0 && (
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>CARGO HOLD</div>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>CARGO HOLD</div>
                       {sd.cargo.map((c, i) => (
-                        <StatRow key={i} label={c.name ?? c.id} val={`${c.qty ?? 1}x`} col={c.illegal ? '#ff4444' : '#00ff41'} />
+                        <StatRow key={i} label={c.name ?? c.id} val={`${c.qty ?? 1}x`} col={c.illegal ? '#ff4444' : '#38bdf8'} />
                       ))}
                     </div>
                   )}
 
                   {sd.ownedBuildings && Array.isArray(sd.ownedBuildings) && sd.ownedBuildings.length > 0 && (
-                    <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
-                      <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>OWNED PROPERTIES</div>
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>OWNED PROPERTIES</div>
                       {sd.ownedBuildings.map((b: string, i: number) => (
-                        <div key={i} style={{ fontSize: '.65rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.8, ...ST }}>▸ {b.toUpperCase()}</div>
+                        <div key={i} style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.8, ...ST }}>▸ {b.toUpperCase()}</div>
                       ))}
                     </div>
                   )}
                 </>
               ) : (
-                <div style={{ border: '1px solid rgba(0,255,65,.1)', padding: '1rem', textAlign: 'center' }}>
-                  <div style={{ ...VT, fontSize: '1rem', color: 'rgba(0,255,65,.35)', letterSpacing: '.1em', marginBottom: '.5rem' }}>NO BUSINESS REGISTERED</div>
-                  <div style={{ fontSize: '.6rem', color: 'rgba(0,255,65,.2)', lineHeight: 1.8 }}>
+                <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '1rem', textAlign: 'center' }}>
+                  <div style={{ ...VT, fontSize: '1rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginBottom: '.5rem' }}>NO BUSINESS REGISTERED</div>
+                  <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.2)', lineHeight: 1.8 }}>
                     Register a business in Minx City to access business management features. Visit the game on desktop to get started.
                   </div>
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
-                <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
-                <StatRow label="SERVER" val={`${CITY_NAME} · PST`} col="#00ff41" />
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
+                <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
+                <StatRow label="SERVER" val={`${CITY_NAME} · PST`} col="#38bdf8" />
                 <StatRow label="FACTION" val="PABLO CORP" col="#b400ff" />
                 <StatRow label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
               </div>
 
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ border: '1px solid rgba(0,180,255,.15)', padding: '.6rem', background: 'rgba(0,180,255,.03)' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,180,255,.5)', lineHeight: 1.8, ...ST }}>
                     Trading, building purchases, and cargo runs require physical terminal access in Minx City. Use the PABLO AI tab to get business advice remotely.
@@ -501,14 +501,14 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
           )}
         </div>
 
-        <div style={{ padding: '.5rem 1rem', borderTop: '1px solid rgba(0,255,65,.1)', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
+        <div style={{ padding: '.5rem 1rem', borderTop: '1px solid rgba(56,189,248,.1)', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.12)', letterSpacing: '.07em' }}>
+            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.07em' }}>
               {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
             </div>
             <button
               onClick={() => navigate('/world')}
-              style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.3)', background: 'transparent', border: '1px solid rgba(0,255,65,.15)', padding: '.2rem .5rem', cursor: 'pointer', ...ST }}
+              style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', padding: '.2rem .5rem', cursor: 'pointer', ...ST }}
             >
               DESKTOP
             </button>

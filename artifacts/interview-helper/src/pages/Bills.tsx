@@ -49,7 +49,7 @@ function Field({ label, value, onChange, type = 'text', textarea = false, option
 
 const STATUS_META: Record<string, { label: string; color: string; icon: React.FC<{ className?: string }> }> = {
   pending: { label: 'Pending', color: 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10', icon: Clock },
-  paid: { label: 'Paid', color: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10', icon: CheckCircle2 },
+  paid: { label: 'Paid', color: 'text-sky-400 border-sky-500/20 bg-sky-500/10', icon: CheckCircle2 },
   overdue: { label: 'Overdue', color: 'text-red-400 border-red-500/20 bg-red-500/10', icon: AlertTriangle },
 };
 
@@ -167,7 +167,7 @@ export default function Bills() {
                 all: 'text-zinc-400 border-white/[0.06]',
                 pending: 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10',
                 overdue: 'text-red-400 border-red-500/20 bg-red-500/10',
-                paid: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10',
+                paid: 'text-sky-400 border-sky-500/20 bg-sky-500/10',
               };
               return (
                 <button key={f} onClick={() => setStatusFilter(f)}
@@ -217,7 +217,7 @@ export default function Bills() {
                   <div className="flex gap-1">
                     {bill.status !== 'paid' && (
                       <button onClick={() => markPaid(bill)} disabled={markingPaidId === bill.id}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10 transition-colors disabled:opacity-40"
                         title="Mark as paid">
                         {markingPaidId === bill.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                       </button>

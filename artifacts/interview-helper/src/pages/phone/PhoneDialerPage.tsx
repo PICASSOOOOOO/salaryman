@@ -197,7 +197,7 @@ export default function PhoneDialerPage() {
                     onClick={() => pressKey(key)}
                     style={{
                       height: 62, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      background: dtmfTone === key ? crt(0.15) : 'rgba(0,255,65,0.035)',
+                      background: dtmfTone === key ? crt(0.15) : 'rgba(56,189,248,0.035)',
                       border: `1px solid ${dtmfTone === key ? crt(0.4) : crt(0.1)}`,
                       color: crt(0.85), cursor: 'pointer', borderRadius: 8,
                       transition: 'all 0.08s',
@@ -297,7 +297,7 @@ export default function PhoneDialerPage() {
                   }}>
                     <div style={{
                       width: 34, height: 34, borderRadius: 8,
-                      background: 'linear-gradient(135deg, rgba(0,255,65,0.08), rgba(0,255,65,0.02))',
+                      background: 'linear-gradient(135deg, rgba(56,189,248,0.08), rgba(56,189,248,0.02))',
                       border: `1px solid ${crt(0.12)}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}>

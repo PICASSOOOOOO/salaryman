@@ -30,7 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   meals: 'text-yellow-400',
   utilities: 'text-orange-400',
   professional_services: 'text-teal-400',
-  training: 'text-emerald-400',
+  training: 'text-sky-400',
   office: 'text-slate-400',
   payable: 'text-rose-400',
   other: 'text-zinc-400',

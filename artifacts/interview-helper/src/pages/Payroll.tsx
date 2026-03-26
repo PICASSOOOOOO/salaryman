@@ -224,7 +224,7 @@ export default function Payroll() {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-foreground text-sm">{emp.name}</span>
                     <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
-                      emp.status === 'active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
+                      emp.status === 'active' ? 'text-sky-400 border-sky-500/20 bg-sky-500/10' :
                       emp.status === 'on leave' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10' :
                       'text-zinc-400 border-zinc-500/20 bg-zinc-500/10'
                     } uppercase tracking-wider`}>{emp.status}</span>

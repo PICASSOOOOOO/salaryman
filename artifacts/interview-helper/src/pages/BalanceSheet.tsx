@@ -43,7 +43,7 @@ interface BalanceSheetData {
 }
 
 const TYPE_META: Record<string, { label: string; color: string; bg: string; icon: React.FC<{ className?: string }> }> = {
-  income: { label: 'Income', color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: ArrowUpRight },
+  income: { label: 'Income', color: 'text-sky-400', bg: 'bg-sky-500/10', icon: ArrowUpRight },
   payroll: { label: 'Payroll', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Users },
   bill: { label: 'Bill', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: Receipt },
   expense: { label: 'Expense', color: 'text-purple-400', bg: 'bg-purple-500/10', icon: CreditCard },
@@ -107,14 +107,14 @@ export default function BalanceSheet() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-sky-500/5 blur-[120px] rounded-full pointer-events-none" />
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
 
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <BarChart2 className="w-5 h-5 text-emerald-400" />
+              <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
+                <BarChart2 className="w-5 h-5 text-sky-400" />
               </div>
               <h2 className="text-xl font-bold text-foreground">
                 {boomerMode ? 'Balance Sheet' : 'NETWORTH-X'}
@@ -148,17 +148,17 @@ export default function BalanceSheet() {
             <div className="mb-8">
               <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Financial Summary</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                <SummaryCard label="Invoice Income" value={s.grossInvoiceIncome} icon={FileText} color="text-emerald-400" sub="Paid invoices" />
+                <SummaryCard label="Invoice Income" value={s.grossInvoiceIncome} icon={FileText} color="text-sky-400" sub="Paid invoices" />
                 <SummaryCard label="Payroll Costs" value={s.payrollTotal} icon={Users} color="text-blue-400" sub="All pay runs" />
                 <SummaryCard label="Bills Paid" value={s.billsTotal} icon={Receipt} color="text-orange-400" sub="Recorded payments" />
                 <SummaryCard label="Expenses" value={s.expensesTotal} icon={CreditCard} color="text-purple-400" sub="All categories" />
                 <SummaryCard label="Total Outgoings" value={s.totalOutgoings} icon={ArrowDownRight} color="text-red-400" sub="Payroll + bills + expenses" />
-                <div className={`bg-white/[0.025] border rounded-xl p-4 ${s.netProfit >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+                <div className={`bg-white/[0.025] border rounded-xl p-4 ${s.netProfit >= 0 ? 'border-sky-500/20' : 'border-red-500/20'}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    {s.netProfit >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
+                    {s.netProfit >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-sky-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
                     <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Net Profit</span>
                   </div>
-                  <div className={`text-2xl font-bold leading-none ${s.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <div className={`text-2xl font-bold leading-none ${s.netProfit >= 0 ? 'text-sky-400' : 'text-red-400'}`}>
                     {s.netProfit < 0 ? '-' : ''}${Math.abs(s.netProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <div className="text-[10px] font-mono text-zinc-700 tracking-wide mt-1">Income minus all outgoings</div>
@@ -170,7 +170,7 @@ export default function BalanceSheet() {
                   <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Breakdown</div>
                   <div className="space-y-2">
                     {[
-                      { label: 'Invoice Income', value: s.grossInvoiceIncome, color: 'bg-emerald-500' },
+                      { label: 'Invoice Income', value: s.grossInvoiceIncome, color: 'bg-sky-500' },
                       { label: 'Payroll', value: -s.payrollTotal, color: 'bg-blue-500' },
                       { label: 'Bills', value: -s.billsTotal, color: 'bg-orange-500' },
                       { label: 'Expenses', value: -s.expensesTotal, color: 'bg-purple-500' },
@@ -182,7 +182,7 @@ export default function BalanceSheet() {
                           <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${item.color} opacity-70`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
-                          <div className={`text-xs font-mono ${item.value >= 0 ? 'text-emerald-400' : 'text-zinc-400'} shrink-0`}>
+                          <div className={`text-xs font-mono ${item.value >= 0 ? 'text-sky-400' : 'text-zinc-400'} shrink-0`}>
                             {item.value < 0 ? '-' : '+'}${Math.abs(item.value).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                           </div>
                         </div>
@@ -228,7 +228,7 @@ export default function BalanceSheet() {
                         <div className="text-xs text-zinc-300 truncate">{row.description}</div>
                         <div className="text-[10px] text-zinc-600 font-mono">{row.txDate} · <span className={meta.color}>{meta.label}</span> · {row.category}</div>
                       </div>
-                      <div className={`text-xs font-mono font-bold shrink-0 ${row.type === 'income' ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                      <div className={`text-xs font-mono font-bold shrink-0 ${row.type === 'income' ? 'text-sky-400' : 'text-zinc-400'}`}>
                         {row.type === 'income' ? '+' : '-'}${amt.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -242,14 +242,14 @@ export default function BalanceSheet() {
                   <div className="space-y-1">
                     {data.invoices.map(inv => (
                       <div key={inv.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/[0.02] transition-colors">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                          <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
+                          <FileText className="w-3.5 h-3.5 text-sky-400" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs text-zinc-300">{inv.clientName}</div>
                           <div className="text-[10px] text-zinc-600 font-mono">{inv.issueDate} · Invoice #{inv.invoiceNumber}</div>
                         </div>
-                        <div className="text-xs font-mono font-bold text-emerald-400 shrink-0">
+                        <div className="text-xs font-mono font-bold text-sky-400 shrink-0">
                           +${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                       </div>

@@ -113,7 +113,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="What do people call you?"
-              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/50 transition-colors"
+              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -122,7 +122,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={role}
               onChange={e => setRole(e.target.value)}
               placeholder="e.g. CEO, Sales Director, Software Engineer..."
-              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/50 transition-colors"
+              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={company}
               onChange={e => setCompany(e.target.value)}
               placeholder="Where do you work?"
-              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/50 transition-colors"
+              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -149,7 +149,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={industry}
               onChange={e => setIndustry(e.target.value)}
               placeholder="e.g. Tech startup, Healthcare, Finance, Legal..."
-              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/50 transition-colors"
+              className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
         </div>
@@ -166,11 +166,11 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
               onClick={() => toggleUseCase(uc.id)}
               className={`px-4 py-3 rounded-xl text-sm font-medium text-left transition-all border
                 ${useCases.includes(uc.id)
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                  ? 'bg-sky-500/20 border-sky-500/50 text-sky-300'
                   : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground hover:border-border/80'
                 }`}
             >
-              {useCases.includes(uc.id) && <Check className="w-3 h-3 inline mr-1.5 text-emerald-400" />}
+              {useCases.includes(uc.id) && <Check className="w-3 h-3 inline mr-1.5 text-sky-400" />}
               {uc.label}
             </button>
           ))}
@@ -187,7 +187,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           onChange={e => setExtra(e.target.value)}
           placeholder="e.g. 'I'm a tech CEO, prefer concise answers, mostly interview engineers and give board presentations...'"
           rows={5}
-          className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-emerald-500/50 transition-colors resize-none"
+          className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors resize-none"
         />
       ),
     },
@@ -218,9 +218,9 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', damping: 14 }}
-                  className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center"
+                  className="w-16 h-16 rounded-2xl bg-sky-500/20 border border-sky-500/30 flex items-center justify-center"
                 >
-                  <Sparkles className="w-8 h-8 text-emerald-400" />
+                  <Sparkles className="w-8 h-8 text-sky-400" />
                 </motion.div>
                 <div className="text-center">
                   <p className="text-base font-bold text-foreground">All set{name ? `, ${name}` : ''}!</p>
@@ -232,11 +232,11 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-6 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-emerald-400" />
+                    <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-sky-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">PABLO</p>
+                      <p className="text-xs font-bold text-sky-400 uppercase tracking-wider">PABLO</p>
                       <p className="text-[10px] text-muted-foreground">Quick intro — {STEPS.length - step} step{STEPS.length - step !== 1 ? 's' : ''} left</p>
                     </div>
                   </div>
@@ -253,7 +253,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 <div className="px-6 pb-4">
                   <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-emerald-500/60 rounded-full"
+                      className="h-full bg-sky-500/60 rounded-full"
                       animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
                       transition={{ ease: 'easeInOut', duration: 0.35 }}
                     />
@@ -297,7 +297,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     <button
                       onClick={isLast ? handleSubmit : () => setStep(s => s + 1)}
                       disabled={!canContinue || saving}
-                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {saving ? (
                         <span className="animate-pulse">Saving...</span>

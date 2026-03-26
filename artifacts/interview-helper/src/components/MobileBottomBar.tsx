@@ -41,7 +41,7 @@ export function MobileSubNav() {
               onClick={() => navigate(sub.path)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
                 isActive
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
                   : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
               }`}
             >
@@ -93,7 +93,7 @@ export function MobileModuleNav() {
               onClick={() => navigate(mod.defaultPath)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
                 active
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
                   : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
               }`}
             >

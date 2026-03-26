@@ -148,12 +148,12 @@ export default function Invoices() {
     const tx = sub * ((invoice.taxRate || 0) / 100);
     const totalAmt = sub + tx;
     const html = `
-      <div style="font-family:monospace;background:#09090b;color:#22c55e;padding:32px;max-width:600px">
+      <div style="font-family:monospace;background:#09090b;color:#38bdf8;padding:32px;max-width:600px">
         <h1 style="font-size:22px;margin-bottom:4px">INVOICE #${invoice.invoiceNumber}</h1>
-        <p style="color:rgba(34,197,94,0.5);font-size:12px">Issued: ${invoice.issueDate} · Due: ${invoice.dueDate}</p>
+        <p style="color:rgba(56,189,248,0.5);font-size:12px">Issued: ${invoice.issueDate} · Due: ${invoice.dueDate}</p>
         <p style="margin-top:16px;font-size:13px">BILL TO:<br/><strong>${invoice.clientName}</strong>${invoice.clientEmail ? `<br/>${invoice.clientEmail}` : ''}</p>
         <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:12px">
-          <tr style="border-bottom:1px solid rgba(34,197,94,0.3)"><th style="text-align:left;padding:6px">Description</th><th style="text-align:right;padding:6px">Qty</th><th style="text-align:right;padding:6px">Rate</th><th style="text-align:right;padding:6px">Amount</th></tr>
+          <tr style="border-bottom:1px solid rgba(56,189,248,0.3)"><th style="text-align:left;padding:6px">Description</th><th style="text-align:right;padding:6px">Qty</th><th style="text-align:right;padding:6px">Rate</th><th style="text-align:right;padding:6px">Amount</th></tr>
           ${(invoice.lineItems as LineItem[]).map(item => `<tr><td style="padding:6px">${item.description}</td><td style="text-align:right;padding:6px">${item.quantity}</td><td style="text-align:right;padding:6px">$${item.rate.toFixed(2)}</td><td style="text-align:right;padding:6px">$${(item.quantity * item.rate).toFixed(2)}</td></tr>`).join('')}
         </table>
         <div style="text-align:right;margin-top:16px;font-size:14px">
@@ -161,7 +161,7 @@ export default function Invoices() {
           ${invoice.taxRate > 0 ? `<div>Tax (${invoice.taxRate}%): $${tx.toFixed(2)}</div>` : ''}
           <div style="font-size:18px;margin-top:4px"><strong>TOTAL: $${totalAmt.toFixed(2)}</strong></div>
         </div>
-        ${invoice.terms ? `<p style="font-size:11px;color:rgba(34,197,94,0.4);margin-top:20px">Terms: ${invoice.terms}</p>` : ''}
+        ${invoice.terms ? `<p style="font-size:11px;color:rgba(56,189,248,0.4);margin-top:20px">Terms: ${invoice.terms}</p>` : ''}
       </div>
     `;
     try {
@@ -251,14 +251,14 @@ export default function Invoices() {
   const STATUS_COLOR: Record<string, string> = {
     draft: 'text-zinc-400',
     sent: 'text-blue-400',
-    paid: 'text-emerald-400',
+    paid: 'text-sky-400',
     overdue: 'text-red-400',
   };
 
   const STATUS_BG: Record<string, string> = {
     draft: 'bg-zinc-500/10 border-zinc-500/20',
     sent: 'bg-blue-500/10 border-blue-500/20',
-    paid: 'bg-emerald-500/10 border-emerald-500/20',
+    paid: 'bg-sky-500/10 border-sky-500/20',
     overdue: 'bg-red-500/10 border-red-500/20',
   };
 
@@ -281,8 +281,8 @@ export default function Invoices() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-emerald-400" />
+              <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-sky-400" />
               </div>
               <h2 className="text-xl font-bold text-foreground">
                 {boomerMode ? 'Invoices' : 'LEDGER-3'}
@@ -308,7 +308,7 @@ export default function Invoices() {
               const count = filter === 'all' ? invoices.length : (statusCounts[filter] || 0);
               const isActive = statusFilter === filter;
               const colorClass = filter === 'all'
-                ? (isActive ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : 'text-zinc-500 border-white/[0.06]')
+                ? (isActive ? 'bg-sky-500/15 text-sky-400 border-sky-500/25' : 'text-zinc-500 border-white/[0.06]')
                 : (isActive ? `${STATUS_BG[filter]} ${STATUS_COLOR[filter]}` : 'text-zinc-500 border-white/[0.06]');
               return (
                 <button
@@ -506,7 +506,7 @@ export default function Invoices() {
                         </button>
                         {inv.clientEmail && (
                           <button onClick={() => handleSendEmail(inv)} title="Send via email" disabled={sendingId === inv.id}
-                            className={`p-1.5 rounded-lg transition-colors ${sentId === inv.id ? 'text-emerald-400' : 'text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10'}`}>
+                            className={`p-1.5 rounded-lg transition-colors ${sentId === inv.id ? 'text-sky-400' : 'text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10'}`}>
                             {sentId === inv.id ? <Check className="w-3.5 h-3.5" /> : sendingId === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                           </button>
                         )}
@@ -518,7 +518,7 @@ export default function Invoices() {
                         )}
                         {(inv.status === 'sent' || inv.status === 'overdue') && (
                           <button onClick={() => handleStatusChange(inv.id, 'paid')} title="Mark as Paid"
-                            className="p-1.5 text-muted-foreground hover:text-emerald-400 rounded-lg hover:bg-emerald-500/10 transition-colors">
+                            className="p-1.5 text-muted-foreground hover:text-sky-400 rounded-lg hover:bg-sky-500/10 transition-colors">
                             <Check className="w-3.5 h-3.5" />
                           </button>
                         )}

@@ -36,9 +36,9 @@ const FEATURE_CARDS: FeatureCard[] = [
     desc: "Real-time audio intercept. AI listens to your meetings and interviews and feeds you responses instantly.",
     boomerDesc: "AI listens to your meetings live and gives you real-time answers and coaching.",
     price: 5,
-    color: "text-emerald-400",
-    borderColor: "border-emerald-500/30",
-    bgColor: "bg-emerald-500/10",
+    color: "text-sky-400",
+    borderColor: "border-sky-500/30",
+    bgColor: "bg-sky-500/10",
   },
   {
     key: "screen_scan",
@@ -394,10 +394,10 @@ export default function Upgrade() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mb-6 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-6 py-4 flex items-center gap-3"
+            className="mb-6 bg-sky-500/10 border border-sky-500/25 rounded-2xl px-6 py-4 flex items-center gap-3"
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <Check className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-xl bg-sky-500/20 flex items-center justify-center">
+              <Check className="w-4 h-4 text-sky-400" />
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">
@@ -468,7 +468,7 @@ export default function Upgrade() {
             )}
 
             <div className="mb-4 text-center">
-              <span className="text-[9px] font-mono text-emerald-500/70 tracking-widest uppercase border border-emerald-500/25 bg-emerald-500/8 px-2.5 py-1 rounded">
+              <span className="text-[9px] font-mono text-sky-500/70 tracking-widest uppercase border border-sky-500/25 bg-sky-500/8 px-2.5 py-1 rounded">
                 ALPHA {__BUILD_VERSION__} · early supporter pricing
               </span>
             </div>

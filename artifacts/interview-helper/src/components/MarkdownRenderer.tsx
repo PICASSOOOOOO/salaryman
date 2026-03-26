@@ -56,7 +56,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
             <div className="flex gap-1.5">
               <div className="w-3 h-3 rounded-full bg-destructive/80" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-              <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              <div className="w-3 h-3 rounded-full bg-sky-500/80" />
             </div>
             <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider ml-2">
               {language}
@@ -75,7 +75,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                 >
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-sky-500" />
                 </motion.div>
               ) : (
                 <motion.div

@@ -134,7 +134,7 @@ export default function BrandKit() {
               disabled={saving}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                 saved
-                  ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300'
+                  ? 'bg-sky-500/20 border border-sky-500/30 text-sky-300'
                   : 'bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30'
               } disabled:opacity-60`}
             >

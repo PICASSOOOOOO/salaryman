@@ -6,8 +6,8 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import ReactMarkdown from 'react-markdown';
 
-const CRT_GREEN = '#22c55e';
-const CRT_DIM = 'rgba(34,197,94,0.5)';
+const CRT_GREEN = '#38bdf8';
+const CRT_DIM = 'rgba(56,189,248,0.5)';
 
 const CRT_INPUT_STYLE: React.CSSProperties = {
   background: 'rgba(255,255,255,0.04)',
@@ -44,7 +44,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function Panel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      border: '1px solid rgba(34,197,94,0.2)',
+      border: '1px solid rgba(56,189,248,0.2)',
       background: 'rgba(0,10,0,0.6)',
       padding: '16px',
       borderRadius: '4px',
@@ -70,9 +70,9 @@ function CrtButton({ onClick, children, disabled, style, small }: {
         fontFamily: 'inherit',
         fontSize: small ? '0.75rem' : '0.85rem',
         letterSpacing: '0.05em',
-        color: disabled ? 'rgba(161,161,170,0.3)' : 'rgba(34,197,94,0.9)',
-        border: `1px solid ${disabled ? 'rgba(255,255,255,0.06)' : 'rgba(34,197,94,0.3)'}`,
-        background: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(34,197,94,0.08)',
+        color: disabled ? 'rgba(161,161,170,0.3)' : 'rgba(56,189,248,0.9)',
+        border: `1px solid ${disabled ? 'rgba(255,255,255,0.06)' : 'rgba(56,189,248,0.3)'}`,
+        background: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(56,189,248,0.08)',
         padding: small ? '4px 10px' : '7px 16px',
         borderRadius: '6px',
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -130,15 +130,15 @@ function StreamOutput({ output, loading, statusMsg, placeholder }: {
         fontFamily: "'Share Tech Mono', monospace",
         fontSize: '0.8rem',
         lineHeight: 1.7,
-        color: output ? 'rgba(228,228,231,0.85)' : 'rgba(34,197,94,0.2)',
+        color: output ? 'rgba(228,228,231,0.85)' : 'rgba(56,189,248,0.2)',
       }}>
         {output ? (
           <div className="seo-markdown-output" style={{ color: 'rgba(228,228,231,0.85)' }}>
             <ReactMarkdown
               components={{
-                h1: ({ children }) => <h1 style={{ color: CRT_GREEN, fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '0.08em', marginBottom: '8px', marginTop: '16px', borderBottom: '1px solid rgba(34,197,94,0.2)', paddingBottom: '4px' }}>{children}</h1>,
+                h1: ({ children }) => <h1 style={{ color: CRT_GREEN, fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '0.08em', marginBottom: '8px', marginTop: '16px', borderBottom: '1px solid rgba(56,189,248,0.2)', paddingBottom: '4px' }}>{children}</h1>,
                 h2: ({ children }) => <h2 style={{ color: CRT_GREEN, fontFamily: 'monospace', fontSize: '0.9rem', letterSpacing: '0.08em', marginBottom: '6px', marginTop: '14px' }}>{children}</h2>,
-                h3: ({ children }) => <h3 style={{ color: 'rgba(34,197,94,0.75)', fontFamily: 'monospace', fontSize: '0.82rem', letterSpacing: '0.06em', marginBottom: '4px', marginTop: '10px' }}>{children}</h3>,
+                h3: ({ children }) => <h3 style={{ color: 'rgba(56,189,248,0.75)', fontFamily: 'monospace', fontSize: '0.82rem', letterSpacing: '0.06em', marginBottom: '4px', marginTop: '10px' }}>{children}</h3>,
                 p: ({ children }) => <p style={{ marginBottom: '8px', lineHeight: 1.65 }}>{children}</p>,
                 ul: ({ children }) => <ul style={{ paddingLeft: '18px', marginBottom: '8px' }}>{children}</ul>,
                 ol: ({ children }) => <ol style={{ paddingLeft: '18px', marginBottom: '8px' }}>{children}</ol>,
@@ -146,19 +146,19 @@ function StreamOutput({ output, loading, statusMsg, placeholder }: {
                 code: ({ children, className }) => {
                   const isBlock = className?.startsWith('language-');
                   return isBlock ? (
-                    <pre style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(34,197,94,0.15)', padding: '10px 12px', overflowX: 'auto', marginBottom: '8px', borderRadius: '4px' }}>
-                      <code style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'rgba(34,197,94,0.8)' }}>{children}</code>
+                    <pre style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(56,189,248,0.15)', padding: '10px 12px', overflowX: 'auto', marginBottom: '8px', borderRadius: '4px' }}>
+                      <code style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'rgba(56,189,248,0.8)' }}>{children}</code>
                     </pre>
                   ) : (
-                    <code style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', padding: '1px 5px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '0.78rem', color: 'rgba(34,197,94,0.9)' }}>{children}</code>
+                    <code style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)', padding: '1px 5px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '0.78rem', color: 'rgba(56,189,248,0.9)' }}>{children}</code>
                   );
                 },
                 strong: ({ children }) => <strong style={{ color: CRT_GREEN, fontWeight: 600 }}>{children}</strong>,
-                blockquote: ({ children }) => <blockquote style={{ borderLeft: `2px solid rgba(34,197,94,0.4)`, paddingLeft: '12px', color: 'rgba(228,228,231,0.6)', marginBottom: '8px' }}>{children}</blockquote>,
+                blockquote: ({ children }) => <blockquote style={{ borderLeft: `2px solid rgba(56,189,248,0.4)`, paddingLeft: '12px', color: 'rgba(228,228,231,0.6)', marginBottom: '8px' }}>{children}</blockquote>,
                 table: ({ children }) => <div style={{ overflowX: 'auto', marginBottom: '8px' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>{children}</table></div>,
-                th: ({ children }) => <th style={{ border: '1px solid rgba(34,197,94,0.2)', padding: '4px 8px', color: CRT_GREEN, textAlign: 'left', background: 'rgba(34,197,94,0.06)' }}>{children}</th>,
+                th: ({ children }) => <th style={{ border: '1px solid rgba(56,189,248,0.2)', padding: '4px 8px', color: CRT_GREEN, textAlign: 'left', background: 'rgba(56,189,248,0.06)' }}>{children}</th>,
                 td: ({ children }) => <td style={{ border: '1px solid rgba(255,255,255,0.06)', padding: '4px 8px', color: 'rgba(228,228,231,0.8)' }}>{children}</td>,
-                hr: () => <hr style={{ border: 'none', borderTop: '1px solid rgba(34,197,94,0.15)', margin: '12px 0' }} />,
+                hr: () => <hr style={{ border: 'none', borderTop: '1px solid rgba(56,189,248,0.15)', margin: '12px 0' }} />,
               }}
             >
               {output}
@@ -171,8 +171,8 @@ function StreamOutput({ output, loading, statusMsg, placeholder }: {
               <Loader2 className="w-6 h-6 animate-spin" style={{ color: CRT_DIM }} />
             ) : (
               <>
-                <Search className="w-8 h-8" style={{ color: 'rgba(34,197,94,0.2)' }} />
-                <span style={{ fontFamily: 'monospace', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'rgba(34,197,94,0.3)' }}>
+                <Search className="w-8 h-8" style={{ color: 'rgba(56,189,248,0.2)' }} />
+                <span style={{ fontFamily: 'monospace', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'rgba(56,189,248,0.3)' }}>
                   {placeholder}
                 </span>
               </>
@@ -419,7 +419,7 @@ function ContentOptimizer() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
             <SectionLabel>CONTENT TO OPTIMIZE</SectionLabel>
             {wordCount > 0 && (
-              <span style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(34,197,94,0.4)', letterSpacing: '0.08em' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(56,189,248,0.4)', letterSpacing: '0.08em' }}>
                 {wordCount} WORDS
               </span>
             )}
@@ -611,7 +611,7 @@ export default function SeoModule() {
       <div style={{
         display: 'flex',
         gap: '4px',
-        borderBottom: '1px solid rgba(34,197,94,0.15)',
+        borderBottom: '1px solid rgba(56,189,248,0.15)',
         marginBottom: '20px',
         flexWrap: 'wrap' as const,
       }}>
@@ -627,8 +627,8 @@ export default function SeoModule() {
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase' as const,
                 color: active ? CRT_GREEN : 'rgba(161,161,170,0.5)',
-                background: active ? 'rgba(34,197,94,0.08)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(34,197,94,0.3)' : 'transparent'}`,
+                background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
+                border: `1px solid ${active ? 'rgba(56,189,248,0.3)' : 'transparent'}`,
                 borderBottom: active ? '1px solid #09090b' : '1px solid transparent',
                 padding: '6px 14px',
                 cursor: 'pointer',

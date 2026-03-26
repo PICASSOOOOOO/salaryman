@@ -50,7 +50,7 @@ const DEAL_STAGES = ['Prospect', 'Contacted', 'Proposal', 'Closed'] as const;
 
 const TAG_COLORS: Record<string, string> = {
   Lead: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  Client: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Client: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   Vendor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   Partner: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   Other: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
@@ -60,14 +60,14 @@ const STAGE_COLORS: Record<string, string> = {
   Prospect: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   Contacted: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   Proposal: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-  Closed: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Closed: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
 };
 
 const STAGE_DROP_HIGHLIGHT: Record<string, string> = {
   Prospect: 'ring-2 ring-sky-500/50 bg-sky-500/5',
   Contacted: 'ring-2 ring-amber-500/50 bg-amber-500/5',
   Proposal: 'ring-2 ring-violet-500/50 bg-violet-500/5',
-  Closed: 'ring-2 ring-emerald-500/50 bg-emerald-500/5',
+  Closed: 'ring-2 ring-sky-500/50 bg-sky-500/5',
 };
 
 const INTERACTION_TYPES = [
@@ -451,7 +451,7 @@ export default function ContactCollector() {
                   <button onClick={() => setFollowUpContact(null)}
                     className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">Cancel</button>
                   <button onClick={handleScheduleFollowUp} disabled={!followUpDate || followUpSaving}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${followUpSaved ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-300' : 'bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30'}`}>
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${followUpSaved ? 'bg-sky-500/20 border border-sky-500/30 text-sky-300' : 'bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30'}`}>
                     {followUpSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : followUpSaved ? <Check className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
                     {followUpSaved ? 'Scheduled!' : 'Schedule'}
                   </button>
@@ -478,13 +478,13 @@ export default function ContactCollector() {
             {contacts.length > 0 && (
               <>
                 <button onClick={handleExportCSV}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-semibold hover:bg-emerald-500/25 transition-colors">
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-300 text-sm font-semibold hover:bg-sky-500/25 transition-colors">
                   <Download className="w-4 h-4" /> CSV
                 </button>
                 {isAuthenticated && user?.email && (
                   <button onClick={handleEmailContacts} disabled={emailSending}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all
-                      ${emailSent ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300' : 'bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25'} disabled:opacity-60`}>
+                      ${emailSent ? 'bg-sky-500/20 border border-sky-500/40 text-sky-300' : 'bg-blue-500/15 border border-blue-500/30 text-blue-300 hover:bg-blue-500/25'} disabled:opacity-60`}>
                     {emailSending ? <Loader2 className="w-4 h-4 animate-spin" /> : emailSent ? <Check className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
                     {emailSent ? 'Sent!' : 'Email'}
                   </button>
@@ -654,7 +654,7 @@ export default function ContactCollector() {
                                 </div>
                               </div>
                               {c.company && <p className="text-[10px] text-muted-foreground mb-1 truncate">{c.company}</p>}
-                              {c.dealValue && <p className="text-[10px] text-emerald-400 font-semibold mb-1">${c.dealValue.toLocaleString()}</p>}
+                              {c.dealValue && <p className="text-[10px] text-sky-400 font-semibold mb-1">${c.dealValue.toLocaleString()}</p>}
                               {c.tag && (
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded border ${TAG_COLORS[c.tag] ?? TAG_COLORS.Other} font-bold uppercase`}>{c.tag}</span>
                               )}
@@ -718,7 +718,7 @@ export default function ContactCollector() {
                           {contact.dealStage ? (
                             <div>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${STAGE_COLORS[contact.dealStage] ?? ''} font-bold uppercase`}>{contact.dealStage}</span>
-                              {contact.dealValue && <p className="text-[10px] text-emerald-400 mt-0.5">${contact.dealValue.toLocaleString()}</p>}
+                              {contact.dealValue && <p className="text-[10px] text-sky-400 mt-0.5">${contact.dealValue.toLocaleString()}</p>}
                             </div>
                           ) : <span className="text-[10px] text-muted-foreground/30">—</span>}
                         </div>
@@ -735,7 +735,7 @@ export default function ContactCollector() {
                           )}
                           {contact.phone && (
                             <a href={`tel:${contact.phone}`} onClick={e => e.stopPropagation()}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10 transition-colors">
                               <Phone className="w-3.5 h-3.5" />
                             </a>
                           )}

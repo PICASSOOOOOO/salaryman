@@ -4,14 +4,14 @@ import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 
-const C = '#00ff41';
-const C2 = 'rgba(0,255,65,';
+const C = '#38bdf8';
+const C2 = 'rgba(56,189,248,';
 const OC = '#ff8c00';
 const OC2 = 'rgba(255,140,0,';
 const BG = '#0a0d0a';
 const CHASSIS = '#0d100d';
 const PANEL_BG = '#080b08';
-const BORDER = 'rgba(0,255,65,.18)';
+const BORDER = 'rgba(56,189,248,.18)';
 const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 const MONO: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
 
@@ -116,7 +116,7 @@ interface SynthVoice {
 
 type DAWSection = 'machine' | 'synth' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects' | 'looper';
 
-const TRACK_COLORS = ['#00ff41', '#ff4444', '#4488ff', '#ffaa00', '#cc44ff', '#44ffff', '#ff44cc', '#88ff44'];
+const TRACK_COLORS = ['#38bdf8', '#ff4444', '#4488ff', '#ffaa00', '#cc44ff', '#44ffff', '#ff44cc', '#7dd3fc'];
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const SCALES: Record<string, number[]> = {
   'Major': [0,2,4,5,7,9,11],
@@ -137,7 +137,7 @@ const DRUM_NAMES = [
   'RIM SHOT', 'COWBELL', 'SHAKER', 'TAMB', 'CRASH', 'RIDE', 'CONGA', 'WOODBLK',
 ];
 const DRUM_COLORS = [
-  '#ff4444','#ffaa00','#00ff41','#4488ff','#ff44cc','#cc44ff','#44ffff','#88ff44',
+  '#ff4444','#ffaa00','#38bdf8','#4488ff','#ff44cc','#cc44ff','#44ffff','#7dd3fc',
   '#ff8844','#ffdd00','#44ffbb','#ff6688','#aaaaff','#55ffaa','#ff9933','#ccff55',
 ];
 
@@ -414,7 +414,7 @@ const hwPanel: React.CSSProperties = {
   border: `2px solid ${BORDER}`,
   borderRadius: 6,
   padding: '10px',
-  boxShadow: 'inset 0 1px 4px rgba(0,0,0,.6), 0 1px 0 rgba(0,255,65,.05)',
+  boxShadow: 'inset 0 1px 4px rgba(0,0,0,.6), 0 1px 0 rgba(56,189,248,.05)',
 };
 
 const hwLabel: React.CSSProperties = {
@@ -428,8 +428,8 @@ const hwLabel: React.CSSProperties = {
 
 function Screw() {
   return (
-    <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #1a1f1a 0%, #2a302a 50%, #1a1f1a 100%)', border: '1px solid rgba(0,255,65,.12)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.5)', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: '50%', left: '15%', right: '15%', height: 1, background: 'rgba(0,255,65,.15)', transform: 'translateY(-50%) rotate(45deg)' }} />
+    <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #1a1f1a 0%, #2a302a 50%, #1a1f1a 100%)', border: '1px solid rgba(56,189,248,.12)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.5)', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '50%', left: '15%', right: '15%', height: 1, background: 'rgba(56,189,248,.15)', transform: 'translateY(-50%) rotate(45deg)' }} />
     </div>
   );
 }
@@ -448,7 +448,7 @@ function HwKnob({ label, val, min, max, step = 0.01, onChange, color = C, size =
         const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
         window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
       }}>
-      <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle at 40% 35%, #2a302a, #151a15 70%)', border: `2px solid rgba(0,255,65,.2)`, position: 'relative', boxShadow: `0 2px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.03), 0 0 ${val > (max - min) * 0.7 + min ? '8' : '0'}px ${color}33` }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle at 40% 35%, #2a302a, #151a15 70%)', border: `2px solid rgba(56,189,248,.2)`, position: 'relative', boxShadow: `0 2px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.03), 0 0 ${val > (max - min) * 0.7 + min ? '8' : '0'}px ${color}33` }}>
         {Array.from({ length: ticks }, (_, i) => {
           const a = (i / (ticks - 1)) * 270 - 135;
           const rad = (a * Math.PI) / 180;
@@ -458,7 +458,7 @@ function HwKnob({ label, val, min, max, step = 0.01, onChange, color = C, size =
           return <div key={i} style={{ position: 'absolute', width: 2, height: 2, borderRadius: '50%', background: C2 + '.2)', left: cx - 1, top: cy - 1 }} />;
         })}
         <div style={{ width: 2, height: size / 2 - 4, background: color, borderRadius: 1, position: 'absolute', bottom: '50%', left: 'calc(50% - 1px)', transformOrigin: 'bottom center', transform: `rotate(${angle}deg)`, boxShadow: `0 0 4px ${color}88` }} />
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 6, height: 6, borderRadius: '50%', background: '#0a0d0a', border: '1px solid rgba(0,255,65,.1)' }} />
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 6, height: 6, borderRadius: '50%', background: '#0a0d0a', border: '1px solid rgba(56,189,248,.1)' }} />
       </div>
       <span style={{ ...MONO, fontSize: '.38rem', color: C2 + '.5)', letterSpacing: '.08em' }}>{label}</span>
       <span style={{ ...MONO, fontSize: '.34rem', color: color + '66' }}>{typeof val === 'number' && val % 1 !== 0 ? val.toFixed(2) : val}</span>
@@ -482,7 +482,7 @@ function HwSlider({ label, val, min, max, onChange, vertical = false }: { label:
             window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
           }}>
           <div style={{ position: 'absolute', bottom: 0, left: 2, right: 2, height: `${pct}%`, background: `linear-gradient(to top, ${C}44, ${C}22)`, borderRadius: 2 }} />
-          <div style={{ position: 'absolute', left: '50%', bottom: `${pct}%`, transform: 'translate(-50%, 50%)', width: 16, height: 8, background: 'linear-gradient(to bottom, #3a3f3a, #1a1f1a)', border: '1px solid rgba(0,255,65,.3)', borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,.5)' }} />
+          <div style={{ position: 'absolute', left: '50%', bottom: `${pct}%`, transform: 'translate(-50%, 50%)', width: 16, height: 8, background: 'linear-gradient(to bottom, #3a3f3a, #1a1f1a)', border: '1px solid rgba(56,189,248,.3)', borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,.5)' }} />
         </div>
       ) : (
         <input type="range" min={min} max={max} step={(max - min) / 200} value={val}
@@ -499,7 +499,7 @@ function HwButton({ label, onClick, active = false, color = C, small = false }: 
     <button onClick={onClick} style={{
       padding: small ? '3px 6px' : '5px 10px',
       background: active ? `linear-gradient(to bottom, ${color}22, ${color}11)` : 'linear-gradient(to bottom, #1a1f1a, #101310)',
-      border: `2px solid ${active ? color + '88' : 'rgba(0,255,65,.15)'}`,
+      border: `2px solid ${active ? color + '88' : 'rgba(56,189,248,.15)'}`,
       color: active ? color : C2 + '.4)',
       cursor: 'pointer', ...VT,
       fontSize: small ? '.6rem' : '.7rem',
@@ -514,7 +514,7 @@ function HwButton({ label, onClick, active = false, color = C, small = false }: 
 }
 
 function LED({ on, color = C }: { on: boolean; color?: string }) {
-  return <div style={{ width: 6, height: 6, borderRadius: '50%', background: on ? color : '#1a1f1a', boxShadow: on ? `0 0 6px ${color}` : 'none', border: '1px solid rgba(0,255,65,.15)', transition: 'all .05s' }} />;
+  return <div style={{ width: 6, height: 6, borderRadius: '50%', background: on ? color : '#1a1f1a', boxShadow: on ? `0 0 6px ${color}` : 'none', border: '1px solid rgba(56,189,248,.15)', transition: 'all .05s' }} />;
 }
 
 function LevelMeter({ analyser }: { analyser: AnalyserNode | null }) {
@@ -538,10 +538,10 @@ function LevelMeter({ analyser }: { analyser: AnalyserNode | null }) {
         const threshold = (segments - i) / segments;
         if (level >= threshold - 1 / segments) {
           const ratio = i / segments;
-          ctx2.fillStyle = ratio < 0.15 ? '#ff4444' : ratio < 0.3 ? '#ffaa00' : '#00ff41';
+          ctx2.fillStyle = ratio < 0.15 ? '#ff4444' : ratio < 0.3 ? '#ffaa00' : '#38bdf8';
           ctx2.fillRect(1, i * segH + 1, can.width - 2, segH - 2);
         } else {
-          ctx2.fillStyle = 'rgba(0,255,65,.06)';
+          ctx2.fillStyle = 'rgba(56,189,248,.06)';
           ctx2.fillRect(1, i * segH + 1, can.width - 2, segH - 2);
         }
       }
@@ -679,7 +679,7 @@ function DrumPads({ busGain, activePads }: { busGain: GainNode | null; activePad
               background: isActive
                 ? `radial-gradient(circle at 45% 40%, ${DRUM_COLORS[i]}55, ${DRUM_COLORS[i]}22)`
                 : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
-              border: `2px solid ${isActive ? DRUM_COLORS[i] + '88' : 'rgba(0,255,65,.12)'}`,
+              border: `2px solid ${isActive ? DRUM_COLORS[i] + '88' : 'rgba(56,189,248,.12)'}`,
               borderRadius: 6,
               cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
@@ -774,10 +774,10 @@ function StepSequencer({ busGain, bpm, swing, onActivePads, globalPlaying, globa
                     width: cellSize, height: 18,
                     background: on
                       ? (isCurrent ? DRUM_COLORS[ri] + 'cc' : DRUM_COLORS[ri] + '55')
-                      : (isCurrent ? 'rgba(0,255,65,.15)' : isBar ? 'rgba(0,255,65,.06)' : 'rgba(0,255,65,.03)'),
+                      : (isCurrent ? 'rgba(56,189,248,.15)' : isBar ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.03)'),
                     border: isCurrent
                       ? `1px solid ${DRUM_COLORS[ri]}cc`
-                      : on ? `1px solid ${DRUM_COLORS[ri]}55` : `1px solid rgba(0,255,65,.08)`,
+                      : on ? `1px solid ${DRUM_COLORS[ri]}55` : `1px solid rgba(56,189,248,.08)`,
                     cursor: 'pointer', borderRadius: 2,
                     boxShadow: on && isCurrent ? `0 0 6px ${DRUM_COLORS[ri]}88` : 'none',
                     transition: 'background .05s',
@@ -811,11 +811,11 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
     <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 14px' }}>
       <button onClick={onPlayToggle} style={{
         padding: '5px 14px',
-        background: playing ? 'linear-gradient(to bottom, rgba(255,68,68,.2), rgba(255,68,68,.08))' : 'linear-gradient(to bottom, rgba(0,255,65,.12), rgba(0,255,65,.04))',
+        background: playing ? 'linear-gradient(to bottom, rgba(255,68,68,.2), rgba(255,68,68,.08))' : 'linear-gradient(to bottom, rgba(56,189,248,.12), rgba(56,189,248,.04))',
         border: `2px solid ${playing ? '#ff444488' : C + '55'}`,
         color: playing ? '#ff4444' : C,
         cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.12em', borderRadius: 4,
-        boxShadow: playing ? '0 0 10px #ff444433' : '0 0 8px rgba(0,255,65,.15)',
+        boxShadow: playing ? '0 0 10px #ff444433' : '0 0 8px rgba(56,189,248,.15)',
         transition: 'all .1s',
       }}>
         {playing ? '■ STOP' : '▶ PLAY'}
@@ -1375,7 +1375,7 @@ function EffectsRack({ effects, onEffectsChange, engine }: {
         {EFFECT_NAMES.map((name, i) => (
           <button key={i} onClick={() => setSelected(i)} style={{
             padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6,
-            background: selected === i ? 'rgba(0,255,65,.08)' : 'transparent',
+            background: selected === i ? 'rgba(56,189,248,.08)' : 'transparent',
             border: selected === i ? `1px solid ${C}44` : '1px solid transparent',
             color: effects[i].enabled ? C : C2 + '.3)', cursor: 'pointer', ...MONO, fontSize: '.4rem', textAlign: 'left', borderRadius: 3,
           }}>
@@ -1537,18 +1537,18 @@ function Timeline({ tracks, bpm }: { tracks: TrackDef[]; bpm: number }) {
         <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, height: 16, minWidth: containerWidth + 80 }}>
           <div style={{ width: 80, flexShrink: 0 }} />
           {Array.from({ length: BARS }, (_, i) => (
-            <div key={i} style={{ width: BAR_W, borderLeft: `1px solid rgba(0,255,65,.08)`, flexShrink: 0, ...MONO, fontSize: '.3rem', color: C2 + '.25)', lineHeight: '16px', paddingLeft: 2 }}>{i + 1}</div>
+            <div key={i} style={{ width: BAR_W, borderLeft: `1px solid rgba(56,189,248,.08)`, flexShrink: 0, ...MONO, fontSize: '.3rem', color: C2 + '.25)', lineHeight: '16px', paddingLeft: 2 }}>{i + 1}</div>
           ))}
         </div>
         {tracks.map((track, ti) => (
-          <div key={track.id} style={{ display: 'flex', height: ROW_H, borderBottom: '1px solid rgba(0,255,65,.04)', position: 'relative' }}>
+          <div key={track.id} style={{ display: 'flex', height: ROW_H, borderBottom: '1px solid rgba(56,189,248,.04)', position: 'relative' }}>
             <div style={{ width: 80, flexShrink: 0, borderRight: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', paddingLeft: 6, background: '#0a0d0a' }}>
               <span style={{ ...MONO, fontSize: '.33rem', color: track.color, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: 70 }}>{track.name}</span>
             </div>
             <div style={{ flex: 1, position: 'relative', minWidth: containerWidth }}
               onClick={e => { const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect(); addClip(ti, Math.floor((e.clientX - rect.left) / BAR_W)); }}>
               {Array.from({ length: BARS }, (_, bi) => (
-                <div key={bi} style={{ position: 'absolute', top: 0, left: bi * BAR_W, width: BAR_W, height: ROW_H, borderLeft: bi % 4 === 0 ? `1px solid rgba(0,255,65,.1)` : '1px solid rgba(0,255,65,.03)' }} />
+                <div key={bi} style={{ position: 'absolute', top: 0, left: bi * BAR_W, width: BAR_W, height: ROW_H, borderLeft: bi % 4 === 0 ? `1px solid rgba(56,189,248,.1)` : '1px solid rgba(56,189,248,.03)' }} />
               ))}
               {clips.filter(c => c.trackIdx === ti).map((clip, ci) => {
                 const globalIdx = clips.findIndex(c2 => c2 === clip);
@@ -2043,7 +2043,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         {SECTIONS.map(s => (
           <button key={s.id} onClick={() => setSection(s.id)} style={{
             padding: '4px 10px',
-            background: section === s.id ? 'linear-gradient(to bottom, rgba(0,255,65,.12), rgba(0,255,65,.04))' : 'transparent',
+            background: section === s.id ? 'linear-gradient(to bottom, rgba(56,189,248,.12), rgba(56,189,248,.04))' : 'transparent',
             border: section === s.id ? `1px solid ${C}44` : '1px solid transparent',
             borderBottom: section === s.id ? `2px solid ${C}` : '2px solid transparent',
             color: section === s.id ? C : C2 + '.35)',

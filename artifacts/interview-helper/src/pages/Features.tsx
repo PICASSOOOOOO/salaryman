@@ -272,7 +272,7 @@ const PAID_MODULES = MODULES.filter((m) => m.access === 'paid');
 function AccessBadge({ access, featureKey, trials }: { access: ModuleAccess; featureKey?: FeatureKey; trials: { featureKey: string; daysLeft: number }[] }) {
   if (access === 'free') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono tracking-widest uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono tracking-widest uppercase bg-sky-500/15 border border-sky-500/30 text-sky-400">
         <Check className="w-2.5 h-2.5" />
         FREE
       </span>
@@ -353,7 +353,7 @@ function ModuleCard({
         {module.features.map((f) => (
           <li key={f.name}>
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-emerald-500/50 text-[10px]">▸</span>
+              <span className="text-sky-500/50 text-[10px]">▸</span>
               <span className="text-[11px] font-mono text-zinc-300 uppercase tracking-wider">
                 {f.name}
               </span>
@@ -369,7 +369,7 @@ function ModuleCard({
         {module.access === 'free' && module.route && (
           <button
             onClick={() => navigate(module.route!)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-mono uppercase tracking-wider hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 text-xs font-mono uppercase tracking-wider hover:bg-sky-500/20 hover:border-sky-500/40 transition-all"
           >
             Use Now <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -478,8 +478,8 @@ function TrialModal({
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-6"
           >
-            <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-6 h-6 text-emerald-400" />
+            <div className="w-12 h-12 rounded-full bg-sky-500/15 border border-sky-500/30 flex items-center justify-center mx-auto mb-4">
+              <Check className="w-6 h-6 text-sky-400" />
             </div>
             <p className="text-sm text-zinc-200 font-medium mb-1">Trial Activated</p>
             <p className="text-xs text-zinc-500">
@@ -502,7 +502,7 @@ function TrialModal({
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
                 />
               </div>
 
@@ -513,7 +513,7 @@ function TrialModal({
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -559,7 +559,7 @@ export default function Features() {
       `}</style>
 
       <div className="pointer-events-none fixed inset-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-sky-500/3 blur-[100px]" />
       </div>
 
       <div className="relative z-10 max-w-[1200px] mx-auto px-6 py-12 pb-20">
@@ -589,7 +589,7 @@ export default function Features() {
             onClick={login}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </motion.button>
@@ -597,7 +597,7 @@ export default function Features() {
 
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+            <div className="w-2 h-2 rounded-full bg-sky-500/60" />
             <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-zinc-300 tracking-widest uppercase">Free Modules</h2>
             <span className="text-[10px] font-mono text-zinc-700 tracking-wider">— included with every account</span>
           </div>
@@ -647,7 +647,7 @@ export default function Features() {
         >
           <button
             onClick={login}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/15"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors shadow-lg shadow-sky-500/15"
           >
             Get started free <ChevronRight className="w-4 h-4" />
           </button>

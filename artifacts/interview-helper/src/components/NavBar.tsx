@@ -83,18 +83,18 @@ export function NavBar() {
             {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
           </span>
           <span className="text-zinc-700 text-[9px]">◆</span>
-          <span className="font-mono text-[9px] text-emerald-500/70 border border-emerald-500/25 bg-emerald-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
+          <span className="font-mono text-[9px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
             ALPHA {__BUILD_VERSION__}
           </span>
           <button
             onClick={() => navigate('/investors')}
-            className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
+            className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
           >
             {t('nav.investors')}
           </button>
           <button
             onClick={() => navigate('/feedback')}
-            className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase hover:text-emerald-500/70 transition-colors"
+            className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
           >
             Feedback
           </button>
@@ -114,7 +114,7 @@ export function NavBar() {
               </>
             ) : (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                 <button
                   onClick={() => navigate('/upgrade')}
                   className="font-mono text-[10px] text-zinc-600 tracking-wide hover:text-amber-400 transition-colors"
@@ -174,7 +174,7 @@ export function NavBar() {
             {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
           </button>
           {isMobile && (
-            <span className="font-mono text-[8px] text-emerald-500/60 border border-emerald-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
+            <span className="font-mono text-[8px] text-sky-500/60 border border-sky-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
               ALPHA {__BUILD_VERSION__}
             </span>
           )}
@@ -192,7 +192,7 @@ export function NavBar() {
                 onClick={() => handleModuleClick(mod)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
                   active || expanded
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >
@@ -208,7 +208,7 @@ export function NavBar() {
           {/* EXPLORE button — desktop only */}
           <button
             onClick={() => navigate('/world')}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-emerald-500/70 border border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-400"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-sky-400/70 border border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300"
           >
             <Globe className="w-3 h-3" />
             {t('nav.explore')}
@@ -240,7 +240,7 @@ export function NavBar() {
             <button
               onClick={() => setShowFeedback(true)}
               title="Report an issue"
-              className="p-1.5 text-zinc-600 hover:text-emerald-400 transition-colors rounded-md hover:bg-emerald-500/8"
+              className="p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md hover:bg-sky-500/8"
             >
               <Bug className="w-3.5 h-3.5" />
             </button>
@@ -260,7 +260,7 @@ export function NavBar() {
                       className="w-7 h-7 rounded-md object-cover border border-white/10"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
                       {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                     </div>
                   )}
@@ -301,7 +301,7 @@ export function NavBar() {
           <button
             onClick={() => setShowFeedback(true)}
             title="Report an issue"
-            className="p-1.5 text-zinc-600 hover:text-emerald-400 transition-colors rounded-md"
+            className="p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md"
           >
             <Bug className="w-3.5 h-3.5" />
           </button>
@@ -314,7 +314,7 @@ export function NavBar() {
               {user.profileImageUrl ? (
                 <img src={user.profileImageUrl} alt={user.firstName ?? 'User'} className="w-7 h-7 rounded-md object-cover border border-white/10" />
               ) : (
-                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                 </div>
               )}
@@ -343,7 +343,7 @@ export function NavBar() {
                 onClick={() => { navigate(sub.path); setActiveModuleId(null); }}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
                   isSubActive
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >

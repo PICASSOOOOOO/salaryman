@@ -89,18 +89,18 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           key={opt.id}
           onClick={() => onSelect(opt.id)}
           style={{
-            background: selected === opt.id ? 'rgba(0,255,65,.12)' : 'rgba(0,255,65,.02)',
-            border: selected === opt.id ? '1px solid rgba(0,255,65,.6)' : '1px solid rgba(0,255,65,.15)',
+            background: selected === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+            border: selected === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
             padding: '.5rem .6rem',
             cursor: 'pointer',
             textAlign: 'left',
             transition: 'all .15s',
           }}
         >
-          <div style={{ ...VT, fontSize: '.95rem', color: selected === opt.id ? '#00ff41' : 'rgba(0,255,65,.55)', letterSpacing: '.08em' }}>
+          <div style={{ ...VT, fontSize: '.95rem', color: selected === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
             {selected === opt.id ? '▸ ' : ''}{opt.label}
           </div>
-          <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(0,255,65,.35)', marginTop: '.15rem', lineHeight: 1.5 }}>
+          <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.15rem', lineHeight: 1.5 }}>
             {opt.desc}
           </div>
         </button>
@@ -110,12 +110,12 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
   const renderTutorial = (title: string, lines: string[]) => (
     <div style={{ marginTop: '.5rem' }}>
-      <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.12em', marginBottom: '.6rem', borderBottom: '1px solid rgba(0,255,65,.2)', paddingBottom: '.35rem' }}>
+      <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.12em', marginBottom: '.6rem', borderBottom: '1px solid rgba(56,189,248,.2)', paddingBottom: '.35rem' }}>
         {title}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
         {lines.map((line, i) => (
-          <div key={i} style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.6)', lineHeight: 1.7, paddingLeft: '.4rem', borderLeft: '2px solid rgba(0,255,65,.15)' }}>
+          <div key={i} style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.7, paddingLeft: '.4rem', borderLeft: '2px solid rgba(56,189,248,.15)' }}>
             {line}
           </div>
         ))}
@@ -130,31 +130,31 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 440,
     }}>
-      <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(0,255,65,.2); } 50% { box-shadow: 0 0 20px rgba(0,255,65,.5); } }`}</style>
+      <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
         width: 460, maxWidth: '90vw', maxHeight: '85vh',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
-        border: '1px solid rgba(0,255,65,.5)',
-        boxShadow: '0 0 60px rgba(0,255,65,.06)',
+        border: '1px solid rgba(56,189,248,.5)',
+        boxShadow: '0 0 60px rgba(56,189,248,.06)',
       }}>
         <div style={{
           padding: '.5rem .85rem',
-          borderBottom: '1px solid rgba(0,255,65,.2)',
+          borderBottom: '1px solid rgba(56,189,248,.2)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexShrink: 0,
         }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#00ff41', letterSpacing: '.18em' }}>PABLO ONBOARDING</div>
-            <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO ONBOARDING</div>
+            <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
               FIELD UNIT CALIBRATION · {stepIdx + 1}/{totalSteps}
             </div>
           </div>
           <div style={{
             width: 32, height: 32,
-            border: '1px solid rgba(0,255,65,.4)',
+            border: '1px solid rgba(56,189,248,.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            ...VT, fontSize: '1.2rem', color: '#00ff41',
+            ...VT, fontSize: '1.2rem', color: '#38bdf8',
           }}>
             P
           </div>
@@ -162,13 +162,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
         <div style={{
           height: 3,
-          background: 'rgba(0,255,65,.06)',
+          background: 'rgba(56,189,248,.06)',
           flexShrink: 0,
         }}>
           <div style={{
             height: '100%',
             width: `${((stepIdx + 1) / totalSteps) * 100}%`,
-            background: 'rgba(0,255,65,.5)',
+            background: 'rgba(56,189,248,.5)',
             transition: 'width .35s ease',
           }} />
         </div>
@@ -176,17 +176,17 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         <div style={{ flex: 1, overflow: 'auto', padding: '.75rem .85rem' }}>
           {step === 'greet' && (
             <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(0,255,65,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
+              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
                 &gt; SIGNAL ACQUIRED.<br/>
                 &gt; NEURAL LINK ESTABLISHED.<br/>
-                &gt; OPERATIVE DETECTED: <span style={{ color: '#00ff41' }}>{charName.toUpperCase()}</span><br/>
-                &gt; CLASS: <span style={{ color: '#00ff41' }}>{charClass.toUpperCase()}</span>
+                &gt; OPERATIVE DETECTED: <span style={{ color: '#38bdf8' }}>{charName.toUpperCase()}</span><br/>
+                &gt; CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
               </div>
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
-                <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.05em', lineHeight: 1.7 }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
+                <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
                   {charName}. I'm PABLO — your field AI. Issued to every registered operative in Minx City.
                 </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
                   Before you step outside, I need to calibrate your profile. Three questions. Then I'll brief you on how this city works. Takes sixty seconds. Trust me — you'll want this.
                 </div>
               </div>
@@ -195,10 +195,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'combat' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.15rem' }}>
+              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
                 QUESTION 1 — COMBAT PREFERENCE
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
                 The wasteland doesn't negotiate. How do you handle threats?
               </div>
               {renderOptionGrid(COMBAT_OPTIONS, combatStyle, setCombatStyle)}
@@ -207,10 +207,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'playstyle' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.15rem' }}>
+              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
                 QUESTION 2 — OPERATIVE TYPE
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
                 Everyone in Minx City has an angle. What's yours?
               </div>
               {renderOptionGrid(PLAYSTYLE_OPTIONS, playstyle, setPlaystyle)}
@@ -219,10 +219,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'goal' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.15rem' }}>
+              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
                 QUESTION 3 — PRIMARY OBJECTIVE
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
                 What keeps you awake at night, {charName}?
               </div>
               {renderOptionGrid(GOAL_OPTIONS, goal, setGoal)}
@@ -231,10 +231,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'perception' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#00ff41', letterSpacing: '.05em', marginBottom: '.15rem' }}>
+              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
                 QUESTION 4 — PERCEPTION
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(0,255,65,.4)', lineHeight: 1.6 }}>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
                 How sharp are your senses, {charName}? Perception affects enemy detection range and how much of the map you reveal as you explore.
               </div>
               {renderOptionGrid(PERCEPTION_OPTIONS, perception, setPerception)}
@@ -274,17 +274,17 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'done' && (
             <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(0,255,65,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
+              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
                 &gt; PROFILE CALIBRATED.<br/>
                 &gt; COMBAT: {(COMBAT_OPTIONS.find(o => o.id === combatStyle)?.label ?? 'ADAPTIVE')}<br/>
                 &gt; TYPE: {(PLAYSTYLE_OPTIONS.find(o => o.id === playstyle)?.label ?? 'EXPLORER')}<br/>
                 &gt; OBJECTIVE: {(GOAL_OPTIONS.find(o => o.id === goal)?.label ?? 'SURVIVE')}
               </div>
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
-                <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.05em', lineHeight: 1.7 }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
+                <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
                   You're ready, {charName}.
                 </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
                   Step outside. Minx City is waiting. Press [P] anytime to open your PABLO device and talk to me. I'll be here.<br/><br/>
                   One more thing — don't trust everything you see. And don't go above Floor 39.
                 </div>
@@ -294,15 +294,15 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'save' && (
             <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(0,255,65,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
+              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
                 &gt; INTAKE COMPLETE.<br/>
                 &gt; PROFILE LOCKED.
               </div>
-              <div style={{ borderTop: '1px solid rgba(0,255,65,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
-                <div style={{ ...VT, fontSize: '1rem', color: '#00ff41', letterSpacing: '.05em', lineHeight: 1.7 }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
+                <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
                   One last thing, {charName}.
                 </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(0,255,65,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
                   Save your progress now. This city doesn't give second chances. If you die out there without saving — everything since your last checkpoint is gone. I mean everything.<br/><br/>
                   Hit the button below. I'll handle the rest.<br/><br/>
                   After this, you're on your own. Good luck, operative. PABLO out.
@@ -314,11 +314,11 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
         <div style={{
           padding: '.45rem .85rem',
-          borderTop: '1px solid rgba(0,255,65,.15)',
+          borderTop: '1px solid rgba(56,189,248,.15)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexShrink: 0,
         }}>
-          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(0,255,65,.18)', letterSpacing: '.06em' }}>
+          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
             {`PABLO CORP FIELD CALIBRATION ALPHA ${__BUILD_VERSION__}`}
           </div>
           {step === 'save' ? (
@@ -327,9 +327,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               style={{
                 ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
                 padding: '.4rem 1.2rem',
-                background: 'rgba(0,255,65,.15)',
-                border: '1px solid rgba(0,255,65,.7)',
-                color: '#00ff41',
+                background: 'rgba(56,189,248,.15)',
+                border: '1px solid rgba(56,189,248,.7)',
+                color: '#38bdf8',
                 cursor: 'pointer',
                 animation: 'pulse-save 1.5s ease-in-out infinite',
               }}
@@ -342,9 +342,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               style={{
                 ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
                 padding: '.4rem 1.2rem',
-                background: 'rgba(0,255,65,.1)',
-                border: '1px solid rgba(0,255,65,.6)',
-                color: '#00ff41',
+                background: 'rgba(56,189,248,.1)',
+                border: '1px solid rgba(56,189,248,.6)',
+                color: '#38bdf8',
                 cursor: 'pointer',
               }}
             >
@@ -357,9 +357,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               style={{
                 ...VT, fontSize: '1rem', letterSpacing: '.1em',
                 padding: '.35rem 1rem',
-                background: canAdvance() ? 'rgba(0,255,65,.08)' : 'rgba(0,255,65,.02)',
-                border: canAdvance() ? '1px solid rgba(0,255,65,.5)' : '1px solid rgba(0,255,65,.1)',
-                color: canAdvance() ? '#00ff41' : 'rgba(0,255,65,.2)',
+                background: canAdvance() ? 'rgba(56,189,248,.08)' : 'rgba(56,189,248,.02)',
+                border: canAdvance() ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.1)',
+                color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
                 cursor: canAdvance() ? 'pointer' : 'not-allowed',
               }}
             >

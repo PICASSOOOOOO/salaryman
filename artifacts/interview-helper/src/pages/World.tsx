@@ -33,7 +33,7 @@ const NPCS = [
   { name: 'SCAV',   x: 660, y: 945, type: 'human'   }, // near scrap yard
   { name: 'MUTANT', x: 345, y: 950, type: 'mutant'  }, // near bunker
 ];
-const NPC_COL: Record<string,string> = { corp:'#00cc33', human:'#009922', android:'#33ffaa', mutant:'#88ff44' };
+const NPC_COL: Record<string,string> = { corp:'#38bdf8', human:'#7dd3fc', android:'#67e8f9', mutant:'#a78bfa' };
 
 // Roaming threats — simple, early 90s
 interface Threat { x:number; y:number; dx:number; dy:number; type:string; timer:number; }
@@ -89,28 +89,28 @@ function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>voi
   ];
   const sel = CLASSES.find(c=>c.id===cls)!;
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#030803', fontFamily:"'Share Tech Mono',monospace" }}>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#060d14', fontFamily:"'Share Tech Mono',monospace" }}>
       <div style={{ maxWidth:520, width:'100%', padding:'2rem', zIndex:1 }}>
         <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-          <div style={{ fontFamily:"'VT323',monospace", fontSize:'3.5rem', color:'#00ff41', textShadow:'0 0 18px rgba(0,255,65,.5)', letterSpacing:'.15em' }}>SALARYMAN</div>
-          <div style={{ fontSize:'.6rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em', marginTop:'.3rem' }}>SELECT CLASS {tick%2===0?'_':' '}</div>
+          <div style={{ fontFamily:"'VT323',monospace", fontSize:'3.5rem', color:'#38bdf8', textShadow:'0 0 18px rgba(56,189,248,.5)', letterSpacing:'.15em' }}>SALARYMAN</div>
+          <div style={{ fontSize:'.6rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em', marginTop:'.3rem' }}>SELECT CLASS {tick%2===0?'_':' '}</div>
         </div>
 
         <div style={{ display:'flex', justifyContent:'center', gap:'.6rem', marginBottom:'1rem' }}>
-          <button onClick={onBack} style={{ padding:'.35rem .7rem', background:'rgba(0,255,65,.04)', border:'1px solid rgba(0,255,65,.2)', color:'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
+          <button onClick={onBack} style={{ padding:'.35rem .7rem', background:'rgba(56,189,248,.04)', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
             ← BACK
           </button>
-          <button onClick={() => setShowHelp(v => !v)} style={{ padding:'.35rem .7rem', background:showHelp?'rgba(0,255,65,.08)':'rgba(0,255,65,.04)', border:showHelp?'1px solid rgba(0,255,65,.5)':'1px solid rgba(0,255,65,.2)', color:showHelp?'#00ff41':'rgba(0,255,65,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
+          <button onClick={() => setShowHelp(v => !v)} style={{ padding:'.35rem .7rem', background:showHelp?'rgba(56,189,248,.08)':'rgba(56,189,248,.04)', border:showHelp?'1px solid rgba(56,189,248,.5)':'1px solid rgba(56,189,248,.2)', color:showHelp?'#38bdf8':'rgba(56,189,248,.4)', cursor:'pointer', fontSize:'.6rem', letterSpacing:'.08em', fontFamily:"'Share Tech Mono',monospace" }}>
             WHAT IS THIS?
           </button>
         </div>
 
         {showHelp && (
-          <div style={{ marginBottom:'1rem', padding:'.75rem', border:'1px solid rgba(0,255,65,.2)', background:'rgba(0,12,0,.95)', fontSize:'.6rem', color:'rgba(0,255,65,.55)', lineHeight:1.7, letterSpacing:'.04em' }}>
-            <div style={{ fontFamily:"'VT323',monospace", fontSize:'1rem', color:'#00ff41', marginBottom:'.5rem' }}>WELCOME TO SALARYMAN</div>
+          <div style={{ marginBottom:'1rem', padding:'.75rem', border:'1px solid rgba(56,189,248,.2)', background:'rgba(5,15,25,.95)', fontSize:'.6rem', color:'rgba(56,189,248,.55)', lineHeight:1.7, letterSpacing:'.04em' }}>
+            <div style={{ fontFamily:"'VT323',monospace", fontSize:'1rem', color:'#38bdf8', marginBottom:'.5rem' }}>WELCOME TO SALARYMAN</div>
             <div>This is a multiplayer cyberpunk city simulation. You play as a worker in {CITY_NAME}, a corporate dystopia run by PABLO CORP.</div>
             <div style={{ marginTop:'.4rem' }}><span style={{ color:'#ffaa00' }}>BOOMER MODE</span> replaces gaming terms (HP, XP, NPC, etc.) with everyday business language so everything makes sense even if you have never played a game before.</div>
-            <div style={{ marginTop:'.5rem', fontSize:'.55rem', color:'rgba(0,255,65,.35)' }}>
+            <div style={{ marginTop:'.5rem', fontSize:'.55rem', color:'rgba(56,189,248,.35)' }}>
               <div><b>WASD</b> = Move your character</div>
               <div><b>E</b> = Interact with buildings and people</div>
               <div><b>C</b> = Open chat to talk to other real players</div>
@@ -119,26 +119,26 @@ function CharSelect({ onStart, onBack }:{ onStart:(c:Char)=>void; onBack:()=>voi
               <div><b>ESC</b> = Open the settings menu</div>
             </div>
             <div style={{ marginTop:'.5rem' }}>
-              <div><b style={{ color:'#00ff41' }}>HP</b> = Your health. Avoid threats or you lose health.</div>
-              <div><b style={{ color:'#00ff41' }}>FIAT (ƒ)</b> = Money. You earn it on salary and spend it in stores.</div>
-              <div><b style={{ color:'#00ff41' }}>XP</b> = Experience points that help you level up.</div>
+              <div><b style={{ color:'#38bdf8' }}>HP</b> = Your health. Avoid threats or you lose health.</div>
+              <div><b style={{ color:'#38bdf8' }}>FIAT (ƒ)</b> = Money. You earn it on salary and spend it in stores.</div>
+              <div><b style={{ color:'#38bdf8' }}>XP</b> = Experience points that help you level up.</div>
             </div>
           </div>
         )}
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'.6rem', marginBottom:'1.25rem' }}>
           {CLASSES.map(c=>(
-            <button key={c.id} onClick={()=>setCls(c.id)} style={{ padding:'.8rem .4rem', border:cls===c.id?'1px solid rgba(0,255,65,.75)':'1px solid rgba(0,255,65,.18)', background:cls===c.id?'rgba(0,255,65,.09)':'transparent', color:cls===c.id?'#00ff41':'rgba(0,255,65,.4)', cursor:'pointer', textAlign:'center' }}>
+            <button key={c.id} onClick={()=>setCls(c.id)} style={{ padding:'.8rem .4rem', border:cls===c.id?'1px solid rgba(56,189,248,.75)':'1px solid rgba(56,189,248,.18)', background:cls===c.id?'rgba(56,189,248,.09)':'transparent', color:cls===c.id?'#38bdf8':'rgba(56,189,248,.4)', cursor:'pointer', textAlign:'center' }}>
               <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.2rem', letterSpacing:'.08em', marginBottom:'.25rem' }}>{bmLabel(c.label)}</div>
               <div style={{ fontSize:'.55rem', lineHeight:1.5 }}>{bmLabel(c.desc)}</div>
             </button>
           ))}
         </div>
         <div style={{ marginBottom:'1.25rem' }}>
-          <div style={{ fontSize:'.55rem', color:'rgba(0,255,65,.3)', letterSpacing:'.12em', marginBottom:'.35rem' }}>NAME</div>
-          <input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&name.trim()&&onStart({name:name.trim().toUpperCase(),class:cls,...sel})} maxLength={18} placeholder="ENTER NAME..." autoFocus style={{ width:'100%', padding:'.55rem .75rem', background:'rgba(0,12,0,.9)', border:'1px solid rgba(0,255,65,.3)', color:'#00ff41', fontFamily:"'Share Tech Mono',monospace", fontSize:'1rem', letterSpacing:'.1em', outline:'none', caretColor:'#00ff41', boxSizing:'border-box' }} />
+          <div style={{ fontSize:'.55rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em', marginBottom:'.35rem' }}>NAME</div>
+          <input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&name.trim()&&onStart({name:name.trim().toUpperCase(),class:cls,...sel})} maxLength={18} placeholder="ENTER NAME..." autoFocus style={{ width:'100%', padding:'.55rem .75rem', background:'rgba(5,15,25,.9)', border:'1px solid rgba(56,189,248,.3)', color:'#38bdf8', fontFamily:"'Share Tech Mono',monospace", fontSize:'1rem', letterSpacing:'.1em', outline:'none', caretColor:'#38bdf8', boxSizing:'border-box' }} />
         </div>
-        <button onClick={()=>name.trim()&&onStart({name:name.trim().toUpperCase(),class:cls,...sel})} disabled={!name.trim()} style={{ width:'100%', padding:'.7rem', background:name.trim()?'rgba(0,255,65,.12)':'transparent', border:name.trim()?'1px solid rgba(0,255,65,.65)':'1px solid rgba(0,255,65,.12)', color:name.trim()?'#00ff41':'rgba(0,255,65,.18)', fontFamily:"'VT323',monospace", fontSize:'1.4rem', letterSpacing:'.2em', cursor:name.trim()?'pointer':'default' }}>
+        <button onClick={()=>name.trim()&&onStart({name:name.trim().toUpperCase(),class:cls,...sel})} disabled={!name.trim()} style={{ width:'100%', padding:'.7rem', background:name.trim()?'rgba(56,189,248,.12)':'transparent', border:name.trim()?'1px solid rgba(56,189,248,.65)':'1px solid rgba(56,189,248,.12)', color:name.trim()?'#38bdf8':'rgba(56,189,248,.18)', fontFamily:"'VT323',monospace", fontSize:'1.4rem', letterSpacing:'.2em', cursor:name.trim()?'pointer':'default' }}>
           ENTER THE WORLD {tick%2===0?'▶':'▷'}
         </button>
       </div>
@@ -153,14 +153,14 @@ interface ChatMsg { id:number; from:string; text:string; dm?:boolean; }
 function PwPrompt({ label, onOk, onCancel }:{ label:string; onOk:(pw:string)=>void; onCancel:()=>void }) {
   const [v,setV]=useState('');
   return (
-    <div style={{ position:'absolute', inset:0, background:'rgba(0,4,0,.95)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
-      <div style={{ width:320, border:'1px solid rgba(0,255,65,.55)', background:'rgba(0,12,0,.98)', padding:'1.5rem' }}>
-        <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.4rem', color:'#00ff41', letterSpacing:'.12em', marginBottom:'.25rem' }}>🔒 {label}</div>
-        <div style={{ fontSize:'.55rem', color:'rgba(0,255,65,.35)', letterSpacing:'.08em', marginBottom:'.9rem' }}>SECURITY CODE REQUIRED</div>
-        <input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==='Enter'&&v.trim()&&onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width:'100%', padding:'.5rem .65rem', background:'rgba(0,12,0,.9)', border:'1px solid rgba(0,255,65,.3)', color:'#00ff41', fontFamily:"'Share Tech Mono',monospace", fontSize:'1rem', outline:'none', caretColor:'#00ff41', boxSizing:'border-box', marginBottom:'.75rem' }} />
+    <div style={{ position:'absolute', inset:0, background:'rgba(3,8,18,.95)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:500 }}>
+      <div style={{ width:320, border:'1px solid rgba(56,189,248,.55)', background:'rgba(5,15,25,.98)', padding:'1.5rem' }}>
+        <div style={{ fontFamily:"'VT323',monospace", fontSize:'1.4rem', color:'#38bdf8', letterSpacing:'.12em', marginBottom:'.25rem' }}>🔒 {label}</div>
+        <div style={{ fontSize:'.55rem', color:'rgba(56,189,248,.35)', letterSpacing:'.08em', marginBottom:'.9rem' }}>SECURITY CODE REQUIRED</div>
+        <input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==='Enter'&&v.trim()&&onOk(v.trim())} type="password" placeholder="••••••••" autoFocus style={{ width:'100%', padding:'.5rem .65rem', background:'rgba(5,15,25,.9)', border:'1px solid rgba(56,189,248,.3)', color:'#38bdf8', fontFamily:"'Share Tech Mono',monospace", fontSize:'1rem', outline:'none', caretColor:'#38bdf8', boxSizing:'border-box', marginBottom:'.75rem' }} />
         <div style={{ display:'flex', gap:'.5rem' }}>
-          <button onClick={()=>v.trim()&&onOk(v.trim())} style={{ flex:1, padding:'.45rem', background:'rgba(0,255,65,.1)', border:'1px solid rgba(0,255,65,.5)', color:'#00ff41', fontFamily:"'VT323',monospace", fontSize:'1rem', letterSpacing:'.1em', cursor:'pointer' }}>UNLOCK</button>
-          <button onClick={onCancel} style={{ padding:'.45rem .8rem', background:'transparent', border:'1px solid rgba(0,255,65,.15)', color:'rgba(0,255,65,.35)', fontFamily:"'VT323',monospace", fontSize:'.9rem', cursor:'pointer' }}>CANCEL</button>
+          <button onClick={()=>v.trim()&&onOk(v.trim())} style={{ flex:1, padding:'.45rem', background:'rgba(56,189,248,.1)', border:'1px solid rgba(56,189,248,.5)', color:'#38bdf8', fontFamily:"'VT323',monospace", fontSize:'1rem', letterSpacing:'.1em', cursor:'pointer' }}>UNLOCK</button>
+          <button onClick={onCancel} style={{ padding:'.45rem .8rem', background:'transparent', border:'1px solid rgba(56,189,248,.15)', color:'rgba(56,189,248,.35)', fontFamily:"'VT323',monospace", fontSize:'.9rem', cursor:'pointer' }}>CANCEL</button>
         </div>
       </div>
     </div>
@@ -710,19 +710,19 @@ export default function World() {
 
       // ── DRAW ─────────────────────────────────────────────────────────────
       if(g.flash>0){ ctx.fillStyle=`rgba(255,0,0,${g.flash*.05})`; ctx.fillRect(0,0,cw,ch); }
-      ctx.fillStyle='#030803'; ctx.fillRect(0,0,cw,ch);
+      ctx.fillStyle='#060d14'; ctx.fillRect(0,0,cw,ch);
 
       // Grid
-      ctx.strokeStyle='rgba(0,255,65,.04)'; ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(56,189,248,.04)'; ctx.lineWidth=1;
       const sgx=Math.floor(g.cam.x/TILE)*TILE, sgy=Math.floor(g.cam.y/TILE)*TILE;
       for(let gx=sgx;gx<g.cam.x+cw+TILE;gx+=TILE){ ctx.beginPath();ctx.moveTo(gx+ox,0);ctx.lineTo(gx+ox,ch);ctx.stroke(); }
       for(let gy=sgy;gy<g.cam.y+ch+TILE;gy+=TILE){ ctx.beginPath();ctx.moveTo(0,gy+oy);ctx.lineTo(cw,gy+oy);ctx.stroke(); }
 
-      ctx.fillStyle='rgba(0,255,65,.025)';ctx.font='60px "VT323"';ctx.textAlign='center';
+      ctx.fillStyle='rgba(56,189,248,.025)';ctx.font='60px "VT323"';ctx.textAlign='center';
       ctx.fillText((g.py>=CITY_TOP&&g.py<=CITY_BOTTOM)?'CITY':'WASTELAND',cw/2,ch/2);
 
       // Roads — grid: 3 horizontal + 4 vertical within city zone
-      ctx.lineWidth=18; ctx.strokeStyle='rgba(0,255,65,.06)';
+      ctx.lineWidth=18; ctx.strokeStyle='rgba(56,189,248,.06)';
       // Horizontal roads
       for(const ry of [450,570,690]){
         ctx.beginPath();ctx.moveTo(0,ry+oy);ctx.lineTo(W+ox,ry+oy);ctx.stroke();
@@ -738,18 +738,18 @@ export default function World() {
         if(bx+b.w<0||bx>cw||by+b.h<0||by>ch) continue;
         const isNear=nb===b.id;
         const isLocked=g.locks.has(b.id)&&!!g.locks.get(b.id)?.ownerName;
-        ctx.strokeStyle=isLocked?`rgba(255,120,50,${isNear?.8:.3})`:b.bright?`rgba(0,255,65,${isNear?.9:.5})` :`rgba(0,180,50,${isNear?.7:.3})`;
+        ctx.strokeStyle=isLocked?`rgba(255,120,50,${isNear?.8:.3})`:b.bright?`rgba(56,189,248,${isNear?.9:.5})` :`rgba(0,180,50,${isNear?.7:.3})`;
         ctx.lineWidth=isNear?2:1; ctx.strokeRect(bx,by,b.w,b.h);
-        ctx.fillStyle=isLocked?'rgba(255,80,0,.04)':'rgba(0,255,65,.03)'; ctx.fillRect(bx,by,b.w,b.h);
+        ctx.fillStyle=isLocked?'rgba(255,80,0,.04)':'rgba(56,189,248,.03)'; ctx.fillRect(bx,by,b.w,b.h);
         // corners
-        const cs=7;ctx.lineWidth=1.5;ctx.strokeStyle=isLocked?'rgba(255,120,50,.55)':b.bright?'rgba(0,255,65,.75)':'rgba(0,200,50,.4)';
+        const cs=7;ctx.lineWidth=1.5;ctx.strokeStyle=isLocked?'rgba(255,120,50,.55)':b.bright?'rgba(56,189,248,.75)':'rgba(0,200,50,.4)';
         [[bx,by,1,1],[bx+b.w,by,-1,1],[bx,by+b.h,1,-1],[bx+b.w,by+b.h,-1,-1]].forEach(([cx2,cy2,sx,sy])=>{
           ctx.beginPath();ctx.moveTo(cx2,cy2+sy*cs);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+sx*cs,cy2);ctx.stroke();
         });
-        ctx.fillStyle=isLocked?'rgba(255,140,60,.7)':b.bright?(isNear?'#00ff41':'rgba(0,255,65,.6)'):'rgba(0,200,50,.45)';
+        ctx.fillStyle=isLocked?'rgba(255,140,60,.7)':b.bright?(isNear?'#38bdf8':'rgba(56,189,248,.6)'):'rgba(0,200,50,.45)';
         ctx.font=`${b.bright?10:9}px "Share Tech Mono"`;ctx.textAlign='center';
         ctx.fillText(b.label+(isLocked?' 🔒':''),bx+b.w/2,by+b.h/2+4);
-        if(isNear){ctx.fillStyle=g.blink?'rgba(0,255,65,.85)':'rgba(0,255,65,.35)';ctx.font='8px "Share Tech Mono"';ctx.fillText('[E]',bx+b.w/2,by-7);}
+        if(isNear){ctx.fillStyle=g.blink?'rgba(56,189,248,.85)':'rgba(56,189,248,.35)';ctx.font='8px "Share Tech Mono"';ctx.fillText('[E]',bx+b.w/2,by-7);}
       }
 
       // NPCs
@@ -757,7 +757,7 @@ export default function World() {
         const nx2=n.x+ox,ny2=n.y+oy;
         if(nx2<-10||nx2>cw+10||ny2<-10||ny2>ch+10) continue;
         ctx.fillStyle=NPC_COL[n.type]??'#009922';ctx.fillRect(nx2-3,ny2-3,6,6);
-        if(Math.hypot(g.px-n.x,g.py-n.y)<70){ctx.fillStyle='rgba(0,255,65,.4)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.fillText(n.name,nx2,ny2-8);}
+        if(Math.hypot(g.px-n.x,g.py-n.y)<70){ctx.fillStyle='rgba(56,189,248,.4)';ctx.font='7px "Share Tech Mono"';ctx.textAlign='center';ctx.fillText(n.name,nx2,ny2-8);}
       }
 
       // Online players (real)
@@ -787,29 +787,29 @@ export default function World() {
 
       // Player
       const px=g.px+ox,py=g.py+oy;
-      const pcol=g.invincible%4<2?'#00ff41':'rgba(0,255,65,.25)';
-      ctx.shadowColor='#00ff41';ctx.shadowBlur=10;
+      const pcol=g.invincible%4<2?'#38bdf8':'rgba(56,189,248,.25)';
+      ctx.shadowColor='#38bdf8';ctx.shadowBlur=10;
       ctx.fillStyle=pcol;
       ctx.beginPath();ctx.moveTo(px,py-PSIZE);ctx.lineTo(px+PSIZE*.65,py+PSIZE*.5);ctx.lineTo(px-PSIZE*.65,py+PSIZE*.5);ctx.closePath();ctx.fill();
       ctx.shadowBlur=0;
       if(speaking){ctx.strokeStyle='rgba(0,255,180,.6)';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
-      ctx.fillStyle='rgba(0,255,65,.65)';ctx.font='bold 8px "Share Tech Mono"';ctx.textAlign='center';
+      ctx.fillStyle='rgba(56,189,248,.65)';ctx.font='bold 8px "Share Tech Mono"';ctx.textAlign='center';
       ctx.fillText(char.name,px,py-PSIZE-5);
 
       // Mini-map
       const mmW=100,mmH=70,mmX=cw-mmW-10,mmY=42;
       ctx.fillStyle='rgba(0,6,0,.88)';ctx.fillRect(mmX,mmY,mmW,mmH);
-      ctx.strokeStyle='rgba(0,255,65,.25)';ctx.lineWidth=1;ctx.strokeRect(mmX,mmY,mmW,mmH);
-      ctx.fillStyle='rgba(0,255,65,.18)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='left';
+      ctx.strokeStyle='rgba(56,189,248,.25)';ctx.lineWidth=1;ctx.strokeRect(mmX,mmY,mmW,mmH);
+      ctx.fillStyle='rgba(56,189,248,.18)';ctx.font='6px "Share Tech Mono"';ctx.textAlign='left';
       ctx.fillText(`MAP  ${g.peers.size+1}P`,mmX+3,mmY+9);
       for(const b of BUILDINGS){
         const bIsLocked=g.locks.has(b.id)&&!!g.locks.get(b.id)?.ownerName;
-        ctx.fillStyle=bIsLocked?'rgba(255,120,50,.5)':b.bright?'rgba(0,255,65,.7)':'rgba(0,160,50,.35)';
+        ctx.fillStyle=bIsLocked?'rgba(255,120,50,.5)':b.bright?'rgba(56,189,248,.7)':'rgba(0,160,50,.35)';
         ctx.fillRect(mmX+(b.x/W)*mmW,mmY+(b.y/H)*mmH,Math.max(2,(b.w/W)*mmW),Math.max(1,(b.h/H)*mmH));
       }
       for(const t of g.threats){ctx.fillStyle=THREAT_COL[t.type];ctx.fillRect(mmX+(t.x/W)*mmW-1,mmY+(t.y/H)*mmH-1,2,2);}
       for(const [,op] of g.peers){ctx.fillStyle='#44aaff';ctx.fillRect(mmX+(op.x/W)*mmW-1,mmY+(op.y/H)*mmH-1,2,2);}
-      ctx.fillStyle='#00ff41';ctx.shadowColor='#00ff41';ctx.shadowBlur=3;
+      ctx.fillStyle='#38bdf8';ctx.shadowColor='#38bdf8';ctx.shadowBlur=3;
       ctx.fillRect(mmX+(g.px/W)*mmW-2,mmY+(g.py/H)*mmH-2,4,4);ctx.shadowBlur=0;
 
       animRef.current=requestAnimationFrame(loop);
@@ -821,59 +821,59 @@ export default function World() {
   if(!char) return <CharSelect onStart={handleStart} onBack={() => navigate('/')} />;
 
   return (
-    <div style={{ width:'100vw',height:'100vh',overflow:'hidden',background:'#030803',position:'relative',fontFamily:"'Share Tech Mono',monospace" }}>
+    <div style={{ width:'100vw',height:'100vh',overflow:'hidden',background:'#060d14',position:'relative',fontFamily:"'Share Tech Mono',monospace" }}>
       {/* Scanlines */}
       <div style={{ position:'fixed',inset:0,background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.14) 2px,rgba(0,0,0,.14) 4px)',pointerEvents:'none',zIndex:9999 }} />
       <canvas ref={canvasRef} style={{ width:'100%',height:'100%',display:'block' }} />
 
       {/* TOP BAR */}
-      <div style={{ position:'absolute',top:0,left:0,right:0,padding:'.3rem .9rem',background:'rgba(0,6,0,.92)',borderBottom:'1px solid rgba(0,255,65,.15)',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100 }}>
+      <div style={{ position:'absolute',top:0,left:0,right:0,padding:'.3rem .9rem',background:'rgba(0,6,0,.92)',borderBottom:'1px solid rgba(56,189,248,.15)',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100 }}>
         <div style={{ display:'flex',alignItems:'center',gap:'1.25rem' }}>
-          <span style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 10px rgba(0,255,65,.5)',letterSpacing:'.12em' }}>{boomerize('SALARYMAN', boomerMode)}</span>
-          <span style={{ fontSize:'.55rem',color:'rgba(0,255,65,.4)',letterSpacing:'.07em' }}>{char.name} · {boomerize(char.class.toUpperCase(), boomerMode)}{char.company ? ` · ${char.company}` : ''}</span>
-          {gs.current.hasDevice&&<span style={{ fontSize:'.5rem',color:'rgba(0,255,65,.55)',border:'1px solid rgba(0,255,65,.25)',padding:'1px 5px' }}>PABLO ✓</span>}
+          <span style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#38bdf8',textShadow:'0 0 10px rgba(56,189,248,.5)',letterSpacing:'.12em' }}>{boomerize('SALARYMAN', boomerMode)}</span>
+          <span style={{ fontSize:'.55rem',color:'rgba(56,189,248,.4)',letterSpacing:'.07em' }}>{char.name} · {boomerize(char.class.toUpperCase(), boomerMode)}{char.company ? ` · ${char.company}` : ''}</span>
+          {gs.current.hasDevice&&<span style={{ fontSize:'.5rem',color:'rgba(56,189,248,.55)',border:'1px solid rgba(56,189,248,.25)',padding:'1px 5px' }}>PABLO ✓</span>}
           <span style={{ fontSize:'.5rem',color:'rgba(100,180,255,.5)',border:'1px solid rgba(100,180,255,.2)',padding:'1px 5px' }}>{onlinePlayers.length+1} ONLINE</span>
         </div>
         <div style={{ display:'flex',gap:'.5rem',alignItems:'center' }}>
-          <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ fontSize:'.48rem',color:boomerMode?'#ffaa00':'rgba(0,255,65,.28)',border:boomerMode?'1px solid rgba(255,170,0,.4)':'1px solid rgba(0,255,65,.12)',background:boomerMode?'rgba(255,170,0,.08)':'transparent',padding:'2px 7px',cursor:'pointer' }}>
+          <button onClick={() => { const nb = !boomerMode; setBoomerMode(nb); try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {} }} style={{ fontSize:'.48rem',color:boomerMode?'#ffaa00':'rgba(56,189,248,.28)',border:boomerMode?'1px solid rgba(255,170,0,.4)':'1px solid rgba(56,189,248,.12)',background:boomerMode?'rgba(255,170,0,.08)':'transparent',padding:'2px 7px',cursor:'pointer' }}>
             {boomerMode ? '🎮 BOOMER MODE ON' : '🎮 BOOMER MODE'}
           </button>
-          <button onClick={()=>{localStorage.removeItem('sm_char');setChar(null);gs.current.threats=THREATS_INIT.map(t=>({...t}));setIsDead(false);}} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>NEW GAME</button>
-          <button onClick={()=>navigate('/')} style={{ fontSize:'.48rem',color:'rgba(0,255,65,.28)',border:'1px solid rgba(0,255,65,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>← EXIT</button>
+          <button onClick={()=>{localStorage.removeItem('sm_char');setChar(null);gs.current.threats=THREATS_INIT.map(t=>({...t}));setIsDead(false);}} style={{ fontSize:'.48rem',color:'rgba(56,189,248,.28)',border:'1px solid rgba(56,189,248,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>NEW GAME</button>
+          <button onClick={()=>navigate('/')} style={{ fontSize:'.48rem',color:'rgba(56,189,248,.28)',border:'1px solid rgba(56,189,248,.12)',background:'transparent',padding:'2px 7px',cursor:'pointer' }}>← EXIT</button>
         </div>
       </div>
 
       {/* BOTTOM BAR */}
-      <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'.45rem .9rem',background:'rgba(0,6,0,.9)',borderTop:'1px solid rgba(0,255,65,.15)',display:'flex',alignItems:'center',gap:'1rem',zIndex:100 }}>
+      <div style={{ position:'absolute',bottom:0,left:0,right:0,padding:'.45rem .9rem',background:'rgba(0,6,0,.9)',borderTop:'1px solid rgba(56,189,248,.15)',display:'flex',alignItems:'center',gap:'1rem',zIndex:100 }}>
         {/* HP bar */}
         <div style={{ flexShrink:0 }}>
-          <div style={{ fontSize:'.48rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'2px' }}>{boomerize('HP', boomerMode)}</div>
-          <div style={{ width:80,height:6,background:'rgba(0,255,65,.1)',position:'relative' }}>
-            <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${hp}%`,background:'#00ff41',boxShadow:'0 0 4px rgba(0,255,65,.6)',transition:'width .2s' }} />
+          <div style={{ fontSize:'.48rem',color:'rgba(56,189,248,.35)',letterSpacing:'.1em',marginBottom:'2px' }}>{boomerize('HP', boomerMode)}</div>
+          <div style={{ width:80,height:6,background:'rgba(56,189,248,.1)',position:'relative' }}>
+            <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${hp}%`,background:'#38bdf8',boxShadow:'0 0 4px rgba(56,189,248,.6)',transition:'width .2s' }} />
           </div>
         </div>
         {/* BANCO OMBRA Balance */}
-        <div style={{ flexShrink:0,borderLeft:'1px solid rgba(0,255,65,.12)',paddingLeft:'.75rem' }}>
-          <div style={{ fontSize:'.35rem',color:'rgba(0,255,65,.25)',letterSpacing:'.12em',marginBottom:'1px' }}>BANCO OMBRA</div>
-          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#00ff41',textShadow:'0 0 6px rgba(0,255,65,.35)',letterSpacing:'.08em' }}>{boomerize(`ƒ${salary.toLocaleString()}`, boomerMode)}</div>
+        <div style={{ flexShrink:0,borderLeft:'1px solid rgba(56,189,248,.12)',paddingLeft:'.75rem' }}>
+          <div style={{ fontSize:'.35rem',color:'rgba(56,189,248,.25)',letterSpacing:'.12em',marginBottom:'1px' }}>BANCO OMBRA</div>
+          <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.3rem',color:'#38bdf8',textShadow:'0 0 6px rgba(56,189,248,.35)',letterSpacing:'.08em' }}>{boomerize(`ƒ${salary.toLocaleString()}`, boomerMode)}</div>
         </div>
         {/* Narration */}
-        <div style={{ flex:1,fontSize:'.65rem',color:'rgba(0,255,65,.6)',letterSpacing:'.04em',lineHeight:1.5,borderLeft:'1px solid rgba(0,255,65,.1)',paddingLeft:'.75rem' }}>{boomerize(msg, boomerMode)}</div>
+        <div style={{ flex:1,fontSize:'.65rem',color:'rgba(56,189,248,.6)',letterSpacing:'.04em',lineHeight:1.5,borderLeft:'1px solid rgba(56,189,248,.1)',paddingLeft:'.75rem' }}>{boomerize(msg, boomerMode)}</div>
         {/* Buttons */}
         <div style={{ display:'flex',gap:'.5rem',flexShrink:0 }}>
-          <button onClick={toggleVoice} title="Voice [V]" style={{ padding:'.3rem .55rem',background:voice?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:voice?`1px solid ${speaking?'rgba(0,255,180,.7)':'rgba(0,255,65,.45)'}`:'1px solid rgba(0,255,65,.12)',color:voice?(speaking?'#00ffcc':'#00ff41'):'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+          <button onClick={toggleVoice} title="Voice [V]" style={{ padding:'.3rem .55rem',background:voice?'rgba(56,189,248,.1)':'rgba(56,189,248,.03)',border:voice?`1px solid ${speaking?'rgba(0,255,180,.7)':'rgba(56,189,248,.45)'}`:'1px solid rgba(56,189,248,.12)',color:voice?(speaking?'#00ffcc':'#38bdf8'):'rgba(56,189,248,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             {voice?(speaking?'●MIC':'○MIC'):'MIC'}
           </button>
-          <button onClick={()=>{setChatOpen(v=>!v);setUnread(0);}} title="Chat [C]" style={{ padding:'.3rem .55rem',background:chatOpen?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:chatOpen?'1px solid rgba(0,255,65,.45)':'1px solid rgba(0,255,65,.12)',color:chatOpen?'#00ff41':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em',position:'relative' }}>
+          <button onClick={()=>{setChatOpen(v=>!v);setUnread(0);}} title="Chat [C]" style={{ padding:'.3rem .55rem',background:chatOpen?'rgba(56,189,248,.1)':'rgba(56,189,248,.03)',border:chatOpen?'1px solid rgba(56,189,248,.45)':'1px solid rgba(56,189,248,.12)',color:chatOpen?'#38bdf8':'rgba(56,189,248,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em',position:'relative' }}>
             CHAT{unread>0?` (${unread})`:''}
           </button>
-          <button onClick={()=>setShowPablo(v=>!v)} title="PABLO [P]" style={{ padding:'.3rem .55rem',background:showPablo?'rgba(0,255,65,.1)':'rgba(0,255,65,.03)',border:showPablo?'1px solid rgba(0,255,65,.45)':'1px solid rgba(0,255,65,.12)',color:showPablo?'#00ff41':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+          <button onClick={()=>setShowPablo(v=>!v)} title="PABLO [P]" style={{ padding:'.3rem .55rem',background:showPablo?'rgba(56,189,248,.1)':'rgba(56,189,248,.03)',border:showPablo?'1px solid rgba(56,189,248,.45)':'1px solid rgba(56,189,248,.12)',color:showPablo?'#38bdf8':'rgba(56,189,248,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             PABLO
           </button>
-          <button onClick={()=>setShowBalanceSheet(v=>!v)} title="Balance Sheet [B]" style={{ padding:'.3rem .55rem',background:showBalanceSheet?'rgba(255,200,60,.1)':'rgba(0,255,65,.03)',border:showBalanceSheet?'1px solid rgba(255,200,60,.45)':'1px solid rgba(0,255,65,.12)',color:showBalanceSheet?'#ffcc00':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+          <button onClick={()=>setShowBalanceSheet(v=>!v)} title="Balance Sheet [B]" style={{ padding:'.3rem .55rem',background:showBalanceSheet?'rgba(255,200,60,.1)':'rgba(56,189,248,.03)',border:showBalanceSheet?'1px solid rgba(255,200,60,.45)':'1px solid rgba(56,189,248,.12)',color:showBalanceSheet?'#ffcc00':'rgba(56,189,248,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             LEDGER
           </button>
-          <button onClick={()=>setShowColleagues(v=>!v)} title="Colleagues" style={{ padding:'.3rem .55rem',background:showColleagues?'rgba(100,180,255,.1)':'rgba(0,255,65,.03)',border:showColleagues?'1px solid rgba(100,180,255,.45)':'1px solid rgba(0,255,65,.12)',color:showColleagues?'#55bbff':'rgba(0,255,65,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
+          <button onClick={()=>setShowColleagues(v=>!v)} title="Colleagues" style={{ padding:'.3rem .55rem',background:showColleagues?'rgba(100,180,255,.1)':'rgba(56,189,248,.03)',border:showColleagues?'1px solid rgba(100,180,255,.45)':'1px solid rgba(56,189,248,.12)',color:showColleagues?'#55bbff':'rgba(56,189,248,.28)',cursor:'pointer',fontSize:'.6rem',letterSpacing:'.06em' }}>
             CRM
           </button>
         </div>
@@ -881,18 +881,18 @@ export default function World() {
 
       {/* CHAT PANEL */}
       {chatOpen&&(
-        <div style={{ position:'absolute',bottom:'3.5rem',left:'.75rem',width:300,maxHeight:'45vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(0,255,65,.35)',display:'flex',flexDirection:'column',zIndex:200 }}>
-          <div style={{ padding:'.4rem .6rem',borderBottom:'1px solid rgba(0,255,65,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-            <span style={{ fontFamily:"'VT323',monospace",fontSize:'.9rem',color:'#00ff41',letterSpacing:'.1em' }}>WORLD CHAT</span>
+        <div style={{ position:'absolute',bottom:'3.5rem',left:'.75rem',width:300,maxHeight:'45vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(56,189,248,.35)',display:'flex',flexDirection:'column',zIndex:200 }}>
+          <div style={{ padding:'.4rem .6rem',borderBottom:'1px solid rgba(56,189,248,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+            <span style={{ fontFamily:"'VT323',monospace",fontSize:'.9rem',color:'#38bdf8',letterSpacing:'.1em' }}>WORLD CHAT</span>
             <div style={{ display:'flex',gap:'.4rem',alignItems:'center' }}>
-              {dmTarget&&<button onClick={()=>setDmTarget(null)} style={{ fontSize:'.5rem',color:'rgba(0,255,65,.4)',border:'none',background:'transparent',cursor:'pointer' }}>× DM off</button>}
-              <button onClick={()=>setChatOpen(false)} style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',border:'none',background:'transparent',cursor:'pointer' }}>×</button>
+              {dmTarget&&<button onClick={()=>setDmTarget(null)} style={{ fontSize:'.5rem',color:'rgba(56,189,248,.4)',border:'none',background:'transparent',cursor:'pointer' }}>× DM off</button>}
+              <button onClick={()=>setChatOpen(false)} style={{ fontSize:'.5rem',color:'rgba(56,189,248,.35)',border:'none',background:'transparent',cursor:'pointer' }}>×</button>
             </div>
           </div>
           {onlinePlayers.length>0&&(
-            <div style={{ padding:'.3rem .5rem',borderBottom:'1px solid rgba(0,255,65,.12)',display:'flex',gap:'.35rem',flexWrap:'wrap' }}>
+            <div style={{ padding:'.3rem .5rem',borderBottom:'1px solid rgba(56,189,248,.12)',display:'flex',gap:'.35rem',flexWrap:'wrap' }}>
               {onlinePlayers.map(p=>(
-                <button key={p.id} onClick={()=>setDmTarget(dmTarget?.id===p.id?null:{id:p.id,name:p.name})} style={{ fontSize:'.52rem',padding:'1px 5px',background:dmTarget?.id===p.id?'rgba(0,255,65,.12)':'transparent',border:dmTarget?.id===p.id?'1px solid rgba(0,255,65,.4)':'1px solid rgba(0,255,65,.18)',color:dmTarget?.id===p.id?'#00ff41':'rgba(0,255,65,.4)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>
+                <button key={p.id} onClick={()=>setDmTarget(dmTarget?.id===p.id?null:{id:p.id,name:p.name})} style={{ fontSize:'.52rem',padding:'1px 5px',background:dmTarget?.id===p.id?'rgba(56,189,248,.12)':'transparent',border:dmTarget?.id===p.id?'1px solid rgba(56,189,248,.4)':'1px solid rgba(56,189,248,.18)',color:dmTarget?.id===p.id?'#38bdf8':'rgba(56,189,248,.4)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>
                   {p.name}
                 </button>
               ))}
@@ -900,53 +900,53 @@ export default function World() {
           )}
           <div style={{ flex:1,overflowY:'auto',padding:'.5rem',display:'flex',flexDirection:'column',gap:'.25rem',minHeight:60 }}>
             {chatMsgs.length===0
-              ?<div style={{ fontSize:'.58rem',color:'rgba(0,255,65,.2)' }}>Say something.</div>
+              ?<div style={{ fontSize:'.58rem',color:'rgba(56,189,248,.2)' }}>Say something.</div>
               :chatMsgs.slice(-40).map(m=>(
-                <div key={m.id} style={{ fontSize:'.65rem',lineHeight:1.5,color:m.from==='SERVER'?'rgba(0,255,65,.3)':m.dm?'rgba(100,200,255,.8)':'rgba(0,255,65,.7)' }}>
-                  <span style={{ color:'rgba(0,255,65,.4)',fontFamily:"'VT323',monospace",fontSize:'.75rem' }}>{m.dm?'[DM]':''}{m.from.slice(0,12)}</span>{' '}{m.text}
+                <div key={m.id} style={{ fontSize:'.65rem',lineHeight:1.5,color:m.from==='SERVER'?'rgba(56,189,248,.3)':m.dm?'rgba(100,200,255,.8)':'rgba(56,189,248,.7)' }}>
+                  <span style={{ color:'rgba(56,189,248,.4)',fontFamily:"'VT323',monospace",fontSize:'.75rem' }}>{m.dm?'[DM]':''}{m.from.slice(0,12)}</span>{' '}{m.text}
                 </div>
               ))
             }
           </div>
-          <div style={{ padding:'.35rem',borderTop:'1px solid rgba(0,255,65,.15)',display:'flex',gap:'.35rem' }}>
+          <div style={{ padding:'.35rem',borderTop:'1px solid rgba(56,189,248,.15)',display:'flex',gap:'.35rem' }}>
             {dmTarget&&<span style={{ fontSize:'.5rem',color:'rgba(100,200,255,.5)',alignSelf:'center',flexShrink:0 }}>→{dmTarget.name.slice(0,8)}</span>}
-            <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()} placeholder={dmTarget?`DM ${dmTarget.name}...`:"World..."} style={{ flex:1,background:'rgba(0,12,0,.9)',border:'1px solid rgba(0,255,65,.18)',color:'#00ff41',fontFamily:"'Share Tech Mono',monospace",fontSize:'.65rem',padding:'.28rem .45rem',outline:'none',caretColor:'#00ff41' }} />
-            <button onClick={sendChat} style={{ background:'rgba(0,255,65,.08)',border:'1px solid rgba(0,255,65,.3)',color:'#00ff41',cursor:'pointer',padding:'0 .45rem',fontSize:'.65rem' }}>↵</button>
+            <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()} placeholder={dmTarget?`DM ${dmTarget.name}...`:"World..."} style={{ flex:1,background:'rgba(5,15,25,.9)',border:'1px solid rgba(56,189,248,.18)',color:'#38bdf8',fontFamily:"'Share Tech Mono',monospace",fontSize:'.65rem',padding:'.28rem .45rem',outline:'none',caretColor:'#38bdf8' }} />
+            <button onClick={sendChat} style={{ background:'rgba(56,189,248,.08)',border:'1px solid rgba(56,189,248,.3)',color:'#38bdf8',cursor:'pointer',padding:'0 .45rem',fontSize:'.65rem' }}>↵</button>
           </div>
         </div>
       )}
 
       {/* PABLO PANEL */}
       {showPablo&&(
-        <div style={{ position:'absolute',bottom:'3.5rem',right:'.75rem',width:320,maxHeight:'52vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(0,255,65,.4)',display:'flex',flexDirection:'column',zIndex:200 }}>
-          <div style={{ padding:'.5rem .75rem',borderBottom:'1px solid rgba(0,255,65,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+        <div style={{ position:'absolute',bottom:'3.5rem',right:'.75rem',width:320,maxHeight:'52vh',background:'rgba(0,6,0,.97)',border:'1px solid rgba(56,189,248,.4)',display:'flex',flexDirection:'column',zIndex:200 }}>
+          <div style={{ padding:'.5rem .75rem',borderBottom:'1px solid rgba(56,189,248,.18)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
             <div>
-              <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.1rem',color:'#00ff41',letterSpacing:'.12em' }}>PABLO DEVICE</div>
-              <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.3)',letterSpacing:'.07em' }}>{gs.current.hasDevice?'ACTIVE':'NOT REGISTERED'}</div>
+              <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.1rem',color:'#38bdf8',letterSpacing:'.12em' }}>PABLO DEVICE</div>
+              <div style={{ fontSize:'.5rem',color:'rgba(56,189,248,.3)',letterSpacing:'.07em' }}>{gs.current.hasDevice?'ACTIVE':'NOT REGISTERED'}</div>
             </div>
-            <button onClick={()=>setShowPablo(false)} style={{ background:'transparent',border:'none',color:'rgba(0,255,65,.4)',cursor:'pointer',fontSize:'.8rem' }}>×</button>
+            <button onClick={()=>setShowPablo(false)} style={{ background:'transparent',border:'none',color:'rgba(56,189,248,.4)',cursor:'pointer',fontSize:'.8rem' }}>×</button>
           </div>
           {!gs.current.hasDevice?(
             <div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem',textAlign:'center' }}>
               <div>
-                <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.2rem',color:'rgba(0,255,65,.4)',letterSpacing:'.1em',marginBottom:'.4rem' }}>LOCKED</div>
-                <div style={{ fontSize:'.6rem',color:'rgba(0,255,65,.3)',lineHeight:1.7 }}>Visit <span style={{ color:'#00ff41' }}>PABLO STORE</span> to activate.</div>
+                <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.2rem',color:'rgba(56,189,248,.4)',letterSpacing:'.1em',marginBottom:'.4rem' }}>LOCKED</div>
+                <div style={{ fontSize:'.6rem',color:'rgba(56,189,248,.3)',lineHeight:1.7 }}>Visit <span style={{ color:'#38bdf8' }}>PABLO STORE</span> to activate.</div>
               </div>
             </div>
           ):(
             <>
               <div style={{ flex:1,overflowY:'auto',padding:'.6rem',display:'flex',flexDirection:'column',gap:'.4rem',minHeight:80 }}>
-                {pabloMsgs.length===0&&<div style={{ fontSize:'.6rem',color:'rgba(0,255,65,.25)',lineHeight:1.7 }}>&gt; PABLO ONLINE<br/>&gt; Ask anything.</div>}
+                {pabloMsgs.length===0&&<div style={{ fontSize:'.6rem',color:'rgba(56,189,248,.25)',lineHeight:1.7 }}>&gt; PABLO ONLINE<br/>&gt; Ask anything.</div>}
                 {pabloMsgs.map((m,i)=>(
-                  <div key={i} style={{ fontSize:'.65rem',lineHeight:1.5,color:m.role==='user'?'rgba(0,255,65,.55)':'#00ff41',paddingLeft:m.role==='pablo'?'.4rem':0,borderLeft:m.role==='pablo'?'2px solid rgba(0,255,65,.25)':'none' }}>
-                    <span style={{ color:'rgba(0,255,65,.35)',fontFamily:"'VT323',monospace",fontSize:'.75rem',marginRight:'.3rem' }}>{m.role==='user'?`[${char.name.slice(0,8)}]`:'[PABLO]'}</span>{m.text}
+                  <div key={i} style={{ fontSize:'.65rem',lineHeight:1.5,color:m.role==='user'?'rgba(56,189,248,.55)':'#38bdf8',paddingLeft:m.role==='pablo'?'.4rem':0,borderLeft:m.role==='pablo'?'2px solid rgba(56,189,248,.25)':'none' }}>
+                    <span style={{ color:'rgba(56,189,248,.35)',fontFamily:"'VT323',monospace",fontSize:'.75rem',marginRight:'.3rem' }}>{m.role==='user'?`[${char.name.slice(0,8)}]`:'[PABLO]'}</span>{m.text}
                   </div>
                 ))}
-                {pabloLoad&&<div style={{ fontSize:'.6rem',color:'rgba(0,255,65,.35)',fontFamily:"'VT323',monospace" }}>...</div>}
+                {pabloLoad&&<div style={{ fontSize:'.6rem',color:'rgba(56,189,248,.35)',fontFamily:"'VT323',monospace" }}>...</div>}
               </div>
-              <div style={{ padding:'.4rem',borderTop:'1px solid rgba(0,255,65,.15)',display:'flex',gap:'.35rem' }}>
-                <input value={pabloIn} onChange={e=>setPabloIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendPablo()} placeholder="Ask PABLO..." style={{ flex:1,background:'rgba(0,12,0,.9)',border:'1px solid rgba(0,255,65,.2)',color:'#00ff41',fontFamily:"'Share Tech Mono',monospace",fontSize:'.65rem',padding:'.28rem .45rem',outline:'none',caretColor:'#00ff41' }} />
-                <button onClick={sendPablo} style={{ background:'rgba(0,255,65,.1)',border:'1px solid rgba(0,255,65,.35)',color:'#00ff41',cursor:'pointer',padding:'0 .45rem',fontSize:'.65rem' }}>↵</button>
+              <div style={{ padding:'.4rem',borderTop:'1px solid rgba(56,189,248,.15)',display:'flex',gap:'.35rem' }}>
+                <input value={pabloIn} onChange={e=>setPabloIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendPablo()} placeholder="Ask PABLO..." style={{ flex:1,background:'rgba(5,15,25,.9)',border:'1px solid rgba(56,189,248,.2)',color:'#38bdf8',fontFamily:"'Share Tech Mono',monospace",fontSize:'.65rem',padding:'.28rem .45rem',outline:'none',caretColor:'#38bdf8' }} />
+                <button onClick={sendPablo} style={{ background:'rgba(56,189,248,.1)',border:'1px solid rgba(56,189,248,.35)',color:'#38bdf8',cursor:'pointer',padding:'0 .45rem',fontSize:'.65rem' }}>↵</button>
               </div>
             </>
           )}
@@ -992,13 +992,13 @@ export default function World() {
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.5rem',marginBottom:'.75rem' }}>
                   {[
                     {l:'CURRENT BALANCE',v:`ƒ${salary.toLocaleString()}`,col:'#ffcc00',big:true},
-                    {l:'INCOME TYPE',v:incomeType==='unemployed'?'UNEMPLOYED':incomeType==='minx'?'MINX BUSINESS':'REAL ENTERPRISE',col:'#00ff41',big:false},
-                    {l:'PABLO CORP GOV BASE',v:`ƒ${govBase}/min`,col:'rgba(0,255,65,.7)',big:false},
-                    {l:'BUSINESS PROFIT',v:bizProfit>0?`ƒ${bizProfit}/min`:'—',col:bizProfit>0?'rgba(100,255,180,.7)':'rgba(0,255,65,.2)',big:false},
-                    {l:'ENTERPRISE SALARY',v:realSal>0?`ƒ${realSal}/min`:'—',col:realSal>0?'rgba(100,200,255,.7)':'rgba(0,255,65,.2)',big:false},
+                    {l:'INCOME TYPE',v:incomeType==='unemployed'?'UNEMPLOYED':incomeType==='minx'?'MINX BUSINESS':'REAL ENTERPRISE',col:'#38bdf8',big:false},
+                    {l:'PABLO CORP GOV BASE',v:`ƒ${govBase}/min`,col:'rgba(56,189,248,.7)',big:false},
+                    {l:'BUSINESS PROFIT',v:bizProfit>0?`ƒ${bizProfit}/min`:'—',col:bizProfit>0?'rgba(100,255,180,.7)':'rgba(56,189,248,.2)',big:false},
+                    {l:'ENTERPRISE SALARY',v:realSal>0?`ƒ${realSal}/min`:'—',col:realSal>0?'rgba(100,200,255,.7)':'rgba(56,189,248,.2)',big:false},
                     {l:'TOTAL INCOME/MIN',v:`ƒ${totalIncome}/min`,col:'#ffcc00',big:false},
-                    {l:'SESSION EARNED',v:`ƒ${totalEarned.toLocaleString()}`,col:'rgba(0,255,65,.55)',big:false},
-                    {l:'SESSION EXPENSES',v:totalExpenses>0?`-ƒ${totalExpenses.toLocaleString()}`:'ƒ0',col:totalExpenses>0?'rgba(255,100,100,.6)':'rgba(0,255,65,.2)',big:false},
+                    {l:'SESSION EARNED',v:`ƒ${totalEarned.toLocaleString()}`,col:'rgba(56,189,248,.55)',big:false},
+                    {l:'SESSION EXPENSES',v:totalExpenses>0?`-ƒ${totalExpenses.toLocaleString()}`:'ƒ0',col:totalExpenses>0?'rgba(255,100,100,.6)':'rgba(56,189,248,.2)',big:false},
                   ].map(({l,v,col,big})=>(
                     <div key={l} style={{ border:'1px solid rgba(255,200,60,.18)',padding:'.45rem .6rem',background:'rgba(255,200,60,.03)' }}>
                       <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.35)',letterSpacing:'.12em',marginBottom:'.2rem' }}>{l}</div>
@@ -1081,7 +1081,7 @@ export default function World() {
                       <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.28)',letterSpacing:'.06em' }}>{new Date(e.timestamp).toLocaleTimeString()} · {fmtCat(e.category)}</div>
                     </div>
                     <div style={{ textAlign:'right',flexShrink:0 }}>
-                      <div style={{ fontFamily:"'VT323',monospace",fontSize:'.85rem',color:e.amount>=0?'#00ff41':'#ff4444',letterSpacing:'.04em' }}>{e.amount>=0?'+':''}{e.amount>=0?`ƒ${e.amount.toLocaleString()}`:e.amount.toLocaleString()}</div>
+                      <div style={{ fontFamily:"'VT323',monospace",fontSize:'.85rem',color:e.amount>=0?'#38bdf8':'#ff4444',letterSpacing:'.04em' }}>{e.amount>=0?'+':''}{e.amount>=0?`ƒ${e.amount.toLocaleString()}`:e.amount.toLocaleString()}</div>
                       <div style={{ fontSize:'.38rem',color:'rgba(255,200,60,.35)' }}>ƒ{e.bal.toLocaleString()}</div>
                     </div>
                   </div>
@@ -1120,19 +1120,19 @@ export default function World() {
                   </div>
                 ))}
                 {others.length > 0 && (<>
-                  <div style={{ fontSize:'.45rem',color:'rgba(0,255,65,.25)',letterSpacing:'.12em',marginTop:'.5rem',marginBottom:'.3rem',borderTop:'1px solid rgba(0,255,65,.08)',paddingTop:'.4rem' }}>OTHER PLAYERS ({others.length})</div>
+                  <div style={{ fontSize:'.45rem',color:'rgba(56,189,248,.25)',letterSpacing:'.12em',marginTop:'.5rem',marginBottom:'.3rem',borderTop:'1px solid rgba(56,189,248,.08)',paddingTop:'.4rem' }}>OTHER PLAYERS ({others.length})</div>
                   {others.map(p => (
-                    <div key={p.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.3rem .4rem',marginBottom:'.2rem',border:'1px solid rgba(0,255,65,.1)' }}>
+                    <div key={p.id} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.3rem .4rem',marginBottom:'.2rem',border:'1px solid rgba(56,189,248,.1)' }}>
                       <div>
-                        <div style={{ fontSize:'.6rem',color:'rgba(0,255,65,.55)',fontFamily:"'Share Tech Mono',monospace" }}>{p.name}</div>
-                        <div style={{ fontSize:'.4rem',color:'rgba(0,255,65,.2)' }}>{p.company || 'UNAFFILIATED'}</div>
+                        <div style={{ fontSize:'.6rem',color:'rgba(56,189,248,.55)',fontFamily:"'Share Tech Mono',monospace" }}>{p.name}</div>
+                        <div style={{ fontSize:'.4rem',color:'rgba(56,189,248,.2)' }}>{p.company || 'UNAFFILIATED'}</div>
                       </div>
-                      <button onClick={()=>{setDmTarget({id:p.id,name:p.name});setChatOpen(true);}} style={{ fontSize:'.45rem',padding:'2px 6px',background:'transparent',border:'1px solid rgba(0,255,65,.15)',color:'rgba(0,255,65,.35)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>MSG</button>
+                      <button onClick={()=>{setDmTarget({id:p.id,name:p.name});setChatOpen(true);}} style={{ fontSize:'.45rem',padding:'2px 6px',background:'transparent',border:'1px solid rgba(56,189,248,.15)',color:'rgba(56,189,248,.35)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>MSG</button>
                     </div>
                   ))}
                 </>)}
                 {onlinePlayers.length === 0 && (
-                  <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.2)',padding:'.5rem 0',textAlign:'center' }}>No other players online.</div>
+                  <div style={{ fontSize:'.55rem',color:'rgba(56,189,248,.2)',padding:'.5rem 0',textAlign:'center' }}>No other players online.</div>
                 )}
               </>);
             })()}
@@ -1145,30 +1145,30 @@ export default function World() {
 
       {/* DIALOG */}
       {dialog&&(
-        <div style={{ position:'absolute',bottom:'4rem',left:'50%',transform:'translateX(-50%)',width:520,maxWidth:'90vw',background:'rgba(0,8,0,.97)',border:'1px solid rgba(0,255,65,.5)',padding:'1rem',zIndex:200,cursor:'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>PABLO CORP</div>
-          <div style={{ fontSize:'.8rem',color:'#00ff41',lineHeight:1.7,letterSpacing:'.03em',minHeight:'2rem' }}>{dialog.lines[dialog.idx]}</div>
-          <div style={{ marginTop:'.5rem',textAlign:'right',fontSize:'.5rem',color:'rgba(0,255,65,.3)',letterSpacing:'.1em' }}>[{dialog.idx+1}/{dialog.lines.length}] SPACE ▶</div>
+        <div style={{ position:'absolute',bottom:'4rem',left:'50%',transform:'translateX(-50%)',width:520,maxWidth:'90vw',background:'rgba(0,8,0,.97)',border:'1px solid rgba(56,189,248,.5)',padding:'1rem',zIndex:200,cursor:'pointer' }} onClick={advDialog}>
+          <div style={{ fontSize:'.5rem',color:'rgba(56,189,248,.35)',letterSpacing:'.1em',marginBottom:'.4rem' }}>PABLO CORP</div>
+          <div style={{ fontSize:'.8rem',color:'#38bdf8',lineHeight:1.7,letterSpacing:'.03em',minHeight:'2rem' }}>{dialog.lines[dialog.idx]}</div>
+          <div style={{ marginTop:'.5rem',textAlign:'right',fontSize:'.5rem',color:'rgba(56,189,248,.3)',letterSpacing:'.1em' }}>[{dialog.idx+1}/{dialog.lines.length}] SPACE ▶</div>
         </div>
       )}
 
       {/* PABLO STORE UPGRADE */}
       {showStore&&(
-        <div style={{ position:'absolute',inset:0,background:'rgba(0,4,0,.93)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300 }}>
-          <div style={{ width:420,maxWidth:'90vw',border:'1px solid rgba(0,255,65,.6)',background:'rgba(0,12,0,.98)',padding:'1.75rem' }}>
-            <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#00ff41',textShadow:'0 0 12px rgba(0,255,65,.4)',letterSpacing:'.15em',marginBottom:'.2rem' }}>PABLO DEVICE</div>
-            <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginBottom:'1.25rem' }}>REGISTERED — {char.name}</div>
+        <div style={{ position:'absolute',inset:0,background:'rgba(3,8,18,.93)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300 }}>
+          <div style={{ width:420,maxWidth:'90vw',border:'1px solid rgba(56,189,248,.6)',background:'rgba(5,15,25,.98)',padding:'1.75rem' }}>
+            <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#38bdf8',textShadow:'0 0 12px rgba(56,189,248,.4)',letterSpacing:'.15em',marginBottom:'.2rem' }}>PABLO DEVICE</div>
+            <div style={{ fontSize:'.55rem',color:'rgba(56,189,248,.35)',letterSpacing:'.08em',marginBottom:'1.25rem' }}>REGISTERED — {char.name}</div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.6rem',marginBottom:'1.25rem' }}>
               {([[PABLO_PRODUCTS.FREE_TIER.name,['PABLO AI chat','World access']],[`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`,[PABLO_PRODUCTS.PABLO_AI_PRO.short,PABLO_PRODUCTS.LIVE_LISTEN.short,PABLO_PRODUCTS.SCAN_SCREEN.short,PABLO_PRODUCTS.SAY_THIS.short,PABLO_PRODUCTS.CONTACTS.short]]] as [string,string[]][]).map(([t,f])=>(
-                <div key={t} style={{ border:t===PABLO_PRODUCTS.FREE_TIER.name?'1px solid rgba(0,255,65,.18)':'1px solid rgba(0,255,65,.55)',padding:'.75rem',background:t!==PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.05)':'transparent' }}>
-                  <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.45)':'#00ff41',letterSpacing:'.1em',marginBottom:'.4rem' }}>{t}</div>
-                  {f.map(ff=><div key={ff} style={{ fontSize:'.57rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(0,255,65,.35)':'rgba(0,255,65,.65)',lineHeight:1.9 }}>▸ {ff}</div>)}
+                <div key={t} style={{ border:t===PABLO_PRODUCTS.FREE_TIER.name?'1px solid rgba(56,189,248,.18)':'1px solid rgba(56,189,248,.55)',padding:'.75rem',background:t!==PABLO_PRODUCTS.FREE_TIER.name?'rgba(56,189,248,.05)':'transparent' }}>
+                  <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(56,189,248,.45)':'#38bdf8',letterSpacing:'.1em',marginBottom:'.4rem' }}>{t}</div>
+                  {f.map(ff=><div key={ff} style={{ fontSize:'.57rem',color:t===PABLO_PRODUCTS.FREE_TIER.name?'rgba(56,189,248,.35)':'rgba(56,189,248,.65)',lineHeight:1.9 }}>▸ {ff}</div>)}
                 </div>
               ))}
             </div>
             <div style={{ display:'flex',gap:'.6rem' }}>
-              <button onClick={()=>{setShowStore(false);navigate('/upgrade');}} style={{ flex:1,padding:'.6rem',background:'rgba(0,255,65,.12)',border:'1px solid rgba(0,255,65,.65)',color:'#00ff41',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
-              <button onClick={()=>{setShowStore(false);setMsg(`> Device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press P to open.`);}} style={{ padding:'.6rem .9rem',background:'transparent',border:'1px solid rgba(0,255,65,.18)',color:'rgba(0,255,65,.4)',fontFamily:"'VT323',monospace",fontSize:'.9rem',cursor:'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
+              <button onClick={()=>{setShowStore(false);navigate('/upgrade');}} style={{ flex:1,padding:'.6rem',background:'rgba(56,189,248,.12)',border:'1px solid rgba(56,189,248,.65)',color:'#38bdf8',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={()=>{setShowStore(false);setMsg(`> Device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press P to open.`);}} style={{ padding:'.6rem .9rem',background:'transparent',border:'1px solid rgba(56,189,248,.18)',color:'rgba(56,189,248,.4)',fontFamily:"'VT323',monospace",fontSize:'.9rem',cursor:'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
           </div>
         </div>
@@ -1176,33 +1176,33 @@ export default function World() {
 
       {/* OFFICE */}
       {showOffice&&(
-        <div style={{ position:'absolute',inset:0,background:'rgba(0,4,0,.93)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300 }}>
-          <div style={{ width:480,maxWidth:'92vw',border:'1px solid rgba(0,255,65,.5)',background:'rgba(0,12,0,.98)',padding:'1.75rem' }}>
+        <div style={{ position:'absolute',inset:0,background:'rgba(3,8,18,.93)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:300 }}>
+          <div style={{ width:480,maxWidth:'92vw',border:'1px solid rgba(56,189,248,.5)',background:'rgba(5,15,25,.98)',padding:'1.75rem' }}>
             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.25rem' }}>
               <div>
-                <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#00ff41',letterSpacing:'.14em' }}>OFFICE TOWER</div>
-                <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>PABLO CORP MANAGED — SHARED COMMERCIAL SPACE</div>
+                <div style={{ fontFamily:"'VT323',monospace",fontSize:'1.8rem',color:'#38bdf8',letterSpacing:'.14em' }}>OFFICE TOWER</div>
+                <div style={{ fontSize:'.55rem',color:'rgba(56,189,248,.35)',letterSpacing:'.08em',marginTop:'.15rem' }}>PABLO CORP MANAGED — SHARED COMMERCIAL SPACE</div>
               </div>
               <div style={{ display:'flex',gap:'.4rem',alignItems:'center' }}>
                 {rentedOffice&&(
-                  <button onClick={()=>{ const lk=lockMap.get('office'); setPwPrompt({bid:'office',label:'OFFICE TOWER',mode:lk?'enter':'set'}); setShowOffice(false); }} style={{ fontSize:'.5rem',padding:'2px 7px',background:'rgba(0,255,65,.07)',border:'1px solid rgba(0,255,65,.25)',color:'rgba(0,255,65,.5)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>
+                  <button onClick={()=>{ const lk=lockMap.get('office'); setPwPrompt({bid:'office',label:'OFFICE TOWER',mode:lk?'enter':'set'}); setShowOffice(false); }} style={{ fontSize:'.5rem',padding:'2px 7px',background:'rgba(56,189,248,.07)',border:'1px solid rgba(56,189,248,.25)',color:'rgba(56,189,248,.5)',cursor:'pointer',fontFamily:"'Share Tech Mono',monospace" }}>
                     {lockMap.get('office')?'🔒 LOCKED':'SET CODE'}
                   </button>
                 )}
-                <button onClick={()=>setShowOffice(false)} style={{ background:'transparent',border:'none',color:'rgba(0,255,65,.35)',cursor:'pointer',fontFamily:"'VT323',monospace",fontSize:'1rem' }}>ESC</button>
+                <button onClick={()=>setShowOffice(false)} style={{ background:'transparent',border:'none',color:'rgba(56,189,248,.35)',cursor:'pointer',fontFamily:"'VT323',monospace",fontSize:'1rem' }}>ESC</button>
               </div>
             </div>
-            {rentedOffice&&<div style={{ marginBottom:'.9rem',padding:'.45rem .65rem',border:'1px solid rgba(0,255,65,.35)',background:'rgba(0,255,65,.05)',fontSize:'.6rem',color:'#00ff41' }}>▸ LEASED: {rentedOffice}</div>}
+            {rentedOffice&&<div style={{ marginBottom:'.9rem',padding:'.45rem .65rem',border:'1px solid rgba(56,189,248,.35)',background:'rgba(56,189,248,.05)',fontSize:'.6rem',color:'#38bdf8' }}>▸ LEASED: {rentedOffice}</div>}
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.6rem',marginBottom:'1.25rem' }}>
               {OFFICE_TIERS.map(({id,label,price,desc})=>{
                 const isRented=rentedOffice===label;
                 const canAfford=salary>=price;
                 return(
-                  <div key={id} style={{ border:isRented?'1px solid rgba(0,255,65,.7)':'1px solid rgba(0,255,65,.18)',padding:'.75rem',background:isRented?'rgba(0,255,65,.07)':'transparent',position:'relative' }}>
-                    {isRented&&<div style={{ position:'absolute',top:4,right:6,fontSize:'.48rem',color:'#00ff41',fontFamily:"'VT323',monospace" }}>LEASED</div>}
-                    <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:isRented?'#00ff41':'rgba(0,255,65,.65)',letterSpacing:'.07em',marginBottom:'.2rem' }}>{label}</div>
-                    <div style={{ fontSize:'.65rem',color:isRented?'#00ff41':canAfford?'rgba(0,255,65,.55)':'rgba(255,100,100,.5)',fontFamily:"'VT323',monospace",marginBottom:'.3rem' }}>ƒ{price.toLocaleString()}</div>
-                    <div style={{ fontSize:'.55rem',color:'rgba(0,255,65,.35)',lineHeight:1.6 }}>{desc}</div>
+                  <div key={id} style={{ border:isRented?'1px solid rgba(56,189,248,.7)':'1px solid rgba(56,189,248,.18)',padding:'.75rem',background:isRented?'rgba(56,189,248,.07)':'transparent',position:'relative' }}>
+                    {isRented&&<div style={{ position:'absolute',top:4,right:6,fontSize:'.48rem',color:'#38bdf8',fontFamily:"'VT323',monospace" }}>LEASED</div>}
+                    <div style={{ fontFamily:"'VT323',monospace",fontSize:'1rem',color:isRented?'#38bdf8':'rgba(56,189,248,.65)',letterSpacing:'.07em',marginBottom:'.2rem' }}>{label}</div>
+                    <div style={{ fontSize:'.65rem',color:isRented?'#38bdf8':canAfford?'rgba(56,189,248,.55)':'rgba(255,100,100,.5)',fontFamily:"'VT323',monospace",marginBottom:'.3rem' }}>ƒ{price.toLocaleString()}</div>
+                    <div style={{ fontSize:'.55rem',color:'rgba(56,189,248,.35)',lineHeight:1.6 }}>{desc}</div>
                     <button onClick={()=>{
                       if(isRented){ localStorage.removeItem('sm_office'); setRentedOffice(null); setMsg(`> Lease cancelled.`); return; }
                       if(!canAfford){ setMsg(`> Need ƒ${price}. Have ƒ${salary}.`); return; }
@@ -1211,14 +1211,14 @@ export default function World() {
                       setMsg(`> ${label} leased. ƒ${price} deducted. Set a security code from the lease panel.`);
                       if(char){pushTx(ledgerRef.current,{desc:`OFFICE TOWER — ${label} LEASE`,amount:-price,bal:g.salary,category:'expense'},char.name,char.company);setLedger([...ledgerRef.current]);}
                       const sm=localStorage.getItem('sm_char'); if(sm){try{const cc=JSON.parse(sm);cc.salary=g.salary;localStorage.setItem('sm_char',JSON.stringify(cc));}catch{}}
-                    }} style={{ marginTop:'.5rem',width:'100%',padding:'.28rem',background:isRented?'rgba(255,50,50,.07)':canAfford?'rgba(0,255,65,.08)':'transparent',border:isRented?'1px solid rgba(255,80,80,.3)':canAfford?'1px solid rgba(0,255,65,.4)':'1px solid rgba(0,255,65,.1)',color:isRented?'rgba(255,80,80,.65)':canAfford?'#00ff41':'rgba(0,255,65,.18)',fontFamily:"'VT323',monospace",fontSize:'.85rem',letterSpacing:'.08em',cursor:canAfford||isRented?'pointer':'default' }}>
+                    }} style={{ marginTop:'.5rem',width:'100%',padding:'.28rem',background:isRented?'rgba(255,50,50,.07)':canAfford?'rgba(56,189,248,.08)':'transparent',border:isRented?'1px solid rgba(255,80,80,.3)':canAfford?'1px solid rgba(56,189,248,.4)':'1px solid rgba(56,189,248,.1)',color:isRented?'rgba(255,80,80,.65)':canAfford?'#38bdf8':'rgba(56,189,248,.18)',fontFamily:"'VT323',monospace",fontSize:'.85rem',letterSpacing:'.08em',cursor:canAfford||isRented?'pointer':'default' }}>
                       {isRented?'CANCEL':canAfford?'RENT':'NO FUNDS'}
                     </button>
                   </div>
                 );
               })}
             </div>
-            <div style={{ fontSize:'.5rem',color:'rgba(0,255,65,.18)',lineHeight:1.7,borderTop:'1px solid rgba(0,255,65,.08)',paddingTop:'.65rem' }}>
+            <div style={{ fontSize:'.5rem',color:'rgba(56,189,248,.18)',lineHeight:1.7,borderTop:'1px solid rgba(56,189,248,.08)',paddingTop:'.65rem' }}>
               Tenants may set a security code. PABLO Corp. assumes no liability for mutant incursion or infrastructure failure.
             </div>
           </div>

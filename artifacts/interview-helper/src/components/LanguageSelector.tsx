@@ -39,7 +39,7 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
         title="Select language"
         className={`flex items-center gap-1 font-mono tracking-widest uppercase transition-colors rounded-md border ${
           open
-            ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/8'
+            ? 'text-sky-400 border-sky-500/30 bg-sky-500/8'
             : 'text-zinc-500 border-zinc-700/50 hover:text-zinc-300 hover:border-zinc-600/50'
         } ${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[10px]'}`}
       >
@@ -69,7 +69,7 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
                   onClick={() => handleSelect(lang.code)}
                   className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
                     isActive
-                      ? 'bg-emerald-500/10 text-emerald-400'
+                      ? 'bg-sky-500/10 text-sky-400'
                       : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
                   }`}
                 >
@@ -80,7 +80,7 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
                       <p className="text-[9px] font-mono text-zinc-600 leading-none mt-0.5">{lang.name}</p>
                     </div>
                   </div>
-                  {isActive && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                  {isActive && <Check className="w-3 h-3 text-sky-400 shrink-0" />}
                 </button>
               );
             })}

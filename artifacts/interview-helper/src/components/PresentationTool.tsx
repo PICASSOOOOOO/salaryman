@@ -129,9 +129,9 @@ export function PresentationTool() {
                   </ul>
 
                   {p.showScript && (
-                    <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4">
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">{PABLO_PRODUCTS.SAY_THIS.name}</p>
-                      <p className="text-sm text-emerald-200 leading-relaxed">{slide.say_this}</p>
+                    <div className="bg-sky-500/8 border border-sky-500/20 rounded-xl p-4">
+                      <p className="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-2">{PABLO_PRODUCTS.SAY_THIS.name}</p>
+                      <p className="text-sm text-sky-200 leading-relaxed">{slide.say_this}</p>
                     </div>
                   )}
                 </div>

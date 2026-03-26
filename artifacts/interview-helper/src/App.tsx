@@ -82,7 +82,7 @@ function CRTFallback() {
         alignItems: "center",
         justifyContent: "center",
         background: "#09090b",
-        color: "rgba(34,197,94,0.7)",
+        color: "rgba(56,189,248,0.7)",
         fontFamily: "monospace",
         fontSize: "0.85rem",
         letterSpacing: "0.1em",
@@ -279,7 +279,7 @@ function AppShell() {
                 transition: "color 0.2s",
               }}
               onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(34,197,94,0.5)";
+                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(56,189,248,0.5)";
               }}
               onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
                 (e.currentTarget as HTMLAnchorElement).style.color = "rgba(63,63,70,0.6)";

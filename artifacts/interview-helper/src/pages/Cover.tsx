@@ -50,7 +50,7 @@ function EmailSubscribeForm() {
       <motion.div
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2 px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm"
+        className="flex items-center gap-2 px-4 py-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 text-sm"
       >
         <Check className="w-4 h-4 shrink-0" />
         {message}
@@ -66,12 +66,12 @@ function EmailSubscribeForm() {
         onChange={e => setEmail(e.target.value)}
         placeholder={t('cover.emailPlaceholder')}
         required
-        className="flex-1 min-w-0 bg-white/4 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 transition-all"
+        className="flex-1 min-w-0 bg-white/4 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/20 transition-all"
       />
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-all disabled:opacity-50"
+        className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-300 text-sm font-medium hover:bg-sky-500/25 transition-all disabled:opacity-50"
       >
         {status === 'loading' ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -103,7 +103,7 @@ export default function Cover() {
         .animated-title {
           background: linear-gradient(
             270deg,
-            #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
+            #38bdf8, #06b6d4, #818cf8, #a78bfa, #ec4899, #a78bfa, #818cf8, #06b6d4, #38bdf8
           );
           background-size: 300% 300%;
           -webkit-background-clip: text;
@@ -114,7 +114,7 @@ export default function Cover() {
         .animated-title-glow {
           background: linear-gradient(
             270deg,
-            #22c55e, #10b981, #06b6d4, #8b5cf6, #ec4899, #8b5cf6, #06b6d4, #10b981, #22c55e
+            #38bdf8, #06b6d4, #818cf8, #a78bfa, #ec4899, #a78bfa, #818cf8, #06b6d4, #38bdf8
           );
           background-size: 300% 300%;
           -webkit-background-clip: text;
@@ -125,8 +125,8 @@ export default function Cover() {
           opacity: 0.35;
         }
         @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 12px 2px rgba(34,197,94,0.18), 0 4px 24px 0 rgba(34,197,94,0.10); }
-          50%       { box-shadow: 0 0 28px 6px rgba(34,197,94,0.38), 0 4px 32px 0 rgba(34,197,94,0.22); }
+          0%, 100% { box-shadow: 0 0 12px 2px rgba(56,189,248,0.18), 0 4px 24px 0 rgba(56,189,248,0.10); }
+          50%       { box-shadow: 0 0 28px 6px rgba(56,189,248,0.38), 0 4px 32px 0 rgba(56,189,248,0.22); }
         }
         .cta-primary {
           animation: glow-pulse 2.8s ease-in-out infinite;
@@ -135,8 +135,8 @@ export default function Cover() {
 
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-emerald-500/4 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-emerald-500/3 blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-sky-500/4 blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-sky-500/3 blur-[100px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto w-full">
@@ -156,9 +156,9 @@ export default function Cover() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="inline-flex items-center gap-2.5 mb-12 px-5 py-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-emerald-500/10"
+          className="inline-flex items-center gap-2.5 mb-12 px-5 py-2 rounded-full border border-sky-400/30 bg-sky-500/10 text-sky-300 text-sm font-mono tracking-widest uppercase shadow-lg shadow-sky-500/10"
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
           ALPHA {__BUILD_VERSION__}
         </motion.div>
 
@@ -200,7 +200,7 @@ export default function Cover() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.45 }}
-          className="text-emerald-500/60 text-sm mb-14 font-mono tracking-widest uppercase"
+          className="text-sky-500/60 text-sm mb-14 font-mono tracking-widest uppercase"
         >
           {t('common.attentionIsAllYouNeed')}
         </motion.p>
@@ -216,7 +216,7 @@ export default function Cover() {
             onClick={login}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
-            className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-emerald-500 text-[#09090b] font-semibold text-sm hover:bg-emerald-400 transition-colors w-full sm:w-auto"
+            className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors w-full sm:w-auto"
           >
             {t('cover.getStarted')} <ChevronRight className="w-4 h-4" />
           </motion.button>

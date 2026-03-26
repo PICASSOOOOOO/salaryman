@@ -8,7 +8,7 @@ interface ArcadeGameProps {
 }
 
 const GAME_LIST = [
-  { id: 'cyber_serpent', label: 'CYBER SERPENT', color: '#00ff41', desc: 'Guide the serpent. Eat data nodes. Don\'t hit walls.' },
+  { id: 'cyber_serpent', label: 'CYBER SERPENT', color: '#38bdf8', desc: 'Guide the serpent. Eat data nodes. Don\'t hit walls.' },
   { id: 'void_invaders', label: 'VOID INVADERS', color: '#ff4444', desc: 'Shoot the descending alien fleet before they reach you.' },
   { id: 'barrel_runner', label: 'BARREL RUNNER', color: '#ffaa00', desc: 'Climb the platforms. Dodge barrels. Reach the top.' },
   { id: 'neon_breaker', label: 'NEON BREAKER', color: '#ff44ff', desc: 'Bounce the ball. Break all the bricks.' },
@@ -243,7 +243,7 @@ function updateSnake(d: any, keys: Set<string>, _w: number, _h: number) {
 }
 
 function renderSnake(ctx: CanvasRenderingContext2D, d: any, _w: number, _h: number, frame: number, color: string) {
-  ctx.fillStyle = 'rgba(0,255,65,.08)';
+  ctx.fillStyle = 'rgba(56,189,248,.08)';
   for (let x = 0; x < 32; x++) for (let y = 0; y < 24; y++) {
     if ((x + y) % 2 === 0) ctx.fillRect(x * GRID, y * GRID, GRID, GRID);
   }

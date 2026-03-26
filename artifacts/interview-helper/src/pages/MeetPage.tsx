@@ -238,24 +238,24 @@ export default function MeetPage({ params }: { params: { code: string } }) {
 
   const S: Record<string, React.CSSProperties> = {
     page: { minHeight: '100vh', background: '#030803', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono', 'Courier New', monospace", padding: '1rem' },
-    card: { background: 'rgba(0,8,0,.95)', border: '1px solid rgba(0,255,65,.3)', borderRadius: '8px', padding: '2rem', maxWidth: '480px', width: '100%', boxShadow: '0 0 30px rgba(0,255,65,.08)' },
-    header: { color: 'rgba(0,255,65,.5)', fontSize: '.55rem', letterSpacing: '.15em', marginBottom: '.5rem' },
-    title: { color: '#00ff41', fontSize: '1rem', letterSpacing: '.1em', marginBottom: '1.5rem', borderBottom: '1px solid rgba(0,255,65,.15)', paddingBottom: '.75rem' },
-    label: { color: 'rgba(0,255,65,.5)', fontSize: '.55rem', letterSpacing: '.1em', display: 'block', marginBottom: '.3rem' },
-    input: { width: '100%', background: 'rgba(0,255,65,.04)', border: '1px solid rgba(0,255,65,.25)', color: '#00ff41', fontFamily: "'Share Tech Mono', monospace", fontSize: '.75rem', padding: '.6rem .8rem', outline: 'none', boxSizing: 'border-box' as const, borderRadius: '2px' },
-    btn: { display: 'block', width: '100%', padding: '.7rem', background: 'rgba(0,255,65,.1)', border: '1px solid rgba(0,255,65,.4)', color: '#00ff41', cursor: 'pointer', fontFamily: "'Share Tech Mono', monospace", fontSize: '.7rem', letterSpacing: '.12em', marginTop: '1rem', borderRadius: '2px' },
+    card: { background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', borderRadius: '8px', padding: '2rem', maxWidth: '480px', width: '100%', boxShadow: '0 0 30px rgba(56,189,248,.08)' },
+    header: { color: 'rgba(56,189,248,.5)', fontSize: '.55rem', letterSpacing: '.15em', marginBottom: '.5rem' },
+    title: { color: '#38bdf8', fontSize: '1rem', letterSpacing: '.1em', marginBottom: '1.5rem', borderBottom: '1px solid rgba(56,189,248,.15)', paddingBottom: '.75rem' },
+    label: { color: 'rgba(56,189,248,.5)', fontSize: '.55rem', letterSpacing: '.1em', display: 'block', marginBottom: '.3rem' },
+    input: { width: '100%', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono', monospace", fontSize: '.75rem', padding: '.6rem .8rem', outline: 'none', boxSizing: 'border-box' as const, borderRadius: '2px' },
+    btn: { display: 'block', width: '100%', padding: '.7rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono', monospace", fontSize: '.7rem', letterSpacing: '.12em', marginTop: '1rem', borderRadius: '2px' },
     dangerBtn: { display: 'block', padding: '.4rem .9rem', background: 'rgba(255,60,60,.1)', border: '1px solid rgba(255,60,60,.4)', color: 'rgba(255,80,80,.8)', cursor: 'pointer', fontFamily: "'Share Tech Mono', monospace", fontSize: '.55rem', letterSpacing: '.08em', borderRadius: '2px' },
     grid: { display: 'grid', gap: '4px', padding: '4px' },
-    videoBox: { aspectRatio: '4/3' as const, background: 'rgba(0,0,0,.7)', borderRadius: '4px', overflow: 'hidden', position: 'relative' as const, border: '1px solid rgba(0,255,65,.15)' },
-    nameTag: { position: 'absolute' as const, bottom: 4, left: 6, fontSize: '.4rem', color: 'rgba(0,255,65,.7)', background: 'rgba(0,0,0,.7)', padding: '1px 5px', borderRadius: '2px' },
-    controls: { display: 'flex', gap: '8px', justifyContent: 'center', padding: '8px 4px', borderTop: '1px solid rgba(0,255,65,.1)' },
+    videoBox: { aspectRatio: '4/3' as const, background: 'rgba(0,0,0,.7)', borderRadius: '4px', overflow: 'hidden', position: 'relative' as const, border: '1px solid rgba(56,189,248,.15)' },
+    nameTag: { position: 'absolute' as const, bottom: 4, left: 6, fontSize: '.4rem', color: 'rgba(56,189,248,.7)', background: 'rgba(0,0,0,.7)', padding: '1px 5px', borderRadius: '2px' },
+    controls: { display: 'flex', gap: '8px', justifyContent: 'center', padding: '8px 4px', borderTop: '1px solid rgba(56,189,248,.1)' },
     ctrlBtn: { padding: '.35rem .9rem', fontFamily: "'Share Tech Mono', monospace", fontSize: '.5rem', cursor: 'pointer', borderRadius: '3px' },
   };
 
   if (stage === 'loading') {
     return (
       <div style={S.page}>
-        <div style={{ color: 'rgba(0,255,65,.4)', fontSize: '.7rem', letterSpacing: '.2em' }}>LOADING SIGNAL...</div>
+        <div style={{ color: 'rgba(56,189,248,.4)', fontSize: '.7rem', letterSpacing: '.2em' }}>LOADING SIGNAL...</div>
       </div>
     );
   }
@@ -266,7 +266,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
         <div style={S.card}>
           <div style={S.header}>HOLOGRAM SIGNAL</div>
           <div style={{ ...S.title, color: 'rgba(255,80,80,.7)' }}>SIGNAL LOST</div>
-          <div style={{ color: 'rgba(0,255,65,.5)', fontSize: '.65rem', lineHeight: 1.8 }}>
+          <div style={{ color: 'rgba(56,189,248,.5)', fontSize: '.65rem', lineHeight: 1.8 }}>
             This meeting link is invalid or has expired.<br />
             Contact your host for a new link.
           </div>
@@ -293,7 +293,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
               maxLength={24}
             />
           </div>
-          <div style={{ color: 'rgba(0,255,65,.35)', fontSize: '.55rem', lineHeight: 1.7, marginBottom: '.8rem' }}>
+          <div style={{ color: 'rgba(56,189,248,.35)', fontSize: '.55rem', lineHeight: 1.7, marginBottom: '.8rem' }}>
             Camera & microphone access may be requested.<br />No login required.
           </div>
           <button
@@ -317,12 +317,12 @@ export default function MeetPage({ params }: { params: { code: string } }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem', padding: '0 4px' }}>
           <div>
             <div style={S.header}>▓ HOLOGRAM LINK — LIVE ▓</div>
-            <div style={{ color: '#00ff41', fontSize: '.75rem', letterSpacing: '.08em' }}>{meetingTitle} · {peers.length + 1} participant{peers.length !== 0 ? 's' : ''}</div>
+            <div style={{ color: '#38bdf8', fontSize: '.75rem', letterSpacing: '.08em' }}>{meetingTitle} · {peers.length + 1} participant{peers.length !== 0 ? 's' : ''}</div>
           </div>
           <button style={S.dangerBtn} onClick={leaveCall}>✕ LEAVE</button>
         </div>
 
-        <div style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(0,255,65,.2)', borderRadius: '6px', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(0,8,0,.9)', border: '1px solid rgba(56,189,248,.2)', borderRadius: '6px', overflow: 'hidden' }}>
           <div style={{ ...S.grid, gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
             <div style={S.videoBox}>
               {myStream && videoEnabled ? (
@@ -339,7 +339,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
               <div style={S.nameTag}>YOU{!audioEnabled ? ' (MUTED)' : ''}</div>
             </div>
             {peers.map(peer => (
-              <div key={peer.id} style={{ ...S.videoBox, border: peer.isGuest ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(0,255,65,.15)' }}>
+              <div key={peer.id} style={{ ...S.videoBox, border: peer.isGuest ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(56,189,248,.15)' }}>
                 {peer.stream ? (
                   <video
                     ref={el => { if (el && peer.stream) { el.srcObject = peer.stream; el.play().catch(() => {}); } }}
@@ -352,7 +352,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
                     <div style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em' }}>CONNECTING...</div>
                   </div>
                 )}
-                <div style={{ ...S.nameTag, color: peer.isGuest ? 'rgba(0,200,255,.7)' : 'rgba(0,255,65,.7)' }}>
+                <div style={{ ...S.nameTag, color: peer.isGuest ? 'rgba(0,200,255,.7)' : 'rgba(56,189,248,.7)' }}>
                   {peer.name}{peer.isGuest ? '' : ' [IN-GAME]'}
                 </div>
               </div>
@@ -367,7 +367,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
                   if (t) { t.enabled = !t.enabled; setAudioEnabled(t.enabled); }
                 }
               }}
-              style={{ ...S.ctrlBtn, background: audioEnabled ? 'rgba(0,255,65,.08)' : 'rgba(255,60,60,.12)', border: `1px solid ${audioEnabled ? 'rgba(0,255,65,.3)' : 'rgba(255,60,60,.4)'}`, color: audioEnabled ? 'rgba(0,255,65,.7)' : 'rgba(255,80,80,.7)' }}
+              style={{ ...S.ctrlBtn, background: audioEnabled ? 'rgba(56,189,248,.08)' : 'rgba(255,60,60,.12)', border: `1px solid ${audioEnabled ? 'rgba(56,189,248,.3)' : 'rgba(255,60,60,.4)'}`, color: audioEnabled ? 'rgba(56,189,248,.7)' : 'rgba(255,80,80,.7)' }}
             >
               {audioEnabled ? 'MIC ON' : 'MIC OFF'}
             </button>
@@ -378,7 +378,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
                   if (t) { t.enabled = !t.enabled; setVideoEnabled(t.enabled); }
                 }
               }}
-              style={{ ...S.ctrlBtn, background: videoEnabled ? 'rgba(0,255,65,.08)' : 'rgba(255,60,60,.12)', border: `1px solid ${videoEnabled ? 'rgba(0,255,65,.3)' : 'rgba(255,60,60,.4)'}`, color: videoEnabled ? 'rgba(0,255,65,.7)' : 'rgba(255,80,80,.7)' }}
+              style={{ ...S.ctrlBtn, background: videoEnabled ? 'rgba(56,189,248,.08)' : 'rgba(255,60,60,.12)', border: `1px solid ${videoEnabled ? 'rgba(56,189,248,.3)' : 'rgba(255,60,60,.4)'}`, color: videoEnabled ? 'rgba(56,189,248,.7)' : 'rgba(255,80,80,.7)' }}
             >
               {videoEnabled ? 'CAM ON' : 'CAM OFF'}
             </button>
@@ -388,7 +388,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
           </div>
         </div>
 
-        <div style={{ marginTop: '.5rem', padding: '0 4px', color: 'rgba(0,255,65,.25)', fontSize: '.45rem', letterSpacing: '.08em' }}>
+        <div style={{ marginTop: '.5rem', padding: '0 4px', color: 'rgba(56,189,248,.25)', fontSize: '.45rem', letterSpacing: '.08em' }}>
           SALARYMAN HOLOGRAM LINK · GUEST SESSION · ROOM: {code.toUpperCase()}
         </div>
       </div>

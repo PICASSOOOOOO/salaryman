@@ -202,7 +202,7 @@ export default function PhoneVoicemailPage() {
               return (
                 <div key={v.id} style={{
                   borderBottom: `1px solid ${crt(0.05)}`,
-                  background: !v.isRead ? 'rgba(0,255,65,0.025)' : 'transparent',
+                  background: !v.isRead ? 'rgba(56,189,248,0.025)' : 'transparent',
                   transition: 'background 0.15s',
                 }}>
                   <div
@@ -262,7 +262,7 @@ export default function PhoneVoicemailPage() {
                   </div>
 
                   {isExpanded && (
-                    <div style={{ padding: '14px 20px 18px', background: 'rgba(0,255,65,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
+                    <div style={{ padding: '14px 20px 18px', background: 'rgba(56,189,248,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
                       {v.recordingUrl && (
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ fontSize: '0.42rem', color: blue(0.5), letterSpacing: '0.2em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>

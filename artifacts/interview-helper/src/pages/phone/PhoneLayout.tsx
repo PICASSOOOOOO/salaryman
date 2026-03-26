@@ -34,7 +34,7 @@ export function PhonePageLayout({
               <div style={{
                 width: 36, height: 36, borderRadius: 8,
                 border: `1px solid ${crt(0.2)}`,
-                background: 'linear-gradient(135deg, rgba(0,255,65,0.06) 0%, rgba(0,255,65,0.01) 100%)',
+                background: 'linear-gradient(135deg, rgba(56,189,248,0.06) 0%, rgba(56,189,248,0.01) 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {icon}
@@ -96,7 +96,7 @@ export function PhonePageLayout({
                 <div style={{
                   width: 52, height: 52, borderRadius: 10,
                   border: `1px solid ${crt(0.25)}`,
-                  background: 'linear-gradient(135deg, rgba(0,255,65,0.08) 0%, rgba(0,255,65,0.02) 100%)',
+                  background: 'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(56,189,248,0.02) 100%)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: `0 0 20px ${crt(0.06)}, inset 0 0 20px rgba(0,0,0,0.3)`,
                   position: 'relative',
@@ -134,7 +134,7 @@ export function PhonePageLayout({
       <style>{`
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(0,255,65,0.1); } 50% { box-shadow: 0 0 16px rgba(0,255,65,0.2); } }
+        @keyframes glowPulse { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,0.1); } 50% { box-shadow: 0 0 16px rgba(56,189,248,0.2); } }
         @keyframes waveform { 0% { height: 20%; } 25% { height: 60%; } 50% { height: 35%; } 75% { height: 80%; } 100% { height: 20%; } }
       `}</style>
     </div>
@@ -165,7 +165,7 @@ export function PhoneCardHeader({ children, style, accent }: { children: React.R
       color: accent || crt(0.35),
       letterSpacing: '0.22em',
       borderBottom: `1px solid ${crt(0.07)}`,
-      background: 'rgba(0,255,65,0.015)',
+      background: 'rgba(56,189,248,0.015)',
       textTransform: 'uppercase',
       display: 'flex',
       alignItems: 'center',

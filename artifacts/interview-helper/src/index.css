@@ -6,31 +6,31 @@
   --font-mono: 'Fira Code', 'Noto Sans JP', 'Noto Sans KR', 'Noto Sans SC', monospace;
   --font-display: 'VT323', monospace;
 
-  /* Modern dark SaaS — dark zinc base, emerald green accent */
-  --color-background: hsl(240 6% 4%);
-  --color-foreground: hsl(0 0% 92%);
+  /* RimWorld-inspired — dark slate base, steel blue/teal accent */
+  --color-background: hsl(220 15% 5%);
+  --color-foreground: hsl(210 20% 92%);
 
-  --color-card: hsl(240 5% 6%);
-  --color-card-foreground: hsl(0 0% 92%);
+  --color-card: hsl(220 14% 7%);
+  --color-card-foreground: hsl(210 20% 92%);
 
-  --color-popover: hsl(240 5% 7%);
-  --color-popover-foreground: hsl(0 0% 92%);
+  --color-popover: hsl(220 14% 8%);
+  --color-popover-foreground: hsl(210 20% 92%);
 
-  --color-border: hsl(240 4% 13%);
-  --color-input: hsl(240 5% 8%);
-  --color-ring: hsl(142 71% 45%);
+  --color-border: hsl(220 12% 15%);
+  --color-input: hsl(220 14% 9%);
+  --color-ring: hsl(200 80% 55%);
 
-  --color-primary: hsl(142 71% 45%);
-  --color-primary-foreground: hsl(240 6% 4%);
+  --color-primary: hsl(200 80% 55%);
+  --color-primary-foreground: hsl(220 15% 5%);
 
-  --color-secondary: hsl(240 4% 11%);
-  --color-secondary-foreground: hsl(0 0% 75%);
+  --color-secondary: hsl(220 12% 12%);
+  --color-secondary-foreground: hsl(210 15% 72%);
 
-  --color-muted: hsl(240 4% 9%);
-  --color-muted-foreground: hsl(240 5% 50%);
+  --color-muted: hsl(220 12% 10%);
+  --color-muted-foreground: hsl(220 10% 48%);
 
-  --color-accent: hsl(142 71% 45%);
-  --color-accent-foreground: hsl(240 6% 4%);
+  --color-accent: hsl(185 75% 50%);
+  --color-accent-foreground: hsl(220 15% 5%);
 
   --color-destructive: hsl(0 72% 51%);
   --color-destructive-foreground: hsl(0 0% 100%);
@@ -78,8 +78,8 @@ body.game-route::after {
 @layer base {
   body {
     @apply bg-background text-foreground font-sans min-h-screen;
-    background-color: hsl(240 6% 4%);
-    background-image: radial-gradient(ellipse at 50% 0%, rgba(34, 197, 94, 0.04) 0%, transparent 65%);
+    background-color: hsl(220 15% 5%);
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.04) 0%, transparent 65%);
   }
 
   /* ─── Scrollbar ─── */
@@ -92,18 +92,18 @@ body.game-route::after {
   .scrollbar-hide::-webkit-scrollbar { display: none; }
 
   /* ─── Selection ─── */
-  ::selection { background: rgba(34, 197, 94, 0.25); color: hsl(0 0% 92%); }
+  ::selection { background: rgba(56, 189, 248, 0.22); color: hsl(210 20% 92%); }
 
   /* ─── Markdown prose ─── */
   .prose { @apply text-foreground max-w-none; }
-  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(228, 228, 231, 0.8); }
-  .prose strong { @apply font-bold; color: hsl(0 0% 92%); }
-  .prose em { color: rgba(228, 228, 231, 0.7); font-style: italic; }
-  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(228, 228, 231, 0.8); }
+  .prose p { @apply leading-relaxed mb-4 text-sm; color: rgba(210, 220, 230, 0.8); }
+  .prose strong { @apply font-bold; color: hsl(210 20% 92%); }
+  .prose em { color: rgba(210, 220, 230, 0.7); font-style: italic; }
+  .prose ul, .prose ol { @apply mb-4 pl-5; color: rgba(210, 220, 230, 0.8); }
   .prose li { @apply mb-1 text-sm; }
-  .prose li::marker { color: hsl(142 71% 45%); }
+  .prose li::marker { color: hsl(200 80% 55%); }
   .prose h1, .prose h2, .prose h3 {
-    color: hsl(0 0% 92%);
+    color: hsl(210 20% 92%);
     font-family: 'Share Tech Mono', monospace;
     letter-spacing: 0.03em;
     @apply font-bold mb-3 mt-5;
@@ -113,10 +113,10 @@ body.game-route::after {
   .prose h3 { font-size: 1.1rem; }
   .prose code {
     font-family: 'Fira Code', monospace;
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
     padding: 0.1em 0.4em;
-    color: hsl(142 71% 55%);
+    color: hsl(200 80% 68%);
     border-radius: 4px;
   }
   .prose pre {
@@ -129,18 +129,18 @@ body.game-route::after {
     border: none !important;
     padding: 0 !important;
   }
-  .prose a { color: hsl(142 71% 55%); text-decoration: underline; text-underline-offset: 3px; }
+  .prose a { color: hsl(200 80% 65%); text-decoration: underline; text-underline-offset: 3px; }
   .prose blockquote {
-    border-left: 2px solid rgba(34, 197, 94, 0.35);
+    border-left: 2px solid rgba(56, 189, 248, 0.35);
     padding-left: 1rem;
-    color: rgba(228, 228, 231, 0.6);
+    color: rgba(210, 220, 230, 0.6);
     margin-left: 0;
     font-style: italic;
   }
   .prose hr { border-color: rgba(255,255,255,0.08); }
   .prose table { width: 100%; }
-  .prose th { color: hsl(0 0% 92%); border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; padding: 0.5rem; }
-  .prose td { border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0.5rem; color: rgba(228, 228, 231, 0.7); }
+  .prose th { color: hsl(210 20% 92%); border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; padding: 0.5rem; }
+  .prose td { border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0.5rem; color: rgba(210, 220, 230, 0.7); }
 
   /* Syntax highlighter override */
   .shiki, .shiki span { background: transparent !important; }
@@ -157,8 +157,8 @@ body.game-route::after {
 }
 
 @keyframes phosphor-pulse {
-  0%, 100% { text-shadow: 0 0 6px rgba(0,255,65,0.3); }
-  50%      { text-shadow: 0 0 8px rgba(0,255,65,0.45); }
+  0%, 100% { text-shadow: 0 0 6px rgba(56,189,248,0.3); }
+  50%      { text-shadow: 0 0 8px rgba(56,189,248,0.45); }
 }
 
 @keyframes cursor-blink {
@@ -189,47 +189,46 @@ body.game-route::after {
   to   { opacity: 0.5; }
 }
 
-/* ─── CRT Utility Classes (for game pages) ─── */
+/* ─── CRT Utility Classes (for game pages) — RimWorld-inspired teal/steel blue ─── */
 .crt-text {
-  color: #00ff41;
-  text-shadow: 0 0 6px rgba(0,255,65,0.25);
+  color: #38bdf8;
 }
 
 .crt-text-pulse {
-  color: #00ff41;
+  color: #38bdf8;
   animation: phosphor-pulse 3s ease-in-out infinite;
 }
 
 .crt-border {
-  border: 1px solid rgba(0,255,65,0.3);
-  box-shadow: 0 0 8px rgba(0,255,65,0.08), inset 0 0 8px rgba(0,255,65,0.03);
+  border: 1px solid rgba(56,189,248,0.28);
+  box-shadow: 0 0 8px rgba(56,189,248,0.06), inset 0 0 8px rgba(56,189,248,0.02);
 }
 
 .crt-border-bright {
-  border: 1px solid rgba(0,255,65,0.6);
-  box-shadow: 0 0 12px rgba(0,255,65,0.2), inset 0 0 12px rgba(0,255,65,0.05);
+  border: 1px solid rgba(56,189,248,0.55);
+  box-shadow: 0 0 12px rgba(56,189,248,0.16), inset 0 0 12px rgba(56,189,248,0.04);
 }
 
 .crt-panel {
-  background: rgba(0, 20, 0, 0.85);
-  border: 1px solid rgba(0,255,65,0.25);
+  background: rgba(8, 18, 28, 0.88);
+  border: 1px solid rgba(56,189,248,0.2);
   box-shadow:
-    0 0 0 1px rgba(0,255,65,0.05),
-    inset 0 0 30px rgba(0,255,65,0.03);
+    0 0 0 1px rgba(56,189,248,0.04),
+    inset 0 0 30px rgba(56,189,248,0.02);
 }
 
 .crt-panel-active {
-  background: rgba(0, 30, 0, 0.9);
-  border: 1px solid rgba(0,255,65,0.6);
+  background: rgba(10, 22, 36, 0.92);
+  border: 1px solid rgba(56,189,248,0.5);
   box-shadow:
-    0 0 16px rgba(0,255,65,0.15),
-    inset 0 0 20px rgba(0,255,65,0.06);
+    0 0 16px rgba(56,189,248,0.12),
+    inset 0 0 20px rgba(56,189,248,0.04);
 }
 
 .crt-btn {
   background: transparent;
-  border: 1px solid rgba(0,255,65,0.4);
-  color: #00ff41;
+  border: 1px solid rgba(56,189,248,0.35);
+  color: #7dd3fc;
   font-family: 'Share Tech Mono', monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -241,70 +240,70 @@ body.game-route::after {
 }
 
 .crt-btn:hover {
-  background: rgba(0,255,65,0.12);
-  border-color: rgba(0,255,65,0.8);
-  box-shadow: 0 0 12px rgba(0,255,65,0.2);
-  text-shadow: 0 0 8px rgba(0,255,65,0.6);
+  background: rgba(56,189,248,0.1);
+  border-color: rgba(56,189,248,0.7);
+  box-shadow: 0 0 12px rgba(56,189,248,0.16);
+  color: #bae6fd;
 }
 
 .crt-btn-primary {
-  background: rgba(0,255,65,0.15);
-  border: 1px solid rgba(0,255,65,0.7);
-  color: #00ff41;
+  background: rgba(56,189,248,0.12);
+  border: 1px solid rgba(56,189,248,0.6);
+  color: #7dd3fc;
   font-family: 'Share Tech Mono', monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.7rem;
-  box-shadow: 0 0 10px rgba(0,255,65,0.15);
+  box-shadow: 0 0 10px rgba(56,189,248,0.12);
   cursor: pointer;
   padding: 0.4rem 0.8rem;
   transition: all 0.15s;
 }
 
 .crt-btn-primary:hover {
-  background: rgba(0,255,65,0.25);
-  box-shadow: 0 0 20px rgba(0,255,65,0.3);
-  text-shadow: 0 0 8px rgba(0,255,65,0.8);
+  background: rgba(56,189,248,0.22);
+  box-shadow: 0 0 20px rgba(56,189,248,0.24);
+  color: #bae6fd;
 }
 
 .crt-input {
-  background: rgba(0, 15, 0, 0.9);
-  border: 1px solid rgba(0,255,65,0.3);
-  color: #00ff41;
+  background: rgba(8, 15, 25, 0.92);
+  border: 1px solid rgba(56,189,248,0.25);
+  color: #bae6fd;
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.85rem;
-  caret-color: #00ff41;
+  caret-color: #38bdf8;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .crt-input:focus {
-  border-color: rgba(0,255,65,0.7);
-  box-shadow: 0 0 12px rgba(0,255,65,0.15), inset 0 0 8px rgba(0,255,65,0.04);
+  border-color: rgba(56,189,248,0.6);
+  box-shadow: 0 0 12px rgba(56,189,248,0.12), inset 0 0 8px rgba(56,189,248,0.03);
 }
 
 .crt-input::placeholder {
-  color: rgba(0,255,65,0.3);
+  color: rgba(56,189,248,0.28);
 }
 
 .crt-label {
   font-family: 'VT323', monospace;
   font-size: 1rem;
-  color: rgba(0,255,65,0.5);
+  color: rgba(56,189,248,0.45);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .crt-divider {
   border: none;
-  border-top: 1px solid rgba(0,255,65,0.15);
+  border-top: 1px solid rgba(56,189,248,0.12);
   width: 100%;
 }
 
 .cursor-blink::after {
   content: '_';
   animation: cursor-blink 1s step-end infinite;
-  color: #00ff41;
+  color: #38bdf8;
 }
 
 .glitch {
@@ -316,8 +315,8 @@ body.game-route::after {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 6px #22c55e;
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
   animation: none;
   display: inline-block;
 }
@@ -346,7 +345,7 @@ body.game-route::after {
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(0,255,65,0.4);
+  color: rgba(56,189,248,0.35);
   padding: 0.5rem 0.75rem;
   transition: all 0.15s;
   cursor: pointer;
@@ -357,18 +356,17 @@ body.game-route::after {
 }
 
 .crt-tab:hover {
-  color: rgba(0,255,65,0.8);
-  background: rgba(0,255,65,0.05);
+  color: rgba(56,189,248,0.75);
+  background: rgba(56,189,248,0.04);
 }
 
 .crt-tab.active {
-  color: #00ff41;
-  border-top-color: rgba(0,255,65,0.5);
-  border-left-color: rgba(0,255,65,0.5);
-  border-right-color: rgba(0,255,65,0.5);
+  color: #7dd3fc;
+  border-top-color: rgba(56,189,248,0.45);
+  border-left-color: rgba(56,189,248,0.45);
+  border-right-color: rgba(56,189,248,0.45);
   border-bottom-color: transparent;
-  background: rgba(0,255,65,0.08);
-  text-shadow: 0 0 8px rgba(0,255,65,0.5);
+  background: rgba(56,189,248,0.06);
 }
 
 /* ─── Scrolling Data BG ─── */
@@ -381,7 +379,7 @@ body.game-route::after {
   content: attr(data-text);
   position: absolute;
   inset: 0;
-  color: rgba(0,255,65,0.03);
+  color: rgba(56,189,248,0.025);
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.6rem;
   line-height: 1.4;
@@ -415,5 +413,5 @@ pre {
 
 code {
   font-family: 'Fira Code', monospace !important;
-  color: hsl(142 71% 55%) !important;
+  color: hsl(200 80% 68%) !important;
 }

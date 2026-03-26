@@ -84,17 +84,17 @@ const STAGE_COLORS: Record<string, string> = {
   applied: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   screening: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   interview: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  offer: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  hired: 'bg-green-500/20 text-green-300 border-green-500/30',
+  offer: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+  hired: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   rejected: 'bg-red-500/20 text-red-300 border-red-500/30',
 };
 const JOB_STATUS_COLORS: Record<string, string> = {
-  open: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  open: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   closed: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
   filled: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
 };
 const STAFF_STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  active: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   'on leave': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   terminated: 'bg-red-500/20 text-red-300 border-red-500/30',
   departed: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
@@ -344,7 +344,7 @@ export default function Hiring() {
 
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: boomerMode ? 'Open Jobs' : 'Open Positions', value: stats.openPositions, color: 'text-emerald-400' },
+            { label: boomerMode ? 'Open Jobs' : 'Open Positions', value: stats.openPositions, color: 'text-sky-400' },
             { label: 'Applicants', value: stats.totalApplicants, color: 'text-blue-400' },
             { label: boomerMode ? 'Active Employees' : 'Active Staff', value: stats.activeStaff, color: 'text-purple-400' },
             { label: 'Filled This Month', value: stats.filledThisMonth, color: 'text-amber-400' },
@@ -452,7 +452,7 @@ export default function Hiring() {
                   <motion.div key={job.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}>
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500/30 to-emerald-500/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500/30 to-sky-500/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
                           {job.title.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -606,7 +606,7 @@ export default function Hiring() {
                                   <p className="text-[10px] text-muted-foreground">{getJobTitle(app.jobId)}</p>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  {stage === 'hired' && <Check className="w-3 h-3 text-green-400" />}
+                                  {stage === 'hired' && <Check className="w-3 h-3 text-sky-400" />}
                                   <button onClick={() => deleteApplicant(app.id)} className="p-0.5 rounded text-muted-foreground/40 hover:text-destructive transition-colors"><X className="w-3 h-3" /></button>
                                 </div>
                               </div>
@@ -698,7 +698,7 @@ export default function Hiring() {
                         <p className="text-sm text-muted-foreground">{selectedStaff.role}{selectedStaff.department ? ` · ${selectedStaff.department}` : ''}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold uppercase ${STAFF_STATUS_COLORS[selectedStaff.status] ?? STAFF_STATUS_COLORS.active}`}>{selectedStaff.status}</span>
-                          {selectedStaff.salary && <span className="text-[10px] text-emerald-400">${(selectedStaff.salary / 1000).toFixed(0)}k</span>}
+                          {selectedStaff.salary && <span className="text-[10px] text-sky-400">${(selectedStaff.salary / 1000).toFixed(0)}k</span>}
                           <span className="text-[10px] text-muted-foreground/40">Since {new Date(selectedStaff.startDate).toLocaleDateString()}</span>
                         </div>
                       </div>
@@ -801,15 +801,15 @@ export default function Hiring() {
                           </div>
                           {onboardingItems.length > 0 && (
                             <div className="w-24 bg-muted/30 rounded-full h-1.5">
-                              <div className="bg-emerald-500 rounded-full h-1.5 transition-all" style={{ width: `${(onboardingItems.filter(i => i.completed).length / onboardingItems.length) * 100}%` }} />
+                              <div className="bg-sky-500 rounded-full h-1.5 transition-all" style={{ width: `${(onboardingItems.filter(i => i.completed).length / onboardingItems.length) * 100}%` }} />
                             </div>
                           )}
                         </div>
                         <div className="space-y-1.5 mb-4 max-h-60 overflow-y-auto">
                           {onboardingItems.map(item => (
                             <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/20 transition-colors cursor-pointer group" onClick={() => toggleOnboardingItem(item)}>
-                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${item.completed ? 'bg-emerald-500/20 border-emerald-500/50' : 'border-border hover:border-emerald-500/50'}`}>
-                                {item.completed && <Check className="w-3 h-3 text-emerald-400" />}
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${item.completed ? 'bg-sky-500/20 border-sky-500/50' : 'border-border hover:border-sky-500/50'}`}>
+                                {item.completed && <Check className="w-3 h-3 text-sky-400" />}
                               </div>
                               <span className={`text-sm flex-1 transition-colors ${item.completed ? 'line-through text-muted-foreground/50' : 'text-foreground'}`}>{item.item}</span>
                               {item.completedAt && <span className="text-[10px] text-muted-foreground/40">{new Date(item.completedAt).toLocaleDateString()}</span>}

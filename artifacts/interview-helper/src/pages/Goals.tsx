@@ -34,7 +34,7 @@ interface Goal {
 
 const PERIODS = ['Monthly', 'Quarterly', 'Yearly', 'Custom'] as const;
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  active: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
   paused: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
   completed: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   abandoned: 'bg-red-500/20 text-red-300 border-red-500/30',
@@ -380,7 +380,7 @@ export default function Goals() {
                       <div className="flex-1 bg-muted/30 rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-700 ${
-                            progress >= 100 ? 'bg-emerald-500' : progress >= 60 ? 'bg-primary' : progress >= 30 ? 'bg-amber-500' : 'bg-rose-500'
+                            progress >= 100 ? 'bg-sky-500' : progress >= 60 ? 'bg-primary' : progress >= 30 ? 'bg-amber-500' : 'bg-rose-500'
                           }`}
                           style={{ width: `${progress}%` }}
                         />
@@ -435,7 +435,7 @@ export default function Goals() {
                                   <button onClick={() => handleToggleMilestone(goal.id, m)}
                                     className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
                                       m.completed
-                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                        ? 'bg-sky-500/20 border-sky-500/40 text-sky-400'
                                         : 'border-border hover:border-primary/50'
                                     }`}>
                                     {m.completed && <Check className="w-2.5 h-2.5" />}

@@ -212,33 +212,33 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
         @keyframes shimmer { 0%{background-position:-200px}100%{background-position:200px} }
         .crypto-btn:hover { filter: brightness(1.3); }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: rgba(0,255,65,.02); }
-        ::-webkit-scrollbar-thumb { background: rgba(0,255,65,.15); }
+        ::-webkit-scrollbar-track { background: rgba(56,189,248,.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(56,189,248,.15); }
       `}</style>
 
       {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-          background: toast.ok ? 'rgba(0,255,65,.15)' : 'rgba(255,68,68,.15)',
-          border: `1px solid ${toast.ok ? 'rgba(0,255,65,.5)' : 'rgba(255,68,68,.5)'}`,
-          color: toast.ok ? '#00ff41' : '#ff4444',
+          background: toast.ok ? 'rgba(56,189,248,.15)' : 'rgba(255,68,68,.15)',
+          border: `1px solid ${toast.ok ? 'rgba(56,189,248,.5)' : 'rgba(255,68,68,.5)'}`,
+          color: toast.ok ? '#38bdf8' : '#ff4444',
           padding: '.4rem 1rem', ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
           zIndex: 10001, pointerEvents: 'none',
         }}>{toast.msg}</div>
       )}
 
       {/* Header */}
-      <div style={{ padding: '.6rem 1rem', borderBottom: '1px solid rgba(0,255,65,.2)', display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
+      <div style={{ padding: '.6rem 1rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
         <div>
-          <div style={{ ...VT, fontSize: '1.6rem', color: '#00ff41', letterSpacing: '.2em', textShadow: '0 0 16px rgba(0,255,65,.4)' }}>
+          <div style={{ ...VT, fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.2em', textShadow: '0 0 16px rgba(56,189,248,.4)' }}>
             CRYPTO STORE
           </div>
-          <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em' }}>PABLO CORP COSMETIC EXCHANGE ALPHA {__BUILD_VERSION__}</div>
+          <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em' }}>PABLO CORP COSMETIC EXCHANGE ALPHA {__BUILD_VERSION__}</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '.45rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em' }}>BALANCE</div>
+            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>BALANCE</div>
             <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.1em', textShadow: '0 0 10px rgba(255,200,0,.3)' }}>
               ₿ {balance.toLocaleString()} CRYPTO
             </div>
@@ -254,7 +254,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,255,65,.1)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.1)', flexShrink: 0 }}>
         {([
           { id: 'store', label: '🛒 STORE' },
           { id: 'wardrobe', label: `🧥 WARDROBE (${wardrobeItems.length})` },
@@ -265,9 +265,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
             onClick={() => setTab(t.id)}
             style={{
               flex: 1, padding: '.5rem', border: 'none',
-              borderBottom: tab === t.id ? '2px solid #00ff41' : '2px solid transparent',
-              background: tab === t.id ? 'rgba(0,255,65,.06)' : 'transparent',
-              color: tab === t.id ? '#00ff41' : 'rgba(0,255,65,.35)',
+              borderBottom: tab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
+              background: tab === t.id ? 'rgba(56,189,248,.06)' : 'transparent',
+              color: tab === t.id ? '#38bdf8' : 'rgba(56,189,248,.35)',
               cursor: 'pointer', ...VT, fontSize: '1rem', letterSpacing: '.1em',
             }}
           >
@@ -278,7 +278,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
 
       {loading ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ ...VT, fontSize: '1.5rem', color: '#00ff41', letterSpacing: '.2em', animation: 'pulse 1.2s infinite' }}>LOADING...</div>
+          <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em', animation: 'pulse 1.2s infinite' }}>LOADING...</div>
         </div>
       ) : (
         <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
@@ -295,9 +295,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                     style={{
                       ...ST, fontSize: '.55rem', letterSpacing: '.08em',
                       padding: '.3rem .6rem', cursor: 'pointer', border: 'none',
-                      background: category === cat ? 'rgba(0,255,65,.15)' : 'rgba(0,255,65,.04)',
-                      color: category === cat ? '#00ff41' : 'rgba(0,255,65,.4)',
-                      borderBottom: category === cat ? '2px solid #00ff41' : '2px solid transparent',
+                      background: category === cat ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.04)',
+                      color: category === cat ? '#38bdf8' : 'rgba(56,189,248,.4)',
+                      borderBottom: category === cat ? '2px solid #38bdf8' : '2px solid transparent',
                     }}
                   >
                     {CATEGORY_LABELS[cat]}
@@ -315,8 +315,8 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                     <div
                       key={item.id}
                       style={{
-                        border: equipped ? `1px solid ${rarityColor}` : owned ? '1px solid rgba(0,255,65,.25)' : '1px solid rgba(0,255,65,.12)',
-                        background: equipped ? `${rarityColor}12` : owned ? 'rgba(0,255,65,.05)' : 'rgba(0,255,65,.02)',
+                        border: equipped ? `1px solid ${rarityColor}` : owned ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.12)',
+                        background: equipped ? `${rarityColor}12` : owned ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.02)',
                         padding: '.7rem',
                         position: 'relative',
                         transition: 'border .2s',
@@ -329,16 +329,16 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
 
                       {/* Icon + color swatch */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem' }}>
-                        <div style={{ width: 28, height: 28, background: item.colorHex ?? '#00ff41', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: `1px solid ${rarityColor}44` }}>
+                        <div style={{ width: 28, height: 28, background: item.colorHex ?? '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: `1px solid ${rarityColor}44` }}>
                           {item.iconEmoji}
                         </div>
                         <div>
                           <div style={{ ...VT, fontSize: '1rem', color: rarityColor, letterSpacing: '.06em', lineHeight: 1 }}>{item.name}</div>
-                          <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em' }}>{item.category.toUpperCase()}</div>
+                          <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em' }}>{item.category.toUpperCase()}</div>
                         </div>
                       </div>
 
-                      <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.5)', lineHeight: 1.6, marginBottom: '.5rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.6, marginBottom: '.5rem' }}>
                         {item.description}
                       </div>
 
@@ -347,7 +347,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                           ₿ {item.priceCrypto.toLocaleString()}
                         </div>
                         {owned ? (
-                          <div style={{ fontSize: '.5rem', color: '#00ff41', letterSpacing: '.08em', ...ST }}>✓ OWNED</div>
+                          <div style={{ fontSize: '.5rem', color: '#38bdf8', letterSpacing: '.08em', ...ST }}>✓ OWNED</div>
                         ) : (
                           <button
                             onClick={() => handleBuy(item)}
@@ -356,9 +356,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                             style={{
                               ...ST, fontSize: '.55rem', letterSpacing: '.08em',
                               padding: '.3rem .6rem', cursor: balance < item.priceCrypto ? 'not-allowed' : 'pointer',
-                              background: balance < item.priceCrypto ? 'rgba(255,68,68,.06)' : 'rgba(0,255,65,.1)',
-                              border: balance < item.priceCrypto ? '1px solid rgba(255,68,68,.3)' : '1px solid rgba(0,255,65,.4)',
-                              color: balance < item.priceCrypto ? 'rgba(255,68,68,.5)' : '#00ff41',
+                              background: balance < item.priceCrypto ? 'rgba(255,68,68,.06)' : 'rgba(56,189,248,.1)',
+                              border: balance < item.priceCrypto ? '1px solid rgba(255,68,68,.3)' : '1px solid rgba(56,189,248,.4)',
+                              color: balance < item.priceCrypto ? 'rgba(255,68,68,.5)' : '#38bdf8',
                               opacity: isBuying ? 0.5 : 1,
                             }}
                           >
@@ -372,7 +372,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
               </div>
 
               {filteredCatalog.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'rgba(0,255,65,.3)', marginTop: '3rem', ...VT, fontSize: '1.3rem', letterSpacing: '.15em' }}>
+                <div style={{ textAlign: 'center', color: 'rgba(56,189,248,.3)', marginTop: '3rem', ...VT, fontSize: '1.3rem', letterSpacing: '.15em' }}>
                   NO ITEMS IN THIS CATEGORY
                 </div>
               )}
@@ -382,13 +382,13 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
           {/* ── WARDROBE TAB ── */}
           {tab === 'wardrobe' && (
             <>
-              <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.25)', letterSpacing: '.12em', marginBottom: '.75rem' }}>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.75rem' }}>
                 OWNED COSMETICS — EQUIP TO APPLY IN GAME
               </div>
               {wardrobeItems.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'rgba(0,255,65,.25)', marginTop: '3rem', ...VT, fontSize: '1.3rem', letterSpacing: '.15em' }}>
+                <div style={{ textAlign: 'center', color: 'rgba(56,189,248,.25)', marginTop: '3rem', ...VT, fontSize: '1.3rem', letterSpacing: '.15em' }}>
                   NO COSMETICS OWNED<br />
-                  <span style={{ fontSize: '.8rem', color: 'rgba(0,255,65,.18)' }}>VISIT THE STORE TO ACQUIRE ITEMS</span>
+                  <span style={{ fontSize: '.8rem', color: 'rgba(56,189,248,.18)' }}>VISIT THE STORE TO ACQUIRE ITEMS</span>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '.6rem' }}>
@@ -401,24 +401,24 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                       <div
                         key={item.id}
                         style={{
-                          border: equipped ? `1px solid ${rarityColor}` : '1px solid rgba(0,255,65,.2)',
-                          background: equipped ? `${rarityColor}10` : 'rgba(0,255,65,.03)',
+                          border: equipped ? `1px solid ${rarityColor}` : '1px solid rgba(56,189,248,.2)',
+                          background: equipped ? `${rarityColor}10` : 'rgba(56,189,248,.03)',
                           padding: '.7rem',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem' }}>
-                          <div style={{ width: 28, height: 28, background: item.colorHex ?? '#00ff41', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: `1px solid ${rarityColor}44` }}>
+                          <div style={{ width: 28, height: 28, background: item.colorHex ?? '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', border: `1px solid ${rarityColor}44` }}>
                             {item.iconEmoji}
                           </div>
                           <div>
                             <div style={{ ...VT, fontSize: '1rem', color: rarityColor, letterSpacing: '.06em', lineHeight: 1 }}>{item.name}</div>
-                            <div style={{ fontSize: '.42rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em' }}>{item.category.toUpperCase()} · {item.rarity.toUpperCase()}</div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em' }}>{item.category.toUpperCase()} · {item.rarity.toUpperCase()}</div>
                           </div>
                           {equipped && (
-                            <div style={{ marginLeft: 'auto', fontSize: '.45rem', color: '#00ff41', ...ST, letterSpacing: '.08em' }}>● EQUIPPED</div>
+                            <div style={{ marginLeft: 'auto', fontSize: '.45rem', color: '#38bdf8', ...ST, letterSpacing: '.08em' }}>● EQUIPPED</div>
                           )}
                         </div>
-                        <div style={{ fontSize: '.55rem', color: 'rgba(0,255,65,.45)', lineHeight: 1.6, marginBottom: '.5rem' }}>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.6, marginBottom: '.5rem' }}>
                           {item.description}
                         </div>
                         <button
@@ -428,9 +428,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                           style={{
                             width: '100%', ...ST, fontSize: '.6rem', letterSpacing: '.1em',
                             padding: '.35rem', cursor: 'pointer',
-                            background: equipped ? 'rgba(255,68,68,.08)' : 'rgba(0,255,65,.1)',
-                            border: equipped ? '1px solid rgba(255,68,68,.4)' : '1px solid rgba(0,255,65,.4)',
-                            color: equipped ? '#ff6666' : '#00ff41',
+                            background: equipped ? 'rgba(255,68,68,.08)' : 'rgba(56,189,248,.1)',
+                            border: equipped ? '1px solid rgba(255,68,68,.4)' : '1px solid rgba(56,189,248,.4)',
+                            color: equipped ? '#ff6666' : '#38bdf8',
                             opacity: isEquipping ? 0.5 : 1,
                           }}
                         >
@@ -450,7 +450,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
               <div style={{ maxWidth: 480, margin: '0 auto' }}>
                 <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
                   <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.15em', textShadow: '0 0 12px rgba(255,200,0,.3)' }}>BUY CRYPTO BUNDLES</div>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.1em', marginTop: '.3rem' }}>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginTop: '.3rem' }}>
                     CRYPTO is the premium currency of MINX CITY. Spend it in the store on cosmetics — never pay-to-win.
                   </div>
                 </div>
@@ -460,8 +460,8 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                     <div
                       key={bundle.id}
                       style={{
-                        border: bundle.popular ? '1px solid rgba(255,200,0,.5)' : '1px solid rgba(0,255,65,.2)',
-                        background: bundle.popular ? 'rgba(255,200,0,.04)' : 'rgba(0,255,65,.02)',
+                        border: bundle.popular ? '1px solid rgba(255,200,0,.5)' : '1px solid rgba(56,189,248,.2)',
+                        background: bundle.popular ? 'rgba(255,200,0,.04)' : 'rgba(56,189,248,.02)',
                         padding: '1rem',
                         position: 'relative',
                       }}
@@ -473,7 +473,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div style={{ ...VT, fontSize: '1.4rem', color: bundle.popular ? '#ffcc00' : '#00ff41', letterSpacing: '.12em' }}>
+                          <div style={{ ...VT, fontSize: '1.4rem', color: bundle.popular ? '#ffcc00' : '#38bdf8', letterSpacing: '.12em' }}>
                             {bundle.label}
                           </div>
                           <div style={{ ...VT, fontSize: '1.8rem', color: '#ffcc00', letterSpacing: '.1em' }}>
@@ -481,7 +481,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ ...VT, fontSize: '2rem', color: '#00ff41', letterSpacing: '.08em' }}>
+                          <div style={{ ...VT, fontSize: '2rem', color: '#38bdf8', letterSpacing: '.08em' }}>
                             ${(bundle.cents / 100).toFixed(2)}
                           </div>
                           <button
@@ -491,9 +491,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                             style={{
                               marginTop: '.4rem', ...ST, fontSize: '.6rem', letterSpacing: '.1em',
                               padding: '.4rem 1rem', cursor: 'pointer',
-                              background: bundle.popular ? 'rgba(255,200,0,.15)' : 'rgba(0,255,65,.1)',
-                              border: bundle.popular ? '1px solid rgba(255,200,0,.5)' : '1px solid rgba(0,255,65,.4)',
-                              color: bundle.popular ? '#ffcc00' : '#00ff41',
+                              background: bundle.popular ? 'rgba(255,200,0,.15)' : 'rgba(56,189,248,.1)',
+                              border: bundle.popular ? '1px solid rgba(255,200,0,.5)' : '1px solid rgba(56,189,248,.4)',
+                              color: bundle.popular ? '#ffcc00' : '#38bdf8',
                               opacity: checkoutLoading === bundle.id ? 0.5 : 1,
                             }}
                           >
@@ -505,8 +505,8 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                   ))}
                 </div>
 
-                <div style={{ marginTop: '1.5rem', padding: '.75rem', border: '1px solid rgba(0,255,65,.08)', background: 'rgba(0,255,65,.02)' }}>
-                  <div style={{ fontSize: '.5rem', color: 'rgba(0,255,65,.3)', letterSpacing: '.08em', lineHeight: 1.8 }}>
+                <div style={{ marginTop: '1.5rem', padding: '.75rem', border: '1px solid rgba(56,189,248,.08)', background: 'rgba(56,189,248,.02)' }}>
+                  <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', lineHeight: 1.8 }}>
                     ⬡ CRYPTO never expires and cannot be transferred between accounts.<br />
                     ⬡ Purchases are processed securely via Stripe.<br />
                     ⬡ CRYPTO has no gameplay effect — purely cosmetic.<br />
@@ -515,7 +515,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                 </div>
 
                 {/* Purchase history link */}
-                <div style={{ marginTop: '.5rem', textAlign: 'center', fontSize: '.45rem', color: 'rgba(0,255,65,.2)', letterSpacing: '.08em' }}>
+                <div style={{ marginTop: '.5rem', textAlign: 'center', fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em' }}>
                   Current balance: ₿ {balance.toLocaleString()} CRYPTO
                 </div>
               </div>

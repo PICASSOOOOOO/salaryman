@@ -194,20 +194,20 @@ export default function Console() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative z-20 px-4 py-2 flex items-center gap-3"
-        style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(34,197,94,0.08)' }}>
+        style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(56,189,248,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
           <button onClick={() => setConsoleView('terminal')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(34,197,94,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(34,197,94,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(34,197,94,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(56,189,248,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(56,189,248,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(56,189,248,0.7)' : 'rgba(56,189,248,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Terminal className="w-3.5 h-3.5 shrink-0" />
             {boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short}
           </button>
           <button onClick={() => setConsoleView('lab')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(34,197,94,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(56,189,248,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
             <Music2 className="w-3.5 h-3.5 shrink-0" />
             {boomerMode ? t('console.lab') : PABLO_PRODUCTS.SOUND_LAB.short}
           </button>
         </div>
-        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(34,197,94,0.25)', letterSpacing: '0.06em' }}>
+        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.06em' }}>
           {consoleView === 'terminal'
             ? (boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.')
             : (boomerMode ? `${t('console.lab')} — ${t('console.labDesc')}` : PABLO_PRODUCTS.SOUND_LAB.desc)}
@@ -228,8 +228,8 @@ export default function Console() {
             transition: 'all .15s',
             whiteSpace: 'nowrap',
             background: boomerMode ? 'rgba(255,170,0,0.08)' : 'transparent',
-            border: boomerMode ? '1px solid rgba(255,170,0,0.4)' : '1px solid rgba(34,197,94,0.15)',
-            color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(34,197,94,0.3)',
+            border: boomerMode ? '1px solid rgba(255,170,0,0.4)' : '1px solid rgba(56,189,248,0.15)',
+            color: boomerMode ? 'rgba(255,170,0,0.9)' : 'rgba(56,189,248,0.3)',
           }}
           title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
         >
@@ -239,7 +239,7 @@ export default function Console() {
 
       {consoleView === 'lab' ? (
         <div className="flex-1 relative z-10 min-h-0 overflow-auto">
-          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#22c55e', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
+          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
             <SoundLab />
           </Suspense>
         </div>
@@ -253,7 +253,7 @@ export default function Console() {
           <AnimatePresence>
             {autoPilot && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                className="flex items-center justify-between px-4 py-3 rounded-2xl border-2 border-green-500/50 bg-green-500/10">
+                className="flex items-center justify-between px-4 py-3 rounded-2xl border-2 border-sky-500/50 bg-sky-500/10">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <div>
@@ -281,7 +281,7 @@ export default function Console() {
 
           {/* LIVE LISTEN */}
           <ProGate inline featureKey="live_listen" feature={boomerMode ? 'Live Listener' : PABLO_PRODUCTS.LIVE_LISTEN.short}>
-          <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-3">
+          <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <Mic className="w-3.5 h-3.5 text-green-400" />
@@ -294,8 +294,8 @@ export default function Console() {
                     disabled={(isAnyBusy && !consoleConv.isConvMode)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed
                       ${consoleConv.isConvMode
-                        ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/40 animate-pulse'
-                        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'}`}
+                        ? 'bg-sky-500/25 text-sky-300 border-sky-500/40 animate-pulse'
+                        : 'bg-sky-500/10 text-sky-400 border-sky-500/25 hover:bg-sky-500/20'}`}
                   >
                     <Radio className="w-3 h-3" />
                     {consoleConv.isConvMode ? t('console.endConv') : (boomerMode ? t('console.voiceChat') : t('console.convMode'))}
@@ -309,7 +309,7 @@ export default function Console() {
                       ? 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'
                       : isListenProcessing
                         ? 'bg-amber-500/15 text-amber-300 border-amber-500/20'
-                        : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'}`}
+                        : 'bg-sky-500/10 text-green-400 border-sky-500/30 hover:bg-sky-500/20'}`}
                 >
                   {isRecording ? (
                     <><StopCircle className="w-3 h-3" /> {boomerMode ? t('console.stopRecording') : t('console.stop')}</>
@@ -324,7 +324,7 @@ export default function Console() {
             {consoleConv.isConvMode ? (
               <div className="flex items-center gap-2 mt-1.5">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${
-                  consoleConv.convState === 'listening' ? 'bg-emerald-400 animate-pulse' :
+                  consoleConv.convState === 'listening' ? 'bg-sky-400 animate-pulse' :
                   consoleConv.convState === 'processing' ? 'bg-amber-400 animate-pulse' :
                   consoleConv.convState === 'speaking' ? 'bg-purple-400 animate-pulse' :
                   'bg-gray-400'
@@ -368,7 +368,7 @@ export default function Console() {
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={handleAutoPilot} disabled={isAnyBusy}
-                className={`flex-1 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-green-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
+                className={`flex-1 py-1.5 rounded-lg bg-sky-500/15 border border-sky-500/30 text-green-300 ${boomerMode ? 'text-xs' : 'text-[10px]'} font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1`}>
                 <Bot className="w-3 h-3" /> {boomerMode ? t('console.autoScan') : t('console.auto')}
               </button>
               <span className="text-[9px] text-muted-foreground/40">{t('console.every')}</span>
@@ -537,7 +537,7 @@ export default function Console() {
                 )}
                 <button onClick={handleCopy} disabled={!(typeMode ? displayedText : displayResponse)}
                   className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-sky-500" /> : <Copy className="w-4 h-4" />}
                 </button>
                 <button onClick={handleReset} disabled={!displayResponse && displayStatus === 'idle' && !autoPilot}
                   className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
