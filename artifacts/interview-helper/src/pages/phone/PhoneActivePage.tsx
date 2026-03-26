@@ -92,7 +92,7 @@ export default function PhoneActivePage() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const r = await fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`));
+      const r = await fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' });
       if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
         setError(d.error || 'Access denied — phone system subscription required.');
@@ -110,7 +110,7 @@ export default function PhoneActivePage() {
     setAdvancingNext(true);
     setError('');
     try {
-      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { navigate('/upgrade'); return; }
       const d = await r.json();
       if (d.completed) {
@@ -134,7 +134,7 @@ export default function PhoneActivePage() {
   const stopSession = async () => {
     if (!dialingSession) return;
     try {
-      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
       setDialingSession(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not stop session');

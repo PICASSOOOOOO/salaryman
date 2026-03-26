@@ -38,7 +38,7 @@ export default function PhoneSessionsPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
+    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
@@ -70,6 +70,7 @@ export default function PhoneSessionsPage() {
     try {
       const r = await fetch(apiUrl('twilio/dialing/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
       });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
@@ -100,7 +101,7 @@ export default function PhoneSessionsPage() {
   const stopDialingSession = async () => {
     if (!dialingSession) return;
     try {
-      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/stop`), { method: 'POST', credentials: 'include' });
       if (r.ok) {
         setDialingSession(null);
       } else {

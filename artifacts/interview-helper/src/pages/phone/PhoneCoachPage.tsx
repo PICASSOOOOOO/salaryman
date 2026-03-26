@@ -60,6 +60,7 @@ export default function PhoneCoachPage() {
     try {
       const r = await fetch(apiUrl('twilio/ai/coach'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ question, transcript: aiTranscript, context: contactContext }),
       });
       if (await handleApiError(r, 'AI coach request failed')) { setAiLoading(false); return; }
@@ -75,6 +76,7 @@ export default function PhoneCoachPage() {
     try {
       const r = await fetch(apiUrl('twilio/ai/suggest'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ transcript: aiTranscript, contactName: contactContext }),
       });
       if (await handleApiError(r, 'Failed to get suggestions')) { setSugLoading(false); return; }
@@ -91,6 +93,7 @@ export default function PhoneCoachPage() {
     try {
       const r = await fetch(apiUrl('twilio/ai/transcribe'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ transcript: aiTranscript }),
       });
       if (!r.ok) {
@@ -114,6 +117,7 @@ export default function PhoneCoachPage() {
     try {
       const r = await fetch(apiUrl('twilio/ai/dictation'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ text: dictationText }),
       });
       if (r.ok) {

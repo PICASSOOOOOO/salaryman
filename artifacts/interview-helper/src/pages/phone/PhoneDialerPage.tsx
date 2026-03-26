@@ -73,7 +73,7 @@ export default function PhoneDialerPage() {
   }, [navigate]);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
+    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/upgrade'); return null; }
         return r.ok ? r.json() : null;
@@ -86,7 +86,7 @@ export default function PhoneDialerPage() {
       })
       .catch(() => setError('Network error loading contacts'));
 
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`))
+    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
         if (r.status === 403) { rawNavigate('/upgrade'); return null; }
         return r.ok ? r.json() : null;
@@ -132,6 +132,7 @@ export default function PhoneDialerPage() {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
       });
       if (await handleFetchError(r)) { setLoading(false); setCallStarting(false); return; }
@@ -156,6 +157,7 @@ export default function PhoneDialerPage() {
       const r = await fetch(apiUrl('twilio/dialing/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }),
       });
       if (await handleFetchError(r)) { setLoading(false); return; }

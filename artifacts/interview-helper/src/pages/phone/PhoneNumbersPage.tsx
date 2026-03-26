@@ -32,7 +32,7 @@ export default function PhoneNumbersPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const fetchNumbers = useCallback(() => {
-    fetch(apiUrl('twilio/phone-numbers'))
+    fetch(apiUrl('twilio/phone-numbers'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.numbers) setPhoneNumbers(d.numbers); }
@@ -50,6 +50,7 @@ export default function PhoneNumbersPage() {
     try {
       const r = await fetch(apiUrl('twilio/phone-numbers'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(form),
       });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
@@ -67,7 +68,7 @@ export default function PhoneNumbersPage() {
 
   const deleteNumber = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE' });
+      const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), { method: 'DELETE', credentials: 'include' });
       if (r.status === 403) { navigate('/upgrade'); return; }
       if (r.ok) fetchNumbers();
       else { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete number'); }

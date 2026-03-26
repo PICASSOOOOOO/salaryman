@@ -95,7 +95,7 @@ export default function PhoneVoicemailPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    fetch(apiUrl('twilio/voicemail'))
+    fetch(apiUrl('twilio/voicemail'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { rawNavigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.voicemails) { setVoicemails(d.voicemails); setUnread(d.unread ?? 0); } }
@@ -107,7 +107,7 @@ export default function PhoneVoicemailPage() {
 
   const markRead = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to mark as read'); return; }
       setVoicemails(prev => prev.map(v => v.id === id ? { ...v, isRead: true } : v));
@@ -117,7 +117,7 @@ export default function PhoneVoicemailPage() {
 
   const deleteVoicemail = async (id: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE' });
+      const r = await fetch(apiUrl(`twilio/voicemail/${id}`), { method: 'DELETE', credentials: 'include' });
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to delete voicemail'); return; }
       setVoicemails(prev => prev.filter(v => v.id !== id));
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
@@ -128,6 +128,7 @@ export default function PhoneVoicemailPage() {
     try {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }),
       });
       const d = await r.json();

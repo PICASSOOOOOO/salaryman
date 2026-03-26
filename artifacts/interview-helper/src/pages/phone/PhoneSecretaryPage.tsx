@@ -22,7 +22,7 @@ export default function PhoneSecretaryPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    fetch(apiUrl('twilio/secretary/config'))
+    fetch(apiUrl('twilio/secretary/config'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) {
@@ -56,6 +56,7 @@ export default function PhoneSecretaryPage() {
     try {
       const r = await fetch(apiUrl('twilio/secretary/config'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(secretaryForm),
       });
       if (r.status === 403) {

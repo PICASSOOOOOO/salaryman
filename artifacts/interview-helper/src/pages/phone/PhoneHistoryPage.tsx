@@ -32,7 +32,7 @@ export default function PhoneHistoryPage() {
   const fetchHistory = useCallback(() => {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
     setLoading(true);
-    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`))
+    fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { rawNavigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.calls) setHistory(d.calls); }
@@ -50,6 +50,7 @@ export default function PhoneHistoryPage() {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
       });
       const d = await r.json();
@@ -64,7 +65,7 @@ export default function PhoneHistoryPage() {
 
   const emailCallSummary = async (callId: number) => {
     try {
-      const r = await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to send email summary'); }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not send email summary'); }
@@ -78,6 +79,7 @@ export default function PhoneHistoryPage() {
       const endAt = followupForm.endAt ? new Date(followupForm.endAt) : new Date(startAt.getTime() + 30 * 60 * 1000);
       const r = await fetch(apiUrl(`twilio/call/${followupCallSid}/schedule-followup`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }),
       });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }

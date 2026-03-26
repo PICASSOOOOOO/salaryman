@@ -30,7 +30,7 @@ export default function PhoneConferencePage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   const fetchConferences = useCallback(() => {
-    fetch(apiUrl('twilio/conference/list'))
+    fetch(apiUrl('twilio/conference/list'), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.rooms) setConferences(d.rooms); }
@@ -48,6 +48,7 @@ export default function PhoneConferencePage() {
     try {
       const r = await fetch(apiUrl('twilio/conference/create'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ label: confRoomName || 'New Conference' }),
       });
       if (r.status === 403) { navigate('/upgrade'); return; }
@@ -68,6 +69,7 @@ export default function PhoneConferencePage() {
     try {
       const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/add`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }),
       });
       if (r.status === 403) { navigate('/upgrade'); return; }
@@ -84,7 +86,7 @@ export default function PhoneConferencePage() {
   const endConference = async (roomName: string) => {
     setError('');
     try {
-      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST' });
+      const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST', credentials: 'include' });
       if (r.status === 403) { navigate('/upgrade'); return; }
       if (r.ok) fetchConferences();
       else setError('Failed to end conference');

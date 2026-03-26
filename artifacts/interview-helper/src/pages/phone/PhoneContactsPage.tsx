@@ -32,7 +32,7 @@ export default function PhoneContactsPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
-    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
+    fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
@@ -79,6 +79,7 @@ export default function PhoneContactsPage() {
       const r = await fetch(apiUrl('twilio/call'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
       });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
@@ -104,6 +105,7 @@ export default function PhoneContactsPage() {
       const r = await fetch(apiUrl('twilio/batch-call'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ numbers, userId, callerName }),
       });
       if (r.status === 403) { rawNavigate('/upgrade'); return; }
