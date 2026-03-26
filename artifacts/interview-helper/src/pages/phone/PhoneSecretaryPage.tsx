@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { useAuth } from '@workspace/replit-auth-web';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, amber, blue, red, purple,
@@ -10,6 +11,7 @@ import {
 export default function PhoneSecretaryPage() {
   const BASE = import.meta.env.BASE_URL;
   const [, navigate] = useLocation();
+  const { login } = useAuth();
 
   const [_secretaryConfig, setSecretaryConfig] = useState<SecretaryConfig | null>(null);
   const [secretaryForm, setSecretaryForm] = useState<Partial<SecretaryConfig>>({});
@@ -18,13 +20,20 @@ export default function PhoneSecretaryPage() {
   const [saveError, setSaveError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [needsLogin, setNeedsLogin] = useState(false);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+
+  const handleAuthStatus = useCallback((r: Response): boolean => {
+    if (r.status === 401) { setNeedsLogin(true); return true; }
+    if (r.status === 403) { navigate('/upgrade'); return true; }
+    return false;
+  }, [navigate]);
 
   useEffect(() => {
     fetch(apiUrl('twilio/secretary/config'), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { navigate('/upgrade'); return; }
+        if (handleAuthStatus(r)) return;
         if (r.ok) {
           const d = await r.json();
           if (d?.config) { setSecretaryConfig(d.config); setSecretaryForm(d.config); }
@@ -40,15 +49,9 @@ export default function PhoneSecretaryPage() {
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : 'Failed to load secretary configuration');
-        const defaults: Partial<SecretaryConfig> = {
-          isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
-          businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
-          routingInstructions: null, forwardToNumber: null, afterHoursAction: 'voicemail',
-        };
-        setSecretaryForm(defaults);
       })
       .finally(() => setLoading(false));
-  }, [apiUrl, navigate]);
+  }, [apiUrl, handleAuthStatus]);
 
   const saveConfig = async () => {
     setSaving(true);
@@ -59,10 +62,8 @@ export default function PhoneSecretaryPage() {
         credentials: 'include',
         body: JSON.stringify(secretaryForm),
       });
-      if (r.status === 403) {
-        navigate('/upgrade');
-        return;
-      } else if (!r.ok) {
+      if (handleAuthStatus(r)) return;
+      if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         setError(d.error || 'Failed to save configuration');
       } else {
@@ -73,7 +74,7 @@ export default function PhoneSecretaryPage() {
         setTimeout(() => setSaved(false), 2500);
       }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }
-    setSaving(false);
+    finally { setSaving(false); }
   };
 
   const update = (key: keyof SecretaryConfig, value: unknown) => {
@@ -100,6 +101,33 @@ export default function PhoneSecretaryPage() {
       <div style={{ padding: '60px 0', textAlign: 'center' }}>
         <Loader2 size={24} className="animate-spin" style={{ color: crt(0.3), marginBottom: 12 }} />
         <div style={{ fontSize: '0.55rem', color: crt(0.25), letterSpacing: '0.15em' }}>LOADING SECRETARY CONFIGURATION...</div>
+      </div>
+    </PhonePageLayout>
+  );
+
+  if (needsLogin) return (
+    <PhonePageLayout title="AI SECRETARY" subtitle="Authentication required" icon={<Bot size={24} style={{ color: blue(0.8) }} />}>
+      <div style={{ padding: '60px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <AlertTriangle size={32} style={{ color: `rgba(251,191,36,0.6)` }} />
+        <div style={{ fontSize: '0.65rem', color: `rgba(251,191,36,0.8)`, letterSpacing: '0.15em', fontFamily: "'Share Tech Mono', monospace" }}>
+          SESSION EXPIRED
+        </div>
+        <div style={{ fontSize: '0.55rem', color: crt(0.35), letterSpacing: '0.08em', maxWidth: 320, lineHeight: 1.7 }}>
+          Your session has expired or you are not logged in. Please sign in again to access your secretary configuration.
+        </div>
+        <button
+          onClick={login}
+          style={{
+            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#38bdf8',
+            border: '1px solid rgba(56,189,248,0.4)', padding: '10px 28px',
+            background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
+            transition: 'all 0.2s', marginTop: 8,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.12)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.6)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.06)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.4)'; }}
+        >
+          SIGN IN
+        </button>
       </div>
     </PhonePageLayout>
   );
