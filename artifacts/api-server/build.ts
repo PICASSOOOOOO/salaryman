@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion, getBuildVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times without risking some
@@ -48,8 +48,7 @@ async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
   await rm(distDir, { recursive: true, force: true });
 
-  const isDeployment = process.env.REPLIT_DEPLOYMENT === "1" || process.env.DEPLOY === "true";
-  const versionStamp = isDeployment ? getBuildVersion() : getFormattedVersion();
+  const versionStamp = getFormattedVersion();
   console.log(`building server... version: ${versionStamp}`);
   const pkgPath = path.resolve(__dirname, "package.json");
   const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));

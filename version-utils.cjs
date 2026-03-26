@@ -23,30 +23,22 @@ function formatVersion(parsed) {
   return `v.${parsed.major}.${parsed.minor}${parsed.suffix}`;
 }
 
-function getFormattedVersion() {
-  const raw = readVersion();
-  const parsed = parseVersion(raw);
-  if (!parsed) return `v.${raw}`;
-  return formatVersion(parsed);
-}
-
 function getBuildNumber() {
-  const ts = Math.floor(Date.now() / 1000);
   try {
     const { execSync } = require("child_process");
     const count = execSync("git rev-list --count HEAD", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
     const n = parseInt(count, 10);
-    if (!isNaN(n) && n > 0) return `b${n}-t${ts}`;
+    if (!isNaN(n) && n > 0) return String(n);
   } catch {}
-  return `t${ts}`;
+  return String(Math.floor(Date.now() / 1000));
 }
 
-function getBuildVersion() {
+function getFormattedVersion() {
   const raw = readVersion();
   const parsed = parseVersion(raw);
   const base = parsed ? formatVersion(parsed) : `v.${raw}`;
   const build = getBuildNumber();
-  return `${base}-${build}`;
+  return `${base}.${build}`;
 }
 
 function readChangelog() {
@@ -119,4 +111,4 @@ function bumpVersion() {
   return next;
 }
 
-module.exports = { readVersion, parseVersion, formatVersion, getFormattedVersion, getBuildVersion, bumpVersion, readChangelog };
+module.exports = { readVersion, parseVersion, formatVersion, getFormattedVersion, bumpVersion, readChangelog };
