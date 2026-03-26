@@ -30,6 +30,25 @@ function getFormattedVersion() {
   return formatVersion(parsed);
 }
 
+function getBuildNumber() {
+  const ts = Math.floor(Date.now() / 1000);
+  try {
+    const { execSync } = require("child_process");
+    const count = execSync("git rev-list --count HEAD", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+    const n = parseInt(count, 10);
+    if (!isNaN(n) && n > 0) return `b${n}-t${ts}`;
+  } catch {}
+  return `t${ts}`;
+}
+
+function getBuildVersion() {
+  const raw = readVersion();
+  const parsed = parseVersion(raw);
+  const base = parsed ? formatVersion(parsed) : `v.${raw}`;
+  const build = getBuildNumber();
+  return `${base}-${build}`;
+}
+
 function readChangelog() {
   try {
     if (!existsSync(CHANGELOG_FILE)) return [];
@@ -100,4 +119,4 @@ function bumpVersion() {
   return next;
 }
 
-module.exports = { readVersion, parseVersion, formatVersion, getFormattedVersion, bumpVersion, readChangelog };
+module.exports = { readVersion, parseVersion, formatVersion, getFormattedVersion, getBuildVersion, bumpVersion, readChangelog };

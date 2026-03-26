@@ -6,7 +6,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const { getFormattedVersion, getBuildVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 
 const isBuild = process.argv.includes("build");
 const rawPort = process.env.PORT;
@@ -54,7 +54,11 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   define: {
-    "__BUILD_VERSION__": JSON.stringify(getFormattedVersion()),
+    "__BUILD_VERSION__": JSON.stringify(
+      (process.env.REPLIT_DEPLOYMENT === "1" || process.env.DEPLOY === "true")
+        ? getBuildVersion()
+        : getFormattedVersion()
+    ),
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
