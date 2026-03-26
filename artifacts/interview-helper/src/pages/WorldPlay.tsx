@@ -3371,6 +3371,10 @@ export default function WorldPlay() {
   const topMenuRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const fogGridRef = useRef<Set<string>>(new Set());
+  const terrainChunkCache = useRef<Map<string, { canvas: OffscreenCanvas | HTMLCanvasElement; dayBright: number }>>(new Map());
+  const lastTerrainDayBright = useRef<number>(-1);
+  const coastCacheWest = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
+  const coastCacheEast = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
   const [unlockedWeapons, setUnlockedWeapons] = useState<Set<string>>(() => {
     const cls = (_ss?.class ?? char.class ?? 'corporate').toLowerCase();
     const starter = new Set(['FISTS', 'KNIFE', 'REVOLVER']);
@@ -9655,187 +9659,185 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return h - Math.floor(h);
       };
 
-      // Sector-based LOD: only draw full detail for tiles near the player
-      const playerSectorX = Math.floor(g.px / (TILE * 8));
-      const playerSectorY = Math.floor(g.py / (TILE * 8));
+      // ── Smooth terrain rendering — offscreen chunk cache ─────────────────
+      // Replaces per-tile diamond rendering with pre-rendered biome textures
+      // blended across zone boundaries. Chunks are cached and only redrawn
+      // when the lighting level changes.
+      const CHUNK = 512; // world-space chunk size in pixels
+      const noiseT = (wx: number, wy: number, freq: number, offset = 0) => {
+        const v =
+          Math.sin(wx * freq * 0.0031 + wy * freq * 0.0017 + offset) * 0.5 +
+          Math.sin(wx * freq * 0.0053 + wy * freq * 0.0041 + offset + 1.7) * 0.3 +
+          Math.sin(wx * freq * 0.0019 + wy * freq * 0.0067 + offset + 3.2) * 0.2;
+        return v * 0.5 + 0.5;
+      };
 
-      const sgx = Math.floor(g.cam.x / TILE) * TILE, sgy = Math.floor(g.cam.y / TILE) * TILE;
-      for (let gx = sgx - TILE; gx < g.cam.x + cw + TILE * 2; gx += TILE) {
-        for (let gy = sgy - TILE; gy < g.cam.y + ch + TILE * 2; gy += TILE) {
-          const sx = gx + ox, sy = gy + oy;
-          if (sx + TILE < -ISO_TILE_W || sx > cw + ISO_TILE_W || sy + TILE < -ISO_TILE_H || sy > ch + ISO_TILE_H) continue;
-          const inCityZone = gx >= CITY_LEFT && gx <= CITY_RIGHT && gy >= CITY_TOP && gy <= CITY_BOTTOM;
-          // Graduated biome zones from city outward toward borders
-          const distW = gx - BORDER;
-          const distE = W - BORDER - gx;
-          const distN = gy - BORDER;
-          const distS = H - BORDER - gy;
-          const minDistBorder = Math.min(distW, distE, distN, distS);
-          const isNearWestOcean = distW < 400;
-          const isNearEastOcean = distE < 400;
-          const isNearNorthMtn = distN < 500;
-          const isNearSouthMtn = distS < 500;
-          const isNearAnyBorder = minDistBorder < 500;
-          const isSandyShore = (isNearWestOcean && distW < 200) || (isNearEastOcean && distE < 200);
-          const isRockyFoothill = (isNearNorthMtn && distN < 300) || (isNearSouthMtn && distS < 300);
-          const isSuburb = !inCityZone && !isNearAnyBorder && (
-            gx > CITY_LEFT - 600 && gx < CITY_RIGHT + 600 && gy > CITY_TOP - 600 && gy < CITY_BOTTOM + 600
-          );
-          const h = tileHash(gx / TILE, gy / TILE);
-          const h2 = tileHash(gx / TILE + 100, gy / TILE + 100);
+      const getBiomeColor = (wx: number, wy: number, br: number): [number, number, number] => {
+        const distW2 = wx - BORDER;
+        const distE2 = W - BORDER - wx;
+        const distN2 = wy - BORDER;
+        const distS2 = H - BORDER - wy;
 
-          // Sector distance for LOD
-          const tileSectorX = Math.floor(gx / (TILE * 8));
-          const tileSectorY = Math.floor(gy / (TILE * 8));
-          const sectorDist = Math.abs(tileSectorX - playerSectorX) + Math.abs(tileSectorY - playerSectorY);
-          const isHighDetail = sectorDist <= 2;
+        const n1 = noiseT(wx, wy, 1.0);
+        const n2 = noiseT(wx, wy, 2.3, 50);
+        const n3 = noiseT(wx, wy, 0.5, 100);
 
-          let baseR: number, baseG: number, baseB: number;
-          // Zone classification for richer textures
-          const inDowntown = inCityZone && gx >= CITY_LEFT + 100 && gx < CITY_LEFT + 600 && gy >= CITY_TOP + 100;
-          const inNeonStrip = inCityZone && gx >= CITY_LEFT + 600 && gy < CITY_TOP + 500;
-          const inIndustrial = inCityZone && gx >= CITY_LEFT + 600 && gy >= CITY_TOP + 500;
-          const inOldDistrict = inCityZone && gx < CITY_LEFT + 100;
-          if (inCityZone) {
-            if (inDowntown) {
-              if (h < 0.25) { baseR = 72; baseG = 70; baseB = 66; }
-              else if (h < 0.5) { baseR = 80; baseG = 78; baseB = 74; }
-              else if (h < 0.75) { baseR = 68; baseG = 65; baseB = 62; }
-              else { baseR = 88; baseG = 85; baseB = 80; }
-              baseR += (h2 - 0.5) * 12; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 8;
-            } else if (inNeonStrip) {
-              if (h < 0.35) { baseR = 55; baseG = 55; baseB = 65; }
-              else if (h < 0.65) { baseR = 62; baseG = 60; baseB = 72; }
-              else { baseR = 70; baseG = 68; baseB = 80; }
-              baseR += (h2 - 0.5) * 8; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 14;
-            } else if (inIndustrial) {
-              if (h < 0.2) { baseR = 90; baseG = 88; baseB = 82; }
-              else if (h < 0.45) { baseR = 78; baseG = 74; baseB = 70; }
-              else if (h < 0.7) { baseR = 82; baseG = 80; baseB = 75; }
-              else { baseR = 68; baseG = 66; baseB = 64; }
-              baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 10; baseB += (h2 - 0.5) * 10;
-            } else if (inOldDistrict) {
-              if (h < 0.3) { baseR = 95; baseG = 88; baseB = 78; }
-              else if (h < 0.6) { baseR = 82; baseG = 76; baseB = 68; }
-              else { baseR = 105; baseG = 96; baseB = 85; }
-              baseR += (h2 - 0.5) * 15; baseG += (h2 - 0.5) * 12; baseB += (h2 - 0.5) * 10;
-            } else {
-              if (h < 0.3) { baseR = 85; baseG = 85; baseB = 80; }
-              else if (h < 0.6) { baseR = 75; baseG = 72; baseB = 68; }
-              else { baseR = 90; baseG = 88; baseB = 82; }
-              baseR += (h2 - 0.5) * 10; baseG += (h2 - 0.5) * 8; baseB += (h2 - 0.5) * 8;
-            }
-          } else if (isSandyShore) {
-            const shoreBlend = 1 - (isNearWestOcean ? distW : distE) / 200;
-            baseR = Math.floor(175 + h * 22 + shoreBlend * 8); baseG = Math.floor(158 + h * 18 + shoreBlend * 5); baseB = Math.floor(110 + h * 12 - shoreBlend * 8);
-          } else if (isRockyFoothill) {
-            const rockBlend = 1 - (isNearNorthMtn ? distN : distS) / 300;
-            baseR = Math.floor(105 + h2 * 20 - rockBlend * 10); baseG = Math.floor(90 + h2 * 15 - rockBlend * 8); baseB = Math.floor(68 + h2 * 10 - rockBlend * 5);
-          } else if (isSuburb) {
-            if (h < 0.3) { baseR = 72 + h2 * 12; baseG = 72 + h2 * 10; baseB = 68 + h2 * 8; }
-            else { baseR = 68 + h2 * 15; baseG = 95 + h2 * 18; baseB = 42 + h2 * 10; }
+        const inCity = wx >= CITY_LEFT && wx <= CITY_RIGHT && wy >= CITY_TOP && wy <= CITY_BOTTOM;
+        const shoreW = Math.max(0, 1 - distW2 / 280);
+        const shoreE = Math.max(0, 1 - distE2 / 280);
+        const footN = Math.max(0, 1 - distN2 / 420);
+        const footS = Math.max(0, 1 - distS2 / 420);
+        const shoreBlend = Math.max(shoreW, shoreE);
+        const footBlend = Math.max(footN, footS);
+        const suburbanBlend = inCity ? 0 : Math.max(0, 1 - Math.min(
+          Math.abs(wx - (CITY_LEFT + CITY_RIGHT) / 2) / 900,
+          Math.abs(wy - (CITY_TOP + CITY_BOTTOM) / 2) / 900
+        ));
+
+        let r = 0, g3 = 0, b = 0;
+
+        if (inCity) {
+          const inDowntown2 = wx >= CITY_LEFT + 100 && wx < CITY_LEFT + 600 && wy >= CITY_TOP + 100;
+          const inNeonStrip2 = wx >= CITY_LEFT + 600 && wy < CITY_TOP + 500;
+          const inIndustrial2 = wx >= CITY_LEFT + 600 && wy >= CITY_TOP + 500;
+          const inOldDistrict2 = wx < CITY_LEFT + 100;
+          if (inDowntown2) {
+            r = 72 + n1 * 14 + n2 * 6; g3 = 70 + n1 * 12 + n2 * 4; b = 66 + n1 * 10 + n2 * 4;
+          } else if (inNeonStrip2) {
+            r = 58 + n1 * 12 + n3 * 5; g3 = 57 + n1 * 11 + n3 * 4; b = 70 + n1 * 14 + n3 * 8;
+          } else if (inIndustrial2) {
+            r = 82 + n1 * 12 + n2 * 8; g3 = 79 + n1 * 10 + n2 * 7; b = 74 + n1 * 8 + n2 * 6;
+          } else if (inOldDistrict2) {
+            r = 92 + n1 * 16 + n3 * 8; g3 = 84 + n1 * 13 + n3 * 6; b = 74 + n1 * 10 + n3 * 5;
           } else {
-            if (h < 0.25) { baseR = 118 + h2 * 15; baseG = 92 + h2 * 10; baseB = 58 + h2 * 8; }
-            else if (h < 0.5) { baseR = 80 + h2 * 15; baseG = 110 + h2 * 20; baseB = 48 + h2 * 10; }
-            else if (h < 0.75) { baseR = 100 + h2 * 12; baseG = 94 + h2 * 15; baseB = 62 + h2 * 10; }
-            else { baseR = 125 + h2 * 10; baseG = 105 + h2 * 10; baseB = 68 + h2 * 8; }
+            r = 80 + n1 * 13 + n2 * 7; g3 = 78 + n1 * 11 + n2 * 5; b = 73 + n1 * 9 + n2 * 5;
           }
-          const br = dayBright * (1 - pwDark * 0.7);
-          const rC = Math.floor(Math.min(255, Math.max(0, baseR * br)));
-          const gC = Math.floor(Math.min(255, Math.max(0, baseG * br)));
-          const bC = Math.floor(Math.min(255, Math.max(0, baseB * br)));
+        } else {
+          // Wasteland/open terrain base
+          r = 108 + n1 * 24 + n3 * 12; g3 = 90 + n1 * 22 + n3 * 10; b = 58 + n1 * 16 + n3 * 8;
+          // Suburban grass blend
+          if (suburbanBlend > 0) {
+            const sr = 72 + n1 * 18 + n2 * 10; const sg3 = 92 + n1 * 24 + n2 * 14; const sb = 44 + n1 * 14 + n2 * 8;
+            r = r + (sr - r) * suburbanBlend; g3 = g3 + (sg3 - g3) * suburbanBlend; b = b + (sb - b) * suburbanBlend;
+          }
+          // Sandy shore blend
+          if (shoreBlend > 0) {
+            const sr = 178 + n1 * 18 + n2 * 8; const sg3 = 160 + n1 * 14 + n2 * 6; const sb = 112 + n1 * 10 + n2 * 4;
+            r = r + (sr - r) * shoreBlend; g3 = g3 + (sg3 - g3) * shoreBlend; b = b + (sb - b) * shoreBlend;
+          }
+          // Rocky foothills blend
+          if (footBlend > 0) {
+            const fr = 100 + n2 * 22 + n3 * 10; const fg3 = 86 + n2 * 17 + n3 * 8; const fb = 64 + n2 * 12 + n3 * 6;
+            r = r + (fr - r) * footBlend; g3 = g3 + (fg3 - g3) * footBlend; b = b + (fb - b) * footBlend;
+          }
+        }
 
-          // ── Isometric diamond tile ────────────────────────────────────────
-          // Draw the main flat surface as an isometric diamond
-          const hw2 = ISO_TILE_W / 2;
-          const hh2 = ISO_TILE_H / 2;
-          const tcx = sx + TILE / 2;
-          const tcy = sy + TILE / 2;
-          ctx.beginPath();
-          ctx.moveTo(tcx,       tcy - hh2);
-          ctx.lineTo(tcx + hw2, tcy);
-          ctx.lineTo(tcx,       tcy + hh2);
-          ctx.lineTo(tcx - hw2, tcy);
-          ctx.closePath();
-          ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
-          ctx.fill();
+        return [
+          Math.min(255, Math.max(0, Math.round(r * br))),
+          Math.min(255, Math.max(0, Math.round(g3 * br))),
+          Math.min(255, Math.max(0, Math.round(b * br))),
+        ];
+      };
 
+      const terrainBr = dayBright * (1 - pwDark * 0.7);
+      // Invalidate all chunks when lighting changes significantly
+      if (Math.abs(lastTerrainDayBright.current - terrainBr) > 0.025) {
+        terrainChunkCache.current.clear();
+        lastTerrainDayBright.current = terrainBr;
+      }
 
-          // ── Zone-specific surface detail (only in high-detail sectors) ──
-          if (isHighDetail) {
-            if (inCityZone && inDowntown) {
-              // Cracked asphalt — draw crack lines across the diamond
-              const ph = tileHash(gx / TILE * 3.1, gy / TILE * 2.7);
-              if (ph > 0.75) {
-                ctx.beginPath();
-                ctx.moveTo(tcx - hw2 * 0.4, tcy - 2);
-                ctx.lineTo(tcx + hw2 * 0.3, tcy + 2);
-                ctx.strokeStyle = `rgba(0,0,0,0.22)`;
-                ctx.lineWidth = 0.8;
-                ctx.stroke();
+      // OffscreenCanvas helper with HTMLCanvasElement fallback
+      const makeOffscreenCtx = (w: number, h: number): { canvas: OffscreenCanvas | HTMLCanvasElement; ctx2d: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D } => {
+        if (typeof OffscreenCanvas !== 'undefined') {
+          const oc = new OffscreenCanvas(w, h);
+          return { canvas: oc, ctx2d: oc.getContext('2d') as OffscreenCanvasRenderingContext2D };
+        }
+        const fc = document.createElement('canvas');
+        fc.width = w; fc.height = h;
+        return { canvas: fc as unknown as OffscreenCanvas, ctx2d: fc.getContext('2d') as CanvasRenderingContext2D };
+      };
+
+      // Determine which chunks are visible and draw them
+      const camWorldX = g.cam.x, camWorldY = g.cam.y;
+      const chunkStartX = Math.floor(camWorldX / CHUNK) * CHUNK;
+      const chunkStartY = Math.floor(camWorldY / CHUNK) * CHUNK;
+      const chunksWide = Math.ceil((cw + CHUNK) / CHUNK) + 1;
+      const chunksTall = Math.ceil((ch + CHUNK) / CHUNK) + 1;
+
+      // LRU-style cache eviction: keep max 64 chunks (covers >5x the visible area)
+      const MAX_TERRAIN_CHUNKS = 64;
+      if (terrainChunkCache.current.size > MAX_TERRAIN_CHUNKS) {
+        const cachePlayerChunkX = Math.floor(g.px / CHUNK) * CHUNK;
+        const cachePlayerChunkY = Math.floor(g.py / CHUNK) * CHUNK;
+        // Remove chunks farthest from player
+        const entries = [...terrainChunkCache.current.entries()];
+        entries.sort(([ka], [kb]) => {
+          const [axS, ayS] = ka.split(',').map(Number);
+          const [bxS, byS] = kb.split(',').map(Number);
+          const da = Math.abs(axS - cachePlayerChunkX) + Math.abs(ayS - cachePlayerChunkY);
+          const db = Math.abs(bxS - cachePlayerChunkX) + Math.abs(byS - cachePlayerChunkY);
+          return db - da; // farthest first
+        });
+        const toRemove = entries.slice(0, terrainChunkCache.current.size - MAX_TERRAIN_CHUNKS);
+        for (const [k] of toRemove) terrainChunkCache.current.delete(k);
+      }
+
+      for (let ci = 0; ci < chunksWide; ci++) {
+        for (let cj = 0; cj < chunksTall; cj++) {
+          const chunkWX = chunkStartX + ci * CHUNK - CHUNK;
+          const chunkWY = chunkStartY + cj * CHUNK - CHUNK;
+          const chunkKey = `${chunkWX},${chunkWY}`;
+
+          // Screen position of this chunk's top-left corner
+          const screenX = Math.round(chunkWX - camWorldX);
+          const screenY = Math.round(chunkWY - camWorldY);
+
+          if (screenX > cw + 8 || screenX + CHUNK < -8 || screenY > ch + 8 || screenY + CHUNK < -8) continue;
+
+          let cached = terrainChunkCache.current.get(chunkKey);
+          if (!cached) {
+            // Build the offscreen canvas for this chunk
+            const { canvas: oc, ctx2d: oc2d } = makeOffscreenCtx(CHUNK, CHUNK);
+            const STEP = 16; // sample every 16 pixels for smooth gradients
+            for (let px2 = 0; px2 < CHUNK; px2 += STEP) {
+              for (let py2 = 0; py2 < CHUNK; py2 += STEP) {
+                const wx2 = chunkWX + px2;
+                const wy2 = chunkWY + py2;
+                const [r2, g2, b2] = getBiomeColor(wx2, wy2, terrainBr);
+                oc2d.fillStyle = `rgb(${r2},${g2},${b2})`;
+                oc2d.fillRect(px2, py2, STEP, STEP);
               }
-              // Manhole cover
-              const mh = tileHash(gx / TILE * 7.7, gy / TILE * 5.3);
-              if (mh > 0.96) {
-                ctx.beginPath(); ctx.ellipse(tcx, tcy, 5, 3, 0, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(60,58,54,${0.9 * br})`; ctx.fill();
-                ctx.strokeStyle = `rgba(80,78,72,${0.8 * br})`; ctx.lineWidth = 0.5; ctx.stroke();
-              }
-            } else if (inCityZone && inOldDistrict) {
-              // Cobblestone diamond pattern — draw individual stone ovals
-              const cStep = 9;
-              for (let ci = -1; ci <= 1; ci++) {
-                for (let cj = -1; cj <= 1; cj++) {
-                  const px3 = tcx + ci * cStep;
-                  const py3 = tcy + cj * (cStep / 2);
-                  const ph3 = tileHash(gx + ci * 3, gy + cj * 3);
-                  if (Math.abs(px3 - tcx) + Math.abs((py3 - tcy) * 2) > hw2) continue;
-                  ctx.beginPath(); ctx.ellipse(px3, py3, 3.5, 2, 0, 0, Math.PI * 2);
-                  ctx.fillStyle = `rgba(${Math.floor((baseR - 10 + ph3 * 20) * br)},${Math.floor((baseG - 8 + ph3 * 15) * br)},${Math.floor((baseB - 6 + ph3 * 12) * br)},0.6)`;
-                  ctx.fill();
-                }
-              }
-            } else if (inCityZone && inIndustrial) {
-              // Metal grating crosshatch on diamond
-              ctx.save();
-              ctx.beginPath();
-              ctx.moveTo(tcx, tcy - hh2); ctx.lineTo(tcx + hw2, tcy);
-              ctx.lineTo(tcx, tcy + hh2); ctx.lineTo(tcx - hw2, tcy);
-              ctx.closePath(); ctx.clip();
-              ctx.strokeStyle = `rgba(0,0,0,0.10)`; ctx.lineWidth = 0.5;
-              for (let gi = -hw2; gi <= hw2; gi += 6) {
-                ctx.beginPath(); ctx.moveTo(tcx + gi, tcy - hh2); ctx.lineTo(tcx + gi, tcy + hh2); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(tcx - hw2, tcy + gi * 0.5); ctx.lineTo(tcx + hw2, tcy + gi * 0.5); ctx.stroke();
-              }
-              ctx.restore();
-              // Drain grate
-              const dh = tileHash(gx / TILE * 9.1, gy / TILE * 6.3);
-              if (dh > 0.94) {
-                ctx.beginPath(); ctx.ellipse(tcx, tcy, 4, 2.5, 0, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(40,40,44,${0.85 * br})`; ctx.fill();
-              }
-            } else if (inCityZone && inNeonStrip && isNight) {
-              // Neon puddle reflections at night
-              const ph4 = tileHash(gx / TILE * 4.1, gy / TILE * 3.7 + 20);
-              if (ph4 > 0.75) {
-                const rc2 = Math.floor(ph4 * 3) % 3;
-                const pudA = (ph4 - 0.75) * 0.5;
-                ctx.beginPath();
-                ctx.moveTo(tcx, tcy - hh2); ctx.lineTo(tcx + hw2, tcy);
-                ctx.lineTo(tcx, tcy + hh2); ctx.lineTo(tcx - hw2, tcy);
-                ctx.closePath();
-                ctx.fillStyle = rc2 === 0 ? `rgba(255,80,150,${pudA})` : rc2 === 1 ? `rgba(0,200,255,${pudA})` : `rgba(180,0,255,${pudA * 0.8})`;
-                ctx.fill();
-              }
-            } else if (isSuburb && h > 0.35) {
-              // Grass tufts on suburban tiles
-              const gh = tileHash(gx / TILE * 5.3, gy / TILE * 4.1);
-              if (gh > 0.6) {
-                ctx.beginPath();
-                ctx.moveTo(tcx - 3, tcy + 1); ctx.lineTo(tcx - 1, tcy - 4); ctx.lineTo(tcx + 1, tcy + 1);
-                ctx.fillStyle = `rgba(${Math.floor(55 * br)},${Math.floor(110 * br)},${Math.floor(35 * br)},0.5)`;
-                ctx.fill();
-              }
+            }
+            const newCached = { canvas: oc, dayBright: terrainBr };
+            terrainChunkCache.current.set(chunkKey, newCached);
+            cached = newCached;
+          }
+
+          ctx.drawImage(cached!.canvas, screenX, screenY);
+        }
+      }
+
+      // Neon puddle reflections at night (neon strip, drawn on top of terrain)
+      if (isNight) {
+        const neonNoiseHash = (x: number, y: number) => {
+          const hv = Math.sin(x * 4.1 + y * 3.7 + 20) * 43758.5;
+          return hv - Math.floor(hv);
+        };
+        const neonLeft = CITY_LEFT + 600, neonRight = CITY_RIGHT;
+        const neonTop = CITY_TOP, neonBot = CITY_TOP + 500;
+        const nxStart = Math.max(neonLeft, camWorldX - TILE);
+        const nxEnd = Math.min(neonRight, camWorldX + cw + TILE);
+        const nyStart = Math.max(neonTop, camWorldY - TILE);
+        const nyEnd = Math.min(neonBot, camWorldY + ch + TILE);
+        for (let nx2 = nxStart; nx2 < nxEnd; nx2 += TILE) {
+          for (let ny2 = nyStart; ny2 < nyEnd; ny2 += TILE) {
+            const ph4 = neonNoiseHash(nx2 / TILE, ny2 / TILE);
+            if (ph4 > 0.76) {
+              const rc2 = Math.floor(ph4 * 3) % 3;
+              const pudA = (ph4 - 0.76) * 0.45;
+              const sx2 = nx2 + ox, sy2 = ny2 + oy;
+              ctx.fillStyle = rc2 === 0 ? `rgba(255,80,150,${pudA})` : rc2 === 1 ? `rgba(0,200,255,${pudA})` : `rgba(180,0,255,${pudA * 0.8})`;
+              ctx.fillRect(sx2, sy2, TILE, TILE);
             }
           }
         }
@@ -9868,61 +9870,90 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = foothillGrad;
           ctx.fillRect(0, northEdge, cw, foothillDepth);
 
-          // Main mountain silhouette — back layer (larger, darker)
+          // Mountain back layer — distant peaks, darkest/smallest
+          ctx.beginPath();
+          ctx.moveTo(0, northEdge + 15);
+          for (let mx = 0; mx <= cw; mx += 12) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 45 + noiseS(wPos, 0, 0.6) * 60 + noiseS(wPos, 1000, 1.2) * 20;
+            ctx.lineTo(mx, northEdge - peakH);
+          }
+          ctx.lineTo(cw, northEdge + 15);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(45 * mtnBr)},${Math.floor(38 * mtnBr)},${Math.floor(30 * mtnBr)})`;
+          ctx.fill();
+
+          // Mountain mid layer
           ctx.beginPath();
           ctx.moveTo(0, northEdge + 10);
           for (let mx = 0; mx <= cw; mx += 10) {
             const wPos = mx - ox + g.cam.x;
-            const peakH = 55 + noiseS(wPos, 0, 0.8) * 55 + noiseS(wPos, 500, 1.8) * 25;
+            const peakH = 38 + noiseS(wPos, 300, 0.9) * 48 + noiseS(wPos, 700, 1.8) * 18;
             ctx.lineTo(mx, northEdge - peakH);
           }
           ctx.lineTo(cw, northEdge + 10);
           ctx.closePath();
-          ctx.fillStyle = `rgb(${Math.floor(60 * mtnBr)},${Math.floor(50 * mtnBr)},${Math.floor(38 * mtnBr)})`;
+          ctx.fillStyle = `rgb(${Math.floor(62 * mtnBr)},${Math.floor(52 * mtnBr)},${Math.floor(40 * mtnBr)})`;
           ctx.fill();
 
-          // Main mountain silhouette — front layer (sharper peaks)
+          // Mountain front layer — closest peaks, lightest
           ctx.beginPath();
-          ctx.moveTo(0, northEdge + 5);
-          for (let mx = 0; mx <= cw; mx += 8) {
+          ctx.moveTo(0, northEdge + 4);
+          for (let mx = 0; mx <= cw; mx += 6) {
             const wPos = mx - ox + g.cam.x;
-            const peakH = 32 + noiseS(wPos, 200, 1.5) * 42 + noiseS(wPos, 800, 3.0) * 16;
+            const peakH = 22 + noiseS(wPos, 200, 1.5) * 44 + noiseS(wPos, 800, 3.2) * 14 + noiseS(wPos, 1500, 5.0) * 6;
             ctx.lineTo(mx, northEdge - peakH);
           }
-          ctx.lineTo(cw, northEdge + 5);
+          ctx.lineTo(cw, northEdge + 4);
           ctx.closePath();
-          ctx.fillStyle = `rgb(${Math.floor(85 * mtnBr)},${Math.floor(70 * mtnBr)},${Math.floor(52 * mtnBr)})`;
+          // Gradient from rock face color to slightly lighter at base
+          const mtnFrontGradN = ctx.createLinearGradient(0, northEdge - 80, 0, northEdge + 5);
+          mtnFrontGradN.addColorStop(0, `rgb(${Math.floor(100 * mtnBr)},${Math.floor(84 * mtnBr)},${Math.floor(64 * mtnBr)})`);
+          mtnFrontGradN.addColorStop(0.5, `rgb(${Math.floor(88 * mtnBr)},${Math.floor(72 * mtnBr)},${Math.floor(55 * mtnBr)})`);
+          mtnFrontGradN.addColorStop(1, `rgb(${Math.floor(78 * mtnBr)},${Math.floor(64 * mtnBr)},${Math.floor(48 * mtnBr)})`);
+          ctx.fillStyle = mtnFrontGradN;
           ctx.fill();
 
-          // Snow caps on tallest peaks
-          for (let mx = 0; mx < cw; mx += 24) {
+          // Rock ledges / strata lines for natural texture
+          for (let mx = 0; mx < cw; mx += 4) {
             const wPos = mx - ox + g.cam.x;
-            const n1 = noiseS(wPos, 200, 1.5);
-            const n2 = noiseS(wPos, 800, 3.0);
-            const peakH = 32 + n1 * 42 + n2 * 16;
-            if (n1 > 0.58) {
-              const snowBase = northEdge - peakH;
-              const snowH = (n1 - 0.58) * 38;
-              ctx.fillStyle = `rgba(235,240,255,${0.75 * mtnBr})`;
-              ctx.beginPath();
-              ctx.moveTo(mx - 2, snowBase + snowH);
-              ctx.lineTo(mx + 12, snowBase + snowH);
-              ctx.lineTo(mx + 6, snowBase);
-              ctx.closePath();
-              ctx.fill();
-              ctx.fillStyle = `rgba(210,225,255,${0.45 * mtnBr})`;
-              ctx.fillRect(mx + 2, snowBase + 2, 8, snowH * 0.5);
+            const ledge1 = noiseS(wPos * 1.8, 100, 2.2);
+            const ledge2 = noiseS(wPos * 2.5, 400, 3.0);
+            if (ledge1 > 0.65) {
+              const ly = northEdge - 10 - ledge1 * 16;
+              ctx.fillStyle = `rgba(${Math.floor(150 * mtnBr)},${Math.floor(122 * mtnBr)},${Math.floor(90 * mtnBr)},${(ledge1 - 0.65) * 1.4})`;
+              ctx.fillRect(mx, ly, 4, 1.5);
+            }
+            if (ledge2 > 0.68) {
+              const ly2 = northEdge - 25 - ledge2 * 20;
+              ctx.fillStyle = `rgba(${Math.floor(130 * mtnBr)},${Math.floor(106 * mtnBr)},${Math.floor(80 * mtnBr)},${(ledge2 - 0.68) * 1.2})`;
+              ctx.fillRect(mx, ly2, 4, 1.5);
             }
           }
 
-          // Rocky cliff face details
-          for (let mx = 0; mx < cw; mx += 6) {
+          // Snow caps — smooth gradient-filled triangles on tallest peaks
+          for (let mx = 4; mx < cw - 4; mx += 16) {
             const wPos = mx - ox + g.cam.x;
-            const ledge = noiseS(wPos * 2.3, 100, 2.0);
-            if (ledge > 0.62) {
-              const ly = northEdge - 8 - ledge * 12;
-              ctx.fillStyle = `rgba(${Math.floor(140 * mtnBr)},${Math.floor(115 * mtnBr)},${Math.floor(85 * mtnBr)},0.5)`;
-              ctx.fillRect(mx, ly, 6, 2);
+            const n1 = noiseS(wPos, 200, 1.5);
+            const n2 = noiseS(wPos, 800, 3.2);
+            const peakH = 22 + n1 * 44 + n2 * 14;
+            if (n1 > 0.55) {
+              const snowBase = northEdge - peakH;
+              const snowH = (n1 - 0.55) * 45;
+              const snowW = 8 + n1 * 12;
+              const snowGrad = ctx.createLinearGradient(mx, snowBase, mx, snowBase + snowH);
+              snowGrad.addColorStop(0, `rgba(245,248,255,${0.9 * mtnBr})`);
+              snowGrad.addColorStop(0.5, `rgba(230,238,255,${0.7 * mtnBr})`);
+              snowGrad.addColorStop(1, `rgba(210,225,255,${0.0})`);
+              ctx.fillStyle = snowGrad;
+              ctx.beginPath();
+              ctx.moveTo(mx - snowW * 0.5, snowBase + snowH);
+              ctx.lineTo(mx + snowW * 0.5, snowBase + snowH);
+              ctx.lineTo(mx + snowW * 0.15, snowBase + snowH * 0.3);
+              ctx.lineTo(mx, snowBase);
+              ctx.lineTo(mx - snowW * 0.15, snowBase + snowH * 0.3);
+              ctx.closePath();
+              ctx.fill();
             }
           }
 
@@ -9951,59 +9982,89 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = sfoothillGrad;
           ctx.fillRect(0, southEdge - foothillDepth, cw, foothillDepth);
 
-          // Back mountain layer
+          // Mountain back layer
+          ctx.beginPath();
+          ctx.moveTo(0, southEdge - 12);
+          for (let mx = 0; mx <= cw; mx += 12) {
+            const wPos = mx - ox + g.cam.x;
+            const peakH = 45 + noiseS(wPos, 3000, 0.6) * 62 + noiseS(wPos, 4000, 1.2) * 20;
+            ctx.lineTo(mx, southEdge + peakH);
+          }
+          ctx.lineTo(cw, southEdge - 12);
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${Math.floor(44 * mtnBr)},${Math.floor(36 * mtnBr)},${Math.floor(28 * mtnBr)})`;
+          ctx.fill();
+
+          // Mountain mid layer
           ctx.beginPath();
           ctx.moveTo(0, southEdge - 8);
           for (let mx = 0; mx <= cw; mx += 10) {
             const wPos = mx - ox + g.cam.x;
-            const peakH = 50 + noiseS(wPos, 3000, 0.9) * 50 + noiseS(wPos, 3500, 1.9) * 22;
+            const peakH = 36 + noiseS(wPos, 3300, 0.9) * 50 + noiseS(wPos, 3700, 1.8) * 18;
             ctx.lineTo(mx, southEdge + peakH);
           }
           ctx.lineTo(cw, southEdge - 8);
           ctx.closePath();
-          ctx.fillStyle = `rgb(${Math.floor(58 * mtnBr)},${Math.floor(47 * mtnBr)},${Math.floor(36 * mtnBr)})`;
+          ctx.fillStyle = `rgb(${Math.floor(60 * mtnBr)},${Math.floor(50 * mtnBr)},${Math.floor(38 * mtnBr)})`;
           ctx.fill();
 
-          // Front mountain layer
+          // Mountain front layer with gradient
           ctx.beginPath();
-          ctx.moveTo(0, southEdge - 4);
-          for (let mx = 0; mx <= cw; mx += 8) {
+          ctx.moveTo(0, southEdge - 3);
+          for (let mx = 0; mx <= cw; mx += 6) {
             const wPos = mx - ox + g.cam.x;
-            const peakH = 28 + noiseS(wPos, 3200, 1.6) * 38 + noiseS(wPos, 4000, 3.2) * 14;
+            const peakH = 20 + noiseS(wPos, 3200, 1.6) * 42 + noiseS(wPos, 4000, 3.2) * 14 + noiseS(wPos, 5000, 5.0) * 6;
             ctx.lineTo(mx, southEdge + peakH);
           }
-          ctx.lineTo(cw, southEdge - 4);
+          ctx.lineTo(cw, southEdge - 3);
           ctx.closePath();
-          ctx.fillStyle = `rgb(${Math.floor(80 * mtnBr)},${Math.floor(65 * mtnBr)},${Math.floor(48 * mtnBr)})`;
+          const mtnFrontGradS = ctx.createLinearGradient(0, southEdge + 80, 0, southEdge - 4);
+          mtnFrontGradS.addColorStop(0, `rgb(${Math.floor(98 * mtnBr)},${Math.floor(82 * mtnBr)},${Math.floor(62 * mtnBr)})`);
+          mtnFrontGradS.addColorStop(0.5, `rgb(${Math.floor(86 * mtnBr)},${Math.floor(70 * mtnBr)},${Math.floor(53 * mtnBr)})`);
+          mtnFrontGradS.addColorStop(1, `rgb(${Math.floor(76 * mtnBr)},${Math.floor(62 * mtnBr)},${Math.floor(46 * mtnBr)})`);
+          ctx.fillStyle = mtnFrontGradS;
           ctx.fill();
 
-          // Snow caps
-          for (let mx = 0; mx < cw; mx += 24) {
+          // Rock strata ledges
+          for (let mx = 0; mx < cw; mx += 4) {
             const wPos = mx - ox + g.cam.x;
-            const n1 = noiseS(wPos, 3200, 1.6);
-            const n2 = noiseS(wPos, 4000, 3.2);
-            const peakH = 28 + n1 * 38 + n2 * 14;
-            if (n1 > 0.6) {
-              const snowBase = southEdge + peakH;
-              const snowH = (n1 - 0.6) * 32;
-              ctx.fillStyle = `rgba(235,240,255,${0.7 * mtnBr})`;
-              ctx.beginPath();
-              ctx.moveTo(mx - 2, snowBase - snowH);
-              ctx.lineTo(mx + 12, snowBase - snowH);
-              ctx.lineTo(mx + 6, snowBase);
-              ctx.closePath();
-              ctx.fill();
+            const ledge1 = noiseS(wPos * 1.9, 3100, 2.2);
+            const ledge2 = noiseS(wPos * 2.6, 3400, 3.1);
+            if (ledge1 > 0.64) {
+              const ly = southEdge + 10 + ledge1 * 16;
+              ctx.fillStyle = `rgba(${Math.floor(148 * mtnBr)},${Math.floor(118 * mtnBr)},${Math.floor(88 * mtnBr)},${(ledge1 - 0.64) * 1.4})`;
+              ctx.fillRect(mx, ly, 4, 1.5);
+            }
+            if (ledge2 > 0.68) {
+              const ly2 = southEdge + 28 + ledge2 * 18;
+              ctx.fillStyle = `rgba(${Math.floor(128 * mtnBr)},${Math.floor(102 * mtnBr)},${Math.floor(76 * mtnBr)},${(ledge2 - 0.68) * 1.1})`;
+              ctx.fillRect(mx, ly2, 4, 1.5);
             }
           }
 
-          // Rocky ledges
-          for (let mx = 0; mx < cw; mx += 6) {
+          // Snow caps
+          for (let mx = 4; mx < cw - 4; mx += 16) {
             const wPos = mx - ox + g.cam.x;
-            const ledge = noiseS(wPos * 2.1, 3100, 2.2);
-            if (ledge > 0.65) {
-              const ly = southEdge + 6 + ledge * 10;
-              ctx.fillStyle = `rgba(${Math.floor(135 * mtnBr)},${Math.floor(108 * mtnBr)},${Math.floor(80 * mtnBr)},0.45)`;
-              ctx.fillRect(mx, ly, 6, 2);
+            const n1 = noiseS(wPos, 3200, 1.6);
+            const n2 = noiseS(wPos, 4000, 3.2);
+            const peakH = 20 + n1 * 42 + n2 * 14;
+            if (n1 > 0.57) {
+              const snowBase = southEdge + peakH;
+              const snowH = (n1 - 0.57) * 42;
+              const snowW = 8 + n1 * 12;
+              const snowGradS = ctx.createLinearGradient(mx, snowBase, mx, snowBase - snowH);
+              snowGradS.addColorStop(0, `rgba(245,248,255,${0.88 * mtnBr})`);
+              snowGradS.addColorStop(0.5, `rgba(230,238,255,${0.65 * mtnBr})`);
+              snowGradS.addColorStop(1, `rgba(210,225,255,${0.0})`);
+              ctx.fillStyle = snowGradS;
+              ctx.beginPath();
+              ctx.moveTo(mx - snowW * 0.5, snowBase - snowH);
+              ctx.lineTo(mx + snowW * 0.5, snowBase - snowH);
+              ctx.lineTo(mx + snowW * 0.15, snowBase - snowH * 0.3);
+              ctx.lineTo(mx, snowBase);
+              ctx.lineTo(mx - snowW * 0.15, snowBase - snowH * 0.3);
+              ctx.closePath();
+              ctx.fill();
             }
           }
 
@@ -10019,77 +10080,85 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── WEST BORDER — Ocean coastline ────────────────────────────────────
+        // Pre-render static elements (ocean gradient, coastline shape, beach strip)
+        // into a cached offscreen canvas. Re-render only when camera Y or waterBr changes.
         if (westEdge > -300) {
-
-          // Deep ocean base — dark blue with depth gradient
-          const oceanGrad = ctx.createLinearGradient(Math.max(0, ox), 0, westEdge + 40, 0);
-          const deepR = Math.floor(18 * waterBr), deepG = Math.floor(55 * waterBr), deepB = Math.floor(130 * waterBr);
-          const shallR = Math.floor(35 * waterBr), shallG = Math.floor(110 * waterBr), shallB = Math.floor(180 * waterBr);
-          oceanGrad.addColorStop(0, `rgb(${deepR},${deepG},${deepB})`);
-          oceanGrad.addColorStop(0.65, `rgb(${Math.floor(25 * waterBr)},${Math.floor(80 * waterBr)},${Math.floor(155 * waterBr)})`);
-          oceanGrad.addColorStop(1, `rgb(${shallR},${shallG},${shallB})`);
-          ctx.fillStyle = oceanGrad;
-          ctx.fillRect(Math.max(0, ox), 0, westEdge - Math.max(0, ox) + 40, ch);
-
-          // Procedural coastline with noise — irregular shore
-          ctx.beginPath();
-          ctx.moveTo(westEdge + 40, 0);
-          for (let wy2 = 0; wy2 <= ch; wy2 += 4) {
-            const wPos = wy2 - oy + g.cam.y;
-            const coastN = noiseS(0, wPos, 1.0) * 22 + noiseS(100, wPos, 2.8) * 10 + Math.sin(waveT + wPos * 0.009) * 5;
-            ctx.lineTo(westEdge + coastN, wy2);
+          const camYBucket = Math.round(g.cam.y / 64) * 64;
+          const wcCached = coastCacheWest.current;
+          if (!wcCached || Math.abs(wcCached.camY - camYBucket) > 64 || Math.abs(wcCached.waterBr - waterBr) > 0.02) {
+            // Build static coast canvas (OffscreenCanvas with HTMLCanvasElement fallback)
+            const { canvas: wOc, ctx2d: wOc2d } = makeOffscreenCtx(cw + 80, ch);
+            const deepR = Math.floor(18 * waterBr), deepG = Math.floor(55 * waterBr), deepB = Math.floor(130 * waterBr);
+            const shallR = Math.floor(35 * waterBr), shallG = Math.floor(110 * waterBr), shallB = Math.floor(180 * waterBr);
+            // Ocean depth gradient (full strip width)
+            const oceanGradOff = wOc2d.createLinearGradient(0, 0, wOc.width, 0);
+            oceanGradOff.addColorStop(0, `rgb(${deepR},${deepG},${deepB})`);
+            oceanGradOff.addColorStop(0.7, `rgb(${Math.floor(25 * waterBr)},${Math.floor(80 * waterBr)},${Math.floor(155 * waterBr)})`);
+            oceanGradOff.addColorStop(1, `rgb(${shallR},${shallG},${shallB})`);
+            wOc2d.fillStyle = oceanGradOff;
+            wOc2d.fillRect(0, 0, wOc.width, ch);
+            // Coastline shape overlay
+            wOc2d.beginPath();
+            const wEdgeOff = wOc.width - 40;
+            wOc2d.moveTo(wOc.width, 0);
+            for (let wy2 = 0; wy2 <= ch; wy2 += 6) {
+              const wPos = wy2 + camYBucket;
+              const coastN = noiseS(0, wPos, 1.0) * 22 + noiseS(100, wPos, 2.8) * 10;
+              wOc2d.lineTo(wEdgeOff + coastN, wy2);
+            }
+            wOc2d.lineTo(wOc.width, ch);
+            wOc2d.closePath();
+            wOc2d.fillStyle = `rgba(${shallR},${shallG},${shallB},0.55)`;
+            wOc2d.fill();
+            // Sandy beach strip (baked, no per-pixel wave sine)
+            for (let wy2 = 0; wy2 < ch; wy2 += 4) {
+              const wPos = wy2 + camYBucket;
+              const beachX = wEdgeOff + noiseS(0, wPos, 1.0) * 18 + 4;
+              const beachW = 14 + noiseS(50, wPos, 1.4) * 12;
+              const sandR = Math.floor((184 + noiseS(wPos * 0.3, 0, 2) * 18) * mtnBr);
+              const sandG = Math.floor((164 + noiseS(wPos * 0.3, 100, 2) * 14) * mtnBr);
+              const sandB2 = Math.floor((114 + noiseS(wPos * 0.3, 200, 2) * 10) * mtnBr);
+              wOc2d.fillStyle = `rgb(${sandR},${sandG},${sandB2})`;
+              wOc2d.fillRect(beachX, wy2, beachW, 4);
+            }
+            coastCacheWest.current = { canvas: wOc, camY: camYBucket, waterBr };
           }
-          ctx.lineTo(westEdge + 40, ch);
-          ctx.closePath();
-          ctx.fillStyle = `rgba(${shallR},${shallG},${shallB},0.6)`;
-          ctx.fill();
+          // Draw cached static coast layer (offset adjusted for camera drift since last cache)
+          const camYDrift = g.cam.y - camYBucket;
+          ctx.drawImage(coastCacheWest.current!.canvas, Math.max(0, ox) - 40, -camYDrift);
 
-          // Animated wave bands — multiple layers
-          for (let wl = 0; wl < 3; wl++) {
-            const wOffset = wl * 14 + waveT * (1 + wl * 0.4);
-            for (let wy2 = 0; wy2 < ch; wy2 += 7) {
-              const wPos = wy2 - oy + g.cam.y;
-              const wx2 = westEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.02 + wOffset * 0.5) * 14 + noiseS(0, wPos + wl * 300, 1.5) * 12;
+          // Animated wave bands (reduced: 2 layers, 14px stride)
+          for (let wl = 0; wl < 2; wl++) {
+            const wOffset = wl * 18 + waveT * (1 + wl * 0.5);
+            for (let wy2 = 0; wy2 < ch; wy2 += 14) {
+              const wx2 = westEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.02 + wOffset * 0.5) * 14;
               const wBr2 = 0.7 + Math.sin(wy2 * 0.04 + wOffset) * 0.3;
-              const wAlpha = (0.3 - wl * 0.08) * wBr2;
-              ctx.fillStyle = `rgb(${Math.floor(60 * wBr2 * waterBr)},${Math.floor(150 * wBr2 * waterBr)},${Math.floor(220 * wBr2 * waterBr)})`;
-              ctx.fillRect(wx2 - 14, wy2, 16, 5);
+              ctx.fillStyle = `rgba(${Math.floor(60 * wBr2 * waterBr)},${Math.floor(155 * wBr2 * waterBr)},${Math.floor(225 * wBr2 * waterBr)},0.55)`;
+              ctx.fillRect(wx2 - 12, wy2, 14, 4);
             }
           }
 
-          // Foam / surf line at coastline
-          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+          // Foam surf line (animated)
+          for (let wy2 = 0; wy2 < ch; wy2 += 6) {
             const wPos = wy2 - oy + g.cam.y;
-            const foamX = westEdge + noiseS(0, wPos, 1.0) * 18 + Math.sin(waveT * 1.4 + wPos * 0.008) * 7;
+            const foamX = westEdge + noiseS(0, wPos, 1.0) * 16 + Math.sin(waveT * 1.4 + wPos * 0.008) * 6;
             const foamBr = 0.5 + Math.sin(waveT * 2 + wy2 * 0.1) * 0.5;
             if (foamBr > 0.3) {
-              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.35 * waterBr})`;
-              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 10), 2);
+              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.3 * waterBr})`;
+              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 8), 2);
             }
           }
 
-          // Sandy beach strip
-          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
-            const wPos = wy2 - oy + g.cam.y;
-            const beachX = westEdge + noiseS(0, wPos, 1.0) * 18 + 6;
-            const beachW = 14 + noiseS(50, wPos, 1.4) * 12;
-            const sandR = Math.floor((185 + noiseS(wPos * 0.3, 0, 2) * 20) * mtnBr);
-            const sandG = Math.floor((165 + noiseS(wPos * 0.3, 100, 2) * 15) * mtnBr);
-            const sandB = Math.floor((115 + noiseS(wPos * 0.3, 200, 2) * 10) * mtnBr);
-            ctx.fillStyle = `rgb(${sandR},${sandG},${sandB})`;
-            ctx.fillRect(beachX, wy2, beachW, 3);
-          }
-
-          // Seabirds near west coast
+          // Seabirds near west coast (animated)
           const nearWestCoast = g.px < BORDER + 800;
           if (nearWestCoast) {
-            for (let bi = 0; bi < 5; bi++) {
+            for (let bi = 0; bi < 4; bi++) {
               const bTime = g.frame * 0.012 + bi * 1.8;
-              const bx2 = westEdge + 30 + Math.sin(bTime * 0.7 + bi) * 60 + ox * 0.05;
-              const by2 = (ch * (0.15 + bi * 0.16)) + Math.sin(bTime + bi * 0.5) * 20;
+              const bx2 = westEdge + 30 + Math.sin(bTime * 0.7 + bi) * 55;
+              const by2 = (ch * (0.15 + bi * 0.2)) + Math.sin(bTime + bi * 0.5) * 18;
               if (bx2 < 0 || bx2 > cw || by2 < 0 || by2 > ch) continue;
               const wingFlap = Math.sin(bTime * 3.5) * 3;
-              ctx.strokeStyle = `rgba(240,240,250,${0.7 * waterBr})`;
+              ctx.strokeStyle = `rgba(240,240,250,${0.65 * waterBr})`;
               ctx.lineWidth = 1;
               ctx.beginPath();
               ctx.moveTo(bx2, by2);
@@ -10099,90 +10168,83 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.stroke();
             }
           }
-
-          // Ocean surface shimmer
-          if (!isNight) {
-            for (let sy2 = 0; sy2 < ch; sy2 += 18) {
-              for (let sx2 = Math.max(0, ox + 4); sx2 < westEdge - 10; sx2 += 28) {
-                const shimTime = g.frame * 0.04 + sx2 * 0.02 + sy2 * 0.015;
-                const shimAlpha = Math.max(0, Math.sin(shimTime) * 0.12);
-                if (shimAlpha > 0.02) {
-                  ctx.fillStyle = `rgba(255,255,255,${shimAlpha})`;
-                  ctx.fillRect(sx2, sy2, 8, 2);
-                }
-              }
-            }
-          }
         }
 
         // ── EAST BORDER — Ocean coastline ────────────────────────────────────
         if (eastEdge < cw + 300) {
-
-          const oceanGrad2 = ctx.createLinearGradient(eastEdge - 40, 0, Math.min(cw, eastEdge + (cw - eastEdge)), 0);
-          oceanGrad2.addColorStop(0, `rgb(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)})`);
-          oceanGrad2.addColorStop(0.4, `rgb(${Math.floor(22 * waterBr)},${Math.floor(68 * waterBr)},${Math.floor(140 * waterBr)})`);
-          oceanGrad2.addColorStop(1, `rgb(${Math.floor(14 * waterBr)},${Math.floor(45 * waterBr)},${Math.floor(110 * waterBr)})`);
-          ctx.fillStyle = oceanGrad2;
-          ctx.fillRect(eastEdge - 40, 0, cw - eastEdge + 300, ch);
-
-          // Coastal edge shape
-          ctx.beginPath();
-          ctx.moveTo(eastEdge - 40, 0);
-          for (let wy2 = 0; wy2 <= ch; wy2 += 4) {
-            const wPos = wy2 - oy + g.cam.y;
-            const coastN = -(noiseS(5000, wPos, 1.0) * 22 + noiseS(5100, wPos, 2.8) * 10 + Math.sin(waveT * 1.1 + wPos * 0.009) * 5);
-            ctx.lineTo(eastEdge + coastN, wy2);
+          const camYBucketE = Math.round(g.cam.y / 64) * 64;
+          const ecCached = coastCacheEast.current;
+          if (!ecCached || Math.abs(ecCached.camY - camYBucketE) > 64 || Math.abs(ecCached.waterBr - waterBr) > 0.02) {
+            const { canvas: eOc, ctx2d: eOc2d } = makeOffscreenCtx(cw + 80, ch);
+            // Ocean gradient (east side goes deep to shallow right-to-left from screen)
+            const eOceanGrad = eOc2d.createLinearGradient(eOc.width, 0, 0, 0);
+            eOceanGrad.addColorStop(0, `rgb(${Math.floor(14 * waterBr)},${Math.floor(45 * waterBr)},${Math.floor(110 * waterBr)})`);
+            eOceanGrad.addColorStop(0.55, `rgb(${Math.floor(22 * waterBr)},${Math.floor(68 * waterBr)},${Math.floor(140 * waterBr)})`);
+            eOceanGrad.addColorStop(1, `rgb(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)})`);
+            eOc2d.fillStyle = eOceanGrad;
+            eOc2d.fillRect(0, 0, eOc.width, ch);
+            // Coastline edge shape
+            const eEdgeOff = 40;
+            eOc2d.beginPath();
+            eOc2d.moveTo(0, 0);
+            for (let wy2 = 0; wy2 <= ch; wy2 += 6) {
+              const wPos = wy2 + camYBucketE;
+              const coastN = noiseS(5000, wPos, 1.0) * 22 + noiseS(5100, wPos, 2.8) * 10;
+              eOc2d.lineTo(eEdgeOff - coastN, wy2);
+            }
+            eOc2d.lineTo(0, ch);
+            eOc2d.closePath();
+            eOc2d.fillStyle = `rgba(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)},0.5)`;
+            eOc2d.fill();
+            // Sandy east beach (baked)
+            for (let wy2 = 0; wy2 < ch; wy2 += 4) {
+              const wPos = wy2 + camYBucketE;
+              const beachX = eEdgeOff - noiseS(5000, wPos, 1.0) * 16 - 22;
+              const beachW = 13 + noiseS(5050, wPos, 1.4) * 11;
+              const sandR = Math.floor((176 + noiseS(wPos * 0.3, 500, 2) * 18) * mtnBr);
+              const sandG = Math.floor((156 + noiseS(wPos * 0.3, 600, 2) * 14) * mtnBr);
+              const sandB3 = Math.floor((106 + noiseS(wPos * 0.3, 700, 2) * 10) * mtnBr);
+              eOc2d.fillStyle = `rgb(${sandR},${sandG},${sandB3})`;
+              eOc2d.fillRect(beachX, wy2, beachW, 4);
+            }
+            coastCacheEast.current = { canvas: eOc, camY: camYBucketE, waterBr };
           }
-          ctx.lineTo(eastEdge - 40, ch);
-          ctx.closePath();
-          ctx.fillStyle = `rgba(${Math.floor(30 * waterBr)},${Math.floor(95 * waterBr)},${Math.floor(165 * waterBr)},0.55)`;
-          ctx.fill();
+          // Draw cached east coast (east of eastEdge screen position)
+          const camYDriftE = g.cam.y - camYBucketE;
+          ctx.drawImage(coastCacheEast.current!.canvas, eastEdge - 40, -camYDriftE);
 
-          // East wave bands
-          for (let wl = 0; wl < 3; wl++) {
-            const wOffset = wl * 12 + waveT * (0.9 + wl * 0.35) + 2;
-            for (let wy2 = 0; wy2 < ch; wy2 += 7) {
-              const wPos = wy2 - oy + g.cam.y;
-              const wx2 = eastEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.025 + wOffset * 0.6) * 12 + noiseS(5000, wPos + wl * 300, 1.5) * 10;
+          // East wave bands (animated)
+          for (let wl = 0; wl < 2; wl++) {
+            const wOffset = wl * 12 + waveT * (0.9 + wl * 0.4) + 2;
+            for (let wy2 = 0; wy2 < ch; wy2 += 14) {
+              const wx2 = eastEdge + Math.sin(wy2 * 0.07 + wOffset) * 8 + Math.sin(wy2 * 0.025 + wOffset * 0.6) * 10;
               const wBr2 = 0.65 + Math.sin(wy2 * 0.045 + wOffset) * 0.3;
-              ctx.fillStyle = `rgb(${Math.floor(50 * wBr2 * waterBr)},${Math.floor(140 * wBr2 * waterBr)},${Math.floor(210 * wBr2 * waterBr)})`;
-              ctx.fillRect(wx2 - 2, wy2, 14, 5);
+              ctx.fillStyle = `rgba(${Math.floor(50 * wBr2 * waterBr)},${Math.floor(142 * wBr2 * waterBr)},${Math.floor(215 * wBr2 * waterBr)},0.5)`;
+              ctx.fillRect(wx2 - 2, wy2, 12, 4);
             }
           }
 
-          // Foam at east shore
-          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
+          // Foam at east shore (animated)
+          for (let wy2 = 0; wy2 < ch; wy2 += 6) {
             const wPos = wy2 - oy + g.cam.y;
-            const foamX = eastEdge - noiseS(5000, wPos, 1.0) * 18 - Math.sin(waveT * 1.6 + wPos * 0.008) * 6;
+            const foamX = eastEdge - noiseS(5000, wPos, 1.0) * 16 - Math.sin(waveT * 1.6 + wPos * 0.008) * 5;
             const foamBr = 0.5 + Math.sin(waveT * 2.2 + wy2 * 0.09) * 0.5;
             if (foamBr > 0.3) {
-              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.3 * waterBr})`;
-              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 9), 2);
+              ctx.fillStyle = `rgba(255,255,255,${foamBr * 0.28 * waterBr})`;
+              ctx.fillRect(foamX - 2, wy2, Math.floor(foamBr * 8), 2);
             }
           }
 
-          // Sandy east beach
-          for (let wy2 = 0; wy2 < ch; wy2 += 3) {
-            const wPos = wy2 - oy + g.cam.y;
-            const beachX = eastEdge - noiseS(5000, wPos, 1.0) * 16 - 20;
-            const beachW = 13 + noiseS(5050, wPos, 1.4) * 11;
-            const sandR = Math.floor((178 + noiseS(wPos * 0.3, 500, 2) * 18) * mtnBr);
-            const sandG = Math.floor((158 + noiseS(wPos * 0.3, 600, 2) * 14) * mtnBr);
-            const sandB = Math.floor((108 + noiseS(wPos * 0.3, 700, 2) * 10) * mtnBr);
-            ctx.fillStyle = `rgb(${sandR},${sandG},${sandB})`;
-            ctx.fillRect(beachX, wy2, beachW, 3);
-          }
-
-          // Seabirds near east coast
+          // Seabirds near east coast (animated)
           const nearEastCoast = g.px > W - BORDER - 800;
           if (nearEastCoast) {
-            for (let bi = 0; bi < 5; bi++) {
+            for (let bi = 0; bi < 4; bi++) {
               const bTime = g.frame * 0.011 + bi * 2.1 + 3;
-              const bx2 = eastEdge - 25 - Math.sin(bTime * 0.65 + bi) * 55;
-              const by2 = (ch * (0.12 + bi * 0.17)) + Math.sin(bTime * 0.9 + bi) * 18;
+              const bx2 = eastEdge - 25 - Math.sin(bTime * 0.65 + bi) * 50;
+              const by2 = (ch * (0.12 + bi * 0.2)) + Math.sin(bTime * 0.9 + bi) * 18;
               if (bx2 < 0 || bx2 > cw || by2 < 0 || by2 > ch) continue;
               const wingFlap = Math.sin(bTime * 3.2) * 3;
-              ctx.strokeStyle = `rgba(235,235,245,${0.65 * waterBr})`;
+              ctx.strokeStyle = `rgba(235,235,245,${0.6 * waterBr})`;
               ctx.lineWidth = 1;
               ctx.beginPath();
               ctx.moveTo(bx2, by2);
