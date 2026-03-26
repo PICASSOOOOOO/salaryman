@@ -783,11 +783,19 @@ export const attachWorldServer = (httpServer: Server) => {
   const guestWss = new WebSocketServer({ noServer: true });
   console.log('[Meet] Guest WebSocket server ready (noServer, handles /ws/meet/* upgrades)');
 
+  // ── Conference video WebSocket server (/ws/conf/:roomName) ───────────────
+  const confWss = new WebSocketServer({ noServer: true });
+  console.log('[Conf] Conference video WebSocket server ready (noServer, handles /ws/conf/* upgrades)');
+
   httpServer.on('upgrade', (req, socket, head) => {
     const pathname = req.url?.split('?')[0] ?? '';
     if (pathname.includes('/ws/meet')) {
       guestWss.handleUpgrade(req, socket as any, head, (ws) => {
         guestWss.emit('connection', ws, req);
+      });
+    } else if (pathname.includes('/ws/conf')) {
+      confWss.handleUpgrade(req, socket as any, head, (ws) => {
+        confWss.emit('connection', ws, req);
       });
     }
   });
@@ -928,9 +936,84 @@ export const attachWorldServer = (httpServer: Server) => {
     ws.on('error', (err) => console.error(`[Meet] WS error for guest ${guestName}:`, err.message));
   });
 
-  // Extend the in-game RTC signal handler to also forward signals to guests
-  // We do this by patching the sendTo helper for guest targets
-  // (Already handled in rtc_signal case by checking guestRooms below)
+  // ── Conference video signaling (/ws/conf/:roomName) ───────────────────────
+  // Simple room-scoped WebRTC signaling for browser participants in conference rooms.
+  // No meeting DB check required — conference rooms are managed by the phone system.
+  interface ConfConn {
+    id: string;
+    name: string;
+    ws: WebSocket;
+    roomName: string;
+  }
+  const confRooms = new Map<string, Set<ConfConn>>();
+  let confIdCounter = 0;
+  const makeConfId = () => `c${++confIdCounter}_${Date.now().toString(36)}`;
+
+  confWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    const urlPath = req.url ?? '';
+    const parts = urlPath.split('?');
+    const pathSegments = parts[0].split('/').filter(Boolean);
+    const roomName = pathSegments[pathSegments.length - 1] ?? '';
+    const params = new URLSearchParams(parts[1] ?? '');
+    const participantName = (params.get('name') ?? 'PARTICIPANT').slice(0, 32).toUpperCase();
+
+    if (!roomName) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Room name required' }));
+      ws.close(1008, 'Room name required');
+      return;
+    }
+
+    const connId = makeConfId();
+    const conn: ConfConn = { id: connId, name: participantName, ws, roomName };
+
+    if (!confRooms.has(roomName)) confRooms.set(roomName, new Set());
+    const room = confRooms.get(roomName)!;
+
+    const existingPeers = Array.from(room).map(c => ({ id: c.id, name: c.name }));
+    room.add(conn);
+
+    console.log(`[Conf] ${participantName} (${connId}) joined conf room ${roomName}`);
+
+    ws.send(JSON.stringify({ type: 'conf_welcome', connId, roomName, peers: existingPeers }));
+
+    for (const c of room) {
+      if (c.id !== connId && c.ws.readyState === WebSocket.OPEN) {
+        c.ws.send(JSON.stringify({ type: 'conf_peer_joined', peerId: connId, peerName: participantName }));
+      }
+    }
+
+    ws.on('message', (data: Buffer) => {
+      let msg: any;
+      try { msg = JSON.parse(data.toString()); } catch { return; }
+
+      if (msg.type === 'conf_signal') {
+        const { targetId, signal } = msg;
+        if (!targetId || !signal) return;
+        const target = Array.from(room).find(c => c.id === targetId);
+        if (target && target.ws.readyState === WebSocket.OPEN) {
+          target.ws.send(JSON.stringify({
+            type: 'conf_signal',
+            fromId: connId,
+            fromName: participantName,
+            signal,
+          }));
+        }
+      }
+    });
+
+    ws.on('close', () => {
+      room.delete(conn);
+      if (room.size === 0) confRooms.delete(roomName);
+      for (const c of room) {
+        if (c.ws.readyState === WebSocket.OPEN) {
+          c.ws.send(JSON.stringify({ type: 'conf_peer_left', peerId: connId }));
+        }
+      }
+      console.log(`[Conf] ${participantName} (${connId}) left conf room ${roomName}`);
+    });
+
+    ws.on('error', (err) => console.error(`[Conf] WS error for ${participantName}:`, err.message));
+  });
 
   return wss;
 };

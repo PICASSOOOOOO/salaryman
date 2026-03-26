@@ -17073,23 +17073,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               ))}
             </div>
-            <div style={{ padding: '5px 8px', borderTop: '1px solid rgba(0,200,255,.1)', display: 'flex', gap: '6px', justifyContent: 'center' }}>
-              <button onClick={() => {
-                if (vcStreamRef.current) {
-                  const audioTrack = vcStreamRef.current.getAudioTracks()[0];
-                  if (audioTrack) { audioTrack.enabled = !audioTrack.enabled; setAudioEnabled(audioTrack.enabled); }
-                }
-              }} style={{ padding: '3px 10px', background: audioEnabled ? 'rgba(0,200,255,.1)' : 'rgba(255,60,60,.15)', border: `1px solid ${audioEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.4)'}`, color: audioEnabled ? 'rgba(0,200,255,.7)' : 'rgba(255,60,60,.7)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', borderRadius: '3px' }}>
-                {audioEnabled ? 'MIC ON' : 'MIC OFF'}
-              </button>
-              <button onClick={() => {
-                if (vcStreamRef.current) {
-                  const videoTrack = vcStreamRef.current.getVideoTracks()[0];
-                  if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; setVideoEnabled(videoTrack.enabled); }
-                }
-              }} style={{ padding: '3px 10px', background: videoEnabled ? 'rgba(0,200,255,.1)' : 'rgba(255,60,60,.15)', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.4)'}`, color: videoEnabled ? 'rgba(0,200,255,.7)' : 'rgba(255,60,60,.7)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', borderRadius: '3px' }}>
-                {videoEnabled ? 'CAM ON' : 'CAM OFF'}
-              </button>
+            <div style={{ padding: '6px 10px', borderTop: '1px solid rgba(0,200,255,.12)', background: 'rgba(0,10,20,.4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '5px' }}>
+                <div style={{ fontSize: '.38rem', color: videoEnabled ? 'rgba(0,200,255,.5)' : 'rgba(255,160,0,.6)', letterSpacing: '.12em', padding: '2px 8px', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.2)' : 'rgba(255,160,0,.3)'}`, borderRadius: '2px', background: videoEnabled ? 'rgba(0,200,255,.04)' : 'rgba(255,160,0,.06)' }}>
+                  {videoEnabled ? '📹 VIDEO MODE' : '🎙 AUDIO ONLY'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                <button onClick={() => {
+                  if (vcStreamRef.current) {
+                    const audioTrack = vcStreamRef.current.getAudioTracks()[0];
+                    if (audioTrack) { audioTrack.enabled = !audioTrack.enabled; setAudioEnabled(audioTrack.enabled); }
+                  }
+                }} style={{ padding: '4px 12px', background: audioEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,60,60,.15)', border: `1px solid ${audioEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,60,60,.5)'}`, color: audioEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,60,60,.8)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
+                  {audioEnabled ? '🎙 MIC ON' : '🔇 MIC OFF'}
+                </button>
+                <button onClick={() => {
+                  if (vcStreamRef.current) {
+                    const videoTrack = vcStreamRef.current.getVideoTracks()[0];
+                    if (videoTrack) { videoTrack.enabled = !videoTrack.enabled; setVideoEnabled(videoTrack.enabled); }
+                  }
+                }} style={{ padding: '4px 12px', background: videoEnabled ? 'rgba(0,200,255,.08)' : 'rgba(255,160,0,.12)', border: `1px solid ${videoEnabled ? 'rgba(0,200,255,.3)' : 'rgba(255,160,0,.5)'}`, color: videoEnabled ? 'rgba(0,200,255,.8)' : 'rgba(255,160,0,.8)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', borderRadius: '3px', letterSpacing: '.06em' }}>
+                  {videoEnabled ? '📹 CAM ON' : '📷 CAM OFF'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
