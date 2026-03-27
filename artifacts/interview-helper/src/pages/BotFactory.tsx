@@ -1602,7 +1602,7 @@ export default function BotFactory() {
                                   <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
                                     {item.name}
                                   </h3>
-                                  <PriceBadge price={item.priceMonthly} />
+                                  <PriceBadge price={item.priceMonthly} t={t} />
                                 </div>
                                 <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
                                 <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
