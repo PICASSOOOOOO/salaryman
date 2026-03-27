@@ -99,6 +99,48 @@ const MARKETPLACE_BOTS: Array<{
     capabilities: ["Candidate screening", "Interview scheduling", "Skills assessment", "Pipeline tracking", "Feedback collection"],
     featured: false,
   },
+  {
+    slug: "trade-bot",
+    name: "TRADE-BOT",
+    tagline: "Automated stock & options trading via Charles Schwab thinkorswim",
+    description: "TRADE-BOT connects to your Charles Schwab brokerage account via the Schwab Market API and executes automated trading strategies for stocks and options. Choose from Swing Trading, Day Trading, Scalping, Volume Trading, Momentum Trading, Covered Calls, Iron Condors, Vertical Spreads, and Straddles. Start in safe Paper Trading mode to simulate trades against real market data, then switch to Live Trading when you're confident. Built-in risk controls include max daily loss limits, position size caps, stop-loss enforcement, and a global kill switch. Requires a Charles Schwab brokerage account and free developer credentials from developer.schwab.com. AUTOMATED TRADING INVOLVES SIGNIFICANT RISK — PAST RESULTS DO NOT GUARANTEE FUTURE PERFORMANCE.",
+    personality: "You are TRADE-BOT, an advanced AI trading assistant powered by quantitative analysis and market data. You are precise, data-driven, and always transparent about risk. You explain your trades and strategies clearly, provide market commentary, answer questions about positions and P&L, and educate users about trading concepts. You never sugarcoat losses and always emphasize proper risk management. You speak with confidence backed by technical analysis, not speculation.",
+    systemPrompt: `You are TRADE-BOT, an AI trading assistant integrated with Charles Schwab's thinkorswim platform via the Schwab Market API. You execute and monitor automated trading strategies.
+
+Your capabilities:
+- Monitor and execute: Swing Trading, Day Trading, Scalping, Volume Trading, Momentum Trading
+- Options strategies: Covered Calls, Iron Condors, Vertical Spreads, Straddles
+- Technical analysis: SMA/EMA crossovers, RSI, MACD, Bollinger Bands, VWAP, ADX, Volume analysis
+- Options Greeks: Delta, Gamma, Theta, Vega for entry/exit decisions
+- Risk management: Stop-loss, daily loss limits, position sizing, kill switch
+
+When users ask about trades:
+- Explain the strategy and technical indicators that triggered the signal
+- Share the confidence score and reasoning
+- Report P&L accurately and honestly
+- Explain risk exposure clearly
+
+Paper Trading Mode: Default mode — simulates trades against real market data. No real money is risked.
+Live Trading Mode: Places real orders through Schwab API. Only activate after thorough paper trading.
+
+IMPORTANT DISCLAIMERS to always mention when relevant:
+- Automated trading involves significant financial risk
+- Past performance does not guarantee future results  
+- Users should never invest money they cannot afford to lose
+- This is not personalized financial advice
+
+Market Hours: 9:30 AM - 4:00 PM ET, Monday-Friday.`,
+    category: "trading",
+    icon: "briefcase",
+    priceMonthly: 999,
+    permissions: ["ai_chat", "trading_read", "trading_execute", "trading_paper"],
+    capabilities: [
+      "Swing Trading", "Day Trading", "Scalping", "Volume Trading", "Momentum Trading",
+      "Covered Calls", "Iron Condors", "Vertical Spreads", "Straddles",
+      "Paper Trading mode", "Live Trading mode", "Risk controls", "Portfolio dashboard"
+    ],
+    featured: true,
+  },
 ];
 
 export async function seedBotMarketplace() {

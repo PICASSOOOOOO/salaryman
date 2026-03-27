@@ -1,18 +1,97 @@
-import { pgTable, serial, text, timestamp, integer, boolean, jsonb, varchar, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, jsonb, varchar, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const BOT_STATUSES = ["active", "paused", "error"] as const;
 export type BotStatus = (typeof BOT_STATUSES)[number];
 
-export const PLATFORM_TYPES = ["telegram", "whatsapp", "discord", "slack", "sms", "email"] as const;
+export const PLATFORM_TYPES = ["telegram", "whatsapp", "discord", "slack", "sms", "email", "thinkorswim"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 export const PERMISSION_KEYS = [
   "crm_read", "crm_write", "email_send", "calendar_read", "calendar_write",
   "documents_read", "contacts_read", "contacts_write", "ai_chat",
+  "trading_read", "trading_execute", "trading_paper",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export const TRADE_STRATEGY_TYPES = [
+  "swing_trading", "day_trading", "scalping", "volume_trading", "momentum_trading",
+  "covered_calls", "iron_condors", "vertical_spreads", "straddles",
+] as const;
+export type TradeStrategyType = (typeof TRADE_STRATEGY_TYPES)[number];
+
+export const botTradeStrategiesTable = pgTable("bot_trade_strategies", {
+  id: serial("id").primaryKey(),
+  botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }),
+  strategyType: varchar("strategy_type", { length: 50 }).notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull().default({}),
+  maxDailyLoss: integer("max_daily_loss").notNull().default(500),
+  maxDailyLossPercent: integer("max_daily_loss_percent").notNull().default(5),
+  maxPositionSize: integer("max_position_size").notNull().default(1000),
+  maxConcurrentTrades: integer("max_concurrent_trades").notNull().default(3),
+  stopLossPercent: integer("stop_loss_percent").notNull().default(2),
+  trailingStopPercent: integer("trailing_stop_percent").notNull().default(0),
+  killSwitch: boolean("kill_switch").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export const insertBotTradeStrategySchema = createInsertSchema(botTradeStrategiesTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type BotTradeStrategy = typeof botTradeStrategiesTable.$inferSelect;
+export type InsertBotTradeStrategy = ReturnType<typeof insertBotTradeStrategySchema.parse>;
+
+export const botTradeLogTable = pgTable("bot_trade_log", {
+  id: serial("id").primaryKey(),
+  botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }),
+  strategyType: varchar("strategy_type", { length: 50 }).notNull(),
+  symbol: text("symbol").notNull(),
+  side: varchar("side", { length: 10 }).notNull(),
+  quantity: integer("quantity").notNull(),
+  entryPrice: integer("entry_price").notNull(),
+  exitPrice: integer("exit_price"),
+  pnl: integer("pnl"),
+  isPaper: boolean("is_paper").notNull().default(true),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  orderId: text("order_id"),
+  assetType: varchar("asset_type", { length: 10 }).notNull().default("EQUITY"),
+  peakPrice: integer("peak_price"),
+  signal: jsonb("signal").$type<Record<string, unknown>>().notNull().default({}),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertBotTradeLogSchema = createInsertSchema(botTradeLogTable).omit({
+  id: true, createdAt: true,
+});
+export type BotTradeLog = typeof botTradeLogTable.$inferSelect;
+export type InsertBotTradeLog = ReturnType<typeof insertBotTradeLogSchema.parse>;
+
+export const botTradingAccountsTable = pgTable("bot_trading_accounts", {
+  id: serial("id").primaryKey(),
+  botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }).unique(),
+  schwabAccountHash: text("schwab_account_hash"),
+  schwabAccountNumber: text("schwab_account_number"),
+  encryptedAccessToken: text("encrypted_access_token"),
+  encryptedRefreshToken: text("encrypted_refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  isPaperMode: boolean("is_paper_mode").notNull().default(true),
+  cachedBalance: integer("cached_balance"),
+  cachedEquity: integer("cached_equity"),
+  dailyPnl: integer("daily_pnl").notNull().default(0),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export const insertBotTradingAccountSchema = createInsertSchema(botTradingAccountsTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type BotTradingAccount = typeof botTradingAccountsTable.$inferSelect;
+export type InsertBotTradingAccount = ReturnType<typeof insertBotTradingAccountSchema.parse>;
 
 export const botsTable = pgTable("bots", {
   id: serial("id").primaryKey(),
@@ -83,7 +162,9 @@ export const botScheduledTasksTable = pgTable("bot_scheduled_tasks", {
   enabled: boolean("enabled").notNull().default(true),
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  uniqueIndex("bot_scheduled_tasks_bot_id_description_idx").on(t.botId, t.taskDescription),
+]);
 
 export const insertBotScheduledTaskSchema = createInsertSchema(botScheduledTasksTable).omit({
   id: true,
@@ -147,3 +228,14 @@ export const botSubscriptionsTable = pgTable(
 );
 
 export type BotSubscription = typeof botSubscriptionsTable.$inferSelect;
+
+export const botOAuthSessionsTable = pgTable("bot_oauth_sessions", {
+  nonce: varchar("nonce", { length: 64 }).primaryKey(),
+  botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  codeVerifier: text("code_verifier").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type BotOAuthSession = typeof botOAuthSessionsTable.$inferSelect;

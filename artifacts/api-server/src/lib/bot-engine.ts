@@ -22,6 +22,9 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   documents_read: "Read documents and files",
   contacts_read: "Look up contact information",
   contacts_write: "Add or update contacts",
+  trading_read: "Read portfolio positions and market data",
+  trading_execute: "Execute live trades through Schwab API",
+  trading_paper: "Run simulated paper trades against real market data",
 };
 
 function buildPermissionContext(permissions: string[]): string {
@@ -282,11 +285,18 @@ export async function startBot(botId: number): Promise<void> {
           const currentBot = await db.select().from(botsTable).where(eq(botsTable.id, botId));
           if (!currentBot[0] || currentBot[0].status !== "active") return;
 
-          await processIncomingMessage(currentBot[0], {
-            platform: "telegram",
-            externalUserId: "system",
-            text: `[SCHEDULED TASK] ${task.taskDescription}`,
-          });
+          if (task.taskDescription.startsWith("[TRADING_SCAN]")) {
+            const connector = getConnector("thinkorswim");
+            if (connector?.isActive(botId)) {
+              await connector.send(botId, "system", { text: "[TRADING_SCAN]" });
+            }
+          } else {
+            await processIncomingMessage(currentBot[0], {
+              platform: "telegram",
+              externalUserId: "system",
+              text: `[SCHEDULED TASK] ${task.taskDescription}`,
+            });
+          }
 
           await db
             .update(botScheduledTasksTable)

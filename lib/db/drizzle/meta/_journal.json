@@ -134,6 +134,27 @@
       "when": 1774556029278,
       "tag": "0018_sparkling_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774700000000,
+      "tag": "0019_thinkorswim_trading",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1774561555457,
+      "tag": "0020_fast_naoko",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774563008373,
+      "tag": "0021_colossal_retro_girl",
+      "breakpoints": true
     }
   ]
 }

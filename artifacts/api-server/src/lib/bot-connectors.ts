@@ -1,5 +1,6 @@
 import type { PlatformType } from "@workspace/db";
 import { decryptCredentials } from "./bot-crypto";
+import { thinkorswimConnector } from "./thinkorswim-connector";
 
 export interface IncomingMessage {
   platform: PlatformType;
@@ -168,6 +169,7 @@ export const whatsappConnector: PlatformConnector = {
 const connectorRegistry = new Map<PlatformType, PlatformConnector>();
 connectorRegistry.set("telegram", telegramConnector);
 connectorRegistry.set("whatsapp", whatsappConnector);
+connectorRegistry.set("thinkorswim", thinkorswimConnector);
 
 export function getConnector(platform: PlatformType): PlatformConnector | undefined {
   return connectorRegistry.get(platform);

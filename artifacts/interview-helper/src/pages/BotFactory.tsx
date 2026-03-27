@@ -5,7 +5,9 @@ import {
   Bot, Plus, Trash2, Power, PowerOff, MessageSquare, Brain,
   Send, Settings, Clock, Shield, ChevronRight, Store, Zap,
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
-  Eye, MemoryStick, Plug, AlertCircle,
+  Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
+  DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
+  Siren, FlipHorizontal,
 } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -73,6 +75,62 @@ interface ConversationLog {
   content: string;
   createdAt: string;
 }
+
+interface TradingAccount {
+  id: number;
+  botId: number;
+  schwabAccountNumber: string | null;
+  isPaperMode: boolean;
+  cachedBalance: number | null;
+  cachedEquity: number | null;
+  dailyPnl: number;
+  lastSyncAt: string | null;
+  hasTokens: boolean;
+}
+
+interface TradingStrategy {
+  id: number;
+  botId: number;
+  strategyType: string;
+  enabled: boolean;
+  parameters: Record<string, unknown>;
+  maxDailyLoss: number;
+  maxDailyLossPercent: number;
+  maxPositionSize: number;
+  maxConcurrentTrades: number;
+  stopLossPercent: number;
+  trailingStopPercent: number;
+  killSwitch: boolean;
+}
+
+interface TradeLog {
+  id: number;
+  strategyType: string;
+  symbol: string;
+  side: string;
+  quantity: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  pnl: number | null;
+  isPaper: boolean;
+  status: string;
+  createdAt: string;
+  closedAt: string | null;
+}
+
+const STRATEGY_LABELS: Record<string, string> = {
+  swing_trading: 'Swing Trading',
+  day_trading: 'Day Trading',
+  scalping: 'Scalping',
+  volume_trading: 'Volume Trading',
+  momentum_trading: 'Momentum Trading',
+  covered_calls: 'Covered Calls',
+  iron_condors: 'Iron Condors',
+  vertical_spreads: 'Vertical Spreads',
+  straddles: 'Straddles',
+};
+
+const ALL_STRATEGIES = Object.keys(STRATEGY_LABELS);
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   terminal: Terminal, target: Target, shield: Shield, 'pen-tool': PenTool,
@@ -178,11 +236,51 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
 }
 
 function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: BotData; onClose: () => void; onConnected: () => void; boomer: boolean; t: (key: string) => string }) {
-  const [platform, setPlatform] = useState<'telegram' | 'whatsapp'>('telegram');
+  const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
+  const [platform, setPlatform] = useState<'telegram' | 'whatsapp' | 'thinkorswim'>(hasTrading ? 'thinkorswim' : 'telegram');
   const [token, setToken] = useState('');
+  const [appKey, setAppKey] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [schwabStep, setSchwabStep] = useState<1 | 2 | 3>(1);
   const [connecting, setConnecting] = useState(false);
+  const [authUrl, setAuthUrl] = useState('');
 
   const handleConnect = async () => {
+    if (platform === 'thinkorswim') {
+      if (!appKey.trim() || !appSecret.trim()) return;
+      setConnecting(true);
+      try {
+        const credentials = JSON.stringify({ appKey: appKey.trim(), appSecret: appSecret.trim() });
+        const res = await apiFetch(`/api/bots/${bot.id}/connect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ platform: 'thinkorswim', credentials }),
+        });
+        if (res.ok) {
+          const accRes = await apiFetch(`/api/bots/${bot.id}/trading/account`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPaperMode: true }) });
+
+          const urlRes = await apiFetch(`/api/bots/${bot.id}/trading/schwab/auth-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appKey: appKey.trim() }),
+          });
+          if (urlRes.ok) {
+            const data = await urlRes.json();
+            setAuthUrl(data.authUrl);
+            setSchwabStep(3);
+          } else {
+            onConnected();
+            onClose();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to connect Schwab:', err);
+      } finally {
+        setConnecting(false);
+      }
+      return;
+    }
+
     if (!token.trim()) return;
     setConnecting(true);
     try {
@@ -211,7 +309,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}>
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-md"
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem', letterSpacing: '0.08em' }}>
@@ -220,45 +318,814 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button onClick={() => setPlatform('telegram')}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'telegram' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}>
+              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'telegram' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}>
               {t('botFactory.platformTelegram')}
             </button>
             <button onClick={() => setPlatform('whatsapp')}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'whatsapp' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-background text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'whatsapp' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-background text-muted-foreground border-border hover:border-emerald-500/20'}`}>
               {t('botFactory.platformWhatsApp')}
             </button>
+            <button onClick={() => { setPlatform('thinkorswim'); setSchwabStep(1); }}
+              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'thinkorswim' ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-background text-muted-foreground border-border hover:border-green-500/20'}`}>
+              thinkorswim
+            </button>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {platform === 'telegram'
-                ? (boomer ? t('botFactory.telegramTokenLabel') : t('botFactory.telegramTokenLabelCodename'))
-                : (boomer ? t('botFactory.whatsappTokenLabel') : t('botFactory.whatsappTokenLabelCodename'))
-              }
-            </label>
-            <input value={token} onChange={e => setToken(e.target.value)}
-              placeholder={platform === 'telegram' ? t('botFactory.telegramTokenPlaceholder') : t('botFactory.whatsappTokenPlaceholder')}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none font-mono" />
-          </div>
-          {platform === 'telegram' && (
-            <p className="text-[11px] text-muted-foreground/60">
-              {boomer ? t('botFactory.telegramHelp') : t('botFactory.telegramHelpCodename')}
-            </p>
+          {platform === 'thinkorswim' ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                {[1, 2, 3].map(s => (
+                  <div key={s} className="flex items-center gap-1">
+                    <div className={`w-6 h-6 rounded-full border text-[10px] font-bold flex items-center justify-center ${schwabStep >= s ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'border-border text-muted-foreground'}`}>
+                      {schwabStep > s ? <Check className="w-3 h-3" /> : s}
+                    </div>
+                    {s < 3 && <div className={`h-0.5 w-6 ${schwabStep > s ? 'bg-green-500/40' : 'bg-border'}`} />}
+                  </div>
+                ))}
+                <span className="text-[10px] text-muted-foreground ml-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {schwabStep === 1 ? 'OVERVIEW' : schwabStep === 2 ? 'CREDENTIALS' : 'AUTHORIZE'}
+                </span>
+              </div>
+
+              {schwabStep === 1 && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+                    <p className="text-sm font-bold text-green-400 mb-1">What is thinkorswim?</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      thinkorswim is Charles Schwab's professional trading platform. This bot uses Schwab's Market API to execute automated trading strategies for stocks and options.
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <p className="font-bold text-foreground text-sm">Requirements:</p>
+                    <p>1. A Charles Schwab brokerage account (schwab.com)</p>
+                    <p>2. Free developer credentials from <span className="text-green-400 font-bold">developer.schwab.com</span></p>
+                    <p>3. Create an app in the Schwab developer portal and note your App Key and Secret</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                    <p className="text-xs font-bold text-amber-400 mb-1">⚠️ Risk Disclaimer</p>
+                    <p className="text-xs text-muted-foreground">Automated trading involves substantial risk of financial loss. This bot starts in paper trading mode (no real money). Only enable live trading when you fully understand the risks and have tested thoroughly in paper mode.</p>
+                  </div>
+                  <button onClick={() => setSchwabStep(2)}
+                    className="w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+                    <ChevronRight className="w-4 h-4" /> I understand — Continue
+                  </button>
+                </div>
+              )}
+
+              {schwabStep === 2 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Enter your Schwab developer credentials. Get these at <span className="text-green-400 font-bold">developer.schwab.com</span> → Apps → Create App.
+                  </p>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>APP KEY (Client ID)</label>
+                    <input value={appKey} onChange={e => setAppKey(e.target.value)} placeholder="your-app-key-here"
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-green-500/50 focus:outline-none font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>APP SECRET (Client Secret)</label>
+                    <input value={appSecret} onChange={e => setAppSecret(e.target.value)} placeholder="your-app-secret-here" type="password"
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-green-500/50 focus:outline-none font-mono" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/60">
+                    Your credentials are encrypted before storage. They are only used to authenticate with Schwab's API.
+                  </p>
+                  <button onClick={handleConnect} disabled={connecting || !appKey.trim() || !appSecret.trim()}
+                    className="w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                    {connecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ChevronRight className="w-4 h-4" />}
+                    Save & Get Auth Link
+                  </button>
+                </div>
+              )}
+
+              {schwabStep === 3 && authUrl && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+                    <p className="text-sm font-bold text-green-400 mb-1">✓ Credentials Saved</p>
+                    <p className="text-xs text-muted-foreground">Click the button below to authorize this bot to access your Schwab account. You will be redirected to Schwab's login page.</p>
+                  </div>
+                  <a href={authUrl} target="_blank" rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+                    <TrendingUp className="w-4 h-4" /> Authorize with Schwab
+                  </a>
+                  <p className="text-[10px] text-muted-foreground/60 text-center">
+                    After authorizing, you will be redirected back. The bot will start in paper trading mode.
+                  </p>
+                  <button onClick={() => { onConnected(); onClose(); }}
+                    className="w-full py-2 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors">
+                    Done (skip for now)
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {platform === 'telegram'
+                    ? (boomer ? t('botFactory.telegramTokenLabel') : t('botFactory.telegramTokenLabelCodename'))
+                    : (boomer ? t('botFactory.whatsappTokenLabel') : t('botFactory.whatsappTokenLabelCodename'))
+                  }
+                </label>
+                <input value={token} onChange={e => setToken(e.target.value)}
+                  placeholder={platform === 'telegram' ? t('botFactory.telegramTokenPlaceholder') : t('botFactory.whatsappTokenPlaceholder')}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none font-mono" />
+              </div>
+              {platform === 'telegram' && (
+                <p className="text-[11px] text-muted-foreground/60">
+                  {boomer ? t('botFactory.telegramHelp') : t('botFactory.telegramHelpCodename')}
+                </p>
+              )}
+              <button onClick={handleConnect} disabled={connecting || !token.trim()}
+                className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                {connecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plug className="w-4 h-4" />}
+                {boomer ? t('botFactory.connectButton') : t('botFactory.connectButtonCodename')}
+              </button>
+            </div>
           )}
-          <button onClick={handleConnect} disabled={connecting || !token.trim()}
-            className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
-            {connecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plug className="w-4 h-4" />}
-            {boomer ? t('botFactory.connectButton') : t('botFactory.connectButtonCodename')}
-          </button>
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
+function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
+  const [tradingTab, setTradingTab] = useState<'dashboard' | 'strategies' | 'trades' | 'risk'>('dashboard');
+  const [account, setAccount] = useState<TradingAccount | null>(null);
+  const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
+  const [trades, setTrades] = useState<TradeLog[]>([]);
+  const [tradeStats, setTradeStats] = useState<{ totalPnl: number; wins: number; losses: number; total: number }>({ totalPnl: 0, wins: 0, losses: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [togglingPaper, setTogglingPaper] = useState(false);
+  const [killSwitchActive, setKillSwitchActive] = useState(false);
+  const [showPaperConfirm, setShowPaperConfirm] = useState(false);
+  const [showKillConfirm, setShowKillConfirm] = useState(false);
+  const [savingStrategy, setSavingStrategy] = useState<string | null>(null);
+  const [editingRisk, setEditingRisk] = useState<TradingStrategy | null>(null);
+  const [tradeFilterStatus, setTradeFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [tradeFilterSide, setTradeFilterSide] = useState<'all' | 'BUY' | 'SELL'>('all');
+  const [portfolioPositions, setPortfolioPositions] = useState<Array<{ symbol: string; quantity: number; marketValue: number; averagePrice: number; unrealizedPnl: number; assetType: string }>>([]);
+  const [portfolioSource, setPortfolioSource] = useState<'live' | 'paper'>('paper');
+
+  const hasTrading = bot.permissions.includes('trading_read') || bot.permissions.includes('trading_paper') || bot.permissions.includes('trading_execute');
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [accRes, strRes, trRes, posRes] = await Promise.all([
+        apiFetch(`/api/bots/${bot.id}/trading/account`),
+        apiFetch(`/api/bots/${bot.id}/trading/strategies`),
+        apiFetch(`/api/bots/${bot.id}/trading/trades?limit=50`),
+        apiFetch(`/api/bots/${bot.id}/trading/positions`),
+      ]);
+      if (accRes.ok) { const d = await accRes.json(); setAccount(d.account); }
+      if (strRes.ok) { const d = await strRes.json(); setStrategies(d.strategies ?? []); }
+      if (trRes.ok) { const d = await trRes.json(); setTrades(d.trades ?? []); setTradeStats(d.stats ?? { totalPnl: 0, wins: 0, losses: 0, total: 0 }); }
+      if (posRes.ok) { const d = await posRes.json(); setPortfolioPositions(d.positions ?? []); setPortfolioSource(d.source ?? 'paper'); }
+
+      const acc = account;
+      const strats = strategies;
+      const kill = strats.some(s => s.killSwitch);
+      setKillSwitchActive(kill);
+    } catch {}
+    setLoading(false);
+  }, [bot.id]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  useEffect(() => {
+    if (strategies.length > 0) {
+      setKillSwitchActive(strategies.some(s => s.killSwitch));
+    }
+  }, [strategies]);
+
+  const togglePaperMode = async (newPaper: boolean) => {
+    if (!newPaper && !account?.hasTokens) {
+      alert(boomer ? 'Connect your Schwab account before enabling live trading.' : 'SCHWAB ACCOUNT REQUIRED FOR LIVE TRADING');
+      return;
+    }
+    setShowPaperConfirm(false);
+    setTogglingPaper(true);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/account/paper-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPaperMode: newPaper }),
+      });
+      if (res.ok) {
+        setAccount(prev => prev ? { ...prev, isPaperMode: newPaper } : prev);
+      }
+    } catch {}
+    setTogglingPaper(false);
+  };
+
+  const toggleKillSwitch = async (activate: boolean) => {
+    setShowKillConfirm(false);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/kill-switch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activate }),
+      });
+      if (res.ok) {
+        setKillSwitchActive(activate);
+        setStrategies(prev => prev.map(s => ({ ...s, killSwitch: activate })));
+      }
+    } catch {}
+  };
+
+  const toggleStrategy = async (strategyType: string, enabled: boolean) => {
+    setSavingStrategy(strategyType);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/strategies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategyType, enabled }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStrategies(prev => {
+          const exists = prev.find(s => s.strategyType === strategyType);
+          if (exists) return prev.map(s => s.strategyType === strategyType ? data.strategy : s);
+          return [...prev, data.strategy];
+        });
+      }
+    } catch {}
+    setSavingStrategy(null);
+  };
+
+  const saveRiskConfig = async (stratId: number, updates: Partial<TradingStrategy>) => {
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/strategies/${stratId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStrategies(prev => prev.map(s => s.id === stratId ? data.strategy : s));
+        setEditingRisk(null);
+      }
+    } catch {}
+  };
+
+  const isMarketOpen = () => {
+    const now = new Date();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return false;
+    const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const h = et.getHours();
+    const m = et.getMinutes();
+    return (h > 9 || (h === 9 && m >= 30)) && h < 16;
+  };
+
+  const marketOpen = isMarketOpen();
+
+  const fmt$ = (cents: number) => {
+    const d = cents / 100;
+    return (d >= 0 ? '+' : '') + '$' + Math.abs(d).toFixed(2);
+  };
+
+  if (!hasTrading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-center gap-3">
+        <BarChart2 className="w-10 h-10 opacity-30" />
+        <p className="text-sm">{boomer ? 'This bot does not have trading permissions.' : 'NO TRADING PERMISSIONS — UPGRADE TO TRADE-BOT'}</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <div className="w-5 h-5 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin mr-3" />
+        <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOADING TRADING DATA...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {(['dashboard', 'strategies', 'trades', 'risk'] as const).map(t => (
+            <button key={t} onClick={() => setTradingTab(t)}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {t === 'dashboard' ? (boomer ? 'DASHBOARD' : 'DASHBOARD') :
+               t === 'strategies' ? (boomer ? 'STRATEGIES' : 'STRATEGIES') :
+               t === 'trades' ? (boomer ? 'TRADE LOG' : 'TRADE LOG') :
+               (boomer ? 'RISK CONTROLS' : 'RISK CTRL')}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${marketOpen ? 'text-green-400 bg-green-500/10 border-green-500/25' : 'text-red-400 bg-red-500/10 border-red-500/25'}`}
+            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            {marketOpen ? '● MARKET OPEN' : '○ MARKET CLOSED'}
+          </span>
+          {account && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${account.isPaperMode ? 'text-amber-400 bg-amber-500/10 border-amber-500/25' : 'text-red-400 bg-red-500/10 border-red-500/25'}`}
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {account.isPaperMode ? '📄 PAPER' : '⚡ LIVE'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {tradingTab === 'dashboard' && (
+        <div className="space-y-4">
+          {!account ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="text-sm text-amber-400 font-bold mb-1">Setup Required</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                {boomer
+                  ? 'Connect your Schwab account to start trading. A Charles Schwab brokerage account is required. Get free API credentials at developer.schwab.com.'
+                  : 'SCHWAB CREDENTIALS REQUIRED · GET API ACCESS AT developer.schwab.com'}
+              </p>
+              <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+                ⚠️ Automated trading involves significant financial risk. Never invest money you cannot afford to lose. This bot is in paper trading mode by default.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg p-3 bg-muted/20 border border-border">
+                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>PORTFOLIO EQUITY</span>
+                <span className="text-lg font-bold text-foreground">
+                  {account.cachedEquity !== null ? `$${(account.cachedEquity / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
+                </span>
+              </div>
+              <div className="rounded-lg p-3 bg-muted/20 border border-border">
+                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>CASH BALANCE</span>
+                <span className="text-lg font-bold text-foreground">
+                  {account.cachedBalance !== null ? `$${(account.cachedBalance / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
+                </span>
+              </div>
+              <div className="rounded-lg p-3 bg-muted/20 border border-border">
+                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TODAY P&L</span>
+                <span className={`text-lg font-bold ${account.dailyPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {fmt$(account.dailyPnl)}
+                </span>
+              </div>
+              <div className="rounded-lg p-3 bg-muted/20 border border-border">
+                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ACTIVE STRATEGIES</span>
+                <span className="text-lg font-bold text-foreground">{strategies.filter(s => s.enabled).length}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <p className="text-xs font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TRADING MODE</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-foreground">{account?.isPaperMode !== false ? 'Paper Trading' : 'Live Trading'}</p>
+                <p className="text-xs text-muted-foreground">
+                  {account?.isPaperMode !== false
+                    ? 'Simulated trades against real market data — no real money'
+                    : '⚡ REAL MONEY — Orders placed through Schwab API'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaperConfirm(true)}
+                disabled={togglingPaper}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${account?.isPaperMode !== false ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10' : 'border-green-500/30 text-green-400 hover:bg-green-500/10'}`}>
+                {account?.isPaperMode !== false ? 'Switch to Live' : 'Switch to Paper'}
+              </button>
+            </div>
+            {account?.lastSyncAt && (
+              <p className="text-[10px] text-muted-foreground/50" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                LAST SYNC: {new Date(account.lastSyncAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+
+          {killSwitchActive && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-red-400">KILL SWITCH ACTIVE</p>
+                  <p className="text-xs text-muted-foreground">All trading is halted. No new orders will be placed.</p>
+                </div>
+              </div>
+              <button onClick={() => toggleKillSwitch(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-colors">
+                Resume
+              </button>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border p-4">
+            <p className="text-xs font-bold text-muted-foreground mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'PERFORMANCE SUMMARY' : 'PERF STATS'}
+            </p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="text-center">
+                <p className={`text-base font-bold ${tradeStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt$(tradeStats.totalPnl)}</p>
+                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TOTAL P&L</p>
+              </div>
+              <div className="text-center">
+                <p className="text-base font-bold text-green-400">{tradeStats.wins}</p>
+                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>WINS</p>
+              </div>
+              <div className="text-center">
+                <p className="text-base font-bold text-red-400">{tradeStats.losses}</p>
+                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOSSES</p>
+              </div>
+            </div>
+            {(() => {
+              const closed = trades.filter(t => t.status === 'closed' && t.pnl != null).slice(-20);
+              if (closed.length < 2) return null;
+              const maxAbs = Math.max(...closed.map(t => Math.abs(t.pnl!)), 1);
+              return (
+                <div>
+                  <p className="text-[10px] text-muted-foreground mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>RECENT P&L (last {closed.length} closed)</p>
+                  <div className="flex items-end gap-0.5 h-10">
+                    {closed.map((t, i) => {
+                      const pct = (Math.abs(t.pnl!) / maxAbs) * 100;
+                      const isPos = (t.pnl ?? 0) >= 0;
+                      return (
+                        <div key={t.id} className="flex-1 flex flex-col justify-end" title={`${fmt$(t.pnl!)} ${t.symbol}`}>
+                          <div
+                            className={`rounded-sm min-h-[2px] ${isPos ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ height: `${Math.max(4, pct)}%` }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {(() => {
+            const openPositions = trades.filter(t => t.status === 'open');
+            if (openPositions.length === 0) return null;
+            return (
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+                <p className="text-xs font-bold text-sky-400 mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  OPEN POSITIONS ({openPositions.length})
+                </p>
+                <div className="space-y-2">
+                  {openPositions.map(t => (
+                    <div key={t.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold px-1 py-0.5 rounded text-[9px] border ${t.side === 'BUY' ? 'text-green-400 border-green-500/20' : 'text-red-400 border-red-500/20'}`}
+                          style={{ fontFamily: "'Share Tech Mono', monospace" }}>{t.side}</span>
+                        <span className="font-bold text-foreground truncate max-w-[90px]" title={t.symbol}>{t.symbol}</span>
+                        <span className="text-muted-foreground">{t.quantity}x @ ${(t.entryPrice / 100).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {t.isPaper && <span className="text-[9px] text-amber-400 border border-amber-500/20 px-1 rounded">PAPER</span>}
+                        <span className="text-muted-foreground text-[10px]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          {STRATEGY_LABELS[t.strategyType]?.substring(0, 8) || t.strategyType}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {portfolioSource === 'live' && portfolioPositions.length > 0 && (
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-violet-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  SCHWAB PORTFOLIO ({portfolioPositions.length} positions)
+                </p>
+                <span className="text-[9px] px-1 py-0.5 rounded border border-green-500/20 text-green-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LIVE</span>
+              </div>
+              <div className="space-y-1.5">
+                {portfolioPositions.map((pos, i) => {
+                  const unrealizedPnlDollars = pos.unrealizedPnl / 100;
+                  const marketValueDollars = pos.marketValue / 100;
+                  const avgPriceDollars = pos.averagePrice / 100;
+                  const isProfit = unrealizedPnlDollars >= 0;
+                  return (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] px-1 py-0.5 rounded border border-violet-500/20 text-violet-400 shrink-0" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          {pos.assetType === 'OPTION' ? 'OPT' : 'EQ'}
+                        </span>
+                        <span className="font-bold text-foreground truncate max-w-[80px]" title={pos.symbol}>{pos.symbol}</span>
+                        <span className="text-muted-foreground">{pos.quantity > 0 ? '+' : ''}{pos.quantity} @ ${avgPriceDollars.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-right">
+                        <span className="text-muted-foreground text-[10px]">${marketValueDollars.toFixed(0)}</span>
+                        <span className={`font-bold text-[10px] ${isProfit ? 'text-green-400' : 'text-red-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          {isProfit ? '+' : ''}{fmt$(pos.unrealizedPnl)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 pt-2 border-t border-violet-500/10 flex justify-between text-[10px]">
+                <span className="text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TOTAL UNREALIZED P&L</span>
+                <span className={`font-bold ${portfolioPositions.reduce((s, p) => s + p.unrealizedPnl, 0) >= 0 ? 'text-green-400' : 'text-red-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {fmt$(portfolioPositions.reduce((s, p) => s + p.unrealizedPnl, 0))}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {portfolioSource === 'live' && portfolioPositions.length === 0 && account?.hasTokens && (
+            <div className="rounded-xl border border-border p-3 text-center">
+              <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                NO SCHWAB POSITIONS · Account connected, no open positions
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tradingTab === 'strategies' && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            {boomer ? 'Toggle strategies on/off. The bot will run enabled strategies during market hours.' : 'ENABLE STRATEGIES · BOT RUNS DURING MARKET HOURS 9:30AM–4PM ET'}
+          </p>
+          {ALL_STRATEGIES.map(type => {
+            const strat = strategies.find(s => s.strategyType === type);
+            const enabled = strat?.enabled ?? false;
+            const isOptions = ['covered_calls', 'iron_condors', 'vertical_spreads', 'straddles'].includes(type);
+            return (
+              <div key={type} className={`rounded-lg border p-3 flex items-center gap-3 transition-colors ${enabled ? 'border-green-500/20 bg-green-500/5' : 'border-border bg-muted/10'}`}>
+                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${enabled ? 'bg-green-500/15 border-green-500/30' : 'bg-muted/20 border-border'}`}>
+                  {isOptions ? <BarChart2 className={`w-4 h-4 ${enabled ? 'text-green-400' : 'text-muted-foreground'}`} /> : <Activity className={`w-4 h-4 ${enabled ? 'text-green-400' : 'text-muted-foreground'}`} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">{STRATEGY_LABELS[type]}</p>
+                  <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {isOptions ? 'OPTIONS STRATEGY' : 'EQUITY STRATEGY'} {enabled && '· ACTIVE'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleStrategy(type, !enabled)}
+                  disabled={savingStrategy === type}
+                  className={`p-1.5 rounded-lg border transition-colors ${enabled ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-border text-muted-foreground hover:border-green-500/20'}`}>
+                  {savingStrategy === type
+                    ? <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                    : enabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tradingTab === 'trades' && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1">
+              {(['all', 'open', 'closed'] as const).map(f => (
+                <button key={f} onClick={() => setTradeFilterStatus(f)}
+                  className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${tradeFilterStatus === f ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {f.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              {(['all', 'BUY', 'SELL'] as const).map(f => (
+                <button key={f} onClick={() => setTradeFilterSide(f)}
+                  className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${tradeFilterSide === f ? (f === 'BUY' ? 'bg-green-500/15 text-green-400 border-green-500/30' : f === 'SELL' ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-sky-500/15 text-sky-400 border-sky-500/30') : 'bg-muted/10 text-muted-foreground border-border hover:border-sky-500/20'}`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {f === 'all' ? 'ALL SIDES' : f}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {trades.filter(t => (tradeFilterStatus === 'all' || t.status === tradeFilterStatus) && (tradeFilterSide === 'all' || t.side === tradeFilterSide)).length} / {trades.length}
+            </span>
+          </div>
+          {trades.filter(t =>
+            (tradeFilterStatus === 'all' || t.status === tradeFilterStatus) &&
+            (tradeFilterSide === 'all' || t.side === tradeFilterSide)
+          ).length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">{boomer ? 'No trades match the current filters' : 'NO TRADES MATCH FILTERS'}</p>
+            </div>
+          ) : (
+            trades.filter(t =>
+              (tradeFilterStatus === 'all' || t.status === tradeFilterStatus) &&
+              (tradeFilterSide === 'all' || t.side === tradeFilterSide)
+            ).map(trade => {
+              const pnl = trade.pnl ?? 0;
+              return (
+                <div key={trade.id} className="rounded-lg border border-border bg-muted/10 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {trade.side === 'BUY'
+                        ? <TrendingUp className="w-4 h-4 text-green-400 shrink-0" />
+                        : <TrendingDown className="w-4 h-4 text-red-400 shrink-0" />}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-foreground">{trade.symbol}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${trade.side === 'BUY' ? 'text-green-400 border-green-500/20 bg-green-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'}`}
+                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{trade.side}</span>
+                          {trade.isPaper && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-amber-400 border-amber-500/20 bg-amber-500/10"
+                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>PAPER</span>}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${trade.status === 'open' ? 'text-sky-400 border-sky-500/20 bg-sky-500/10' : 'text-muted-foreground border-border'}`}
+                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{trade.status.toUpperCase()}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          {trade.quantity}x @ ${(trade.entryPrice / 100).toFixed(2)}
+                          {trade.exitPrice ? ` → $${(trade.exitPrice / 100).toFixed(2)}` : ''}
+                          {' · '}{STRATEGY_LABELS[trade.strategyType] || trade.strategyType}
+                        </p>
+                      </div>
+                    </div>
+                    {trade.pnl !== null && (
+                      <span className={`text-sm font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {fmt$(pnl)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/40 mt-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {new Date(trade.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {tradingTab === 'risk' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+                <span className="text-sm font-bold text-red-400">{boomer ? 'KILL SWITCH' : 'EMERGENCY KILL SWITCH'}</span>
+              </div>
+              <button
+                onClick={() => killSwitchActive ? toggleKillSwitch(false) : setShowKillConfirm(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${killSwitchActive ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-red-500/30 text-red-400 hover:bg-red-500/10'}`}>
+                {killSwitchActive ? 'RESUME TRADING' : 'HALT ALL TRADING'}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {boomer
+                ? 'Immediately cancels all open orders and halts all strategy execution.'
+                : 'CANCELS ALL OPEN ORDERS · HALTS ALL STRATEGIES · INSTANT EFFECT'}
+            </p>
+          </div>
+
+          {strategies.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              {boomer ? 'Enable strategies first to configure risk limits.' : 'NO STRATEGIES CONFIGURED'}
+            </p>
+          ) : (
+            strategies.map(strat => (
+              <div key={strat.id} className="rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-bold text-foreground">{STRATEGY_LABELS[strat.strategyType] || strat.strategyType}</p>
+                  <button onClick={() => setEditingRisk(editingRisk?.id === strat.id ? null : strat)}
+                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border hover:border-sky-500/20 transition-colors">
+                    {editingRisk?.id === strat.id ? 'Cancel' : 'Edit'}
+                  </button>
+                </div>
+                {editingRisk?.id === strat.id ? (
+                  <RiskEditForm strat={editingRisk} onSave={saveRiskConfig} boomer={boomer} />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      ['Max Daily Loss', `$${strat.maxDailyLoss}`],
+                      ['Max Daily Loss %', `${strat.maxDailyLossPercent}%`],
+                      ['Max Position Size', `$${strat.maxPositionSize}`],
+                      ['Max Concurrent', `${strat.maxConcurrentTrades} trades`],
+                      ['Stop Loss', `${strat.stopLossPercent}%`],
+                      ['Trailing Stop', strat.trailingStopPercent > 0 ? `${strat.trailingStopPercent}%` : 'Off'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded p-2 bg-muted/10 border border-border">
+                        <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</p>
+                        <p className="font-bold text-foreground">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <p className="text-xs font-bold text-amber-400 mb-1">⚠️ RISK DISCLAIMER</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Automated trading involves substantial risk of loss. Past performance does not guarantee future results. This bot executes trades algorithmically — always monitor your positions. Never invest money you cannot afford to lose. Consult a licensed financial advisor before trading.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {showPaperConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setShowPaperConfirm(false)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h4 className="font-bold text-foreground mb-2">
+              {account?.isPaperMode !== false ? '⚡ Enable Live Trading?' : '📄 Switch to Paper Trading?'}
+            </h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              {account?.isPaperMode !== false
+                ? 'This will place REAL orders using your Schwab account. Real money is at risk. Are you sure?'
+                : 'Switch to simulated paper trading. No real money will be used.'}
+            </p>
+            {account?.isPaperMode !== false && (
+              <p className="text-xs text-red-400 mb-4 p-2 border border-red-500/20 rounded-lg bg-red-500/5">
+                ⚠️ REAL MONEY WARNING: Automated trading can result in significant losses. Only proceed if you understand the risks.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setShowPaperConfirm(false)}
+                className="flex-1 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground text-sm font-bold">
+                Cancel
+              </button>
+              <button
+                onClick={() => togglePaperMode(account?.isPaperMode !== false ? false : true)}
+                className={`flex-1 py-2 rounded-lg text-sm font-bold text-white ${account?.isPaperMode !== false ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}>
+                {account?.isPaperMode !== false ? 'Enable Live' : 'Switch to Paper'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showKillConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setShowKillConfirm(false)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h4 className="font-bold text-red-400 mb-2">🚨 Activate Kill Switch?</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              This will immediately cancel ALL open orders and halt ALL strategy execution. The bot will stop trading until you manually resume.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowKillConfirm(false)}
+                className="flex-1 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground text-sm font-bold">
+                Cancel
+              </button>
+              <button onClick={() => toggleKillSwitch(true)}
+                className="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-sm font-bold text-white">
+                HALT TRADING
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RiskEditForm({ strat, onSave, boomer }: { strat: TradingStrategy; onSave: (id: number, updates: Partial<TradingStrategy>) => Promise<void>; boomer: boolean }) {
+  const [maxDailyLoss, setMaxDailyLoss] = useState(strat.maxDailyLoss);
+  const [maxDailyLossPercent, setMaxDailyLossPercent] = useState(strat.maxDailyLossPercent);
+  const [maxPositionSize, setMaxPositionSize] = useState(strat.maxPositionSize);
+  const [maxConcurrentTrades, setMaxConcurrentTrades] = useState(strat.maxConcurrentTrades);
+  const [stopLossPercent, setStopLossPercent] = useState(strat.stopLossPercent);
+  const [trailingStopPercent, setTrailingStopPercent] = useState(strat.trailingStopPercent);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(strat.id, { maxDailyLoss, maxDailyLossPercent, maxPositionSize, maxConcurrentTrades, stopLossPercent, trailingStopPercent });
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { label: 'Max Daily Loss ($)', value: maxDailyLoss, set: setMaxDailyLoss, min: 50, max: 10000 },
+          { label: 'Max Daily Loss (%)', value: maxDailyLossPercent, set: setMaxDailyLossPercent, min: 1, max: 20 },
+          { label: 'Max Position Size ($)', value: maxPositionSize, set: setMaxPositionSize, min: 100, max: 50000 },
+          { label: 'Max Concurrent Trades', value: maxConcurrentTrades, set: setMaxConcurrentTrades, min: 1, max: 20 },
+          { label: 'Stop Loss (%)', value: stopLossPercent, set: setStopLossPercent, min: 0, max: 20 },
+          { label: 'Trailing Stop (%)', value: trailingStopPercent, set: setTrailingStopPercent, min: 0, max: 20 },
+        ].map(({ label, value, set, min, max }) => (
+          <div key={label}>
+            <label className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</label>
+            <input
+              type="number" value={value} min={min} max={max}
+              onChange={e => set(Number(e.target.value))}
+              className="w-full bg-background border border-border rounded px-2 py-1 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
+          </div>
+        ))}
+      </div>
+      <button onClick={handleSave} disabled={saving}
+        className="w-full py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+        {boomer ? 'Save Risk Config' : 'SAVE CONFIG'}
+      </button>
+    </div>
+  );
+}
+
 function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
-  const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings'>('logs');
+  const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
+  const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings' | 'trading'>('logs');
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [memories, setMemories] = useState<BotMemory[]>([]);
   const [tasks, setTasks] = useState<BotTask[]>([]);
@@ -385,14 +1252,16 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
           </div>
         </div>
 
-        <div className="flex border-b border-border">
-          {(['logs', 'memory', 'tasks', 'settings'] as const).map(tabKey => (
-            <button key={tabKey} onClick={() => setTab(tabKey)}
-              className={`flex-1 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
+        <div className="flex border-b border-border overflow-x-auto">
+          {(['logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), 'settings'] as const).map((tabKey: string) => (
+            <button key={tabKey} onClick={() => setTab(tabKey as typeof tab)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
               style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {tabKey === 'trading' && <TrendingUp className="w-3 h-3" />}
               {tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
                tabKey === 'memory' ? (boomer ? t('botFactory.detailTabMemory') : t('botFactory.detailTabMemoryCodename')) :
                tabKey === 'tasks' ? (boomer ? t('botFactory.detailTabTasks') : t('botFactory.detailTabTasksCodename')) :
+               tabKey === 'trading' ? (boomer ? 'Trading' : 'TRADING') :
                (boomer ? t('botFactory.detailTabSettings') : t('botFactory.detailTabSettingsCodename'))}
             </button>
           ))}
@@ -519,6 +1388,8 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                 </div>
               )}
             </div>
+          ) : tab === 'trading' ? (
+            <TradingConsole bot={bot} boomer={boomer} />
           ) : (
             <div className="space-y-4">
               <div>
@@ -708,7 +1579,61 @@ export default function BotFactory() {
                 </p>
               </div>
 
-              {marketplace.filter(i => i.featured).length > 0 && (
+              {marketplace.filter(m => m.category === 'trading').length > 0 && (
+                <div className="mb-2">
+                  <span className="text-[10px] font-bold text-green-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {boomerMode ? '📈 TRADING BOTS' : '▲ TRADING AGENTS'}
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <AnimatePresence>
+                      {marketplace.filter(m => m.category === 'trading').map((item, idx) => {
+                        const Icon = getIcon(item.icon);
+                        const isActive = subscriptions.includes(item.id);
+                        return (
+                          <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 bg-green-500/10 border-green-500/25">
+                                <Icon className="w-5 h-5 text-green-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
+                                    {item.name}
+                                  </h3>
+                                  <PriceBadge price={item.priceMonthly} />
+                                </div>
+                                <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
+                                <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
+                                <div className="flex flex-wrap gap-1 mb-3">
+                                  {item.capabilities.map(cap => (
+                                    <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-green-400/50 border border-green-500/20"
+                                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                  ))}
+                                </div>
+                                {isActive ? (
+                                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                                    <Check className="w-3.5 h-3.5" /> {boomerMode ? 'Activated' : 'DEPLOYED'}
+                                  </span>
+                                ) : (
+                                  <button onClick={() => activateMarketplaceBot(item.id)} disabled={activating === item.id}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50">
+                                    {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                                    {boomerMode ? 'Activate' : 'DEPLOY'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+
+              {marketplace.filter(m => m.featured && m.category !== 'trading').length > 0 && (
                 <div className="mb-2">
                   <span className="text-[10px] font-bold text-amber-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                     {boomerMode ? t('botFactory.featuredLabel') : t('botFactory.featuredLabelCodename')}
@@ -718,12 +1643,12 @@ export default function BotFactory() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <AnimatePresence>
-                  {marketplace.map((item, i) => {
+                  {marketplace.filter(m => m.category !== 'trading').map((item, idx) => {
                     const Icon = getIcon(item.icon);
                     const isActive = subscriptions.includes(item.id);
                     return (
                       <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
+                        transition={{ delay: idx * 0.05 }}
                         className={`rounded-2xl border bg-card p-5 ${item.featured ? 'border-amber-500/20' : 'border-border'}`}>
                         <div className="flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${item.featured ? 'bg-amber-500/10 border-amber-500/25' : 'bg-sky-500/10 border-sky-500/25'}`}>

@@ -38,6 +38,7 @@ import ticketsRouter from "./tickets";
 import feedbackRouter from "./feedback";
 import botsRouter from "./bots";
 import devTasksRouter from "./dev-tasks";
+import tradingRouter from "./trading";
 
 const router: IRouter = Router();
 
@@ -80,5 +81,6 @@ router.use(ticketsRouter);
 router.use(feedbackRouter);
 router.use(botsRouter);
 router.use(devTasksRouter);
+router.use(tradingRouter);
 
 export default router;
