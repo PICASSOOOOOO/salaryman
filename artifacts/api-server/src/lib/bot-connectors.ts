@@ -98,7 +98,26 @@ export const telegramConnector: PlatformConnector = {
 export const whatsappConnector: PlatformConnector = {
   platform: "whatsapp",
 
-  async start(botId, _credentials, _onMessage) {
+  async start(botId, encryptedCredentials, _onMessage) {
+    const { db, botPlatformConnectionsTable } = await import("@workspace/db");
+    const { eq, and } = await import("drizzle-orm");
+    const [conn] = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, "whatsapp")));
+
+    const webhookUrl = conn?.webhookUrl;
+    if (!webhookUrl) {
+      console.error(`[WhatsApp Bot ${botId}] No webhook URL configured. WhatsApp operates in webhook-only mode and requires a public webhook URL. Set up your Twilio webhook to point to your public server URL.`);
+      if (conn) {
+        await db.update(botPlatformConnectionsTable)
+          .set({ status: "error" })
+          .where(eq(botPlatformConnectionsTable.id, conn.id));
+      }
+      return;
+    }
+
+    console.log(`[WhatsApp Bot ${botId}] Operating in webhook-only mode. Messages are received via Twilio webhook at: ${webhookUrl}. Ensure this URL is set in your Twilio console.`);
     activeWhatsappBots.add(botId);
   },
 

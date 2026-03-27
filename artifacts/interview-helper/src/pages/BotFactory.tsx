@@ -1727,10 +1727,98 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
   );
 }
 
+function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
+    setSending(true);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/test-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error || 'Failed to get response'}` }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Error: Could not connect to the bot.' }]);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="flex flex-col h-full gap-3" style={{ minHeight: 300 }}>
+      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+        <p className="text-xs text-sky-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          {boomer
+            ? 'Test your bot by chatting with it directly. This bypasses platform connections and uses the bot\'s personality and permissions.'
+            : 'TEST CHANNEL · DIRECT AI INTERFACE · BYPASSES PLATFORM CONNECTORS'}
+        </p>
+      </div>
+
+      <div className="flex-1 space-y-2 overflow-y-auto max-h-80 min-h-[120px]">
+        {messages.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">{boomer ? 'Send a message to test your bot' : 'SEND MESSAGE TO INITIALIZE TEST SEQUENCE'}</p>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} className={`rounded-lg p-3 text-sm ${msg.role === 'user' ? 'bg-sky-500/5 border border-sky-500/10 ml-4' : 'bg-muted/30 border border-border mr-4'}`}>
+            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {msg.role === 'user' ? (boomer ? 'YOU' : 'OPERATOR') : (boomer ? 'BOT' : 'AGENT')}
+            </span>
+            <p className="text-foreground/80 whitespace-pre-wrap">{msg.content}</p>
+          </div>
+        ))}
+        {sending && (
+          <div className="rounded-lg p-3 text-sm bg-muted/30 border border-border mr-4">
+            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'BOT' : 'AGENT'}
+            </span>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="w-3 h-3 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
+              <span className="text-xs">{boomer ? 'Thinking...' : 'PROCESSING...'}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          placeholder={boomer ? 'Type a message...' : 'ENTER MESSAGE...'}
+          disabled={sending}
+          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none disabled:opacity-50"
+        />
+        <button
+          onClick={sendMessage}
+          disabled={sending || !input.trim()}
+          className="px-3 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
   const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
   const hasProspecting = bot.permissions.includes('crm_write') && bot.permissions.includes('contacts_write') && !!bot.marketplaceItemId;
-  const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting'>('logs');
+  const [tab, setTab] = useState<'test' | 'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting'>('test');
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [memories, setMemories] = useState<BotMemory[]>([]);
   const [tasks, setTasks] = useState<BotTask[]>([]);
@@ -1752,6 +1840,9 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         } else if (tab === 'tasks') {
           const res = await apiFetch(`/api/bots/${bot.id}/tasks`);
           if (res.ok) { const data = await res.json(); setTasks(data.tasks ?? []); }
+        } else {
+          setLoading(false);
+          return;
         }
       } catch {}
       setLoading(false);
@@ -1858,13 +1949,15 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         </div>
 
         <div className="flex border-b border-border overflow-x-auto">
-          {(['logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'settings'] as const).map((tabKey: string) => (
+          {(['test', 'logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'settings'] as const).map((tabKey: string) => (
             <button key={tabKey} onClick={() => setTab(tabKey as typeof tab)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
               style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {tabKey === 'test' && <MessageSquare className="w-3 h-3" />}
               {tabKey === 'trading' && <TrendingUp className="w-3 h-3" />}
               {tabKey === 'prospecting' && <Search className="w-3 h-3" />}
-              {tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
+              {tabKey === 'test' ? (boomer ? 'Test Chat' : 'TEST CHAT') :
+               tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
                tabKey === 'memory' ? (boomer ? t('botFactory.detailTabMemory') : t('botFactory.detailTabMemoryCodename')) :
                tabKey === 'tasks' ? (boomer ? t('botFactory.detailTabTasks') : t('botFactory.detailTabTasksCodename')) :
                tabKey === 'trading' ? (boomer ? 'Trading' : 'TRADING') :
@@ -1875,7 +1968,9 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
+          {tab === 'test' ? (
+            <TestChatPanel bot={bot} boomer={boomer} />
+          ) : loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <div className="w-5 h-5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mr-3" />
               <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>

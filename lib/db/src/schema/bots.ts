@@ -100,7 +100,7 @@ export const botsTable = pgTable("bots", {
   name: text("name").notNull(),
   personality: text("personality").notNull().default("You are a helpful assistant."),
   systemPrompt: text("system_prompt").notNull().default(""),
-  status: varchar("status", { length: 20 }).notNull().default("active"),
+  status: varchar("status", { length: 20 }).notNull().default("paused"),
   permissions: jsonb("permissions").$type<PermissionKey[]>().notNull().default(["ai_chat"]),
   maxTokensPerResponse: integer("max_tokens_per_response").notNull().default(4096),
   rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),

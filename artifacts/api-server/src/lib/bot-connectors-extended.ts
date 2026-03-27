@@ -242,7 +242,10 @@ export const facebookConnector: PlatformConnector = {
           `https://graph.facebook.com/v19.0/me/subscribed_apps`,
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${creds.pageAccessToken}` },
+            headers: {
+              Authorization: `Bearer ${creds.pageAccessToken}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
             body: new URLSearchParams({ subscribed_fields: "messages,messaging_postbacks" }).toString(),
           }
         );
@@ -485,6 +488,28 @@ export const gmailConnector: PlatformConnector = {
     const token = await getToken();
     if (!token) throw new Error("Could not obtain Gmail access token");
 
+    let messageId: string | undefined;
+    if (threadId) {
+      try {
+        const threadRes = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=metadata&metadataHeaders=Message-ID`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (threadRes.ok) {
+          const threadData = await threadRes.json() as {
+            messages?: Array<{ payload?: { headers?: Array<{ name: string; value: string }> } }>;
+          };
+          const msgs = threadData.messages;
+          if (msgs && msgs.length > 0) {
+            const lastMsg = msgs[msgs.length - 1];
+            const headers = lastMsg?.payload?.headers || [];
+            const msgIdHeader = headers.find(h => h.name === "Message-ID");
+            if (msgIdHeader) messageId = msgIdHeader.value;
+          }
+        }
+      } catch {}
+    }
+
     const emailLines = [
       `To: ${toEmail}`,
       "Content-Type: text/plain; charset=utf-8",
@@ -493,8 +518,9 @@ export const gmailConnector: PlatformConnector = {
       message.text,
     ];
 
-    if (threadId) {
-      emailLines.splice(1, 0, `In-Reply-To: ${threadId}`);
+    if (messageId) {
+      emailLines.splice(1, 0, `In-Reply-To: ${messageId}`);
+      emailLines.splice(2, 0, `References: ${messageId}`);
     }
 
     const raw = Buffer.from(emailLines.join("\r\n")).toString("base64url");
@@ -547,13 +573,61 @@ async function getLinkedInCreds(botId: number): Promise<{ accessToken: string }>
     .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, "linkedin")));
   if (!conn) throw new Error("No LinkedIn connection found");
 
-  let creds: { accessToken?: string };
+  let creds: { accessToken?: string; refreshToken?: string; clientId?: string; clientSecret?: string; expiresAt?: number };
   try {
     creds = JSON.parse(decryptCredentials(conn.credentials));
   } catch {
     creds = { accessToken: decryptCredentials(conn.credentials).trim() };
   }
   if (!creds.accessToken) throw new Error("LinkedIn access token is required");
+
+  const now = Date.now();
+  const expiresAt = creds.expiresAt || 0;
+  const isExpiredOrSoon = expiresAt > 0 && (expiresAt - now) < 5 * 60 * 1000;
+
+  if (isExpiredOrSoon) {
+    if (creds.refreshToken && creds.clientId && creds.clientSecret) {
+      try {
+        const refreshRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            refresh_token: creds.refreshToken,
+            client_id: creds.clientId,
+            client_secret: creds.clientSecret,
+          }).toString(),
+        });
+        if (refreshRes.ok) {
+          const tokenData = await refreshRes.json() as { access_token: string; expires_in?: number; refresh_token?: string };
+          creds.accessToken = tokenData.access_token;
+          creds.expiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000;
+          if (tokenData.refresh_token) creds.refreshToken = tokenData.refresh_token;
+          const { encryptCredentials: enc } = await import("./bot-crypto");
+          await db.update(botPlatformConnectionsTable)
+            .set({ credentials: enc(JSON.stringify(creds)) })
+            .where(eq(botPlatformConnectionsTable.id, conn.id));
+        } else {
+          console.error(`[LinkedIn Bot ${botId}] Token refresh failed (${refreshRes.status}) — marking connection as error`);
+          await db.update(botPlatformConnectionsTable)
+            .set({ status: "error" })
+            .where(eq(botPlatformConnectionsTable.id, conn.id));
+          throw new Error("LinkedIn token refresh failed — reconnect the platform to continue.");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("reconnect")) throw err;
+        console.error(`[LinkedIn Bot ${botId}] Token refresh error:`, err);
+        throw new Error("LinkedIn token refresh error — please reconnect the platform.");
+      }
+    } else {
+      console.error(`[LinkedIn Bot ${botId}] Token expired and no refresh token available — marking connection as error`);
+      await db.update(botPlatformConnectionsTable)
+        .set({ status: "error" })
+        .where(eq(botPlatformConnectionsTable.id, conn.id));
+      throw new Error("LinkedIn access token expired and no refresh token is available — please reconnect the platform.");
+    }
+  }
+
   return { accessToken: creds.accessToken };
 }
 

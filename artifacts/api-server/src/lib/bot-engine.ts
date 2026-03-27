@@ -345,40 +345,82 @@ export async function stopBot(botId: number): Promise<void> {
 }
 
 export async function rehydrateActiveBots(): Promise<void> {
-  try {
-    const activeBots = await db.select().from(botsTable).where(eq(botsTable.status, "active"));
-    if (activeBots.length === 0) return;
+  const MAX_ATTEMPTS = 3;
+  const BASE_DELAY_MS = 2000;
 
-    console.log(`[Bot Engine] Rehydrating ${activeBots.length} active bot(s)...`);
-    for (const bot of activeBots) {
-      try {
-        await startBot(bot.id);
-        console.log(`[Bot Engine] Rehydrated bot ${bot.id} (${bot.name})`);
-      } catch (err) {
-        console.error(`[Bot Engine] Failed to rehydrate bot ${bot.id}:`, err);
-        await db.update(botsTable).set({ status: "error" }).where(eq(botsTable.id, bot.id));
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const activeBots = await db.select().from(botsTable).where(eq(botsTable.status, "active"));
+      if (activeBots.length === 0) return;
+
+      console.log(`[Bot Engine] Rehydrating ${activeBots.length} active bot(s)... (attempt ${attempt})`);
+      for (const bot of activeBots) {
+        try {
+          await startBot(bot.id);
+          console.log(`[Bot Engine] Rehydrated bot ${bot.id} (${bot.name})`);
+        } catch (err) {
+          console.error(`[Bot Engine] Failed to rehydrate bot ${bot.id}:`, err);
+          await db.update(botsTable).set({ status: "error" }).where(eq(botsTable.id, bot.id));
+        }
+      }
+      return;
+    } catch (err) {
+      console.error(`[Bot Engine] Rehydration attempt ${attempt} failed:`, err);
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[Bot Engine] Retrying rehydration in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        console.error("[Bot Engine] All rehydration attempts failed.");
       }
     }
-  } catch (err) {
-    console.error("[Bot Engine] Rehydration failed:", err);
   }
 }
 
 function cronToMs(expr: string): number {
-  const parts = expr.trim().split(/\s+/);
-  if (parts.length === 1) {
-    const num = parseInt(parts[0], 10);
-    if (!isNaN(num)) return num * 60_000;
+  const trimmed = expr.trim();
+
+  if (/^\d+$/.test(trimmed)) {
+    const num = parseInt(trimmed, 10);
+    if (!isNaN(num) && num > 0) return num * 60_000;
   }
 
+  const parts = trimmed.split(/\s+/);
+
   if (parts.length >= 5) {
-    const [min] = parts;
-    if (min === "*") return 60_000;
+    const [min, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+    if (min === "*" && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+      return 60_000;
+    }
+
     if (min.startsWith("*/")) {
       const interval = parseInt(min.slice(2), 10);
-      if (!isNaN(interval)) return interval * 60_000;
+      if (!isNaN(interval) && interval > 0) return interval * 60_000;
+    }
+
+    if (/^\d+$/.test(min) && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+      return 3600_000;
+    }
+
+    if (min === "0" && hour.startsWith("*/")) {
+      const interval = parseInt(hour.slice(2), 10);
+      if (!isNaN(interval) && interval > 0) return interval * 3600_000;
+    }
+
+    if (min === "0" && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+      return 3600_000;
+    }
+
+    if (min === "0" && /^\d+$/.test(hour) && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+      return 24 * 3600_000;
+    }
+
+    if (min === "0" && hour === "0" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+      return 24 * 3600_000;
     }
   }
 
+  console.warn(`[Bot Engine] Unsupported cron expression: "${expr}" — defaulting to 1-hour interval`);
   return 3600_000;
 }

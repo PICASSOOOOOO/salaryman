@@ -163,6 +163,13 @@
       "when": 1774559266953,
       "tag": "0022_dapper_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1743072000000,
+      "tag": "0023_bot_status_default_paused",
+      "breakpoints": true
     }
   ]
 }

@@ -373,6 +373,40 @@ router.get("/bots/:id/logs", requireBotFactory, async (req, res) => {
   }
 });
 
+router.post("/bots/:id/test-chat", requireBotFactory, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      res.status(400).json({ error: "Message is required" });
+      return;
+    }
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const response = await processIncomingMessage(bot, {
+      platform: "telegram",
+      externalUserId: `test:${userId}`,
+      text: message.trim(),
+    });
+
+    res.json({ response });
+  } catch (err) {
+    console.error("Error in test chat:", err);
+    res.status(500).json({ error: "Test chat failed" });
+  }
+});
+
 router.get("/bots/:id/memory", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -946,11 +980,14 @@ router.get("/bots/oauth/linkedin/callback", async (req, res) => {
       return;
     }
 
-    const tokenData = await tokenRes.json() as { access_token: string; expires_in?: number };
+    const tokenData = await tokenRes.json() as { access_token: string; expires_in?: number; refresh_token?: string };
 
     const credentials = JSON.stringify({
       accessToken: tokenData.access_token,
-      expiresIn: tokenData.expires_in,
+      refreshToken: tokenData.refresh_token,
+      clientId,
+      clientSecret,
+      expiresAt: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : undefined,
     });
 
     const encryptedCreds = encryptCredentials(credentials);
