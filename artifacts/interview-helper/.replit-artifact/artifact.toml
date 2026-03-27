@@ -22,7 +22,7 @@ PORT = "21129"
 BASE_PATH = "/"
 
 [services.production]
-build = ["pnpm", "--filter", "@workspace/interview-helper", "run", "build"]
+build = "pnpm run build:deploy"
 publicDir = "artifacts/interview-helper/dist/public"
 serve = "static"
 
