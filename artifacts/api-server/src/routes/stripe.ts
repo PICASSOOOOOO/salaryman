@@ -14,14 +14,10 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   say_this: "STRIPE_PRICE_SAY_THIS",
   phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
   bot_factory: "STRIPE_PRICE_BOT_FACTORY",
+  claw_bot: "STRIPE_PRICE_CLAW_BOT",
 };
 
-const BOT_PRICE_ENV: Record<string, string> = {
-  "sales-closer": "STRIPE_PRICE_BOT_CLOSER_X",
-  "support-bot": "STRIPE_PRICE_BOT_RESOLVE_7",
-  "content-writer": "STRIPE_PRICE_BOT_INK_9",
-  "recruiter-bot": "STRIPE_PRICE_BOT_RECRUIT_8",
-};
+const BOT_PRICE_ENV: Record<string, string> = {};
 
 function getPriceIdForBot(slug: string): string | undefined {
   const envKey = BOT_PRICE_ENV[slug];
@@ -285,7 +281,11 @@ router.post("/stripe/create-bot-checkout-session", async (req, res) => {
 
   const priceId = getPriceIdForBot(item.slug);
   if (!priceId) {
-    res.status(500).json({ error: `Stripe pricing for ${item.name} not configured yet` });
+    res.status(410).json({
+      error: `Individual bot subscriptions have been discontinued. Subscribe to Claw Bot ($145/mo) on the Upgrade page to access all bot capabilities.`,
+      deprecated: true,
+      upgradeFeature: "claw_bot",
+    });
     return;
   }
   const stripe = getStripe();

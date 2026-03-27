@@ -1,6 +1,6 @@
 {
   "nav": {
-    "pablo": "PABLO",
+    "pablo": "Pablo AI",
     "console": "CONSOLE",
     "business": "BUSINESS",
     "creative": "CREATIVE",
@@ -68,7 +68,7 @@
     "numbers": "NUM-VAULT"
   },
   "labels": {
-    "pablo": "PABLO",
+    "pablo": "Pablo AI",
     "console": "CONSOLE",
     "business": "BUSINESS",
     "creative": "CREATIVE",
@@ -369,8 +369,8 @@
     "signInContextCodename": "Operative clearance required. Bot deployment systems locked.",
     "featuredLabel": "⭐ FEATURED",
     "featuredLabelCodename": "★ FEATURED AGENTS",
-    "marketplaceDesc": "Pre-built AI bots ready to deploy. Activate any bot and connect it to your Telegram or WhatsApp. Our prices beat the competition — same power, lower cost.",
-    "marketplaceDescCodename": "PRODUCTION-GRADE AUTONOMOUS AGENTS · ACTIVATE & DEPLOY INSTANTLY · COMPETITIVE PRICING GUARANTEED",
+    "marketplaceDesc": "Free bots available for everyone. Subscribe to Claw Bot ($145/mo) on the Upgrade page to unlock the full AI agent suite — sales, support, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading.",
+    "marketplaceDescCodename": "FREE AGENTS AVAILABLE · ACTIVATE CLAW BOT FEATURE FOR FULL OPENCLAW SUITE · UPGRADE PAGE → CLAW BOT → $145/MO",
     "activated": "Activated",
     "activatedCodename": "DEPLOYED",
     "activate": "Activate",

@@ -676,6 +676,15 @@ router.post("/bots/marketplace/activate", requireBotFactory, async (req, res) =>
       return;
     }
 
+    if (item.slug === "claw-bot") {
+      const email = getUserEmail(req);
+      const hasClawBot = await hasFeature(userId, email, "claw_bot");
+      if (!hasClawBot) {
+        res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot", requiresUpgrade: true });
+        return;
+      }
+    }
+
     const existing = await db
       .select()
       .from(botSubscriptionsTable)

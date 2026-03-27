@@ -34,6 +34,12 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     price: 149,
     desc: "Deploy autonomous AI agents across 6 platforms — Telegram, WhatsApp, Discord, Facebook Messenger, Gmail & LinkedIn. Recruitment bots, sales agents, support bots & more. Unlimited bots, unlimited conversations.",
   },
+  claw_bot: {
+    name: "Claw Bot",
+    codename: "OPENCLAW MULTI-AGENT SUITE",
+    price: 145,
+    desc: "AI multi-agent platform — sales, support, content creation, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading. All OpenClaw-powered capabilities in one subscription.",
+  },
 };
 
 function ownerEmails(): string[] {

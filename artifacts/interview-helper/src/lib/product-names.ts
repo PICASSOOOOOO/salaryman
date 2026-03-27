@@ -2,7 +2,7 @@ export const PABLO_PRODUCTS = {
   LIVE_LISTEN: {
     name: "ECHO-7 NERVE TAP",
     short: "ECHO-7",
-    desc: "Cochlear intercept module. Captures ambient audio streams in real-time and routes to PABLO NEURAL CORE for instant tactical analysis.",
+    desc: "Cochlear intercept module. Captures ambient audio streams in real-time and routes to Pablo AI NEURAL CORE for instant tactical analysis.",
   },
   SCAN_SCREEN: {
     name: "OPTIC-9 RETINAL SCANNER",
@@ -42,7 +42,7 @@ export const PABLO_PRODUCTS = {
     desc: "Mobile command station. Projects, knowledge base, and brand kit in one secure terminal.",
   },
   PABLO_AI_PRO: {
-    name: "PABLO NEURAL CORE v5.0",
+    name: "Pablo AI NEURAL CORE v5.0",
     short: "NEURAL CORE",
     desc: "Full cognitive augmentation suite. Priority neural processing, persistent memory banks, and contextual business intelligence.",
   },
@@ -141,7 +141,7 @@ export const PABLO_PRODUCTS = {
     desc: "1999 — Sub-basement audio forge. Beat machines, oscillators, and sample banks wired into the neural core. Password-protected.",
   },
   AI_AGENTS: {
-    name: "PABLO AI NETWORK",
+    name: "Pablo AI NETWORK",
     short: "AI NETWORK",
     desc: "Multi-agent orchestration layer. CORTEX-1 handles code and deep reasoning. SWIFT-3 handles speed and general tasks. CLAW-7 routes through OpenClaw gateway. Auto-routing with triple fallback.",
   },

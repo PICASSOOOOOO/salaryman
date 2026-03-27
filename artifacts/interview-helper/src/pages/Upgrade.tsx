@@ -3,7 +3,7 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import {
   Zap, CreditCard, Check, Lock, Phone,
   ChevronRight, Loader2, AlertCircle, Mic, Monitor,
-  ShoppingBag, Heart, Package, Shield, Sparkles,
+  ShoppingBag, Heart, Package, Shield, Sparkles, Bot,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -78,6 +78,19 @@ const FEATURE_CARDS: FeatureCard[] = [
     color: "text-amber-400",
     borderColor: "border-amber-500/30",
     bgColor: "bg-amber-500/10",
+  },
+  {
+    key: "claw_bot",
+    icon: Bot,
+    label: "OPENCLAW MULTI-AGENT SUITE",
+    boomerLabel: "Claw Bot",
+    codename: "CLAW BOT",
+    desc: "Full OpenClaw-powered agent roster: sales closer, customer support, content writer, recruiter, LinkedIn prospector, Facebook scout, and automated trading bot. One subscription, every capability.",
+    boomerDesc: "AI multi-agent platform with sales, support, content creation, recruiting, LinkedIn & Facebook prospecting, and automated stock/options trading via Charles Schwab thinkorswim.",
+    price: 145,
+    color: "text-emerald-400",
+    borderColor: "border-emerald-500/30",
+    bgColor: "bg-emerald-500/10",
   },
 ];
 

@@ -267,7 +267,7 @@ const MODULES: ModuleDef[] = [
   {
     id: 'bot_factory',
     label: 'BOT FACTORY',
-    boomerLabel: 'BOT FACTORY',
+    boomerLabel: 'Bot Factory',
     codename: 'Claw Factory MK-II',
     boomerCodename: 'AI Bot Platform',
     tagline: 'Deploy autonomous AI agents across 6 platforms. Your workforce, automated.',
@@ -283,6 +283,28 @@ const MODULES: ModuleDef[] = [
       { name: 'Persistent Memory', detail: 'Bots remember everything — candidate names, deal stages, customer preferences, conversation context. Every interaction builds on the last.' },
       { name: 'Scheduled Automation', detail: 'Set up recurring tasks — daily outreach, weekly follow-ups, pipeline reviews. Your bots work while you sleep.' },
       { name: 'Permission Controls', detail: 'Fine-grained access controls for each bot. Decide exactly what each agent can and cannot do — email, CRM, calendar, LinkedIn outreach.' },
+    ],
+  },
+  {
+    id: 'claw_bot',
+    label: 'CLAW BOT',
+    boomerLabel: 'Claw Bot',
+    codename: 'OpenClaw Multi-Agent Suite',
+    boomerCodename: 'AI Multi-Agent Platform',
+    tagline: 'Sales, support, recruiting, LinkedIn prospecting, trading — all in one OpenClaw-powered suite.',
+    access: 'paid',
+    featureKey: 'claw_bot',
+    route: '/bots',
+    description:
+      'Claw Bot is the OpenClaw-powered multi-agent suite inside SALARYMAN. One subscription at $145/mo unlocks a full roster of AI agents: a sales closer that qualifies leads and handles objections, a customer support agent that resolves tickets 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads by title and industry, a Facebook & Instagram intelligence scout, and an automated trading bot connected to Charles Schwab thinkorswim. Deploy any combination across Telegram, WhatsApp, Discord, and more.',
+    features: [
+      { name: 'AI Sales Closer', detail: 'Qualifies leads, handles objections, books meetings, and moves prospects through your pipeline around the clock.' },
+      { name: 'Customer Support Agent', detail: 'Resolves issues empathetically, answers FAQs, creates tickets, and escalates to a human agent when needed.' },
+      { name: 'Content Writer', detail: 'Writes blog posts, social captions, ad copy, email campaigns, and product descriptions in your brand voice.' },
+      { name: 'AI Recruiter', detail: 'Screens candidates, asks interview questions, evaluates fit, and schedules follow-up interviews.' },
+      { name: 'LinkedIn Prospector', detail: 'Finds qualified leads on LinkedIn by job title, industry, company size, location, and keywords. Populates your CRM automatically.' },
+      { name: 'Facebook & Instagram Scout', detail: 'Surfaces business leads from Facebook Groups, Pages, and Instagram business profiles. Tagged and queued in your CRM.' },
+      { name: 'Automated Trading Bot', detail: 'Executes stock and options strategies via Charles Schwab thinkorswim. Paper Trading mode by default with full risk controls.' },
     ],
   },
 ];

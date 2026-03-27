@@ -30,8 +30,8 @@ export const MODULES: Module[] = [
   {
     id: 'pablo',
     path: '/',
-    label: 'PABLO',
-    codename: 'PABLO',
+    label: 'Pablo AI',
+    codename: 'PABLO AI',
     icon: Terminal,
     defaultPath: '/',
     subs: [],
