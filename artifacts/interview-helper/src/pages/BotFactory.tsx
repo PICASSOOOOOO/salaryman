@@ -10,6 +10,7 @@ import {
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useTranslation } from 'react-i18next';
 
 type BotStatus = 'active' | 'paused' | 'error';
 type Tab = 'my-bots' | 'marketplace';
@@ -82,11 +83,11 @@ function getIcon(name: string) {
   return ICON_MAP[name] || Bot;
 }
 
-function StatusBadge({ status, boomer }: { status: BotStatus; boomer: boolean }) {
+function StatusBadge({ status, boomer, t }: { status: BotStatus; boomer: boolean; t: (key: string) => string }) {
   const config = {
-    active: { color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', dot: 'bg-emerald-400', label: boomer ? 'Online' : 'ACTIVE' },
-    paused: { color: 'bg-amber-500/15 text-amber-400 border-amber-500/25', dot: 'bg-amber-400', label: boomer ? 'Paused' : 'STANDBY' },
-    error: { color: 'bg-red-500/15 text-red-400 border-red-500/25', dot: 'bg-red-400', label: boomer ? 'Error' : 'ERROR' },
+    active: { color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25', dot: 'bg-emerald-400', label: boomer ? t('botFactory.statusActive') : t('botFactory.statusActiveCodename') },
+    paused: { color: 'bg-amber-500/15 text-amber-400 border-amber-500/25', dot: 'bg-amber-400', label: boomer ? t('botFactory.statusPaused') : t('botFactory.statusPausedCodename') },
+    error: { color: 'bg-red-500/15 text-red-400 border-red-500/25', dot: 'bg-red-400', label: boomer ? t('botFactory.statusError') : t('botFactory.statusErrorCodename') },
   };
   const c = config[status] || config.paused;
   return (
@@ -98,20 +99,20 @@ function StatusBadge({ status, boomer }: { status: BotStatus; boomer: boolean })
   );
 }
 
-function PriceBadge({ price }: { price: number }) {
+function PriceBadge({ price, t }: { price: number; t: (key: string, opts?: Record<string, unknown>) => string }) {
   if (price === 0) return (
     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-      style={{ fontFamily: "'Share Tech Mono', monospace" }}>FREE</span>
+      style={{ fontFamily: "'Share Tech Mono', monospace" }}>{t('botFactory.priceFree')}</span>
   );
   return (
     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25"
       style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-      ${(price / 100).toFixed(0)}/mo
+      {t('botFactory.pricePerMonth', { amount: (price / 100).toFixed(0) })}
     </span>
   );
 }
 
-function CreateBotModal({ onClose, onCreated, boomer }: { onClose: () => void; onCreated: () => void; boomer: boolean }) {
+function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void; onCreated: () => void; boomer: boolean; t: (key: string) => string }) {
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState('You are a helpful assistant.');
   const [creating, setCreating] = useState(false);
@@ -145,30 +146,30 @@ function CreateBotModal({ onClose, onCreated, boomer }: { onClose: () => void; o
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem', letterSpacing: '0.08em' }}>
-            {boomer ? 'Create a Bot' : 'DEPLOY NEW AGENT'}
+            {boomer ? t('botFactory.createModalTitle') : t('botFactory.createModalTitleCodename')}
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-4">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {boomer ? 'Bot Name' : 'DESIGNATION'}
+              {boomer ? t('botFactory.createBotNameLabel') : t('botFactory.createBotNameLabelCodename')}
             </label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={boomer ? "My Sales Bot" : "AGENT-X"}
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={boomer ? t('botFactory.createBotNamePlaceholder') : t('botFactory.createBotNamePlaceholderCodename')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {boomer ? 'Personality / Instructions' : 'PERSONALITY MATRIX'}
+              {boomer ? t('botFactory.createBotPersonalityLabel') : t('botFactory.createBotPersonalityLabelCodename')}
             </label>
             <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={4}
-              placeholder={boomer ? "Describe how the bot should behave..." : "Define operational parameters..."}
+              placeholder={boomer ? t('botFactory.createBotPersonalityPlaceholder') : t('botFactory.createBotPersonalityPlaceholderCodename')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none resize-none" />
           </div>
           <button onClick={handleCreate} disabled={creating || !name.trim()}
             className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
             {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-            {boomer ? 'Create Bot' : 'DEPLOY AGENT'}
+            {boomer ? t('botFactory.createBotButton') : t('botFactory.createBotButtonCodename')}
           </button>
         </div>
       </motion.div>
@@ -176,7 +177,7 @@ function CreateBotModal({ onClose, onCreated, boomer }: { onClose: () => void; o
   );
 }
 
-function ConnectPlatformModal({ bot, onClose, onConnected, boomer }: { bot: BotData; onClose: () => void; onConnected: () => void; boomer: boolean }) {
+function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: BotData; onClose: () => void; onConnected: () => void; boomer: boolean; t: (key: string) => string }) {
   const [platform, setPlatform] = useState<'telegram' | 'whatsapp'>('telegram');
   const [token, setToken] = useState('');
   const [connecting, setConnecting] = useState(false);
@@ -214,7 +215,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer }: { bot: BotD
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem', letterSpacing: '0.08em' }}>
-            {boomer ? 'Connect Platform' : 'LINK COMMS CHANNEL'}
+            {boomer ? t('botFactory.connectModalTitle') : t('botFactory.connectModalTitleCodename')}
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
@@ -222,35 +223,33 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer }: { bot: BotD
           <div className="flex gap-2">
             <button onClick={() => setPlatform('telegram')}
               className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'telegram' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}>
-              Telegram
+              {t('botFactory.platformTelegram')}
             </button>
             <button onClick={() => setPlatform('whatsapp')}
               className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'whatsapp' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-background text-muted-foreground border-border hover:border-emerald-500/20'}`}>
-              WhatsApp
+              {t('botFactory.platformWhatsApp')}
             </button>
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
               {platform === 'telegram'
-                ? (boomer ? 'Telegram Bot Token (from @BotFather)' : 'BOTFATHER TOKEN')
-                : (boomer ? 'WhatsApp Number (with country code)' : 'WHATSAPP ENDPOINT')
+                ? (boomer ? t('botFactory.telegramTokenLabel') : t('botFactory.telegramTokenLabelCodename'))
+                : (boomer ? t('botFactory.whatsappTokenLabel') : t('botFactory.whatsappTokenLabelCodename'))
               }
             </label>
             <input value={token} onChange={e => setToken(e.target.value)}
-              placeholder={platform === 'telegram' ? '123456:ABC-DEF...' : '+1234567890'}
+              placeholder={platform === 'telegram' ? t('botFactory.telegramTokenPlaceholder') : t('botFactory.whatsappTokenPlaceholder')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none font-mono" />
           </div>
           {platform === 'telegram' && (
             <p className="text-[11px] text-muted-foreground/60">
-              {boomer
-                ? 'Get a token from @BotFather on Telegram. Just message /newbot to create one.'
-                : 'ACQUIRE TOKEN VIA @BOTFATHER · /newbot COMMAND · PASTE TOKEN ABOVE'}
+              {boomer ? t('botFactory.telegramHelp') : t('botFactory.telegramHelpCodename')}
             </p>
           )}
           <button onClick={handleConnect} disabled={connecting || !token.trim()}
             className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
             {connecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plug className="w-4 h-4" />}
-            {boomer ? 'Connect' : 'ESTABLISH LINK'}
+            {boomer ? t('botFactory.connectButton') : t('botFactory.connectButtonCodename')}
           </button>
         </div>
       </motion.div>
@@ -258,7 +257,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer }: { bot: BotD
   );
 }
 
-function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean }) {
+function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
   const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings'>('logs');
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [memories, setMemories] = useState<BotMemory[]>([]);
@@ -350,7 +349,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
   };
 
   const deleteBot = async () => {
-    if (!confirm(boomer ? 'Delete this bot permanently?' : 'CONFIRM AGENT TERMINATION?')) return;
+    if (!confirm(boomer ? t('botFactory.confirmDelete') : t('botFactory.confirmDeleteCodename'))) return;
     await apiFetch(`/api/bots/${bot.id}`, { method: 'DELETE' });
     onRefresh();
     onClose();
@@ -372,7 +371,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
               <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.2rem', letterSpacing: '0.08em' }}>
                 {bot.name}
               </h3>
-              <StatusBadge status={bot.status} boomer={boomer} />
+              <StatusBadge status={bot.status} boomer={boomer} t={t} />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -387,14 +386,14 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
         </div>
 
         <div className="flex border-b border-border">
-          {(['logs', 'memory', 'tasks', 'settings'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 text-xs font-bold transition-colors ${tab === t ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
+          {(['logs', 'memory', 'tasks', 'settings'] as const).map(tabKey => (
+            <button key={tabKey} onClick={() => setTab(tabKey)}
+              className={`flex-1 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
               style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              {t === 'logs' ? (boomer ? 'CONVERSATIONS' : 'COMMS LOG') :
-               t === 'memory' ? (boomer ? 'MEMORY' : 'NEURAL CACHE') :
-               t === 'tasks' ? (boomer ? 'TASKS' : 'SCHEDULER') :
-               (boomer ? 'SETTINGS' : 'CONFIG')}
+              {tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
+               tabKey === 'memory' ? (boomer ? t('botFactory.detailTabMemory') : t('botFactory.detailTabMemoryCodename')) :
+               tabKey === 'tasks' ? (boomer ? t('botFactory.detailTabTasks') : t('botFactory.detailTabTasksCodename')) :
+               (boomer ? t('botFactory.detailTabSettings') : t('botFactory.detailTabSettingsCodename'))}
             </button>
           ))}
         </div>
@@ -404,14 +403,14 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <div className="w-5 h-5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mr-3" />
               <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                {boomer ? 'Loading...' : 'LOADING...'}
+                {boomer ? t('botFactory.loadingContent') : t('botFactory.loadingContentCodename')}
               </span>
             </div>
           ) : tab === 'logs' ? (
             logs.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">{boomer ? 'No conversations yet' : 'NO INTERCEPTS RECORDED'}</p>
+                <p className="text-sm">{boomer ? t('botFactory.noConversations') : t('botFactory.noConversationsCodename')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -419,7 +418,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
                   <div key={log.id} className={`rounded-lg p-3 text-sm ${log.role === 'user' ? 'bg-sky-500/5 border border-sky-500/10' : 'bg-muted/30 border border-border'}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                        {log.role === 'user' ? (boomer ? 'USER' : 'INCOMING') : (boomer ? 'BOT' : 'OUTGOING')}
+                        {log.role === 'user' ? (boomer ? t('botFactory.logRoleUser') : t('botFactory.logRoleUserCodename')) : (boomer ? t('botFactory.logRoleBot') : t('botFactory.logRoleBotCodename'))}
                       </span>
                       <span className="text-[10px] text-muted-foreground/50">{log.platform}</span>
                       <span className="text-[10px] text-muted-foreground/40">{new Date(log.createdAt).toLocaleString()}</span>
@@ -433,7 +432,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
             memories.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Brain className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">{boomer ? 'No memories stored yet' : 'NEURAL CACHE EMPTY'}</p>
+                <p className="text-sm">{boomer ? t('botFactory.noMemories') : t('botFactory.noMemoriesCodename')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -456,56 +455,58 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
             <div className="space-y-4">
               <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-3">
                 <label className="text-xs text-muted-foreground block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomer ? 'NEW SCHEDULED TASK' : 'DEPLOY CRON JOB'}
+                  {boomer ? t('botFactory.newScheduledTask') : t('botFactory.newScheduledTaskCodename')}
                 </label>
                 <input value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)}
-                  placeholder={boomer ? 'Describe what the bot should do...' : 'TASK DIRECTIVE...'}
+                  placeholder={boomer ? t('botFactory.taskDirectivePlaceholder') : t('botFactory.taskDirectivePlaceholderCodename')}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
                 <div className="flex gap-3 items-end">
                   <div className="flex-1">
                     <label className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                      {boomer ? 'Interval (minutes)' : 'CYCLE (MIN)'}
+                      {boomer ? t('botFactory.intervalLabel') : t('botFactory.intervalLabelCodename')}
                     </label>
                     <select value={newTaskCron} onChange={e => setNewTaskCron(e.target.value)}
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none">
-                      <option value="5">5 min</option>
-                      <option value="15">15 min</option>
-                      <option value="30">30 min</option>
-                      <option value="60">1 hour</option>
-                      <option value="360">6 hours</option>
-                      <option value="720">12 hours</option>
-                      <option value="1440">24 hours</option>
+                      <option value="5">{t('botFactory.interval5min')}</option>
+                      <option value="15">{t('botFactory.interval15min')}</option>
+                      <option value="30">{t('botFactory.interval30min')}</option>
+                      <option value="60">{t('botFactory.interval1hour')}</option>
+                      <option value="360">{t('botFactory.interval6hours')}</option>
+                      <option value="720">{t('botFactory.interval12hours')}</option>
+                      <option value="1440">{t('botFactory.interval24hours')}</option>
                     </select>
                   </div>
                   <button onClick={createTask} disabled={creatingTask || !newTaskDesc.trim()}
                     className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5">
                     {creatingTask ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    {boomer ? 'Add' : 'DEPLOY'}
+                    {boomer ? t('botFactory.addTask') : t('botFactory.addTaskCodename')}
                   </button>
                 </div>
               </div>
               {tasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">{boomer ? 'No scheduled tasks yet' : 'NO CRON JOBS ACTIVE'}</p>
+                  <p className="text-sm">{boomer ? t('botFactory.noTasks') : t('botFactory.noTasksCodename')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {tasks.map(task => (
                     <div key={task.id} className={`flex items-start gap-3 rounded-lg p-3 border group ${task.enabled ? 'bg-muted/20 border-border' : 'bg-muted/5 border-border/50 opacity-60'}`}>
                       <button onClick={() => toggleTask(task.id, !task.enabled)}
-                        className={`mt-0.5 shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${task.enabled ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-muted/20 border-border text-muted-foreground'}`}>
-                        {task.enabled && <Check className="w-3 h-3" />}
+                        className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${task.enabled ? 'bg-sky-500 border-sky-500' : 'border-border'}`}>
+                        {task.enabled && <Check className="w-2.5 h-2.5 text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground/80">{task.taskDescription}</p>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomer ? `Every ${task.cronExpression} min` : `CYCLE: ${task.cronExpression}m`}
+                            {boomer
+                              ? t('botFactory.taskCycleLabel', { minutes: task.cronExpression })
+                              : t('botFactory.taskCycleLabelCodename', { minutes: task.cronExpression })}
                           </span>
                           {task.lastRunAt && (
                             <span className="text-[10px] text-muted-foreground/50">
-                              {boomer ? 'Last: ' : 'LAST: '}{new Date(task.lastRunAt).toLocaleString()}
+                              {boomer ? t('botFactory.taskLastRun') : t('botFactory.taskLastRunCodename')}{new Date(task.lastRunAt).toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -522,22 +523,22 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
             <div className="space-y-4">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomer ? 'PERSONALITY' : 'PERSONALITY MATRIX'}
+                  {boomer ? t('botFactory.settingsPersonality') : t('botFactory.settingsPersonalityCodename')}
                 </label>
                 <p className="text-sm text-foreground/70 bg-muted/20 rounded-lg p-3 border border-border">{bot.personality}</p>
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomer ? 'CONNECTIONS' : 'COMM LINKS'}
+                  {boomer ? t('botFactory.settingsConnections') : t('botFactory.settingsConnectionsCodename')}
                 </label>
                 {bot.connections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50">{boomer ? 'No platforms connected' : 'NO LINKS ESTABLISHED'}</p>
+                  <p className="text-sm text-muted-foreground/50">{boomer ? t('botFactory.noLinksEstablished') : t('botFactory.noLinksEstablishedCodename')}</p>
                 ) : (
                   <div className="space-y-2">
                     {bot.connections.map(conn => (
                       <div key={conn.id} className="flex items-center gap-3 rounded-lg p-3 bg-muted/20 border border-border">
                         <span className="text-xs font-bold text-sky-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{conn.platform.toUpperCase()}</span>
-                        <StatusBadge status={conn.status === 'connected' ? 'active' : 'paused'} boomer={boomer} />
+                        <StatusBadge status={conn.status === 'connected' ? 'active' : 'paused'} boomer={boomer} t={t} />
                       </div>
                     ))}
                   </div>
@@ -545,7 +546,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomer ? 'PERMISSIONS' : 'ACCESS LEVEL'}
+                  {boomer ? t('botFactory.settingsPermissions') : t('botFactory.settingsPermissionsCodename')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {bot.permissions.map((p: string) => (
@@ -557,13 +558,13 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg p-3 bg-muted/20 border border-border">
                   <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                    {boomer ? 'MAX TOKENS' : 'TOKEN LIMIT'}
+                    {boomer ? t('botFactory.settingsMaxTokens') : t('botFactory.settingsMaxTokensCodename')}
                   </span>
                   <span className="text-sm font-bold text-foreground">{bot.maxTokensPerResponse.toLocaleString()}</span>
                 </div>
                 <div className="rounded-lg p-3 bg-muted/20 border border-border">
                   <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                    {boomer ? 'RATE LIMIT' : 'RATE CAP'}
+                    {boomer ? t('botFactory.settingsRateLimit') : t('botFactory.settingsRateLimitCodename')}
                   </span>
                   <span className="text-sm font-bold text-foreground">{bot.rateLimitPerMinute}/min</span>
                 </div>
@@ -577,6 +578,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer }: { bot: BotData; onC
 }
 
 export default function BotFactory() {
+  const { t } = useTranslation();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [tab, setTab] = useState<Tab>('marketplace');
   const [bots, setBots] = useState<BotData[]>([]);
@@ -641,7 +643,7 @@ export default function BotFactory() {
   };
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access the Bot Factory.' : 'Operative clearance required. Bot deployment systems locked.'} />;
+    return <SignInPage context={boomerMode ? t('botFactory.signInContext') : t('botFactory.signInContextCodename')} />;
   }
 
   return (
@@ -659,10 +661,10 @@ export default function BotFactory() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
-                  {boomerMode ? 'Bot Factory' : 'OPENCLAW BOT FACTORY'}
+                  {boomerMode ? t('botFactory.title') : t('botFactory.titleCodename')}
                 </h1>
                 <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomerMode ? 'Create and manage AI bots for Telegram, WhatsApp & more' : 'AUTONOMOUS AGENT DEPLOYMENT · MULTI-PLATFORM MESH'}
+                  {boomerMode ? t('botFactory.subtitle') : t('botFactory.subtitleCodename')}
                 </p>
               </div>
             </div>
@@ -672,12 +674,12 @@ export default function BotFactory() {
             <button onClick={() => setTab('marketplace')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'marketplace' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
               <Store className="w-4 h-4" />
-              {boomerMode ? 'Bot Store' : 'MARKETPLACE'}
+              {boomerMode ? t('botFactory.tabStore') : t('botFactory.tabStoreCodename')}
             </button>
             <button onClick={() => setTab('my-bots')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'my-bots' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
               <Bot className="w-4 h-4" />
-              {boomerMode ? 'My Bots' : 'MY AGENTS'}
+              {boomerMode ? t('botFactory.tabMyBots') : t('botFactory.tabMyBotsCodename')}
               {bots.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400">{bots.length}</span>
               )}
@@ -686,7 +688,7 @@ export default function BotFactory() {
               <button onClick={() => setShowCreate(true)}
                 className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors">
                 <Plus className="w-4 h-4" />
-                {boomerMode ? 'New Bot' : 'DEPLOY'}
+                {boomerMode ? t('botFactory.newBot') : t('botFactory.newBotCodename')}
               </button>
             )}
           </div>
@@ -695,23 +697,21 @@ export default function BotFactory() {
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Bot className="w-6 h-6 animate-pulse mr-3" />
               <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                {boomerMode ? 'Loading bots...' : 'SCANNING AGENT REGISTRY...'}
+                {boomerMode ? t('botFactory.loadingBots') : t('botFactory.loadingBotsCodename')}
               </span>
             </div>
           ) : tab === 'marketplace' ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card/50 p-4 mb-4">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {boomerMode
-                    ? 'Pre-built AI bots ready to deploy. Activate any bot and connect it to your Telegram or WhatsApp. Our prices beat the competition — same power, lower cost.'
-                    : 'PRODUCTION-GRADE AUTONOMOUS AGENTS · ACTIVATE & DEPLOY INSTANTLY · COMPETITIVE PRICING GUARANTEED'}
+                  {boomerMode ? t('botFactory.marketplaceDesc') : t('botFactory.marketplaceDescCodename')}
                 </p>
               </div>
 
               {marketplace.filter(i => i.featured).length > 0 && (
                 <div className="mb-2">
                   <span className="text-[10px] font-bold text-amber-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                    {boomerMode ? '⭐ FEATURED' : '★ FEATURED AGENTS'}
+                    {boomerMode ? t('botFactory.featuredLabel') : t('botFactory.featuredLabelCodename')}
                   </span>
                 </div>
               )}
@@ -734,7 +734,7 @@ export default function BotFactory() {
                               <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
                                 {item.name}
                               </h3>
-                              <PriceBadge price={item.priceMonthly} />
+                              <PriceBadge price={item.priceMonthly} t={t} />
                             </div>
                             <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
                             <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
@@ -746,13 +746,13 @@ export default function BotFactory() {
                             </div>
                             {isActive ? (
                               <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
-                                <Check className="w-3.5 h-3.5" /> {boomerMode ? 'Activated' : 'DEPLOYED'}
+                                <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
                               </span>
                             ) : (
                               <button onClick={() => activateMarketplaceBot(item.id)} disabled={activating === item.id}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
                                 {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                {boomerMode ? 'Activate' : 'DEPLOY'}
+                                {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
                               </button>
                             )}
                           </div>
@@ -769,16 +769,16 @@ export default function BotFactory() {
                 <div className="rounded-xl border border-border bg-card/50 p-12 text-center">
                   <Bot className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
                   <p className="text-sm text-muted-foreground mb-4">
-                    {boomerMode ? 'No bots yet. Create one or activate from the store.' : 'NO AGENTS DEPLOYED · INITIALIZE FROM MARKETPLACE OR DEPLOY CUSTOM'}
+                    {boomerMode ? t('botFactory.noBotsYet') : t('botFactory.noBotsYetCodename')}
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     <button onClick={() => setShowCreate(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors">
-                      <Plus className="w-4 h-4" /> {boomerMode ? 'Create Bot' : 'DEPLOY AGENT'}
+                      <Plus className="w-4 h-4" /> {boomerMode ? t('botFactory.createBot') : t('botFactory.createBotCodename')}
                     </button>
                     <button onClick={() => setTab('marketplace')}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border border-border text-muted-foreground hover:text-foreground hover:border-sky-500/20 transition-colors">
-                      <Store className="w-4 h-4" /> {boomerMode ? 'Browse Store' : 'MARKETPLACE'}
+                      <Store className="w-4 h-4" /> {boomerMode ? t('botFactory.browseStore') : t('botFactory.browseStoreCodename')}
                     </button>
                   </div>
                 </div>
@@ -798,12 +798,12 @@ export default function BotFactory() {
                             <h3 className="font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
                               {bot.name}
                             </h3>
-                            <StatusBadge status={bot.status} boomer={boomerMode} />
+                            <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
                           </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Plug className="w-3 h-3" />
-                              {bot.connections.length} {boomerMode ? 'connections' : 'links'}
+                              {bot.connections.length} {boomerMode ? t('botFactory.connections') : t('botFactory.connectionsCodename')}
                             </span>
                             {bot.connections.map(c => (
                               <span key={c.id} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border"
@@ -814,7 +814,7 @@ export default function BotFactory() {
                         <div className="flex items-center gap-2 shrink-0">
                           <button onClick={e => { e.stopPropagation(); setConnectBot(bot); }}
                             className="p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-400 hover:border-sky-500/20 transition-colors"
-                            title={boomerMode ? 'Connect platform' : 'LINK CHANNEL'}>
+                            title={boomerMode ? t('botFactory.connectPlatformTitle') : t('botFactory.connectPlatformTitleCodename')}>
                             <Plug className="w-4 h-4" />
                           </button>
                           <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
@@ -830,9 +830,9 @@ export default function BotFactory() {
       </main>
 
       <AnimatePresence>
-        {showCreate && <CreateBotModal onClose={() => setShowCreate(false)} onCreated={loadBots} boomer={boomerMode} />}
-        {selectedBot && <BotDetailModal bot={selectedBot} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} boomer={boomerMode} />}
-        {connectBot && <ConnectPlatformModal bot={connectBot} onClose={() => setConnectBot(null)} onConnected={loadBots} boomer={boomerMode} />}
+        {showCreate && <CreateBotModal onClose={() => setShowCreate(false)} onCreated={loadBots} boomer={boomerMode} t={t} />}
+        {selectedBot && <BotDetailModal bot={selectedBot} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} boomer={boomerMode} t={t} />}
+        {connectBot && <ConnectPlatformModal bot={connectBot} onClose={() => setConnectBot(null)} onConnected={loadBots} boomer={boomerMode} t={t} />}
       </AnimatePresence>
     </div>
   );
