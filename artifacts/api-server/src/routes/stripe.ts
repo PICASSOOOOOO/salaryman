@@ -1,7 +1,7 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
-import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable } from "@workspace/db";
+import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
 import { eq, sum, desc, and } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
@@ -14,6 +14,108 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   say_this: "STRIPE_PRICE_SAY_THIS",
   phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
 };
+
+const BOT_PRICE_ENV: Record<string, string> = {
+  "sales-closer": "STRIPE_PRICE_BOT_CLOSER_X",
+  "support-bot": "STRIPE_PRICE_BOT_RESOLVE_7",
+  "content-writer": "STRIPE_PRICE_BOT_INK_9",
+  "recruiter-bot": "STRIPE_PRICE_BOT_RECRUIT_8",
+};
+
+function getPriceIdForBot(slug: string): string | undefined {
+  const envKey = BOT_PRICE_ENV[slug];
+  if (!envKey) return undefined;
+  return process.env[envKey];
+}
+
+async function activateBotSubscription(userId: string, marketplaceItemId: number, stripeSubscriptionId: string): Promise<void> {
+  const [item] = await db
+    .select()
+    .from(botMarketplaceTable)
+    .where(eq(botMarketplaceTable.id, marketplaceItemId));
+  if (!item) return;
+
+  const existing = await db
+    .select()
+    .from(botSubscriptionsTable)
+    .where(
+      and(
+        eq(botSubscriptionsTable.userId, userId),
+        eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+      )
+    );
+
+  if (existing.length > 0 && existing[0].botId) {
+    await db
+      .update(botSubscriptionsTable)
+      .set({ status: "active", stripeSubscriptionId })
+      .where(
+        and(
+          eq(botSubscriptionsTable.userId, userId),
+          eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+        )
+      );
+    await db
+      .update(botsTable)
+      .set({ status: "active" })
+      .where(eq(botsTable.id, existing[0].botId));
+    return;
+  }
+
+  const [bot] = await db
+    .insert(botsTable)
+    .values({
+      ownerId: userId,
+      name: item.name,
+      personality: item.personality,
+      systemPrompt: item.systemPrompt,
+      permissions: item.permissions,
+      marketplaceItemId: item.id,
+    })
+    .returning();
+
+  if (existing.length > 0) {
+    await db
+      .update(botSubscriptionsTable)
+      .set({ botId: bot.id, status: "active", stripeSubscriptionId })
+      .where(
+        and(
+          eq(botSubscriptionsTable.userId, userId),
+          eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+        )
+      );
+  } else {
+    await db.insert(botSubscriptionsTable).values({
+      userId,
+      marketplaceItemId: item.id,
+      botId: bot.id,
+      status: "active",
+      stripeSubscriptionId,
+    });
+  }
+}
+
+async function deactivateBotSubscription(stripeSubscriptionId: string): Promise<string | null> {
+  const [sub] = await db
+    .select()
+    .from(botSubscriptionsTable)
+    .where(eq(botSubscriptionsTable.stripeSubscriptionId, stripeSubscriptionId));
+  if (!sub) return null;
+
+  await db
+    .update(botSubscriptionsTable)
+    .set({ status: "canceled" })
+    .where(eq(botSubscriptionsTable.stripeSubscriptionId, stripeSubscriptionId));
+
+  if (sub.botId) {
+    await db
+      .update(botsTable)
+      .set({ status: "paused" })
+      .where(eq(botsTable.id, sub.botId));
+  }
+
+  return sub.userId;
+}
 
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -132,6 +234,86 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   }
 
   const session = await stripe.checkout.sessions.create(sessionParams);
+
+  res.json({ url: session.url });
+});
+
+router.post("/stripe/create-bot-checkout-session", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+
+  const { marketplaceItemId } = req.body as { marketplaceItemId?: number };
+  if (!marketplaceItemId || typeof marketplaceItemId !== "number") {
+    res.status(400).json({ error: "marketplaceItemId required" });
+    return;
+  }
+
+  const [item] = await db
+    .select()
+    .from(botMarketplaceTable)
+    .where(eq(botMarketplaceTable.id, marketplaceItemId));
+
+  if (!item) {
+    res.status(404).json({ error: "Marketplace item not found" });
+    return;
+  }
+
+  if (item.priceMonthly === 0) {
+    res.status(400).json({ error: "This bot is free — use the activate endpoint directly" });
+    return;
+  }
+
+  const user = req.user;
+
+  const existingSub = await db
+    .select()
+    .from(botSubscriptionsTable)
+    .where(
+      and(
+        eq(botSubscriptionsTable.userId, user.id),
+        eq(botSubscriptionsTable.marketplaceItemId, marketplaceItemId)
+      )
+    );
+
+  if (existingSub.length > 0 && existingSub[0].status === "active") {
+    res.status(409).json({ error: "Already subscribed to this bot", alreadyActive: true });
+    return;
+  }
+
+  const priceId = getPriceIdForBot(item.slug);
+  if (!priceId) {
+    res.status(500).json({ error: `Stripe pricing for ${item.name} not configured yet` });
+    return;
+  }
+  const stripe = getStripe();
+  const baseUrl = getAppBaseUrl();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${baseUrl}/bot-factory?checkout=success&botSlug=${item.slug}`,
+    cancel_url: `${baseUrl}/bot-factory?checkout=cancel`,
+    client_reference_id: user.id,
+    metadata: {
+      userId: user.id,
+      type: "bot_subscription",
+      marketplaceItemId: String(marketplaceItemId),
+      botSlug: item.slug,
+      brand: "Picassoo.AI",
+      product_line: "SALARYMAN",
+    },
+    subscription_data: {
+      description: `${item.name} by Picassoo.AI — SALARYMAN Bot Factory`,
+      metadata: {
+        brand: "Picassoo.AI",
+        product_line: "SALARYMAN",
+        marketplaceItemId: String(marketplaceItemId),
+        botSlug: item.slug,
+      },
+    },
+  });
 
   res.json({ url: session.url });
 });
@@ -274,6 +456,15 @@ router.post(
           }
         } else if (type === "season_pass") {
           await handleSeasonPassWebhookEvent(event as any);
+        } else if (type === "bot_subscription") {
+          const marketplaceItemIdStr = session.metadata?.marketplaceItemId;
+          const marketplaceItemId = marketplaceItemIdStr ? parseInt(marketplaceItemIdStr) : NaN;
+          if (userId && !isNaN(marketplaceItemId) && subscriptionId) {
+            await activateBotSubscription(userId, marketplaceItemId, subscriptionId);
+            console.log(`[Stripe] Bot subscription activated for user ${userId}, marketplace item ${marketplaceItemId} (sub: ${subscriptionId})`);
+          } else {
+            console.warn("[Stripe] bot_subscription checkout.completed but missing data", { userId, marketplaceItemId, subscriptionId });
+          }
         } else if (userId && feature && FEATURE_KEYS.includes(feature)) {
           const grantedBy = session.metadata?.grantedBy ?? "stripe";
           const orgIdMeta = session.metadata?.orgId;
@@ -319,11 +510,18 @@ router.post(
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
         const subId = subscription.id;
-        const userId = await revokeFeatureBySubscription(subId);
-        if (userId) {
-          console.log(`[Stripe] User ${userId} lost feature (subscription ${subId} deleted)`);
+
+        const botUserId = await deactivateBotSubscription(subId);
+        if (botUserId) {
+          console.log(`[Stripe] Bot subscription deactivated for user ${botUserId} (sub: ${subId})`);
+          break;
+        }
+
+        const featureUserId = await revokeFeatureBySubscription(subId);
+        if (featureUserId) {
+          console.log(`[Stripe] User ${featureUserId} lost feature (subscription ${subId} deleted)`);
         } else {
-          console.warn("[Stripe] subscription.deleted but no matching feature found for sub", subId);
+          console.warn("[Stripe] subscription.deleted but no matching bot or feature found for sub", subId);
         }
         break;
       }

@@ -165,7 +165,7 @@ function PriceBadge({ price, t }: { price: number; t: (key: string, opts?: Recor
   return (
     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25"
       style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-      {t('botFactory.pricePerMonth', { amount: (price / 100).toFixed(0) })}
+      {t('botFactory.pricePerMonth', { amount: price })}
     </span>
   );
 }
@@ -1454,7 +1454,7 @@ export default function BotFactory() {
   const [tab, setTab] = useState<Tab>('marketplace');
   const [bots, setBots] = useState<BotData[]>([]);
   const [marketplace, setMarketplace] = useState<MarketplaceItem[]>([]);
-  const [subscriptions, setSubscriptions] = useState<number[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Array<{ marketplaceItemId: number; status: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
@@ -1484,7 +1484,7 @@ export default function BotFactory() {
         apiFetch('/api/bots/marketplace/subscriptions'),
       ]);
       if (mRes.ok) { const data = await mRes.json(); setMarketplace(data.items ?? []); }
-      if (sRes.ok) { const data = await sRes.json(); setSubscriptions((data.subscriptions ?? []).map((s: { marketplaceItemId: number }) => s.marketplaceItemId)); }
+      if (sRes.ok) { const data = await sRes.json(); setSubscriptions((data.subscriptions ?? []).map((s: { marketplaceItemId: number; status: string }) => ({ marketplaceItemId: s.marketplaceItemId, status: s.status }))); }
     } catch {}
   }, []);
 
@@ -1494,17 +1494,40 @@ export default function BotFactory() {
     Promise.all([loadBots(), loadMarketplace()]).finally(() => setLoading(false));
   }, [isAuthenticated, loadBots, loadMarketplace]);
 
-  const activateMarketplaceBot = async (itemId: number) => {
-    setActivating(itemId);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (checkout === 'success') {
+      setTab('my-bots');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (checkout === 'cancel') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const activateMarketplaceBot = async (item: MarketplaceItem) => {
+    setActivating(item.id);
     try {
-      const res = await apiFetch('/api/bots/marketplace/activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marketplaceItemId: itemId }),
-      });
-      if (res.ok) {
-        await Promise.all([loadBots(), loadMarketplace()]);
-        setTab('my-bots');
+      if (item.priceMonthly > 0) {
+        const res = await apiFetch('/api/stripe/create-bot-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ marketplaceItemId: item.id }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url) { window.location.href = data.url; return; }
+        }
+      } else {
+        const res = await apiFetch('/api/bots/marketplace/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ marketplaceItemId: item.id }),
+        });
+        if (res.ok) {
+          await Promise.all([loadBots(), loadMarketplace()]);
+          setTab('my-bots');
+        }
       }
     } catch (err) {
       console.error('Failed to activate bot:', err);
@@ -1579,114 +1602,154 @@ export default function BotFactory() {
                 </p>
               </div>
 
-              {marketplace.filter(m => m.category === 'trading').length > 0 && (
-                <div className="mb-2">
-                  <span className="text-[10px] font-bold text-green-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                    {boomerMode ? '📈 TRADING BOTS' : '▲ TRADING AGENTS'}
-                  </span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <AnimatePresence>
-                      {marketplace.filter(m => m.category === 'trading').map((item, idx) => {
-                        const Icon = getIcon(item.icon);
-                        const isActive = subscriptions.includes(item.id);
-                        return (
-                          <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 bg-green-500/10 border-green-500/25">
-                                <Icon className="w-5 h-5 text-green-400" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                    {item.name}
-                                  </h3>
-                                  <PriceBadge price={item.priceMonthly} t={t} />
-                                </div>
-                                <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
-                                <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
-                                <div className="flex flex-wrap gap-1 mb-3">
-                                  {item.capabilities.map(cap => (
-                                    <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-green-400/50 border border-green-500/20"
-                                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
-                                  ))}
-                                </div>
-                                {isActive ? (
-                                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
-                                    <Check className="w-3.5 h-3.5" /> {boomerMode ? 'Activated' : 'DEPLOYED'}
-                                  </span>
-                                ) : (
-                                  <button onClick={() => activateMarketplaceBot(item.id)} disabled={activating === item.id}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50">
-                                    {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                    {boomerMode ? 'Activate' : 'DEPLOY'}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              )}
+              {(() => {
+                const freeItems = marketplace.filter(i => i.priceMonthly === 0);
+                const paidItems = marketplace.filter(i => i.priceMonthly > 0);
+                const categories: Record<string, MarketplaceItem[]> = {};
+                for (const item of paidItems) {
+                  if (!categories[item.category]) categories[item.category] = [];
+                  categories[item.category].push(item);
+                }
 
-              {marketplace.filter(m => m.featured && m.category !== 'trading').length > 0 && (
-                <div className="mb-2">
-                  <span className="text-[10px] font-bold text-amber-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                    {boomerMode ? t('botFactory.featuredLabel') : t('botFactory.featuredLabelCodename')}
-                  </span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <AnimatePresence>
-                  {marketplace.filter(m => m.category !== 'trading').map((item, idx) => {
-                    const Icon = getIcon(item.icon);
-                    const isActive = subscriptions.includes(item.id);
-                    return (
-                      <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        className={`rounded-2xl border bg-card p-5 ${item.featured ? 'border-amber-500/20' : 'border-border'}`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${item.featured ? 'bg-amber-500/10 border-amber-500/25' : 'bg-sky-500/10 border-sky-500/25'}`}>
-                            <Icon className={`w-5 h-5 ${item.featured ? 'text-amber-400' : 'text-sky-400'}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                {item.name}
-                              </h3>
-                              <PriceBadge price={item.priceMonthly} t={t} />
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
-                            <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {item.capabilities.map(cap => (
-                                <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
-                              ))}
-                            </div>
-                            {isActive ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
-                                <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
-                              </span>
-                            ) : (
-                              <button onClick={() => activateMarketplaceBot(item.id)} disabled={activating === item.id}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
-                                {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
-                              </button>
-                            )}
-                          </div>
+                return (
+                  <>
+                    {freeItems.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            {boomerMode ? 'Free Bots' : 'FREE // NO COST'}
+                          </span>
+                          <div className="flex-1 h-px bg-emerald-500/20" />
                         </div>
-                      </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <AnimatePresence>
+                            {freeItems.map((item, i) => {
+                              const Icon = getIcon(item.icon);
+                              const sub = subscriptions.find(s => s.marketplaceItemId === item.id);
+                              const isActive = sub?.status === 'active';
+                              return (
+                                <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.05 }}
+                                  className="rounded-2xl border border-emerald-500/15 bg-card p-5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-xl border bg-emerald-500/10 border-emerald-500/25 flex items-center justify-center shrink-0">
+                                      <Icon className="w-5 h-5 text-emerald-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                        <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
+                                          {item.name}
+                                        </h3>
+                                        <PriceBadge price={item.priceMonthly} t={t} />
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
+                                      <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
+                                      <div className="flex flex-wrap gap-1 mb-3">
+                                        {item.capabilities.map(cap => (
+                                          <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
+                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                        ))}
+                                      </div>
+                                      {isActive ? (
+                                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                                          <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
+                                        </span>
+                                      ) : (
+                                        <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50">
+                                          {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                                          {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+
+                    {Object.entries(categories).map(([category, items]) => {
+                      const isTrading = category === 'trading';
+                      return (
+                      <div key={category} className="mb-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isTrading ? 'text-green-400' : 'text-sky-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            {isTrading ? (boomerMode ? '📈 TRADING BOTS' : '▲ TRADING AGENTS') : category}
+                          </span>
+                          <div className={`flex-1 h-px ${isTrading ? 'bg-green-500/20' : 'bg-sky-500/20'}`} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <AnimatePresence>
+                            {items.map((item, i) => {
+                              const Icon = getIcon(item.icon);
+                              const sub = subscriptions.find(s => s.marketplaceItemId === item.id);
+                              const isActive = sub?.status === 'active';
+                              const isCanceled = sub?.status === 'canceled';
+                              return (
+                                <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.05 }}
+                                  className={`rounded-2xl border bg-card p-5 ${isTrading ? 'border-green-500/20 bg-green-500/5' : item.featured ? 'border-amber-500/20' : 'border-border'}`}>
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isTrading ? 'bg-green-500/10 border-green-500/25' : item.featured ? 'bg-amber-500/10 border-amber-500/25' : 'bg-sky-500/10 border-sky-500/25'}`}>
+                                      <Icon className={`w-5 h-5 ${isTrading ? 'text-green-400' : item.featured ? 'text-amber-400' : 'text-sky-400'}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                        <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
+                                          {item.name}
+                                        </h3>
+                                        <PriceBadge price={item.priceMonthly} t={t} />
+                                        {isActive && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                            {boomerMode ? 'ACTIVE' : '// ACTIVE'}
+                                          </span>
+                                        )}
+                                        {isCanceled && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/25"
+                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                            {boomerMode ? 'CANCELED' : '// CANCELED'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
+                                      <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
+                                      <div className="flex flex-wrap gap-1 mb-3">
+                                        {item.capabilities.map(cap => (
+                                          <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
+                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                        ))}
+                                      </div>
+                                      {isActive ? (
+                                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                                          <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
+                                        </span>
+                                      ) : (
+                                        <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
+                                          {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                                          {item.priceMonthly > 0
+                                            ? (boomerMode ? 'Subscribe' : '// SUBSCRIBE')
+                                            : (boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename'))
+                                          }
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </AnimatePresence>
+                        </div>
+                      </div>
                     );
-                  })}
-                </AnimatePresence>
-              </div>
+                    })}
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="space-y-4">
@@ -1709,44 +1772,67 @@ export default function BotFactory() {
                 </div>
               ) : (
                 <AnimatePresence>
-                  {bots.map((bot, i) => (
-                    <motion.div key={bot.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-sky-500/20 transition-colors"
-                      onClick={() => setSelectedBot(bot)}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
-                          <Bot className="w-6 h-6 text-sky-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                              {bot.name}
-                            </h3>
-                            <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
+                  {bots.map((bot, i) => {
+                    const sub = bot.marketplaceItemId
+                      ? subscriptions.find(s => s.marketplaceItemId === bot.marketplaceItemId)
+                      : null;
+                    const marketplaceItem = bot.marketplaceItemId
+                      ? marketplace.find(m => m.id === bot.marketplaceItemId)
+                      : null;
+                    return (
+                      <motion.div key={bot.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-sky-500/20 transition-colors"
+                        onClick={() => setSelectedBot(bot)}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                            <Bot className="w-6 h-6 text-sky-400" />
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Plug className="w-3 h-3" />
-                              {bot.connections.length} {boomerMode ? t('botFactory.connections') : t('botFactory.connectionsCodename')}
-                            </span>
-                            {bot.connections.map(c => (
-                              <span key={c.id} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border"
-                                style={{ fontFamily: "'Share Tech Mono', monospace" }}>{c.platform.toUpperCase()}</span>
-                            ))}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
+                                {bot.name}
+                              </h3>
+                              <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
+                              {marketplaceItem && marketplaceItem.priceMonthly > 0 && (
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sub?.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : sub?.status === 'canceled' ? 'bg-red-500/15 text-red-400 border-red-500/25' : 'bg-sky-500/15 text-sky-400 border-sky-500/25'}`}
+                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {sub?.status === 'canceled'
+                                    ? (boomerMode ? 'Subscription Canceled' : '// SUB CANCELED')
+                                    : (boomerMode ? 'Subscribed' : '// SUBSCRIBED')
+                                  }
+                                </span>
+                              )}
+                              {(!marketplaceItem || marketplaceItem.priceMonthly === 0) && bot.marketplaceItemId && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {boomerMode ? 'Free' : '// FREE'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Plug className="w-3 h-3" />
+                                {bot.connections.length} {boomerMode ? t('botFactory.connections') : t('botFactory.connectionsCodename')}
+                              </span>
+                              {bot.connections.map(c => (
+                                <span key={c.id} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border"
+                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>{c.platform.toUpperCase()}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={e => { e.stopPropagation(); setConnectBot(bot); }}
+                              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-400 hover:border-sky-500/20 transition-colors"
+                              title={boomerMode ? t('botFactory.connectPlatformTitle') : t('botFactory.connectPlatformTitleCodename')}>
+                              <Plug className="w-4 h-4" />
+                            </button>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button onClick={e => { e.stopPropagation(); setConnectBot(bot); }}
-                            className="p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-400 hover:border-sky-500/20 transition-colors"
-                            title={boomerMode ? t('botFactory.connectPlatformTitle') : t('botFactory.connectPlatformTitleCodename')}>
-                            <Plug className="w-4 h-4" />
-                          </button>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               )}
             </div>

@@ -222,6 +222,7 @@ export const botSubscriptionsTable = pgTable(
     marketplaceItemId: integer("marketplace_item_id").notNull().references(() => botMarketplaceTable.id),
     botId: integer("bot_id").references(() => botsTable.id, { onDelete: "set null" }),
     status: varchar("status", { length: 20 }).notNull().default("active"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.marketplaceItemId] })]

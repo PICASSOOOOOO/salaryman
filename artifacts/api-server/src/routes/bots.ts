@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import {
   db,
   botsTable,
@@ -552,7 +552,7 @@ router.get("/bots/marketplace/list", async (_req, res) => {
       .select()
       .from(botMarketplaceTable)
       .where(eq(botMarketplaceTable.active, true))
-      .orderBy(desc(botMarketplaceTable.featured));
+      .orderBy(asc(botMarketplaceTable.priceMonthly), desc(botMarketplaceTable.featured));
 
     const items = rawItems.map(({ personality, systemPrompt, ...rest }) => rest);
     res.json({ items });
@@ -577,6 +577,11 @@ router.post("/bots/marketplace/activate", requireAuth, async (req, res) => {
       return;
     }
 
+    if (item.priceMonthly > 0) {
+      res.status(402).json({ error: "Payment required", requiresCheckout: true, marketplaceItemId });
+      return;
+    }
+
     const existing = await db
       .select()
       .from(botSubscriptionsTable)
@@ -587,7 +592,7 @@ router.post("/bots/marketplace/activate", requireAuth, async (req, res) => {
         )
       );
 
-    if (existing.length > 0 && existing[0].botId) {
+    if (existing.length > 0 && existing[0].botId && existing[0].status === "active") {
       res.json({ bot: { id: existing[0].botId }, alreadyActive: true });
       return;
     }
