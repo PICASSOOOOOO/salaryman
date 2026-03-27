@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import app from "./app";
 import { attachWorldServer } from './worldServer';
+import { setupChatServer } from './chatServer';
 import { dispatchWeeklySummaries } from './routes/reporting';
 import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
@@ -21,6 +22,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 const httpServer = createServer(app);
 attachWorldServer(httpServer);
+setupChatServer(httpServer);
 
 httpServer.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {

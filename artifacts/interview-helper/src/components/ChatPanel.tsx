@@ -1,0 +1,860 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
+
+const CRT = (a: number) => `rgba(0,255,65,${a})`;
+const BLUE = (a: number) => `rgba(56,189,248,${a})`;
+const AMBER = (a: number) => `rgba(251,191,36,${a})`;
+const BG = "rgba(3,10,3,0.98)";
+const BORDER = (a: number) => `rgba(0,255,65,${a})`;
+const FONT = "'Share Tech Mono', monospace";
+
+type Tab = "global" | "company" | "private";
+
+interface UserSearchResult {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  profileImageUrl: string | null;
+}
+
+function Avatar({ name, url, size = 28 }: { name: string; url?: string | null; size?: number }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: `1px solid ${CRT(0.2)}`,
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: `linear-gradient(135deg, ${CRT(0.1)}, ${BLUE(0.08)})`,
+        border: `1px solid ${CRT(0.2)}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.38,
+        color: CRT(0.7),
+        fontFamily: FONT,
+        flexShrink: 0,
+        letterSpacing: "0.05em",
+      }}
+    >
+      {name?.[0]?.toUpperCase() ?? "?"}
+    </div>
+  );
+}
+
+function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
+  const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isOwn ? "row-reverse" : "row",
+        gap: 8,
+        marginBottom: 10,
+        alignItems: "flex-end",
+      }}
+    >
+      {!isOwn && (
+        <Avatar
+          name={msg.senderName}
+          url={msg.senderProfileImageUrl}
+          size={24}
+        />
+      )}
+      <div style={{ maxWidth: "78%", minWidth: 0 }}>
+        {!isOwn && (
+          <div
+            style={{
+              fontSize: "0.52rem",
+              color: msg.isBot ? AMBER(0.7) : BLUE(0.6),
+              marginBottom: 3,
+              letterSpacing: "0.1em",
+              fontFamily: FONT,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {msg.isBot && <Bot size={10} />}
+            {msg.senderName}
+          </div>
+        )}
+        <div
+          style={{
+            background: isOwn
+              ? `linear-gradient(135deg, ${CRT(0.12)}, ${CRT(0.06)})`
+              : msg.isBot
+              ? `linear-gradient(135deg, ${AMBER(0.08)}, ${AMBER(0.04)})`
+              : "rgba(255,255,255,0.04)",
+            border: `1px solid ${
+              isOwn ? CRT(0.2) : msg.isBot ? AMBER(0.2) : BORDER(0.1)
+            }`,
+            borderRadius: isOwn ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
+            padding: "7px 11px",
+            fontSize: "0.72rem",
+            color: isOwn ? CRT(0.9) : msg.isBot ? AMBER(0.85) : "rgba(220,220,220,0.9)",
+            fontFamily: FONT,
+            lineHeight: 1.5,
+            wordBreak: "break-word",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {msg.content}
+        </div>
+        <div
+          style={{
+            fontSize: "0.45rem",
+            color: "rgba(255,255,255,0.2)",
+            marginTop: 3,
+            textAlign: isOwn ? "right" : "left",
+            fontFamily: FONT,
+            letterSpacing: "0.05em",
+          }}
+        >
+          {time}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageList({
+  messages,
+  currentUserId,
+  channelId,
+  onLoadMore,
+}: {
+  messages: ChatMessage[];
+  currentUserId: string;
+  channelId: number;
+  onLoadMore: () => void;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  useEffect(() => {
+    if (autoScroll && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [messages, autoScroll]);
+
+  const handleScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    setAutoScroll(isNearBottom);
+    if (el.scrollTop < 60) {
+      onLoadMore();
+    }
+  };
+
+  return (
+    <div
+      ref={listRef}
+      onScroll={handleScroll}
+      style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "12px 14px 8px",
+        display: "flex",
+        flexDirection: "column",
+        scrollBehavior: "smooth",
+      }}
+    >
+      {messages.length === 0 && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: CRT(0.3),
+            fontSize: "0.6rem",
+            fontFamily: FONT,
+            letterSpacing: "0.12em",
+            gap: 8,
+            marginTop: 40,
+          }}
+        >
+          <MessageSquare size={22} style={{ opacity: 0.3 }} />
+          NO MESSAGES YET
+        </div>
+      )}
+      {messages.map(msg => (
+        <MessageBubble
+          key={msg.id}
+          msg={msg}
+          isOwn={msg.senderUserId === currentUserId}
+        />
+      ))}
+    </div>
+  );
+}
+
+function InputBar({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => void;
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState("");
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const submit = () => {
+    const text = value.trim();
+    if (!text) return;
+    onSend(text);
+    setValue("");
+    ref.current?.focus();
+  };
+
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${BORDER(0.12)}`,
+        padding: "8px 10px",
+        display: "flex",
+        gap: 8,
+        alignItems: "flex-end",
+        background: "rgba(0,0,0,0.4)",
+      }}
+    >
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        placeholder={disabled ? "Select a channel to chat" : "Message... (Enter to send)"}
+        disabled={disabled}
+        rows={1}
+        style={{
+          flex: 1,
+          background: "rgba(0,255,65,0.04)",
+          border: `1px solid ${BORDER(0.15)}`,
+          borderRadius: 6,
+          color: CRT(0.9),
+          fontSize: "0.72rem",
+          padding: "7px 10px",
+          outline: "none",
+          fontFamily: FONT,
+          resize: "none",
+          lineHeight: 1.4,
+          maxHeight: 80,
+          overflowY: "auto",
+          opacity: disabled ? 0.4 : 1,
+        }}
+      />
+      <button
+        onClick={submit}
+        disabled={disabled || !value.trim()}
+        style={{
+          background: disabled || !value.trim() ? "transparent" : CRT(0.1),
+          border: `1px solid ${CRT(disabled || !value.trim() ? 0.1 : 0.35)}`,
+          borderRadius: 6,
+          color: CRT(disabled || !value.trim() ? 0.2 : 0.9),
+          cursor: disabled || !value.trim() ? "default" : "pointer",
+          padding: "7px 9px",
+          display: "flex",
+          alignItems: "center",
+          transition: "all 0.15s",
+          flexShrink: 0,
+        }}
+      >
+        <Send size={14} />
+      </button>
+    </div>
+  );
+}
+
+function UserSearchPanel({
+  onSelectUser,
+  onCancel,
+}: {
+  onSelectUser: (userId: string) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<UserSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `${import.meta.env.BASE_URL}api/chat/company/members`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const data: { members: UserSearchResult[] } = await res.json();
+          const q = query.toLowerCase();
+          setResults(
+            data.members.filter(m => {
+              const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase();
+              return name.includes(q) || (m.email ?? "").toLowerCase().includes(q);
+            })
+          );
+        }
+      } catch { }
+      setLoading(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <div
+        style={{
+          padding: "10px 12px",
+          borderBottom: `1px solid ${BORDER(0.1)}`,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <button
+          onClick={onCancel}
+          style={{
+            background: "none",
+            border: "none",
+            color: CRT(0.5),
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          <ArrowLeft size={15} />
+        </button>
+        <span
+          style={{
+            fontSize: "0.62rem",
+            color: CRT(0.6),
+            fontFamily: FONT,
+            letterSpacing: "0.1em",
+          }}
+        >
+          START PRIVATE CHAT
+        </span>
+      </div>
+      <div style={{ padding: "10px 12px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            background: "rgba(0,255,65,0.04)",
+            border: `1px solid ${BORDER(0.15)}`,
+            borderRadius: 6,
+            padding: "6px 10px",
+          }}
+        >
+          <Search size={13} style={{ color: CRT(0.4) }} />
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search teammates..."
+            style={{
+              background: "none",
+              border: "none",
+              color: CRT(0.85),
+              fontSize: "0.72rem",
+              outline: "none",
+              fontFamily: FONT,
+              flex: 1,
+            }}
+          />
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 12px" }}>
+        {loading && (
+          <div
+            style={{
+              textAlign: "center",
+              color: CRT(0.3),
+              fontSize: "0.58rem",
+              fontFamily: FONT,
+              padding: "20px 0",
+            }}
+          >
+            SEARCHING...
+          </div>
+        )}
+        {results.map(m => {
+          const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.trim() || m.email || "User";
+          return (
+            <div
+              key={m.userId}
+              onClick={() => onSelectUser(m.userId)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 6px",
+                cursor: "pointer",
+                borderBottom: `1px solid ${BORDER(0.06)}`,
+                borderRadius: 6,
+                marginBottom: 2,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = CRT(0.05))}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            >
+              <Avatar name={name} url={m.profileImageUrl} size={30} />
+              <div>
+                <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: FONT }}>
+                  {name}
+                </div>
+                {m.email && (
+                  <div style={{ fontSize: "0.5rem", color: CRT(0.35), fontFamily: FONT }}>
+                    {m.email}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {!loading && query.trim() && results.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              color: CRT(0.3),
+              fontSize: "0.58rem",
+              fontFamily: FONT,
+              padding: "20px 0",
+            }}
+          >
+            NO RESULTS
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ChatPanel() {
+  const { user, isAuthenticated } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("global");
+  const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+
+  const {
+    connected,
+    channelMeta,
+    messages,
+    unreadCounts,
+    totalUnread,
+    send,
+    markRead,
+    loadHistory,
+    startPrivateChat,
+    refreshChannels,
+  } = useChatSocket();
+
+  const currentUserId = (user as any)?.id ?? "";
+
+  const globalChannelId = channelMeta?.globalChannelId ?? null;
+  const companyChannelId = channelMeta?.companyChannelId ?? null;
+
+  const activeChannelId =
+    activeTab === "global"
+      ? globalChannelId
+      : activeTab === "company"
+      ? companyChannelId
+      : activePrivateChannelId;
+
+  useEffect(() => {
+    if (!open || activeChannelId == null) return;
+    const msgs = messages[activeChannelId] ?? [];
+    if (msgs.length === 0) {
+      loadHistory(activeChannelId);
+    }
+  }, [open, activeChannelId, loadHistory]);
+
+  useEffect(() => {
+    if (!open || activeChannelId == null) return;
+    const msgs = messages[activeChannelId] ?? [];
+    if (msgs.length > 0) {
+      const last = msgs[msgs.length - 1];
+      markRead(activeChannelId, last.id);
+    }
+  }, [open, activeChannelId, messages]);
+
+  const handleSend = (text: string) => {
+    if (activeChannelId == null) return;
+    send(activeChannelId, text);
+  };
+
+  const handleLoadMore = useCallback(() => {
+    if (activeChannelId == null) return;
+    const msgs = messages[activeChannelId] ?? [];
+    if (msgs.length > 0) {
+      loadHistory(activeChannelId, msgs[0].id);
+    }
+  }, [activeChannelId, messages, loadHistory]);
+
+  const handleStartPrivate = async (targetUserId: string) => {
+    const channelId = await startPrivateChat(targetUserId);
+    if (channelId) {
+      setActivePrivateChannelId(channelId);
+      setActiveTab("private");
+      setShowUserSearch(false);
+    }
+  };
+
+  if (!isAuthenticated) return null;
+
+  const PANEL_W = 340;
+  const PANEL_H = 480;
+
+  const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
+  const tabCompanyUnread = unreadCounts[companyChannelId ?? -1] ?? 0;
+  const tabPrivateUnread = channelMeta?.privateChannels.reduce(
+    (sum, p) => sum + (unreadCounts[p.channelId] ?? 0),
+    0
+  ) ?? 0;
+
+  const activePrivateInfo = activePrivateChannelId
+    ? channelMeta?.privateChannels.find(p => p.channelId === activePrivateChannelId)
+    : null;
+
+  const currentMessages = activeChannelId != null ? (messages[activeChannelId] ?? []) : [];
+
+  return (
+    <>
+      {open && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 56,
+            right: 16,
+            width: PANEL_W,
+            height: PANEL_H,
+            background: BG,
+            border: `1px solid ${BORDER(0.25)}`,
+            borderRadius: 10,
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 900,
+            boxShadow: `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
+            fontFamily: FONT,
+            overflow: "hidden",
+            animation: "chatSlideUp 0.2s ease-out",
+          }}
+        >
+          <div
+            style={{
+              background: `linear-gradient(90deg, rgba(0,255,65,0.06), rgba(0,0,0,0))`,
+              borderBottom: `1px solid ${BORDER(0.15)}`,
+              padding: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: connected ? CRT(0.9) : "rgba(255,60,60,0.8)",
+                  boxShadow: connected ? `0 0 6px ${CRT(0.5)}` : "none",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "0.62rem",
+                  color: CRT(0.7),
+                  letterSpacing: "0.12em",
+                }}
+              >
+                COMMS
+              </span>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: CRT(0.4),
+                cursor: "pointer",
+                padding: 2,
+                display: "flex",
+              }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              borderBottom: `1px solid ${BORDER(0.12)}`,
+              flexShrink: 0,
+            }}
+          >
+            {(
+              [
+                { id: "global" as Tab, label: "GLOBAL", icon: <Globe size={11} />, unread: tabGlobalUnread },
+                ...(companyChannelId
+                  ? [{ id: "company" as Tab, label: channelMeta?.companyName?.toUpperCase().slice(0, 8) ?? "COMPANY", icon: <Building2 size={11} />, unread: tabCompanyUnread }]
+                  : []),
+                { id: "private" as Tab, label: "DM", icon: <Lock size={11} />, unread: tabPrivateUnread },
+              ] as Array<{ id: Tab; label: string; icon: React.ReactNode; unread: number }>
+            ).map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setShowUserSearch(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    background: isActive ? CRT(0.06) : "transparent",
+                    border: "none",
+                    borderBottom: isActive ? `2px solid ${CRT(0.8)}` : "2px solid transparent",
+                    color: isActive ? CRT(0.9) : CRT(0.35),
+                    cursor: "pointer",
+                    padding: "8px 4px",
+                    fontSize: "0.52rem",
+                    letterSpacing: "0.1em",
+                    fontFamily: FONT,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    position: "relative",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {tab.unread > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 5,
+                        right: 6,
+                        background: "rgba(255,60,60,0.85)",
+                        color: "#fff",
+                        borderRadius: "50%",
+                        fontSize: "0.42rem",
+                        minWidth: 14,
+                        height: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: FONT,
+                        padding: "0 3px",
+                      }}
+                    >
+                      {tab.unread > 99 ? "99+" : tab.unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {activeTab === "private" && !showUserSearch && (
+            <div
+              style={{
+                padding: "6px 10px",
+                borderBottom: `1px solid ${BORDER(0.08)}`,
+                display: "flex",
+                gap: 6,
+                overflowX: "auto",
+                flexShrink: 0,
+                alignItems: "center",
+              }}
+            >
+              <button
+                onClick={() => setShowUserSearch(true)}
+                style={{
+                  background: "none",
+                  border: `1px dashed ${CRT(0.2)}`,
+                  borderRadius: 5,
+                  color: CRT(0.4),
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  fontSize: "0.5rem",
+                  fontFamily: FONT,
+                  letterSpacing: "0.1em",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  flexShrink: 0,
+                }}
+              >
+                <Plus size={10} /> NEW DM
+              </button>
+              {channelMeta?.privateChannels.map(p => {
+                const otherName = p.otherUser
+                  ? `${p.otherUser.firstName ?? ""} ${p.otherUser.lastName ?? ""}`.trim() || "User"
+                  : "DM";
+                const isActive = activePrivateChannelId === p.channelId;
+                const dmUnread = unreadCounts[p.channelId] ?? 0;
+                return (
+                  <button
+                    key={p.channelId}
+                    onClick={() => setActivePrivateChannelId(p.channelId)}
+                    style={{
+                      background: isActive ? CRT(0.08) : "none",
+                      border: `1px solid ${isActive ? CRT(0.3) : CRT(0.1)}`,
+                      borderRadius: 5,
+                      color: isActive ? CRT(0.9) : CRT(0.5),
+                      cursor: "pointer",
+                      padding: "4px 8px",
+                      fontSize: "0.5rem",
+                      fontFamily: FONT,
+                      letterSpacing: "0.08em",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      flexShrink: 0,
+                      position: "relative",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {otherName.slice(0, 10)}
+                    {dmUnread > 0 && (
+                      <span
+                        style={{
+                          background: "rgba(255,60,60,0.85)",
+                          color: "#fff",
+                          borderRadius: "50%",
+                          fontSize: "0.42rem",
+                          minWidth: 13,
+                          height: 13,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "0 2px",
+                        }}
+                      >
+                        {dmUnread}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {showUserSearch ? (
+            <UserSearchPanel
+              onSelectUser={handleStartPrivate}
+              onCancel={() => setShowUserSearch(false)}
+            />
+          ) : (
+            <>
+              <MessageList
+                messages={currentMessages}
+                currentUserId={currentUserId}
+                channelId={activeChannelId ?? 0}
+                onLoadMore={handleLoadMore}
+              />
+              <InputBar
+                onSend={handleSend}
+                disabled={activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          position: "fixed",
+          bottom: 12,
+          right: 16,
+          width: 42,
+          height: 42,
+          borderRadius: "50%",
+          background: open
+            ? `linear-gradient(135deg, ${CRT(0.15)}, ${BLUE(0.1)})`
+            : `linear-gradient(135deg, rgba(0,20,0,0.95), rgba(0,10,15,0.95))`,
+          border: `1.5px solid ${open ? CRT(0.5) : CRT(0.2)}`,
+          color: open ? CRT(0.95) : CRT(0.6),
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 901,
+          boxShadow: open
+            ? `0 0 16px ${CRT(0.25)}`
+            : `0 2px 12px rgba(0,0,0,0.6)`,
+          transition: "all 0.2s",
+          flexShrink: 0,
+        }}
+        title="Chat"
+      >
+        {open ? <ChevronDown size={18} /> : <MessageSquare size={18} />}
+        {!open && totalUnread > 0 && (
+          <span
+            style={{
+              position: "absolute",
+              top: -3,
+              right: -3,
+              background: "rgba(255,50,50,0.9)",
+              color: "#fff",
+              borderRadius: "50%",
+              fontSize: "0.45rem",
+              minWidth: 15,
+              height: 15,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: FONT,
+              fontWeight: "bold",
+              padding: "0 3px",
+              border: "1.5px solid rgba(3,10,3,1)",
+            }}
+          >
+            {totalUnread > 99 ? "99+" : totalUnread}
+          </span>
+        )}
+      </button>
+
+      <style>{`
+        @keyframes chatSlideUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </>
+  );
+}

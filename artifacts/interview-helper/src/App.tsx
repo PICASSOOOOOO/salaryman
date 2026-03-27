@@ -10,6 +10,7 @@ import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
+import { ChatPanel } from "@/components/ChatPanel";
 
 const Home = lazy(() => import("@/pages/Home"));
 const Cover = lazy(() => import("@/pages/Cover"));
@@ -134,6 +135,7 @@ function AppShell() {
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
 
   useEffect(() => {
     if (isGameRoute) {
@@ -156,6 +158,7 @@ function AppShell() {
         </div>
       )}
       {showFloatingBar && <ActiveCallBar />}
+      {showChat && <ChatPanel />}
       {/* Keep-alive panels */}
       <Suspense fallback={isHome ? <CRTFallback /> : null}>
         <div style={{ display: isHome ? "block" : "none" }}>
