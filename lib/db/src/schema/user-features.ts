@@ -1,6 +1,6 @@
 import { pgTable, varchar, timestamp, primaryKey } from "drizzle-orm/pg-core";
 
-export const FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system"] as const;
+export const FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "bot_factory"] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 export const userFeaturesTable = pgTable(

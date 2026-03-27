@@ -28,6 +28,12 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     price: 95,
     desc: "Unlimited predictive dialing & text messaging by Picassoo.AI for business and marketing partners",
   },
+  bot_factory: {
+    name: "Bot Factory",
+    codename: "CLAW FACTORY MK-II",
+    price: 149,
+    desc: "Deploy autonomous AI agents across 6 platforms — Telegram, WhatsApp, Discord, Facebook Messenger, Gmail & LinkedIn. Recruitment bots, sales agents, support bots & more. Unlimited bots, unlimited conversations.",
+  },
 };
 
 function ownerEmails(): string[] {

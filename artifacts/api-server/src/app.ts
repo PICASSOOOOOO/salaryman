@@ -5,6 +5,14 @@ import path from "path";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
 
+declare global {
+  namespace Express {
+    interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
+
 const app: Express = express();
 
 app.use(cors({ credentials: true, origin: true }));
@@ -12,6 +20,13 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/stripe/webhook") {
     next();
+  } else if (req.originalUrl.startsWith("/api/bots/webhook/")) {
+    express.json({
+      limit: "50mb",
+      verify: (_req, _res, buf) => {
+        req.rawBody = buf;
+      },
+    })(req, res, next);
   } else {
     express.json({ limit: "50mb" })(req, res, next);
   }

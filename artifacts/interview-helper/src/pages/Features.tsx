@@ -264,6 +264,27 @@ const MODULES: ModuleDef[] = [
       { name: 'Conference Calling', detail: 'Multi-party calls with recording, transcription, and follow-up automation.' },
     ],
   },
+  {
+    id: 'bot_factory',
+    label: 'BOT FACTORY',
+    boomerLabel: 'BOT FACTORY',
+    codename: 'Claw Factory MK-II',
+    boomerCodename: 'AI Bot Platform',
+    tagline: 'Deploy autonomous AI agents across 6 platforms. Your workforce, automated.',
+    access: 'paid',
+    featureKey: 'bot_factory',
+    route: '/bots',
+    description:
+      'Bot Factory is the flagship automation platform inside SALARYMAN. Deploy AI-powered bots that run 24/7 across Telegram, WhatsApp, Discord, Facebook Messenger, Gmail, and LinkedIn. Build recruitment bots that source and engage candidates, sales agents that qualify leads, support bots that resolve tickets, and custom agents for any workflow. Each bot has persistent memory, customizable personality, permission controls, and scheduled tasks. One subscription, unlimited bots, unlimited conversations, six platforms.',
+    features: [
+      { name: 'Multi-Platform Deployment', detail: 'Connect bots to Telegram, WhatsApp, Discord, Facebook Messenger, Gmail, and LinkedIn — all from a single dashboard. One bot, every channel.' },
+      { name: 'Recruitment Bots', detail: 'AI agents purpose-built for hiring. Source candidates, manage outreach across LinkedIn and email, track pipeline stages, and maintain candidate memory across conversations.' },
+      { name: 'Bot Marketplace', detail: 'Pre-built bot templates for sales, support, content creation, scheduling, and more. Activate instantly and customize to your needs.' },
+      { name: 'Persistent Memory', detail: 'Bots remember everything — candidate names, deal stages, customer preferences, conversation context. Every interaction builds on the last.' },
+      { name: 'Scheduled Automation', detail: 'Set up recurring tasks — daily outreach, weekly follow-ups, pipeline reviews. Your bots work while you sleep.' },
+      { name: 'Permission Controls', detail: 'Fine-grained access controls for each bot. Decide exactly what each agent can and cannot do — email, CRM, calendar, LinkedIn outreach.' },
+    ],
+  },
 ];
 
 const FREE_MODULES = MODULES.filter((m) => m.access === 'free');

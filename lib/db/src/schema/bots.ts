@@ -5,13 +5,14 @@ import { z } from "zod/v4";
 export const BOT_STATUSES = ["active", "paused", "error"] as const;
 export type BotStatus = (typeof BOT_STATUSES)[number];
 
-export const PLATFORM_TYPES = ["telegram", "whatsapp", "discord", "slack", "sms", "email", "thinkorswim"] as const;
+export const PLATFORM_TYPES = ["telegram", "whatsapp", "discord", "slack", "sms", "email", "thinkorswim", "facebook", "linkedin"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 export const PERMISSION_KEYS = [
   "crm_read", "crm_write", "email_send", "calendar_read", "calendar_write",
   "documents_read", "contacts_read", "contacts_write", "ai_chat",
   "trading_read", "trading_execute", "trading_paper",
+  "linkedin_outreach", "recruitment_manage",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 

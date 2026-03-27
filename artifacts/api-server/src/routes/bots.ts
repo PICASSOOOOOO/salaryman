@@ -15,6 +15,7 @@ import {
 import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
+import { hasFeature } from "../lib/plan";
 
 const router = Router();
 
@@ -30,12 +31,31 @@ function getUserId(req: Request): string {
   return (req as Request & { user?: { id?: string } }).user?.id ?? "";
 }
 
+function getUserEmail(req: Request): string | undefined {
+  return (req as Request & { user?: { email?: string } }).user?.email;
+}
+
+async function requireBotFactory(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = getUserId(req);
+  const email = getUserEmail(req);
+  const hasBotFactory = await hasFeature(userId, email, "bot_factory");
+  if (!hasBotFactory) {
+    res.status(403).json({ error: "Bot Factory subscription required", feature: "bot_factory" });
+    return;
+  }
+  next();
+}
+
 function parseParam(val: string | string[] | undefined): string {
   if (Array.isArray(val)) return val[0] ?? "";
   return val ?? "";
 }
 
-router.get("/bots", requireAuth, async (req, res) => {
+router.get("/bots", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const bots = await db
@@ -64,7 +84,7 @@ router.get("/bots", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bots", requireAuth, async (req, res) => {
+router.post("/bots", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute } = req.body;
@@ -94,7 +114,7 @@ router.post("/bots", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bots/:id", requireAuth, async (req, res) => {
+router.get("/bots/:id", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -133,7 +153,7 @@ router.get("/bots/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/bots/:id", requireAuth, async (req, res) => {
+router.put("/bots/:id", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -178,7 +198,7 @@ router.put("/bots/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id", requireAuth, async (req, res) => {
+router.delete("/bots/:id", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -202,7 +222,7 @@ router.delete("/bots/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/connect", requireAuth, async (req, res) => {
+router.post("/bots/:id/connect", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -224,12 +244,21 @@ router.post("/bots/:id/connect", requireAuth, async (req, res) => {
       return;
     }
 
-    const encryptedCreds = encryptCredentials(credentials);
     const webhookSecret = generateWebhookSecret();
-
     const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
     const proto = req.headers["x-forwarded-proto"] || "https";
     const webhookUrl = `${proto}://${host}/api/bots/webhook/${platform}/${botId}`;
+
+    let finalCredentials = credentials;
+    if (platform === "facebook") {
+      try {
+        const parsed = JSON.parse(credentials);
+        parsed.webhookUrl = webhookUrl;
+        finalCredentials = JSON.stringify(parsed);
+      } catch {}
+    }
+
+    const encryptedCreds = encryptCredentials(finalCredentials);
 
     const existing = await db
       .select()
@@ -278,7 +307,7 @@ router.post("/bots/:id/connect", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/disconnect", requireAuth, async (req, res) => {
+router.post("/bots/:id/disconnect", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -314,7 +343,7 @@ router.post("/bots/:id/disconnect", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bots/:id/logs", requireAuth, async (req, res) => {
+router.get("/bots/:id/logs", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -344,7 +373,7 @@ router.get("/bots/:id/logs", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bots/:id/memory", requireAuth, async (req, res) => {
+router.get("/bots/:id/memory", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -372,7 +401,7 @@ router.get("/bots/:id/memory", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id/memory/:memoryId", requireAuth, async (req, res) => {
+router.delete("/bots/:id/memory/:memoryId", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -398,7 +427,7 @@ router.delete("/bots/:id/memory/:memoryId", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bots/:id/tasks", requireAuth, async (req, res) => {
+router.get("/bots/:id/tasks", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -425,7 +454,7 @@ router.get("/bots/:id/tasks", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/tasks", requireAuth, async (req, res) => {
+router.post("/bots/:id/tasks", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -464,7 +493,7 @@ router.post("/bots/:id/tasks", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id/tasks/:taskId", requireAuth, async (req, res) => {
+router.delete("/bots/:id/tasks/:taskId", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -497,7 +526,7 @@ router.delete("/bots/:id/tasks/:taskId", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/bots/:id/tasks/:taskId", requireAuth, async (req, res) => {
+router.put("/bots/:id/tasks/:taskId", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -562,7 +591,38 @@ router.get("/bots/marketplace/list", async (_req, res) => {
   }
 });
 
-router.post("/bots/marketplace/activate", requireAuth, async (req, res) => {
+router.post("/bots/:id/linkedin/connect-request", requireBotFactory, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { profileUrn, message: customMessage } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    if (!profileUrn) {
+      res.status(400).json({ error: "profileUrn is required" });
+      return;
+    }
+
+    const { linkedinConnector } = await import("../lib/bot-connectors-extended");
+    await linkedinConnector.sendConnectionRequest(botId, profileUrn, customMessage);
+    res.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to send connection request";
+    console.error("LinkedIn connection request error:", err);
+    res.status(500).json({ error: message });
+  }
+});
+
+router.post("/bots/marketplace/activate", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { marketplaceItemId } = req.body;
@@ -635,7 +695,7 @@ router.post("/bots/marketplace/activate", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bots/marketplace/subscriptions", requireAuth, async (req, res) => {
+router.get("/bots/marketplace/subscriptions", requireBotFactory, async (req, res) => {
   try {
     const userId = getUserId(req);
     const subs = await db
@@ -647,6 +707,284 @@ router.get("/bots/marketplace/subscriptions", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("Error fetching subscriptions:", err);
     res.status(500).json({ error: "Failed to fetch subscriptions" });
+  }
+});
+
+function getOAuthStateSecret(): string {
+  const secret = process.env.BOT_OAUTH_STATE_SECRET || process.env.SESSION_SECRET;
+  if (!secret) throw new Error("BOT_OAUTH_STATE_SECRET or SESSION_SECRET must be configured for OAuth flows");
+  return secret;
+}
+
+async function signOAuthState(payload: Record<string, string>): Promise<string> {
+  const { createHmac } = await import("crypto");
+  const secret = getOAuthStateSecret();
+  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = createHmac("sha256", secret).update(data).digest("base64url");
+  return `${data}.${sig}`;
+}
+
+async function verifyOAuthState(state: string): Promise<Record<string, string> | null> {
+  const { createHmac, timingSafeEqual } = await import("crypto");
+  let secret: string;
+  try { secret = getOAuthStateSecret(); } catch { return null; }
+  const parts = state.split(".");
+  if (parts.length !== 2) return null;
+  const [data, sig] = parts;
+  const expected = createHmac("sha256", secret).update(data).digest("base64url");
+  try {
+    if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(Buffer.from(data, "base64url").toString()) as Record<string, string>;
+    const ts = parseInt(payload.ts || "0", 10);
+    if (Date.now() - ts > 10 * 60 * 1000) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+router.get("/bots/oauth/gmail/url", requireBotFactory, async (req, res) => {
+  try {
+    const botId = req.query.botId as string;
+    const userId = getUserId(req);
+    const clientId = process.env.GMAIL_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ error: "Gmail OAuth not configured" });
+      return;
+    }
+
+    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, parseInt(botId, 10)), eq(botsTable.ownerId, userId)));
+    if (!bot) {
+      res.status(403).json({ error: "Not your bot" });
+      return;
+    }
+
+    const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const redirectUri = `${proto}://${host}/api/bots/oauth/gmail/callback`;
+    const state = await signOAuthState({ botId, userId, ts: String(Date.now()) });
+    const scopes = [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send",
+    ].join(" ");
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${encodeURIComponent(state)}`;
+    res.json({ url });
+  } catch (err) {
+    console.error("Gmail OAuth URL error:", err);
+    res.status(500).json({ error: "Failed to generate OAuth URL" });
+  }
+});
+
+router.get("/bots/oauth/gmail/callback", async (req, res) => {
+  try {
+    const code = req.query.code as string;
+    const stateRaw = req.query.state as string;
+    if (!code || !stateRaw) {
+      res.status(400).send("Missing authorization code");
+      return;
+    }
+
+    const statePayload = await verifyOAuthState(stateRaw);
+    if (!statePayload) {
+      res.status(403).send("Invalid or expired OAuth state");
+      return;
+    }
+
+    const botId = parseInt(statePayload.botId, 10);
+    const userId = statePayload.userId;
+
+    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    if (!bot) {
+      res.status(403).send("Bot ownership verification failed");
+      return;
+    }
+
+    const clientId = process.env.GMAIL_OAUTH_CLIENT_ID || "";
+    const clientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET || "";
+    const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const redirectUri = `${proto}://${host}/api/bots/oauth/gmail/callback`;
+
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+
+    if (!tokenRes.ok) {
+      res.status(500).send("Failed to exchange authorization code");
+      return;
+    }
+
+    const tokenData = await tokenRes.json() as { access_token: string; refresh_token?: string };
+
+    const credentials = JSON.stringify({
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      clientId,
+      clientSecret,
+    });
+
+    const encryptedCreds = encryptCredentials(credentials);
+    const webhookSecret = generateWebhookSecret();
+    const webhookUrl = `${proto}://${host}/api/bots/webhook/email/${botId}`;
+
+    const existing = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, "email")));
+
+    if (existing.length > 0) {
+      await db.update(botPlatformConnectionsTable)
+        .set({ credentials: encryptedCreds, webhookSecret, webhookUrl, status: "connected" })
+        .where(eq(botPlatformConnectionsTable.id, existing[0].id));
+    } else {
+      await db.insert(botPlatformConnectionsTable).values({
+        botId,
+        platform: "email",
+        credentials: encryptedCreds,
+        webhookSecret,
+        webhookUrl,
+        status: "connected",
+      });
+    }
+
+    if (bot.status === "active") {
+      try { await startBot(botId); } catch (e) { console.error("Failed to start bot after Gmail OAuth:", e); }
+    }
+
+    res.send('<html><body><h2>Gmail connected successfully!</h2><p>You can close this window.</p><script>window.close();</script></body></html>');
+  } catch (err) {
+    console.error("Gmail OAuth callback error:", err);
+    res.status(500).send("OAuth callback failed");
+  }
+});
+
+router.get("/bots/oauth/linkedin/url", requireBotFactory, async (req, res) => {
+  try {
+    const botId = req.query.botId as string;
+    const userId = getUserId(req);
+    const clientId = process.env.LINKEDIN_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ error: "LinkedIn OAuth not configured" });
+      return;
+    }
+
+    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, parseInt(botId, 10)), eq(botsTable.ownerId, userId)));
+    if (!bot) {
+      res.status(403).json({ error: "Not your bot" });
+      return;
+    }
+
+    const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const redirectUri = `${proto}://${host}/api/bots/oauth/linkedin/callback`;
+    const state = await signOAuthState({ botId, userId, ts: String(Date.now()) });
+    const scopes = "r_liteprofile r_emailaddress w_member_social rw_organization_admin";
+    const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
+    res.json({ url });
+  } catch (err) {
+    console.error("LinkedIn OAuth URL error:", err);
+    res.status(500).json({ error: "Failed to generate OAuth URL" });
+  }
+});
+
+router.get("/bots/oauth/linkedin/callback", async (req, res) => {
+  try {
+    const code = req.query.code as string;
+    const stateRaw = req.query.state as string;
+    if (!code || !stateRaw) {
+      res.status(400).send("Missing authorization code");
+      return;
+    }
+
+    const statePayload = await verifyOAuthState(stateRaw);
+    if (!statePayload) {
+      res.status(403).send("Invalid or expired OAuth state");
+      return;
+    }
+
+    const botId = parseInt(statePayload.botId, 10);
+    const userId = statePayload.userId;
+
+    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    if (!bot) {
+      res.status(403).send("Bot ownership verification failed");
+      return;
+    }
+
+    const clientId = process.env.LINKEDIN_OAUTH_CLIENT_ID || "";
+    const clientSecret = process.env.LINKEDIN_OAUTH_CLIENT_SECRET || "";
+    const host = req.headers.host || process.env.REPLIT_DEV_DOMAIN || "localhost";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const redirectUri = `${proto}://${host}/api/bots/oauth/linkedin/callback`;
+
+    const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!tokenRes.ok) {
+      res.status(500).send("Failed to exchange authorization code");
+      return;
+    }
+
+    const tokenData = await tokenRes.json() as { access_token: string; expires_in?: number };
+
+    const credentials = JSON.stringify({
+      accessToken: tokenData.access_token,
+      expiresIn: tokenData.expires_in,
+    });
+
+    const encryptedCreds = encryptCredentials(credentials);
+    const webhookSecret = generateWebhookSecret();
+    const webhookUrl = `${proto}://${host}/api/bots/webhook/linkedin/${botId}`;
+
+    const existing = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, "linkedin")));
+
+    if (existing.length > 0) {
+      await db.update(botPlatformConnectionsTable)
+        .set({ credentials: encryptedCreds, webhookSecret, webhookUrl, status: "connected" })
+        .where(eq(botPlatformConnectionsTable.id, existing[0].id));
+    } else {
+      await db.insert(botPlatformConnectionsTable).values({
+        botId,
+        platform: "linkedin",
+        credentials: encryptedCreds,
+        webhookSecret,
+        webhookUrl,
+        status: "connected",
+      });
+    }
+
+    if (bot.status === "active") {
+      try { await startBot(botId); } catch (e) { console.error("Failed to start bot after LinkedIn OAuth:", e); }
+    }
+
+    res.send('<html><body><h2>LinkedIn connected successfully!</h2><p>You can close this window.</p><script>window.close();</script></body></html>');
+  } catch (err) {
+    console.error("LinkedIn OAuth callback error:", err);
+    res.status(500).send("OAuth callback failed");
   }
 });
 
@@ -697,8 +1035,70 @@ async function verifyWebhookAuth(platform: string, botId: number, req: Request):
     return false;
   }
 
+  if (platform === "facebook") {
+    const signature = req.headers["x-hub-signature-256"] as string | undefined;
+    if (!signature) return !conn.webhookSecret;
+    let appSecret: string | undefined;
+    try {
+      const creds = JSON.parse(decryptCredentials(conn.credentials));
+      appSecret = creds.appSecret;
+    } catch {}
+    const secret = appSecret || process.env.FACEBOOK_APP_SECRET || "";
+    if (!secret) {
+      console.warn(`[Facebook Bot ${botId}] No app secret configured — rejecting webhook`);
+      return false;
+    }
+    const { createHmac, timingSafeEqual } = await import("crypto");
+    const rawBody = req.rawBody;
+    const bodyBuf = rawBody || Buffer.from(JSON.stringify(req.body));
+    const expected = "sha256=" + createHmac("sha256", secret).update(bodyBuf).digest("hex");
+    try {
+      return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
+  if (platform === "discord" || platform === "email" || platform === "linkedin") {
+    return false;
+  }
+
   return false;
 }
+
+router.get("/bots/webhook/facebook/:botId", async (req, res) => {
+  try {
+    const botId = parseInt(parseParam(req.params.botId), 10);
+    const mode = req.query["hub.mode"] as string;
+    const token = req.query["hub.verify_token"] as string;
+    const challenge = req.query["hub.challenge"] as string;
+
+    if (mode !== "subscribe") {
+      res.status(403).json({ error: "Invalid mode" });
+      return;
+    }
+
+    const [conn] = await db
+      .select()
+      .from(botPlatformConnectionsTable)
+      .where(and(eq(botPlatformConnectionsTable.botId, botId), eq(botPlatformConnectionsTable.platform, "facebook")));
+
+    if (!conn) {
+      res.status(404).json({ error: "Connection not found" });
+      return;
+    }
+
+    if (token !== conn.webhookSecret) {
+      res.status(403).json({ error: "Verify token mismatch" });
+      return;
+    }
+
+    res.status(200).send(challenge);
+  } catch (err) {
+    console.error("Facebook webhook verification error:", err);
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
 
 router.post("/bots/webhook/:platform/:botId", async (req, res) => {
   try {
@@ -712,6 +1112,12 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
 
     if (!bot || bot.status !== "active") {
       res.status(404).json({ error: "Bot not found or inactive" });
+      return;
+    }
+
+    const ownerHasAccess = await hasFeature(bot.ownerId, undefined, "bot_factory");
+    if (!ownerHasAccess) {
+      res.status(403).json({ error: "Bot owner subscription inactive" });
       return;
     }
 
@@ -735,6 +1141,11 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
     } else if (platform === "telegram") {
       text = req.body.message?.text || "";
       externalUserId = String(req.body.message?.chat?.id || "");
+    } else if (platform === "facebook") {
+      const entry = req.body?.entry?.[0];
+      const messaging = entry?.messaging?.[0];
+      text = messaging?.message?.text || "";
+      externalUserId = messaging?.sender?.id || "";
     }
 
     if (!text) {

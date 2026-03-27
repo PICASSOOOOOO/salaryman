@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 
 export type Tier = "free" | "pro";
-export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system";
+export type FeatureKey = "live_listen" | "screen_scan" | "say_this" | "phone_system" | "bot_factory";
 
 export interface TrialInfo {
   featureKey: FeatureKey;

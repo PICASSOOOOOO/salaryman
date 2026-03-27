@@ -1,27 +1,10 @@
 import type { PlatformType } from "@workspace/db";
 import { decryptCredentials } from "./bot-crypto";
 import { thinkorswimConnector } from "./thinkorswim-connector";
+import { discordConnector, facebookConnector, gmailConnector, linkedinConnector } from "./bot-connectors-extended";
+import type { PlatformConnector } from "./bot-connector-types";
 
-export interface IncomingMessage {
-  platform: PlatformType;
-  externalUserId: string;
-  text: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface OutgoingMessage {
-  text: string;
-  parseMode?: "markdown" | "html" | "plain";
-  metadata?: Record<string, unknown>;
-}
-
-export interface PlatformConnector {
-  platform: PlatformType;
-  start(botId: number, encryptedCredentials: string, onMessage: (msg: IncomingMessage) => Promise<void>): Promise<void>;
-  stop(botId: number): Promise<void>;
-  send(botId: number, externalUserId: string, message: OutgoingMessage): Promise<void>;
-  isActive(botId: number): boolean;
-}
+export type { IncomingMessage, OutgoingMessage, PlatformConnector } from "./bot-connector-types";
 
 const activeTelegramBots = new Map<number, { stop: () => void }>();
 const activeWhatsappBots = new Set<number>();
@@ -170,6 +153,10 @@ const connectorRegistry = new Map<PlatformType, PlatformConnector>();
 connectorRegistry.set("telegram", telegramConnector);
 connectorRegistry.set("whatsapp", whatsappConnector);
 connectorRegistry.set("thinkorswim", thinkorswimConnector);
+connectorRegistry.set("discord", discordConnector);
+connectorRegistry.set("facebook", facebookConnector);
+connectorRegistry.set("email", gmailConnector);
+connectorRegistry.set("linkedin", linkedinConnector);
 
 export function getConnector(platform: PlatformType): PlatformConnector | undefined {
   return connectorRegistry.get(platform);

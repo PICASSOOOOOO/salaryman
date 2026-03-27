@@ -25,6 +25,8 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   trading_read: "Read portfolio positions and market data",
   trading_execute: "Execute live trades through Schwab API",
   trading_paper: "Run simulated paper trades against real market data",
+  linkedin_outreach: "Send LinkedIn messages and connection requests for recruitment outreach",
+  recruitment_manage: "Manage candidate tracking, recruitment pipeline, and hiring correspondence",
 };
 
 function buildPermissionContext(permissions: string[]): string {
@@ -53,6 +55,8 @@ const PERMISSION_ACTION_PATTERNS: Record<string, RegExp[]> = {
   contacts_write: [/add\s+(a|an)?\s*contact/i, /save\s+(this|the)?\s*contact/i, /update\s+(a|the)?\s*contact/i],
   contacts_read: [/find\s+(a|the)?\s*contact/i, /who\s+is\s+/i, /contact\s+(info|details|information)\s+(for|of|about)/i],
   documents_read: [/read\s+(the|this|a)?\s*(document|file|doc)/i, /open\s+(the|this|a)?\s*(document|file|doc)/i, /show\s+(me\s+)?(the|this|a)?\s*(document|file|doc)/i],
+  linkedin_outreach: [/send\s+(a\s+)?linkedin\s+message/i, /connect\s+(with|to)\s+(them|this person|candidate)/i, /linkedin\s+outreach/i, /inmail/i],
+  recruitment_manage: [/track\s+(this\s+)?(candidate|applicant)/i, /update\s+(the\s+)?(hiring|recruitment)\s+pipeline/i, /move\s+(to\s+)?(next|previous)\s+stage/i, /candidate\s+status/i],
 };
 
 function enforcePermissions(permissions: string[], userMessage: string): string | null {

@@ -13,6 +13,7 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
   say_this: "STRIPE_PRICE_SAY_THIS",
   phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
+  bot_factory: "STRIPE_PRICE_BOT_FACTORY",
 };
 
 const BOT_PRICE_ENV: Record<string, string> = {

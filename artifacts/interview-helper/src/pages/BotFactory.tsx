@@ -7,15 +7,25 @@ import {
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
-  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink,
+  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock,
 } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
+import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 
 type BotStatus = 'active' | 'paused' | 'error';
 type Tab = 'my-bots' | 'marketplace';
+
+const platformIcons: Record<string, string> = {
+  whatsapp: '💬',
+  telegram: '✈️',
+  discord: '🎮',
+  facebook: '📘',
+  email: '📧',
+  linkedin: '💼',
+};
 
 interface BotConnection {
   id: number;
@@ -170,10 +180,39 @@ function PriceBadge({ price, t }: { price: number; t: (key: string, opts?: Recor
   );
 }
 
+const PERSONALITY_PRESETS = [
+  {
+    label: 'General Assistant',
+    boomerLabel: 'General Assistant',
+    value: 'You are a helpful assistant. Answer questions clearly, be concise, and always be friendly.',
+  },
+  {
+    label: 'Recruiter',
+    boomerLabel: 'Recruitment Bot',
+    value: 'You are an expert recruitment assistant specializing in sourcing and engaging candidates. Your goal is to identify top talent, craft personalized outreach messages, track candidate progress through the hiring pipeline, and manage professional correspondence. When a candidate shares their details, remember their name, role interest, experience level, and current stage in the process. Always be professional, warm, and persuasive without being pushy. Use [MEMORY:candidate_name=value], [MEMORY:role=value], [MEMORY:stage=value], and [MEMORY:notes=value] to track candidate information.',
+  },
+  {
+    label: 'Sales Agent',
+    boomerLabel: 'Sales Bot',
+    value: 'You are a professional sales agent focused on building relationships and closing deals. Qualify leads, understand their needs, present solutions clearly, and follow up persistently but respectfully. Track prospect information and move them through the sales funnel.',
+  },
+  {
+    label: 'Support Agent',
+    boomerLabel: 'Customer Support',
+    value: 'You are a helpful customer support agent. Resolve issues quickly and professionally, escalate when needed, and always leave the customer feeling heard and valued.',
+  },
+];
+
 function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void; onCreated: () => void; boomer: boolean; t: (key: string) => string }) {
   const [name, setName] = useState('');
-  const [personality, setPersonality] = useState('You are a helpful assistant.');
+  const [personality, setPersonality] = useState('You are a helpful assistant. Answer questions clearly, be concise, and always be friendly.');
   const [creating, setCreating] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState(0);
+
+  const applyPreset = (idx: number) => {
+    setSelectedPreset(idx);
+    setPersonality(PERSONALITY_PRESETS[idx].value);
+  };
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -200,7 +239,7 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}>
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-md"
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem', letterSpacing: '0.08em' }}>
@@ -217,10 +256,24 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
           </div>
           <div>
+            <label className="text-xs text-muted-foreground mb-2 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'Personality Preset' : 'PERSONALITY TEMPLATE'}
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 mb-3">
+              {PERSONALITY_PRESETS.map((preset, idx) => (
+                <button key={idx} onClick={() => applyPreset(idx)}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border text-left transition-colors ${selectedPreset === idx ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {boomer ? preset.boomerLabel : preset.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? t('botFactory.createBotPersonalityLabel') : t('botFactory.createBotPersonalityLabelCodename')}
             </label>
-            <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={4}
+            <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={5}
               placeholder={boomer ? t('botFactory.createBotPersonalityPlaceholder') : t('botFactory.createBotPersonalityPlaceholderCodename')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none resize-none" />
           </div>
@@ -235,20 +288,146 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
   );
 }
 
+type PlatformId = 'telegram' | 'whatsapp' | 'discord' | 'facebook' | 'email' | 'linkedin';
+
+interface PlatformConfig {
+  id: PlatformId;
+  label: string;
+  color: string;
+  activeColor: string;
+  fields: Array<{
+    key: string;
+    label: string;
+    boomerLabel: string;
+    placeholder: string;
+    type?: string;
+  }>;
+  oauthEndpoint?: string;
+  hint?: string;
+  boomerHint?: string;
+}
+
+const PLATFORM_CONFIGS: PlatformConfig[] = [
+  {
+    id: 'telegram',
+    label: 'Telegram',
+    color: 'sky',
+    activeColor: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+    fields: [{ key: 'botToken', label: 'BOT TOKEN (from @BotFather)', boomerLabel: 'Telegram Bot Token', placeholder: '123456:ABC-DEF...' }],
+    hint: 'ACQUIRE TOKEN VIA @BOTFATHER · /newbot COMMAND',
+    boomerHint: 'Get a token from @BotFather on Telegram. Message /newbot to create one.',
+  },
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    color: 'emerald',
+    activeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+    fields: [
+      { key: 'fromNumber', label: 'WHATSAPP NUMBER', boomerLabel: 'WhatsApp Number (with country code)', placeholder: '+1234567890' },
+      { key: 'accountSid', label: 'TWILIO ACCOUNT SID', boomerLabel: 'Twilio Account SID', placeholder: 'ACxxxxxxxxxxxxxxxx' },
+      { key: 'authToken', label: 'TWILIO AUTH TOKEN', boomerLabel: 'Twilio Auth Token', placeholder: 'your_auth_token', type: 'password' },
+    ],
+    hint: 'REQUIRES TWILIO ACCOUNT WITH WHATSAPP ENABLED',
+    boomerHint: 'Requires a Twilio account with WhatsApp enabled. Find your credentials at console.twilio.com.',
+  },
+  {
+    id: 'discord',
+    label: 'Discord',
+    color: 'indigo',
+    activeColor: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
+    fields: [{ key: 'botToken', label: 'DISCORD BOT TOKEN', boomerLabel: 'Discord Bot Token', placeholder: 'MTE2xxx.xxx.xxx' }],
+    hint: 'CREATE APP AT discord.com/developers · ENABLE MESSAGE CONTENT INTENT',
+    boomerHint: 'Create a bot at discord.com/developers/applications. Enable the Message Content Intent under Bot settings.',
+  },
+  {
+    id: 'facebook',
+    label: 'Facebook',
+    color: 'blue',
+    activeColor: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+    fields: [
+      { key: 'pageAccessToken', label: 'PAGE ACCESS TOKEN', boomerLabel: 'Facebook Page Access Token', placeholder: 'EAAxxxxxxxxxx...' },
+      { key: 'appId', label: 'APP ID', boomerLabel: 'Facebook App ID', placeholder: '123456789012345' },
+      { key: 'appSecret', label: 'APP SECRET', boomerLabel: 'Facebook App Secret', placeholder: 'Your app secret for webhook verification', type: 'password' },
+    ],
+    hint: 'GET TOKEN FROM developers.facebook.com · APP SECRET FOR WEBHOOK HMAC VERIFICATION',
+    boomerHint: 'Create a Facebook App at developers.facebook.com. Add Messenger product, get a Page Access Token and App Secret.',
+  },
+  {
+    id: 'email',
+    label: 'Gmail',
+    color: 'red',
+    activeColor: 'bg-red-500/15 text-red-400 border-red-500/30',
+    fields: [],
+    oauthEndpoint: '/api/bots/oauth/gmail/url',
+    hint: 'CONNECT VIA GOOGLE OAUTH · AUTOMATIC TOKEN MANAGEMENT',
+    boomerHint: 'Click Connect to sign in with Google and authorize Gmail access.',
+  },
+  {
+    id: 'linkedin',
+    label: 'LinkedIn',
+    color: 'cyan',
+    activeColor: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
+    fields: [],
+    oauthEndpoint: '/api/bots/oauth/linkedin/url',
+    hint: 'CONNECT VIA LINKEDIN OAUTH · AUTOMATIC TOKEN MANAGEMENT',
+    boomerHint: 'Click Connect to sign in with LinkedIn and authorize access.',
+  },
+];
+
 function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: BotData; onClose: () => void; onConnected: () => void; boomer: boolean; t: (key: string) => string }) {
   const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
-  const [platform, setPlatform] = useState<'telegram' | 'whatsapp' | 'thinkorswim'>(hasTrading ? 'thinkorswim' : 'telegram');
+  const [platform, setPlatform] = useState<PlatformId | 'thinkorswim'>(hasTrading ? 'thinkorswim' : 'telegram');
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [token, setToken] = useState('');
   const [appKey, setAppKey] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [schwabStep, setSchwabStep] = useState<1 | 2 | 3>(1);
   const [connecting, setConnecting] = useState(false);
   const [authUrl, setAuthUrl] = useState('');
+  const [error, setError] = useState('');
+
+  const config = PLATFORM_CONFIGS.find(p => p.id === platform);
+  const isOAuth = !!config?.oauthEndpoint;
+  const isValid = platform === 'thinkorswim' ? (appKey.trim() && appSecret.trim()) : isOAuth || (config?.fields.every(f => (fieldValues[f.key] || '').trim()) ?? false);
+
+  const handleOAuthConnect = async () => {
+    if (!config?.oauthEndpoint) return;
+    setConnecting(true);
+    setError('');
+    try {
+      const res = await apiFetch(`${config.oauthEndpoint}?botId=${bot.id}`);
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'OAuth not configured');
+        return;
+      }
+      const { url } = await res.json();
+      const popup = window.open(url, '_blank', 'width=600,height=700');
+      const checkClosed = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(checkClosed);
+          onConnected();
+          onClose();
+        }
+      }, 500);
+      setTimeout(() => clearInterval(checkClosed), 120_000);
+    } catch (err) {
+      console.error('OAuth connect failed:', err);
+      setError('OAuth connection failed.');
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   const handleConnect = async () => {
+    if (isOAuth) {
+      await handleOAuthConnect();
+      return;
+    }
     if (platform === 'thinkorswim') {
       if (!appKey.trim() || !appSecret.trim()) return;
       setConnecting(true);
+      setError('');
       try {
         const credentials = JSON.stringify({ appKey: appKey.trim(), appSecret: appSecret.trim() });
         const res = await apiFetch(`/api/bots/${bot.id}/connect`, {
@@ -257,7 +436,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
           body: JSON.stringify({ platform: 'thinkorswim', credentials }),
         });
         if (res.ok) {
-          const accRes = await apiFetch(`/api/bots/${bot.id}/trading/account`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPaperMode: true }) });
+          await apiFetch(`/api/bots/${bot.id}/trading/account`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPaperMode: true }) });
 
           const urlRes = await apiFetch(`/api/bots/${bot.id}/trading/schwab/auth-url`, {
             method: 'POST',
@@ -272,21 +451,32 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
             onConnected();
             onClose();
           }
+        } else {
+          const data = await res.json();
+          setError(data.error || 'Failed to connect thinkorswim');
         }
       } catch (err) {
         console.error('Failed to connect Schwab:', err);
+        setError('Connection failed. Check your credentials.');
       } finally {
         setConnecting(false);
       }
       return;
     }
-
-    if (!token.trim()) return;
+    if (!isValid) return;
     setConnecting(true);
+    setError('');
     try {
-      const credentials = platform === 'whatsapp'
-        ? JSON.stringify({ fromNumber: token, accountSid: '', authToken: '' })
-        : token;
+      let credentials: string;
+      if (platform === 'telegram') {
+        credentials = fieldValues['botToken'] || '';
+      } else if (platform === 'discord') {
+        credentials = JSON.stringify({ botToken: fieldValues['botToken'] });
+      } else if (platform === 'facebook') {
+        credentials = JSON.stringify({ pageAccessToken: fieldValues['pageAccessToken'], appId: fieldValues['appId'] || '', appSecret: fieldValues['appSecret'] || '' });
+      } else {
+        credentials = JSON.stringify(fieldValues);
+      }
 
       const res = await apiFetch(`/api/bots/${bot.id}/connect`, {
         method: 'POST',
@@ -296,12 +486,20 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
       if (res.ok) {
         onConnected();
         onClose();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to connect');
       }
     } catch (err) {
       console.error('Failed to connect:', err);
+      setError('Connection failed. Check your credentials.');
     } finally {
       setConnecting(false);
     }
+  };
+
+  const setField = (key: string, value: string) => {
+    setFieldValues(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -318,20 +516,21 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => setPlatform('telegram')}
-              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'telegram' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}>
-              {t('botFactory.platformTelegram')}
-            </button>
-            <button onClick={() => setPlatform('whatsapp')}
-              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'whatsapp' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-background text-muted-foreground border-border hover:border-emerald-500/20'}`}>
-              {t('botFactory.platformWhatsApp')}
-            </button>
-            <button onClick={() => { setPlatform('thinkorswim'); setSchwabStep(1); }}
-              className={`flex-1 min-w-[80px] py-2 rounded-lg text-sm font-bold border transition-colors ${platform === 'thinkorswim' ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-background text-muted-foreground border-border hover:border-green-500/20'}`}>
+          <div className="flex gap-2 flex-wrap mb-2">
+            {PLATFORM_CONFIGS.map(p => (
+              <button key={p.id} onClick={() => { setPlatform(p.id); setFieldValues({}); setError(''); }}
+                className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-colors ${platform === p.id ? p.activeColor : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}
+                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                {p.label}
+              </button>
+            ))}
+            <button onClick={() => { setPlatform('thinkorswim'); setSchwabStep(1); setError(''); }}
+              className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-colors ${platform === 'thinkorswim' ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-background text-muted-foreground border-border hover:border-green-500/20'}`}
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
               thinkorswim
             </button>
           </div>
+
           {platform === 'thinkorswim' ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-3">
@@ -421,27 +620,41 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
             </div>
           ) : (
             <div className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                  {platform === 'telegram'
-                    ? (boomer ? t('botFactory.telegramTokenLabel') : t('botFactory.telegramTokenLabelCodename'))
-                    : (boomer ? t('botFactory.whatsappTokenLabel') : t('botFactory.whatsappTokenLabelCodename'))
-                  }
-                </label>
-                <input value={token} onChange={e => setToken(e.target.value)}
-                  placeholder={platform === 'telegram' ? t('botFactory.telegramTokenPlaceholder') : t('botFactory.whatsappTokenPlaceholder')}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none font-mono" />
-              </div>
-              {platform === 'telegram' && (
-                <p className="text-[11px] text-muted-foreground/60">
-                  {boomer ? t('botFactory.telegramHelp') : t('botFactory.telegramHelpCodename')}
+              {config?.fields.map(field => (
+                <div key={field.key}>
+                  <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {boomer ? field.boomerLabel : field.label}
+                  </label>
+                  <input
+                    type={field.type || 'text'}
+                    value={fieldValues[field.key] || ''}
+                    onChange={e => setField(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none font-mono"
+                  />
+                </div>
+              ))}
+
+              {(boomer ? config?.boomerHint : config?.hint) && (
+                <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+                  {boomer ? config?.boomerHint : config?.hint}
                 </p>
               )}
-              <button onClick={handleConnect} disabled={connecting || !token.trim()}
+
+              <button onClick={handleConnect} disabled={connecting || !isValid}
                 className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
                 {connecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plug className="w-4 h-4" />}
-                {boomer ? t('botFactory.connectButton') : t('botFactory.connectButtonCodename')}
+                {isOAuth
+                  ? (boomer ? `Connect with ${config?.label}` : `OAUTH LINK · ${config?.label.toUpperCase()}`)
+                  : (boomer ? t('botFactory.connectButton') : t('botFactory.connectButtonCodename'))}
               </button>
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg p-2.5 bg-red-500/10 border border-red-500/20">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <p className="text-xs text-red-400">{error}</p>
             </div>
           )}
         </div>
@@ -1804,6 +2017,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                   <div className="space-y-2">
                     {bot.connections.map(conn => (
                       <div key={conn.id} className="flex items-center gap-3 rounded-lg p-3 bg-muted/20 border border-border">
+                        <span className="text-base">{platformIcons[conn.platform] || '🔗'}</span>
                         <span className="text-xs font-bold text-sky-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{conn.platform.toUpperCase()}</span>
                         <StatusBadge status={conn.status === 'connected' ? 'active' : 'paused'} boomer={boomer} t={t} />
                       </div>
@@ -1858,6 +2072,8 @@ export default function BotFactory() {
   const [activating, setActivating] = useState<number | null>(null);
 
   const { isAuthenticated } = useAuth();
+  const plan = usePlan();
+  const hasAccess = plan.isOwner || plan.features.has('bot_factory');
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -1885,10 +2101,10 @@ export default function BotFactory() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasAccess) return;
     setLoading(true);
     Promise.all([loadBots(), loadMarketplace()]).finally(() => setLoading(false));
-  }, [isAuthenticated, loadBots, loadMarketplace]);
+  }, [isAuthenticated, hasAccess, loadBots, loadMarketplace]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1934,6 +2150,47 @@ export default function BotFactory() {
 
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? t('botFactory.signInContext') : t('botFactory.signInContextCodename')} />;
+  }
+
+  if (!plan.loading && !hasAccess) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
+        <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
+          <div className="max-w-lg w-full">
+            <div className="rounded-2xl border border-amber-500/20 bg-card/80 backdrop-blur-sm p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-5">
+                <Lock className="w-8 h-8 text-amber-400" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.6rem' }}>
+                {boomerMode ? t('botFactory.title') : t('botFactory.titleCodename')}
+              </h1>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                {boomerMode ? t('botFactory.accessDenied') : t('botFactory.accessDeniedCodename')}
+              </p>
+              <div className="flex items-baseline justify-center gap-1 mb-6">
+                <span className="text-3xl font-bold text-foreground">$149</span>
+                <span className="text-sm text-muted-foreground">/mo</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-left mb-6">
+                {['Telegram & WhatsApp', 'Discord & Facebook', 'Gmail & LinkedIn', 'Recruitment Bots', 'Bot Marketplace', 'Persistent Memory'].map(f => (
+                  <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Check className="w-3 h-3 text-sky-400 flex-shrink-0" />
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <a href={`${import.meta.env.BASE_URL}features`}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
+                <Zap className="w-4 h-4" />
+                {boomerMode ? 'Subscribe Now' : 'ACTIVATE BOT FACTORY'}
+              </a>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
