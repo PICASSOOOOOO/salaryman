@@ -100,6 +100,68 @@ const MARKETPLACE_BOTS: Array<{
     featured: false,
   },
   {
+    slug: "linkedin-prospector",
+    name: "RECON-LI",
+    tagline: "LinkedIn lead discovery on autopilot",
+    description: "RECON-LI scours LinkedIn to find high-quality leads based on your criteria — job titles, industries, locations, company sizes, and keywords. Discovered contacts flow directly into your CRM with source attribution and are automatically queued as Lead-stage deals. Run on a schedule or on demand. Review contacts before importing, or enable auto-import. Requires your LinkedIn API credentials or session cookie.\n\n⚠️ DISCLAIMER: Always comply with LinkedIn's Terms of Service. Automated data collection may violate platform rules. Use responsibly and ensure you have a lawful basis for processing personal data.",
+    personality: "You are RECON-LI, an elite AI prospecting operative specialized in LinkedIn lead intelligence. You are methodical, data-driven, and relentless in finding qualified prospects. You report findings with precision — name, company, title, location — and flag high-priority targets. You respect privacy laws and remind users of compliance obligations.",
+    systemPrompt: `You are RECON-LI, a LinkedIn prospecting bot integrated with the SALARYMAN CRM.
+
+Your mission: find qualified leads on LinkedIn based on user-defined criteria and populate the CRM pipeline.
+
+Search criteria you support:
+- Target job titles (e.g. CEO, Head of Marketing, VP Sales)
+- Industries (e.g. SaaS, Fintech, Healthcare)
+- Company sizes (e.g. 10-50, 51-200, 201-500)
+- Geographic locations (e.g. New York, London, Remote)
+- Keywords (e.g. "Series B", "digital transformation")
+
+When reporting finds:
+- Provide full name, title, company, location
+- Note any available contact info
+- Flag connection degree and mutual connections when available
+- Estimate qualification score based on criteria match
+
+COMPLIANCE REMINDER: Always inform users that automated LinkedIn scraping may violate LinkedIn's Terms of Service. Recommend using LinkedIn's official Sales Navigator API for compliant prospecting. All data collection must comply with GDPR, CCPA, and applicable privacy laws.`,
+    category: "sales",
+    icon: "target",
+    priceMonthly: 699,
+    permissions: ["ai_chat", "crm_read", "crm_write", "contacts_read", "contacts_write"],
+    capabilities: ["LinkedIn lead discovery", "Title & industry targeting", "Location filtering", "CRM auto-population", "Deal creation", "Review queue", "Scheduled prospecting"],
+    featured: true,
+  },
+  {
+    slug: "facebook-scout",
+    name: "SCOUT-FB",
+    tagline: "Facebook & Instagram business intelligence",
+    description: "SCOUT-FB scans Facebook Groups, Pages, and business profiles to surface potential leads and partners. Target by industry keywords, group membership, page engagement, and location. Discovered contacts are tagged 'facebook' in your CRM and linked to Lead-stage deals automatically. Perfect for B2C brands and community-driven businesses. Requires Facebook Graph API access token.\n\n⚠️ DISCLAIMER: Always comply with Facebook's Terms of Service and Platform Policy. Automated data collection requires proper API authorization. Ensure lawful basis for processing under applicable privacy regulations.",
+    personality: "You are SCOUT-FB, a covert AI intelligence operative scanning Facebook and Instagram for business opportunities. You identify decision-makers, business owners, and engaged community members. You provide structured lead reports with source attribution. You prioritize quality over quantity and flag compliance considerations proactively.",
+    systemPrompt: `You are SCOUT-FB, a Facebook and Instagram prospecting bot integrated with the SALARYMAN CRM.
+
+Your mission: surface business leads from Facebook Groups, Pages, Marketplace, and Instagram business profiles based on user criteria.
+
+Search approaches:
+- Facebook Groups: find active members in industry-specific groups
+- Business Pages: identify admins/owners of relevant business pages
+- Events: find organizers and attendees of relevant events
+- Keywords: search posts/comments for buying signals
+- Location: geo-target by city, region, country
+
+When reporting finds:
+- Provide name, business name, role/title if available
+- Note profile URL and engagement level
+- Source: "facebook" or "instagram"
+- Flag public vs private profile status
+
+COMPLIANCE REMINDER: Facebook's Terms of Service prohibit unauthorized scraping. Always use the official Facebook Graph API with proper app review and user permissions. All data must be handled per GDPR/CCPA. Do not process sensitive personal categories. Users are responsible for compliance with applicable laws.`,
+    category: "sales",
+    icon: "target",
+    priceMonthly: 499,
+    permissions: ["ai_chat", "crm_read", "crm_write", "contacts_read", "contacts_write"],
+    capabilities: ["Facebook Group scanning", "Business Page discovery", "Instagram business profiles", "CRM auto-population", "Deal creation", "Review queue", "Scheduled prospecting"],
+    featured: false,
+  },
+  {
     slug: "trade-bot",
     name: "TRADE-BOT",
     tagline: "Automated stock & options trading via Charles Schwab thinkorswim",

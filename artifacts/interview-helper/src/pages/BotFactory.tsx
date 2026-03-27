@@ -7,7 +7,7 @@ import {
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
-  Siren, FlipHorizontal,
+  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -1123,9 +1123,401 @@ function RiskEditForm({ strat, onSave, boomer }: { strat: TradingStrategy; onSav
   );
 }
 
+interface ProspectResult {
+  id: string;
+  name: string;
+  title: string;
+  company: string;
+  location: string;
+  email: string;
+  phone: string;
+  bio: string;
+  profileUrl: string;
+  source: 'linkedin' | 'facebook';
+  qualificationScore: number;
+  notes: string;
+  status: 'pending' | 'approved' | 'dismissed';
+  discoveredAt: string;
+}
+
+interface ProspectingConfig {
+  criteria: {
+    targetTitles: string[];
+    industries: string[];
+    locations: string[];
+    companySizes: string[];
+    keywords: string[];
+    maxResults: number;
+  };
+  autoImport: boolean;
+  scheduleMinutes: number;
+  disclaimer: string;
+}
+
+function TagInput({ label, values, onChange, placeholder }: { label: string; values: string[]; onChange: (v: string[]) => void; placeholder: string }) {
+  const [input, setInput] = useState('');
+  const add = () => {
+    const trimmed = input.trim();
+    if (trimmed && !values.includes(trimmed)) {
+      onChange([...values, trimmed]);
+    }
+    setInput('');
+  };
+  return (
+    <div>
+      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</label>
+      <div className="flex gap-1.5 flex-wrap mb-1.5">
+        {values.map(v => (
+          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            {v}
+            <button onClick={() => onChange(values.filter(x => x !== v))} className="hover:text-red-400"><X className="w-2.5 h-2.5" /></button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          placeholder={placeholder}
+          className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:border-sky-500/50 focus:outline-none"
+        />
+        <button onClick={add} className="px-2 py-1.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 text-xs font-bold">
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
+  const isProspectingBot = !!bot.marketplaceItemId;
+  const source = bot.name === 'RECON-LI' ? 'linkedin' : 'facebook';
+
+  const [prospectTab, setProspectTab] = useState<'config' | 'results'>('config');
+  const [config, setConfig] = useState<ProspectingConfig>({
+    criteria: { targetTitles: [], industries: [], locations: [], companySizes: [], keywords: [], maxResults: 10 },
+    autoImport: false,
+    scheduleMinutes: 1440,
+    disclaimer: '',
+  });
+  const [results, setResults] = useState<ProspectResult[]>([]);
+  const [disclaimer, setDisclaimer] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState('');
+  const [approving, setApproving] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [cfgRes, resRes] = await Promise.all([
+          apiFetch(`/api/bots/${bot.id}/prospecting/config`),
+          apiFetch(`/api/bots/${bot.id}/prospecting/results`),
+        ]);
+        if (cfgRes.ok) { const d = await cfgRes.json(); setConfig(d.config); }
+        if (resRes.ok) { const d = await resRes.json(); setResults(d.results ?? []); setDisclaimer(d.disclaimer ?? ''); }
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, [bot.id]);
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      await apiFetch(`/api/bots/${bot.id}/prospecting/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      setSavedMsg('Saved!');
+      setTimeout(() => setSavedMsg(''), 2000);
+    } catch {}
+    setSaving(false);
+  };
+
+  const runScan = async () => {
+    setRunning(true);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/prospecting/run`, { method: 'POST' });
+      if (res.ok) {
+        const d = await res.json();
+        setResults(prev => [...(d.results ?? []), ...prev].slice(0, 100));
+        setDisclaimer(d.disclaimer ?? '');
+        setProspectTab('results');
+      }
+    } catch {}
+    setRunning(false);
+  };
+
+  const approveResult = async (resultId: string) => {
+    setApproving(resultId);
+    try {
+      await apiFetch(`/api/bots/${bot.id}/prospecting/results/${resultId}/approve`, { method: 'POST' });
+      setResults(prev => prev.map(r => r.id === resultId ? { ...r, status: 'approved' } : r));
+    } catch {}
+    setApproving(null);
+  };
+
+  const dismissResult = async (resultId: string) => {
+    try {
+      await apiFetch(`/api/bots/${bot.id}/prospecting/results/${resultId}/dismiss`, { method: 'POST' });
+      setResults(prev => prev.map(r => r.id === resultId ? { ...r, status: 'dismissed' } : r));
+    } catch {}
+  };
+
+  if (!isProspectingBot) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-center gap-3">
+        <Search className="w-10 h-10 opacity-30" />
+        <p className="text-sm">This bot does not have prospecting capabilities.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <div className="w-5 h-5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mr-3" />
+        <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOADING PROSPECTING DATA...</span>
+      </div>
+    );
+  }
+
+  const pendingCount = results.filter(r => r.status === 'pending').length;
+  const approvedCount = results.filter(r => r.status === 'approved').length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-1">
+          {(['config', 'results'] as const).map(t => (
+            <button key={t} onClick={() => setProspectTab(t)}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${prospectTab === t ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-sky-500/20'}`}
+              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {t === 'config' ? (boomer ? 'CONFIGURATION' : 'CONFIG') : `RESULTS${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
+            </button>
+          ))}
+        </div>
+        <button onClick={runScan} disabled={running}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
+          {running ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          {boomer ? 'Run Scan Now' : 'SCAN NOW'}
+        </button>
+      </div>
+
+      {prospectTab === 'config' && (
+        <div className="space-y-4">
+          <div className={`rounded-xl border p-4 ${source === 'linkedin' ? 'border-sky-500/20 bg-sky-500/5' : 'border-blue-500/20 bg-blue-500/5'}`}>
+            <p className="text-xs font-bold mb-1" style={{ fontFamily: "'Share Tech Mono', monospace", color: source === 'linkedin' ? '#38bdf8' : '#818cf8' }}>
+              {source === 'linkedin' ? '🔗 LINKEDIN PROSPECTOR · RECON-LI' : '📘 FACEBOOK SCOUT · SCOUT-FB'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {source === 'linkedin'
+                ? 'Configure search criteria to find LinkedIn leads. Results are AI-generated for demonstration. Connect LinkedIn Sales Navigator API for live data.'
+                : 'Configure search criteria to find Facebook/Instagram leads. Results are AI-generated for demonstration. Connect Facebook Lead Ads API for live data.'}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <TagInput
+              label="Target Job Titles"
+              values={config.criteria.targetTitles}
+              onChange={v => setConfig(c => ({ ...c, criteria: { ...c.criteria, targetTitles: v } }))}
+              placeholder="CEO, Head of Marketing, VP Sales..."
+            />
+            <TagInput
+              label="Industries"
+              values={config.criteria.industries}
+              onChange={v => setConfig(c => ({ ...c, criteria: { ...c.criteria, industries: v } }))}
+              placeholder="SaaS, Fintech, Healthcare..."
+            />
+            <TagInput
+              label="Locations"
+              values={config.criteria.locations}
+              onChange={v => setConfig(c => ({ ...c, criteria: { ...c.criteria, locations: v } }))}
+              placeholder="New York, London, Remote..."
+            />
+            <TagInput
+              label="Company Sizes"
+              values={config.criteria.companySizes}
+              onChange={v => setConfig(c => ({ ...c, criteria: { ...c.criteria, companySizes: v } }))}
+              placeholder="10-50, 51-200, 201-500..."
+            />
+            <TagInput
+              label="Keywords"
+              values={config.criteria.keywords}
+              onChange={v => setConfig(c => ({ ...c, criteria: { ...c.criteria, keywords: v } }))}
+              placeholder="Series B, digital transformation..."
+            />
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Results Per Scan</label>
+              <select
+                value={config.criteria.maxResults}
+                onChange={e => setConfig(c => ({ ...c, criteria: { ...c.criteria, maxResults: Number(e.target.value) } }))}
+                className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:border-sky-500/50 focus:outline-none">
+                <option value={5}>5 contacts</option>
+                <option value={10}>10 contacts</option>
+                <option value={15}>15 contacts</option>
+                <option value={20}>20 contacts</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border p-3 space-y-3">
+            <p className="text-[10px] font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>IMPORT SETTINGS</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Auto-import to CRM</p>
+                <p className="text-xs text-muted-foreground">Import contacts automatically without review</p>
+              </div>
+              <button onClick={() => setConfig(c => ({ ...c, autoImport: !c.autoImport }))}
+                className={`p-1 rounded transition-colors ${config.autoImport ? 'text-sky-400' : 'text-muted-foreground'}`}>
+                {config.autoImport ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
+              </button>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Scan Schedule</label>
+              <select
+                value={config.scheduleMinutes}
+                onChange={e => setConfig(c => ({ ...c, scheduleMinutes: Number(e.target.value) }))}
+                className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground focus:border-sky-500/50 focus:outline-none w-full">
+                <option value={60}>Every hour</option>
+                <option value={360}>Every 6 hours</option>
+                <option value={720}>Every 12 hours</option>
+                <option value={1440}>Every 24 hours</option>
+                <option value={4320}>Every 3 days</option>
+                <option value={10080}>Every week</option>
+              </select>
+            </div>
+          </div>
+
+          <button onClick={saveConfig} disabled={saving}
+            className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : savedMsg ? <Check className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+            {savedMsg || (boomer ? 'Save Configuration' : 'SAVE CONFIG')}
+          </button>
+
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+            <p className="text-[10px] font-bold text-amber-400 mb-1">⚠️ TERMS OF SERVICE DISCLAIMER</p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Automated data collection from {source === 'linkedin' ? 'LinkedIn' : 'Facebook'} may violate their Terms of Service. Results shown are AI-generated simulations for demonstration. For production use, integrate with {source === 'linkedin' ? 'LinkedIn Sales Navigator API or an authorized data provider' : 'Facebook Lead Ads API or Meta Business API with proper authorization'}. Always ensure compliance with GDPR, CCPA, and applicable privacy laws.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {prospectTab === 'results' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="text-sky-400">{results.length} TOTAL</span>
+            <span className="text-amber-400">{pendingCount} PENDING</span>
+            <span className="text-emerald-400">{approvedCount} IMPORTED</span>
+          </div>
+
+          {disclaimer && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
+              <p className="text-[10px] text-amber-300/80 leading-relaxed">{disclaimer.split('\n')[0]}</p>
+            </div>
+          )}
+
+          {results.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm mb-3">{boomer ? 'No prospects discovered yet. Run a scan to find leads.' : 'NO PROSPECTS FOUND — RUN SCAN TO DISCOVER LEADS'}</p>
+              <button onClick={runScan} disabled={running}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold mx-auto transition-colors disabled:opacity-50">
+                {running ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search className="w-4 h-4" />}
+                {boomer ? 'Run First Scan' : 'INITIATE SCAN'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {results.map(result => (
+                <div key={result.id} className={`rounded-lg border p-3 transition-colors ${
+                  result.status === 'approved' ? 'border-emerald-500/20 bg-emerald-500/5 opacity-75' :
+                  result.status === 'dismissed' ? 'border-border bg-muted/5 opacity-40' :
+                  'border-border bg-muted/10'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <Users className="w-4 h-4 text-sky-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{result.name}</p>
+                          <p className="text-xs text-muted-foreground">{result.title}{result.company ? ` · ${result.company}` : ''}</p>
+                          {result.location && <p className="text-[10px] text-muted-foreground/60">{result.location}</p>}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                            result.qualificationScore >= 80 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
+                            result.qualificationScore >= 60 ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
+                            'text-muted-foreground border-border'
+                          }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            {result.qualificationScore}%
+                          </span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                            result.source === 'linkedin' ? 'text-sky-400 border-sky-500/20' : 'text-blue-400 border-blue-500/20'
+                          }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                            {result.source === 'linkedin' ? 'LI' : 'FB'}
+                          </span>
+                        </div>
+                      </div>
+                      {result.notes && (
+                        <p className="text-[10px] text-muted-foreground/70 mt-1 italic">{result.notes}</p>
+                      )}
+                      {result.profileUrl && (
+                        <a href={result.profileUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-sky-400/60 hover:text-sky-400 flex items-center gap-0.5 mt-0.5">
+                          <ExternalLink className="w-2.5 h-2.5" /> {result.profileUrl.slice(0, 40)}...
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {result.status === 'pending' && (
+                    <div className="flex gap-2 mt-2.5 pt-2.5 border-t border-border/50">
+                      <button onClick={() => approveResult(result.id)} disabled={approving === result.id}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
+                        {approving === result.id ? <div className="w-3 h-3 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" /> : <Check className="w-3 h-3" />}
+                        {boomer ? 'Import to CRM' : 'IMPORT'}
+                      </button>
+                      <button onClick={() => dismissResult(result.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold bg-muted/10 text-muted-foreground border border-border hover:border-red-500/20 hover:text-red-400 transition-colors">
+                        <X className="w-3 h-3" />
+                        {boomer ? 'Dismiss' : 'DISMISS'}
+                      </button>
+                    </div>
+                  )}
+                  {result.status === 'approved' && (
+                    <div className="mt-2 text-[10px] text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Imported to CRM
+                    </div>
+                  )}
+                  {result.status === 'dismissed' && (
+                    <div className="mt-2 text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                      <X className="w-3 h-3" /> Dismissed
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
   const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
-  const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings' | 'trading'>('logs');
+  const hasProspecting = bot.permissions.includes('crm_write') && bot.permissions.includes('contacts_write') && !!bot.marketplaceItemId;
+  const [tab, setTab] = useState<'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting'>('logs');
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [memories, setMemories] = useState<BotMemory[]>([]);
   const [tasks, setTasks] = useState<BotTask[]>([]);
@@ -1253,15 +1645,17 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         </div>
 
         <div className="flex border-b border-border overflow-x-auto">
-          {(['logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), 'settings'] as const).map((tabKey: string) => (
+          {(['logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'settings'] as const).map((tabKey: string) => (
             <button key={tabKey} onClick={() => setTab(tabKey as typeof tab)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
               style={{ fontFamily: "'Share Tech Mono', monospace" }}>
               {tabKey === 'trading' && <TrendingUp className="w-3 h-3" />}
+              {tabKey === 'prospecting' && <Search className="w-3 h-3" />}
               {tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
                tabKey === 'memory' ? (boomer ? t('botFactory.detailTabMemory') : t('botFactory.detailTabMemoryCodename')) :
                tabKey === 'tasks' ? (boomer ? t('botFactory.detailTabTasks') : t('botFactory.detailTabTasksCodename')) :
                tabKey === 'trading' ? (boomer ? 'Trading' : 'TRADING') :
+               tabKey === 'prospecting' ? (boomer ? 'Prospecting' : 'PROSPECTING') :
                (boomer ? t('botFactory.detailTabSettings') : t('botFactory.detailTabSettingsCodename'))}
             </button>
           ))}
@@ -1390,6 +1784,8 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
             </div>
           ) : tab === 'trading' ? (
             <TradingConsole bot={bot} boomer={boomer} />
+          ) : tab === 'prospecting' ? (
+            <ProspectingConsole bot={bot} boomer={boomer} />
           ) : (
             <div className="space-y-4">
               <div>

@@ -39,6 +39,7 @@ import feedbackRouter from "./feedback";
 import botsRouter from "./bots";
 import devTasksRouter from "./dev-tasks";
 import tradingRouter from "./trading";
+import prospectingRouter from "./prospecting";
 
 const router: IRouter = Router();
 
@@ -82,5 +83,6 @@ router.use(feedbackRouter);
 router.use(botsRouter);
 router.use(devTasksRouter);
 router.use(tradingRouter);
+router.use(prospectingRouter);
 
 export default router;
