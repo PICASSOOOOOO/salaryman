@@ -458,6 +458,7 @@ function TrialModal({
     say_this: 'Say This',
     phone_system: 'Phone System',
     bot_factory: 'Bot Factory',
+    claw_bot: 'Claw Bot',
   };
 
   const [, navigate] = useLocation();
