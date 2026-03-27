@@ -435,6 +435,7 @@ function TrialModal({
     screen_scan: 'Screen Scan',
     say_this: 'Say This',
     phone_system: 'Phone System',
+    bot_factory: 'Bot Factory',
   };
 
   const [, navigate] = useLocation();
