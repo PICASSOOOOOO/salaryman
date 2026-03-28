@@ -9,7 +9,7 @@ import {
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
   Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles,
 } from 'lucide-react';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -161,21 +161,21 @@ function StatusBadge({ status, boomer, t }: { status: BotStatus; boomer: boolean
   const c = config[status] || config.paused;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${c.color}`}
-      style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
       <span className={`w-1.5 h-1.5 rounded-full ${c.dot} ${status === 'active' ? 'animate-pulse' : ''}`} />
       {c.label}
     </span>
   );
 }
 
-function PriceBadge({ price, t }: { price: number; t: (key: string, opts?: Record<string, unknown>) => string }) {
+function PriceBadge({ price, boomer, t }: { price: number; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
   if (price === 0) return (
     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-      style={{ fontFamily: "'Share Tech Mono', monospace" }}>{t('botFactory.priceFree')}</span>
+      style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{t('botFactory.priceFree')}</span>
   );
   return (
     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25"
-      style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
       {t('botFactory.pricePerMonth', { amount: price })}
     </span>
   );
@@ -250,28 +250,28 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
         </div>
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? t('botFactory.createBotNameLabel') : t('botFactory.createBotNameLabelCodename')}
             </label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder={boomer ? t('botFactory.createBotNamePlaceholder') : t('botFactory.createBotNamePlaceholderCodename')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <label className="text-xs text-muted-foreground mb-2 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? 'Personality Preset' : 'PERSONALITY TEMPLATE'}
             </label>
             <div className="grid grid-cols-2 gap-1.5 mb-3">
               {PERSONALITY_PRESETS.map((preset, idx) => (
                 <button key={idx} onClick={() => applyPreset(idx)}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border text-left transition-colors ${selectedPreset === idx ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomer ? preset.boomerLabel : preset.label.toUpperCase()}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? t('botFactory.createBotPersonalityLabel') : t('botFactory.createBotPersonalityLabelCodename')}
             </label>
             <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={5}
@@ -521,13 +521,13 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
             {PLATFORM_CONFIGS.map(p => (
               <button key={p.id} onClick={() => { setPlatform(p.id); setFieldValues({}); setError(''); }}
                 className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-colors ${platform === p.id ? p.activeColor : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}
-                style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 {p.label}
               </button>
             ))}
             <button onClick={() => { setPlatform('thinkorswim'); setSchwabStep(1); setError(''); }}
               className={`flex-1 min-w-[80px] py-2 rounded-lg text-xs font-bold border transition-colors ${platform === 'thinkorswim' ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-background text-muted-foreground border-border hover:border-green-500/20'}`}
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               thinkorswim
             </button>
           </div>
@@ -543,7 +543,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
                     {s < 3 && <div className={`h-0.5 w-6 ${schwabStep > s ? 'bg-green-500/40' : 'bg-border'}`} />}
                   </div>
                 ))}
-                <span className="text-[10px] text-muted-foreground ml-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <span className="text-[10px] text-muted-foreground ml-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {schwabStep === 1 ? 'OVERVIEW' : schwabStep === 2 ? 'CREDENTIALS' : 'AUTHORIZE'}
                 </span>
               </div>
@@ -579,12 +579,12 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
                     Enter your Schwab developer credentials. Get these at <span className="text-green-400 font-bold">developer.schwab.com</span> → Apps → Create App.
                   </p>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>APP KEY (Client ID)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>APP KEY (Client ID)</label>
                     <input value={appKey} onChange={e => setAppKey(e.target.value)} placeholder="your-app-key-here"
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-green-500/50 focus:outline-none font-mono" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>APP SECRET (Client Secret)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>APP SECRET (Client Secret)</label>
                     <input value={appSecret} onChange={e => setAppSecret(e.target.value)} placeholder="your-app-secret-here" type="password"
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-green-500/50 focus:outline-none font-mono" />
                   </div>
@@ -623,7 +623,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
             <div className="space-y-4">
               {config?.fields.map(field => (
                 <div key={field.key}>
-                  <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {boomer ? field.boomerLabel : field.label}
                   </label>
                   <input
@@ -814,7 +814,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
         <div className="w-5 h-5 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin mr-3" />
-        <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOADING TRADING DATA...</span>
+        <span className="text-sm" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>LOADING TRADING DATA...</span>
       </div>
     );
   }
@@ -826,7 +826,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
           {(['dashboard', 'strategies', 'trades', 'risk'] as const).map(t => (
             <button key={t} onClick={() => setTradingTab(t)}
               className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {t === 'dashboard' ? (boomer ? 'DASHBOARD' : 'DASHBOARD') :
                t === 'strategies' ? (boomer ? 'STRATEGIES' : 'STRATEGIES') :
                t === 'trades' ? (boomer ? 'TRADE LOG' : 'TRADE LOG') :
@@ -836,12 +836,12 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${marketOpen ? 'text-green-400 bg-green-500/10 border-green-500/25' : 'text-red-400 bg-red-500/10 border-red-500/25'}`}
-            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
             {marketOpen ? '● MARKET OPEN' : '○ MARKET CLOSED'}
           </span>
           {account && (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${account.isPaperMode ? 'text-amber-400 bg-amber-500/10 border-amber-500/25' : 'text-red-400 bg-red-500/10 border-red-500/25'}`}
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {account.isPaperMode ? '📄 PAPER' : '⚡ LIVE'}
             </span>
           )}
@@ -865,32 +865,32 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>PORTFOLIO EQUITY</span>
+                <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>PORTFOLIO EQUITY</span>
                 <span className="text-lg font-bold text-foreground">
                   {account.cachedEquity !== null ? `$${(account.cachedEquity / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
                 </span>
               </div>
               <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>CASH BALANCE</span>
+                <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>CASH BALANCE</span>
                 <span className="text-lg font-bold text-foreground">
                   {account.cachedBalance !== null ? `$${(account.cachedBalance / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--'}
                 </span>
               </div>
               <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TODAY P&L</span>
+                <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>TODAY P&L</span>
                 <span className={`text-lg font-bold ${account.dailyPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {fmt$(account.dailyPnl)}
                 </span>
               </div>
               <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ACTIVE STRATEGIES</span>
+                <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>ACTIVE STRATEGIES</span>
                 <span className="text-lg font-bold text-foreground">{strategies.filter(s => s.enabled).length}</span>
               </div>
             </div>
           )}
 
           <div className="rounded-xl border border-border p-4 space-y-3">
-            <p className="text-xs font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TRADING MODE</p>
+            <p className="text-xs font-bold text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>TRADING MODE</p>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-foreground">{account?.isPaperMode !== false ? 'Paper Trading' : 'Live Trading'}</p>
@@ -908,7 +908,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               </button>
             </div>
             {account?.lastSyncAt && (
-              <p className="text-[10px] text-muted-foreground/50" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <p className="text-[10px] text-muted-foreground/50" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 LAST SYNC: {new Date(account.lastSyncAt).toLocaleString()}
               </p>
             )}
@@ -931,21 +931,21 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
           )}
 
           <div className="rounded-xl border border-border p-4">
-            <p className="text-xs font-bold text-muted-foreground mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <p className="text-xs font-bold text-muted-foreground mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? 'PERFORMANCE SUMMARY' : 'PERF STATS'}
             </p>
             <div className="grid grid-cols-3 gap-2 mb-3">
               <div className="text-center">
                 <p className={`text-base font-bold ${tradeStats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt$(tradeStats.totalPnl)}</p>
-                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TOTAL P&L</p>
+                <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>TOTAL P&L</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-bold text-green-400">{tradeStats.wins}</p>
-                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>WINS</p>
+                <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>WINS</p>
               </div>
               <div className="text-center">
                 <p className="text-base font-bold text-red-400">{tradeStats.losses}</p>
-                <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOSSES</p>
+                <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>LOSSES</p>
               </div>
             </div>
             {(() => {
@@ -954,7 +954,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               const maxAbs = Math.max(...closed.map(t => Math.abs(t.pnl!)), 1);
               return (
                 <div>
-                  <p className="text-[10px] text-muted-foreground mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>RECENT P&L (last {closed.length} closed)</p>
+                  <p className="text-[10px] text-muted-foreground mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>RECENT P&L (last {closed.length} closed)</p>
                   <div className="flex items-end gap-0.5 h-10">
                     {closed.map((t, i) => {
                       const pct = (Math.abs(t.pnl!) / maxAbs) * 100;
@@ -979,7 +979,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
             if (openPositions.length === 0) return null;
             return (
               <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
-                <p className="text-xs font-bold text-sky-400 mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs font-bold text-sky-400 mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   OPEN POSITIONS ({openPositions.length})
                 </p>
                 <div className="space-y-2">
@@ -987,13 +987,13 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                     <div key={t.id} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span className={`font-bold px-1 py-0.5 rounded text-[9px] border ${t.side === 'BUY' ? 'text-green-400 border-green-500/20' : 'text-red-400 border-red-500/20'}`}
-                          style={{ fontFamily: "'Share Tech Mono', monospace" }}>{t.side}</span>
+                          style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{t.side}</span>
                         <span className="font-bold text-foreground truncate max-w-[90px]" title={t.symbol}>{t.symbol}</span>
                         <span className="text-muted-foreground">{t.quantity}x @ ${(t.entryPrice / 100).toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {t.isPaper && <span className="text-[9px] text-amber-400 border border-amber-500/20 px-1 rounded">PAPER</span>}
-                        <span className="text-muted-foreground text-[10px]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <span className="text-muted-foreground text-[10px]" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                           {STRATEGY_LABELS[t.strategyType]?.substring(0, 8) || t.strategyType}
                         </span>
                       </div>
@@ -1007,10 +1007,10 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
           {portfolioSource === 'live' && portfolioPositions.length > 0 && (
             <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-violet-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs font-bold text-violet-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   SCHWAB PORTFOLIO ({portfolioPositions.length} positions)
                 </p>
-                <span className="text-[9px] px-1 py-0.5 rounded border border-green-500/20 text-green-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LIVE</span>
+                <span className="text-[9px] px-1 py-0.5 rounded border border-green-500/20 text-green-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>LIVE</span>
               </div>
               <div className="space-y-1.5">
                 {portfolioPositions.map((pos, i) => {
@@ -1021,7 +1021,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                   return (
                     <div key={i} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] px-1 py-0.5 rounded border border-violet-500/20 text-violet-400 shrink-0" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <span className="text-[9px] px-1 py-0.5 rounded border border-violet-500/20 text-violet-400 shrink-0" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                           {pos.assetType === 'OPTION' ? 'OPT' : 'EQ'}
                         </span>
                         <span className="font-bold text-foreground truncate max-w-[80px]" title={pos.symbol}>{pos.symbol}</span>
@@ -1029,7 +1029,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                       </div>
                       <div className="flex items-center gap-2 text-right">
                         <span className="text-muted-foreground text-[10px]">${marketValueDollars.toFixed(0)}</span>
-                        <span className={`font-bold text-[10px] ${isProfit ? 'text-green-400' : 'text-red-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <span className={`font-bold text-[10px] ${isProfit ? 'text-green-400' : 'text-red-400'}`} style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                           {isProfit ? '+' : ''}{fmt$(pos.unrealizedPnl)}
                         </span>
                       </div>
@@ -1038,8 +1038,8 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                 })}
               </div>
               <div className="mt-2 pt-2 border-t border-violet-500/10 flex justify-between text-[10px]">
-                <span className="text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>TOTAL UNREALIZED P&L</span>
-                <span className={`font-bold ${portfolioPositions.reduce((s, p) => s + p.unrealizedPnl, 0) >= 0 ? 'text-green-400' : 'text-red-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <span className="text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>TOTAL UNREALIZED P&L</span>
+                <span className={`font-bold ${portfolioPositions.reduce((s, p) => s + p.unrealizedPnl, 0) >= 0 ? 'text-green-400' : 'text-red-400'}`} style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {fmt$(portfolioPositions.reduce((s, p) => s + p.unrealizedPnl, 0))}
                 </span>
               </div>
@@ -1048,7 +1048,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
 
           {portfolioSource === 'live' && portfolioPositions.length === 0 && account?.hasTokens && (
             <div className="rounded-xl border border-border p-3 text-center">
-              <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <p className="text-xs text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 NO SCHWAB POSITIONS · Account connected, no open positions
               </p>
             </div>
@@ -1058,7 +1058,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
 
       {tradingTab === 'strategies' && (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <p className="text-xs text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
             {boomer ? 'Toggle strategies on/off. The bot will run enabled strategies during market hours.' : 'ENABLE STRATEGIES · BOT RUNS DURING MARKET HOURS 9:30AM–4PM ET'}
           </p>
           {ALL_STRATEGIES.map(type => {
@@ -1072,7 +1072,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">{STRATEGY_LABELS[type]}</p>
-                  <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {isOptions ? 'OPTIONS STRATEGY' : 'EQUITY STRATEGY'} {enabled && '· ACTIVE'}
                   </p>
                 </div>
@@ -1097,7 +1097,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               {(['all', 'open', 'closed'] as const).map(f => (
                 <button key={f} onClick={() => setTradeFilterStatus(f)}
                   className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${tradeFilterStatus === f ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {f.toUpperCase()}
                 </button>
               ))}
@@ -1106,12 +1106,12 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               {(['all', 'BUY', 'SELL'] as const).map(f => (
                 <button key={f} onClick={() => setTradeFilterSide(f)}
                   className={`px-2 py-1 rounded text-[10px] font-bold border transition-colors ${tradeFilterSide === f ? (f === 'BUY' ? 'bg-green-500/15 text-green-400 border-green-500/30' : f === 'SELL' ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-sky-500/15 text-sky-400 border-sky-500/30') : 'bg-muted/10 text-muted-foreground border-border hover:border-sky-500/20'}`}
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {f === 'all' ? 'ALL SIDES' : f}
                 </button>
               ))}
             </div>
-            <span className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {trades.filter(t => (tradeFilterStatus === 'all' || t.status === tradeFilterStatus) && (tradeFilterSide === 'all' || t.side === tradeFilterSide)).length} / {trades.length}
             </span>
           </div>
@@ -1140,13 +1140,13 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-foreground">{trade.symbol}</span>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${trade.side === 'BUY' ? 'text-green-400 border-green-500/20 bg-green-500/10' : 'text-red-400 border-red-500/20 bg-red-500/10'}`}
-                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{trade.side}</span>
+                            style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{trade.side}</span>
                           {trade.isPaper && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-amber-400 border-amber-500/20 bg-amber-500/10"
-                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>PAPER</span>}
+                            style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>PAPER</span>}
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${trade.status === 'open' ? 'text-sky-400 border-sky-500/20 bg-sky-500/10' : 'text-muted-foreground border-border'}`}
-                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{trade.status.toUpperCase()}</span>
+                            style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{trade.status.toUpperCase()}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                           {trade.quantity}x @ ${(trade.entryPrice / 100).toFixed(2)}
                           {trade.exitPrice ? ` → $${(trade.exitPrice / 100).toFixed(2)}` : ''}
                           {' · '}{STRATEGY_LABELS[trade.strategyType] || trade.strategyType}
@@ -1159,7 +1159,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground/40 mt-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <p className="text-[10px] text-muted-foreground/40 mt-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {new Date(trade.createdAt).toLocaleString()}
                   </p>
                 </div>
@@ -1217,7 +1217,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
                       ['Trailing Stop', strat.trailingStopPercent > 0 ? `${strat.trailingStopPercent}%` : 'Off'],
                     ].map(([label, value]) => (
                       <div key={label} className="rounded p-2 bg-muted/10 border border-border">
-                        <p className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</p>
+                        <p className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{label}</p>
                         <p className="font-bold text-foreground">{value}</p>
                       </div>
                     ))}
@@ -1320,7 +1320,7 @@ function RiskEditForm({ strat, onSave, boomer }: { strat: TradingStrategy; onSav
           { label: 'Trailing Stop (%)', value: trailingStopPercent, set: setTrailingStopPercent, min: 0, max: 20 },
         ].map(({ label, value, set, min, max }) => (
           <div key={label}>
-            <label className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</label>
+            <label className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{label}</label>
             <input
               type="number" value={value} min={min} max={max}
               onChange={e => set(Number(e.target.value))}
@@ -1379,7 +1379,7 @@ function TagInput({ label, values, onChange, placeholder }: { label: string; val
   };
   return (
     <div>
-      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{label}</label>
+      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">{label}</label>
       <div className="flex gap-1.5 flex-wrap mb-1.5">
         {values.map(v => (
           <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20">
@@ -1496,7 +1496,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
         <div className="w-5 h-5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mr-3" />
-        <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LOADING PROSPECTING DATA...</span>
+        <span className="text-sm" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>LOADING PROSPECTING DATA...</span>
       </div>
     );
   }
@@ -1511,7 +1511,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
           {(['config', 'results'] as const).map(t => (
             <button key={t} onClick={() => setProspectTab(t)}
               className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${prospectTab === t ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-sky-500/20'}`}
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {t === 'config' ? (boomer ? 'CONFIGURATION' : 'CONFIG') : `RESULTS${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
             </button>
           ))}
@@ -1526,7 +1526,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
       {prospectTab === 'config' && (
         <div className="space-y-4">
           <div className={`rounded-xl border p-4 ${source === 'linkedin' ? 'border-sky-500/20 bg-sky-500/5' : 'border-blue-500/20 bg-blue-500/5'}`}>
-            <p className="text-xs font-bold mb-1" style={{ fontFamily: "'Share Tech Mono', monospace", color: source === 'linkedin' ? '#38bdf8' : '#818cf8' }}>
+            <p className="text-xs font-bold mb-1" style={boomer ? { color: source === 'linkedin' ? '#38bdf8' : '#818cf8' } : { fontFamily: "'Share Tech Mono', monospace", color: source === 'linkedin' ? '#38bdf8' : '#818cf8' }}>
               {source === 'linkedin' ? '🔗 LINKEDIN PROSPECTOR · RECON-LI' : '📘 FACEBOOK SCOUT · SCOUT-FB'}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -1568,7 +1568,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
               placeholder="Series B, digital transformation..."
             />
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Results Per Scan</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Results Per Scan</label>
               <select
                 value={config.criteria.maxResults}
                 onChange={e => setConfig(c => ({ ...c, criteria: { ...c.criteria, maxResults: Number(e.target.value) } }))}
@@ -1582,7 +1582,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
           </div>
 
           <div className="rounded-lg border border-border p-3 space-y-3">
-            <p className="text-[10px] font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>IMPORT SETTINGS</p>
+            <p className="text-[10px] font-bold text-muted-foreground">IMPORT SETTINGS</p>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-import to CRM</p>
@@ -1594,7 +1594,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
               </button>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Scan Schedule</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Scan Schedule</label>
               <select
                 value={config.scheduleMinutes}
                 onChange={e => setConfig(c => ({ ...c, scheduleMinutes: Number(e.target.value) }))}
@@ -1626,7 +1626,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
 
       {prospectTab === 'results' && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
             <span className="text-sky-400">{results.length} TOTAL</span>
             <span className="text-amber-400">{pendingCount} PENDING</span>
             <span className="text-emerald-400">{approvedCount} IMPORTED</span>
@@ -1672,12 +1672,12 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
                             result.qualificationScore >= 80 ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
                             result.qualificationScore >= 60 ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
                             'text-muted-foreground border-border'
-                          }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          }`} style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {result.qualificationScore}%
                           </span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
                             result.source === 'linkedin' ? 'text-sky-400 border-sky-500/20' : 'text-blue-400 border-blue-500/20'
-                          }`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          }`} style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {result.source === 'linkedin' ? 'LI' : 'FB'}
                           </span>
                         </div>
@@ -1761,7 +1761,7 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
   return (
     <div className="flex flex-col h-full gap-3" style={{ minHeight: 300 }}>
       <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-        <p className="text-xs text-sky-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        <p className="text-xs text-sky-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
           {boomer
             ? 'Test your bot by chatting with it directly. This bypasses platform connections and uses the bot\'s personality and permissions.'
             : 'TEST CHANNEL · DIRECT AI INTERFACE · BYPASSES PLATFORM CONNECTORS'}
@@ -1777,7 +1777,7 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`rounded-lg p-3 text-sm ${msg.role === 'user' ? 'bg-sky-500/5 border border-sky-500/10 ml-4' : 'bg-muted/30 border border-border mr-4'}`}>
-            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {msg.role === 'user' ? (boomer ? 'YOU' : 'OPERATOR') : (boomer ? 'BOT' : 'AGENT')}
             </span>
             <p className="text-foreground/80 whitespace-pre-wrap">{msg.content}</p>
@@ -1785,7 +1785,7 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
         ))}
         {sending && (
           <div className="rounded-lg p-3 text-sm bg-muted/30 border border-border mr-4">
-            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="text-[10px] font-bold text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {boomer ? 'BOT' : 'AGENT'}
             </span>
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -1953,7 +1953,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
           {(['test', 'logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'settings'] as const).map((tabKey: string) => (
             <button key={tabKey} onClick={() => setTab(tabKey as typeof tab)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
-              style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {tabKey === 'test' && <MessageSquare className="w-3 h-3" />}
               {tabKey === 'trading' && <TrendingUp className="w-3 h-3" />}
               {tabKey === 'prospecting' && <Search className="w-3 h-3" />}
@@ -1974,7 +1974,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
           ) : loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <div className="w-5 h-5 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mr-3" />
-              <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <span className="text-sm" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 {boomer ? t('botFactory.loadingContent') : t('botFactory.loadingContentCodename')}
               </span>
             </div>
@@ -1989,7 +1989,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                 {logs.map(log => (
                   <div key={log.id} className={`rounded-lg p-3 text-sm ${log.role === 'user' ? 'bg-sky-500/5 border border-sky-500/10' : 'bg-muted/30 border border-border'}`}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      <span className="text-[10px] font-bold text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                         {log.role === 'user' ? (boomer ? t('botFactory.logRoleUser') : t('botFactory.logRoleUserCodename')) : (boomer ? t('botFactory.logRoleBot') : t('botFactory.logRoleBotCodename'))}
                       </span>
                       <span className="text-[10px] text-muted-foreground/50">{log.platform}</span>
@@ -2012,7 +2012,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                   <div key={mem.id} className="flex items-start gap-3 rounded-lg p-3 bg-muted/20 border border-border group">
                     <MemoryStick className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-bold text-purple-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{mem.key}</span>
+                      <span className="text-xs font-bold text-purple-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{mem.key}</span>
                       <p className="text-sm text-foreground/80 mt-0.5">{mem.value}</p>
                       {mem.context && <span className="text-[10px] text-muted-foreground/50">{mem.context}</span>}
                     </div>
@@ -2026,7 +2026,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
           ) : tab === 'tasks' ? (
             <div className="space-y-4">
               <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-3">
-                <label className="text-xs text-muted-foreground block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <label className="text-xs text-muted-foreground block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomer ? t('botFactory.newScheduledTask') : t('botFactory.newScheduledTaskCodename')}
                 </label>
                 <input value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)}
@@ -2034,7 +2034,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
                 <div className="flex gap-3 items-end">
                   <div className="flex-1">
-                    <label className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    <label className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                       {boomer ? t('botFactory.intervalLabel') : t('botFactory.intervalLabelCodename')}
                     </label>
                     <select value={newTaskCron} onChange={e => setNewTaskCron(e.target.value)}
@@ -2071,7 +2071,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground/80">{task.taskDescription}</p>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className="text-[10px] text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {boomer
                               ? t('botFactory.taskCycleLabel', { minutes: task.cronExpression })
                               : t('botFactory.taskCycleLabelCodename', { minutes: task.cronExpression })}
@@ -2098,13 +2098,13 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomer ? t('botFactory.settingsPersonality') : t('botFactory.settingsPersonalityCodename')}
                 </label>
                 <p className="text-sm text-foreground/70 bg-muted/20 rounded-lg p-3 border border-border">{bot.personality}</p>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomer ? t('botFactory.settingsConnections') : t('botFactory.settingsConnectionsCodename')}
                 </label>
                 {bot.connections.length === 0 ? (
@@ -2114,7 +2114,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                     {bot.connections.map(conn => (
                       <div key={conn.id} className="flex items-center gap-3 rounded-lg p-3 bg-muted/20 border border-border">
                         <span className="text-base">{platformIcons[conn.platform] || '🔗'}</span>
-                        <span className="text-xs font-bold text-sky-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{conn.platform.toUpperCase()}</span>
+                        <span className="text-xs font-bold text-sky-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{conn.platform.toUpperCase()}</span>
                         <StatusBadge status={conn.status === 'connected' ? 'active' : 'paused'} boomer={boomer} t={t} />
                       </div>
                     ))}
@@ -2122,25 +2122,25 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                 )}
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomer ? t('botFactory.settingsPermissions') : t('botFactory.settingsPermissionsCodename')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {bot.permissions.map((p: string) => (
                     <span key={p} className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>{p}</span>
+                      style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{p}</span>
                   ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                  <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {boomer ? t('botFactory.settingsMaxTokens') : t('botFactory.settingsMaxTokensCodename')}
                   </span>
                   <span className="text-sm font-bold text-foreground">{bot.maxTokensPerResponse.toLocaleString()}</span>
                 </div>
                 <div className="rounded-lg p-3 bg-muted/20 border border-border">
-                  <span className="text-[10px] text-muted-foreground block mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  <span className="text-[10px] text-muted-foreground block mb-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {boomer ? t('botFactory.settingsRateLimit') : t('botFactory.settingsRateLimitCodename')}
                   </span>
                   <span className="text-sm font-bold text-foreground">{bot.rateLimitPerMinute}/min</span>
@@ -2156,7 +2156,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
 
 export default function BotFactory() {
   const { t } = useTranslation();
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const [boomerMode] = useBoomerMode();
   const [tab, setTab] = useState<Tab>('marketplace');
   const [bots, setBots] = useState<BotData[]>([]);
   const [marketplace, setMarketplace] = useState<MarketplaceItem[]>([]);
@@ -2172,13 +2172,6 @@ export default function BotFactory() {
   const [, navigate] = useLocation();
   const hasAccess = plan.isOwner || plan.features.has('bot_factory');
   const hasClawBot = plan.isOwner || plan.features.has('claw_bot');
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
 
   const loadBots = useCallback(async () => {
     try {
@@ -2250,7 +2243,15 @@ export default function BotFactory() {
     return <SignInPage context={boomerMode ? t('botFactory.signInContext') : t('botFactory.signInContextCodename')} />;
   }
 
-  if (!plan.loading && !hasAccess) {
+  if (plan.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
     return (
       <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
@@ -2308,7 +2309,7 @@ export default function BotFactory() {
                 <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
                   {boomerMode ? t('botFactory.title') : t('botFactory.titleCodename')}
                 </h1>
-                <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomerMode ? t('botFactory.subtitle') : t('botFactory.subtitleCodename')}
                 </p>
               </div>
@@ -2341,7 +2342,7 @@ export default function BotFactory() {
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Bot className="w-6 h-6 animate-pulse mr-3" />
-              <span className="text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <span className="text-sm" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 {boomerMode ? t('botFactory.loadingBots') : t('botFactory.loadingBotsCodename')}
               </span>
             </div>
@@ -2368,7 +2369,7 @@ export default function BotFactory() {
                     {clawBotItem && (
                       <div className="mb-6">
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {boomerMode ? 'Claw Bot — AI Multi-Agent Suite' : 'CLAW BOT // OPENCLAW MULTI-AGENT SUITE'}
                           </span>
                           <div className="flex-1 h-px bg-emerald-500/20" />
@@ -2385,7 +2386,7 @@ export default function BotFactory() {
                                   {clawBotItem.name}
                                 </h3>
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                   {hasClawBot ? (boomerMode ? 'SUBSCRIBED' : '// ACTIVE') : (boomerMode ? '$145/mo' : '$145/MO')}
                                 </span>
                               </div>
@@ -2394,7 +2395,7 @@ export default function BotFactory() {
                               <div className="flex flex-wrap gap-1 mb-3">
                                 {clawBotItem.capabilities.map(cap => (
                                   <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
                                 ))}
                               </div>
                               {hasClawBot ? (
@@ -2419,7 +2420,7 @@ export default function BotFactory() {
                     {freeItems.length > 0 && (
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {boomerMode ? 'Free Bots' : 'FREE // NO COST'}
                           </span>
                           <div className="flex-1 h-px bg-emerald-500/20" />
@@ -2443,14 +2444,14 @@ export default function BotFactory() {
                                         <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
                                           {item.name}
                                         </h3>
-                                        <PriceBadge price={item.priceMonthly} t={t} />
+                                        <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
                                       </div>
                                       <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
                                       <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
                                       <div className="flex flex-wrap gap-1 mb-3">
                                         {item.capabilities.map(cap => (
                                           <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
                                         ))}
                                       </div>
                                       {isActive ? (
@@ -2479,7 +2480,7 @@ export default function BotFactory() {
                       return (
                       <div key={category} className="mb-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isTrading ? 'text-green-400' : 'text-sky-400'}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isTrading ? 'text-green-400' : 'text-sky-400'}`} style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                             {isTrading ? (boomerMode ? '📈 TRADING BOTS' : '▲ TRADING AGENTS') : category}
                           </span>
                           <div className={`flex-1 h-px ${isTrading ? 'bg-green-500/20' : 'bg-sky-500/20'}`} />
@@ -2504,16 +2505,16 @@ export default function BotFactory() {
                                         <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
                                           {item.name}
                                         </h3>
-                                        <PriceBadge price={item.priceMonthly} t={t} />
+                                        <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
                                         {isActive && (
                                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                             {boomerMode ? 'ACTIVE' : '// ACTIVE'}
                                           </span>
                                         )}
                                         {isCanceled && (
                                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/25"
-                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                             {boomerMode ? 'CANCELED' : '// CANCELED'}
                                           </span>
                                         )}
@@ -2523,7 +2524,7 @@ export default function BotFactory() {
                                       <div className="flex flex-wrap gap-1 mb-3">
                                         {item.capabilities.map(cap => (
                                           <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                            style={{ fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
+                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
                                         ))}
                                       </div>
                                       {isActive ? (
@@ -2599,7 +2600,7 @@ export default function BotFactory() {
                               <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
                               {marketplaceItem && marketplaceItem.priceMonthly > 0 && (
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sub?.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : sub?.status === 'canceled' ? 'bg-red-500/15 text-red-400 border-red-500/25' : 'bg-sky-500/15 text-sky-400 border-sky-500/25'}`}
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                   {sub?.status === 'canceled'
                                     ? (boomerMode ? 'Subscription Canceled' : '// SUB CANCELED')
                                     : (boomerMode ? 'Subscribed' : '// SUBSCRIBED')
@@ -2608,7 +2609,7 @@ export default function BotFactory() {
                               )}
                               {(!marketplaceItem || marketplaceItem.priceMonthly === 0) && bot.marketplaceItemId && (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                   {boomerMode ? 'Free' : '// FREE'}
                                 </span>
                               )}
@@ -2620,7 +2621,7 @@ export default function BotFactory() {
                               </span>
                               {bot.connections.map(c => (
                                 <span key={c.id} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border"
-                                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>{c.platform.toUpperCase()}</span>
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{c.platform.toUpperCase()}</span>
                               ))}
                             </div>
                           </div>
