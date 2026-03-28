@@ -2282,7 +2282,7 @@ export default function BotFactory() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">{boomerMode ? 'Unlock Claw Bot — $145/mo' : 'ACTIVATE CLAW BOT — $145/MO'}</p>
-                  <p className="text-xs text-muted-foreground">{boomerMode ? 'Deploy AI agents across all platforms. Sales, support, recruiting, and more.' : 'AI MULTI-AGENT SUITE · SALES · SUPPORT · RECRUITING · ALL PLATFORMS'}</p>
+                  <p className="text-xs text-muted-foreground">{boomerMode ? 'Pablo AI Call Agent + AI Secretary + OpenClaw Multi-Agent Suite + all premium marketplace bots.' : 'PABLO AI CALL AGENT + AI SECRETARY + OPENCLAW SUITE + ALL PREMIUM BOTS'}</p>
                 </div>
                 <a href={`${import.meta.env.BASE_URL}features`}
                   className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
@@ -2347,7 +2347,7 @@ export default function BotFactory() {
                       <div className="mb-6">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'Claw Bot — AI Multi-Agent Suite' : 'CLAW BOT // OPENCLAW MULTI-AGENT SUITE'}
+                            {boomerMode ? 'Claw Bot — Full AI Operations Bundle' : 'CLAW BOT // PABLO + SECRETARY + OPENCLAW + PREMIUM BOTS'}
                           </span>
                           <div className="flex-1 h-px bg-emerald-500/20" />
                         </div>

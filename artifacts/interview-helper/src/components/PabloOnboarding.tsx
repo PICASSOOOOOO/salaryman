@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { CITY_NAME } from '../gameSystems';
 
 export interface OnboardingAnswers {
@@ -46,10 +47,17 @@ type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'perception' | 'tut_comb
 
 const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'perception', 'tut_combat', 'tut_economy', 'tut_survival', 'done', 'save'];
 
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+function vtFont(boomer: boolean): React.CSSProperties {
+  return boomer ? {} : { fontFamily: "'VT323',monospace" };
+}
+function stFont(boomer: boolean): React.CSSProperties {
+  return boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+}
 
 export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
+  const [boomerMode] = useBoomerMode();
+  const VT = vtFont(boomerMode);
+  const ST = stFont(boomerMode);
   const [step, setStep] = useState<Step>('greet');
   const [combatStyle, setCombatStyle] = useState('');
   const [playstyle, setPlaystyle] = useState('');

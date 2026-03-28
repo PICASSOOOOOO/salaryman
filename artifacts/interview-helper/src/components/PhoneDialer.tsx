@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import {
   Phone, PhoneOff, X, Clock, Users, Zap, CheckSquare, Square, PhoneCall, Loader2,
   Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Merge, Plus, Settings,
@@ -26,6 +27,7 @@ export function PhoneDialer({
   compact?: boolean;
   onClose?: () => void;
 }) {
+  const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const [tab, setTab] = useState<TabMode>('contacts');
   const [contacts, setContacts] = useState<CRMContact[]>([]);
@@ -510,13 +512,13 @@ export function PhoneDialer({
   const inputStyle = {
     background: 'rgba(0,20,0,0.8)', border: `1px solid ${crt(0.2)}`,
     color: crt(0.9), padding: '5px 8px', fontSize: '0.55rem',
-    fontFamily: "'Share Tech Mono', monospace", outline: 'none',
+    ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), outline: 'none',
   };
 
   const btnStyle = (color: (o: number) => string, active?: boolean) => ({
     background: color(active ? 0.2 : 0.08), border: `1px solid ${color(0.3)}`,
     color: color(0.8), cursor: 'pointer', padding: '4px 8px', fontSize: '0.45rem',
-    fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em',
+    ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.08em',
     display: 'flex', alignItems: 'center', gap: 3,
   });
 
@@ -543,7 +545,7 @@ export function PhoneDialer({
     <div style={{
       background: 'rgba(0,8,0,0.97)', border: `1px solid ${crt(0.3)}`,
       boxShadow: `0 0 30px ${crt(0.1)}, inset 0 0 30px rgba(0,0,0,0.5)`,
-      fontFamily: "'Share Tech Mono', monospace",
+      ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
       width: compact ? '340px' : '400px', maxHeight: '600px',
       display: 'flex', flexDirection: 'column', position: 'relative',
     }}>
@@ -572,7 +574,7 @@ export function PhoneDialer({
             background: tab === t.key ? crt(0.08) : 'transparent',
             border: 'none', borderBottom: tab === t.key ? `2px solid ${crt(0.6)}` : '2px solid transparent',
             color: tab === t.key ? crt(0.9) : crt(0.3), cursor: 'pointer',
-            fontSize: '0.42rem', letterSpacing: '0.08em', fontFamily: "'Share Tech Mono', monospace", position: 'relative',
+            fontSize: '0.42rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), position: 'relative',
           }}>
             {t.icon}{t.label}
             {t.badge !== undefined && t.badge > 0 && (
@@ -632,7 +634,7 @@ export function PhoneDialer({
           <div style={{ padding: '10px' }}>
             <div style={{ background: 'rgba(0,20,0,0.8)', border: `1px solid ${crt(0.2)}`, padding: '8px 10px', marginBottom: 8, display: 'flex', alignItems: 'center' }}>
               <input value={manualNumber} onChange={e => setManualNumber(e.target.value)} placeholder="Enter phone number..."
-                style={{ flex: 1, background: 'transparent', border: 'none', color: crt(0.9), fontSize: '0.9rem', fontFamily: "'Share Tech Mono', monospace", outline: 'none', letterSpacing: '0.05em' }}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: crt(0.9), fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), outline: 'none', letterSpacing: '0.05em' }}
                 onKeyDown={e => { if (e.key === 'Enter' && manualNumber.trim()) callSingle(manualNumber); }}
               />
               {manualNumber && <button onClick={() => setManualNumber('')} style={{ background: 'none', border: 'none', color: crt(0.3), cursor: 'pointer' }}><X size={12} /></button>}
@@ -646,7 +648,7 @@ export function PhoneDialer({
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={() => setManualNumber(prev => prev.slice(0, -1))} disabled={!manualNumber} style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: manualNumber ? crt(0.6) : crt(0.15), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.55rem', fontFamily: "'Share Tech Mono', monospace" }}>DEL</button>
-              <button onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }} disabled={!manualNumber.trim() || loading} style={{ flex: 2, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: manualNumber ? 'rgba(0,200,50,0.15)' : crt(0.04), border: `1px solid ${manualNumber ? 'rgba(0,200,50,0.5)' : crt(0.15)}`, color: manualNumber ? crt(0.95) : crt(0.2), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.6rem', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.1em' }}>
+              <button onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }} disabled={!manualNumber.trim() || loading} style={{ flex: 2, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: manualNumber ? 'rgba(0,200,50,0.15)' : crt(0.04), border: `1px solid ${manualNumber ? 'rgba(0,200,50,0.5)' : crt(0.15)}`, color: manualNumber ? crt(0.95) : crt(0.2), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.6rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.1em' }}>
                 <Phone size={12} />{loading ? 'CALLING...' : 'CALL'}
               </button>
             </div>
@@ -700,7 +702,7 @@ export function PhoneDialer({
                 </div>
                 {liveCount > 0 && (
                   <div style={{ padding: '6px 8px', borderTop: `1px solid ${crt(0.15)}` }}>
-                    <button onClick={hangupAll} style={{ width: '100%', padding: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', fontFamily: "'Share Tech Mono', monospace", fontWeight: 'bold' }}>
+                    <button onClick={hangupAll} style={{ width: '100%', padding: '7px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontWeight: 'bold' }}>
                       <PhoneOff size={10} />HANG UP ALL ({liveCount})
                     </button>
                   </div>
@@ -859,7 +861,7 @@ export function PhoneDialer({
             <div style={{ padding: '8px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: 10 }}>
                 {(['power', 'auto', 'predictive'] as const).map(mode => (
-                  <button key={mode} onClick={() => setDialingMode(mode)} style={{ padding: '8px 4px', textAlign: 'center', background: dialingMode === mode ? crt(0.12) : crt(0.04), border: `1px solid ${dialingMode === mode ? crt(0.5) : crt(0.15)}`, color: dialingMode === mode ? crt(0.9) : crt(0.4), cursor: 'pointer', fontSize: '0.45rem', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+                  <button key={mode} onClick={() => setDialingMode(mode)} style={{ padding: '8px 4px', textAlign: 'center', background: dialingMode === mode ? crt(0.12) : crt(0.04), border: `1px solid ${dialingMode === mode ? crt(0.5) : crt(0.15)}`, color: dialingMode === mode ? crt(0.9) : crt(0.4), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.08em' }}>
                     <div style={{ fontSize: '0.8rem', marginBottom: 3 }}>{mode === 'power' ? '⚡' : mode === 'auto' ? '🤖' : '🎯'}</div>
                     {mode.toUpperCase()}
                   </button>
@@ -878,7 +880,7 @@ export function PhoneDialer({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>SIMULTANEOUS LINES</span>
-                      <span style={{ fontSize: '0.5rem', color: crt(0.9), fontFamily: "'Share Tech Mono', monospace", minWidth: 16, textAlign: 'right' }}>{dialConcurrency}</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), minWidth: 16, textAlign: 'right' }}>{dialConcurrency}</span>
                     </div>
                     <input type="range" min={2} max={5} step={1} value={dialConcurrency} onChange={e => setDialConcurrency(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
@@ -889,7 +891,7 @@ export function PhoneDialer({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <span style={{ fontSize: '0.42rem', color: crt(0.5) }}>DELAY BETWEEN CALLS</span>
-                      <span style={{ fontSize: '0.5rem', color: crt(0.9), fontFamily: "'Share Tech Mono', monospace", minWidth: 24, textAlign: 'right' }}>{dialDelay}s</span>
+                      <span style={{ fontSize: '0.5rem', color: crt(0.9), ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), minWidth: 24, textAlign: 'right' }}>{dialDelay}s</span>
                     </div>
                     <input type="range" min={0} max={30} step={1} value={dialDelay} onChange={e => setDialDelay(Number(e.target.value))} style={{ width: '100%', accentColor: crt(0.7), cursor: 'pointer' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.38rem', color: crt(0.35), marginTop: 2 }}>
@@ -911,7 +913,7 @@ export function PhoneDialer({
                 <div>
                   <div style={{ fontSize: '0.45rem', color: crt(0.4), marginBottom: 6 }}>Select contacts from CONTACTS tab, then launch session:</div>
                   <div style={{ fontSize: '0.45rem', color: crt(0.6), marginBottom: 8 }}>{selected.size} contacts selected</div>
-                  <button onClick={startDialingSession} disabled={selected.size === 0} style={{ width: '100%', padding: '8px', background: selected.size > 0 ? crt(0.1) : crt(0.04), border: `1px solid ${selected.size > 0 ? crt(0.4) : crt(0.1)}`, color: selected.size > 0 ? crt(0.9) : crt(0.2), cursor: selected.size > 0 ? 'pointer' : 'default', fontSize: '0.55rem', letterSpacing: '0.1em', fontFamily: "'Share Tech Mono', monospace", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  <button onClick={startDialingSession} disabled={selected.size === 0} style={{ width: '100%', padding: '8px', background: selected.size > 0 ? crt(0.1) : crt(0.04), border: `1px solid ${selected.size > 0 ? crt(0.4) : crt(0.1)}`, color: selected.size > 0 ? crt(0.9) : crt(0.2), cursor: selected.size > 0 ? 'pointer' : 'default', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                     <Radio size={11} />START {dialingMode.toUpperCase()} DIALING ({selected.size})
                   </button>
                 </div>
@@ -1057,7 +1059,7 @@ export function PhoneDialer({
                 </select>
               </div>
 
-              <button onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: crt(0.1), border: `1px solid ${crt(0.35)}`, color: crt(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', fontFamily: "'Share Tech Mono', monospace", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <button onClick={saveSecretaryConfig} disabled={secretarySaving} style={{ padding: '8px', background: crt(0.1), border: `1px solid ${crt(0.35)}`, color: crt(0.9), cursor: 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                 {secretarySaving ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}SAVE CONFIGURATION
               </button>
 
@@ -1088,7 +1090,7 @@ export function PhoneDialer({
                   <option value="secretary" style={{ background: '#030803' }}>Route to Secretary AI</option>
                   <option value="forward" style={{ background: '#030803' }}>Forward to Number</option>
                 </select>
-                <button onClick={addPhoneNumber} disabled={!newNumberForm.number || addingNumber} style={{ padding: '5px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', fontFamily: "'Share Tech Mono', monospace", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <button onClick={addPhoneNumber} disabled={!newNumberForm.number || addingNumber} style={{ padding: '5px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                   {addingNumber ? <Loader2 size={9} className="animate-spin" /> : <Plus size={9} />}ADD NUMBER
                 </button>
               </div>
