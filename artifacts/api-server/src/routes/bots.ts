@@ -58,6 +58,33 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   next();
 }
 
+async function requireBotWrite(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = getUserId(req);
+  const botId = parseInt(parseParam(req.params.id), 10);
+  if (!botId || isNaN(botId)) { next(); return; }
+  try {
+    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+    if (bot.marketplaceItemId) {
+      next();
+      return;
+    }
+    const email = getUserEmail(req);
+    const hasClawBot = await hasFeature(userId, email, "claw_bot");
+    if (!hasClawBot) {
+      res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot" });
+      return;
+    }
+    next();
+  } catch {
+    next();
+  }
+}
+
 function parseParam(val: string | string[] | undefined): string {
   if (Array.isArray(val)) return val[0] ?? "";
   return val ?? "";
@@ -161,7 +188,7 @@ router.get("/bots/:id", requireBotAuth, async (req, res) => {
   }
 });
 
-router.put("/bots/:id", requireBotFactory, async (req, res) => {
+router.put("/bots/:id", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -206,7 +233,7 @@ router.put("/bots/:id", requireBotFactory, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id", requireBotFactory, async (req, res) => {
+router.delete("/bots/:id", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -230,7 +257,7 @@ router.delete("/bots/:id", requireBotFactory, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/connect", requireBotFactory, async (req, res) => {
+router.post("/bots/:id/connect", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -315,7 +342,7 @@ router.post("/bots/:id/connect", requireBotFactory, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/disconnect", requireBotFactory, async (req, res) => {
+router.post("/bots/:id/disconnect", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -381,7 +408,7 @@ router.get("/bots/:id/logs", requireBotAuth, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/test-chat", requireBotFactory, async (req, res) => {
+router.post("/bots/:id/test-chat", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -443,7 +470,7 @@ router.get("/bots/:id/memory", requireBotAuth, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id/memory/:memoryId", requireBotFactory, async (req, res) => {
+router.delete("/bots/:id/memory/:memoryId", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -496,7 +523,7 @@ router.get("/bots/:id/tasks", requireBotAuth, async (req, res) => {
   }
 });
 
-router.post("/bots/:id/tasks", requireBotFactory, async (req, res) => {
+router.post("/bots/:id/tasks", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -535,7 +562,7 @@ router.post("/bots/:id/tasks", requireBotFactory, async (req, res) => {
   }
 });
 
-router.delete("/bots/:id/tasks/:taskId", requireBotFactory, async (req, res) => {
+router.delete("/bots/:id/tasks/:taskId", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -568,7 +595,7 @@ router.delete("/bots/:id/tasks/:taskId", requireBotFactory, async (req, res) => 
   }
 });
 
-router.put("/bots/:id/tasks/:taskId", requireBotFactory, async (req, res) => {
+router.put("/bots/:id/tasks/:taskId", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -633,7 +660,7 @@ router.get("/bots/marketplace/list", async (_req, res) => {
   }
 });
 
-router.post("/bots/:id/linkedin/connect-request", requireBotFactory, async (req, res) => {
+router.post("/bots/:id/linkedin/connect-request", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
