@@ -70,8 +70,11 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
     const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
     if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
     if (bot.marketplaceItemId) {
-      next();
-      return;
+      const [item] = await db.select().from(botMarketplaceTable).where(eq(botMarketplaceTable.id, bot.marketplaceItemId));
+      if (item && item.priceMonthly <= 0) {
+        next();
+        return;
+      }
     }
     const email = getUserEmail(req);
     const hasClawBot = await hasFeature(userId, email, "claw_bot");
@@ -1198,10 +1201,17 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
       return;
     }
 
-    const ownerHasAccess = await hasFeature(bot.ownerId, undefined, "claw_bot");
-    if (!ownerHasAccess) {
-      res.status(403).json({ error: "Bot owner subscription inactive" });
-      return;
+    let needsClawBot = true;
+    if (bot.marketplaceItemId) {
+      const [item] = await db.select().from(botMarketplaceTable).where(eq(botMarketplaceTable.id, bot.marketplaceItemId));
+      if (item && item.priceMonthly <= 0) needsClawBot = false;
+    }
+    if (needsClawBot) {
+      const ownerHasAccess = await hasFeature(bot.ownerId, undefined, "claw_bot");
+      if (!ownerHasAccess) {
+        res.status(403).json({ error: "Bot owner subscription inactive" });
+        return;
+      }
     }
 
     const verified = await verifyWebhookAuth(platform, botId, req);
