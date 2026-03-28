@@ -64,6 +64,12 @@ interface PabloMsg {
   text: string;
 }
 
+function vtFont(boomer: boolean): React.CSSProperties {
+  return boomer ? {} : { fontFamily: "'VT323',monospace" };
+}
+function stFont(boomer: boolean): React.CSSProperties {
+  return boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+}
 const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
 

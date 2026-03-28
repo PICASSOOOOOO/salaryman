@@ -270,12 +270,12 @@ const MODULES: ModuleDef[] = [
     boomerLabel: 'Claw Bot',
     codename: 'OpenClaw Multi-Agent Suite',
     boomerCodename: 'AI Multi-Agent Platform',
-    tagline: 'Sales, support, recruiting, LinkedIn prospecting, trading — all in one OpenClaw-powered suite.',
+    tagline: 'Pablo AI Call Agent + AI Secretary + OpenClaw Multi-Agent Suite + Premium Marketplace Bots — one subscription, every capability.',
     access: 'paid',
     featureKey: 'claw_bot',
     route: '/bots',
     description:
-      'Claw Bot is the OpenClaw-powered multi-agent suite inside SALARYMAN. One subscription at $145/mo unlocks a full roster of AI agents: a sales closer that qualifies leads and handles objections, a customer support agent that resolves tickets 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads by title and industry, a Facebook & Instagram intelligence scout, and an automated trading bot connected to Charles Schwab thinkorswim. Deploy any combination across Telegram, WhatsApp, Discord, and more.',
+      'The Claw Bot bundle ($145/mo) is your all-in-one AI operations package inside SALARYMAN. It includes the Pablo AI Call Agent for autonomous inbound/outbound phone calls, the AI Secretary for scheduling and call routing, and the full OpenClaw-powered multi-agent suite: a sales closer that qualifies leads and handles objections, a customer support agent that resolves tickets 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads by title and industry, a Facebook & Instagram intelligence scout, an automated trading bot connected to Charles Schwab thinkorswim, and access to all premium marketplace bots. Deploy any combination across Telegram, WhatsApp, Discord, and more.',
     features: [
       { name: 'AI Sales Closer', detail: 'Qualifies leads, handles objections, books meetings, and moves prospects through your pipeline around the clock.' },
       { name: 'Customer Support Agent', detail: 'Resolves issues empathetically, answers FAQs, creates tickets, and escalates to a human agent when needed.' },

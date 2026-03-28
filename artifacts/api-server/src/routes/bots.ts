@@ -664,7 +664,7 @@ router.post("/bots/:id/linkedin/connect-request", requireBotFactory, async (req,
   }
 });
 
-router.post("/bots/marketplace/activate", requireBotFactory, async (req, res) => {
+router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { marketplaceItemId } = req.body;

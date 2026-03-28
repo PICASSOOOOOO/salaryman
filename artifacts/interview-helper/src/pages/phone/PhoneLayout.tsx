@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { crt } from '@/lib/phone-utils';
 import { useInsideCalllHome } from './CalllHomeContext';
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 export function PhonePageLayout({
   title,
@@ -57,11 +58,13 @@ export function PhonePageLayout({
     );
   }
 
+  const boomer = useBoomerMode();
+
   return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-      fontFamily: "'Share Tech Mono', monospace",
+      ...(boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
       color: crt(0.85),
       position: 'relative',
       paddingBottom: 100,

@@ -1,6 +1,16 @@
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
+const FONT = "'Share Tech Mono', monospace";
+const FONT_VT = "'VT323', monospace";
+
+function fontFor(boomer: boolean) {
+  return boomer ? undefined : FONT;
+}
+function fontForVT(boomer: boolean) {
+  return boomer ? undefined : FONT_VT;
+}
+
 interface SignInPromptProps {
   context?: string;
   onDismiss?: () => void;
@@ -17,16 +27,16 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         padding: '3rem 1.5rem', textAlign: 'center',
       }}>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '8px' }}>
+        <div style={{ fontFamily: fontFor(boomer), color: 'rgba(56,189,248,0.5)', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '8px' }}>
           {boomer ? 'SIGN IN REQUIRED' : 'ACCESS RESTRICTED'}
         </div>
-        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.08em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
+        <div style={{ fontFamily: fontFor(boomer), fontSize: '0.6rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.08em', marginBottom: '20px', maxWidth: 320, lineHeight: 1.6 }}>
           {context || (boomer ? 'Sign in to access this feature.' : 'Authentication required to access this module.')}
         </div>
         <button
           onClick={login}
           style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#38bdf8',
+            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.4)', padding: '8px 24px',
             background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
             transition: 'all 0.2s',
@@ -58,7 +68,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         }}
       >
         <div style={{
-          fontFamily: "'VT323', monospace", fontSize: '1.6rem', color: '#38bdf8',
+          fontFamily: fontForVT(boomer), fontSize: '1.6rem', color: '#38bdf8',
           letterSpacing: '0.2em', marginBottom: '6px',
           textShadow: '0 0 15px rgba(56,189,248,0.3)',
         }}>
@@ -71,7 +81,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         }} />
 
         <div style={{
-          fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem',
+          fontFamily: fontFor(boomer), fontSize: '0.65rem',
           color: 'rgba(56,189,248,0.4)', letterSpacing: '0.08em',
           lineHeight: 1.7, marginBottom: '24px',
         }}>
@@ -84,7 +94,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         <button
           onClick={login}
           style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.75rem', color: '#38bdf8',
+            fontFamily: fontFor(boomer), fontSize: '0.75rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.5)', padding: '10px 32px',
             background: 'rgba(56,189,248,0.08)', cursor: 'pointer', letterSpacing: '0.15em',
             width: '100%', transition: 'all 0.2s',
@@ -99,7 +109,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
           <button
             onClick={onDismiss}
             style={{
-              fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem',
+              fontFamily: fontFor(boomer), fontSize: '0.55rem',
               color: 'rgba(56,189,248,0.25)', background: 'none', border: 'none',
               cursor: 'pointer', marginTop: '16px', letterSpacing: '0.1em',
               display: 'block', width: '100%',
