@@ -1127,9 +1127,28 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     const safeResponse = escapeTwiml(action.response);
 
     if (action.type === "transfer" && action.transferTo) {
-      const safeNumber = escapeTwiml(action.transferTo);
-      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say><Dial>${safeNumber}</Dial></Response>`);
+      const confName = `pablo-xfer-${CallSid}`;
+      const safeConf = escapeTwiml(confName);
+      try {
+        const client = getTwilioClient();
+        const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
+        const fromNumber = userNumbers[0]?.number || process.env.TWILIO_PHONE_NUMBER || "";
+        if (fromNumber) {
+          client.calls.create({
+            to: action.transferTo,
+            from: fromNumber,
+            twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${safeConf}</Conference></Dial></Response>`,
+            statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
+            statusCallbackMethod: "POST",
+            statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+          }).catch((e: unknown) => console.error("[Pablo] transfer dial error:", e instanceof Error ? e.message : "Unknown"));
+        }
+      } catch (e: unknown) {
+        console.error("[Pablo] transfer setup error:", e instanceof Error ? e.message : "Unknown");
+      }
+      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
+      await db.update(callHistoryTable).set({ callType: "pablo_transfer" }).where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.userId, userId)));
       return;
     }
 
@@ -1321,15 +1340,41 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
       return;
     }
 
+    if (campaign.scheduleJson) {
+      try {
+        const schedule = JSON.parse(campaign.scheduleJson);
+        if (schedule.startTime && schedule.endTime) {
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const [sH, sM] = (schedule.startTime as string).split(":").map(Number);
+          const [eH, eM] = (schedule.endTime as string).split(":").map(Number);
+          if (currentMinutes < sH * 60 + (sM ?? 0) || currentMinutes > eH * 60 + (eM ?? 0)) {
+            res.status(400).json({ error: `Campaign scheduled for ${schedule.startTime} - ${schedule.endTime}. Current time is outside schedule.` });
+            return;
+          }
+        }
+      } catch {}
+    }
+
     await db.update(pabloOutboundCampaignsTable).set({ status: "active", updatedAt: new Date() }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+
+    const [dialingSession] = await db.insert(dialingSessionsTable).values({
+      userId,
+      mode: "pablo",
+      status: "active",
+      totalNumbers: leads.length,
+      queueJson: JSON.stringify(leads),
+      settingsJson: JSON.stringify({ campaignId, script: campaign.script }),
+    }).returning();
 
     const client = getTwilioClient();
     const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
     const base = host ? `https://${host}/api` : "/api";
     const greeting = campaign.script.split('.')[0] + ".";
     let dialed = 0;
+    const batchSize = Math.min(leads.length, 50);
 
-    for (const lead of leads.slice(0, 5)) {
+    for (const lead of leads.slice(0, batchSize)) {
       try {
         const call = await client.calls.create({
           to: lead.phone,
@@ -1355,8 +1400,13 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
     }
 
     await db.update(pabloOutboundCampaignsTable).set({ dialedCount: dialed }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+    await db.update(dialingSessionsTable).set({ dialedCount: dialed, status: dialed >= leads.length ? "completed" : "active" }).where(eq(dialingSessionsTable.id, dialingSession.id));
 
-    res.json({ ok: true, dialed, total: leads.length });
+    if (dialed >= leads.length) {
+      await db.update(pabloOutboundCampaignsTable).set({ status: "completed", updatedAt: new Date() }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+    }
+
+    res.json({ ok: true, dialed, total: leads.length, dialingSessionId: dialingSession.id });
   } catch (err: unknown) {
     console.error("[Pablo] campaign start error:", err instanceof Error ? err.message : "Unknown");
     res.status(500).json({ error: "Failed to start campaign" });
