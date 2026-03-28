@@ -61,11 +61,24 @@ export async function isActiveDeveloperOrgMember(userId: string): Promise<boolea
   return rows.length > 0;
 }
 
+const LEGACY_ALIASES: Record<string, FeatureKey> = {
+  bot_factory: "claw_bot",
+};
+
 export async function getUserFeatures(userId: string, email?: string | null): Promise<Set<FeatureKey>> {
   if (isOwnerEmail(email)) return new Set(FEATURE_KEYS);
   if (await isActiveDeveloperOrgMember(userId)) return new Set(FEATURE_KEYS);
   const rows = await db.select().from(userFeaturesTable).where(eq(userFeaturesTable.userId, userId));
-  return new Set(rows.map(r => r.featureKey as FeatureKey));
+  const features = new Set<FeatureKey>();
+  for (const r of rows) {
+    const key = r.featureKey as string;
+    if (FEATURE_KEYS.includes(key as FeatureKey)) {
+      features.add(key as FeatureKey);
+    }
+    const alias = LEGACY_ALIASES[key];
+    if (alias) features.add(alias);
+  }
+  return features;
 }
 
 export async function hasActiveTrial(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
@@ -99,11 +112,18 @@ export async function hasActiveTrial(userId: string, email: string | undefined |
 export async function hasFeature(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
   if (isOwnerEmail(email)) return true;
   if (await isActiveDeveloperOrgMember(userId)) return true;
-  const [row] = await db
-    .select()
-    .from(userFeaturesTable)
-    .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, feature)));
-  if (row) return true;
+  const keysToCheck = [feature as string];
+  const reverseAliases = Object.entries(LEGACY_ALIASES);
+  for (const [legacy, mapped] of reverseAliases) {
+    if (mapped === feature) keysToCheck.push(legacy);
+  }
+  for (const key of keysToCheck) {
+    const [row] = await db
+      .select()
+      .from(userFeaturesTable)
+      .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, key)));
+    if (row) return true;
+  }
   return hasActiveTrial(userId, email, feature);
 }
 

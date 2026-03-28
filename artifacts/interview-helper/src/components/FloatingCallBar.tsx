@@ -5,13 +5,16 @@ import { SignalMeter } from '@/pages/phone/PhoneLayout';
 import {
   crt, red, amber, blue, ENDED_STATUSES, formatPhone, callStatusToSignalLevel,
 } from '@/lib/phone-utils';
+import { useBoomerMode } from '@/hooks/use-mobile';
 
-function ElapsedCompact({ seconds }: { seconds: number }) {
+const FONT = "'Share Tech Mono', monospace";
+
+function ElapsedCompact({ seconds, boomer = false }: { seconds: number; boomer?: boolean }) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return (
     <span style={{
-      fontFamily: "'Share Tech Mono', monospace",
+      fontFamily: boomer ? undefined : FONT,
       fontSize: '0.65rem',
       color: crt(0.85),
       fontVariantNumeric: 'tabular-nums',
@@ -25,9 +28,11 @@ function ElapsedCompact({ seconds }: { seconds: number }) {
 function TransferInput({
   onConfirm,
   onCancel,
+  boomer = false,
 }: {
   onConfirm: (num: string) => void;
   onCancel: () => void;
+  boomer?: boolean;
 }) {
   const [val, setVal] = useState('');
   return (
@@ -41,7 +46,7 @@ function TransferInput({
         style={{
           flex: 1, background: 'rgba(0,0,0,0.5)', border: `1px solid ${blue(0.25)}`, borderRadius: 4,
           color: crt(0.85), fontSize: '0.6rem', padding: '4px 8px', outline: 'none',
-          fontFamily: "'Share Tech Mono', monospace",
+          fontFamily: boomer ? undefined : FONT,
         }}
       />
       <button
@@ -49,7 +54,7 @@ function TransferInput({
         style={{
           background: blue(0.15), border: `1px solid ${blue(0.35)}`, borderRadius: 4,
           color: blue(0.9), fontSize: '0.55rem', padding: '4px 8px', cursor: 'pointer',
-          fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em',
+          fontFamily: boomer ? undefined : FONT, letterSpacing: '0.08em',
         }}
       >XFER</button>
       <button
@@ -66,12 +71,14 @@ function CallRow({
   onHold,
   onTransfer,
   onHangup,
+  boomer = false,
 }: {
   call: { callSid: string; name: string; phone: string; status: string; elapsed: number; muted?: boolean; onHold?: boolean; signalLevel?: number };
   onMute: () => void;
   onHold: () => void;
   onTransfer: () => void;
   onHangup: () => void;
+  boomer?: boolean;
 }) {
   const isLive = call.status === 'in-progress';
   const isRinging = call.status === 'ringing';
@@ -129,7 +136,7 @@ function CallRow({
           <span style={{ fontSize: '0.48rem', color: isLive ? crt(0.5) : isRinging ? amber(0.6) : crt(0.3), letterSpacing: '0.1em' }}>
             {isLive ? 'LIVE' : isRinging ? 'RING' : call.status.toUpperCase().slice(0, 6)}
           </span>
-          {isLive && <ElapsedCompact seconds={call.elapsed} />}
+          {isLive && <ElapsedCompact seconds={call.elapsed} boomer={boomer} />}
           <SignalMeter level={sig} max={5} color={isLive ? crt : isRinging ? amber : undefined} />
           {call.muted && <span style={{ fontSize: '0.42rem', color: amber(0.7) }}>MUTED</span>}
           {call.onHold && <span style={{ fontSize: '0.42rem', color: amber(0.7) }}>HOLD</span>}
@@ -172,6 +179,8 @@ function CallRow({
 
 export function ActiveCallBar() {
   const { activeCalls, toggleMute, toggleHold, transferCall, hangupOne } = useActiveCallContext();
+  const [boomerMode] = useBoomerMode();
+  const boomer = boomerMode;
   const [expanded, setExpanded] = useState(false);
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
 
@@ -189,7 +198,7 @@ export function ActiveCallBar() {
         background: 'linear-gradient(160deg, rgba(2,12,10,0.95) 0%, rgba(0,8,16,0.95) 100%)',
         borderBottom: `1px solid ${crt(0.15)}`,
         overflow: 'hidden',
-        fontFamily: "'Share Tech Mono', monospace",
+        fontFamily: boomer ? undefined : FONT,
       }}
     >
       <div
@@ -222,7 +231,7 @@ export function ActiveCallBar() {
               {primary.status === 'in-progress' && (
                 <>
                   <span style={{ fontSize: '0.52rem', color: crt(0.2) }}>·</span>
-                  <ElapsedCompact seconds={primary.elapsed} />
+                  <ElapsedCompact seconds={primary.elapsed} boomer={boomer} />
                 </>
               )}
             </>
@@ -244,11 +253,13 @@ export function ActiveCallBar() {
               onHold={() => toggleHold(call.callSid, !!call.onHold)}
               onTransfer={() => setTransferTarget(t => t === call.callSid ? null : call.callSid)}
               onHangup={() => hangupOne(call.callSid)}
+              boomer={boomer}
             />
             {transferTarget === call.callSid && (
               <TransferInput
                 onConfirm={(num) => { transferCall(call.callSid, num); setTransferTarget(null); }}
                 onCancel={() => setTransferTarget(null)}
+                boomer={boomer}
               />
             )}
           </div>
@@ -261,11 +272,13 @@ export function ActiveCallBar() {
             onHold={() => toggleHold(primary.callSid, !!primary.onHold)}
             onTransfer={() => setTransferTarget(t => t === primary.callSid ? null : primary.callSid)}
             onHangup={() => hangupOne(primary.callSid)}
+            boomer={boomer}
           />
           {transferTarget === primary.callSid && (
             <TransferInput
               onConfirm={(num) => { transferCall(primary.callSid, num); setTransferTarget(null); }}
               onCancel={() => setTransferTarget(null)}
+              boomer={boomer}
             />
           )}
         </>
