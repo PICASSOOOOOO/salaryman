@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, subscribersTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS } from "@workspace/db";
 import { eq, and, gt, or } from "drizzle-orm";
-import { FEATURE_CATALOG } from "../lib/plan";
+import { FEATURE_CATALOG, resolveFeatureKey } from "../lib/plan";
 
 const router: IRouter = Router();
 
@@ -21,12 +21,13 @@ router.post("/trials", async (req, res) => {
     return;
   }
 
-  if (!featureKey || !FEATURE_KEYS.includes(featureKey as FeatureKey)) {
+  const resolvedKey = featureKey ? resolveFeatureKey(featureKey as string) : undefined;
+  if (!resolvedKey) {
     res.status(400).json({ error: "Invalid feature key", validFeatures: [...FEATURE_KEYS] });
     return;
   }
 
-  const fk = featureKey as FeatureKey;
+  const fk = resolvedKey;
   const catalog = FEATURE_CATALOG[fk];
 
   const userId = req.isAuthenticated?.() ? req.user.id : null;

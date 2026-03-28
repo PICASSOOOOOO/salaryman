@@ -2191,10 +2191,10 @@ export default function BotFactory() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || !hasAccess) return;
+    if (!isAuthenticated) return;
     setLoading(true);
     Promise.all([loadBots(), loadMarketplace()]).finally(() => setLoading(false));
-  }, [isAuthenticated, hasAccess, loadBots, loadMarketplace]);
+  }, [isAuthenticated, loadBots, loadMarketplace]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2250,47 +2250,6 @@ export default function BotFactory() {
     );
   }
 
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
-        <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
-          <div className="max-w-lg w-full">
-            <div className="rounded-2xl border border-amber-500/20 bg-card/80 backdrop-blur-sm p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-5">
-                <Lock className="w-8 h-8 text-amber-400" />
-              </div>
-              <h1 className="text-xl font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.6rem' }}>
-                {boomerMode ? t('botFactory.title') : t('botFactory.titleCodename')}
-              </h1>
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                {boomerMode ? t('botFactory.accessDenied') : t('botFactory.accessDeniedCodename')}
-              </p>
-              <div className="flex items-baseline justify-center gap-1 mb-6">
-                <span className="text-3xl font-bold text-foreground">$145</span>
-                <span className="text-sm text-muted-foreground">/mo</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-left mb-6">
-                {['AI Sales Closer', 'Customer Support Agent', 'Content Writer', 'AI Recruiter', 'LinkedIn Prospector', 'Facebook & Instagram Scout', 'Telegram & WhatsApp', 'Discord & Gmail', 'Bot Marketplace', 'Persistent Memory', 'Scheduled Automation', 'Automated Trading Bot'].map(f => (
-                  <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Check className="w-3 h-3 text-sky-400 flex-shrink-0" />
-                    <span>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <a href={`${import.meta.env.BASE_URL}features`}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
-                <Zap className="w-4 h-4" />
-                {boomerMode ? 'Subscribe to Claw Bot' : 'ACTIVATE CLAW BOT'}
-              </a>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
@@ -2314,6 +2273,25 @@ export default function BotFactory() {
               </div>
             </div>
           </div>
+
+          {!hasAccess && (
+            <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Unlock Claw Bot — $145/mo' : 'ACTIVATE CLAW BOT — $145/MO'}</p>
+                  <p className="text-xs text-muted-foreground">{boomerMode ? 'Deploy AI agents across all platforms. Sales, support, recruiting, and more.' : 'AI MULTI-AGENT SUITE · SALES · SUPPORT · RECRUITING · ALL PLATFORMS'}</p>
+                </div>
+                <a href={`${import.meta.env.BASE_URL}features`}
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
+                  <Zap className="w-3.5 h-3.5" />
+                  {boomerMode ? 'Subscribe' : 'ACTIVATE'}
+                </a>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 mb-6">
             <button onClick={() => setTab('marketplace')}

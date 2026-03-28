@@ -81,32 +81,45 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
   return features;
 }
 
+export function resolveFeatureKey(raw: string): FeatureKey | undefined {
+  if (FEATURE_KEYS.includes(raw as FeatureKey)) return raw as FeatureKey;
+  const alias = LEGACY_ALIASES[raw];
+  return alias;
+}
+
 export async function hasActiveTrial(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {
   const now = new Date();
-  if (email) {
+  const keysToCheck: string[] = [feature];
+  for (const [legacy, mapped] of Object.entries(LEGACY_ALIASES)) {
+    if (mapped === feature) keysToCheck.push(legacy);
+  }
+  for (const key of keysToCheck) {
+    if (email) {
+      const [row] = await db
+        .select()
+        .from(featureTrialsTable)
+        .where(
+          and(
+            eq(featureTrialsTable.email, email.toLowerCase()),
+            eq(featureTrialsTable.featureKey, key),
+            gt(featureTrialsTable.trialExpiresAt, now)
+          )
+        );
+      if (row) return true;
+    }
     const [row] = await db
       .select()
       .from(featureTrialsTable)
       .where(
         and(
-          eq(featureTrialsTable.email, email.toLowerCase()),
-          eq(featureTrialsTable.featureKey, feature),
+          eq(featureTrialsTable.userId, userId),
+          eq(featureTrialsTable.featureKey, key),
           gt(featureTrialsTable.trialExpiresAt, now)
         )
       );
     if (row) return true;
   }
-  const [row] = await db
-    .select()
-    .from(featureTrialsTable)
-    .where(
-      and(
-        eq(featureTrialsTable.userId, userId),
-        eq(featureTrialsTable.featureKey, feature),
-        gt(featureTrialsTable.trialExpiresAt, now)
-      )
-    );
-  return !!row;
+  return false;
 }
 
 export async function hasFeature(userId: string, email: string | undefined | null, feature: FeatureKey): Promise<boolean> {

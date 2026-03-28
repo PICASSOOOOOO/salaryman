@@ -12,7 +12,7 @@ import {
   isReservedOrgName,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { grantFeature } from "../lib/plan";
+import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 
 const router = Router();
@@ -492,7 +492,8 @@ router.post("/orgs/:orgId/features", async (req, res) => {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
-  const { featureKey, stripeSubscriptionId } = (req.body ?? {}) as { featureKey?: string; stripeSubscriptionId?: string };
+  const { featureKey: rawFeatureKey, stripeSubscriptionId } = (req.body ?? {}) as { featureKey?: string; stripeSubscriptionId?: string };
+  const featureKey = rawFeatureKey ? (resolveFeatureKey(rawFeatureKey) ?? rawFeatureKey) : undefined;
   if (!featureKey || !FEATURE_KEYS.includes(featureKey as FeatureKey)) {
     res.status(400).json({ error: "Valid featureKey required" });
     return;
@@ -566,8 +567,9 @@ router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
     res.status(403).json({ error: "Only org owner can initiate company billing" }); return;
   }
 
-  const { feature } = (req.body ?? {}) as { feature?: string };
-  if (!feature || !FEATURE_KEYS.includes(feature as FeatureKey)) {
+  const { feature: rawFeature } = (req.body ?? {}) as { feature?: string };
+  const feature = rawFeature ? resolveFeatureKey(rawFeature) : undefined;
+  if (!feature) {
     res.status(400).json({ error: "Valid feature required" });
     return;
   }

@@ -1,6 +1,6 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
-import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG } from "../lib/plan";
+import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
 import { eq, sum, desc, and } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
@@ -150,8 +150,9 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     return;
   }
 
-  const feature = req.body?.feature as FeatureKey | undefined;
-  if (!feature || !FEATURE_KEYS.includes(feature)) {
+  const rawFeature = req.body?.feature as string | undefined;
+  const feature = rawFeature ? resolveFeatureKey(rawFeature) : undefined;
+  if (!feature) {
     res.status(400).json({ error: "Invalid feature", validFeatures: [...FEATURE_KEYS] });
     return;
   }
@@ -465,10 +466,11 @@ router.post(
           } else {
             console.warn("[Stripe] bot_subscription checkout.completed but missing data", { userId, marketplaceItemId, subscriptionId });
           }
-        } else if (userId && feature && FEATURE_KEYS.includes(feature)) {
+        } else if (userId && feature && (FEATURE_KEYS.includes(feature) || resolveFeatureKey(feature))) {
+          const resolvedFeature = resolveFeatureKey(feature) ?? feature as FeatureKey;
           const grantedBy = session.metadata?.grantedBy ?? "stripe";
           const orgIdMeta = session.metadata?.orgId;
-          await grantFeature(userId, feature, grantedBy, subscriptionId);
+          await grantFeature(userId, resolvedFeature, grantedBy, subscriptionId);
           console.log(`[Stripe] User ${userId} activated ${feature} (sub: ${subscriptionId}, grantedBy: ${grantedBy})`);
 
           if (orgIdMeta) {

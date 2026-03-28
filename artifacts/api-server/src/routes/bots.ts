@@ -35,6 +35,14 @@ function getUserEmail(req: Request): string | undefined {
   return (req as Request & { user?: { email?: string } }).user?.email;
 }
 
+function requireBotAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  next();
+}
+
 async function requireBotFactory(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -55,7 +63,7 @@ function parseParam(val: string | string[] | undefined): string {
   return val ?? "";
 }
 
-router.get("/bots", requireBotFactory, async (req, res) => {
+router.get("/bots", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const bots = await db
@@ -114,7 +122,7 @@ router.post("/bots", requireBotFactory, async (req, res) => {
   }
 });
 
-router.get("/bots/:id", requireBotFactory, async (req, res) => {
+router.get("/bots/:id", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -343,7 +351,7 @@ router.post("/bots/:id/disconnect", requireBotFactory, async (req, res) => {
   }
 });
 
-router.get("/bots/:id/logs", requireBotFactory, async (req, res) => {
+router.get("/bots/:id/logs", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -407,7 +415,7 @@ router.post("/bots/:id/test-chat", requireBotFactory, async (req, res) => {
   }
 });
 
-router.get("/bots/:id/memory", requireBotFactory, async (req, res) => {
+router.get("/bots/:id/memory", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -461,7 +469,7 @@ router.delete("/bots/:id/memory/:memoryId", requireBotFactory, async (req, res) 
   }
 });
 
-router.get("/bots/:id/tasks", requireBotFactory, async (req, res) => {
+router.get("/bots/:id/tasks", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
@@ -738,7 +746,7 @@ router.post("/bots/marketplace/activate", requireBotFactory, async (req, res) =>
   }
 });
 
-router.get("/bots/marketplace/subscriptions", requireBotFactory, async (req, res) => {
+router.get("/bots/marketplace/subscriptions", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
     const subs = await db
