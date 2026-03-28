@@ -11,6 +11,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+pool.on("error", (err) => {
+  console.error("[DB Pool] Unexpected error on idle client — connection will be retried automatically", err.message);
+});
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
