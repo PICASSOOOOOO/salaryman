@@ -58,7 +58,7 @@ export function PhonePageLayout({
     );
   }
 
-  const boomer = useBoomerMode();
+  const [boomer] = useBoomerMode();
 
   return (
     <div style={{
