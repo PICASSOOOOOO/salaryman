@@ -100,6 +100,23 @@ Your spoken response should come BEFORE all tags. Tags will be stripped before s
   return prompt;
 }
 
+function extractAllowedTransferNumbers(config: SecretaryConfig): string[] {
+  const numbers: string[] = [];
+  if (config.forwardToNumber) {
+    numbers.push(config.forwardToNumber.replace(/\D/g, ""));
+  }
+  if (config.transferRouting) {
+    const phoneMatches = config.transferRouting.match(/\+?\d[\d\s()-]{8,}/g);
+    if (phoneMatches) {
+      for (const m of phoneMatches) {
+        const digits = m.replace(/\D/g, "");
+        if (digits.length >= 10) numbers.push(digits);
+      }
+    }
+  }
+  return numbers;
+}
+
 function parseAction(response: string): PabloAction {
   const extracted: ExtractedInfo = {};
 
@@ -136,7 +153,7 @@ function parseAction(response: string): PabloAction {
       const e164 = digits.startsWith("1") && digits.length === 11 ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
       return { type: "transfer", response: cleanResponse, transferTo: e164, extractedInfo: extracted };
     }
-    return { type: "respond", response: cleanResponse + " I wasn't able to complete the transfer. How else can I help?", extractedInfo: extracted };
+    return { type: "take_message", response: cleanResponse + " I'll take a message and have someone get back to you.", extractedInfo: extracted };
   }
   if (/\[ACTION:TAKE_MESSAGE\]/i.test(response)) {
     return { type: "take_message", response: cleanResponse, extractedInfo: extracted };
@@ -242,6 +259,25 @@ export async function processPabloTurn(
 
   const rawResponse = completion.choices[0]?.message?.content?.trim() ?? "Thank you for calling. Is there anything else I can help with?";
   const action = parseAction(rawResponse);
+
+  if (action.type === "transfer" && action.transferTo) {
+    const allowedNumbers = extractAllowedTransferNumbers(config);
+    if (allowedNumbers.length > 0) {
+      const normalizedTarget = action.transferTo.replace(/\D/g, "");
+      const isAllowed = allowedNumbers.some((n) => normalizedTarget.endsWith(n) || n.endsWith(normalizedTarget));
+      if (!isAllowed) {
+        action.type = "take_message";
+        action.response = action.response + " I'll take a message and have the right person get back to you.";
+        action.transferTo = undefined;
+      }
+    } else if (!config.forwardToNumber) {
+      action.type = "take_message";
+      action.response = action.response + " I'll take a message and have someone get back to you shortly.";
+      action.transferTo = undefined;
+    } else {
+      action.transferTo = config.forwardToNumber;
+    }
+  }
 
   conversation.push({
     role: "pablo",

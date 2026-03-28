@@ -982,6 +982,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         if (config.autoAnswer) {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
+<Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="alice">${escapeTwiml(greeting)}</Say>
 </Gather>
@@ -1236,7 +1237,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
     const call = await client.calls.create({
       to: phoneNumber,
       from: userNumbers[0].number,
-      twiml: `<Response><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="alice">${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="alice">${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1333,7 +1334,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
         const call = await client.calls.create({
           to: lead.phone,
           from: userNumbers[0].number,
-          twiml: `<Response><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="alice">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="alice">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1882,6 +1883,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
         if (config.autoAnswer) {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
+<Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="alice">${escapeTwiml(greeting)}</Say>
 </Gather>
