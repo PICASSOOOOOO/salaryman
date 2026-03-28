@@ -80,8 +80,10 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
       return;
     }
     next();
-  } catch {
-    next();
+  } catch (err) {
+    console.error("requireBotWrite authorization check failed:", err);
+    res.status(500).json({ error: "Authorization check failed" });
+    return;
   }
 }
 
