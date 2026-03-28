@@ -56,7 +56,7 @@ The project is structured as a pnpm workspace monorepo utilizing TypeScript.
     - OpenAI GPT-4o (via `@workspace/integrations-openai-ai-server`)
     - OpenClaw gateway (`ws://127.0.0.1:18789`, `openclaw` npm package)
 - **Authentication:** Replit Auth (OIDC), storing sessions in PostgreSQL.
-- **Telephony:** Twilio SDK (direct use of `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` secrets).
+- **Telephony:** Twilio SDK (direct use of `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` secrets). Pablo autonomous call agent provides multi-turn AI-powered phone conversations (inbound + outbound), with CRM integration, call recording, intelligent transfer routing, and outbound campaign auto-dialer. DB tables: `pablo_call_sessions` (conversation state), `pablo_outbound_campaigns` (lead lists). Secretary config extended with `autoAnswer`, `qualificationQuestions`, `transferRouting`, `outboundScript`, `outboundSchedule` fields. API routes: `/twilio/pablo/gather`, `/twilio/pablo/outbound/gather`, `/twilio/pablo/outbound/dial`, `/twilio/pablo/campaigns`.
 - **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage).
 - **Database:** PostgreSQL.
 - **Payment Processing:** Stripe.

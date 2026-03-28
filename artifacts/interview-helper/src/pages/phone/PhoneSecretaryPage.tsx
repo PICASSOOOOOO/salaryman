@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X } from 'lucide-react';
+import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X, Zap, Upload, PhoneOutgoing, FileText } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, StatBlock, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
 import {
   crt, amber, blue, red, purple,
   type SecretaryConfig,
+  type OutboundCampaign,
 } from '@/lib/phone-utils';
 
 export default function PhoneSecretaryPage() {
@@ -23,6 +24,12 @@ export default function PhoneSecretaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [campaigns, setCampaigns] = useState<OutboundCampaign[]>([]);
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignScript, setCampaignScript] = useState('');
+  const [campaignLeads, setCampaignLeads] = useState('');
+  const [campaignCreating, setCampaignCreating] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -44,6 +51,8 @@ export default function PhoneSecretaryPage() {
               isEnabled: false, personality: 'professional', greetingScript: null, screeningRules: null,
               businessHoursStart: '09:00', businessHoursEnd: '17:00', businessDays: 'Mon-Fri',
               routingInstructions: null, forwardToNumber: null, afterHoursAction: 'voicemail',
+              autoAnswer: false, qualificationQuestions: null, transferRouting: null,
+              outboundScript: null, outboundSchedule: null,
             };
             setSecretaryForm(defaults);
           }
@@ -53,7 +62,54 @@ export default function PhoneSecretaryPage() {
         setError(e instanceof Error ? e.message : 'Failed to load secretary configuration');
       })
       .finally(() => setLoading(false));
+
+    fetch(apiUrl('twilio/pablo/campaigns'), { credentials: 'include' })
+      .then(async r => { if (r.ok) { const d = await r.json(); setCampaigns(d.campaigns ?? []); } })
+      .catch(() => {});
   }, [apiUrl, handleAuthStatus]);
+
+  const createCampaign = async () => {
+    if (!campaignName || !campaignScript || !campaignLeads) return;
+    setCampaignCreating(true);
+    try {
+      const leads = campaignLeads.split('\n').filter(l => l.trim()).map(l => {
+        const parts = l.split(',');
+        return { phone: parts[0]?.trim() ?? '', name: parts[1]?.trim() ?? '' };
+      }).filter(l => l.phone);
+      const r = await fetch(apiUrl('twilio/pablo/campaigns'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: campaignName, script: campaignScript, leadsJson: JSON.stringify(leads) }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setCampaigns(prev => [d.campaign, ...prev]);
+        setCampaignName(''); setCampaignScript(''); setCampaignLeads('');
+      }
+    } catch {} finally { setCampaignCreating(false); }
+  };
+
+  const startCampaign = async (id: number) => {
+    try {
+      const r = await fetch(apiUrl(`twilio/pablo/campaigns/${id}/start`), {
+        method: 'POST', credentials: 'include',
+      });
+      if (r.ok) {
+        setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: 'active' } : c));
+      }
+    } catch {}
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setCampaignLeads(text);
+    };
+    reader.readAsText(file);
+  };
 
   const saveConfig = async () => {
     setSaving(true);
@@ -373,6 +429,171 @@ export default function PhoneSecretaryPage() {
           </PhoneCard>
         </div>
       </div>
+
+      <PhoneCard glow={!!secretaryForm.autoAnswer} style={{ marginTop: 20 }}>
+        <PhoneCardHeader accent={purple(0.5)}>
+          <Zap size={10} style={{ marginRight: 4 }} /> PABLO AUTONOMOUS AGENT
+        </PhoneCardHeader>
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{
+            padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: secretaryForm.autoAnswer ? `linear-gradient(90deg, ${purple(0.06)}, transparent)` : 'transparent',
+            border: `1px solid ${secretaryForm.autoAnswer ? purple(0.2) : crt(0.06)}`,
+          }}>
+            <div>
+              <div style={{ fontSize: '0.65rem', color: secretaryForm.autoAnswer ? purple(0.9) : crt(0.5), letterSpacing: '0.1em' }}>
+                AUTO-ANSWER MODE
+              </div>
+              <div style={{ fontSize: '0.42rem', color: secretaryForm.autoAnswer ? purple(0.4) : crt(0.2), marginTop: 3, maxWidth: 400 }}>
+                When enabled, Pablo will autonomously handle inbound calls with multi-turn conversation, CRM integration, and intelligent call routing. No human intervention needed.
+              </div>
+            </div>
+            <button
+              onClick={() => update('autoAnswer', !secretaryForm.autoAnswer)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              {secretaryForm.autoAnswer
+                ? <ToggleRight size={32} style={{ color: purple(0.8) }} />
+                : <ToggleLeft size={32} style={{ color: crt(0.2) }} />
+              }
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
+                QUALIFICATION QUESTIONS
+              </label>
+              <textarea
+                value={secretaryForm.qualificationQuestions ?? ''}
+                onChange={e => update('qualificationQuestions', e.target.value || null)}
+                placeholder={'e.g.\n- What is your budget range?\n- What is your timeline?\n- Who is the decision maker?'}
+                style={{ ...INPUT_STYLE, height: 120, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
+              />
+              <div style={{ fontSize: '0.38rem', color: crt(0.15), marginTop: 4 }}>
+                Pablo will weave these questions into the conversation naturally.
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
+                TRANSFER ROUTING RULES
+              </label>
+              <textarea
+                value={secretaryForm.transferRouting ?? ''}
+                onChange={e => update('transferRouting', e.target.value || null)}
+                placeholder={'e.g.\n- Sales inquiries → +15551234567\n- Support issues → +15559876543\n- VIP clients → transfer immediately'}
+                style={{ ...INPUT_STYLE, height: 120, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
+              />
+              <div style={{ fontSize: '0.38rem', color: crt(0.15), marginTop: 4 }}>
+                Pablo will transfer calls based on these rules automatically.
+              </div>
+            </div>
+          </div>
+        </div>
+      </PhoneCard>
+
+      <PhoneCard style={{ marginTop: 20 }}>
+        <PhoneCardHeader accent={amber(0.5)}>
+          <PhoneOutgoing size={10} style={{ marginRight: 4 }} /> OUTBOUND AUTO-DIALER
+        </PhoneCardHeader>
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
+              DEFAULT OUTBOUND SCRIPT
+            </label>
+            <textarea
+              value={secretaryForm.outboundScript ?? ''}
+              onChange={e => update('outboundScript', e.target.value || null)}
+              placeholder="e.g. Hi, I'm calling from [Company] to follow up on your recent inquiry. We'd love to schedule a brief demo of our platform..."
+              style={{ ...INPUT_STYLE, height: 100, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
+            />
+          </div>
+
+          <div style={{ borderTop: `1px solid ${crt(0.06)}`, paddingTop: 16 }}>
+            <div style={{ fontSize: '0.55rem', color: amber(0.8), letterSpacing: '0.12em', marginBottom: 12 }}>
+              CREATE OUTBOUND CAMPAIGN
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN NAME</label>
+                <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Q1 Lead Follow-up" style={INPUT_STYLE} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>CAMPAIGN SCRIPT</label>
+                <input value={campaignScript} onChange={e => setCampaignScript(e.target.value)} placeholder="Hi, we wanted to follow up on..." style={INPUT_STYLE} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>
+                LEAD LIST (PHONE,NAME — ONE PER LINE)
+              </label>
+              <textarea
+                value={campaignLeads}
+                onChange={e => setCampaignLeads(e.target.value)}
+                placeholder={'+15551234567,John Smith\n+15559876543,Jane Doe\n+15550001111,Bob Johnson'}
+                style={{ ...INPUT_STYLE, height: 80, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <input type="file" accept=".csv,.txt" ref={csvInputRef} onChange={handleCsvUpload} style={{ display: 'none' }} />
+                <button
+                  onClick={() => csvInputRef.current?.click()}
+                  style={{
+                    fontSize: '0.45rem', color: crt(0.5), background: 'rgba(0,12,0,0.5)',
+                    border: `1px solid ${crt(0.12)}`, padding: '6px 12px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.1em',
+                  }}
+                >
+                  <Upload size={10} /> UPLOAD CSV
+                </button>
+                <span style={{ fontSize: '0.38rem', color: crt(0.2) }}>
+                  {campaignLeads ? `${campaignLeads.split('\n').filter(l => l.trim()).length} LEADS LOADED` : 'OR PASTE LEADS ABOVE'}
+                </span>
+              </div>
+            </div>
+            <PhoneBtn onClick={createCampaign} disabled={campaignCreating || !campaignName || !campaignScript || !campaignLeads} color={amber} glow={!campaignCreating}>
+              {campaignCreating ? <Loader2 size={12} className="animate-spin" /> : <PhoneOutgoing size={12} />}
+              {campaignCreating ? 'CREATING...' : 'CREATE CAMPAIGN'}
+            </PhoneBtn>
+          </div>
+
+          {campaigns.length > 0 && (
+            <div style={{ borderTop: `1px solid ${crt(0.06)}`, paddingTop: 16 }}>
+              <div style={{ fontSize: '0.55rem', color: crt(0.5), letterSpacing: '0.12em', marginBottom: 10 }}>
+                CAMPAIGNS ({campaigns.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {campaigns.map(c => (
+                  <div key={c.id} style={{
+                    padding: '12px 16px', background: 'rgba(0,12,0,0.4)',
+                    border: `1px solid ${c.status === 'active' ? amber(0.3) : crt(0.08)}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.55rem', color: crt(0.7), letterSpacing: '0.08em' }}>
+                        <FileText size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                        {c.name}
+                      </div>
+                      <div style={{ fontSize: '0.4rem', color: crt(0.3), marginTop: 3 }}>
+                        {c.totalLeads} LEADS | {c.dialedCount} CALLED | STATUS: {c.status.toUpperCase()}
+                      </div>
+                    </div>
+                    {c.status === 'draft' && (
+                      <PhoneBtn onClick={() => startCampaign(c.id)} color={amber} glow>
+                        <Zap size={10} /> START
+                      </PhoneBtn>
+                    )}
+                    {c.status === 'active' && (
+                      <div style={{ fontSize: '0.45rem', color: amber(0.7), letterSpacing: '0.1em' }}>
+                        IN PROGRESS...
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </PhoneCard>
     </PhonePageLayout>
   );
 }

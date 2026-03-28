@@ -109,6 +109,26 @@ export interface SecretaryConfig {
   routingInstructions: string | null;
   forwardToNumber: string | null;
   afterHoursAction: string;
+  autoAnswer: boolean;
+  qualificationQuestions: string | null;
+  transferRouting: string | null;
+  outboundScript: string | null;
+  outboundSchedule: string | null;
+}
+
+export interface OutboundCampaign {
+  id: number;
+  name: string;
+  script: string;
+  leadsJson: string;
+  scheduleJson: string | null;
+  status: string;
+  totalLeads: number;
+  dialedCount: number;
+  answeredCount: number;
+  convertedCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ConferenceRoom {

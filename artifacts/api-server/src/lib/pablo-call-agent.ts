@@ -1,0 +1,401 @@
+import {
+  db,
+  pabloCallSessionsTable,
+  callHistoryTable,
+  contactsTable,
+  contactInteractionsTable,
+  secretaryConfigTable,
+  type SecretaryConfig,
+} from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { openai } from "@workspace/integrations-openai-ai-server";
+
+interface ConversationTurn {
+  role: "caller" | "pablo";
+  text: string;
+  timestamp: string;
+}
+
+interface ExtractedInfo {
+  callerName?: string;
+  company?: string;
+  reason?: string;
+  email?: string;
+  phone?: string;
+  urgency?: "low" | "medium" | "high";
+  qualification?: string;
+}
+
+interface PabloAction {
+  type: "respond" | "transfer" | "take_message" | "end_call" | "create_lead";
+  response: string;
+  transferTo?: string;
+  extractedInfo?: ExtractedInfo;
+}
+
+function buildSystemPrompt(
+  config: SecretaryConfig,
+  direction: "inbound" | "outbound",
+  existingInfo: ExtractedInfo | null,
+  turnCount: number,
+  outboundScript?: string,
+): string {
+  const personality = config.personality ?? "professional";
+  const personalityDesc =
+    personality === "friendly" ? "warm, conversational, and approachable" :
+    personality === "assertive" ? "direct, efficient, and to-the-point" :
+    personality === "custom" ? "following the custom personality defined in the greeting" :
+    "formal, businesslike, and efficient";
+
+  const qualQuestions = config.qualificationQuestions || "";
+  const transferRules = config.transferRouting || "";
+  const screening = config.screeningRules || "";
+
+  let prompt = `You are Pablo, an AI phone agent for a business. You are ${personalityDesc}.
+You are handling a live phone call. Keep responses concise (under 40 words) and natural-sounding for voice.
+
+DIRECTION: ${direction}
+TURN: ${turnCount + 1}
+
+`;
+
+  if (direction === "outbound" && outboundScript) {
+    prompt += `OUTBOUND SCRIPT TO FOLLOW:\n${outboundScript}\n\n`;
+    prompt += `Deliver the script naturally, adapting to the person's responses. Don't read it verbatim — have a conversation.\n\n`;
+  }
+
+  if (screening) {
+    prompt += `SCREENING RULES:\n${screening}\n\n`;
+  }
+
+  if (qualQuestions) {
+    prompt += `QUALIFICATION QUESTIONS (ask these during the conversation):\n${qualQuestions}\n\n`;
+  }
+
+  if (transferRules) {
+    prompt += `TRANSFER ROUTING RULES:\n${transferRules}\n\n`;
+  }
+
+  if (existingInfo && Object.keys(existingInfo).length > 0) {
+    prompt += `INFORMATION GATHERED SO FAR:\n${JSON.stringify(existingInfo, null, 2)}\n\n`;
+  }
+
+  prompt += `ACTIONS — include EXACTLY ONE of these tags at the END of your response:
+[ACTION:RESPOND] — continue the conversation (default)
+[ACTION:TRANSFER:number] — transfer to a specific phone number (e.g. [ACTION:TRANSFER:+15551234567])
+[ACTION:TAKE_MESSAGE] — caller wants to leave a message, end call gracefully
+[ACTION:END_CALL] — conversation is complete, say goodbye
+[ACTION:CREATE_LEAD] — you've gathered enough info to create a CRM lead
+
+Also extract any new caller information using these tags (include as many as apply):
+[INFO:NAME=value]
+[INFO:COMPANY=value]
+[INFO:REASON=value]
+[INFO:EMAIL=value]
+[INFO:URGENCY=low|medium|high]
+[INFO:QUALIFICATION=value]
+
+Your spoken response should come BEFORE all tags. Tags will be stripped before speaking to the caller.`;
+
+  return prompt;
+}
+
+function parseAction(response: string): PabloAction {
+  const extracted: ExtractedInfo = {};
+
+  const infoPatterns = {
+    callerName: /\[INFO:NAME=([^\]]+)\]/i,
+    company: /\[INFO:COMPANY=([^\]]+)\]/i,
+    reason: /\[INFO:REASON=([^\]]+)\]/i,
+    email: /\[INFO:EMAIL=([^\]]+)\]/i,
+    urgency: /\[INFO:URGENCY=(low|medium|high)\]/i,
+    qualification: /\[INFO:QUALIFICATION=([^\]]+)\]/i,
+  };
+
+  for (const [key, pattern] of Object.entries(infoPatterns)) {
+    const match = response.match(pattern);
+    if (match) {
+      (extracted as Record<string, string>)[key] = match[1].trim();
+    }
+  }
+
+  let cleanResponse = response
+    .replace(/\[INFO:\w+=[^\]]*\]/gi, "")
+    .replace(/\[ACTION:\w+[^\]]*\]/gi, "")
+    .trim();
+
+  if (!cleanResponse) {
+    cleanResponse = "Thank you for calling. How can I help you?";
+  }
+
+  const transferMatch = response.match(/\[ACTION:TRANSFER:([^\]]+)\]/i);
+  if (transferMatch) {
+    const rawNumber = transferMatch[1].trim();
+    const digits = rawNumber.replace(/\D/g, "");
+    if (digits.length >= 10 && digits.length <= 15 && /^\+?\d[\d\s()-]*$/.test(rawNumber)) {
+      const e164 = digits.startsWith("1") && digits.length === 11 ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
+      return { type: "transfer", response: cleanResponse, transferTo: e164, extractedInfo: extracted };
+    }
+    return { type: "respond", response: cleanResponse + " I wasn't able to complete the transfer. How else can I help?", extractedInfo: extracted };
+  }
+  if (/\[ACTION:TAKE_MESSAGE\]/i.test(response)) {
+    return { type: "take_message", response: cleanResponse, extractedInfo: extracted };
+  }
+  if (/\[ACTION:END_CALL\]/i.test(response)) {
+    return { type: "end_call", response: cleanResponse, extractedInfo: extracted };
+  }
+  if (/\[ACTION:CREATE_LEAD\]/i.test(response)) {
+    return { type: "create_lead", response: cleanResponse, extractedInfo: extracted };
+  }
+
+  return { type: "respond", response: cleanResponse, extractedInfo: extracted };
+}
+
+export async function getOrCreateSession(
+  userId: string,
+  callSid: string,
+  callerNumber: string,
+  direction: "inbound" | "outbound",
+  callerName?: string,
+) {
+  const existing = await db
+    .select()
+    .from(pabloCallSessionsTable)
+    .where(eq(pabloCallSessionsTable.twilioCallSid, callSid))
+    .limit(1);
+
+  if (existing[0]) return existing[0];
+
+  const [session] = await db
+    .insert(pabloCallSessionsTable)
+    .values({
+      userId,
+      twilioCallSid: callSid,
+      callerNumber,
+      callerName: callerName ?? null,
+      direction,
+      status: "active",
+      conversationJson: "[]",
+    })
+    .returning();
+
+  return session;
+}
+
+export async function processPabloTurn(
+  userId: string,
+  callSid: string,
+  callerSpeech: string,
+  callerNumber: string,
+  direction: "inbound" | "outbound" = "inbound",
+  outboundScript?: string,
+): Promise<PabloAction> {
+  const session = await getOrCreateSession(userId, callSid, callerNumber, direction);
+
+  const configs = await db
+    .select()
+    .from(secretaryConfigTable)
+    .where(eq(secretaryConfigTable.userId, userId))
+    .limit(1);
+  const config = configs[0] ?? ({
+    personality: "professional",
+    screeningRules: null,
+    qualificationQuestions: null,
+    transferRouting: null,
+  } as SecretaryConfig);
+
+  const conversation: ConversationTurn[] = JSON.parse(session.conversationJson ?? "[]");
+  const existingInfo: ExtractedInfo | null = session.extractedInfoJson
+    ? JSON.parse(session.extractedInfoJson)
+    : null;
+
+  conversation.push({
+    role: "caller",
+    text: callerSpeech,
+    timestamp: new Date().toISOString(),
+  });
+
+  const systemPrompt = buildSystemPrompt(
+    config,
+    direction,
+    existingInfo,
+    session.turnCount,
+    outboundScript,
+  );
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: systemPrompt },
+  ];
+
+  for (const turn of conversation.slice(-10)) {
+    messages.push({
+      role: turn.role === "caller" ? "user" : "assistant",
+      content: turn.text,
+    });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    max_completion_tokens: 300,
+    messages,
+  });
+
+  const rawResponse = completion.choices[0]?.message?.content?.trim() ?? "Thank you for calling. Is there anything else I can help with?";
+  const action = parseAction(rawResponse);
+
+  conversation.push({
+    role: "pablo",
+    text: action.response,
+    timestamp: new Date().toISOString(),
+  });
+
+  const mergedInfo: ExtractedInfo = { ...existingInfo, ...action.extractedInfo };
+
+  await db
+    .update(pabloCallSessionsTable)
+    .set({
+      conversationJson: JSON.stringify(conversation),
+      extractedInfoJson: JSON.stringify(mergedInfo),
+      turnCount: session.turnCount + 1,
+      callerName: mergedInfo.callerName ?? session.callerName,
+      ...(action.type === "end_call" || action.type === "take_message"
+        ? { status: "completed", outcome: action.type, endedAt: new Date() }
+        : {}),
+    })
+    .where(eq(pabloCallSessionsTable.id, session.id));
+
+  if (action.type === "create_lead" && mergedInfo.callerName) {
+    try {
+      await createOrUpdateContact(userId, callerNumber, mergedInfo, callSid);
+    } catch (err) {
+      console.error("[Pablo] CRM update error:", err);
+    }
+  }
+
+  await updateCallHistory(userId, callSid, conversation, mergedInfo);
+
+  return action;
+}
+
+async function createOrUpdateContact(
+  userId: string,
+  callerNumber: string,
+  info: ExtractedInfo,
+  callSid: string,
+) {
+  const existing = await db
+    .select()
+    .from(contactsTable)
+    .where(and(eq(contactsTable.userId, userId), eq(contactsTable.phone, callerNumber)))
+    .limit(1);
+
+  let contactId: number;
+
+  if (existing[0]) {
+    contactId = existing[0].id;
+    await db
+      .update(contactsTable)
+      .set({
+        ...(info.callerName && { name: info.callerName }),
+        ...(info.company && { company: info.company }),
+        ...(info.email && { email: info.email }),
+      })
+      .where(eq(contactsTable.id, contactId));
+  } else {
+    const [contact] = await db
+      .insert(contactsTable)
+      .values({
+        userId,
+        name: info.callerName || "Unknown Caller",
+        phone: callerNumber,
+        email: info.email || "",
+        company: info.company || "",
+        tag: "pablo-lead",
+        dealStage: info.urgency === "high" ? "qualified" : "new",
+      })
+      .returning();
+    contactId = contact.id;
+  }
+
+  await db.insert(contactInteractionsTable).values({
+    contactId,
+    userId,
+    type: "call",
+    note: `Pablo AI call — Reason: ${info.reason || "N/A"}. Qualification: ${info.qualification || "N/A"}. (Call SID: ${callSid})`,
+  });
+
+  await db
+    .update(pabloCallSessionsTable)
+    .set({ contactId })
+    .where(eq(pabloCallSessionsTable.twilioCallSid, callSid));
+
+  await db
+    .update(callHistoryTable)
+    .set({ contactId })
+    .where(and(eq(callHistoryTable.twilioCallSid, callSid), eq(callHistoryTable.userId, userId)));
+}
+
+async function updateCallHistory(
+  userId: string,
+  callSid: string,
+  conversation: ConversationTurn[],
+  info: ExtractedInfo,
+) {
+  const transcript = conversation
+    .map((t) => `${t.role === "caller" ? "Caller" : "Pablo"}: ${t.text}`)
+    .join("\n");
+
+  await db
+    .update(callHistoryTable)
+    .set({
+      transcript,
+      callType: "pablo_agent",
+      callerName: info.callerName ?? undefined,
+      notes: `Pablo AI Agent Call\nCaller: ${info.callerName || "Unknown"}\nCompany: ${info.company || "N/A"}\nReason: ${info.reason || "N/A"}\nUrgency: ${info.urgency || "N/A"}`,
+    })
+    .where(and(eq(callHistoryTable.twilioCallSid, callSid), eq(callHistoryTable.userId, userId)));
+}
+
+export async function generateCallSummaryForSession(callSid: string) {
+  const sessions = await db
+    .select()
+    .from(pabloCallSessionsTable)
+    .where(eq(pabloCallSessionsTable.twilioCallSid, callSid))
+    .limit(1);
+
+  if (!sessions[0]) return;
+  const session = sessions[0];
+  const conversation: ConversationTurn[] = JSON.parse(session.conversationJson ?? "[]");
+  if (conversation.length < 2) return;
+
+  const transcript = conversation
+    .map((t) => `${t.role === "caller" ? "Caller" : "Pablo"}: ${t.text}`)
+    .join("\n");
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_completion_tokens: 200,
+      messages: [
+        {
+          role: "system",
+          content: "Summarize this AI phone agent call in 2-3 sentences. Focus on caller identity, purpose, outcome, and any action items.",
+        },
+        { role: "user", content: transcript },
+      ],
+    });
+
+    const summary = completion.choices[0]?.message?.content?.trim() ?? "";
+    if (summary) {
+      await db
+        .update(callHistoryTable)
+        .set({ summary })
+        .where(and(
+          eq(callHistoryTable.twilioCallSid, callSid),
+          eq(callHistoryTable.userId, session.userId),
+        ));
+    }
+  } catch (err) {
+    console.error("[Pablo] Summary generation error:", err);
+  }
+}

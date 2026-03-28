@@ -70,6 +70,11 @@ export const secretaryConfigTable = pgTable("secretary_config", {
   routingInstructions: text("routing_instructions"),
   forwardToNumber: varchar("forward_to_number", { length: 32 }),
   afterHoursAction: varchar("after_hours_action", { length: 32 }).notNull().default("voicemail"),
+  autoAnswer: boolean("auto_answer").notNull().default(false),
+  qualificationQuestions: text("qualification_questions"),
+  transferRouting: text("transfer_routing"),
+  outboundScript: text("outbound_script"),
+  outboundSchedule: text("outbound_schedule"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -106,3 +111,42 @@ export const conferenceRoomsTable = pgTable("conference_rooms", {
 
 export type ConferenceRoom = typeof conferenceRoomsTable.$inferSelect;
 export type InsertConferenceRoom = typeof conferenceRoomsTable.$inferInsert;
+
+export const pabloCallSessionsTable = pgTable("pablo_call_sessions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull(),
+  twilioCallSid: varchar("twilio_call_sid", { length: 64 }).notNull(),
+  callerNumber: varchar("caller_number", { length: 32 }).notNull(),
+  callerName: varchar("caller_name", { length: 128 }),
+  direction: varchar("direction", { length: 16 }).notNull().default("inbound"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  conversationJson: text("conversation_json").notNull().default("[]"),
+  extractedInfoJson: text("extracted_info_json"),
+  outcome: varchar("outcome", { length: 64 }),
+  contactId: integer("contact_id"),
+  turnCount: integer("turn_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+});
+
+export type PabloCallSession = typeof pabloCallSessionsTable.$inferSelect;
+export type InsertPabloCallSession = typeof pabloCallSessionsTable.$inferInsert;
+
+export const pabloOutboundCampaignsTable = pgTable("pablo_outbound_campaigns", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  script: text("script").notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("draft"),
+  leadsJson: text("leads_json").notNull().default("[]"),
+  totalLeads: integer("total_leads").notNull().default(0),
+  dialedCount: integer("dialed_count").notNull().default(0),
+  answeredCount: integer("answered_count").notNull().default(0),
+  convertedCount: integer("converted_count").notNull().default(0),
+  scheduleJson: text("schedule_json"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PabloOutboundCampaign = typeof pabloOutboundCampaignsTable.$inferSelect;
+export type InsertPabloOutboundCampaign = typeof pabloOutboundCampaignsTable.$inferInsert;

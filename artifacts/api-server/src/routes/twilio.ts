@@ -12,12 +12,15 @@ import {
   appointmentsTable,
   contactInteractionsTable,
   usersTable,
+  pabloCallSessionsTable,
+  pabloOutboundCampaignsTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
+import { processPabloTurn, generateCallSummaryForSession } from "../lib/pablo-call-agent";
 
 const router = Router();
 
@@ -976,6 +979,19 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       const isDuringBusinessHours = businessDays.includes(dayOfWeek) && currentTime >= startTime && currentTime <= endTime;
 
       if (isDuringBusinessHours) {
+        if (config.autoAnswer) {
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
+          const twiml = `<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Say voice="alice">${escapeTwiml(greeting)}</Say>
+</Gather>
+<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
+</Response>`;
+          res.type("text/xml").send(twiml);
+          return;
+        }
+
         const personality = config.personality ?? "professional";
         const greeting = config.greetingScript ?? `Thank you for calling. I'm an AI assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
@@ -1088,6 +1104,264 @@ End with asking if there's anything else you can help with.`,
   }
 });
 
+router.post("/twilio/pablo/gather", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { SpeechResult, From, CallSid } = req.body;
+    const userId = req.query.userId as string;
+
+    if (!userId || !SpeechResult) {
+      res.type("text/xml").send('<Response><Say voice="alice">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
+      return;
+    }
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "inbound");
+
+    const safeResponse = escapeTwiml(action.response);
+
+    if (action.type === "transfer" && action.transferTo) {
+      const safeNumber = escapeTwiml(action.transferTo);
+      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say><Dial>${safeNumber}</Dial></Response>`);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
+    }
+
+    if (action.type === "end_call" || action.type === "take_message") {
+      let twiml = `<Response><Say voice="alice">${safeResponse}</Say>`;
+      if (action.type === "take_message") {
+        twiml += `<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />`;
+      }
+      twiml += `</Response>`;
+      res.type("text/xml").send(twiml);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
+    }
+
+    res.type("text/xml").send(`<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Say voice="alice">${safeResponse}</Say>
+</Gather>
+<Say voice="alice">I didn't catch that. Could you repeat that?</Say>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Say voice="alice">Are you still there?</Say>
+</Gather>
+<Say voice="alice">Thank you for calling. Goodbye.</Say>
+</Response>`);
+  } catch (err: unknown) {
+    console.error("[Pablo] gather error:", err instanceof Error ? err.message : "Unknown");
+    res.type("text/xml").send('<Response><Say voice="alice">I apologize, but I\'m having trouble right now. Please try again later.</Say></Response>');
+  }
+});
+
+router.post("/twilio/pablo/outbound/gather", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { SpeechResult, To, CallSid } = req.body;
+    const userId = req.query.userId as string;
+    const campaignId = req.query.campaignId as string;
+
+    if (!userId || !SpeechResult) {
+      res.type("text/xml").send('<Response><Say voice="alice">Thank you for your time. Goodbye.</Say><Hangup/></Response>');
+      return;
+    }
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    let outboundScript: string | undefined;
+    if (campaignId && userId) {
+      const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(and(eq(pabloOutboundCampaignsTable.id, parseInt(campaignId)), eq(pabloOutboundCampaignsTable.userId, userId))).limit(1);
+      outboundScript = campaigns[0]?.script ?? undefined;
+    }
+    if (!outboundScript) {
+      const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
+      outboundScript = configs[0]?.outboundScript ?? undefined;
+    }
+
+    const action = await processPabloTurn(userId, CallSid, SpeechResult, To, "outbound", outboundScript);
+    const safeResponse = escapeTwiml(action.response);
+
+    if (action.type === "end_call" || action.type === "take_message" || action.type === "create_lead") {
+      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say></Response>`);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
+    }
+
+    res.type("text/xml").send(`<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
+<Say voice="alice">${safeResponse}</Say>
+</Gather>
+<Say voice="alice">Thank you for your time. Goodbye.</Say>
+</Response>`);
+  } catch (err: unknown) {
+    console.error("[Pablo] outbound gather error:", err instanceof Error ? err.message : "Unknown");
+    res.type("text/xml").send('<Response><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>');
+  }
+});
+
+router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { phoneNumber, leadName, campaignId, script } = req.body;
+
+    if (!phoneNumber) {
+      res.status(400).json({ error: "Phone number is required" });
+      return;
+    }
+
+    const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
+    if (!userNumbers[0]) {
+      res.status(400).json({ error: "No active phone number found. Configure one in Phone Numbers." });
+      return;
+    }
+
+    const client = getTwilioClient();
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    const outboundScript = script ?? "";
+    const greeting = outboundScript
+      ? `Hello, this is Pablo calling on behalf of our team. ${outboundScript.split('.')[0]}.`
+      : `Hello, this is Pablo, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
+
+    const call = await client.calls.create({
+      to: phoneNumber,
+      from: userNumbers[0].number,
+      twiml: `<Response><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="alice">${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+      statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
+      statusCallbackMethod: "POST",
+      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+    });
+
+    await db.insert(callHistoryTable).values({
+      userId,
+      callerName: leadName || null,
+      recipientNumber: phoneNumber,
+      twilioCallSid: call.sid,
+      status: "initiated",
+      direction: "outbound",
+      callType: "pablo_agent",
+    });
+
+    res.json({ ok: true, callSid: call.sid });
+  } catch (err: unknown) {
+    console.error("[Pablo] outbound dial error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to initiate outbound call" });
+  }
+});
+
+router.get("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, userId)).orderBy(desc(pabloOutboundCampaignsTable.createdAt));
+    res.json({ campaigns });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch campaigns" });
+  }
+});
+
+router.post("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { name, script, leadsJson, scheduleJson } = req.body;
+
+    if (!name || !script || !leadsJson) {
+      res.status(400).json({ error: "Name, script, and leads are required" });
+      return;
+    }
+
+    const [campaign] = await db.insert(pabloOutboundCampaignsTable).values({
+      userId,
+      name,
+      script,
+      leadsJson,
+      scheduleJson: scheduleJson ?? null,
+      status: "draft",
+      totalLeads: JSON.parse(leadsJson).length,
+    }).returning();
+
+    res.json({ ok: true, campaign });
+  } catch (err: unknown) {
+    console.error("[Pablo] campaign create error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to create campaign" });
+  }
+});
+
+router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const campaignId = parseInt(req.params.id as string);
+
+    const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(and(eq(pabloOutboundCampaignsTable.id, campaignId), eq(pabloOutboundCampaignsTable.userId, userId))).limit(1);
+    if (!campaigns[0]) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+    const campaign = campaigns[0];
+    const leads: Array<{ phone: string; name?: string }> = JSON.parse(campaign.leadsJson ?? "[]");
+
+    if (leads.length === 0) {
+      res.status(400).json({ error: "No leads in campaign" });
+      return;
+    }
+
+    const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
+    if (!userNumbers[0]) {
+      res.status(400).json({ error: "No active phone number" });
+      return;
+    }
+
+    await db.update(pabloOutboundCampaignsTable).set({ status: "active", updatedAt: new Date() }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+
+    const client = getTwilioClient();
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+    const greeting = campaign.script.split('.')[0] + ".";
+    let dialed = 0;
+
+    for (const lead of leads.slice(0, 5)) {
+      try {
+        const call = await client.calls.create({
+          to: lead.phone,
+          from: userNumbers[0].number,
+          twiml: `<Response><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="alice">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+          statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
+          statusCallbackMethod: "POST",
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        });
+        await db.insert(callHistoryTable).values({
+          userId,
+          callerName: lead.name || null,
+          recipientNumber: lead.phone,
+          twilioCallSid: call.sid,
+          status: "initiated",
+          direction: "outbound",
+          callType: "pablo_agent",
+        });
+        dialed++;
+      } catch (e: unknown) {
+        console.error(`[Pablo] campaign dial error for ${lead.phone}:`, e instanceof Error ? e.message : "Unknown");
+      }
+    }
+
+    await db.update(pabloOutboundCampaignsTable).set({ dialedCount: dialed }).where(eq(pabloOutboundCampaignsTable.id, campaignId));
+
+    res.json({ ok: true, dialed, total: leads.length });
+  } catch (err: unknown) {
+    console.error("[Pablo] campaign start error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to start campaign" });
+  }
+});
+
 router.get("/twilio/secretary/config", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
@@ -1105,6 +1379,8 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
       isEnabled, personality, greetingScript, screeningRules,
       businessHoursStart, businessHoursEnd, businessDays,
       routingInstructions, forwardToNumber, afterHoursAction,
+      autoAnswer, qualificationQuestions, transferRouting,
+      outboundScript, outboundSchedule,
     } = req.body;
 
     const existing = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
@@ -1122,6 +1398,11 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
       ...(routingInstructions !== undefined && { routingInstructions }),
       ...(forwardToNumber !== undefined && { forwardToNumber }),
       ...(afterHoursAction && { afterHoursAction }),
+      ...(autoAnswer !== undefined && { autoAnswer }),
+      ...(qualificationQuestions !== undefined && { qualificationQuestions }),
+      ...(transferRouting !== undefined && { transferRouting }),
+      ...(outboundScript !== undefined && { outboundScript }),
+      ...(outboundSchedule !== undefined && { outboundSchedule }),
     };
 
     let record;
@@ -1598,6 +1879,19 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       const isDuringBusinessHours = businessDays.includes(dayOfWeek) && currentTime >= startTime && currentTime <= endTime;
 
       if (isDuringBusinessHours) {
+        if (config.autoAnswer) {
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
+          const twiml = `<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Say voice="alice">${escapeTwiml(greeting)}</Say>
+</Gather>
+<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
+</Response>`;
+          res.type("text/xml").send(twiml);
+          return;
+        }
+
         const personality = config.personality ?? "professional";
         const greeting = config.greetingScript ?? `Thank you for calling. I'm an AI assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
