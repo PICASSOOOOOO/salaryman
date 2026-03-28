@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { Save, Loader2, ToggleLeft, ToggleRight, Bot, Shield, Clock, MessageSquare, Phone, AlertTriangle, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -9,6 +10,7 @@ import {
 } from '@/lib/phone-utils';
 
 export default function PhoneSecretaryPage() {
+  const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const [, navigate] = useLocation();
   const { login } = useAuth();
@@ -118,7 +120,7 @@ export default function PhoneSecretaryPage() {
         <button
           onClick={login}
           style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: '0.7rem', color: '#38bdf8',
+            ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), fontSize: '0.7rem', color: '#38bdf8',
             border: '1px solid rgba(56,189,248,0.4)', padding: '10px 28px',
             background: 'rgba(56,189,248,0.06)', cursor: 'pointer', letterSpacing: '0.12em',
             transition: 'all 0.2s', marginTop: 8,

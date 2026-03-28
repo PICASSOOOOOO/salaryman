@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -73,6 +74,7 @@ function getInitialTab(): TabKey {
 }
 
 export default function CalllHomePage() {
+  const [boomerMode] = useBoomerMode();
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
@@ -113,7 +115,7 @@ export default function CalllHomePage() {
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Share Tech Mono', monospace",
+        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
       }}>
         <div style={{ textAlign: 'center', color: crt(0.3) }}>
           <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em', marginBottom: 12 }}>VERIFYING ACCESS...</div>
@@ -132,7 +134,7 @@ export default function CalllHomePage() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-        fontFamily: "'Share Tech Mono', monospace",
+        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
@@ -163,7 +165,7 @@ export default function CalllHomePage() {
                 background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.05)})`,
                 border: `1px solid ${amber(0.35)}`,
                 color: amber(0.9), borderRadius: 8, cursor: 'pointer',
-                fontFamily: "'Share Tech Mono', monospace",
+                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
                 boxShadow: `0 0 16px ${amber(0.08)}`,
                 transition: 'all 0.2s',
               }}
@@ -177,7 +179,7 @@ export default function CalllHomePage() {
                 background: 'transparent',
                 border: `1px solid ${crt(0.15)}`,
                 color: crt(0.4), borderRadius: 8, cursor: 'pointer',
-                fontFamily: "'Share Tech Mono', monospace",
+                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
                 transition: 'all 0.2s',
               }}
             >
@@ -197,7 +199,7 @@ export default function CalllHomePage() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #010a01 0%, #020802 40%, #030a03 100%)',
-      fontFamily: "'Share Tech Mono', monospace",
+      ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
       color: crt(0.85),
       position: 'relative',
     }}>
@@ -284,7 +286,7 @@ export default function CalllHomePage() {
                   color: isActive ? crt(0.85) : crt(0.3),
                   fontSize: '0.45rem', letterSpacing: '0.12em',
                   cursor: 'pointer',
-                  fontFamily: "'Share Tech Mono', monospace",
+                  ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,

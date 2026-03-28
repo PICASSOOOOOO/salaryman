@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { Phone, X, Loader2, Users, ArrowRight, Radio, Zap, AlertCircle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -33,6 +34,7 @@ function validatePhoneNumber(raw: string): boolean {
 }
 
 export default function PhoneDialerPage() {
+  const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
   const [, rawNavigate] = useLocation();
@@ -236,7 +238,7 @@ export default function PhoneDialerPage() {
                   placeholder="Enter phone number..."
                   style={{
                     width: '100%', background: 'transparent', border: 'none',
-                    color: showValidationError ? red(0.8) : crt(0.95), fontSize: '1.6rem', fontFamily: "'Share Tech Mono', monospace",
+                    color: showValidationError ? red(0.8) : crt(0.95), fontSize: '1.6rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
                     outline: 'none', letterSpacing: '0.08em',
                     textShadow: manualNumber ? `0 0 10px ${showValidationError ? red(0.2) : crt(0.2)}` : 'none',
                   }}
@@ -275,7 +277,7 @@ export default function PhoneDialerPage() {
                       boxShadow: dtmfTone === key ? `0 0 15px ${crt(0.15)}, inset 0 0 10px ${crt(0.05)}` : `inset 0 1px 0 ${crt(0.04)}`,
                     }}
                   >
-                    <span style={{ fontSize: '1.5rem', fontFamily: "'Share Tech Mono', monospace", lineHeight: 1 }}>{key}</span>
+                    <span style={{ fontSize: '1.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), lineHeight: 1 }}>{key}</span>
                     {DIAL_LETTERS[key] && (
                       <span style={{ fontSize: '0.35rem', color: crt(0.25), letterSpacing: '0.15em', marginTop: 2 }}>{DIAL_LETTERS[key]}</span>
                     )}

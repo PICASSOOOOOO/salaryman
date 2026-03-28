@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -11,6 +12,7 @@ import {
 import { useCalllHomeNavigate } from './CalllHomeContext';
 
 export default function PhoneHistoryPage() {
+  const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
   const [, rawNavigate] = useLocation();
@@ -174,7 +176,7 @@ export default function PhoneHistoryPage() {
                 border: `1px solid ${statusFilter === f.key ? crt(0.25) : crt(0.08)}`,
                 color: statusFilter === f.key ? crt(0.8) : crt(0.3),
                 borderRadius: 4, cursor: 'pointer', transition: 'all 0.15s',
-                fontFamily: "'Share Tech Mono', monospace",
+                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
               }}
             >
               {f.label}

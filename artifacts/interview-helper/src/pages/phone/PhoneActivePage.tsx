@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -50,7 +51,7 @@ function CallWaveformVisualizer({ active, color: c }: { active: boolean; color: 
   );
 }
 
-function ElapsedTimer({ seconds }: { seconds: number }) {
+function ElapsedTimer({ seconds, boomer }: { seconds: number; boomer: boolean }) {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
@@ -59,7 +60,7 @@ function ElapsedTimer({ seconds }: { seconds: number }) {
     : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   return (
     <span style={{
-      fontFamily: "'Share Tech Mono', monospace",
+      ...(boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
       fontSize: '1.8rem',
       color: crt(0.9),
       letterSpacing: '0.15em',
@@ -72,6 +73,7 @@ function ElapsedTimer({ seconds }: { seconds: number }) {
 }
 
 export default function PhoneActivePage() {
+  const [boomerMode] = useBoomerMode();
   const BASE = import.meta.env.BASE_URL;
   const { user } = useAuth();
   const [, rawNavigate] = useLocation();
@@ -443,7 +445,7 @@ export default function PhoneActivePage() {
             <PhoneCard glow>
               <PhoneCardHeader accent={crt(0.5)}>PRIMARY CALL</PhoneCardHeader>
               <div style={{ padding: '20px 16px', textAlign: 'center' }}>
-                <ElapsedTimer seconds={activeCalls.find(c => c.status === 'in-progress')?.elapsed ?? 0} />
+                <ElapsedTimer boomer={boomerMode} seconds={activeCalls.find(c => c.status === 'in-progress')?.elapsed ?? 0} />
                 <div style={{ fontSize: '0.55rem', color: crt(0.4), marginTop: 8, letterSpacing: '0.15em' }}>
                   {activeCalls.find(c => c.status === 'in-progress')?.name || 'UNKNOWN'}
                 </div>

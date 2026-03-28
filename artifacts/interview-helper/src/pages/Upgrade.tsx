@@ -231,11 +231,11 @@ const BATTLE_PASS_ITEMS: ComingSoonItem[] = [
 type Tab = "subscriptions" | "cosmetics" | "donations" | "merch" | "battle_pass";
 
 const TABS: { key: Tab; label: string; boomerLabel: string; icon: typeof CreditCard }[] = [
-  { key: "subscriptions", label: "Modules", boomerLabel: "Subscriptions", icon: CreditCard },
-  { key: "cosmetics", label: "Cosmetic Store", boomerLabel: "Cosmetic Store", icon: Sparkles },
-  { key: "donations", label: "Tip Jar", boomerLabel: "Donate", icon: Heart },
-  { key: "merch", label: "Merch", boomerLabel: "Merchandise", icon: Package },
-  { key: "battle_pass", label: "Season Pass", boomerLabel: "Battle Pass", icon: Shield },
+  { key: "subscriptions", label: "MODULES", boomerLabel: "Subscriptions", icon: CreditCard },
+  { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "Cosmetic Store", icon: Sparkles },
+  { key: "donations", label: "TIP JAR", boomerLabel: "Donate", icon: Heart },
+  { key: "merch", label: "MERCH", boomerLabel: "Merchandise", icon: Package },
+  { key: "battle_pass", label: "SEASON PASS", boomerLabel: "Battle Pass", icon: Shield },
 ];
 
 function ComingSoonCard({ item, index }: { item: ComingSoonItem; index: number }) {
