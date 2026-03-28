@@ -31,7 +31,7 @@ router.get("/plan", async (req, res) => {
   }
 
   const trials = trialRows.map((t) => ({
-    featureKey: t.featureKey,
+    featureKey: resolveFeatureKey(t.featureKey),
     trialExpiresAt: t.trialExpiresAt.toISOString(),
     daysLeft: Math.max(0, Math.ceil((t.trialExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
   }));
