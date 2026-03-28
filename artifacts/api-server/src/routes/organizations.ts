@@ -593,7 +593,6 @@ router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
     screen_scan: "STRIPE_PRICE_SCREEN_SCAN",
     say_this: "STRIPE_PRICE_SAY_THIS",
     phone_system: "STRIPE_PRICE_PHONE_SYSTEM",
-    bot_factory: "STRIPE_PRICE_BOT_FACTORY",
     claw_bot: "STRIPE_PRICE_CLAW_BOT",
   };
   const priceId = process.env[FEATURE_PRICE_ENV[feature as FeatureKey] ?? ""];

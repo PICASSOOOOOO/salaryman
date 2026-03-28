@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
+import { useBoomerMode } from "@/hooks/use-mobile";
 
 const CRT = (a: number) => `rgba(0,255,65,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -20,7 +21,11 @@ interface UserSearchResult {
   profileImageUrl: string | null;
 }
 
-function Avatar({ name, url, size = 28 }: { name: string; url?: string | null; size?: number }) {
+function fontFor(boomer: boolean) {
+  return boomer ? undefined : FONT;
+}
+
+function Avatar({ name, url, size = 28, boomer = false }: { name: string; url?: string | null; size?: number; boomer?: boolean }) {
   if (url) {
     return (
       <img
@@ -50,7 +55,7 @@ function Avatar({ name, url, size = 28 }: { name: string; url?: string | null; s
         justifyContent: "center",
         fontSize: size * 0.38,
         color: CRT(0.7),
-        fontFamily: FONT,
+        fontFamily: fontFor(boomer),
         flexShrink: 0,
         letterSpacing: "0.05em",
       }}
@@ -60,7 +65,7 @@ function Avatar({ name, url, size = 28 }: { name: string; url?: string | null; s
   );
 }
 
-function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
+function MessageBubble({ msg, isOwn, boomer = false }: { msg: ChatMessage; isOwn: boolean; boomer?: boolean }) {
   const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div
@@ -77,6 +82,7 @@ function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
           name={msg.senderName}
           url={msg.senderProfileImageUrl}
           size={24}
+          boomer={boomer}
         />
       )}
       <div style={{ maxWidth: "78%", minWidth: 0 }}>
@@ -87,7 +93,7 @@ function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
               color: msg.isBot ? AMBER(0.7) : BLUE(0.6),
               marginBottom: 3,
               letterSpacing: "0.1em",
-              fontFamily: FONT,
+              fontFamily: fontFor(boomer),
               display: "flex",
               alignItems: "center",
               gap: 4,
@@ -111,7 +117,7 @@ function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
             padding: "7px 11px",
             fontSize: "0.72rem",
             color: isOwn ? CRT(0.9) : msg.isBot ? AMBER(0.85) : "rgba(220,220,220,0.9)",
-            fontFamily: FONT,
+            fontFamily: fontFor(boomer),
             lineHeight: 1.5,
             wordBreak: "break-word",
             whiteSpace: "pre-wrap",
@@ -125,7 +131,7 @@ function MessageBubble({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
             color: "rgba(255,255,255,0.2)",
             marginTop: 3,
             textAlign: isOwn ? "right" : "left",
-            fontFamily: FONT,
+            fontFamily: fontFor(boomer),
             letterSpacing: "0.05em",
           }}
         >
@@ -141,11 +147,13 @@ function MessageList({
   currentUserId,
   channelId,
   onLoadMore,
+  boomer = false,
 }: {
   messages: ChatMessage[];
   currentUserId: string;
   channelId: number;
   onLoadMore: () => void;
+  boomer?: boolean;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -189,7 +197,7 @@ function MessageList({
             justifyContent: "center",
             color: CRT(0.3),
             fontSize: "0.6rem",
-            fontFamily: FONT,
+            fontFamily: fontFor(boomer),
             letterSpacing: "0.12em",
             gap: 8,
             marginTop: 40,
@@ -204,6 +212,7 @@ function MessageList({
           key={msg.id}
           msg={msg}
           isOwn={msg.senderUserId === currentUserId}
+          boomer={boomer}
         />
       ))}
     </div>
@@ -213,9 +222,11 @@ function MessageList({
 function InputBar({
   onSend,
   disabled,
+  boomer = false,
 }: {
   onSend: (text: string) => void;
   disabled?: boolean;
+  boomer?: boolean;
 }) {
   const [value, setValue] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -261,7 +272,7 @@ function InputBar({
           fontSize: "0.72rem",
           padding: "7px 10px",
           outline: "none",
-          fontFamily: FONT,
+          fontFamily: fontFor(boomer),
           resize: "none",
           lineHeight: 1.4,
           maxHeight: 80,
@@ -294,9 +305,11 @@ function InputBar({
 function UserSearchPanel({
   onSelectUser,
   onCancel,
+  boomer = false,
 }: {
   onSelectUser: (userId: string) => void;
   onCancel: () => void;
+  boomer?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserSearchResult[]>([]);
@@ -357,7 +370,7 @@ function UserSearchPanel({
           style={{
             fontSize: "0.62rem",
             color: CRT(0.6),
-            fontFamily: FONT,
+            fontFamily: fontFor(boomer),
             letterSpacing: "0.1em",
           }}
         >
@@ -388,7 +401,7 @@ function UserSearchPanel({
               color: CRT(0.85),
               fontSize: "0.72rem",
               outline: "none",
-              fontFamily: FONT,
+              fontFamily: fontFor(boomer),
               flex: 1,
             }}
           />
@@ -401,7 +414,7 @@ function UserSearchPanel({
               textAlign: "center",
               color: CRT(0.3),
               fontSize: "0.58rem",
-              fontFamily: FONT,
+              fontFamily: fontFor(boomer),
               padding: "20px 0",
             }}
           >
@@ -427,13 +440,13 @@ function UserSearchPanel({
               onMouseEnter={e => (e.currentTarget.style.background = CRT(0.05))}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <Avatar name={name} url={m.profileImageUrl} size={30} />
+              <Avatar name={name} url={m.profileImageUrl} size={30} boomer={boomer} />
               <div>
-                <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: FONT }}>
+                <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: fontFor(boomer) }}>
                   {name}
                 </div>
                 {m.email && (
-                  <div style={{ fontSize: "0.5rem", color: CRT(0.35), fontFamily: FONT }}>
+                  <div style={{ fontSize: "0.5rem", color: CRT(0.35), fontFamily: fontFor(boomer) }}>
                     {m.email}
                   </div>
                 )}
@@ -447,7 +460,7 @@ function UserSearchPanel({
               textAlign: "center",
               color: CRT(0.3),
               fontSize: "0.58rem",
-              fontFamily: FONT,
+              fontFamily: fontFor(boomer),
               padding: "20px 0",
             }}
           >
@@ -461,6 +474,8 @@ function UserSearchPanel({
 
 export function ChatPanel() {
   const { user, isAuthenticated } = useAuth();
+  const [boomerMode] = useBoomerMode();
+  const boomer = boomerMode;
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("global");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
@@ -565,7 +580,7 @@ export function ChatPanel() {
             flexDirection: "column",
             zIndex: 900,
             boxShadow: `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
-            fontFamily: FONT,
+            fontFamily: fontFor(boomer),
             overflow: "hidden",
             animation: "chatSlideUp 0.2s ease-out",
           }}
@@ -650,7 +665,7 @@ export function ChatPanel() {
                     padding: "8px 4px",
                     fontSize: "0.52rem",
                     letterSpacing: "0.1em",
-                    fontFamily: FONT,
+                    fontFamily: fontFor(boomer),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -676,7 +691,7 @@ export function ChatPanel() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontFamily: FONT,
+                        fontFamily: fontFor(boomer),
                         padding: "0 3px",
                       }}
                     >
@@ -710,7 +725,7 @@ export function ChatPanel() {
                   cursor: "pointer",
                   padding: "4px 8px",
                   fontSize: "0.5rem",
-                  fontFamily: FONT,
+                  fontFamily: fontFor(boomer),
                   letterSpacing: "0.1em",
                   display: "flex",
                   alignItems: "center",
@@ -738,7 +753,7 @@ export function ChatPanel() {
                       cursor: "pointer",
                       padding: "4px 8px",
                       fontSize: "0.5rem",
-                      fontFamily: FONT,
+                      fontFamily: fontFor(boomer),
                       letterSpacing: "0.08em",
                       display: "flex",
                       alignItems: "center",
@@ -777,6 +792,7 @@ export function ChatPanel() {
             <UserSearchPanel
               onSelectUser={handleStartPrivate}
               onCancel={() => setShowUserSearch(false)}
+              boomer={boomer}
             />
           ) : (
             <>
@@ -785,10 +801,12 @@ export function ChatPanel() {
                 currentUserId={currentUserId}
                 channelId={activeChannelId ?? 0}
                 onLoadMore={handleLoadMore}
+                boomer={boomer}
               />
               <InputBar
                 onSend={handleSend}
                 disabled={activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
+                boomer={boomer}
               />
             </>
           )}
@@ -838,7 +856,7 @@ export function ChatPanel() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontFamily: FONT,
+              fontFamily: fontFor(boomer),
               fontWeight: "bold",
               padding: "0 3px",
               border: "1.5px solid rgba(3,10,3,1)",

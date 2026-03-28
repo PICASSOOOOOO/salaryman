@@ -42,9 +42,9 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   }
   const userId = getUserId(req);
   const email = getUserEmail(req);
-  const hasBotFactory = await hasFeature(userId, email, "bot_factory");
-  if (!hasBotFactory) {
-    res.status(403).json({ error: "Bot Factory subscription required", feature: "bot_factory" });
+  const hasClawBot = await hasFeature(userId, email, "claw_bot");
+  if (!hasClawBot) {
+    res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot" });
     return;
   }
   next();
@@ -1161,7 +1161,7 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
       return;
     }
 
-    const ownerHasAccess = await hasFeature(bot.ownerId, undefined, "bot_factory");
+    const ownerHasAccess = await hasFeature(bot.ownerId, undefined, "claw_bot");
     if (!ownerHasAccess) {
       res.status(403).json({ error: "Bot owner subscription inactive" });
       return;

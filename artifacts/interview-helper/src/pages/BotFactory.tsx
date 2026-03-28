@@ -2170,8 +2170,7 @@ export default function BotFactory() {
   const { isAuthenticated } = useAuth();
   const plan = usePlan();
   const [, navigate] = useLocation();
-  const hasAccess = plan.isOwner || plan.features.has('bot_factory');
-  const hasClawBot = plan.isOwner || plan.features.has('claw_bot');
+  const hasAccess = plan.isOwner || plan.features.has('claw_bot');
 
   const loadBots = useCallback(async () => {
     try {
@@ -2269,11 +2268,11 @@ export default function BotFactory() {
                 {boomerMode ? t('botFactory.accessDenied') : t('botFactory.accessDeniedCodename')}
               </p>
               <div className="flex items-baseline justify-center gap-1 mb-6">
-                <span className="text-3xl font-bold text-foreground">$149</span>
+                <span className="text-3xl font-bold text-foreground">$145</span>
                 <span className="text-sm text-muted-foreground">/mo</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-left mb-6">
-                {['Telegram & WhatsApp', 'Discord & Facebook', 'Gmail & LinkedIn', 'Recruitment Bots', 'Bot Marketplace', 'Persistent Memory'].map(f => (
+                {['AI Sales Closer', 'Customer Support Agent', 'Content Writer', 'AI Recruiter', 'LinkedIn Prospector', 'Facebook & Instagram Scout', 'Telegram & WhatsApp', 'Discord & Gmail', 'Bot Marketplace', 'Persistent Memory', 'Scheduled Automation', 'Automated Trading Bot'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Check className="w-3 h-3 text-sky-400 flex-shrink-0" />
                     <span>{f}</span>
@@ -2283,7 +2282,7 @@ export default function BotFactory() {
               <a href={`${import.meta.env.BASE_URL}features`}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
                 <Zap className="w-4 h-4" />
-                {boomerMode ? 'Subscribe Now' : 'ACTIVATE BOT FACTORY'}
+                {boomerMode ? 'Subscribe to Claw Bot' : 'ACTIVATE CLAW BOT'}
               </a>
             </div>
           </div>
