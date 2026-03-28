@@ -621,7 +621,7 @@ export function PhoneDialer({
             {selected.size > 0 && (
               <div style={{ padding: '6px 8px', borderTop: `1px solid ${crt(0.15)}`, background: crt(0.04), display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: '0.5rem', color: crt(0.6), flex: 1 }}>{selected.size} SELECTED</span>
-                <button onClick={blastSelected} disabled={blasting} style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4, background: blasting ? amber(0.15) : 'rgba(0,200,50,0.15)', border: `1px solid ${blasting ? amber(0.5) : 'rgba(0,200,50,0.5)'}`, color: blasting ? amber(0.9) : crt(0.95), cursor: blasting ? 'wait' : 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', fontFamily: "'Share Tech Mono', monospace" }}>
+                <button onClick={blastSelected} disabled={blasting} style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 4, background: blasting ? amber(0.15) : 'rgba(0,200,50,0.15)', border: `1px solid ${blasting ? amber(0.5) : 'rgba(0,200,50,0.5)'}`, color: blasting ? amber(0.9) : crt(0.95), cursor: blasting ? 'wait' : 'pointer', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
                   {blasting ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
                   {blasting ? 'DIALING...' : `BLAST ${selected.size}`}
                 </button>
@@ -641,13 +641,13 @@ export function PhoneDialer({
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, marginBottom: 8 }}>
               {['1','2','3','4','5','6','7','8','9','*','0','#'].map(key => (
-                <button key={key} onClick={() => setManualNumber(prev => prev + key)} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.9rem', fontFamily: "'Share Tech Mono', monospace" }}>
+                <button key={key} onClick={() => setManualNumber(prev => prev + key)} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.9rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
                   {key}
                 </button>
               ))}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setManualNumber(prev => prev.slice(0, -1))} disabled={!manualNumber} style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: manualNumber ? crt(0.6) : crt(0.15), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.55rem', fontFamily: "'Share Tech Mono', monospace" }}>DEL</button>
+              <button onClick={() => setManualNumber(prev => prev.slice(0, -1))} disabled={!manualNumber} style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: crt(0.04), border: `1px solid ${crt(0.15)}`, color: manualNumber ? crt(0.6) : crt(0.15), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.55rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>DEL</button>
               <button onClick={() => { if (manualNumber.trim()) callSingle(manualNumber); }} disabled={!manualNumber.trim() || loading} style={{ flex: 2, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: manualNumber ? 'rgba(0,200,50,0.15)' : crt(0.04), border: `1px solid ${manualNumber ? 'rgba(0,200,50,0.5)' : crt(0.15)}`, color: manualNumber ? crt(0.95) : crt(0.2), cursor: manualNumber ? 'pointer' : 'default', fontSize: '0.6rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), letterSpacing: '0.1em' }}>
                 <Phone size={12} />{loading ? 'CALLING...' : 'CALL'}
               </button>
@@ -762,8 +762,8 @@ export function PhoneDialer({
                           <input value={followupForm.title} onChange={e => setFollowupForm(f => ({ ...f, title: e.target.value }))} placeholder="Follow-up title..." style={{ ...inputStyle, width: '100%' }} />
                           <input type="datetime-local" value={followupForm.startAt} onChange={e => setFollowupForm(f => ({ ...f, startAt: e.target.value }))} style={{ ...inputStyle, width: '100%', colorScheme: 'dark' }} />
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} style={{ flex: 1, padding: '4px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', fontFamily: "'Share Tech Mono', monospace" }}>SCHEDULE</button>
-                            <button onClick={() => setFollowupCallSid(null)} style={{ padding: '4px 8px', background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.6), cursor: 'pointer', fontSize: '0.45rem', fontFamily: "'Share Tech Mono', monospace" }}>CANCEL</button>
+                            <button onClick={scheduleFollowup} disabled={!followupForm.title || !followupForm.startAt} style={{ flex: 1, padding: '4px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>SCHEDULE</button>
+                            <button onClick={() => setFollowupCallSid(null)} style={{ padding: '4px 8px', background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.6), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>CANCEL</button>
                           </div>
                         </div>
                       </div>
@@ -827,7 +827,7 @@ export function PhoneDialer({
                       <div style={{ padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${crt(0.1)}` }}>
                         <Users size={10} style={{ color: crt(0.6) }} />
                         <span style={{ fontSize: '0.5rem', color: crt(0.8), flex: 1 }}>{conf.roomName}</span>
-                        <button onClick={() => endConference(conf.roomName)} style={{ background: red(0.1), border: `1px solid ${red(0.3)}`, color: red(0.7), cursor: 'pointer', padding: '2px 6px', fontSize: '0.4rem', fontFamily: "'Share Tech Mono', monospace" }}>END</button>
+                        <button onClick={() => endConference(conf.roomName)} style={{ background: red(0.1), border: `1px solid ${red(0.3)}`, color: red(0.7), cursor: 'pointer', padding: '2px 6px', fontSize: '0.4rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>END</button>
                       </div>
                       <div style={{ padding: '5px 8px' }}>
                         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
@@ -907,7 +907,7 @@ export function PhoneDialer({
                   <div style={{ fontSize: '0.42rem', color: amber(0.6) }}>
                     Progress: {dialingSession.dialed}/{dialingSession.total} dialed
                   </div>
-                  <button onClick={stopDialingSession} style={{ marginTop: 6, padding: '5px 12px', background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.8), cursor: 'pointer', fontSize: '0.5rem', fontFamily: "'Share Tech Mono', monospace" }}>STOP SESSION</button>
+                  <button onClick={stopDialingSession} style={{ marginTop: 6, padding: '5px 12px', background: red(0.15), border: `1px solid ${red(0.4)}`, color: red(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>STOP SESSION</button>
                 </div>
               ) : (
                 <div>
@@ -999,7 +999,7 @@ export function PhoneDialer({
                 <span style={{ fontSize: '0.5rem', color: crt(0.6), flex: 1 }}>SECRETARY AI ENABLED</span>
                 <button
                   onClick={() => setSecretaryForm(f => ({ ...f, isEnabled: !f.isEnabled }))}
-                  style={{ padding: '4px 12px', background: secretaryForm.isEnabled ? crt(0.15) : red(0.08), border: `1px solid ${secretaryForm.isEnabled ? crt(0.4) : red(0.3)}`, color: secretaryForm.isEnabled ? crt(0.9) : red(0.7), cursor: 'pointer', fontSize: '0.5rem', fontFamily: "'Share Tech Mono', monospace" }}>
+                  style={{ padding: '4px 12px', background: secretaryForm.isEnabled ? crt(0.15) : red(0.08), border: `1px solid ${secretaryForm.isEnabled ? crt(0.4) : red(0.3)}`, color: secretaryForm.isEnabled ? crt(0.9) : red(0.7), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }) }}>
                   {secretaryForm.isEnabled ? 'ON' : 'OFF'}
                 </button>
               </div>
