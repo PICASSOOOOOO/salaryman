@@ -2210,25 +2210,18 @@ export default function BotFactory() {
   const activateMarketplaceBot = async (item: MarketplaceItem) => {
     setActivating(item.id);
     try {
-      if (item.priceMonthly > 0) {
-        const res = await apiFetch('/api/stripe/create-bot-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ marketplaceItemId: item.id }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.url) { window.location.href = data.url; return; }
-        }
+      const res = await apiFetch('/api/bots/marketplace/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marketplaceItemId: item.id }),
+      });
+      if (res.ok) {
+        await Promise.all([loadBots(), loadMarketplace()]);
+        setTab('my-bots');
       } else {
-        const res = await apiFetch('/api/bots/marketplace/activate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ marketplaceItemId: item.id }),
-        });
-        if (res.ok) {
-          await Promise.all([loadBots(), loadMarketplace()]);
-          setTab('my-bots');
+        const data = await res.json().catch(() => ({}));
+        if (data.requiresUpgrade) {
+          window.location.hash = '#upgrade';
         }
       }
     } catch (err) {
@@ -2512,10 +2505,7 @@ export default function BotFactory() {
                                         <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
                                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
                                           {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                          {item.priceMonthly > 0
-                                            ? (boomerMode ? 'Subscribe' : '// SUBSCRIBE')
-                                            : (boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename'))
-                                          }
+                                          {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
                                         </button>
                                       )}
                                     </div>

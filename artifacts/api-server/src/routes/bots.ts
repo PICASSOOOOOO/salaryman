@@ -711,12 +711,7 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
       return;
     }
 
-    if (item.priceMonthly > 0) {
-      res.status(402).json({ error: "Payment required", requiresCheckout: true, marketplaceItemId });
-      return;
-    }
-
-    if (item.slug === "claw-bot") {
+    if (item.priceMonthly > 0 || item.slug === "claw-bot") {
       const email = getUserEmail(req);
       const hasClawBot = await hasFeature(userId, email, "claw_bot");
       if (!hasClawBot) {

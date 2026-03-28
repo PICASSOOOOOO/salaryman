@@ -1,5 +1,5 @@
 import { useAuth } from '@workspace/replit-auth-web';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 const FONT = "'Share Tech Mono', monospace";
 const FONT_VT = "'VT323', monospace";
@@ -19,7 +19,7 @@ interface SignInPromptProps {
 
 export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) {
   const { login } = useAuth();
-  const boomer = getDefaultBoomerMode();
+  const [boomer] = useBoomerMode();
 
   if (inline) {
     return (
