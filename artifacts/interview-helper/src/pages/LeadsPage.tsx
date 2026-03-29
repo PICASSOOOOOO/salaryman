@@ -77,6 +77,7 @@ export default function LeadsPage() {
 
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [role, setRole] = useState<string>('employee');
+  const [orgId, setOrgId] = useState<number | null>(null);
   const [memberMap, setMemberMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -114,6 +115,7 @@ export default function LeadsPage() {
         const d = await r.json();
         setLeads(d.leads);
         setRole(d.role);
+        if (d.orgId) setOrgId(d.orgId);
         if (d.members) setMemberMap(d.members);
       }
     } catch {}
@@ -125,13 +127,12 @@ export default function LeadsPage() {
   }, [isAuthenticated, fetchLeads]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated || !user || !orgId) return;
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
     const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const uid = (user as unknown as Record<string, string>).id ?? '';
-    const orgIdStr = '';
-    const params = new URLSearchParams({ userId: uid, userName: 'leads-listener', profileImageUrl: '', orgId: orgIdStr });
+    const params = new URLSearchParams({ userId: uid, userName: 'leads-listener', profileImageUrl: '', orgId: String(orgId) });
     const wsUrl = `${proto}//${host}${base}/ws/chat?${params.toString()}`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (evt) => {
@@ -144,7 +145,7 @@ export default function LeadsPage() {
     };
     const interval = setInterval(fetchLeads, 30000);
     return () => { ws.close(); clearInterval(interval); };
-  }, [isAuthenticated, user, fetchLeads]);
+  }, [isAuthenticated, user, orgId, fetchLeads]);
 
   const openDetail = async (lead: LeadRecord) => {
     setSelectedLead(lead);
