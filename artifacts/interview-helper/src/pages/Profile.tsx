@@ -188,9 +188,7 @@ function CompanyAffiliationCard({ affiliation, boomerMode }: { affiliation: OrgA
     m.role === 'manager' ? 'bg-violet-500/15 border-violet-500/25 text-violet-400' :
     'bg-sky-500/15 border-sky-500/25 text-sky-400';
 
-  const roleLabel = boomerMode
-    ? m.role.charAt(0).toUpperCase() + m.role.slice(1)
-    : m.role === 'owner' ? 'ADMIN' : m.role === 'manager' ? 'MANAGER' : 'EMPLOYEE';
+  const roleLabel = m.role === 'owner' ? 'Admin' : m.role === 'manager' ? 'Manager' : 'User';
 
   return (
     <div className="bg-muted/20 border border-border rounded-xl p-4">
@@ -251,6 +249,33 @@ function CompanyAffiliationCard({ affiliation, boomerMode }: { affiliation: OrgA
           </div>
         )}
       </div>
+
+      {m.joinedAt && (
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Performance Stats</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-background/50 rounded-lg px-2 py-1.5 text-center">
+              <p className="text-xs font-bold text-foreground">
+                {(() => {
+                  const joined = new Date(m.joinedAt);
+                  const now = new Date();
+                  const months = (now.getFullYear() - joined.getFullYear()) * 12 + (now.getMonth() - joined.getMonth());
+                  return months < 1 ? '<1' : months;
+                })()}
+              </p>
+              <p className="text-[9px] text-muted-foreground">months</p>
+            </div>
+            <div className="bg-background/50 rounded-lg px-2 py-1.5 text-center">
+              <p className="text-xs font-bold text-foreground">{roleLabel}</p>
+              <p className="text-[9px] text-muted-foreground">rank</p>
+            </div>
+            <div className="bg-background/50 rounded-lg px-2 py-1.5 text-center">
+              <p className="text-xs font-bold text-emerald-400">Active</p>
+              <p className="text-[9px] text-muted-foreground">status</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

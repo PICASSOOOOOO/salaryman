@@ -16,6 +16,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
@@ -179,6 +180,7 @@ function AppShell() {
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
             <Route path="/profile" component={Profile} />
+            <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />

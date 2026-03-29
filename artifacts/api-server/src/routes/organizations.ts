@@ -118,6 +118,49 @@ router.get("/orgs/me/all", async (req, res) => {
   res.json({ memberships: result });
 });
 
+router.get("/orgs/me/financials", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const memberships = await db
+    .select({
+      orgId: orgMembersTable.orgId,
+      salary: orgMembersTable.salary,
+      role: orgMembersTable.role,
+      title: orgMembersTable.title,
+    })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+  let totalSalary = 0;
+  const breakdown: { orgId: number; orgName: string; salary: number }[] = [];
+
+  if (memberships.length > 0) {
+    const orgIds = memberships.map((m) => m.orgId);
+    const orgs = await db
+      .select({ id: organizationsTable.id, name: organizationsTable.name })
+      .from(organizationsTable)
+      .where(inArray(organizationsTable.id, orgIds));
+    const orgMap = new Map(orgs.map((o) => [o.id, o.name]));
+
+    for (const m of memberships) {
+      const sal = m.salary ? Number(m.salary) : 0;
+      totalSalary += sal;
+      breakdown.push({
+        orgId: m.orgId,
+        orgName: orgMap.get(m.orgId) ?? "Unknown",
+        salary: sal,
+      });
+    }
+  }
+
+  res.json({
+    totalSalary,
+    companyCount: memberships.length,
+    breakdown,
+  });
+});
+
 router.get("/orgs/members/:userId/profile", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const callerId = req.user.id;
