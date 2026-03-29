@@ -31,6 +31,7 @@ const Calendar = lazy(() => import("@/pages/Calendar"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const Invoices = lazy(() => import("@/pages/Invoices"));
 const Deals = lazy(() => import("@/pages/Deals"));
+const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
@@ -189,6 +190,7 @@ function AppShell() {
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}
+            <Route path="/business/leads" component={LeadsPage} />
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/calendar" component={Calendar} />

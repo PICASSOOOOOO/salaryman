@@ -41,6 +41,7 @@ import devTasksRouter from "./dev-tasks";
 import tradingRouter from "./trading";
 import prospectingRouter from "./prospecting";
 import chatRouter from "./chat";
+import leadsRouter from "./leads";
 
 const router: IRouter = Router();
 
@@ -86,5 +87,6 @@ router.use(devTasksRouter);
 router.use(tradingRouter);
 router.use(prospectingRouter);
 router.use(chatRouter);
+router.use(leadsRouter);
 
 export default router;
