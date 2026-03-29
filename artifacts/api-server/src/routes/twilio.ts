@@ -21,6 +21,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
 import { processPabloTurn, generateCallSummaryForSession } from "../lib/pablo-call-agent";
+import { updateLeadFromPabloCall } from "./leads";
 
 const router = Router();
 
@@ -1148,6 +1149,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
       }
       res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
+      updateLeadFromPabloCall(From, userId, "transfer", action.response, null).catch(() => {});
       await db.update(callHistoryTable).set({ callType: "pablo_transfer" }).where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.userId, userId)));
       return;
     }
@@ -1160,6 +1162,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
       twiml += `</Response>`;
       res.type("text/xml").send(twiml);
       generateCallSummaryForSession(CallSid).catch(() => {});
+      updateLeadFromPabloCall(From, userId, action.type, action.response, null).catch(() => {});
       return;
     }
 
@@ -1213,6 +1216,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     if (action.type === "end_call" || action.type === "take_message" || action.type === "create_lead") {
       res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
+      updateLeadFromPabloCall(To, userId, action.type, action.response, null).catch(() => {});
       return;
     }
 

@@ -8,7 +8,7 @@ import {
   callHistoryTable,
   type LeadRecord,
 } from "@workspace/db";
-import { eq, and, or, ilike, desc, sql } from "drizzle-orm";
+import { eq, and, or, ilike, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -41,6 +41,105 @@ async function getCallerOrgRole(userId: string): Promise<{ orgId: number; role: 
 function isAdmin(role: string): boolean {
   return role === "owner" || role === "manager";
 }
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { result.push(current.trim()); current = ""; }
+      else { current += ch; }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+export async function updateLeadFromPabloCall(
+  callerNumber: string,
+  userId: string,
+  outcome: string,
+  transcript: string | null,
+  pabloNotes: string | null,
+): Promise<void> {
+  try {
+    const membership = await getCallerOrgRole(userId);
+    if (!membership) return;
+
+    const normalizedPhone = callerNumber.replace(/\D/g, "");
+    const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId));
+    const lead = leads.find(l => l.phone.replace(/\D/g, "").endsWith(normalizedPhone.slice(-10)) || normalizedPhone.endsWith(l.phone.replace(/\D/g, "").slice(-10)));
+    if (!lead) return;
+
+    const statusMap: Record<string, string> = {
+      transfer: "qualified",
+      take_message: "contacted",
+      end_call: "contacted",
+      create_lead: "new",
+    };
+    const newStatus = statusMap[outcome] || lead.status;
+
+    const existingNotes: string[] = lead.pabloNotesJson ? JSON.parse(lead.pabloNotesJson) : [];
+    if (pabloNotes) existingNotes.push(pabloNotes);
+    if (transcript) existingNotes.push(`[Transcript] ${transcript.slice(0, 500)}`);
+
+    await db.update(leadRecordsTable).set({
+      status: newStatus === "new" ? lead.status : newStatus,
+      callCount: lead.callCount + 1,
+      lastCalledAt: new Date(),
+      pabloNotesJson: JSON.stringify(existingNotes),
+    }).where(eq(leadRecordsTable.id, lead.id));
+  } catch (e: unknown) {
+    console.error("[Leads] Pablo call update error:", e instanceof Error ? e.message : "Unknown");
+  }
+}
+
+router.get("/leads/export/csv", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
+
+  const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId)).orderBy(desc(leadRecordsTable.createdAt));
+
+  const headers = ["Name", "Phone", "Email", "Company", "Job Title", "Status", "Source", "Call Count", "Created At"];
+  const rows = leads.map(l => [
+    `"${(l.name || "").replace(/"/g, '""')}"`,
+    `"${(l.phone || "").replace(/"/g, '""')}"`,
+    `"${(l.email || "").replace(/"/g, '""')}"`,
+    `"${(l.company || "").replace(/"/g, '""')}"`,
+    `"${(l.jobTitle || "").replace(/"/g, '""')}"`,
+    l.status,
+    l.source,
+    String(l.callCount),
+    l.createdAt ? new Date(l.createdAt).toISOString() : "",
+  ].join(","));
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="leads-export-${Date.now()}.csv"`);
+  res.send(csv);
+});
+
+router.get("/leads/imports", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+
+  const imports = await db.select().from(leadImportsTable).where(eq(leadImportsTable.orgId, membership.orgId)).orderBy(desc(leadImportsTable.createdAt));
+  res.json({ imports });
+});
 
 router.get("/leads", async (req: Request, res: Response) => {
   const userId = getAuthUserId(req);
@@ -236,24 +335,55 @@ router.post("/leads/import", async (req: Request, res: Response) => {
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to import leads" }); return; }
 
-  const { leads, fileName } = req.body ?? {};
-  if (!Array.isArray(leads) || leads.length === 0) {
-    res.status(400).json({ error: "No leads data provided. Expected array of {name, phone, email, company, jobTitle}" }); return;
+  const { leads, fileName, csvText } = req.body ?? {};
+
+  let parsedLeads: Array<{ name: string; phone?: string; email?: string; company?: string; jobTitle?: string }> = [];
+
+  if (csvText && typeof csvText === "string") {
+    const lines = csvText.split('\n').filter((l: string) => l.trim());
+    if (lines.length < 2) { res.status(400).json({ error: "CSV must have a header row and at least one data row" }); return; }
+
+    const headers = parseCSVLine(lines[0]).map((h: string) => h.toLowerCase().replace(/['"]/g, ''));
+    const nameIdx = headers.findIndex((h: string) => h === 'name' || h === 'full_name' || h === 'fullname' || h === 'contact_name');
+    const phoneIdx = headers.findIndex((h: string) => h === 'phone' || h === 'phone_number' || h === 'phonenumber' || h === 'mobile');
+    const emailIdx = headers.findIndex((h: string) => h === 'email' || h === 'email_address');
+    const companyIdx = headers.findIndex((h: string) => h === 'company' || h === 'organization' || h === 'org');
+    const titleIdx = headers.findIndex((h: string) => h === 'title' || h === 'job_title' || h === 'jobtitle' || h === 'position' || h === 'role');
+
+    if (nameIdx === -1) { res.status(400).json({ error: 'CSV must have a "name" column' }); return; }
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i]);
+      if (!values[nameIdx]) continue;
+      parsedLeads.push({
+        name: values[nameIdx],
+        phone: phoneIdx >= 0 ? (values[phoneIdx] || '') : '',
+        email: emailIdx >= 0 ? (values[emailIdx] || '') : '',
+        company: companyIdx >= 0 ? (values[companyIdx] || '') : '',
+        jobTitle: titleIdx >= 0 ? (values[titleIdx] || '') : '',
+      });
+    }
+  } else if (Array.isArray(leads) && leads.length > 0) {
+    parsedLeads = leads;
+  } else {
+    res.status(400).json({ error: "Provide csvText (raw CSV string) or leads (JSON array of {name, phone, email, company, jobTitle})" }); return;
   }
+
+  if (parsedLeads.length === 0) { res.status(400).json({ error: "No valid lead rows found" }); return; }
 
   const [importRecord] = await db.insert(leadImportsTable).values({
     orgId: membership.orgId,
     uploadedByUserId: userId,
     fileName: fileName || "import.csv",
-    totalRecords: leads.length,
+    totalRecords: parsedLeads.length,
   }).returning();
 
   let successCount = 0;
   let errorCount = 0;
   const errors: string[] = [];
 
-  for (let i = 0; i < leads.length; i++) {
-    const row = leads[i];
+  for (let i = 0; i < parsedLeads.length; i++) {
+    const row = parsedLeads[i];
     if (!row.name || typeof row.name !== "string" || row.name.trim().length < 1) {
       errorCount++;
       errors.push(`Row ${i + 1}: Missing name`);
@@ -268,7 +398,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
         phone: row.phone ? String(row.phone).trim() : "",
         email: row.email ? String(row.email).trim() : "",
         company: row.company ? String(row.company).trim() : "",
-        jobTitle: row.jobTitle || row.job_title || row.title ? String(row.jobTitle || row.job_title || row.title).trim() : "",
+        jobTitle: row.jobTitle ? String(row.jobTitle).trim() : "",
         source: "csv_import",
         status: "new",
         createdByUserId: userId,
@@ -286,47 +416,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
     errorsJson: errors.length > 0 ? JSON.stringify(errors) : null,
   }).where(eq(leadImportsTable.id, importRecord.id));
 
-  res.json({ importId: importRecord.id, total: leads.length, success: successCount, errors: errorCount, errorDetails: errors.slice(0, 10) });
-});
-
-router.get("/leads/export/csv", async (req: Request, res: Response) => {
-  const userId = getAuthUserId(req);
-  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
-
-  const membership = await getCallerOrgRole(userId);
-  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
-  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
-
-  const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId)).orderBy(desc(leadRecordsTable.createdAt));
-
-  const headers = ["Name", "Phone", "Email", "Company", "Job Title", "Status", "Source", "Call Count", "Created At"];
-  const rows = leads.map(l => [
-    `"${(l.name || "").replace(/"/g, '""')}"`,
-    `"${(l.phone || "").replace(/"/g, '""')}"`,
-    `"${(l.email || "").replace(/"/g, '""')}"`,
-    `"${(l.company || "").replace(/"/g, '""')}"`,
-    `"${(l.jobTitle || "").replace(/"/g, '""')}"`,
-    l.status,
-    l.source,
-    String(l.callCount),
-    l.createdAt ? new Date(l.createdAt).toISOString() : "",
-  ].join(","));
-
-  const csv = [headers.join(","), ...rows].join("\n");
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="leads-export-${Date.now()}.csv"`);
-  res.send(csv);
-});
-
-router.get("/leads/imports", async (req: Request, res: Response) => {
-  const userId = getAuthUserId(req);
-  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
-
-  const membership = await getCallerOrgRole(userId);
-  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
-
-  const imports = await db.select().from(leadImportsTable).where(eq(leadImportsTable.orgId, membership.orgId)).orderBy(desc(leadImportsTable.createdAt));
-  res.json({ imports });
+  res.json({ importId: importRecord.id, total: parsedLeads.length, success: successCount, errors: errorCount, errorDetails: errors.slice(0, 10) });
 });
 
 export default router;

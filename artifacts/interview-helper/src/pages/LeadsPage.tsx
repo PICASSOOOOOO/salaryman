@@ -71,7 +71,7 @@ function statusLabel(s: string) {
 }
 
 export default function LeadsPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [boomerMode] = useBoomerMode();
   const userId = user?.id ?? '';
 
@@ -243,36 +243,12 @@ export default function LeadsPage() {
     setImportResult(null);
 
     try {
-      const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) { setError('CSV must have a header row and at least one data row'); setImporting(false); return; }
-
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-      const nameIdx = headers.findIndex(h => h === 'name' || h === 'full_name' || h === 'fullname' || h === 'contact_name');
-      const phoneIdx = headers.findIndex(h => h === 'phone' || h === 'phone_number' || h === 'phonenumber' || h === 'mobile');
-      const emailIdx = headers.findIndex(h => h === 'email' || h === 'email_address');
-      const companyIdx = headers.findIndex(h => h === 'company' || h === 'organization' || h === 'org');
-      const titleIdx = headers.findIndex(h => h === 'title' || h === 'job_title' || h === 'jobtitle' || h === 'position' || h === 'role');
-
-      if (nameIdx === -1) { setError('CSV must have a "name" column'); setImporting(false); return; }
-
-      const parsedLeads = [];
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
-        if (!values[nameIdx]) continue;
-        parsedLeads.push({
-          name: values[nameIdx],
-          phone: phoneIdx >= 0 ? (values[phoneIdx] || '') : '',
-          email: emailIdx >= 0 ? (values[emailIdx] || '') : '',
-          company: companyIdx >= 0 ? (values[companyIdx] || '') : '',
-          jobTitle: titleIdx >= 0 ? (values[titleIdx] || '') : '',
-        });
-      }
+      const csvText = await file.text();
 
       const r = await apiFetch('api/leads/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leads: parsedLeads, fileName: file.name }),
+        body: JSON.stringify({ csvText, fileName: file.name }),
       });
       const d = await r.json();
       if (r.ok) {
@@ -285,6 +261,17 @@ export default function LeadsPage() {
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  useEffect(() => {
+    if (admin) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [admin]);
 
   const preventCopy = !admin ? {
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
