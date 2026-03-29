@@ -6,12 +6,13 @@ import {
   orgMembersTable,
   orgFeatureGrantsTable,
   orgInvitesTable,
+  usersTable,
   FEATURE_KEYS,
   type FeatureKey,
   type OrgMember,
   isReservedOrgName,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 
@@ -84,6 +85,109 @@ router.get("/orgs/me", async (req, res) => {
     member: result.member,
     members,
     featureGrants,
+  });
+});
+
+router.get("/orgs/me/all", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const memberships = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+  if (memberships.length === 0) {
+    res.json({ memberships: [] });
+    return;
+  }
+
+  const orgIds = memberships.map((m) => m.orgId);
+  const orgs = await db
+    .select()
+    .from(organizationsTable)
+    .where(inArray(organizationsTable.id, orgIds));
+
+  const orgMap = new Map(orgs.map((o) => [o.id, o]));
+
+  const result = memberships.map((m) => ({
+    membership: m,
+    organization: orgMap.get(m.orgId) ?? null,
+  }));
+
+  res.json({ memberships: result });
+});
+
+router.get("/orgs/members/:userId/profile", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const targetUserId = req.params.userId;
+
+  const [targetUser] = await db
+    .select({
+      id: usersTable.id,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      profileImageUrl: usersTable.profileImageUrl,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, targetUserId));
+
+  if (!targetUser) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const targetMemberships = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, targetUserId), eq(orgMembersTable.status, "active")));
+
+  const callerMemberships = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, callerId), eq(orgMembersTable.status, "active")));
+
+  const callerOrgIds = new Set(callerMemberships.map((m) => m.orgId));
+  const callerAdminOrgIds = new Set(
+    callerMemberships
+      .filter((m) => m.role === "owner" || m.role === "manager")
+      .map((m) => m.orgId)
+  );
+
+  const sharedMemberships = targetMemberships.filter((m) => callerOrgIds.has(m.orgId));
+
+  if (sharedMemberships.length === 0 && callerId !== targetUserId) {
+    res.status(403).json({ error: "You do not share an organization with this user" });
+    return;
+  }
+
+  const orgIds = (callerId === targetUserId ? targetMemberships : sharedMemberships).map((m) => m.orgId);
+  const orgs = orgIds.length > 0
+    ? await db.select().from(organizationsTable).where(inArray(organizationsTable.id, orgIds))
+    : [];
+  const orgMap = new Map(orgs.map((o) => [o.id, o]));
+
+  const membershipsToReturn = callerId === targetUserId ? targetMemberships : sharedMemberships;
+  const isSelf = callerId === targetUserId;
+
+  const affiliations = membershipsToReturn.map((m) => {
+    const isAdmin = callerAdminOrgIds.has(m.orgId) || isSelf;
+    return {
+      orgId: m.orgId,
+      orgName: orgMap.get(m.orgId)?.name ?? "Unknown",
+      role: m.role,
+      title: m.title,
+      department: m.department,
+      salary: isAdmin ? m.salary : undefined,
+      joinedAt: m.joinedAt,
+    };
+  });
+
+  res.json({
+    user: targetUser,
+    affiliations,
   });
 });
 
@@ -395,11 +499,13 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     return;
   }
 
-  const { role, department, spawnLocation, featureBilling } = (req.body ?? {}) as {
+  const { role, department, spawnLocation, featureBilling, title, salary } = (req.body ?? {}) as {
     role?: string;
     department?: string | null;
     spawnLocation?: string | null;
     featureBilling?: string;
+    title?: string | null;
+    salary?: string | null;
   };
 
   const updates: {
@@ -407,12 +513,16 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     department?: string | null;
     spawnLocation?: string | null;
     featureBilling?: string;
+    title?: string | null;
+    salary?: string | null;
   } = {};
 
   if (role && ["manager", "employee"].includes(role)) updates.role = role;
   if (department !== undefined) updates.department = department ? String(department).trim() : null;
   if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
   if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;
+  if (title !== undefined) updates.title = title ? String(title).trim() : null;
+  if (salary !== undefined) updates.salary = salary !== null ? String(salary) : null;
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid fields to update" });

@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -47,6 +47,8 @@ export const orgMembersTable = pgTable(
     featureBilling: varchar("feature_billing", { length: 20 }).notNull().default("individual"),
     status: varchar("status", { length: 20 }).notNull().default("invited"),
     invitedByUserId: varchar("invited_by_user_id"),
+    title: varchar("title", { length: 200 }),
+    salary: numeric("salary", { precision: 12, scale: 2 }),
     inviteEmail: varchar("invite_email", { length: 200 }),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

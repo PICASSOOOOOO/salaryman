@@ -1,11 +1,11 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
-import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { useBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,24 @@ interface AccountData {
   contactCount: number;
   memory: string;
   memoryUpdatedAt: string | null;
+}
+
+interface OrgAffiliation {
+  membership: {
+    orgId: number;
+    userId: string;
+    role: string;
+    department: string | null;
+    title: string | null;
+    salary: string | null;
+    joinedAt: string | null;
+  };
+  organization: {
+    id: number;
+    name: string;
+    industry: string | null;
+    size: string | null;
+  } | null;
 }
 
 function MobileInstallSection() {
@@ -50,7 +68,6 @@ function MobileInstallSection() {
       </div>
 
       {isIOS || isAndroid ? (
-        /* On mobile — show inline instructions */
         <div className="bg-muted/20 border border-border rounded-xl p-4 space-y-3">
           {isIOS ? (
             <>
@@ -91,7 +108,6 @@ function MobileInstallSection() {
           )}
         </div>
       ) : (
-        /* On desktop — show QR code + instructions side by side */
         <div className="flex gap-5 items-start">
           <div className="shrink-0">
             <div className="w-[100px] h-[100px] rounded-xl border border-border overflow-hidden bg-[#09090b] flex items-center justify-center">
@@ -164,20 +180,185 @@ function MobileInstallSection() {
   );
 }
 
+function CompanyAffiliationCard({ affiliation, boomerMode }: { affiliation: OrgAffiliation; boomerMode: boolean }) {
+  const org = affiliation.organization;
+  const m = affiliation.membership;
+  const roleBadgeColor =
+    m.role === 'owner' ? 'bg-amber-500/15 border-amber-500/25 text-amber-400' :
+    m.role === 'manager' ? 'bg-violet-500/15 border-violet-500/25 text-violet-400' :
+    'bg-sky-500/15 border-sky-500/25 text-sky-400';
+
+  const roleLabel = boomerMode
+    ? m.role.charAt(0).toUpperCase() + m.role.slice(1)
+    : m.role === 'owner' ? 'ADMIN' : m.role === 'manager' ? 'MANAGER' : 'EMPLOYEE';
+
+  return (
+    <div className="bg-muted/20 border border-border rounded-xl p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-primary/70" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground truncate">{org?.name ?? 'Unknown'}</p>
+            {org?.industry && (
+              <p className="text-[11px] text-muted-foreground truncate">{org.industry}</p>
+            )}
+          </div>
+        </div>
+        <span className={`shrink-0 px-2 py-0.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider ${roleBadgeColor}`}>
+          {roleLabel}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {m.title && (
+          <div className="bg-background/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Briefcase className="w-3 h-3 text-muted-foreground/60" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Title</span>
+            </div>
+            <p className="text-xs font-semibold text-foreground truncate">{m.title}</p>
+          </div>
+        )}
+        {m.department && (
+          <div className="bg-background/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Users className="w-3 h-3 text-muted-foreground/60" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Dept</span>
+            </div>
+            <p className="text-xs font-semibold text-foreground truncate">{m.department}</p>
+          </div>
+        )}
+        {m.salary && (
+          <div className="bg-background/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <DollarSign className="w-3 h-3 text-emerald-400/60" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Salary</span>
+            </div>
+            <p className="text-xs font-bold text-emerald-400">${Number(m.salary).toLocaleString()}</p>
+          </div>
+        )}
+        {m.joinedAt && (
+          <div className="bg-background/50 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <TrendingUp className="w-3 h-3 text-muted-foreground/60" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Joined</span>
+            </div>
+            <p className="text-xs font-semibold text-foreground">
+              {new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAffiliation[]; boomerMode: boolean }) {
+  const totalSalary = affiliations.reduce((sum, a) => {
+    return sum + (a.membership.salary ? Number(a.membership.salary) : 0);
+  }, 0);
+
+  const companiesWithSalary = affiliations.filter(a => a.membership.salary && Number(a.membership.salary) > 0);
+
+  if (companiesWithSalary.length === 0 && affiliations.length === 0) return null;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08 }}
+      className="bg-card border border-border rounded-2xl p-6"
+    >
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+          <DollarSign className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'Financial Summary' : 'EARNINGS DASHBOARD'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode ? 'Combined salary across all companies' : 'Combined corporate earnings overview'}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 mb-4">
+        <div className="flex-1 bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Total Salary
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-emerald-400">
+            {totalSalary > 0 ? `$${totalSalary.toLocaleString()}` : '$0'}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            across {affiliations.length} {affiliations.length === 1 ? 'company' : 'companies'}
+          </p>
+        </div>
+        <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="w-3.5 h-3.5 text-primary/60" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Affiliations
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{affiliations.length}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            active {affiliations.length === 1 ? 'membership' : 'memberships'}
+          </p>
+        </div>
+      </div>
+
+      {companiesWithSalary.length > 1 && (
+        <div className="space-y-2">
+          {companiesWithSalary.map((a) => {
+            const salaryNum = Number(a.membership.salary);
+            const pct = totalSalary > 0 ? Math.round((salaryNum / totalSalary) * 100) : 0;
+            return (
+              <div key={a.membership.orgId} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {a.organization?.name ?? 'Unknown'}
+                    </p>
+                    <p className="text-xs font-bold text-emerald-400 shrink-0 ml-2">
+                      ${salaryNum.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500/60 rounded-full transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground w-8 text-right shrink-0">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </motion.section>
+  );
+}
+
 export default function Profile() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const [boomerMode] = useBoomerMode();
   const { isPro, isOwner, features } = usePlan();
   const { t } = useTranslation();
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
-    window.addEventListener('storage', onStorage);
-    const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
-  }, []);
+
+  const [affiliations, setAffiliations] = useState<OrgAffiliation[]>([]);
+  const [affiliationsLoading, setAffiliationsLoading] = useState(true);
+
   const [memoryDraft, setMemoryDraft] = useState('');
   const [savingMemory, setSavingMemory] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
@@ -190,7 +371,7 @@ export default function Profile() {
   const [donorTitle, setDonorTitle] = useState('');
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
+    if (!isAuthenticated) { setLoading(false); setAffiliationsLoading(false); return; }
     apiFetch('/api/account')
       .then(r => r.json())
       .then((d: AccountData) => {
@@ -207,6 +388,13 @@ export default function Profile() {
         setDonorTitle(d.donorTitle ?? '');
       })
       .catch(() => {});
+    apiFetch('/api/orgs/me/all')
+      .then(r => r.json())
+      .then(d => {
+        setAffiliations(d.memberships ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setAffiliationsLoading(false));
   }, [isAuthenticated]);
 
   const saveMemory = async () => {
@@ -269,12 +457,19 @@ export default function Profile() {
     ? [user.firstName, user.lastName].filter(Boolean).join(' ')
     : user?.email?.split('@')[0] ?? 'User';
 
+  const primaryTitle = affiliations.length > 0
+    ? affiliations.map(a => a.membership.title).filter(Boolean).join(' / ') || null
+    : null;
+
+  const primaryCompanies = affiliations.length > 0
+    ? affiliations.map(a => a.organization?.name).filter(Boolean).join(', ')
+    : null;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <main className="flex-1 p-6 max-w-2xl mx-auto w-full relative z-10">
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
             <User className="w-5 h-5 text-primary" />
@@ -292,7 +487,6 @@ export default function Profile() {
         ) : (
           <div className="space-y-5">
 
-            {/* Profile Card */}
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-4">
@@ -306,7 +500,13 @@ export default function Profile() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-bold text-foreground truncate">{displayName}</p>
-                  {user?.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
+                  {primaryTitle && (
+                    <p className="text-sm text-primary/80 truncate">{primaryTitle}</p>
+                  )}
+                  {primaryCompanies && (
+                    <p className="text-xs text-muted-foreground truncate">{primaryCompanies}</p>
+                  )}
+                  {!primaryTitle && user?.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
                   {data?.user.createdAt && (
                     <p className="text-xs text-muted-foreground/50 mt-1">
                       Member since {new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -320,7 +520,42 @@ export default function Profile() {
               </div>
             </motion.section>
 
-            {/* Subscription Status */}
+            {!affiliationsLoading && affiliations.length > 0 && (
+              <FinancialDashboard affiliations={affiliations} boomerMode={boomerMode} />
+            )}
+
+            {!affiliationsLoading && affiliations.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06 }}
+                className="bg-card border border-border rounded-2xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-primary/70" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {boomerMode ? 'Company Affiliations' : 'CORPORATE AFFILIATIONS'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {affiliations.length} active {affiliations.length === 1 ? 'membership' : 'memberships'}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {affiliations.map((a) => (
+                    <CompanyAffiliationCard
+                      key={a.membership.orgId}
+                      affiliation={a}
+                      boomerMode={boomerMode}
+                    />
+                  ))}
+                </div>
+              </motion.section>
+            )}
+
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -402,7 +637,6 @@ export default function Profile() {
               )}
             </motion.section>
 
-            {/* PABLO Memory */}
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -443,7 +677,6 @@ export default function Profile() {
               </div>
             </motion.section>
 
-            {/* Donations / Pablo's Slush Fund */}
             {donationHistory.filter(d => d.status === 'completed').length > 0 && (
               <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 className="bg-card border border-border rounded-2xl p-6">
@@ -472,30 +705,33 @@ export default function Profile() {
                   </div>
                   <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contributions</span>
+                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Donations</span>
                     </div>
                     <p className="text-2xl font-bold text-foreground">{donationHistory.filter(d => d.status === 'completed').length}</p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  {donationHistory.filter(d => d.status === 'completed').slice(0, 5).map(d => (
-                    <div key={d.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/10 border border-border">
-                      <div>
-                        <p className="text-xs font-semibold text-foreground">{d.tier ?? 'Custom contribution'}</p>
-                        <p className="text-[10px] text-muted-foreground">{new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {donationHistory.filter(d => d.status === 'completed').map(d => (
+                    <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-muted/10 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {d.tier && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-semibold uppercase">{d.tier}</span>
+                        )}
                       </div>
-                      <span className="text-sm font-bold text-yellow-400">${(d.amountCents / 100).toFixed(2)}</span>
+                      <span className="text-xs font-bold text-foreground">${(d.amountCents / 100).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               </motion.section>
             )}
 
-            {/* Mobile Install */}
             <MobileInstallSection />
 
-            {/* Data Management */}
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-5">
@@ -509,7 +745,6 @@ export default function Profile() {
               </div>
 
               <div className="space-y-3">
-                {/* Stats */}
                 <div className="flex gap-3">
                   <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -529,7 +764,6 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <button onClick={exportData}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/20 border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors text-left">
                   <Download className="w-4 h-4 text-primary/60" />
@@ -563,7 +797,6 @@ export default function Profile() {
         )}
       </main>
 
-      {/* Confirm Delete Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
           <motion.div
