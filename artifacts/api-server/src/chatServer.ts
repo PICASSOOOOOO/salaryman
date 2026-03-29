@@ -173,17 +173,26 @@ export function broadcastLeadEvent(orgId: number, event: { type: string; [key: s
 export function setupChatServer(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws/chat' });
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', async (ws: WebSocket, req) => {
     const url = new URL(req.url ?? '', `http://localhost`);
     const userId = url.searchParams.get('userId');
     const userName = url.searchParams.get('userName') ?? 'User';
     const profileImageUrl = url.searchParams.get('profileImageUrl') ?? null;
     const orgIdParam = url.searchParams.get('orgId');
-    const orgId = orgIdParam ? parseInt(orgIdParam) : null;
+    let orgId = orgIdParam ? parseInt(orgIdParam) : null;
 
     if (!userId) {
       ws.close(1008, 'userId required');
       return;
+    }
+
+    if (orgId && !isNaN(orgId)) {
+      const membership = await db.select().from(orgMembersTable)
+        .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, 'active')))
+        .limit(1);
+      if (membership.length === 0) {
+        orgId = null;
+      }
     }
 
     const client: ChatClient = {

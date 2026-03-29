@@ -305,7 +305,12 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
     if (body.source !== undefined) updates.source = String(body.source).trim();
     if (body.assignedUserId !== undefined) updates.assignedUserId = body.assignedUserId || null;
   }
-  if (body.status !== undefined) updates.status = String(body.status);
+  if (body.status !== undefined) {
+    const validStatuses = ["new", "contacted", "qualified", "proposal", "closed_won", "closed_lost"];
+    const st = String(body.status);
+    if (!validStatuses.includes(st)) { res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` }); return; }
+    updates.status = st;
+  }
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid fields to update" }); return;
