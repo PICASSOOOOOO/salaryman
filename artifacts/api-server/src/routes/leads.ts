@@ -10,6 +10,7 @@ import {
   type LeadRecord,
 } from "@workspace/db";
 import { eq, and, or, ilike, desc } from "drizzle-orm";
+import { broadcastLeadEvent } from "../chatServer";
 
 const router = Router();
 
@@ -91,12 +92,13 @@ export async function updateLeadFromPabloCall(
     if (pabloNotes) existingNotes.push(pabloNotes);
     if (transcript) existingNotes.push(`[Transcript] ${transcript.slice(0, 500)}`);
 
-    await db.update(leadRecordsTable).set({
+    const [updated] = await db.update(leadRecordsTable).set({
       status: newStatus === "new" ? lead.status : newStatus,
       callCount: lead.callCount + 1,
       lastCalledAt: new Date(),
       pabloNotesJson: JSON.stringify(existingNotes),
-    }).where(eq(leadRecordsTable.id, lead.id));
+    }).where(eq(leadRecordsTable.id, lead.id)).returning();
+    if (updated) broadcastLeadEvent(membership.orgId, { type: 'lead_updated', lead: updated });
   } catch (e: unknown) {
     console.error("[Leads] Pablo call update error:", e instanceof Error ? e.message : "Unknown");
   }
@@ -151,32 +153,30 @@ router.get("/leads", async (req: Request, res: Response) => {
 
   const { search, status, assignedTo } = req.query as { search?: string; status?: string; assignedTo?: string };
 
-  let query = db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId)).orderBy(desc(leadRecordsTable.updatedAt)).$dynamic();
+  const conditions = [eq(leadRecordsTable.orgId, membership.orgId)];
 
   if (status && typeof status === "string") {
-    query = query.where(and(eq(leadRecordsTable.orgId, membership.orgId), eq(leadRecordsTable.status, status)));
+    conditions.push(eq(leadRecordsTable.status, status));
   }
   if (assignedTo && typeof assignedTo === "string") {
-    query = query.where(and(eq(leadRecordsTable.orgId, membership.orgId), eq(leadRecordsTable.assignedUserId, assignedTo)));
+    conditions.push(eq(leadRecordsTable.assignedUserId, assignedTo));
   }
-
-  let leads = await query;
-
   if (search && typeof search === "string" && search.trim()) {
     const q = `%${search.trim().toLowerCase()}%`;
-    leads = await db.select().from(leadRecordsTable).where(
-      and(
-        eq(leadRecordsTable.orgId, membership.orgId),
-        or(
-          ilike(leadRecordsTable.name, q),
-          ilike(leadRecordsTable.phone, q),
-          ilike(leadRecordsTable.email, q),
-          ilike(leadRecordsTable.company, q),
-          ilike(leadRecordsTable.jobTitle, q),
-        )
-      )
-    ).orderBy(desc(leadRecordsTable.updatedAt));
+    conditions.push(
+      or(
+        ilike(leadRecordsTable.name, q),
+        ilike(leadRecordsTable.phone, q),
+        ilike(leadRecordsTable.email, q),
+        ilike(leadRecordsTable.company, q),
+        ilike(leadRecordsTable.jobTitle, q),
+      )!
+    );
   }
+
+  const leads = await db.select().from(leadRecordsTable)
+    .where(and(...conditions))
+    .orderBy(desc(leadRecordsTable.updatedAt));
 
   const members = await db.select({
     userId: orgMembersTable.userId,
@@ -266,6 +266,7 @@ router.post("/leads", async (req: Request, res: Response) => {
     isLocked: false,
   }).returning();
 
+  broadcastLeadEvent(membership.orgId, { type: 'lead_created', lead });
   res.json({ lead });
 });
 
@@ -311,6 +312,7 @@ router.patch("/leads/:id", async (req: Request, res: Response) => {
   }
 
   const [updated] = await db.update(leadRecordsTable).set(updates).where(eq(leadRecordsTable.id, leadId)).returning();
+  broadcastLeadEvent(membership.orgId, { type: 'lead_updated', lead: updated });
   res.json({ lead: updated });
 });
 
@@ -329,6 +331,7 @@ router.delete("/leads/:id", async (req: Request, res: Response) => {
   if (!existing) { res.status(404).json({ error: "Lead not found" }); return; }
 
   await db.delete(leadRecordsTable).where(eq(leadRecordsTable.id, leadId));
+  broadcastLeadEvent(membership.orgId, { type: 'lead_deleted', leadId });
   res.json({ ok: true });
 });
 
@@ -450,6 +453,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
     errorsJson: errors.length > 0 ? JSON.stringify(errors) : null,
   }).where(eq(leadImportsTable.id, importRecord.id));
 
+  broadcastLeadEvent(membership.orgId, { type: 'leads_imported', importId: importRecord.id, count: successCount });
   res.json({ importId: importRecord.id, total: parsedLeads.length, success: successCount, errors: errorCount, errorDetails: errors.slice(0, 10) });
 });
 

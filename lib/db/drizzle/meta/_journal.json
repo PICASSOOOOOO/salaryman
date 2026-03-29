@@ -134,7 +134,6 @@
       "when": 1774556029278,
       "tag": "0018_sparkling_beast",
       "breakpoints": true
-<<<<<<< HEAD
     },
     {
       "idx": 19,
@@ -169,6 +168,13 @@
       "version": "7",
       "when": 1743072000000,
       "tag": "0023_bot_status_default_paused",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1743244800000,
+      "tag": "0024_crm_lead_database",
       "breakpoints": true
     }
   ]

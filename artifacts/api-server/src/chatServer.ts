@@ -162,6 +162,14 @@ export function broadcastBotMessage(channelId: number, content: string, senderNa
   broadcastToChannel(channelId, payload);
 }
 
+export function broadcastLeadEvent(orgId: number, event: { type: string; [key: string]: unknown }) {
+  for (const [, client] of clients) {
+    if (client.orgId === orgId) {
+      send(client.ws, { ...event, _channel: 'leads' });
+    }
+  }
+}
+
 export function setupChatServer(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws/chat' });
 

@@ -125,10 +125,26 @@ export default function LeadsPage() {
   }, [isAuthenticated, fetchLeads]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    const interval = setInterval(fetchLeads, 10000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, fetchLeads]);
+    if (!isAuthenticated || !user) return;
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const uid = (user as unknown as Record<string, string>).id ?? '';
+    const orgIdStr = '';
+    const params = new URLSearchParams({ userId: uid, userName: 'leads-listener', profileImageUrl: '', orgId: orgIdStr });
+    const wsUrl = `${proto}//${host}${base}/ws/chat?${params.toString()}`;
+    const ws = new WebSocket(wsUrl);
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg._channel === 'leads') {
+          fetchLeads();
+        }
+      } catch {}
+    };
+    const interval = setInterval(fetchLeads, 30000);
+    return () => { ws.close(); clearInterval(interval); };
+  }, [isAuthenticated, user, fetchLeads]);
 
   const openDetail = async (lead: LeadRecord) => {
     setSelectedLead(lead);
