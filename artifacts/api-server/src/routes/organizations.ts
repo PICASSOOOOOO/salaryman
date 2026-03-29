@@ -591,7 +591,18 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
   if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
   if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;
   if (title !== undefined) updates.title = title ? String(title).trim() : null;
-  if (salary !== undefined) updates.salary = salary !== null ? String(salary) : null;
+  if (salary !== undefined) {
+    if (salary !== null) {
+      const salaryNum = Number(salary);
+      if (isNaN(salaryNum) || salaryNum < 0 || salaryNum > 999999999999) {
+        res.status(400).json({ error: "Salary must be a valid positive number" });
+        return;
+      }
+      updates.salary = String(salaryNum);
+    } else {
+      updates.salary = null;
+    }
+  }
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "No valid fields to update" });
