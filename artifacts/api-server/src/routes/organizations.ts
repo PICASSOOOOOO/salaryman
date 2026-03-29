@@ -594,7 +594,7 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
   if (salary !== undefined) {
     if (salary !== null) {
       const salaryNum = Number(salary);
-      if (isNaN(salaryNum) || salaryNum < 0 || salaryNum > 999999999999) {
+      if (isNaN(salaryNum) || salaryNum < 0 || salaryNum > 9999999999.99) {
         res.status(400).json({ error: "Salary must be a valid positive number" });
         return;
       }
