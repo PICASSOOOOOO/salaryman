@@ -195,12 +195,6 @@ router.post("/orgs", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
 
-  const existingMembership = await getUserOrg(userId);
-  if (existingMembership) {
-    res.status(400).json({ error: "You are already a member of an organization" });
-    return;
-  }
-
   const { name, industry, size } = (req.body ?? {}) as { name?: string; industry?: string; size?: string };
   if (!name || typeof name !== "string" || name.trim().length < 2) {
     res.status(400).json({ error: "Organization name is required (min 2 characters)" });
@@ -408,12 +402,6 @@ router.post("/orgs/invite/accept", async (req, res) => {
       res.status(403).json({ error: "This invite was sent to a different account" });
       return;
     }
-  }
-
-  const existingMembership = await getUserOrg(userId);
-  if (existingMembership) {
-    res.status(400).json({ error: "You are already a member of an organization" });
-    return;
   }
 
   const [invitedOrg] = await db
