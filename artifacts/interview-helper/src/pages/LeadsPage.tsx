@@ -77,6 +77,7 @@ export default function LeadsPage() {
 
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [role, setRole] = useState<string>('employee');
+  const [memberMap, setMemberMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -113,6 +114,7 @@ export default function LeadsPage() {
         const d = await r.json();
         setLeads(d.leads);
         setRole(d.role);
+        if (d.members) setMemberMap(d.members);
       }
     } catch {}
     setLoading(false);
@@ -120,6 +122,12 @@ export default function LeadsPage() {
 
   useEffect(() => {
     if (isAuthenticated) fetchLeads();
+  }, [isAuthenticated, fetchLeads]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(fetchLeads, 10000);
+    return () => clearInterval(interval);
   }, [isAuthenticated, fetchLeads]);
 
   const openDetail = async (lead: LeadRecord) => {
@@ -387,7 +395,7 @@ export default function LeadsPage() {
                   <div
                     key={lead.id}
                     onClick={() => openDetail(lead)}
-                    className={`grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-0 px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-muted/10 transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
+                    className={`grid grid-cols-[1fr_1fr_1fr_auto_auto_auto] gap-0 px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-muted/10 transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
@@ -401,6 +409,9 @@ export default function LeadsPage() {
                       {lead.phone && <span className="truncate">{lead.phone}</span>}
                       {lead.email && <span className="truncate">{lead.email}</span>}
                       {!lead.phone && !lead.email && <span>-</span>}
+                    </div>
+                    <div className="w-24 text-xs text-muted-foreground truncate">
+                      {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/40">UNASSIGNED</span>}
                     </div>
                     <div>
                       <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${statusColor(lead.status)}`}>
@@ -467,6 +478,10 @@ export default function LeadsPage() {
                     <div>
                       <span className="text-[10px] uppercase text-muted-foreground">SOURCE</span>
                       <p className="uppercase text-xs">{selectedLead.source}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase text-muted-foreground">ASSIGNED TO</span>
+                      <p className="text-xs">{selectedLead.assignedUserId ? (memberMap[selectedLead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/50">UNASSIGNED</span>}</p>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase text-muted-foreground">CALLS</span>
@@ -546,6 +561,12 @@ export default function LeadsPage() {
                               {c.durationSeconds > 0 && <span>{Math.floor(c.durationSeconds / 60)}:{String(c.durationSeconds % 60).padStart(2, '0')}</span>}
                             </div>
                             {c.summary && <p className="mt-1 text-muted-foreground">{c.summary}</p>}
+                            {c.transcript && (
+                              <details className="mt-1">
+                                <summary className="text-[10px] uppercase text-muted-foreground/60 cursor-pointer hover:text-muted-foreground">TRANSCRIPT</summary>
+                                <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap text-[11px] max-h-32 overflow-y-auto">{c.transcript}</p>
+                              </details>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -625,6 +646,19 @@ export default function LeadsPage() {
                   >
                     {STATUSES.map(s => (
                       <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase text-muted-foreground block mb-1">ASSIGN TO</label>
+                  <select
+                    value={editForm.assignedUserId}
+                    onChange={e => setEditForm(prev => ({ ...prev, assignedUserId: e.target.value }))}
+                    className="w-full px-3 py-2 bg-muted/10 border border-border text-sm focus:outline-none focus:border-primary/50 uppercase"
+                  >
+                    <option value="">UNASSIGNED</option>
+                    {Object.entries(memberMap).map(([uid, name]) => (
+                      <option key={uid} value={uid}>{name}</option>
                     ))}
                   </select>
                 </div>

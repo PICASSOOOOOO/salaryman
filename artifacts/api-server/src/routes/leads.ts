@@ -6,6 +6,7 @@ import {
   leadImportsTable,
   orgMembersTable,
   callHistoryTable,
+  usersTable,
   type LeadRecord,
 } from "@workspace/db";
 import { eq, and, or, ilike, desc } from "drizzle-orm";
@@ -177,7 +178,40 @@ router.get("/leads", async (req: Request, res: Response) => {
     ).orderBy(desc(leadRecordsTable.updatedAt));
   }
 
-  res.json({ leads, role: membership.role, orgId: membership.orgId });
+  const members = await db.select({
+    userId: orgMembersTable.userId,
+    role: orgMembersTable.role,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+  }).from(orgMembersTable)
+    .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")));
+
+  const memberMap: Record<string, string> = {};
+  for (const m of members) {
+    memberMap[m.userId] = [m.firstName, m.lastName].filter(Boolean).join(" ") || "Unknown";
+  }
+
+  res.json({ leads, role: membership.role, orgId: membership.orgId, members: memberMap });
+});
+
+router.get("/leads/members", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+
+  const members = await db.select({
+    userId: orgMembersTable.userId,
+    role: orgMembersTable.role,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+  }).from(orgMembersTable)
+    .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(and(eq(orgMembersTable.orgId, membership.orgId), eq(orgMembersTable.status, "active")));
+
+  res.json({ members: members.map(m => ({ userId: m.userId, name: [m.firstName, m.lastName].filter(Boolean).join(" ") || "Unknown", role: m.role })) });
 });
 
 router.get("/leads/:id", async (req: Request, res: Response) => {
