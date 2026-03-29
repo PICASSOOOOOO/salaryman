@@ -281,9 +281,20 @@ function CompanyAffiliationCard({ affiliation, boomerMode }: { affiliation: OrgA
 }
 
 function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAffiliation[]; boomerMode: boolean }) {
-  const totalSalary = affiliations.reduce((sum, a) => {
+  const [financials, setFinancials] = useState<{ totalSalary: number; netWorth: number } | null>(null);
+
+  useEffect(() => {
+    apiFetch('/api/orgs/me/financials')
+      .then(r => r.json())
+      .then(d => setFinancials({ totalSalary: d.totalSalary ?? 0, netWorth: d.netWorth ?? 0 }))
+      .catch(() => {});
+  }, []);
+
+  const totalSalary = financials?.totalSalary ?? affiliations.reduce((sum, a) => {
     return sum + (a.membership.salary ? Number(a.membership.salary) : 0);
   }, 0);
+
+  const netWorth = financials?.netWorth ?? 0;
 
   const companiesWithSalary = affiliations.filter(a => a.membership.salary && Number(a.membership.salary) > 0);
 
@@ -310,31 +321,45 @@ function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAff
         </div>
       </div>
 
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1 bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Salary
+              Salary
             </span>
           </div>
-          <p className="text-2xl font-bold text-emerald-400">
+          <p className="text-xl font-bold text-emerald-400">
             {totalSalary > 0 ? `$${totalSalary.toLocaleString()}` : '$0'}
           </p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            across {affiliations.length} {affiliations.length === 1 ? 'company' : 'companies'}
+            combined
           </p>
         </div>
-        <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-3">
+        <div className={`border rounded-xl px-4 py-3 ${netWorth >= 0 ? 'bg-sky-500/5 border-sky-500/15' : 'bg-red-500/5 border-red-500/15'}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className={`w-3.5 h-3.5 ${netWorth >= 0 ? 'text-sky-400' : 'text-red-400'}`} />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Net Worth
+            </span>
+          </div>
+          <p className={`text-xl font-bold ${netWorth >= 0 ? 'text-sky-400' : 'text-red-400'}`}>
+            {netWorth !== 0 ? `${netWorth < 0 ? '-' : ''}$${Math.abs(netWorth).toLocaleString()}` : '$0'}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            balance
+          </p>
+        </div>
+        <div className="bg-muted/20 border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Building2 className="w-3.5 h-3.5 text-primary/60" />
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Affiliations
+              Orgs
             </span>
           </div>
-          <p className="text-2xl font-bold text-foreground">{affiliations.length}</p>
+          <p className="text-xl font-bold text-foreground">{affiliations.length}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            active {affiliations.length === 1 ? 'membership' : 'memberships'}
+            active
           </p>
         </div>
       </div>

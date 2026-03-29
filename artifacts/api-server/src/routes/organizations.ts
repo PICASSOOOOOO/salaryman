@@ -7,6 +7,7 @@ import {
   orgFeatureGrantsTable,
   orgInvitesTable,
   usersTable,
+  balanceSheetTxTable,
   FEATURE_KEYS,
   type FeatureKey,
   type OrgMember,
@@ -59,32 +60,59 @@ router.get("/orgs/me", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
 
-  const result = await getUserOrg(userId);
-  if (!result) {
-    res.json({ org: null, member: null });
+  const allMemberships = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+  if (allMemberships.length === 0) {
+    res.json({ org: null, member: null, allOrgs: [] });
+    return;
+  }
+
+  const primaryMember = allMemberships[0];
+  const [primaryOrg] = await db
+    .select()
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, primaryMember.orgId));
+
+  if (!primaryOrg) {
+    res.json({ org: null, member: null, allOrgs: [] });
     return;
   }
 
   const featureGrants = await db
     .select()
     .from(orgFeatureGrantsTable)
-    .where(eq(orgFeatureGrantsTable.orgId, result.org.id));
+    .where(eq(orgFeatureGrantsTable.orgId, primaryOrg.id));
 
-  const isManager = result.member.role === "owner" || result.member.role === "manager";
+  const isManager = primaryMember.role === "owner" || primaryMember.role === "manager";
 
   let members: OrgMember[] = [];
   if (isManager) {
     members = await db
       .select()
       .from(orgMembersTable)
-      .where(eq(orgMembersTable.orgId, result.org.id));
+      .where(eq(orgMembersTable.orgId, primaryOrg.id));
   }
 
+  const allOrgIds = allMemberships.map((m) => m.orgId);
+  const allOrgs = allOrgIds.length > 0
+    ? await db.select().from(organizationsTable).where(inArray(organizationsTable.id, allOrgIds))
+    : [];
+  const orgMap = new Map(allOrgs.map((o) => [o.id, o]));
+
+  const allOrgsWithMembership = allMemberships.map((m) => ({
+    membership: m,
+    organization: orgMap.get(m.orgId) ?? null,
+  }));
+
   res.json({
-    org: result.org,
-    member: result.member,
+    org: primaryOrg,
+    member: primaryMember,
     members,
     featureGrants,
+    allOrgs: allOrgsWithMembership,
   });
 });
 
@@ -154,8 +182,18 @@ router.get("/orgs/me/financials", async (req, res) => {
     }
   }
 
+  const netWorthResult = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(CASE WHEN ${balanceSheetTxTable.type} = 'credit' THEN ${balanceSheetTxTable.amount} ELSE -${balanceSheetTxTable.amount} END), 0)`,
+    })
+    .from(balanceSheetTxTable)
+    .where(eq(balanceSheetTxTable.userId, userId));
+
+  const netWorth = netWorthResult[0]?.total ? Number(netWorthResult[0].total) : 0;
+
   res.json({
     totalSalary,
+    netWorth,
     companyCount: memberships.length,
     breakdown,
   });
