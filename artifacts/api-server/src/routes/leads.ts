@@ -229,12 +229,17 @@ router.get("/leads/:id", async (req: Request, res: Response) => {
 
   const notes = await db.select().from(leadNotesTable).where(eq(leadNotesTable.leadId, leadId)).orderBy(desc(leadNotesTable.createdAt));
 
-  const callHistory = await db.select().from(callHistoryTable).where(
-    and(
-      eq(callHistoryTable.userId, lead.assignedUserId || userId),
-      eq(callHistoryTable.recipientNumber, lead.phone)
-    )
-  ).orderBy(desc(callHistoryTable.startedAt)).limit(20);
+  const normalizedPhone = lead.phone.replace(/\D/g, "");
+  const phoneVariants = [lead.phone];
+  if (normalizedPhone.length >= 10) {
+    phoneVariants.push(normalizedPhone);
+    phoneVariants.push(`+${normalizedPhone}`);
+    phoneVariants.push(`+1${normalizedPhone.slice(-10)}`);
+    phoneVariants.push(normalizedPhone.slice(-10));
+  }
+  const callHistory = lead.phone ? await db.select().from(callHistoryTable).where(
+    or(...phoneVariants.map(p => eq(callHistoryTable.recipientNumber, p)))
+  ).orderBy(desc(callHistoryTable.startedAt)).limit(20) : [];
 
   res.json({ lead, notes, callHistory, role: membership.role });
 });
