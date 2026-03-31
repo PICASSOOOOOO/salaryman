@@ -4,6 +4,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 interface BillboardRow {
   id: number; locationId: string; label: string;
@@ -12,6 +13,7 @@ interface BillboardRow {
 }
 
 export default function BillboardAdmin() {
+  const [boomerMode] = useBoomerMode();
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const [boards, setBoards] = useState<BillboardRow[]>([]);
@@ -58,13 +60,13 @@ export default function BillboardAdmin() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#060d14', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", padding: '2rem' }}>
+    <div style={{ minHeight: '100vh', background: '#060d14', color: '#38bdf8', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" }), padding: '2rem' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', letterSpacing: '.2em', margin: 0 }}>BILLBOARD ADMIN</h1>
+          <h1 style={boomerMode ? { fontSize: '2rem', letterSpacing: '.2em', margin: 0 } : { fontFamily: "'VT323',monospace", fontSize: '2rem', letterSpacing: '.2em', margin: 0 }}>BILLBOARD ADMIN</h1>
           <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
             <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)' }}>{user?.email ?? 'unknown'}</span>
-            <button onClick={() => navigate('/dashboard')} style={{ padding: '.4rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}>
+            <button onClick={() => navigate('/dashboard')} style={{ padding: '.4rem 1rem', background: 'transparent', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" }) }}>
               ← DASHBOARD
             </button>
           </div>
@@ -110,10 +112,10 @@ export default function BillboardAdmin() {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-                  <button onClick={() => resetSlot(b.id)} style={{ padding: '.3rem .8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,80,80,.3)', color: '#ff6666', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>
+                  <button onClick={() => resetSlot(b.id)} style={{ padding: '.3rem .8rem', background: 'rgba(255,0,0,.08)', border: '1px solid rgba(255,80,80,.3)', color: '#ff6666', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" }), fontSize: '.5rem' }}>
                     RESET SLOT
                   </button>
-                  <button onClick={() => { const p = prompt('New price (CREAM):', String(b.priceFlorin)); if (p) updatePrice(b.id, parseInt(p)); }} style={{ padding: '.3rem .8rem', background: 'rgba(0,200,255,.06)', border: '1px solid rgba(0,200,255,.3)', color: '#00ccff', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>
+                  <button onClick={() => { const p = prompt('New price (CREAM):', String(b.priceFlorin)); if (p) updatePrice(b.id, parseInt(p)); }} style={{ padding: '.3rem .8rem', background: 'rgba(0,200,255,.06)', border: '1px solid rgba(0,200,255,.3)', color: '#00ccff', cursor: 'pointer', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" }), fontSize: '.5rem' }}>
                     SET PRICE
                   </button>
                 </div>

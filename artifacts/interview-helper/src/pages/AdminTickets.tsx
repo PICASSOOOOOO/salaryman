@@ -3,9 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
-
-const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 type TicketCategory = 'bug' | 'support' | 'feature_request' | 'billing' | 'other';
@@ -90,7 +88,7 @@ const CATEGORY_LABELS: Record<TicketCategory, string> = {
   other: 'OTHER',
 };
 
-function StatusBadge({ status }: { status: TicketStatus }) {
+function StatusBadge({ status, ST }: { status: TicketStatus; ST: React.CSSProperties }) {
   return (
     <span style={{
       ...ST,
@@ -107,7 +105,7 @@ function StatusBadge({ status }: { status: TicketStatus }) {
   );
 }
 
-function PriorityBadge({ priority }: { priority: TicketPriority }) {
+function PriorityBadge({ priority, ST }: { priority: TicketPriority; ST: React.CSSProperties }) {
   return (
     <span style={{
       ...ST,
@@ -131,6 +129,8 @@ function TicketDetail({
   currentUserId,
   onUpdate,
   onBack,
+  ST,
+  VT,
 }: {
   ticket: Ticket;
   comments: TicketComment[];
@@ -138,6 +138,8 @@ function TicketDetail({
   currentUserId: string;
   onUpdate: () => void;
   onBack: () => void;
+  ST: React.CSSProperties;
+  VT: React.CSSProperties;
 }) {
   const [localTicket, setLocalTicket] = useState(ticket);
   const [localComments, setLocalComments] = useState(comments);
@@ -197,8 +199,8 @@ function TicketDetail({
               {localTicket.subject}
             </div>
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-              <StatusBadge status={localTicket.status} />
-              <PriorityBadge priority={localTicket.priority} />
+              <StatusBadge status={localTicket.status} ST={ST} />
+              <PriorityBadge priority={localTicket.priority} ST={ST} />
               <span style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.4)', border: '1px solid rgba(56,189,248,.1)', padding: '2px 6px', borderRadius: 2, letterSpacing: '.08em' }}>
                 {CATEGORY_LABELS[localTicket.category]}
               </span>
@@ -309,7 +311,7 @@ function TicketDetail({
   );
 }
 
-function SubmitTicketModal({ orgId, onClose, onSubmitted }: { orgId: number; onClose: () => void; onSubmitted: () => void }) {
+function SubmitTicketModal({ orgId, onClose, onSubmitted, ST, VT }: { orgId: number; onClose: () => void; onSubmitted: () => void; ST: React.CSSProperties; VT: React.CSSProperties }) {
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState<TicketCategory>('support');
   const [priority, setPriority] = useState<TicketPriority>('medium');
@@ -386,7 +388,7 @@ function SubmitTicketModal({ orgId, onClose, onSubmitted }: { orgId: number; onC
   );
 }
 
-function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
+function InvitePanel({ orgId, orgName, ST }: { orgId: number; orgName: string; ST: React.CSSProperties }) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [invites, setInvites] = useState<OrgInvite[]>([]);
@@ -485,8 +487,11 @@ function InvitePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
 type View = 'list' | 'detail' | 'invite' | 'submit';
 
 export default function AdminTickets({ params }: { params?: { id?: string } }) {
+  const [boomerMode] = useBoomerMode();
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "'VT323',monospace" };
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [org, setOrg] = useState<Org | null>(null);
@@ -674,8 +679,8 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '.3rem' }}>
                               <span style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.3)' }}>#{t.id}</span>
-                              <StatusBadge status={t.status} />
-                              <PriorityBadge priority={t.priority} />
+                              <StatusBadge status={t.status} ST={ST} />
+                              <PriorityBadge priority={t.priority} ST={ST} />
                               <span style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', border: '1px solid rgba(56,189,248,.1)', padding: '1px 5px', borderRadius: 2 }}>
                                 {CATEGORY_LABELS[t.category]}
                               </span>
@@ -706,11 +711,13 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
                 currentUserId={user?.id ?? ''}
                 onUpdate={fetchTickets}
                 onBack={() => { setView('list'); setSelectedTicket(null); }}
+                ST={ST}
+                VT={VT}
               />
             )}
 
             {view === 'invite' && isOwner && (
-              <InvitePanel orgId={org.id} orgName={org.name} />
+              <InvitePanel orgId={org.id} orgName={org.name} ST={ST} />
             )}
           </>
         )}
@@ -720,6 +727,8 @@ export default function AdminTickets({ params }: { params?: { id?: string } }) {
             orgId={org.id}
             onClose={() => setShowSubmitModal(false)}
             onSubmitted={fetchTickets}
+            ST={ST}
+            VT={VT}
           />
         )}
 

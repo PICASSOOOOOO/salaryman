@@ -1,9 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
-
-const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+import { useBoomerMode } from '@/hooks/use-mobile';
 
 export type CosmeticCategory = 'all' | 'skin' | 'vehicle' | 'weapon' | 'emote' | 'theme';
 
@@ -54,7 +52,10 @@ interface Props {
 }
 
 export default function CosmeticStore({ onClose, onEquipChange }: Props) {
+  const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
+  const VT: React.CSSProperties = boomerMode ? {} : { fontFamily: "'VT323',monospace" };
+  const ST: React.CSSProperties = boomerMode ? {} : { fontFamily: "'Share Tech Mono',monospace" };
   const [tab, setTab] = useState<'store' | 'wardrobe' | 'bundles'>('store');
   const [category, setCategory] = useState<CosmeticCategory>('all');
   const [catalog, setCatalog] = useState<CosmeticItem[]>([]);
@@ -205,7 +206,6 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,2,0,.97)',
       display: 'flex', flexDirection: 'column', ...ST,
-      fontFamily: "'Share Tech Mono',monospace",
     }}>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
