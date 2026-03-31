@@ -95,6 +95,7 @@ export async function createOrUpdateLeadFromScreening(
       const notesArr = extracted?.reason ? [`[Screening] ${extracted.reason}`] : [];
       const [newLead] = await db.insert(leadRecordsTable).values({
         orgId: membership.orgId,
+        createdByUserId: userId,
         name: extracted?.callerName || callerNumber,
         phone: e164Phone,
         email: extracted?.email || "",
