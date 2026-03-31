@@ -179,9 +179,12 @@ export const inboundScreeningsTable = pgTable("inbound_screenings", {
   pabloSessionId: integer("pablo_session_id"),
   agentId: integer("agent_id"),
   agentName: varchar("agent_name", { length: 128 }),
+  transferredToPhone: varchar("transferred_to_phone", { length: 32 }),
   outcome: varchar("outcome", { length: 32 }).notNull().default("pending"),
   screeningDurationSeconds: integer("screening_duration_seconds").default(0),
   summary: text("summary"),
+  extractedData: text("extracted_data"),
+  contactId: integer("contact_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });

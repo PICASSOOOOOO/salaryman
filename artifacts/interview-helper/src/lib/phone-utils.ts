@@ -138,9 +138,12 @@ export interface InboundScreening {
   callerName: string | null;
   agentId: number | null;
   agentName: string | null;
+  transferredToPhone: string | null;
   outcome: string;
   screeningDurationSeconds: number | null;
   summary: string | null;
+  extractedData: string | null;
+  contactId: number | null;
   createdAt: string;
   completedAt: string | null;
 }

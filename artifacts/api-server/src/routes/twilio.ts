@@ -1224,9 +1224,13 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
 
     if (action.type === "transfer") {
       const screeningDuration = Math.floor((Date.now() - startTime) / 1000);
+      const extractedJson = action.extractedInfo ? JSON.stringify(action.extractedInfo) : null;
+      const contactId = await upsertScreeningContact(userId, From, action.extractedInfo);
       await db.update(inboundScreeningsTable).set({
         callerName: action.extractedInfo?.callerName ?? null,
         screeningDurationSeconds: screeningDuration,
+        extractedData: extractedJson,
+        contactId,
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} from ${action.extractedInfo.company ?? "N/A"} — ${action.extractedInfo.reason ?? "No reason given"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
 
@@ -1240,11 +1244,15 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
 
     if (action.type === "end_call" || action.type === "take_message") {
       const screeningDuration = Math.floor((Date.now() - startTime) / 1000);
+      const extractedJson = action.extractedInfo ? JSON.stringify(action.extractedInfo) : null;
+      const contactId = await upsertScreeningContact(userId, From, action.extractedInfo);
       await db.update(inboundScreeningsTable).set({
         outcome: "ended",
         callerName: action.extractedInfo?.callerName ?? null,
         screeningDurationSeconds: screeningDuration,
         completedAt: new Date(),
+        extractedData: extractedJson,
+        contactId,
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} — ${action.extractedInfo.reason ?? "N/A"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
 
@@ -1333,14 +1341,24 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
       outcome: "transferred",
       agentId: agent.id,
       agentName: agent.name,
+      transferredToPhone: agent.phone,
       completedAt: new Date(),
     }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
 
+    const confName = `screening_${callSid}_${Date.now()}`;
+    const client = getTwilioClient();
+    client.calls.create({
+      to: agent.phone,
+      from: getTwilioNumber(),
+      twiml: `<Response><Say voice="Google.en-US-Neural2-F">Incoming screened call for you. Connecting now.</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`,
+      statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
+      statusCallbackMethod: "POST",
+      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+    }).catch(err => console.error("[Pablo] conference agent dial error:", err instanceof Error ? err.message : "Unknown"));
+
     res.type("text/xml").send(`<Response>
 <Say voice="Google.en-US-Neural2-F">I'll connect you with ${escapeTwiml(agent.name)} now. Please hold for just a moment.</Say>
-<Dial callerId="${getTwilioNumber()}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
-<Number>${escapeTwiml(agent.phone)}</Number>
-</Dial>
+<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">${escapeTwiml(confName)}</Conference></Dial>
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] screening-transfer error:", err instanceof Error ? err.message : "Unknown");
@@ -1646,6 +1664,36 @@ router.delete("/twilio/call-center/agents/:id", requireAuth, async (req, res) =>
     res.status(500).json({ error: "Failed to remove agent" });
   }
 });
+
+async function upsertScreeningContact(userId: string, callerPhone: string, extracted?: { callerName?: string; company?: string; reason?: string } | null): Promise<number | null> {
+  try {
+    const e164 = toE164(callerPhone) ?? callerPhone;
+    const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(200);
+    const match = contacts.find(c => c.phone && (toE164(c.phone) === e164 || c.phone === callerPhone));
+    if (match) {
+      return match.id;
+    }
+    const name = extracted?.callerName || callerPhone;
+    const [newContact] = await db.insert(contactsTable).values({
+      userId,
+      name,
+      phone: e164,
+      company: extracted?.company || null,
+    }).returning();
+    if (newContact?.id) {
+      await db.insert(contactInteractionsTable).values({
+        contactId: newContact.id,
+        userId,
+        type: "call",
+        note: `Inbound screening call. Reason: ${extracted?.reason ?? "Not captured"}`,
+      });
+    }
+    return newContact?.id ?? null;
+  } catch (e: unknown) {
+    console.error("[Pablo] screening contact upsert error:", e instanceof Error ? e.message : "Unknown");
+    return null;
+  }
+}
 
 async function getNextRoundRobinAgent(userId: string) {
   const agents = await db.select().from(callCenterAgentsTable)
