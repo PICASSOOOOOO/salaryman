@@ -138,14 +138,20 @@ function usePabloVoice() {
       analyserRef.current = analyser;
 
       const dataArr = new Uint8Array(analyser.frequencyBinCount);
+      let peakLevel = 0;
+      const recordingStartTime = Date.now();
       const checkLevel = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArr);
         const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
         audioLevelRef.current = avg;
+        if (avg > peakLevel) peakLevel = avg;
         if (mediaRecorderRef.current?.state === 'recording') {
-          if (avg > 5) {
-            setLiveTranscript('🎤 Hearing you... (recording)');
+          const elapsed = Math.round((Date.now() - recordingStartTime) / 1000);
+          if (avg > 3) {
+            setLiveTranscript(`🎤 Recording... ${elapsed}s (level: ${Math.round(avg)})`);
+          } else {
+            setLiveTranscript(`🎤 Listening... ${elapsed}s (speak louder if silent)`);
           }
           requestAnimationFrame(checkLevel);
         }
@@ -171,7 +177,8 @@ function usePabloVoice() {
         try { audioCtx.close(); } catch {}
 
         const chunks = audioChunksRef.current;
-        setLiveTranscript(`Recorded ${chunks.length} chunks, sending...`);
+        const recordDuration = Math.round((Date.now() - recordingStartTime) / 1000);
+        setLiveTranscript(`Recorded ${chunks.length} chunks (${recordDuration}s, peak:${Math.round(peakLevel)}), sending...`);
 
         if (chunks.length === 0) {
           setMicError('No audio recorded — mic may not be capturing');
@@ -268,14 +275,22 @@ function usePabloVoice() {
     }
   }, []);
 
+  const recordStartTimeRef = useRef(0);
+
   const startListening = useCallback((onTranscript: (text: string) => void) => {
     if (toggleListenRef.current) {
+      const elapsed = Date.now() - recordStartTimeRef.current;
+      if (elapsed < 2000) {
+        setLiveTranscript('🎤 Keep speaking... (min 2s)');
+        return;
+      }
       if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
       return;
     }
+    recordStartTimeRef.current = Date.now();
     startWhisperRecording(onTranscript);
   }, [startWhisperRecording]);
 
