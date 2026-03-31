@@ -164,59 +164,75 @@ function usePabloVoice() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = async () => {
+      recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         micStreamRef.current = null;
         analyserRef.current = null;
-        audioCtx.close();
+        try { audioCtx.close(); } catch {}
 
-        if (audioChunksRef.current.length === 0) {
-          setMicError('No audio recorded');
+        const chunks = audioChunksRef.current;
+        setLiveTranscript(`Recorded ${chunks.length} chunks, sending...`);
+
+        if (chunks.length === 0) {
+          setMicError('No audio recorded — mic may not be capturing');
           setIsListening(false);
           toggleListenRef.current = null;
           return;
         }
 
-        setLiveTranscript('Transcribing...');
         setIsTranscribing2(true);
-        try {
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
-          const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve) => {
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              resolve(result.split(',')[1]);
-            };
-            reader.readAsDataURL(blob);
-          });
-
-          const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+        const blob = new Blob(chunks, { type: mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          if (!base64) {
+            setMicError('Failed to encode audio');
+            setIsTranscribing2(false);
+            setIsListening(false);
+            toggleListenRef.current = null;
+            return;
+          }
+          setLiveTranscript(`Transcribing ${Math.round(base64.length / 1024)}KB of audio...`);
+          fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audio: base64, mimeType }),
-          });
-
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ error: 'Unknown' }));
-            setMicError(`Transcription failed: ${(err as { error: string }).error}`);
-          } else {
-            const { text } = await resp.json() as { text: string };
-            if (text && text.trim()) {
-              setLiveTranscript(text.trim());
-              if (onTranscriptRef.current) onTranscriptRef.current(text.trim());
-            } else {
-              setMicError('No speech detected in recording');
-            }
-          }
-        } catch (err) {
-          setMicError('Failed to transcribe audio');
-          console.error('Whisper transcription error:', err);
-        } finally {
+          })
+            .then(resp => {
+              if (!resp.ok) {
+                return resp.text().then(t => {
+                  setMicError(`Server error ${resp.status}: ${t.slice(0, 100)}`);
+                });
+              }
+              return resp.json().then((data: { text?: string }) => {
+                const text = data?.text?.trim();
+                if (text) {
+                  setLiveTranscript(text);
+                  if (onTranscriptRef.current) onTranscriptRef.current(text);
+                } else {
+                  setMicError('No speech detected in recording');
+                }
+              });
+            })
+            .catch(err => {
+              setMicError(`Network error: ${err instanceof Error ? err.message : 'unknown'}`);
+              console.error('Whisper fetch error:', err);
+            })
+            .finally(() => {
+              setIsTranscribing2(false);
+              setIsListening(false);
+              toggleListenRef.current = null;
+              setTimeout(() => setLiveTranscript(''), 3000);
+            });
+        };
+        reader.onerror = () => {
+          setMicError('Failed to read audio data');
           setIsTranscribing2(false);
           setIsListening(false);
           toggleListenRef.current = null;
-          setTimeout(() => setLiveTranscript(''), 2000);
-        }
+        };
+        reader.readAsDataURL(blob);
       };
 
       setIsListening(true);
@@ -1361,9 +1377,11 @@ export default function Home() {
                   </button>
                 </div>
 
-                {voice.isListening && voice.liveTranscript && (
+                {voice.liveTranscript && (
                   <div className="mt-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                    <p className="text-[10px] text-purple-400/60 mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>PABLO HEARS:</p>
+                    <p className="text-[10px] text-purple-400/60 mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      {voice.isListening ? 'RECORDING:' : 'PABLO HEARS:'}
+                    </p>
                     <p className="text-sm text-purple-300 italic">"{voice.liveTranscript}"</p>
                   </div>
                 )}
