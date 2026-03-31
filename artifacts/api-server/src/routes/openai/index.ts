@@ -112,10 +112,14 @@ router.post("/transcribe", async (req, res) => {
 
   try {
     const audioBuffer = Buffer.from(audio, "base64");
+    console.log(`[Transcribe] Received ${audioBuffer.length} bytes, mimeType: ${mimeType || 'not specified'}, first bytes: ${audioBuffer.slice(0, 8).toString('hex')}`);
+
     const { speechToText, detectAudioFormat } = await import("@workspace/integrations-openai-ai-server/audio");
     const detected = detectAudioFormat(audioBuffer);
     const format: "wav" | "mp3" | "webm" = detected === "wav" ? "wav" : detected === "mp3" ? "mp3" : "webm";
+    console.log(`[Transcribe] Detected format: ${detected}, using: ${format}`);
     const text = await speechToText(audioBuffer, format);
+    console.log(`[Transcribe] Result: "${text}" (${text.length} chars)`);
     res.json({ text: text || "" });
   } catch (err: any) {
     console.error("Transcription error:", err?.message || err);

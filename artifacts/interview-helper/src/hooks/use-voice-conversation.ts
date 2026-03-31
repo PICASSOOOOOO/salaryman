@@ -36,8 +36,51 @@ function playReadyChime(): void {
   }
 }
 
+async function convertToWav(inputBlob: Blob): Promise<Blob> {
+  try {
+    const arrayBuf = await inputBlob.arrayBuffer();
+    const actx = new AudioContext({ sampleRate: 16000 });
+    const decoded = await actx.decodeAudioData(arrayBuf);
+    const offline = new OfflineAudioContext(1, decoded.length, 16000);
+    const src = offline.createBufferSource();
+    src.buffer = decoded;
+    src.connect(offline.destination);
+    src.start();
+    const rendered = await offline.startRendering();
+    actx.close();
+    const pcm = rendered.getChannelData(0);
+    const wavBuf = new ArrayBuffer(44 + pcm.length * 2);
+    const view = new DataView(wavBuf);
+    const writeStr = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + pcm.length * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 16000, true);
+    view.setUint32(28, 32000, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, pcm.length * 2, true);
+    for (let i = 0; i < pcm.length; i++) {
+      const s = Math.max(-1, Math.min(1, pcm[i]));
+      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    return new Blob([wavBuf], { type: 'audio/wav' });
+  } catch (e) {
+    console.warn('WAV conversion failed, using original:', e);
+    return inputBlob;
+  }
+}
+
 async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string> {
-  const blob = new Blob(chunks, { type: mimeType });
+  const rawBlob = new Blob(chunks, { type: mimeType });
+  const finalBlob = await convertToWav(rawBlob);
+  const finalMime = finalBlob.type === 'audio/wav' ? 'audio/wav' : mimeType;
+
   const reader = new FileReader();
   const base64 = await new Promise<string>((resolve, reject) => {
     reader.onloadend = () => {
@@ -47,7 +90,7 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
       else reject(new Error('Failed to encode audio'));
     };
     reader.onerror = () => reject(new Error('FileReader error'));
-    reader.readAsDataURL(blob);
+    reader.readAsDataURL(finalBlob);
   });
 
   const controller = new AbortController();
@@ -57,7 +100,7 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
     const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audio: base64, mimeType }),
+      body: JSON.stringify({ audio: base64, mimeType: finalMime }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
