@@ -1687,7 +1687,7 @@ async function upsertScreeningContact(userId: string, callerPhone: string, extra
       userId,
       name,
       phone: e164,
-      company: extracted?.company || null,
+      company: extracted?.company || "",
     }).returning();
     if (newContact?.id) {
       await db.insert(contactInteractionsTable).values({
