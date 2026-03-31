@@ -20,6 +20,43 @@ router.post("/tts", async (req, res) => {
     res.status(400).json({ error: "text is required" });
     return;
   }
+
+  const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+  if (elevenLabsKey) {
+    try {
+      const voiceId = process.env.ELEVENLABS_VOICE_ID || "pNInz6obpgDQGcFmaJgB";
+      const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": elevenLabsKey,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_turbo_v2_5",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.4,
+            use_speaker_boost: true,
+          },
+        }),
+      });
+
+      if (elRes.ok) {
+        const buffer = Buffer.from(await elRes.arrayBuffer());
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Content-Length", buffer.length);
+        res.end(buffer);
+        return;
+      }
+      console.warn("ElevenLabs TTS failed, falling back to OpenAI:", elRes.status, await elRes.text());
+    } catch (err) {
+      console.warn("ElevenLabs TTS error, falling back to OpenAI:", err);
+    }
+  }
+
   try {
     const mp3 = await openai.audio.speech.create({
       model: "tts-1",
