@@ -1290,13 +1290,20 @@ export default function Home() {
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed
                         ${conv.isConvMode
                           ? 'bg-sky-500/25 border-sky-500/50 text-sky-400 animate-pulse'
+                          : conv.permissionDenied
+                          ? 'bg-red-500/15 border-red-500/30 text-red-400'
                           : 'bg-sky-500/10 border-sky-500/25 text-sky-400/60 hover:bg-sky-500/20 hover:text-sky-400'}`}
                       style={{ fontFamily: "'Share Tech Mono', monospace" }}
-                      title={conv.isConvMode ? 'End conversation mode' : 'Hands-free back-and-forth with PABLO'}
+                      title={conv.permissionDenied ? 'Microphone access denied — open app in a new browser tab to enable' : conv.isConvMode ? 'End conversation mode' : 'Hands-free back-and-forth with PABLO'}
                     >
                       <Radio className="w-3.5 h-3.5" />
-                      {conv.isConvMode ? 'END CONV' : (boomerMode ? 'CONVERSATION MODE' : 'CONV')}
+                      {conv.isConvMode ? 'END CONV' : conv.permissionDenied ? 'MIC BLOCKED' : (boomerMode ? 'CONVERSATION MODE' : 'CONV')}
                     </button>
+                  )}
+                  {conv.permissionDenied && (
+                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      Open in new tab for mic access
+                    </span>
                   )}
 
                   {voice.isSpeaking && (
