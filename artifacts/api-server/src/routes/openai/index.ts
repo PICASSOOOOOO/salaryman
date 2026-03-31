@@ -24,7 +24,7 @@ router.post("/tts", async (req, res) => {
   const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
   if (elevenLabsKey) {
     try {
-      const voiceId = process.env.ELEVENLABS_VOICE_ID || "QZRlT5NqTgs34Uz6r1me";
+      const voiceId = process.env.ELEVENLABS_VOICE_ID || "86ZLAUcyPNBrbdJKn3u6";
       const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
