@@ -51,13 +51,42 @@ router.post("/tts", async (req, res) => {
         res.end(buffer);
         return;
       }
-      console.warn("ElevenLabs TTS failed, falling back to OpenAI:", elRes.status, await elRes.text());
+      const errBody = await elRes.text();
+      console.warn("ElevenLabs TTS failed:", elRes.status, errBody);
+      if (elRes.status === 402) {
+        console.warn("ElevenLabs requires a paid plan for this voice. Falling back to browser TTS.");
+      }
     } catch (err) {
-      console.warn("ElevenLabs TTS error, falling back to OpenAI:", err);
+      console.warn("ElevenLabs TTS error:", err);
     }
   }
 
   try {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey) {
+      const directRes = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          voice: "onyx",
+          input: text,
+          response_format: "mp3",
+        }),
+      });
+      if (directRes.ok) {
+        const buffer = Buffer.from(await directRes.arrayBuffer());
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Content-Length", buffer.length);
+        res.end(buffer);
+        return;
+      }
+      console.warn("OpenAI direct TTS failed:", directRes.status);
+    }
+
     const mp3 = await openai.audio.speech.create({
       model: "tts-1",
       voice: "onyx",
@@ -69,8 +98,8 @@ router.post("/tts", async (req, res) => {
     res.setHeader("Content-Length", buffer.length);
     res.end(buffer);
   } catch (err) {
-    console.error("TTS error:", err);
-    res.status(502).json({ error: "TTS failed" });
+    console.error("TTS error (all engines failed):", err);
+    res.status(502).json({ error: "TTS failed", fallback: "browser" });
   }
 });
 

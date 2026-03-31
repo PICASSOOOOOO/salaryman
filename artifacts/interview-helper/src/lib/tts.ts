@@ -66,6 +66,26 @@ async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {
   return getAudioCtx().decodeAudioData(arrayBuf);
 }
 
+function speakWithBrowserTTS(text: string, onEnd: () => void): { cancel: () => void } {
+  if (!('speechSynthesis' in window)) {
+    onEnd();
+    return { cancel: () => {} };
+  }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 0.9;
+  utt.pitch = 0.85;
+  utt.volume = 1;
+  utt.onend = onEnd;
+  utt.onerror = () => onEnd();
+  window.speechSynthesis.speak(utt);
+  return {
+    cancel() {
+      window.speechSynthesis.cancel();
+    },
+  };
+}
+
 interface TTSHandle {
   cancel: () => void;
 }
@@ -78,6 +98,7 @@ export function speakWithTTS(
   const abortController = new AbortController();
   const signal = abortController.signal;
   let currentSource: AudioBufferSourceNode | null = null;
+  let browserFallback: { cancel: () => void } | null = null;
 
   const clean = cleanText(text);
   const sentences = splitSentences(clean);
@@ -116,9 +137,8 @@ export function speakWithTTS(
       if (!result.ok) {
         const err = result.err;
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        const error = err instanceof Error ? err : new Error(String(err));
-        console.error('TTS failed after retries:', error);
-        onError?.(error);
+        console.warn('Server TTS failed, falling back to browser voice:', err);
+        browserFallback = speakWithBrowserTTS(clean, onEnd);
         return;
       }
 
@@ -153,9 +173,8 @@ export function speakWithTTS(
 
   playSentences().catch(err => {
     if (signal.aborted) return;
-    const error = err instanceof Error ? err : new Error(String(err));
-    console.error('TTS playback error:', error);
-    onError?.(error);
+    console.warn('Server TTS playback error, falling back to browser voice:', err);
+    browserFallback = speakWithBrowserTTS(clean, onEnd);
   });
 
   return {
@@ -164,6 +183,10 @@ export function speakWithTTS(
       if (currentSource) {
         try { currentSource.stop(); } catch {}
         currentSource = null;
+      }
+      if (browserFallback) {
+        browserFallback.cancel();
+        browserFallback = null;
       }
     },
   };
