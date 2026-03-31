@@ -269,7 +269,8 @@ function usePabloVoice() {
                   setLiveTranscript(text);
                   if (onTranscriptRef.current) onTranscriptRef.current(text);
                 } else {
-                  setMicError('No speech detected in recording');
+                  const rms = data?.rms ?? '?';
+                  setMicError(`No speech detected (RMS: ${rms}, size: ${sizeKB}KB). Audio ${Number(rms) > 50 ? 'has sound but model cant hear speech' : 'appears SILENT - mic not capturing'}`);
                 }
               });
             })
