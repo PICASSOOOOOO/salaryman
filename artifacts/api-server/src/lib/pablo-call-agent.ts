@@ -5,6 +5,8 @@ import {
   contactsTable,
   contactInteractionsTable,
   secretaryConfigTable,
+  organizationsTable,
+  orgMembersTable,
   type SecretaryConfig,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -33,12 +35,41 @@ interface PabloAction {
   extractedInfo?: ExtractedInfo;
 }
 
+const MEDICARE_CLUB_SCRIPT = `Hi... thank you so much for calling Medicare Club. My name is Pablo, and I am an AI assistant here to help. This will just take a moment. Are you calling for sales... or do you need help with support?
+
+SALES CALL FLOW:
+Wonderful! Can I please get your full name... and your email address? I'll pass this information along to the team before connecting you.
+Thank you so much! Please hold for just a moment while I transfer you to someone who can help.
+(Transfer the call and pass collected information—name and email—to the agent for follow-up.)
+
+SUPPORT CALL FLOW:
+Got it! Can I please get your full name... and your email address, just in case we get cut off and need to follow up?
+Thank you so much. Please hold while I connect you.
+
+IMPORTANT RULES:
+- Only collect name and email. Do NOT collect date of birth, member/provider status, or other personal data.
+- Speak slowly and very clearly for ease of understanding.
+- If the caller wants to speak with a human immediately, transfer right away without further questions.
+- Callers aged 64-80 are the target audience. If a caller is over 80, politely let them know this program may not be the best fit.
+- Keep intros and outros warm, polite, and tailored to Medicare Club's tone.`;
+
+async function getOrgNameForUser(userId: string): Promise<string | null> {
+  const rows = await db
+    .select({ name: organizationsTable.name })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+    .limit(1);
+  return rows[0]?.name ?? null;
+}
+
 function buildSystemPrompt(
   config: SecretaryConfig,
   direction: "inbound" | "outbound" | "screening",
   existingInfo: ExtractedInfo | null,
   turnCount: number,
   outboundScript?: string,
+  orgName?: string | null,
 ): string {
   const personality = config.personality ?? "professional";
   const personalityDesc =
@@ -52,16 +83,34 @@ function buildSystemPrompt(
   const screening = config.screeningRules || "";
   const screeningScript = (config as SecretaryConfig & { screeningScript?: string | null }).screeningScript || "";
 
-  let prompt = `You are Pablo, an AI phone agent for a business. You are ${personalityDesc}.
+  const companyLabel = orgName ? ` for ${orgName}` : " for a business";
+
+  let prompt = `You are Pablo, an AI phone agent${companyLabel}. You are ${personalityDesc}.
 You are handling a live phone call. Keep responses concise (under 40 words) and natural-sounding for voice.
+Speak naturally and sound human — use pauses, filler words, and conversational tone. Never sound robotic.
 
 DIRECTION: ${direction === "screening" ? "inbound" : direction}
 TURN: ${turnCount + 1}
 
 `;
 
+  const isMedicareClub = orgName && /medicare\s*club/i.test(orgName);
+  const effectiveScreeningScript = isMedicareClub
+    ? MEDICARE_CLUB_SCRIPT
+    : screeningScript;
+
   if (direction === "screening") {
-    prompt += `MODE: INBOUND CALL SCREENING
+    if (isMedicareClub) {
+      prompt += `MODE: MEDICARE CLUB INBOUND CALL SCREENING
+You are Pablo, the AI assistant for Medicare Club.
+You handle Sales and Support calls exclusively for Medicare Club.
+Follow the Medicare Club script below precisely. Speak slowly and very clearly.
+Only collect the caller's name and email — do NOT ask for date of birth, member/provider status, or other personal data.
+Callers aged 64-80 are the priority audience. If a caller is over 80, politely let them know this program may not be the best fit.
+If the caller wants to speak with a human immediately, use [ACTION:TRANSFER] right away.
+Once you have name + email, use [ACTION:TRANSFER] to route them to an agent.\n\n`;
+    } else {
+      prompt += `MODE: INBOUND CALL SCREENING
 You are screening an inbound caller before transferring them to an available agent.
 Your goal is to quickly qualify the caller within 2 minutes. Be efficient but warm.
 Gather the caller's name, company, and reason for calling as fast as possible.
@@ -69,8 +118,9 @@ Once you have enough information (name + reason), use [ACTION:TRANSFER] to route
 If the caller is spam, a robocall, or not a legitimate business inquiry, use [ACTION:END_CALL].
 If the caller wants to leave a message, use [ACTION:TAKE_MESSAGE].
 Do NOT keep the conversation going longer than necessary — screen and transfer quickly.\n\n`;
-    if (screeningScript) {
-      prompt += `SCREENING SCRIPT/GREETING:\n${screeningScript}\n\n`;
+    }
+    if (effectiveScreeningScript) {
+      prompt += `SCREENING SCRIPT/GREETING:\n${effectiveScreeningScript}\n\n`;
     }
   }
 
@@ -250,12 +300,15 @@ export async function processPabloTurn(
     timestamp: new Date().toISOString(),
   });
 
+  const orgName = await getOrgNameForUser(userId);
+
   const systemPrompt = buildSystemPrompt(
     config,
     direction,
     existingInfo,
     session.turnCount,
     outboundScript,
+    orgName,
   );
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [

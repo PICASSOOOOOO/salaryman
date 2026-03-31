@@ -2,6 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
+import { speakWithTTS } from '@/lib/tts';
 import { CITY_NAME } from '../gameSystems';
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
@@ -3301,6 +3302,7 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
+  const pabloTtsRef = useRef<{ cancel: () => void } | null>(null);
   const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'merch'|'plan'|'company'|'audio'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
@@ -3343,6 +3345,22 @@ export default function WorldPlay() {
   const [doorLockPrompt, setDoorLockPrompt] = useState<{ bid: string; mode: 'menu' | 'set_pw' | 'change_pw' | 'enter_pw' } | null>(null);
   const [doorLockPw, setDoorLockPw] = useState('');
   const [doorLockPwError, setDoorLockPwError] = useState('');
+  useEffect(() => {
+    if (showPablo) {
+      pabloTtsRef.current?.cancel();
+      pabloTtsRef.current = speakWithTTS(
+        "Pablo AI online. Welcome back, operative. What do you need?",
+        () => { pabloTtsRef.current = null; },
+      );
+    } else {
+      if (pabloTtsRef.current) {
+        pabloTtsRef.current.cancel();
+        pabloTtsRef.current = null;
+      }
+    }
+    return () => { pabloTtsRef.current?.cancel(); };
+  }, [showPablo]);
+
   // Billboard marketplace
   const [billboardsData, setBillboardsData] = useState<BillboardData[]>([]);
   const billboardsDataRef = useRef<BillboardData[]>([]);
@@ -6268,14 +6286,19 @@ OPERATIVE STATUS:
 Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in character.`;
   }, [char]);
 
+  const pabloSay = useCallback((text: string) => {
+    setPabloMsgs(m => [...m, { role: 'pablo', text }]);
+    pabloTtsRef.current?.cancel();
+    pabloTtsRef.current = speakWithTTS(text, () => { pabloTtsRef.current = null; });
+  }, []);
+
   const sendPablo = useCallback(async () => {
     if (!pabloIn.trim() || pabloLoad) return;
     const txt = pabloIn.trim(); setPabloIn('');
     setPabloMsgs(m => [...m, { role: 'user', text: txt }]);
     const canAccess = isOwnerPlanRef.current || (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;
-    if (!canAccess) { setPabloMsgs(m => [...m, { role: 'pablo', text: gs.current.deviceBroken ? 'Device damaged. Visit CITY CLINIC for repair (ƒ5,000) or find a PUBLIC TERMINAL.' : 'No device. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].' }]); return; }
+    if (!canAccess) { pabloSay(gs.current.deviceBroken ? 'Device damaged. Visit CITY CLINIC for repair or find a PUBLIC TERMINAL.' : 'No device. Find a PUBLIC TERMINAL — payphone, kiosk, or van — and press E.'); return; }
 
-    // ── meet commands ───────────────────────────────────────────────────
     const meetMatch = txt.match(/^meet\s+(\S+)(.*)$/i);
     if (meetMatch) {
       const subCmd = meetMatch[1].toLowerCase();
@@ -6289,11 +6312,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (d?.meeting) {
             const baseUrl = window.location.origin;
             const link = `${baseUrl}/meet/${d.meeting.roomCode}`;
-            setPabloMsgs(m => [...m, { role: 'pablo', text: `ROOM CREATED: "${d.meeting.title}"\nCODE: ${d.meeting.roomCode}\nLINK: ${link}\nExpires in 7 days. Type: meet join ${d.meeting.roomCode}` }]);
+            pabloSay(`Room created. Title: ${d.meeting.title}. Code: ${d.meeting.roomCode}. Link: ${link}. Expires in 7 days.`);
           } else {
-            setPabloMsgs(m => [...m, { role: 'pablo', text: 'Failed to create meeting room. Try again.' }]);
+            pabloSay('Failed to create meeting room. Try again.');
           }
-        } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error creating meeting.' }]); }
+        } catch { pabloSay('Network error creating meeting.'); }
         setPabloLoad(false);
       } else if (subCmd === 'list') {
         setPabloLoad(true);
@@ -6303,43 +6326,43 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (d?.meetings?.length) {
             const baseUrl = window.location.origin;
             const lines = d.meetings.map((m: any) => `${m.title} — CODE: ${m.roomCode} — ${baseUrl}/meet/${m.roomCode}`).join('\n');
-            setPabloMsgs(m => [...m, { role: 'pablo', text: `ACTIVE MEETINGS (${d.meetings.length}):\n${lines}` }]);
+            pabloSay(`Active meetings: ${d.meetings.length}. ${lines}`);
           } else {
-            setPabloMsgs(m => [...m, { role: 'pablo', text: 'No active meeting rooms. Type: meet create [title]' }]);
+            pabloSay('No active meeting rooms. Type: meet create, followed by a title.');
           }
-        } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error fetching meetings.' }]); }
+        } catch { pabloSay('Network error fetching meetings.'); }
         setPabloLoad(false);
       } else if (subCmd === 'join') {
         const roomId = rest || videoCallRoom;
         if (roomId) {
           joinVideoCall(roomId);
-          setPabloMsgs(m => [...m, { role: 'pablo', text: `Joining video call for room: ${roomId}. Use [C] or [ESC] to end.` }]);
+          pabloSay(`Joining video call for room: ${roomId}. Use C or Escape to end.`);
         } else {
-          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Specify a room code: meet join [code]' }]);
+          pabloSay('Specify a room code: meet join, followed by the code.');
         }
       } else if (subCmd === 'invite') {
         const parts = rest.split(/\s+/);
         const email = parts[0];
         const roomCode = parts[1] ?? '';
         if (!email || !email.includes('@')) {
-          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Usage: meet invite [email] [room-code]' }]);
+          pabloSay('Usage: meet invite, email, room code.');
         } else if (!roomCode) {
-          setPabloMsgs(m => [...m, { role: 'pablo', text: 'Usage: meet invite [email] [room-code]' }]);
+          pabloSay('Usage: meet invite, email, room code.');
         } else {
           setPabloLoad(true);
           try {
             const r = await apiFetch(`/api/meetings/${roomCode}/invite`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emails: [email] }), credentials: 'include' });
             const d = r.ok ? await r.json() : null;
             if (d?.ok) {
-              setPabloMsgs(m => [...m, { role: 'pablo', text: `INVITE SENT to ${email} for room ${roomCode}. Hologram link delivered.` }]);
+              pabloSay(`Invite sent to ${email} for room ${roomCode}. Hologram link delivered.`);
             } else {
-              setPabloMsgs(m => [...m, { role: 'pablo', text: `Invite failed: ${d?.error ?? 'Unknown error'}` }]);
+              pabloSay(`Invite failed: ${d?.error ?? 'Unknown error'}.`);
             }
-          } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network error sending invite.' }]); }
+          } catch { pabloSay('Network error sending invite.'); }
           setPabloLoad(false);
         }
       } else {
-        setPabloMsgs(m => [...m, { role: 'pablo', text: 'MEET COMMANDS:\nmeet create [title] — Create a meeting room\nmeet list — List active rooms\nmeet join [code] — Join video call\nmeet invite [email] [code] — Send invite email' }]);
+        pabloSay('Meet commands available: meet create, meet list, meet join, meet invite.');
       }
       return;
     }
@@ -6349,10 +6372,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const context = buildPabloContext();
       const r = await apiFetch('/api/advisor/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: txt, context }), credentials: 'include' });
       const d = r.ok ? await r.json() : {};
-      setPabloMsgs(m => [...m, { role: 'pablo', text: d.response ?? 'Signal lost. Try again.' }]);
-    } catch { setPabloMsgs(m => [...m, { role: 'pablo', text: 'Network dead. Move to higher ground.' }]); }
+      pabloSay(d.response ?? 'Signal lost. Try again.');
+    } catch { pabloSay('Network dead. Move to higher ground.'); }
     setPabloLoad(false);
-  }, [pabloIn, pabloLoad, buildPabloContext, char.name, joinVideoCall, videoCallRoom]);
+  }, [pabloIn, pabloLoad, buildPabloContext, char.name, joinVideoCall, videoCallRoom, pabloSay]);
 
   const sendPabloVoice = useCallback(async (transcript: string): Promise<string> => {
     const canAccess = isOwnerPlanRef.current || (gs.current.hasDevice && !gs.current.deviceBroken) || gs.current.atPublicTerminal;

@@ -469,8 +469,8 @@ router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) =>
     const _confStatusUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/status` : undefined;
     const _confEventUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/conference-status` : undefined;
     const confTwiml = _confEventUrl
-      ? `<Response><Say voice="alice">You are being connected to a conference call.</Say><Dial><Conference statusCallback="${_confEventUrl}" statusCallbackEvent="start end join leave mute hold" statusCallbackMethod="POST">${roomName}</Conference></Dial></Response>`
-      : `<Response><Say voice="alice">You are being connected to a conference call.</Say><Dial><Conference>${roomName}</Conference></Dial></Response>`;
+      ? `<Response><Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference statusCallback="${_confEventUrl}" statusCallbackEvent="start end join leave mute hold" statusCallbackMethod="POST">${roomName}</Conference></Dial></Response>`
+      : `<Response><Say voice="Google.en-US-Neural2-F">You are being connected to a conference call.</Say><Dial><Conference>${roomName}</Conference></Dial></Response>`;
     const call = await client.calls.create({
       to: e164,
       from: fromNumber,
@@ -987,9 +987,9 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
-<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
           res.type("text/xml").send(twiml);
@@ -1002,9 +1002,9 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
 <Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
-<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
-<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
         res.type("text/xml").send(twiml);
@@ -1014,7 +1014,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
     const greeting = config?.greetingScript ?? "You have reached our voicemail. Please leave a message after the tone.";
     const twiml = `<Response>
-<Say voice="alice">${escapeTwiml(greeting)} Please leave a message after the tone.</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)} Please leave a message after the tone.</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
     res.type("text/xml").send(twiml);
@@ -1097,7 +1097,7 @@ End with asking if there's anything else you can help with.`,
       action = `<Dial>${safeForward}</Dial>`;
     } else {
       const safeResponse = escapeTwiml(response);
-      action = `<Gather input="speech" timeout="5" action="${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto"><Say voice="alice">${safeResponse}</Say></Gather><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
+      action = `<Gather input="speech" timeout="5" action="${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Gather><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
     }
 
     res.type("text/xml").send(`<Response>${action}</Response>`);
@@ -1118,7 +1118,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     const userId = req.query.userId as string;
 
     if (!userId || !SpeechResult) {
-      res.type("text/xml").send('<Response><Say voice="alice">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
+      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
       return;
     }
 
@@ -1149,7 +1149,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
       } catch (e: unknown) {
         console.error("[Pablo] transfer setup error:", e instanceof Error ? e.message : "Unknown");
       }
-      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
+      res.type("text/xml").send(`<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
       updateLeadFromPabloCall(From, userId, "transfer", action.response, null).catch(() => {});
       await db.update(callHistoryTable).set({ callType: "pablo_transfer" }).where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.userId, userId)));
@@ -1157,7 +1157,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     }
 
     if (action.type === "end_call" || action.type === "take_message") {
-      let twiml = `<Response><Say voice="alice">${safeResponse}</Say>`;
+      let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
       if (action.type === "take_message") {
         twiml += `<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />`;
       }
@@ -1170,17 +1170,17 @@ router.post("/twilio/pablo/gather", async (req, res) => {
 
     res.type("text/xml").send(`<Response>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="alice">${safeResponse}</Say>
+<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
 </Gather>
-<Say voice="alice">I didn't catch that. Could you repeat that?</Say>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="alice">Are you still there?</Say>
+<Say voice="Google.en-US-Neural2-F">Are you still there?</Say>
 </Gather>
-<Say voice="alice">Thank you for calling. Goodbye.</Say>
+<Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say>
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] gather error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="alice">I apologize, but I\'m having trouble right now. Please try again later.</Say></Response>');
+    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize, but I\'m having trouble right now. Please try again later.</Say></Response>');
   }
 });
 
@@ -1386,7 +1386,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     const campaignId = req.query.campaignId as string;
 
     if (!userId || !SpeechResult) {
-      res.type("text/xml").send('<Response><Say voice="alice">Thank you for your time. Goodbye.</Say><Hangup/></Response>');
+      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say><Hangup/></Response>');
       return;
     }
 
@@ -1407,7 +1407,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     const safeResponse = escapeTwiml(action.response);
 
     if (action.type === "end_call" || action.type === "take_message" || action.type === "create_lead") {
-      res.type("text/xml").send(`<Response><Say voice="alice">${safeResponse}</Say></Response>`);
+      res.type("text/xml").send(`<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
       updateLeadFromPabloCall(To, userId, action.type, action.response, null).catch(() => {});
       return;
@@ -1415,13 +1415,13 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
 
     res.type("text/xml").send(`<Response>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
-<Say voice="alice">${safeResponse}</Say>
+<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
 </Gather>
-<Say voice="alice">Thank you for your time. Goodbye.</Say>
+<Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say>
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] outbound gather error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>');
+    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>');
   }
 });
 
@@ -1457,7 +1457,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
     const call = await client.calls.create({
       to: phoneNumber,
       from: fromNumber,
-      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="alice">${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1583,7 +1583,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
         const call = await client.calls.create({
           to: lead.phone,
           from: campaignFromNumber,
-          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="alice">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
+          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -2293,9 +2293,9 @@ router.post("/twilio/webhook/voice", async (req, res) => {
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
-<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
           res.type("text/xml").send(twiml);
@@ -2308,9 +2308,9 @@ router.post("/twilio/webhook/voice", async (req, res) => {
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
 <Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
-<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
-<Say voice="alice">I didn't catch that. Please leave a message after the tone.</Say>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
         res.type("text/xml").send(twiml);
@@ -2320,7 +2320,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
     const greeting = config?.greetingScript ?? "You have reached our voicemail. Please leave a message after the tone.";
     const twiml = `<Response>
-<Say voice="alice">${escapeTwiml(greeting)}</Say>
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
     res.type("text/xml").send(twiml);
