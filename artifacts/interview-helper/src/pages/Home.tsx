@@ -155,26 +155,46 @@ function usePabloVoice() {
         }
       }, 3000);
     };
-    rec.onend = () => {
-      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-      setIsListening(false);
-      toggleListenRef.current = null;
-      setLiveTranscript('');
-      if (listenTranscript.current.trim()) {
-        onTranscript(listenTranscript.current.trim());
-      }
-    };
+    let noSpeechRetries = 0;
+    const MAX_NO_SPEECH_RETRIES = 5;
     rec.onerror = (ev) => {
+      if (ev.error === 'no-speech') {
+        noSpeechRetries++;
+        if (noSpeechRetries < MAX_NO_SPEECH_RETRIES) {
+          try { rec.stop(); } catch {}
+          return;
+        }
+        if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+        setIsListening(false);
+        toggleListenRef.current = null;
+        setLiveTranscript('');
+        setMicError('No speech detected after multiple attempts. Check that your mic is working and try again.');
+        return;
+      }
       if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       setIsListening(false);
       toggleListenRef.current = null;
       setLiveTranscript('');
       if (ev.error === 'not-allowed' || ev.error === 'permission-denied') {
         setMicError('Microphone access denied. Check browser permissions.');
-      } else if (ev.error === 'no-speech') {
-        setMicError('No speech detected. Try speaking louder or check your mic.');
+      } else if (ev.error === 'aborted') {
+        setMicError('');
       } else {
         setMicError(`Mic error: ${ev.error}`);
+      }
+    };
+    rec.onend = () => {
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+      const hadTranscript = listenTranscript.current.trim();
+      if (!hadTranscript && noSpeechRetries < MAX_NO_SPEECH_RETRIES && toggleListenRef.current === rec) {
+        try { rec.start(); } catch {}
+        return;
+      }
+      setIsListening(false);
+      toggleListenRef.current = null;
+      setLiveTranscript('');
+      if (hadTranscript) {
+        onTranscript(hadTranscript);
       }
     };
     rec.start();
