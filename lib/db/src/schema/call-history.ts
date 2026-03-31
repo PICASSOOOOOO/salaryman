@@ -75,6 +75,10 @@ export const secretaryConfigTable = pgTable("secretary_config", {
   transferRouting: text("transfer_routing"),
   outboundScript: text("outbound_script"),
   outboundSchedule: text("outbound_schedule"),
+  inboundDid: varchar("inbound_did", { length: 32 }),
+  outboundDid: varchar("outbound_did", { length: 32 }),
+  screeningTimeLimit: integer("screening_time_limit").notNull().default(120),
+  screeningScript: text("screening_script"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -150,3 +154,34 @@ export const pabloOutboundCampaignsTable = pgTable("pablo_outbound_campaigns", {
 
 export type PabloOutboundCampaign = typeof pabloOutboundCampaignsTable.$inferSelect;
 export type InsertPabloOutboundCampaign = typeof pabloOutboundCampaignsTable.$inferInsert;
+
+export const callCenterAgentsTable = pgTable("call_center_agents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  phone: varchar("phone", { length: 32 }).notNull(),
+  email: varchar("email", { length: 256 }),
+  isActive: boolean("is_active").notNull().default(true),
+  lastCallAt: timestamp("last_call_at", { withTimezone: true }),
+  totalCalls: integer("total_calls").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type CallCenterAgent = typeof callCenterAgentsTable.$inferSelect;
+export type InsertCallCenterAgent = typeof callCenterAgentsTable.$inferInsert;
+
+export const inboundScreeningsTable = pgTable("inbound_screenings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 256 }).notNull(),
+  twilioCallSid: varchar("twilio_call_sid", { length: 64 }).notNull(),
+  callerNumber: varchar("caller_number", { length: 32 }).notNull(),
+  callerName: varchar("caller_name", { length: 128 }),
+  pabloSessionId: integer("pablo_session_id"),
+  agentId: integer("agent_id"),
+  agentName: varchar("agent_name", { length: 128 }),
+  outcome: varchar("outcome", { length: 32 }).notNull().default("pending"),
+  screeningDurationSeconds: integer("screening_duration_seconds").default(0),
+  summary: text("summary"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});

@@ -114,6 +114,35 @@ export interface SecretaryConfig {
   transferRouting: string | null;
   outboundScript: string | null;
   outboundSchedule: string | null;
+  inboundDid: string | null;
+  outboundDid: string | null;
+  screeningTimeLimit: number;
+  screeningScript: string | null;
+}
+
+export interface CallCenterAgent {
+  id: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  isActive: boolean;
+  lastCallAt: string | null;
+  totalCalls: number;
+  createdAt: string;
+}
+
+export interface InboundScreening {
+  id: number;
+  twilioCallSid: string;
+  callerNumber: string;
+  callerName: string | null;
+  agentId: number | null;
+  agentName: string | null;
+  outcome: string;
+  screeningDurationSeconds: number | null;
+  summary: string | null;
+  createdAt: string;
+  completedAt: string | null;
 }
 
 export interface OutboundCampaign {

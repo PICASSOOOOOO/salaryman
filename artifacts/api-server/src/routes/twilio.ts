@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, asc, sql } from "drizzle-orm";
 import {
   db,
   callHistoryTable,
@@ -14,6 +14,8 @@ import {
   usersTable,
   pabloCallSessionsTable,
   pabloOutboundCampaignsTable,
+  callCenterAgentsTable,
+  inboundScreeningsTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
@@ -1182,6 +1184,170 @@ router.post("/twilio/pablo/gather", async (req, res) => {
   }
 });
 
+router.post("/twilio/pablo/screening-gather", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const { SpeechResult, From, CallSid } = req.body;
+    const userId = req.query.userId as string;
+    const timeLimit = parseInt(req.query.timeLimit as string) || 120;
+    const startTime = parseInt(req.query.startTime as string) || Date.now();
+
+    if (!userId || !SpeechResult) {
+      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
+      return;
+    }
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    if (elapsedSeconds >= timeLimit) {
+      const twiml = `<Response>
+<Say voice="Google.en-US-Neural2-F">Thank you for your patience. Let me connect you with an available agent now.</Say>
+<Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
+</Response>`;
+      res.type("text/xml").send(twiml);
+
+      await db.update(inboundScreeningsTable).set({
+        outcome: "timeout_transfer",
+        screeningDurationSeconds: elapsedSeconds,
+        completedAt: new Date(),
+      }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
+      return;
+    }
+
+    const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "inbound");
+    const safeResponse = escapeTwiml(action.response);
+
+    if (action.type === "transfer") {
+      const screeningDuration = Math.floor((Date.now() - startTime) / 1000);
+      await db.update(inboundScreeningsTable).set({
+        callerName: action.extractedInfo?.callerName ?? null,
+        screeningDurationSeconds: screeningDuration,
+        summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} from ${action.extractedInfo.company ?? "N/A"} — ${action.extractedInfo.reason ?? "No reason given"}` : null,
+      }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
+
+      res.type("text/xml").send(`<Response>
+<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+<Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
+</Response>`);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
+    }
+
+    if (action.type === "end_call" || action.type === "take_message") {
+      const screeningDuration = Math.floor((Date.now() - startTime) / 1000);
+      await db.update(inboundScreeningsTable).set({
+        outcome: "ended",
+        callerName: action.extractedInfo?.callerName ?? null,
+        screeningDurationSeconds: screeningDuration,
+        completedAt: new Date(),
+        summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} — ${action.extractedInfo.reason ?? "N/A"}` : null,
+      }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
+
+      let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
+      if (action.type === "take_message") {
+        twiml += `<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />`;
+      }
+      twiml += `</Response>`;
+      res.type("text/xml").send(twiml);
+      generateCallSummaryForSession(CallSid).catch(() => {});
+      return;
+    }
+
+    res.type("text/xml").send(`<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
+<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+</Gather>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
+<Say voice="Google.en-US-Neural2-F">Are you still there?</Say>
+</Gather>
+<Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
+</Response>`);
+  } catch (err: unknown) {
+    console.error("[Pablo] screening-gather error:", err instanceof Error ? err.message : "Unknown");
+    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize for the difficulty. Let me connect you now.</Say></Response>');
+  }
+});
+
+router.post("/twilio/pablo/screening-transfer", async (req, res) => {
+  try {
+    if (!validateTwilioWebhook(req)) {
+      res.status(403).send("Forbidden");
+      return;
+    }
+    const userId = req.query.userId as string;
+    const callSid = (req.query.callSid as string) || req.body.CallSid;
+
+    if (!userId) {
+      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Sorry, we could not connect you. Please try again later.</Say><Hangup/></Response>');
+      return;
+    }
+
+    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const base = host ? `https://${host}/api` : "/api";
+
+    const agent = await getNextRoundRobinAgent(userId);
+
+    if (!agent) {
+      const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
+      const fallback = configs[0]?.forwardToNumber;
+      if (fallback) {
+        await db.update(inboundScreeningsTable).set({
+          outcome: "transferred",
+          agentName: "Fallback",
+          completedAt: new Date(),
+        }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
+
+        res.type("text/xml").send(`<Response>
+<Say voice="Google.en-US-Neural2-F">Let me connect you now. Please hold.</Say>
+<Dial callerId="${getTwilioNumber()}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
+<Number>${escapeTwiml(fallback)}</Number>
+</Dial>
+</Response>`);
+        return;
+      }
+
+      await db.update(inboundScreeningsTable).set({
+        outcome: "no_agent",
+        completedAt: new Date(),
+      }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
+
+      res.type("text/xml").send(`<Response>
+<Say voice="Google.en-US-Neural2-F">I'm sorry, but no agents are currently available. Please leave a message after the tone and someone will get back to you shortly.</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
+</Response>`);
+      return;
+    }
+
+    await db.update(callCenterAgentsTable).set({
+      lastCallAt: new Date(),
+      totalCalls: sql`${callCenterAgentsTable.totalCalls} + 1`,
+    }).where(eq(callCenterAgentsTable.id, agent.id));
+
+    await db.update(inboundScreeningsTable).set({
+      outcome: "transferred",
+      agentId: agent.id,
+      agentName: agent.name,
+      completedAt: new Date(),
+    }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
+
+    res.type("text/xml").send(`<Response>
+<Say voice="Google.en-US-Neural2-F">I'll connect you with ${escapeTwiml(agent.name)} now. Please hold for just a moment.</Say>
+<Dial callerId="${getTwilioNumber()}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
+<Number>${escapeTwiml(agent.phone)}</Number>
+</Dial>
+</Response>`);
+  } catch (err: unknown) {
+    console.error("[Pablo] screening-transfer error:", err instanceof Error ? err.message : "Unknown");
+    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize for the difficulty. Please try again later.</Say><Hangup/></Response>');
+  }
+});
+
 router.post("/twilio/pablo/outbound/gather", async (req, res) => {
   try {
     if (!validateTwilioWebhook(req)) {
@@ -1248,6 +1414,10 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
       return;
     }
 
+    const secConfigs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
+    const outboundDid = secConfigs[0]?.outboundDid ?? null;
+    const fromNumber = outboundDid || userNumbers[0].number;
+
     const client = getTwilioClient();
     const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
     const base = host ? `https://${host}/api` : "/api";
@@ -1259,7 +1429,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
 
     const call = await client.calls.create({
       to: phoneNumber,
-      from: userNumbers[0].number,
+      from: fromNumber,
       twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="alice">${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
@@ -1344,6 +1514,9 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
       return;
     }
 
+    const secConfigs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
+    const campaignFromNumber = secConfigs[0]?.outboundDid || userNumbers[0].number;
+
     if (campaign.scheduleJson) {
       try {
         const schedule = JSON.parse(campaign.scheduleJson);
@@ -1382,7 +1555,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
       try {
         const call = await client.calls.create({
           to: lead.phone,
-          from: userNumbers[0].number,
+          from: campaignFromNumber,
           twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="alice">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="alice">Thank you for your time. Goodbye.</Say></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
@@ -1417,6 +1590,101 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
   }
 });
 
+router.get("/twilio/call-center/agents", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const agents = await db.select().from(callCenterAgentsTable).where(eq(callCenterAgentsTable.userId, userId)).orderBy(callCenterAgentsTable.createdAt);
+    res.json({ agents });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch agents" });
+  }
+});
+
+router.post("/twilio/call-center/agents", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { name, phone, email } = req.body;
+    if (!name || !phone) {
+      res.status(400).json({ error: "Name and phone are required" });
+      return;
+    }
+    const e164 = toE164(phone);
+    if (!e164) {
+      res.status(400).json({ error: "Invalid phone number" });
+      return;
+    }
+    const [agent] = await db.insert(callCenterAgentsTable).values({
+      userId, name, phone: e164, email: email || null,
+    }).returning();
+    res.json({ ok: true, agent });
+  } catch (err: unknown) {
+    console.error("[CallCenter] add agent error:", err instanceof Error ? err.message : "Unknown");
+    res.status(500).json({ error: "Failed to add agent" });
+  }
+});
+
+router.post("/twilio/call-center/agents/:id/toggle", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const agentId = parseInt(req.params.id as string);
+    const agents = await db.select().from(callCenterAgentsTable).where(and(eq(callCenterAgentsTable.id, agentId), eq(callCenterAgentsTable.userId, userId))).limit(1);
+    if (!agents[0]) { res.status(404).json({ error: "Agent not found" }); return; }
+    const [updated] = await db.update(callCenterAgentsTable).set({ isActive: !agents[0].isActive }).where(eq(callCenterAgentsTable.id, agentId)).returning();
+    res.json({ ok: true, agent: updated });
+  } catch {
+    res.status(500).json({ error: "Failed to toggle agent" });
+  }
+});
+
+router.delete("/twilio/call-center/agents/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const agentId = parseInt(req.params.id as string);
+    await db.delete(callCenterAgentsTable).where(and(eq(callCenterAgentsTable.id, agentId), eq(callCenterAgentsTable.userId, userId)));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Failed to remove agent" });
+  }
+});
+
+async function getNextRoundRobinAgent(userId: string) {
+  const agents = await db.select().from(callCenterAgentsTable)
+    .where(and(eq(callCenterAgentsTable.userId, userId), eq(callCenterAgentsTable.isActive, true)))
+    .orderBy(sql`${callCenterAgentsTable.lastCallAt} ASC NULLS FIRST`, asc(callCenterAgentsTable.id))
+    .limit(1);
+  return agents[0] ?? null;
+}
+
+router.get("/twilio/call-center/screenings", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const screenings = await db.select().from(inboundScreeningsTable).where(eq(inboundScreeningsTable.userId, userId)).orderBy(desc(inboundScreeningsTable.createdAt)).limit(50);
+    res.json({ screenings });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch screenings" });
+  }
+});
+
+router.get("/twilio/call-center/metrics", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const activeAgents = await db.select({ count: sql<number>`count(*)` }).from(callCenterAgentsTable).where(and(eq(callCenterAgentsTable.userId, userId), eq(callCenterAgentsTable.isActive, true)));
+    const totalScreenings = await db.select({ count: sql<number>`count(*)` }).from(inboundScreeningsTable).where(eq(inboundScreeningsTable.userId, userId));
+    const transferred = await db.select({ count: sql<number>`count(*)` }).from(inboundScreeningsTable).where(and(eq(inboundScreeningsTable.userId, userId), eq(inboundScreeningsTable.outcome, "transferred")));
+    const ended = await db.select({ count: sql<number>`count(*)` }).from(inboundScreeningsTable).where(and(eq(inboundScreeningsTable.userId, userId), eq(inboundScreeningsTable.outcome, "ended")));
+    const avgTime = await db.select({ avg: sql<number>`coalesce(avg(screening_duration_seconds), 0)` }).from(inboundScreeningsTable).where(eq(inboundScreeningsTable.userId, userId));
+    res.json({
+      activeAgents: Number(activeAgents[0]?.count ?? 0),
+      totalScreenings: Number(totalScreenings[0]?.count ?? 0),
+      transferred: Number(transferred[0]?.count ?? 0),
+      ended: Number(ended[0]?.count ?? 0),
+      avgScreenTime: Math.round(Number(avgTime[0]?.avg ?? 0)),
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch metrics" });
+  }
+});
+
 router.get("/twilio/secretary/config", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
@@ -1436,6 +1704,7 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
       routingInstructions, forwardToNumber, afterHoursAction,
       autoAnswer, qualificationQuestions, transferRouting,
       outboundScript, outboundSchedule,
+      inboundDid, outboundDid, screeningTimeLimit, screeningScript,
     } = req.body;
 
     const existing = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
@@ -1458,6 +1727,10 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
       ...(transferRouting !== undefined && { transferRouting }),
       ...(outboundScript !== undefined && { outboundScript }),
       ...(outboundSchedule !== undefined && { outboundSchedule }),
+      ...(inboundDid !== undefined && { inboundDid }),
+      ...(outboundDid !== undefined && { outboundDid }),
+      ...(screeningTimeLimit !== undefined && { screeningTimeLimit }),
+      ...(screeningScript !== undefined && { screeningScript }),
     };
 
     let record;
@@ -1919,6 +2192,30 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       direction: "inbound",
       callType: "single",
     });
+
+    const isInboundDidCall = config?.inboundDid && To && toE164(To) === toE164(config.inboundDid);
+
+    if (isInboundDidCall && config && userId) {
+      const screeningGreeting = config.screeningScript
+        ?? "Thank you for calling. This is Pablo, I'll be helping to connect you with the right person. May I ask who's calling and what this is regarding?";
+      await db.insert(inboundScreeningsTable).values({
+        userId,
+        twilioCallSid: CallSid,
+        callerNumber: From ?? "unknown",
+        callerName: fromName ?? null,
+        outcome: "screening",
+      });
+      const timeLimit = config.screeningTimeLimit ?? 120;
+      const twiml = `<Response>
+<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${Date.now()}" method="POST" speechTimeout="auto">
+<Say voice="Google.en-US-Neural2-F">${escapeTwiml(screeningGreeting)}</Say>
+</Gather>
+<Say voice="Google.en-US-Neural2-F">I didn't catch that. Let me transfer you now.</Say>
+<Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
+</Response>`;
+      res.type("text/xml").send(twiml);
+      return;
+    }
 
     if (config?.isEnabled) {
       const now = new Date();

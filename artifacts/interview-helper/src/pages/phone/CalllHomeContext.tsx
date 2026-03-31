@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-type TabKey = 'contacts' | 'dial' | 'live' | 'log' | 'vm' | 'conf' | 'auto' | 'ai';
+type TabKey = 'contacts' | 'dial' | 'live' | 'log' | 'vm' | 'conf' | 'auto' | 'ai' | 'cc';
 
 interface CalllHomeCtx {
   inside: boolean;
@@ -32,6 +32,7 @@ const ROUTE_TO_TAB: Record<string, TabKey> = {
   '/phone/coach': 'ai',
   '/phone/secretary': 'ai',
   '/phone/numbers': 'contacts',
+  '/phone/call-center': 'cc',
 };
 
 export function useCalllHomeNavigate() {

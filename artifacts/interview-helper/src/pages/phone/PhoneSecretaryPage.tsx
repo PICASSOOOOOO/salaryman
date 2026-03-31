@@ -493,6 +493,55 @@ export default function PhoneSecretaryPage() {
       </PhoneCard>
 
       <PhoneCard style={{ marginTop: 20 }}>
+        <PhoneCardHeader accent={blue(0.5)}>
+          <Phone size={10} style={{ marginRight: 4 }} /> DID CONFIGURATION
+        </PhoneCardHeader>
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            padding: '10px 14px', borderRadius: 6,
+            background: blue(0.03), border: `1px solid ${blue(0.1)}`,
+            fontSize: '0.45rem', color: blue(0.5), lineHeight: 1.6,
+          }}>
+            Configure separate DIDs for inbound call center screening and outbound campaigns. When a call comes in on the Inbound DID, Pablo will screen the caller and route to available agents via round-robin.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>INBOUND DID (SCREENING LINE)</label>
+              <input value={secretaryForm.inboundDid ?? ''} onChange={e => update('inboundDid', e.target.value || null)} placeholder="e.g. +1 555 000 1111" style={INPUT_STYLE} />
+              <div style={{ fontSize: '0.38rem', color: crt(0.15), marginTop: 4 }}>
+                Calls to this number go through Pablo screening → round-robin agent transfer.
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>OUTBOUND DID (CAMPAIGN LINE)</label>
+              <input value={secretaryForm.outboundDid ?? ''} onChange={e => update('outboundDid', e.target.value || null)} placeholder="e.g. +1 555 000 2222" style={INPUT_STYLE} />
+              <div style={{ fontSize: '0.38rem', color: crt(0.15), marginTop: 4 }}>
+                Outbound campaigns will dial from this number.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>SCREENING TIME LIMIT (SEC)</label>
+              <input type="number" value={secretaryForm.screeningTimeLimit ?? 120} onChange={e => update('screeningTimeLimit', parseInt(e.target.value) || 120)} min={30} max={300} style={INPUT_STYLE} />
+              <div style={{ fontSize: '0.38rem', color: crt(0.15), marginTop: 4 }}>
+                Max seconds Pablo screens before auto-transferring (30–300).
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.42rem', color: crt(0.25), letterSpacing: '0.2em', display: 'block', marginBottom: 5 }}>SCREENING SCRIPT</label>
+              <textarea
+                value={secretaryForm.screeningScript ?? ''}
+                onChange={e => update('screeningScript', e.target.value || null)}
+                placeholder="Custom greeting for inbound DID screening calls. Leave blank for default."
+                style={{ ...INPUT_STYLE, height: 60, resize: 'vertical', display: 'block', lineHeight: 1.7 }}
+              />
+            </div>
+          </div>
+        </div>
+      </PhoneCard>
+
+      <PhoneCard style={{ marginTop: 20 }}>
         <PhoneCardHeader accent={amber(0.5)}>
           <PhoneOutgoing size={10} style={{ marginRight: 4 }} /> OUTBOUND AUTO-DIALER
         </PhoneCardHeader>

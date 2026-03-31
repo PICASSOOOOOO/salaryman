@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -17,6 +17,7 @@ const PhoneConferencePage = lazy(() => import('./PhoneConferencePage'));
 const PhoneSessionsPage = lazy(() => import('./PhoneSessionsPage'));
 const PhoneCoachPage = lazy(() => import('./PhoneCoachPage'));
 const PhoneSecretaryPage = lazy(() => import('./PhoneSecretaryPage'));
+const PhoneCallCenterPage = lazy(() => import('./PhoneCallCenterPage'));
 
 type AiSubMode = 'coach' | 'secretary';
 
@@ -29,6 +30,7 @@ const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
   { key: 'auto', label: 'AUTO', icon: <Radio size={12} /> },
   { key: 'ai', label: 'AI', icon: <Bot size={12} /> },
+  { key: 'cc', label: 'CC', icon: <Headphones size={12} /> },
 ];
 
 function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode: (m: AiSubMode) => void }) {
@@ -63,11 +65,12 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
     case 'conf': return <PhoneConferencePage />;
     case 'auto': return <PhoneSessionsPage />;
     case 'ai': return <AiTabContent subMode={aiSubMode} setSubMode={setAiSubMode} />;
+    case 'cc': return <PhoneCallCenterPage />;
     default: return null;
   }
 }
 
-const VALID_TABS = new Set<TabKey>(['contacts','dial','live','log','vm','conf','auto','ai']);
+const VALID_TABS = new Set<TabKey>(['contacts','dial','live','log','vm','conf','auto','ai','cc']);
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
   return p && VALID_TABS.has(p as TabKey) ? (p as TabKey) : 'contacts';
