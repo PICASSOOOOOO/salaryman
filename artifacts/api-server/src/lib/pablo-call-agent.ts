@@ -35,7 +35,7 @@ interface PabloAction {
 
 function buildSystemPrompt(
   config: SecretaryConfig,
-  direction: "inbound" | "outbound",
+  direction: "inbound" | "outbound" | "screening",
   existingInfo: ExtractedInfo | null,
   turnCount: number,
   outboundScript?: string,
@@ -50,14 +50,29 @@ function buildSystemPrompt(
   const qualQuestions = config.qualificationQuestions || "";
   const transferRules = config.transferRouting || "";
   const screening = config.screeningRules || "";
+  const screeningScript = (config as SecretaryConfig & { screeningScript?: string | null }).screeningScript || "";
 
   let prompt = `You are Pablo, an AI phone agent for a business. You are ${personalityDesc}.
 You are handling a live phone call. Keep responses concise (under 40 words) and natural-sounding for voice.
 
-DIRECTION: ${direction}
+DIRECTION: ${direction === "screening" ? "inbound" : direction}
 TURN: ${turnCount + 1}
 
 `;
+
+  if (direction === "screening") {
+    prompt += `MODE: INBOUND CALL SCREENING
+You are screening an inbound caller before transferring them to an available agent.
+Your goal is to quickly qualify the caller within 2 minutes. Be efficient but warm.
+Gather the caller's name, company, and reason for calling as fast as possible.
+Once you have enough information (name + reason), use [ACTION:TRANSFER] to route them to an agent.
+If the caller is spam, a robocall, or not a legitimate business inquiry, use [ACTION:END_CALL].
+If the caller wants to leave a message, use [ACTION:TAKE_MESSAGE].
+Do NOT keep the conversation going longer than necessary — screen and transfer quickly.\n\n`;
+    if (screeningScript) {
+      prompt += `SCREENING SCRIPT/GREETING:\n${screeningScript}\n\n`;
+    }
+  }
 
   if (direction === "outbound" && outboundScript) {
     prompt += `OUTBOUND SCRIPT TO FOLLOW:\n${outboundScript}\n\n`;
@@ -172,7 +187,7 @@ export async function getOrCreateSession(
   userId: string,
   callSid: string,
   callerNumber: string,
-  direction: "inbound" | "outbound",
+  direction: "inbound" | "outbound" | "screening",
   callerName?: string,
 ) {
   const existing = await db
@@ -190,7 +205,7 @@ export async function getOrCreateSession(
       twilioCallSid: callSid,
       callerNumber,
       callerName: callerName ?? null,
-      direction,
+      direction: direction === "screening" ? "inbound" : direction,
       status: "active",
       conversationJson: "[]",
     })
@@ -204,7 +219,7 @@ export async function processPabloTurn(
   callSid: string,
   callerSpeech: string,
   callerNumber: string,
-  direction: "inbound" | "outbound" = "inbound",
+  direction: "inbound" | "outbound" | "screening" = "inbound",
   outboundScript?: string,
 ): Promise<PabloAction> {
   const session = await getOrCreateSession(userId, callSid, callerNumber, direction);

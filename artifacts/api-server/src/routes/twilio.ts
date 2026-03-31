@@ -22,7 +22,7 @@ import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
-import { processPabloTurn, generateCallSummaryForSession } from "../lib/pablo-call-agent";
+import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall } from "./leads";
 
 const router = Router();
@@ -1219,8 +1219,11 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
       return;
     }
 
-    const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "inbound");
+    const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "screening");
     const safeResponse = escapeTwiml(action.response);
+
+    const session = await getOrCreateSession(userId, CallSid, From, "screening");
+    const pabloSessionId = session?.id ?? null;
 
     if (action.type === "transfer") {
       const screeningDuration = Math.floor((Date.now() - startTime) / 1000);
@@ -1231,8 +1234,11 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
         screeningDurationSeconds: screeningDuration,
         extractedData: extractedJson,
         contactId,
+        pabloSessionId,
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} from ${action.extractedInfo.company ?? "N/A"} — ${action.extractedInfo.reason ?? "No reason given"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
+
+      updateLeadFromPabloCall(From, userId, "transfer", action.response, null).catch(() => {});
 
       res.type("text/xml").send(`<Response>
 <Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
@@ -1253,8 +1259,11 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
         completedAt: new Date(),
         extractedData: extractedJson,
         contactId,
+        pabloSessionId,
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} — ${action.extractedInfo.reason ?? "N/A"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
+
+      updateLeadFromPabloCall(From, userId, action.type, action.response, null).catch(() => {});
 
       let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
       if (action.type === "take_message") {
