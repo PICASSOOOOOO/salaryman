@@ -23,7 +23,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature } from "../lib/plan";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
-import { updateLeadFromPabloCall } from "./leads";
+import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 
 const router = Router();
 
@@ -1238,7 +1238,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} from ${action.extractedInfo.company ?? "N/A"} — ${action.extractedInfo.reason ?? "No reason given"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
 
-      updateLeadFromPabloCall(From, userId, "transfer", action.response, null).catch(() => {});
+      createOrUpdateLeadFromScreening(From, userId, "transfer", action.extractedInfo ?? null).catch(() => {});
 
       res.type("text/xml").send(`<Response>
 <Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
@@ -1263,7 +1263,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
         summary: action.extractedInfo ? `${action.extractedInfo.callerName ?? "Unknown"} — ${action.extractedInfo.reason ?? "N/A"}` : null,
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, CallSid), eq(inboundScreeningsTable.userId, userId)));
 
-      updateLeadFromPabloCall(From, userId, action.type, action.response, null).catch(() => {});
+      createOrUpdateLeadFromScreening(From, userId, action.type, action.extractedInfo ?? null).catch(() => {});
 
       let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
       if (action.type === "take_message") {

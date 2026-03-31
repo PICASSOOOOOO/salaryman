@@ -170,6 +170,9 @@ function parseAction(response: string): PabloAction {
     }
     return { type: "take_message", response: cleanResponse + " I'll take a message and have someone get back to you.", extractedInfo: extracted };
   }
+  if (/\[ACTION:TRANSFER\]/i.test(response)) {
+    return { type: "transfer", response: cleanResponse, extractedInfo: extracted };
+  }
   if (/\[ACTION:TAKE_MESSAGE\]/i.test(response)) {
     return { type: "take_message", response: cleanResponse, extractedInfo: extracted };
   }

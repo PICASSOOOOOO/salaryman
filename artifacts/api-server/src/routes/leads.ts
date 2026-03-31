@@ -64,6 +64,55 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+export async function createOrUpdateLeadFromScreening(
+  callerNumber: string,
+  userId: string,
+  outcome: string,
+  extracted: { callerName?: string; company?: string; reason?: string; email?: string } | null,
+): Promise<void> {
+  try {
+    const membership = await getCallerOrgRole(userId);
+    if (!membership) return;
+
+    const normalizedPhone = callerNumber.replace(/\D/g, "");
+    const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId));
+    const existingLead = leads.find(l => l.phone.replace(/\D/g, "").endsWith(normalizedPhone.slice(-10)) || normalizedPhone.endsWith(l.phone.replace(/\D/g, "").slice(-10)));
+
+    if (existingLead) {
+      const statusMap: Record<string, string> = { transfer: "qualified", take_message: "contacted", end_call: "contacted" };
+      const newStatus = statusMap[outcome] || existingLead.status;
+      const existingNotes: string[] = existingLead.pabloNotesJson ? JSON.parse(existingLead.pabloNotesJson) : [];
+      if (extracted?.reason) existingNotes.push(`[Screening] ${extracted.reason}`);
+      const [updated] = await db.update(leadRecordsTable).set({
+        status: newStatus,
+        callCount: existingLead.callCount + 1,
+        lastCalledAt: new Date(),
+        pabloNotesJson: JSON.stringify(existingNotes),
+      }).where(eq(leadRecordsTable.id, existingLead.id)).returning();
+      if (updated) broadcastLeadEvent(membership.orgId, { type: 'lead_updated', lead: updated });
+    } else {
+      const e164Phone = normalizedPhone.length === 10 ? `+1${normalizedPhone}` : normalizedPhone.startsWith("1") && normalizedPhone.length === 11 ? `+${normalizedPhone}` : `+${normalizedPhone}`;
+      const notesArr = extracted?.reason ? [`[Screening] ${extracted.reason}`] : [];
+      const [newLead] = await db.insert(leadRecordsTable).values({
+        orgId: membership.orgId,
+        name: extracted?.callerName || callerNumber,
+        phone: e164Phone,
+        email: extracted?.email || "",
+        company: extracted?.company || "",
+        source: "inbound_transfer",
+        status: outcome === "transfer" ? "qualified" : "contacted",
+        assignedUserId: userId,
+        callCount: 1,
+        lastCalledAt: new Date(),
+        pabloNotesJson: JSON.stringify(notesArr),
+      }).returning();
+      if (newLead) broadcastLeadEvent(membership.orgId, { type: 'lead_created', lead: newLead });
+    }
+  } catch (e: unknown) {
+    console.error("[Leads] Screening lead upsert error:", e instanceof Error ? e.message : "Unknown");
+  }
+}
+
 export async function updateLeadFromPabloCall(
   callerNumber: string,
   userId: string,
