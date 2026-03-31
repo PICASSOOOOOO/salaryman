@@ -3128,6 +3128,17 @@ export default function WorldPlay() {
     pendingPoliceAlert: 0,
     pendingPoliceAlertX: 0,
     pendingPoliceAlertY: 0,
+    wantedLevel: _ss?.wantedLevel ?? 0,
+    bountyAmount: _ss?.bountyAmount ?? 0,
+    lastCrimeFrame: 0,
+    taxDebt: _ss?.taxDebt ?? 0,
+    lastDamageFrame: 0,
+    combatRegenCooldown: 0,
+    taxCollectorTimer: _ss?.taxCollectorTimer ?? 0,
+    taxCollectorActive: false,
+    taxCollectorX: 0,
+    taxCollectorY: 0,
+    exitedVehicles: [] as { type: string; x: number; y: number; frame: number }[],
     subwayTransit: false,
     subwayTransitTimer: 0,
     subwayTransitDest: null as null | { x: number; y: number; label: string },
@@ -3413,6 +3424,16 @@ export default function WorldPlay() {
     { id: 'GUN', label: LORE_WEAPON_NAMES['GUN']?.label ?? 'GUN', desc: 'Mid-range projectile. +8 ATK.', atkBonus: 8, color: '#88aaff', type: 'ranged', range: 200, cooldown: 25, icon: 'gun' },
     { id: 'LASER', label: LORE_WEAPON_NAMES['LASER']?.label ?? 'LASER', desc: 'Long beam weapon. +10 ATK.', atkBonus: 10, color: '#ff44aa', type: 'ranged', range: 300, cooldown: 40, icon: 'laser' },
     { id: 'BOMB', label: LORE_WEAPON_NAMES['BOMB']?.label ?? 'BOMB', desc: 'Area explosion with delay. +12 ATK.', atkBonus: 12, color: '#ffcc00', type: 'ranged', range: 150, cooldown: 60, icon: 'bomb' },
+    { id: 'SHOTGUN', label: LORE_WEAPON_NAMES['SHOTGUN']?.label ?? 'SHOTGUN', desc: 'Short range, wide spread (3 slugs). +8 ATK.', atkBonus: 8, color: '#bb7744', type: 'ranged', range: 150, cooldown: 40, icon: 'shotgun' },
+    { id: 'SMG', label: LORE_WEAPON_NAMES['SMG']?.label ?? 'SMG', desc: 'Rapid-fire. +4 ATK per shot. Fast cooldown.', atkBonus: 4, color: '#99aacc', type: 'ranged', range: 180, cooldown: 12, icon: 'smg' },
+    { id: 'SNIPER', label: LORE_WEAPON_NAMES['SNIPER']?.label ?? 'SNIPER', desc: 'Extreme range. +15 ATK. Very slow.', atkBonus: 15, color: '#446644', type: 'ranged', range: 400, cooldown: 80, icon: 'sniper' },
+    { id: 'GRENADE_LAUNCHER', label: LORE_WEAPON_NAMES['GRENADE_LAUNCHER']?.label ?? 'GRENADE LAUNCHER', desc: 'Arc projectile, area damage (120px). +14 ATK.', atkBonus: 14, color: '#44aa44', type: 'ranged', range: 250, cooldown: 60, icon: 'grenade_launcher' },
+    { id: 'CROSSBOW', label: LORE_WEAPON_NAMES['CROSSBOW']?.label ?? 'CROSSBOW', desc: 'Silent (no alert). Medium range. +11 ATK.', atkBonus: 11, color: '#886633', type: 'ranged', range: 250, cooldown: 50, icon: 'crossbow' },
+    { id: 'BASEBALL_BAT', label: LORE_WEAPON_NAMES['BASEBALL_BAT']?.label ?? 'BASEBALL BAT', desc: 'Wide swing. Knockback. +4 ATK.', atkBonus: 4, color: '#aa7744', type: 'melee', range: 90, cooldown: 30, icon: 'bat' },
+    { id: 'MACHETE', label: LORE_WEAPON_NAMES['MACHETE']?.label ?? 'MACHETE', desc: 'Fast slash. +5 ATK.', atkBonus: 5, color: '#ccccaa', type: 'melee', range: 75, cooldown: 18, icon: 'machete' },
+    { id: 'KATANA', label: LORE_WEAPON_NAMES['KATANA']?.label ?? 'KATANA', desc: 'Long reach (100px). +8 ATK.', atkBonus: 8, color: '#aaccee', type: 'melee', range: 100, cooldown: 28, icon: 'katana' },
+    { id: 'BRASS_KNUCKLES', label: LORE_WEAPON_NAMES['BRASS_KNUCKLES']?.label ?? 'BRASS KNUCKLES', desc: 'Very fast. +2 ATK. 30% stun chance.', atkBonus: 2, color: '#ddcc44', type: 'melee', range: 55, cooldown: 15, icon: 'knuckles' },
+    { id: 'CHAINSAW', label: LORE_WEAPON_NAMES['CHAINSAW']?.label ?? 'CHAINSAW', desc: 'Continuous damage. Loud (auto police alert). +10 ATK.', atkBonus: 10, color: '#ff6622', type: 'melee', range: 70, cooldown: 10, icon: 'chainsaw' },
   ];
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
@@ -3553,6 +3574,7 @@ export default function WorldPlay() {
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [radioMuted, setRadioMuted] = useState(false);
   const [allMuted, setAllMuted] = useState(() => getMuted());
+  const [showSoundPanel, setShowSoundPanel] = useState(false);
   const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
   const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
   const [outputVolume, setOutputVolume] = useState(() => { try { const v = localStorage.getItem('sm_output_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
@@ -3806,6 +3828,10 @@ export default function WorldPlay() {
       parkedLoadout: [...(g.parkedLoadout ?? [])],
       ownedFurniture: [...(g.ownedFurniture ?? [])],
       placedFurniture: placedFurnitureMapRef.current,
+      wantedLevel: g.wantedLevel ?? 0,
+      bountyAmount: g.bountyAmount ?? 0,
+      taxDebt: g.taxDebt ?? 0,
+      taxCollectorTimer: g.taxCollectorTimer ?? 0,
     };
   }, [char]);
 
@@ -5728,8 +5754,29 @@ export default function WorldPlay() {
             fireAngle2 = g.aimAngle;
           }
           g.muzzleFlash = { angle: fireAngle2, life: 5 };
+          if (wpn.icon === 'crossbow') {
+            // silent - no police alert
+          } else if (wpn.icon === 'chainsaw') {
+            g.policeAlertTimer = Math.max(g.policeAlertTimer, 200); g.policeAlertX = g.px; g.policeAlertY = g.py;
+            g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.lastCrimeFrame = g.frame;
+          }
           if (wpn.icon === 'bomb') {
             g.bombs.push({ x: g.px + Math.cos(fireAngle2) * 30, y: g.py + Math.sin(fireAngle2) * 30, timer: 45, damage: ATK2, radius: wpn.range });
+          } else if (wpn.icon === 'grenade_launcher') {
+            g.bombs.push({ x: g.px + Math.cos(fireAngle2) * 40, y: g.py + Math.sin(fireAngle2) * 40, timer: 35, damage: ATK2, radius: 120 });
+          } else if (wpn.icon === 'shotgun') {
+            const spreadAngles = [-0.26, 0, 0.26];
+            for (const spr of spreadAngles) {
+              const sa = fireAngle2 + spr;
+              g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(sa) * 7, dy: Math.sin(sa) * 7, life: 22, damage: Math.floor(ATK2 * 0.6), type: 'shotgun' });
+            }
+          } else if (wpn.icon === 'smg') {
+            const smgSpread = (Math.random() - 0.5) * 0.15;
+            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2 + smgSpread) * 9, dy: Math.sin(fireAngle2 + smgSpread) * 9, life: 28, damage: ATK2, type: 'smg' });
+          } else if (wpn.icon === 'sniper') {
+            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 14, dy: Math.sin(fireAngle2) * 14, life: 45, damage: ATK2, type: 'sniper' });
+          } else if (wpn.icon === 'crossbow') {
+            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 7, dy: Math.sin(fireAngle2) * 7, life: 42, damage: ATK2, type: 'crossbow' });
           } else {
             g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 8, dy: Math.sin(fireAngle2) * 8, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK2, type: wpn.icon });
           }
@@ -5747,6 +5794,9 @@ export default function WorldPlay() {
             hit = true;
             if (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') {
               g.policeAlertTimer = 450; g.policeAlertX = g.px; g.policeAlertY = g.py;
+              g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
+            } else if (!ANIMAL_TYPES.has(t.type)) {
+              g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 200; g.lastCrimeFrame = g.frame;
             }
             const nhp = t.hp - ATK;
             if (nhp <= 0) {
@@ -5772,6 +5822,17 @@ export default function WorldPlay() {
               return null as unknown as Threat;
             }
             sfxHit();
+            if (wpn.icon === 'bat' && t.hp > 0) {
+              const kbAng = Math.atan2(t.y - g.py, t.x - g.px);
+              t.knockback = { dx: Math.cos(kbAng) * 4, dy: Math.sin(kbAng) * 4, frames: 8 };
+            }
+            if (wpn.icon === 'knuckles' && Math.random() < 0.3) {
+              t.behaviorTimer = Math.max(t.behaviorTimer, 60);
+              g.floaters.push({ x: t.x, y: t.y - 14, text: 'STUNNED', color: '#ffff44', life: 30, maxLife: 30 });
+            }
+            if (wpn.icon === 'chainsaw') {
+              g.policeAlertTimer = Math.max(g.policeAlertTimer, 200); g.policeAlertX = g.px; g.policeAlertY = g.py;
+            }
             return { ...t, hp: nhp };
           }
           return t;
@@ -6592,6 +6653,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }
             // Knockback visual: 2px displacement for 3 frames in shot direction
             const kbT = { ...t, knockback: { dx: Math.cos(impactAngle) * 2, dy: Math.sin(impactAngle) * 2, frames: 3 } };
+            const isSilentProjectile = p.type === 'crossbow';
+            if (!isSilentProjectile && !ANIMAL_TYPES.has(kbT.type)) {
+              if (kbT.type === 'PABLO_GUARD' || kbT.type === 'MINX_CITY') {
+                g.policeAlertTimer = Math.max(g.policeAlertTimer, 450); g.policeAlertX = g.px; g.policeAlertY = g.py;
+                g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
+              } else {
+                g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 200; g.lastCrimeFrame = g.frame;
+              }
+            }
             const nhp = kbT.hp - p.damage;
             if (nhp <= 0) {
               sfxKill();
@@ -7033,13 +7103,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
           if (stepFrame.current % 14 === 0) sfxStep();
-          // Continuous facing angle from movement vector (separate from weapon aimAngle)
-          g.facingAngle = Math.atan2(dy, dx);
-          // 4-direction cardinal facing string (kept for vehicle sprite + backward compat)
-          if (Math.abs(dx) > Math.abs(dy)) { g.facing = dx > 0 ? 'right' : 'left'; } else { g.facing = dy > 0 ? 'down' : 'up'; }
+          const moveFacing = Math.atan2(dy, dx);
+          const hasWeapon = activeWeaponRef.current && activeWeaponRef.current !== 'FISTS';
+          g.facingAngle = hasWeapon ? g.aimAngle : moveFacing;
+          if (g.vehicle) {
+            if (Math.abs(dx) > Math.abs(dy)) { g.facing = dx > 0 ? 'right' : 'left'; } else { g.facing = dy > 0 ? 'down' : 'up'; }
+          } else {
+            const fa = g.facingAngle;
+            if (Math.abs(Math.cos(fa)) > Math.abs(Math.sin(fa))) { g.facing = Math.cos(fa) > 0 ? 'right' : 'left'; } else { g.facing = Math.sin(fa) > 0 ? 'down' : 'up'; }
+          }
         } else {
           g.walkFrame = 0;
           g.idleFrame = (g.idleFrame + 1) % 120;
+          const hasWeapon = activeWeaponRef.current && activeWeaponRef.current !== 'FISTS';
+          if (hasWeapon) {
+            g.facingAngle = g.aimAngle;
+            const fa = g.facingAngle;
+            if (Math.abs(Math.cos(fa)) > Math.abs(Math.sin(fa))) { g.facing = Math.cos(fa) > 0 ? 'right' : 'left'; } else { g.facing = Math.sin(fa) > 0 ? 'down' : 'up'; }
+          }
         }
       }
       } // end !g.interior
@@ -7206,6 +7287,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const defReduce = Math.max(0.1, 1 - cs.defBonus * 0.02);
           const nightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
           g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce * nightMult); g.invincible = 70; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
+          g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
           if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.08) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
@@ -8924,6 +9006,50 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.energy <= 20) { g.salary = Math.max(0, g.salary - 500); }
         setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
 
+        // ── Health regeneration outside combat ──
+        if (g.combatRegenCooldown > 0) g.combatRegenCooldown--;
+        if (g.combatRegenCooldown <= 0 && g.hp < g.maxHp && g.hp > 0 && !gamePausedRef.current) {
+          if (g.frame % 120 === 0) {
+            const nearBld2 = (g.interior as { bid: string } | null)?.bid ?? '';
+            const isRestLoc2 = REST_LOCATION_IDS.has(nearBld2);
+            const regenAmt = isRestLoc2 ? 4 : isIndoors ? 2 : 1;
+            g.hp = Math.min(g.maxHp, g.hp + regenAmt);
+            setHp(Math.floor(g.hp));
+          }
+        }
+
+        // ── Wanted level decay over time ──
+        if (g.wantedLevel > 0 && g.frame - g.lastCrimeFrame > 7200) {
+          g.wantedLevel = Math.max(0, g.wantedLevel - 1);
+          g.lastCrimeFrame = g.frame;
+          if (g.wantedLevel === 0) {
+            g.bountyAmount = 0;
+            g.floaters.push({ x: g.px, y: g.py - 20, text: 'WANTED LEVEL CLEARED', color: '#44ff88', life: 80, maxLife: 80 });
+          } else {
+            g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★ ${g.wantedLevel}`, color: '#ffcc00', life: 60, maxLife: 60 });
+          }
+        }
+
+        // ── Tax collector periodic visit ──
+        if (g.taxCollectorTimer > 0) g.taxCollectorTimer--;
+        if (g.taxCollectorTimer <= 0 && (g.taxDebt > 0 || g.bountyAmount > 500)) {
+          g.taxCollectorTimer = 18000;
+          const tax = Math.floor(g.salary * 0.15) + Math.floor(g.bountyAmount * 0.1);
+          g.taxDebt += tax;
+          if (g.taxDebt > 0 && g.salary >= g.taxDebt) {
+            g.salary -= g.taxDebt;
+            g.floaters.push({ x: g.px, y: g.py - 20, text: `TAX COLLECTED ƒ${g.taxDebt.toLocaleString()}`, color: '#ff8844', life: 80, maxLife: 80 });
+            setNarr(`> TAX COLLECTOR — ƒ${g.taxDebt.toLocaleString()} collected as tax on your earnings and fines.`);
+            g.taxDebt = 0;
+            setSalary(g.salary);
+          } else if (g.taxDebt > 0) {
+            g.wantedLevel = Math.min(5, g.wantedLevel + 1);
+            g.lastCrimeFrame = g.frame;
+            g.floaters.push({ x: g.px, y: g.py - 20, text: `TAX EVASION ★+1`, color: '#ff4444', life: 80, maxLife: 80 });
+            setNarr(`> TAX COLLECTOR — Cannot pay ƒ${g.taxDebt.toLocaleString()} debt. Wanted level increased!`);
+          }
+        }
+
         // ── ECONOMY: Periodic income by class (salary per minute) ────────
         const cls = char.class.toLowerCase();
         const salaryPerMin = FACTION_SALARY_PER_MIN[cls] ?? 25;
@@ -9148,11 +9274,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!g.policeCooldowns[pi]) g.policeCooldowns[pi] = 0;
         if (g.policeCooldowns[pi] > 0) g.policeCooldowns[pi]--;
 
-        if (g.policeAlertTimer > 0) {
-          const dToOrigin = Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
-          if (dToOrigin < 600) {
+        if (g.policeAlertTimer > 0 || g.wantedLevel > 0) {
+          const alertRadius = 600 + g.wantedLevel * 200;
+          const dToOrigin = g.wantedLevel > 0 ? Math.hypot(g.px - p.x, g.py - p.y) : Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
+          if (dToOrigin < alertRadius) {
             const ang = Math.atan2(g.py - p.y, g.px - p.x);
-            const polSpd = 2.2 * NPC_SPEED_MULT;
+            const wantedSpeedMult = 1 + g.wantedLevel * 0.3;
+            const polSpd = 2.2 * NPC_SPEED_MULT * wantedSpeedMult;
             const polR = 8;
             const pmx = p.x + Math.cos(ang) * polSpd;
             const pmy = p.y + Math.sin(ang) * polSpd;
@@ -9168,7 +9296,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
               const policeNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
               g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP * policeNightMult); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO CORP police enforcement';
+              g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
+            }
+            if (g.wantedLevel >= 3 && dToPlayer < 200 && dToPlayer > 30 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
+              g.policeCooldowns[pi] = 40;
+              const shootAng = Math.atan2(g.py - p.y, g.px - p.x);
+              g.projectiles.push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y, dx: Math.cos(shootAng) * 6, dy: Math.sin(shootAng) * 6, life: 30, damage: 3, type: 'pistol' });
+              g.floaters.push({ x: p.x, y: p.y - 10, text: 'POLICE FIRE', color: '#4488ff', life: 25, maxLife: 25 });
             }
             continue;
           }
@@ -9277,7 +9412,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        if (band.type === 'POLICE' && g.policeAlertTimer > 0) {
+        if (band.type === 'POLICE' && (g.policeAlertTimer > 0 || g.wantedLevel > 0)) {
           for (const m of aliveMembers) {
             if (m.attackCd > 0) continue;
             const dToPlayer = Math.hypot(g.px - m.x, g.py - m.y);
@@ -9290,6 +9425,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const bandNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
               const dmgP = band.atkDmg * armorMult * defReduceP * bandNightMult;
               g.hp = Math.max(0, g.hp - dmgP); g.invincible = 40; g.flash = 6;
+              g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
               g.deathReason = `Killed by ${band.label} enforcement`;
               g.floaters.push({ x: g.px, y: g.py - 12, text: `${band.label} STRIKE`, color: band.color, life: 40, maxLife: 40 });
               if (m.weapon === 'ranged') {
@@ -9475,6 +9611,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       for (const dp of g.debrisParticles) { dp.x += dp.vx; dp.y += dp.vy; dp.life--; }
       g.debrisParticles = g.debrisParticles.filter(dp => dp.life > 0);
 
+      // ── Vehicle exit: press E while in a vehicle ──
+      if (g.keys.has('e') && g.vehicle) {
+        g.keys.delete('e');
+        const exitOffsets = [[20,0],[-20,0],[0,20],[0,-20],[14,14],[-14,14],[14,-14],[-14,-14]];
+        let exitX = g.px, exitY = g.py;
+        let foundSpot = false;
+        for (const [ox, oy] of exitOffsets) {
+          const tx = g.px + ox, ty = g.py + oy;
+          const blocked = BUILDINGS.some(b => tx + PSIZE > b.x && tx - PSIZE < b.x + b.w && ty + PSIZE > b.y && ty - PSIZE < b.y + b.h && !(b.doors?.some(d => tx + PSIZE > d.x && tx - PSIZE < d.x + d.w && ty + PSIZE > d.y && ty - PSIZE < d.y + d.h)));
+          if (!blocked) { exitX = tx; exitY = ty; foundSpot = true; break; }
+        }
+        if (!foundSpot) { exitX = g.px; exitY = g.py; }
+        g.exitedVehicles.push({ type: g.vehicle, x: g.px, y: g.py, frame: g.frame });
+        g.floaters.push({ x: g.px, y: g.py - 16, text: `EXITED ${g.vehicle.replace(/_/g,' ').toUpperCase()}`, color: '#00ffcc', life: 60, maxLife: 60 });
+        setNarr(`> VEHICLE — Exited ${getVehicleDef(g.vehicle).label}. Vehicle remains parked here.`);
+        g.vehicle = null;
+        g.px = exitX; g.py = exitY;
+      }
+
       // ── Parked vehicle steal & park interaction ──
       const nearAnyBuilding = BUILDINGS.some(b => g.px >= b.x - 20 && g.px <= b.x + b.w + 20 && g.py >= b.y - 20 && g.py <= b.y + b.h + 20);
       const nearAnyNpc = NPCS.some(nn => Math.hypot(g.px - nn.x, g.py - nn.y) < NPC_RANGE);
@@ -9494,6 +9649,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               setNarr(`> VEHICLE — ${getVehicleDef(g.vehicle).label} parked at ${sp.label}. Press [E] near spot to retrieve.`);
               g.vehicle = null;
             }
+            break;
+          }
+        }
+      }
+
+      // Re-enter an exited vehicle nearby
+      if (g.keys.has('e') && !g.vehicle && g.exitedVehicles.length > 0) {
+        for (let evi = 0; evi < g.exitedVehicles.length; evi++) {
+          const ev = g.exitedVehicles[evi];
+          if (Math.hypot(g.px - ev.x, g.py - ev.y) < 30) {
+            g.keys.delete('e');
+            g.vehicle = ev.type;
+            g.px = ev.x; g.py = ev.y;
+            g.exitedVehicles.splice(evi, 1);
+            g.floaters.push({ x: g.px, y: g.py - 16, text: `ENTERED ${ev.type.replace(/_/g,' ').toUpperCase()}`, color: '#00ffcc', life: 60, maxLife: 60 });
             break;
           }
         }
@@ -9531,6 +9701,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 pv.stolen = true;
                 g.vehicle = pv.type;
                 if (!g.ownedVehicles.includes(pv.type)) g.ownedVehicles.push(pv.type);
+                g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 300; g.lastCrimeFrame = g.frame;
                 g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace(/_/g,' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
 
                 // ── Witness detection ─────────────────────────────────────────
@@ -11643,6 +11814,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Exited vehicles in world ──
+      for (const ev of g.exitedVehicles) {
+        const evx = ev.x + ox, evy = ev.y + oy;
+        if (evx < -30 || evx > cw + 30 || evy < -20 || evy > ch + 20) continue;
+        const evDist = Math.hypot(g.px - ev.x, g.py - ev.y);
+        const evNear = evDist < 30;
+        ctx.shadowColor = '#00ffcc'; ctx.shadowBlur = evNear ? 6 : 1;
+        drawVehicleSprite(evx, evy, ev.type, 'right');
+        ctx.shadowBlur = 0;
+        if (evNear && !g.vehicle) {
+          ctx.fillStyle = g.blink ? 'rgba(0,255,200,.85)' : 'rgba(0,255,200,.3)';
+          ctx.font = '12px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('[E] ENTER', evx, evy - 14);
+        }
+      }
+
       // ── Ambient traffic vehicles ──
       for (const tv of g.trafficVehicles) {
         const tvx = tv.x + ox, tvy = tv.y + oy;
@@ -12666,17 +12853,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               else if (facingLeft) { ctx.moveTo(wHandX, wHandY + 2); ctx.lineTo(wHandX - 11, wHandY - 6); }
               else { ctx.moveTo(wHandX, wHandY + 2); ctx.lineTo(wHandX, wHandY - 11); }
               ctx.stroke();
+            } else if (wpn.icon === 'machete') {
+              ctx.strokeStyle = '#ccccaa'; ctx.lineWidth = 2;
+              ctx.beginPath();
+              if (facingRight) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 9, wHandY - 5); }
+              else if (facingLeft) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX - 9, wHandY - 5); }
+              else { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 1, wHandY - 10); }
+              ctx.stroke();
+            } else if (wpn.icon === 'katana') {
+              ctx.strokeStyle = '#aaccee'; ctx.lineWidth = 2;
+              ctx.shadowColor = '#aaccee'; ctx.shadowBlur = 4;
+              ctx.beginPath();
+              if (facingRight) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 14, wHandY - 10); }
+              else if (facingLeft) { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX - 14, wHandY - 10); }
+              else { ctx.moveTo(wHandX, wHandY); ctx.lineTo(wHandX + 2, wHandY - 15); }
+              ctx.stroke();
+              ctx.fillStyle = '#664433'; ctx.fillRect(wHandX - 1, wHandY, 2, 5);
+              ctx.shadowBlur = 0;
+            } else if (wpn.icon === 'knuckles') {
+              ctx.fillStyle = '#ddcc44';
+              ctx.fillRect(facingRight ? wHandX + 2 : facingLeft ? wHandX - 5 : wHandX - 1, wHandY - 2, 4, 4);
+            } else if (wpn.icon === 'chainsaw') {
+              ctx.fillStyle = '#ff6622'; ctx.shadowColor = '#ff6622'; ctx.shadowBlur = 4;
+              const cDir = facingRight ? 1 : facingLeft ? -1 : 0;
+              ctx.fillRect(wHandX + cDir * 2, wHandY - 4, 4, 10);
+              ctx.fillStyle = '#aaaaaa';
+              ctx.fillRect(wHandX + cDir * 4, wHandY - 6, 2, 3);
+              ctx.shadowBlur = 0;
             } else {
               ctx.fillStyle = '#668866'; ctx.fillRect(wHandX - 1, wHandY - 6, 3, 8);
             }
           } else if (wpn.type === 'ranged') {
             // Ranged weapons — rotate to follow mouse aim angle
-            const isLongBarrel = wpn.icon === 'rifle' || wpn.icon === 'laser';
-            const isHeavy = wpn.icon === 'bomb';
-            const barW = isLongBarrel ? 14 : isHeavy ? 12 : 10;
-            const barH = isHeavy ? 6 : 4;
-            const barCol = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#334455';
-            const barGlow = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : '#88aacc';
+            const isLongBarrel = wpn.icon === 'rifle' || wpn.icon === 'laser' || wpn.icon === 'sniper';
+            const isHeavy = wpn.icon === 'bomb' || wpn.icon === 'grenade_launcher';
+            const isBulky = wpn.icon === 'shotgun';
+            const barW = isLongBarrel ? 14 : isHeavy ? 12 : isBulky ? 11 : 10;
+            const barH = isHeavy ? 6 : isBulky ? 5 : 4;
+            const barCol = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : wpn.icon === 'shotgun' ? '#774422' : wpn.icon === 'smg' ? '#556677' : wpn.icon === 'sniper' ? '#334433' : wpn.icon === 'grenade_launcher' ? '#446633' : wpn.icon === 'crossbow' ? '#886633' : '#334455';
+            const barGlow = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : wpn.icon === 'crossbow' ? '#886633' : '#88aacc';
             ctx.save();
             ctx.translate(wHandX, wHandY);
             ctx.rotate(g.aimAngle);
@@ -12708,12 +12923,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.attackFlash > 0) {
         const curWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
         if (curWpn.type === 'melee') {
-          if (curWpn.icon === 'sword') {
-            ctx.strokeStyle = `rgba(255,100,68,${g.attackFlash / 8})`; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, -0.8, 0.8); ctx.stroke();
+          const swingAlpha = g.attackFlash / 8;
+          const swingAngle = g.aimAngle;
+          if (curWpn.icon === 'sword' || curWpn.icon === 'katana' || curWpn.icon === 'machete') {
+            ctx.strokeStyle = curWpn.icon === 'katana' ? `rgba(170,204,238,${swingAlpha})` : curWpn.icon === 'machete' ? `rgba(204,204,170,${swingAlpha})` : `rgba(255,100,68,${swingAlpha})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 0.8, swingAngle + 0.8); ctx.stroke();
+          } else if (curWpn.icon === 'bat') {
+            ctx.strokeStyle = `rgba(136,85,34,${swingAlpha})`; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 1.2, swingAngle + 1.2); ctx.stroke();
+          } else if (curWpn.icon === 'chainsaw') {
+            ctx.strokeStyle = `rgba(255,102,34,${swingAlpha})`; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 0.5, swingAngle + 0.5); ctx.stroke();
           } else {
-            ctx.strokeStyle = `rgba(255,255,0,${g.attackFlash / 8})`; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = `rgba(255,255,0,${swingAlpha})`; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 1.0, swingAngle + 1.0); ctx.stroke();
           }
         }
       }
@@ -12780,8 +13004,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           ctx.globalAlpha = 1; ctx.shadowBlur = 0;
           ctx.restore();
+        } else if (p.type === 'shotgun') {
+          ctx.save();
+          ctx.shadowColor = '#ffaa44'; ctx.shadowBlur = 6;
+          ctx.fillStyle = '#ffcc66';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,170,80,0.4)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 2, ppy - p.dy * 2); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        } else if (p.type === 'sniper') {
+          ctx.save();
+          ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 12;
+          ctx.strokeStyle = 'rgba(68,255,136,0.7)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 8, ppy - p.dy * 8); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.fillStyle = '#aaffcc';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 1.5, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        } else if (p.type === 'crossbow') {
+          ctx.save();
+          ctx.shadowColor = '#886633'; ctx.shadowBlur = 4;
+          ctx.strokeStyle = 'rgba(136,102,51,0.7)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(ppx - p.dx * 3, ppy - p.dy * 3); ctx.lineTo(ppx, ppy); ctx.stroke();
+          ctx.fillStyle = '#ccaa66';
+          ctx.beginPath(); ctx.arc(ppx, ppy, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
         } else {
-          // Bullet: short bright trail with glowing core
           ctx.save();
           ctx.shadowColor = '#aaccff'; ctx.shadowBlur = 8;
           ctx.strokeStyle = 'rgba(180,210,255,0.55)'; ctx.lineWidth = 2;
@@ -13345,6 +13595,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (gangZone) proximityEvents.push(`⚠ ${GANG_ZONES.find(gz => gz.id === gangZone)?.name ?? 'GANG'} TERRITORY`);
         if (poisoned) proximityEvents.push('☠ POISONED');
         if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG')) proximityEvents.push('⚔ HOSTILES NEARBY');
+        if (g.wantedLevel > 0) proximityEvents.push(`🚨 WANTED ${'★'.repeat(g.wantedLevel)}`);
+        if (g.policeAlertTimer > 0) proximityEvents.push('🚔 POLICE ALERT');
         if (dogActive && dogInjured) proximityEvents.push(`🐾 ${dogName} INJURED`);
         return proximityEvents.length > 0 ? (
           <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '8px', pointerEvents: 'none' }}>
@@ -13357,28 +13609,42 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ) : null;
       })()}
 
-      {/* TOP-LEFT — hearts, gold, fiat, zone, character class */}
+      {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 340 }}>
-        {/* Hearts row — Zelda-style HP */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.35)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', maxWidth: 220 }}>
-          {(() => {
-            const maxHp = gs.current.maxHp || 100;
-            const displayHearts = Math.min(10, Math.ceil(maxHp / 10));
-            const hpPerHeart = maxHp / displayHearts;
-            const fullHearts = Math.floor(hp / hpPerHeart);
-            const partialFill = (hp % hpPerHeart) / hpPerHeart;
-            return Array.from({ length: displayHearts }, (_, i) => {
-              const isFull = i < fullHearts;
-              const isPartial = i === fullHearts && partialFill > 0.05;
-              const heartColor = hpRatio > 0.6 ? '#ff2255' : hpRatio > 0.3 ? '#ff8800' : '#ff2222';
-              const emptyColor = 'rgba(255,34,85,.18)';
-              return (
-                <span key={i} style={{ fontSize: '.75rem', lineHeight: 1, color: isFull ? heartColor : isPartial ? heartColor : emptyColor, opacity: isFull ? 1 : isPartial ? (0.35 + partialFill * 0.65) : 0.28, textShadow: isFull ? `0 0 4px ${heartColor}` : 'none', transition: 'opacity .3s' }}>♥</span>
-              );
-            });
-          })()}
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: 'rgba(255,255,255,.4)', marginLeft: '3px' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
+        {/* Compact health bar */}
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.35)', padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>HP</span>
+          <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,.08)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ width: `${Math.max(0, Math.min(100, hpRatio * 100))}%`, height: '100%', background: `linear-gradient(90deg, ${hpColor}, ${hpRatio > 0.6 ? '#22d3ee' : hpColor})`, borderRadius: 2, boxShadow: `0 0 6px ${hpGlow}`, transition: 'width .3s' }} />
+          </div>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: hpColor, whiteSpace: 'nowrap', textShadow: `0 0 4px ${hpGlow}`, minWidth: 42, textAlign: 'right' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
         </div>
+        {/* Armor indicator */}
+        {gs.current.ownedItems.has('armor_plate') && (
+          <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,180,255,.3)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(100,180,255,.6)' }}>🛡 ARMOR</span>
+            <div style={{ flex: 1, height: 5, background: 'rgba(100,180,255,.1)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: '85%', height: '100%', background: 'linear-gradient(90deg, #4488cc, #66aaee)', borderRadius: 2 }} />
+            </div>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(100,180,255,.5)' }}>-15%</span>
+          </div>
+        )}
+        {/* Wanted level stars + bounty */}
+        {gs.current.wantedLevel > 0 && (
+          <div style={{ background: 'rgba(40,0,0,.92)', border: '1px solid rgba(255,80,0,.5)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ff6644', letterSpacing: '.05em' }}>
+              {'★'.repeat(gs.current.wantedLevel)}{'☆'.repeat(5 - gs.current.wantedLevel)}
+            </span>
+            {gs.current.bountyAmount > 0 && (
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: '#ff8844' }}>ƒ{gs.current.bountyAmount.toLocaleString()}</span>
+            )}
+          </div>
+        )}
+        {gs.current.taxDebt > 0 && (
+          <div style={{ background: 'rgba(40,20,0,.92)', border: '1px solid rgba(255,140,0,.3)', padding: '.1rem .4rem' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944' }}>TAX DEBT ƒ{gs.current.taxDebt.toLocaleString()}</span>
+          </div>
+        )}
         {/* Survival stats row — Hunger / Thirst / Energy */}
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           {[
@@ -13469,6 +13735,50 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
             {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{DOG_MAX_HP}</span>}
             {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Vehicle exit prompt */}
+      {gs.current.vehicle && (
+        <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 160, pointerEvents: 'none' }}>
+          <div style={{ background: 'rgba(0,0,0,.85)', border: '1px solid rgba(0,255,200,.4)', padding: '.3rem .8rem', fontFamily: "'VT323',monospace", fontSize: '.8rem', color: '#00ffcc', letterSpacing: '.08em', textShadow: '0 0 8px rgba(0,255,200,.4)' }}>
+            Press [E] to exit vehicle
+          </div>
+        </div>
+      )}
+
+      {/* Floating sound control — top-right corner, offset from menu buttons */}
+      <div style={{ position: 'absolute', top: 10, right: 180, zIndex: 200 }}>
+        <button onClick={() => setShowSoundPanel(v => !v)} style={{ width: 32, height: 32, background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.3)', color: allMuted ? '#ff2266' : '#38bdf8', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
+          {allMuted ? '🔇' : '🔊'}
+        </button>
+        {showSoundPanel && (
+          <div style={{ position: 'absolute', top: 36, right: 0, width: 200, background: 'rgba(0,8,16,.96)', border: '1px solid rgba(56,189,248,.3)', padding: '.5rem', display: 'flex', flexDirection: 'column', gap: '6px', borderRadius: 4 }}>
+            <button onClick={() => { const m = toggleMuteAll(); setAllMuted(m); }} style={{ width: '100%', padding: '.3rem .5rem', background: allMuted ? 'rgba(255,34,102,.08)' : 'transparent', border: '1px solid rgba(56,189,248,.2)', color: allMuted ? '#ff2266' : 'rgba(56,189,248,.6)', cursor: 'pointer', fontSize: '.65rem', fontFamily: "'Share Tech Mono',monospace" }}>
+              {allMuted ? '🔇 UNMUTE ALL' : '🔊 MUTE ALL'}
+            </button>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace" }}>MASTER</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setOutputVolume(v); try { localStorage.setItem('sm_output_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace" }}>SFX</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setSfxVolState(v); try { localStorage.setItem('sm_sfx_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.5)', fontFamily: "'Share Tech Mono',monospace" }}>MUSIC</span>
+                <span style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(radioVolume * 100)}%</span>
+              </div>
+              <input type="range" min="0" max="100" value={Math.round(radioVolume * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setRadioVolume(v); try { localStorage.setItem('sm_radio_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
+            </div>
           </div>
         )}
       </div>

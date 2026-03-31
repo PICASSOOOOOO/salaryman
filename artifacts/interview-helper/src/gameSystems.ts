@@ -780,6 +780,16 @@ export const LORE_WEAPON_NAMES: Record<string, { label: string; lore: string }> 
   GUN: { label: 'VOSS-9', lore: 'Standard-issue sidearm. Serial number filed off.' },
   LASER: { label: 'PRISM LANCE', lore: 'Pre-collapse military tech. Still hums.' },
   BOMB: { label: 'SHATTER CHARGE', lore: 'Improvised explosive. Loud. Effective.' },
+  SHOTGUN: { label: 'THUNDERCLAP', lore: 'Close-range devastation. Three slugs per pull.' },
+  SMG: { label: 'HORNET MK.II', lore: 'Rapid-fire submachine gun. Spray and pray.' },
+  SNIPER: { label: 'GHOST NEEDLE', lore: 'One shot. One kill. From very far away.' },
+  GRENADE_LAUNCHER: { label: 'HAVOC-40', lore: 'Grenade launcher. Area denial specialist.' },
+  CROSSBOW: { label: 'WHISPER BOLT', lore: 'Silent killer. No alerts. No witnesses.' },
+  BASEBALL_BAT: { label: 'SLUGGER', lore: 'Aluminum bat. Good for home runs and home defense.' },
+  MACHETE: { label: 'JUNGLE FANG', lore: 'Fast slash. Cuts through anything organic.' },
+  KATANA: { label: 'MOONBLADE', lore: 'Folded steel from the old world. Reach and precision.' },
+  BRASS_KNUCKLES: { label: 'IRON KISS', lore: 'Weighted knuckles. Fast strikes. Chance to stun.' },
+  CHAINSAW: { label: 'RIPPER', lore: 'Continuous damage. Very loud. Police magnet.' },
 };
 
 // ── Ambient Audio Identifiers ────────────────────────────────────────────────
