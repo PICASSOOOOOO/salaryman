@@ -193,13 +193,20 @@ function usePabloVoice() {
             toggleListenRef.current = null;
             return;
           }
-          setLiveTranscript(`Transcribing ${Math.round(base64.length / 1024)}KB of audio...`);
+          const sizeKB = Math.round(base64.length / 1024);
+          setLiveTranscript(`Transcribing ${sizeKB}KB of audio...`);
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+
           fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audio: base64, mimeType }),
+            signal: controller.signal,
           })
             .then(resp => {
+              clearTimeout(timeoutId);
               if (!resp.ok) {
                 return resp.text().then(t => {
                   setMicError(`Server error ${resp.status}: ${t.slice(0, 100)}`);
@@ -216,13 +223,19 @@ function usePabloVoice() {
               });
             })
             .catch(err => {
-              setMicError(`Network error: ${err instanceof Error ? err.message : 'unknown'}`);
+              clearTimeout(timeoutId);
+              if (err instanceof Error && err.name === 'AbortError') {
+                setMicError('Transcription timed out (30s). Try a shorter recording.');
+              } else {
+                setMicError(`Network error: ${err instanceof Error ? err.message : 'unknown'}`);
+              }
               console.error('Whisper fetch error:', err);
             })
             .finally(() => {
               setIsTranscribing2(false);
               setIsListening(false);
               toggleListenRef.current = null;
+              mediaRecorderRef.current = null;
               setTimeout(() => setLiveTranscript(''), 3000);
             });
         };
@@ -257,10 +270,10 @@ function usePabloVoice() {
 
   const startListening = useCallback((onTranscript: (text: string) => void) => {
     if (toggleListenRef.current) {
-      toggleListenRef.current.stop();
-      toggleListenRef.current = null;
-      setIsListening(false);
-      setLiveTranscript('');
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
     startWhisperRecording(onTranscript);
