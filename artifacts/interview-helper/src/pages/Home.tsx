@@ -111,24 +111,33 @@ function usePabloVoice() {
   }, []);
 
   const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [micError, setMicError] = useState('');
   const toggleListenRef = useRef<{ stop: () => void } | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startListening = useCallback((onTranscript: (text: string) => void) => {
     if (toggleListenRef.current) {
       toggleListenRef.current.stop();
       toggleListenRef.current = null;
       setIsListening(false);
+      setLiveTranscript('');
       return;
     }
     const W = window as unknown as Record<string, unknown>;
     const SRCtor = (W.SpeechRecognition ?? W.webkitSpeechRecognition) as (new () => {
       continuous: boolean; interimResults: boolean; lang: string;
       onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
-      onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void;
+      onend: (() => void) | null; onerror: ((ev: { error: string }) => void) | null; start: () => void; stop: () => void;
     }) | undefined;
-    if (!SRCtor) return;
+    if (!SRCtor) {
+      setMicError('Speech recognition not supported in this browser');
+      return;
+    }
 
+    setMicError('');
     setIsListening(true);
+    setLiveTranscript('');
     const listenTranscript = { current: '' };
     const rec = new SRCtor();
     toggleListenRef.current = rec;
@@ -137,30 +146,51 @@ function usePabloVoice() {
     rec.lang = 'en-US';
     rec.onresult = (ev) => {
       listenTranscript.current = Array.from(ev.results).map(r => r[0].transcript).join('');
+      setLiveTranscript(listenTranscript.current);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        silenceTimerRef.current = null;
+        if (toggleListenRef.current) {
+          try { toggleListenRef.current.stop(); } catch {}
+        }
+      }, 3000);
     };
     rec.onend = () => {
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       setIsListening(false);
       toggleListenRef.current = null;
+      setLiveTranscript('');
       if (listenTranscript.current.trim()) {
         onTranscript(listenTranscript.current.trim());
       }
     };
-    rec.onerror = () => {
+    rec.onerror = (ev) => {
+      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
       setIsListening(false);
       toggleListenRef.current = null;
+      setLiveTranscript('');
+      if (ev.error === 'not-allowed' || ev.error === 'permission-denied') {
+        setMicError('Microphone access denied. Check browser permissions.');
+      } else if (ev.error === 'no-speech') {
+        setMicError('No speech detected. Try speaking louder or check your mic.');
+      } else {
+        setMicError(`Mic error: ${ev.error}`);
+      }
     };
     rec.start();
   }, []);
 
   const stopListening = useCallback(() => {
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     if (toggleListenRef.current) {
       toggleListenRef.current.stop();
       toggleListenRef.current = null;
     }
     setIsListening(false);
+    setLiveTranscript('');
   }, []);
 
-  return { isHolding, isTranscribing, isSpeaking, isListening, startHold, stopHold, startListening, stopListening, speakResponse, stopSpeaking };
+  return { isHolding, isTranscribing, isSpeaking, isListening, liveTranscript, micError, startHold, stopHold, startListening, stopListening, speakResponse, stopSpeaking };
 }
 
 export default function Home() {
@@ -1253,6 +1283,13 @@ export default function Home() {
                   </button>
                 </div>
 
+                {voice.isListening && voice.liveTranscript && (
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <p className="text-[10px] text-purple-400/60 mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>PABLO HEARS:</p>
+                    <p className="text-sm text-purple-300 italic">"{voice.liveTranscript}"</p>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => voice.isListening ? voice.stopListening() : voice.startListening(handleVoiceSend)}
@@ -1264,7 +1301,7 @@ export default function Home() {
                     style={{ fontFamily: "'Share Tech Mono', monospace" }}
                   >
                     {voice.isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                    {voice.isListening ? 'STOP' : (boomerMode ? 'SPEAK TO PABLO' : 'MIC')}
+                    {voice.isListening ? (voice.liveTranscript ? 'SEND' : 'LISTENING...') : (boomerMode ? 'SPEAK TO PABLO' : 'MIC')}
                   </button>
 
                   <button
@@ -1303,6 +1340,11 @@ export default function Home() {
                   {conv.permissionDenied && (
                     <span className="text-[10px] text-red-400/80" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                       Open in new tab for mic access
+                    </span>
+                  )}
+                  {voice.micError && (
+                    <span className="text-[10px] text-red-400/80" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                      {voice.micError}
                     </span>
                   )}
 
