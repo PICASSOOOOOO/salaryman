@@ -115,6 +115,129 @@ function usePabloVoice() {
   const [micError, setMicError] = useState('');
   const toggleListenRef = useRef<{ stop: () => void } | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const onTranscriptRef = useRef<((text: string) => void) | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioLevelRef = useRef(0);
+  const [isTranscribing2, setIsTranscribing2] = useState(false);
+
+  const startWhisperRecording = useCallback(async (onTranscript: (text: string) => void) => {
+    onTranscriptRef.current = onTranscript;
+    setMicError('');
+    setLiveTranscript('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const dataArr = new Uint8Array(analyser.frequencyBinCount);
+      const checkLevel = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArr);
+        const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
+        audioLevelRef.current = avg;
+        if (mediaRecorderRef.current?.state === 'recording') {
+          if (avg > 5) {
+            setLiveTranscript('🎤 Hearing you... (recording)');
+          }
+          requestAnimationFrame(checkLevel);
+        }
+      };
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        micStreamRef.current = null;
+        analyserRef.current = null;
+        audioCtx.close();
+
+        if (audioChunksRef.current.length === 0) {
+          setMicError('No audio recorded');
+          setIsListening(false);
+          toggleListenRef.current = null;
+          return;
+        }
+
+        setLiveTranscript('Transcribing...');
+        setIsTranscribing2(true);
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              resolve(result.split(',')[1]);
+            };
+            reader.readAsDataURL(blob);
+          });
+
+          const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, mimeType }),
+          });
+
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ error: 'Unknown' }));
+            setMicError(`Transcription failed: ${(err as { error: string }).error}`);
+          } else {
+            const { text } = await resp.json() as { text: string };
+            if (text && text.trim()) {
+              setLiveTranscript(text.trim());
+              if (onTranscriptRef.current) onTranscriptRef.current(text.trim());
+            } else {
+              setMicError('No speech detected in recording');
+            }
+          }
+        } catch (err) {
+          setMicError('Failed to transcribe audio');
+          console.error('Whisper transcription error:', err);
+        } finally {
+          setIsTranscribing2(false);
+          setIsListening(false);
+          toggleListenRef.current = null;
+          setTimeout(() => setLiveTranscript(''), 2000);
+        }
+      };
+
+      setIsListening(true);
+      recorder.start(1000);
+      toggleListenRef.current = { stop: () => { try { recorder.stop(); } catch {} } };
+      requestAnimationFrame(checkLevel);
+      setLiveTranscript('🎤 Listening... speak now');
+
+      silenceTimerRef.current = setTimeout(() => {
+        silenceTimerRef.current = null;
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+      }, 15000);
+
+    } catch (err) {
+      console.error('getUserMedia error:', err);
+      setMicError('Could not access microphone');
+      setIsListening(false);
+    }
+  }, []);
 
   const startListening = useCallback((onTranscript: (text: string) => void) => {
     if (toggleListenRef.current) {
@@ -124,87 +247,22 @@ function usePabloVoice() {
       setLiveTranscript('');
       return;
     }
-    const W = window as unknown as Record<string, unknown>;
-    const SRCtor = (W.SpeechRecognition ?? W.webkitSpeechRecognition) as (new () => {
-      continuous: boolean; interimResults: boolean; lang: string;
-      onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
-      onend: (() => void) | null; onerror: ((ev: { error: string }) => void) | null; start: () => void; stop: () => void;
-    }) | undefined;
-    if (!SRCtor) {
-      setMicError('Speech recognition not supported in this browser');
-      return;
-    }
-
-    setMicError('');
-    setIsListening(true);
-    setLiveTranscript('');
-    const listenTranscript = { current: '' };
-    const rec = new SRCtor();
-    toggleListenRef.current = rec;
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'en-US';
-    rec.onresult = (ev) => {
-      listenTranscript.current = Array.from(ev.results).map(r => r[0].transcript).join('');
-      setLiveTranscript(listenTranscript.current);
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-        silenceTimerRef.current = null;
-        if (toggleListenRef.current) {
-          try { toggleListenRef.current.stop(); } catch {}
-        }
-      }, 3000);
-    };
-    let noSpeechRetries = 0;
-    const MAX_NO_SPEECH_RETRIES = 5;
-    rec.onerror = (ev) => {
-      if (ev.error === 'no-speech') {
-        noSpeechRetries++;
-        if (noSpeechRetries < MAX_NO_SPEECH_RETRIES) {
-          try { rec.stop(); } catch {}
-          return;
-        }
-        if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-        setIsListening(false);
-        toggleListenRef.current = null;
-        setLiveTranscript('');
-        setMicError('No speech detected after multiple attempts. Check that your mic is working and try again.');
-        return;
-      }
-      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-      setIsListening(false);
-      toggleListenRef.current = null;
-      setLiveTranscript('');
-      if (ev.error === 'not-allowed' || ev.error === 'permission-denied') {
-        setMicError('Microphone access denied. Check browser permissions.');
-      } else if (ev.error === 'aborted') {
-        setMicError('');
-      } else {
-        setMicError(`Mic error: ${ev.error}`);
-      }
-    };
-    rec.onend = () => {
-      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-      const hadTranscript = listenTranscript.current.trim();
-      if (!hadTranscript && noSpeechRetries < MAX_NO_SPEECH_RETRIES && toggleListenRef.current === rec) {
-        try { rec.start(); } catch {}
-        return;
-      }
-      setIsListening(false);
-      toggleListenRef.current = null;
-      setLiveTranscript('');
-      if (hadTranscript) {
-        onTranscript(hadTranscript);
-      }
-    };
-    rec.start();
-  }, []);
+    startWhisperRecording(onTranscript);
+  }, [startWhisperRecording]);
 
   const stopListening = useCallback(() => {
     if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      return;
+    }
     if (toggleListenRef.current) {
       toggleListenRef.current.stop();
       toggleListenRef.current = null;
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
     }
     setIsListening(false);
     setLiveTranscript('');
