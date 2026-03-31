@@ -40,10 +40,16 @@ async function fetchAudioWithRetry(sentence: string, signal: AbortSignal): Promi
         body: JSON.stringify({ text: sentence }),
         signal,
       });
-      if (!res.ok) throw new Error(`TTS request failed: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 502) {
+          throw Object.assign(new Error('TTS server unavailable'), { noRetry: true });
+        }
+        throw new Error(`TTS request failed: ${res.status}`);
+      }
       return await res.arrayBuffer();
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') throw err;
+      if ((err as any)?.noRetry) throw err;
       lastError = err;
       console.warn(`TTS attempt ${attempt + 1} failed:`, err);
     }
