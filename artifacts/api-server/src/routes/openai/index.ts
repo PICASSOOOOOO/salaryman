@@ -110,48 +110,39 @@ router.post("/transcribe", async (req, res) => {
     return;
   }
 
-  try {
-    const audioBuffer = Buffer.from(audio, "base64");
-    const ext = (mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
-    const file = new File([audioBuffer], `recording.${ext}`, { type: mimeType || "audio/webm" });
+  const audioBuffer = Buffer.from(audio, "base64");
 
-    const result = await openai.audio.transcriptions.create({
-      file,
-      model: "whisper-1",
-      language: "en",
+  const apiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  if (!apiKey) {
+    res.status(500).json({ error: "No OpenAI API key available" });
+    return;
+  }
+
+  try {
+    const ext = (mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
+    const blob = new Blob([audioBuffer], { type: mimeType || "audio/webm" });
+    const formData = new FormData();
+    formData.append("file", blob, `recording.${ext}`);
+    formData.append("model", "whisper-1");
+    formData.append("language", "en");
+
+    const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      body: formData,
     });
 
+    if (!whisperRes.ok) {
+      const errText = await whisperRes.text();
+      console.error("Whisper API error:", whisperRes.status, errText);
+      res.status(502).json({ error: `Whisper error ${whisperRes.status}` });
+      return;
+    }
+
+    const result = await whisperRes.json() as { text: string };
     res.json({ text: result.text });
   } catch (err) {
     console.error("Transcription error:", err);
-
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      try {
-        const audioBuffer = Buffer.from(audio, "base64");
-        const ext = (mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
-        const blob = new Blob([audioBuffer], { type: mimeType || "audio/webm" });
-        const formData = new FormData();
-        formData.append("file", blob, `recording.${ext}`);
-        formData.append("model", "whisper-1");
-        formData.append("language", "en");
-
-        const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${openaiKey}` },
-          body: formData,
-        });
-
-        if (whisperRes.ok) {
-          const result = await whisperRes.json() as { text: string };
-          res.json({ text: result.text });
-          return;
-        }
-      } catch (fallbackErr) {
-        console.error("Direct Whisper fallback also failed:", fallbackErr);
-      }
-    }
-
     res.status(500).json({ error: "Transcription failed" });
   }
 });
