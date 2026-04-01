@@ -1,0 +1,116 @@
+[Conv] AudioContext state: running, sampleRate: 48000
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus, silenceTimeout=3000ms, framesNeeded=90
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=59/90, elapsed=0s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=119/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=179/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=239/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=299/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=359/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=419/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=479/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=539/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=599/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=659/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=719/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=779/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=839/90, elapsed=7s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=899/90, elapsed=7s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=959/90, elapsed=8s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1019/90, elapsed=8s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1079/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1139/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1199/90, elapsed=10s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Max recording timeout (10s), stopping recorder
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] checkAudioLevel: recorder not recording, stopping check
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] onstop: 10 chunks, hasAudio=false, totalSize=154865
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcribing...
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] AudioContext state: running, sampleRate: 48000
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus, silenceTimeout=3000ms, framesNeeded=90
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=59/90, elapsed=0s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=119/90, elapsed=1s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=179/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=239/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=299/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=359/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=419/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=479/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=539/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=599/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=659/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=719/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=779/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=839/90, elapsed=7s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=899/90, elapsed=7s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=959/90, elapsed=8s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1019/90, elapsed=8s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1079/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1139/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1199/90, elapsed=10s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Max recording timeout (10s), stopping recorder
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] onstop: 10 chunks, hasAudio=false, totalSize=153899
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcribing...
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] checkAudioLevel: recorder not recording, stopping check
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] AudioContext state: running, sampleRate: 48000
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus, silenceTimeout=3000ms, framesNeeded=90
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=59/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=119/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=179/90, elapsed=2s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=239/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=299/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=359/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=419/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=479/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=539/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=599/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=659/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=719/90, elapsed=6s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=779/90, elapsed=7s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=839/90, elapsed=7s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=899/90, elapsed=8s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=959/90, elapsed=8s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1019/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1079/90, elapsed=9s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1139/90, elapsed=9s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=1199/90, elapsed=10s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Max recording timeout (10s), stopping recorder
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] onstop: 10 chunks, hasAudio=false, totalSize=153899
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcribing...
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] checkAudioLevel: recorder not recording, stopping check
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Transcription: ""
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] AudioContext state: running, sampleRate: 48000
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus, silenceTimeout=3000ms, framesNeeded=90
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=59/90, elapsed=0s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=119/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=179/90, elapsed=1s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=239/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=299/90, elapsed=2s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=359/90, elapsed=3s
+index-LilNblkV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-LilNblkV.js:9
+(anonymous) @ index-LilNblkV.js:9Understand this error
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=419/90, elapsed=3s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=479/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=539/90, elapsed=4s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=599/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=659/90, elapsed=5s
+use-voice-conversation-Bx2OGFxH.js:1 [Conv] Audio level: avg=0.0, speechDetected=false, silentFrames=719/90, elapsed=6s

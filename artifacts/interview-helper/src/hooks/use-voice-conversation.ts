@@ -78,8 +78,6 @@ async function convertToWav(inputBlob: Blob): Promise<Blob> {
 
 async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string> {
   const rawBlob = new Blob(chunks, { type: mimeType });
-  const finalBlob = await convertToWav(rawBlob);
-  const finalMime = finalBlob.type === 'audio/wav' ? 'audio/wav' : mimeType;
 
   const reader = new FileReader();
   const base64 = await new Promise<string>((resolve, reject) => {
@@ -90,7 +88,7 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
       else reject(new Error('Failed to encode audio'));
     };
     reader.onerror = () => reject(new Error('FileReader error'));
-    reader.readAsDataURL(finalBlob);
+    reader.readAsDataURL(rawBlob);
   });
 
   const controller = new AbortController();
@@ -100,7 +98,7 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
     const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audio: base64, mimeType: finalMime }),
+      body: JSON.stringify({ audio: base64, mimeType }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
@@ -201,72 +199,57 @@ export function useVoiceConversation({
         await audioCtx.resume();
       }
       const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.3;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-      console.log(`[Conv] AudioContext state: ${audioCtx.state}, sampleRate: ${audioCtx.sampleRate}`);
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : 'audio/webm';
-
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-      hasAudioRef.current = false;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      const dataArr = new Uint8Array(analyser.frequencyBinCount);
+      const pcmChunks: Float32Array[] = [];
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       let speechDetected = false;
       let silentFrames = 0;
-      const SILENCE_THRESHOLD = 8;
-      const SILENCE_FRAMES_NEEDED = Math.ceil((silenceTimeoutMs / 1000) * 30);
-
-      let frameCount = 0;
-      const recordingStartTime = Date.now();
+      let recording = true;
+      const SILENCE_THRESHOLD = 0.01;
+      const SILENCE_FRAMES_NEEDED = Math.ceil(silenceTimeoutMs / (4096 / audioCtx.sampleRate * 1000));
       const MIN_RECORD_MS = 2000;
-      const checkAudioLevel = () => {
-        if (!analyserRef.current || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
-          console.log(`[Conv] checkAudioLevel: recorder not recording, stopping check`);
-          return;
+      const recordingStartTime = Date.now();
+      let frameCount = 0;
+
+      processor.onaudioprocess = (e) => {
+        if (!recording) return;
+        const input = e.inputBuffer.getChannelData(0);
+        pcmChunks.push(new Float32Array(input));
+
+        let sum = 0;
+        for (let i = 0; i < input.length; i++) {
+          sum += input[i] * input[i];
         }
-        analyserRef.current.getByteFrequencyData(dataArr);
-        const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
+        const rms = Math.sqrt(sum / input.length);
         frameCount++;
         const elapsed = Date.now() - recordingStartTime;
 
-        if (frameCount % 60 === 0) {
-          console.log(`[Conv] Audio level: avg=${avg.toFixed(1)}, speechDetected=${speechDetected}, silentFrames=${silentFrames}/${SILENCE_FRAMES_NEEDED}, elapsed=${Math.round(elapsed/1000)}s`);
+        if (frameCount % 10 === 0) {
+          console.log(`[Conv] PCM rms=${rms.toFixed(4)}, speechDetected=${speechDetected}, silentFrames=${silentFrames}/${SILENCE_FRAMES_NEEDED}, elapsed=${Math.round(elapsed/1000)}s, chunks=${pcmChunks.length}`);
         }
 
-        if (avg > SILENCE_THRESHOLD) {
+        if (rms > SILENCE_THRESHOLD) {
           speechDetected = true;
-          hasAudioRef.current = true;
           silentFrames = 0;
-        } else {
+        } else if (speechDetected && elapsed > MIN_RECORD_MS) {
           silentFrames++;
-          if (speechDetected && elapsed > MIN_RECORD_MS && silentFrames >= SILENCE_FRAMES_NEEDED) {
-            console.log(`[Conv] Silence detected after speech, stopping recorder`);
-            if (mediaRecorderRef.current?.state === 'recording') {
-              mediaRecorderRef.current.stop();
-            }
-            return;
+          if (silentFrames >= SILENCE_FRAMES_NEEDED) {
+            console.log('[Conv] Silence detected after speech, stopping');
+            recording = false;
+            stopAndProcess();
           }
         }
-        requestAnimationFrame(checkAudioLevel);
       };
 
-      recorder.onstop = () => {
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+      const stopAndProcess = () => {
+        recording = false;
+        processor.disconnect();
+        source.disconnect();
         stream.getTracks().forEach(t => t.stop());
         micStreamRef.current = null;
-        analyserRef.current = null;
         try { audioCtx.close(); } catch {}
         audioCtxRef.current = null;
         mediaRecorderRef.current = null;
@@ -276,97 +259,156 @@ export function useVoiceConversation({
           return;
         }
 
-        const chunks = audioChunksRef.current;
-        const hasChunks = chunks.length > 0;
-        console.log(`[Conv] onstop: ${chunks.length} chunks, hasAudio=${hasAudioRef.current}, totalSize=${chunks.reduce((a, b) => a + b.size, 0)}`);
-        if (!hasChunks) {
-          console.log('[Conv] No chunks recorded, restarting listener');
+        if (pcmChunks.length === 0) {
+          console.log('[Conv] No PCM data, restarting listener');
           scheduleRestart(500, () => startListening());
           return;
         }
 
+        const totalSamples = pcmChunks.reduce((a, c) => a + c.length, 0);
+        console.log(`[Conv] Building WAV from ${pcmChunks.length} PCM chunks, ${totalSamples} samples`);
+
+        const targetRate = 16000;
+        const ratio = audioCtx.sampleRate / targetRate;
+        const resampledLength = Math.floor(totalSamples / ratio);
+        const wavBuf = new ArrayBuffer(44 + resampledLength * 2);
+        const view = new DataView(wavBuf);
+        const writeStr = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + resampledLength * 2, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, targetRate, true);
+        view.setUint32(28, targetRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeStr(36, 'data');
+        view.setUint32(40, resampledLength * 2, true);
+
+        let srcIdx = 0;
+        let chunkIdx = 0;
+        let chunkOffset = 0;
+        for (let i = 0; i < resampledLength; i++) {
+          const srcPos = Math.floor(i * ratio);
+          while (srcIdx < srcPos) {
+            chunkOffset++;
+            if (chunkOffset >= pcmChunks[chunkIdx].length) {
+              chunkIdx++;
+              chunkOffset = 0;
+            }
+            srcIdx++;
+          }
+          if (chunkIdx < pcmChunks.length && chunkOffset < pcmChunks[chunkIdx].length) {
+            const s = Math.max(-1, Math.min(1, pcmChunks[chunkIdx][chunkOffset]));
+            view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          }
+        }
+
+        const wavBlob = new Blob([wavBuf], { type: 'audio/wav' });
+        console.log(`[Conv] WAV blob: ${wavBlob.size} bytes, duration=${(resampledLength/targetRate).toFixed(1)}s`);
+
         setConvState('processing');
-        console.log('[Conv] Transcribing...');
-        transcribeAudio(chunks, mimeType)
-          .then(async (transcript) => {
-            console.log(`[Conv] Transcription: "${transcript}"`);
-            if (!isConvModeRef.current || !activeRef.current) return;
-            if (!transcript) {
-              console.log('[Conv] Empty transcript, restarting listener');
-              setConvState('listening');
-              scheduleRestart(400, () => startListening());
-              return;
-            }
+        console.log('[Conv] Transcribing WAV...');
 
-            const STOP_PHRASES = ['goodbye pablo', 'bye pablo', 'stop conversation', 'end conversation', 'stop pablo'];
-            if (STOP_PHRASES.some(p => transcript.toLowerCase().includes(p))) {
-              cleanupMic();
-              setIsConvMode(false);
-              activeRef.current = false;
-              isConvModeRef.current = false;
-              setConvState('idle');
-              return;
-            }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          if (!base64) {
+            console.error('[Conv] Failed to encode WAV');
+            scheduleRestart(500, () => startListening());
+            return;
+          }
 
-            try {
-              console.log(`[Conv] Sending to advisor: "${transcript.slice(0, 50)}..."`);
-              const response = await onSend(transcript);
-              console.log(`[Conv] Advisor response: "${(response || '').slice(0, 80)}..." (${(response || '').length} chars)`);
+          fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/wav' }),
+          })
+            .then(resp => resp.json())
+            .then(async (data: { text?: string }) => {
+              const transcript = data?.text?.trim() || '';
+              console.log(`[Conv] Transcription: "${transcript}"`);
               if (!isConvModeRef.current || !activeRef.current) return;
-              if (response) {
-                onResponseReceived?.(response);
-                setConvState('speaking');
-                console.log('[Conv] Starting TTS...');
-                ttsHandleRef.current = speakWithTTS(response, () => {
-                  ttsHandleRef.current = null;
-                  if (!isConvModeRef.current || !activeRef.current) {
-                    setConvState('idle');
-                    return;
-                  }
-                  playReadyChime();
-                  setConvState('listening');
-                  scheduleRestart(300, () => startListening());
-                }, () => {
-                  ttsHandleRef.current = null;
-                  if (!isConvModeRef.current || !activeRef.current) {
-                    setConvState('idle');
-                    return;
-                  }
-                  setConvState('listening');
-                  scheduleRestart(1000, () => startListening());
-                });
-              } else {
+              if (!transcript) {
+                console.log('[Conv] Empty transcript, restarting listener');
                 setConvState('listening');
                 scheduleRestart(400, () => startListening());
+                return;
               }
-            } catch {
+
+              const STOP_PHRASES = ['goodbye pablo', 'bye pablo', 'stop conversation', 'end conversation', 'stop pablo'];
+              if (STOP_PHRASES.some(p => transcript.toLowerCase().includes(p))) {
+                cleanupMic();
+                setIsConvMode(false);
+                activeRef.current = false;
+                isConvModeRef.current = false;
+                setConvState('idle');
+                return;
+              }
+
+              try {
+                console.log(`[Conv] Sending to advisor: "${transcript.slice(0, 50)}..."`);
+                const response = await onSend(transcript);
+                console.log(`[Conv] Advisor response: "${(response || '').slice(0, 80)}..." (${(response || '').length} chars)`);
+                if (!isConvModeRef.current || !activeRef.current) return;
+                if (response) {
+                  onResponseReceived?.(response);
+                  setConvState('speaking');
+                  console.log('[Conv] Starting TTS...');
+                  ttsHandleRef.current = speakWithTTS(response, () => {
+                    ttsHandleRef.current = null;
+                    if (!isConvModeRef.current || !activeRef.current) {
+                      setConvState('idle');
+                      return;
+                    }
+                    playReadyChime();
+                    setConvState('listening');
+                    scheduleRestart(300, () => startListening());
+                  }, () => {
+                    ttsHandleRef.current = null;
+                    if (!isConvModeRef.current || !activeRef.current) {
+                      setConvState('idle');
+                      return;
+                    }
+                    setConvState('listening');
+                    scheduleRestart(1000, () => startListening());
+                  });
+                } else {
+                  setConvState('listening');
+                  scheduleRestart(400, () => startListening());
+                }
+              } catch {
+                if (isConvModeRef.current && activeRef.current) {
+                  setConvState('listening');
+                  scheduleRestart(1000, () => startListening());
+                } else {
+                  setConvState('idle');
+                }
+              }
+            })
+            .catch(() => {
               if (isConvModeRef.current && activeRef.current) {
                 setConvState('listening');
                 scheduleRestart(1000, () => startListening());
-              } else {
-                setConvState('idle');
               }
-            }
-          })
-          .catch(() => {
-            if (isConvModeRef.current && activeRef.current) {
-              setConvState('listening');
-              scheduleRestart(1000, () => startListening());
-            }
-          });
+            });
+        };
+        reader.readAsDataURL(wavBlob);
       };
 
+      mediaRecorderRef.current = { stop: stopAndProcess, state: 'recording' } as unknown as MediaRecorder;
+
       setConvState('listening');
-      recorder.start(1000);
-      console.log(`[Conv] Recording started, mimeType=${mimeType}, silenceTimeout=${silenceTimeoutMs}ms, framesNeeded=${SILENCE_FRAMES_NEEDED}`);
-      requestAnimationFrame(checkAudioLevel);
+      console.log(`[Conv] PCM recording started, sampleRate=${audioCtx.sampleRate}, silenceTimeout=${silenceTimeoutMs}ms`);
 
       silenceTimerRef.current = setTimeout(() => {
         silenceTimerRef.current = null;
-        console.log('[Conv] Max recording timeout (10s), stopping recorder');
-        if (mediaRecorderRef.current?.state === 'recording') {
-          mediaRecorderRef.current.stop();
-        }
+        console.log('[Conv] Max recording timeout (10s), stopping');
+        if (recording) stopAndProcess();
       }, 10000);
 
     } catch (err: any) {
