@@ -128,7 +128,7 @@ router.post("/transcribe", async (req, res) => {
     } else {
       console.log(`[Transcribe] Converting ${detected} to WAV via ffmpeg...`);
       try {
-        finalBuffer = await convertToWav(audioBuffer);
+        finalBuffer = await convertToWav(audioBuffer) as Buffer<ArrayBuffer>;
         finalFormat = "wav";
         console.log(`[Transcribe] Converted to WAV: ${finalBuffer.length} bytes`);
       } catch (convErr: any) {
