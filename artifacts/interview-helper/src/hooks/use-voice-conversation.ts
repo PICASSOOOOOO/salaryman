@@ -190,7 +190,22 @@ export function useVoiceConversation({
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    let constraints: MediaStreamConstraints = { audio: true };
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId);
+      console.log(`[Conv] Available mics: ${audioInputs.map(d => `"${d.label}" (${d.deviceId.slice(0,8)})`).join(', ')}`);
+      const realMic = audioInputs.find(d =>
+        d.label && !d.label.toLowerCase().includes('virtual')
+      );
+      if (realMic) {
+        constraints = { audio: { deviceId: { exact: realMic.deviceId } } };
+        console.log(`[Conv] Preferring non-virtual mic: "${realMic.label}"`);
+      }
+    } catch {}
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     micStreamRef.current = stream;
     console.log(`[Conv] Got mic stream, device: ${stream.getAudioTracks()[0]?.label}`);
     return stream;

@@ -1,0 +1,44 @@
+[Conv] Got mic stream, device: Cluely (Virtual)
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-BRJgOwWR.js:1 [Conv] onstop: 8 chunks, totalSize=121065
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-BRJgOwWR.js:1 [Conv] WAV conversion: 122880 samples, rms=0.0006, duration=7.7s
+use-voice-conversation-BRJgOwWR.js:1 [Conv] WAV blob: 245804 bytes
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Sending audio/wav (320KB) for transcription...
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Transcription: ""
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Recording timeout (8s), stopping
+use-voice-conversation-BRJgOwWR.js:1 [Conv] onstop: 8 chunks, totalSize=128751
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Converting WebM to WAV client-side...
+use-voice-conversation-BRJgOwWR.js:1 [Conv] WAV conversion: 127680 samples, rms=0.0001, duration=8.0s
+use-voice-conversation-BRJgOwWR.js:1 [Conv] WAV blob: 255404 bytes
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Sending audio/wav (333KB) for transcription...
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Transcription: ""
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Empty transcript, restarting listener
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+use-voice-conversation-BRJgOwWR.js:1 [Conv] Recording started, mimeType=audio/webm;codecs=opus
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
+index-CidvkerQ.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-CidvkerQ.js:9
+(anonymous) @ index-CidvkerQ.js:9Understand this error
