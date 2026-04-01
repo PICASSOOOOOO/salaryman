@@ -253,19 +253,27 @@ export function useVoiceConversation({
         audioCtxRef.current = null;
         mediaRecorderRef.current = null;
 
-        if (!isConvModeRef.current || !activeRef.current) return;
+        if (!isConvModeRef.current || !activeRef.current) {
+          console.log('[Conv] onstop: conv mode inactive, skipping');
+          return;
+        }
 
         const chunks = audioChunksRef.current;
+        console.log(`[Conv] onstop: ${chunks.length} chunks, hasAudio=${hasAudioRef.current}`);
         if (chunks.length === 0 || !hasAudioRef.current) {
+          console.log('[Conv] No audio detected, restarting listener');
           scheduleRestart(500, () => startListening());
           return;
         }
 
         setConvState('processing');
+        console.log('[Conv] Transcribing...');
         transcribeAudio(chunks, mimeType)
           .then(async (transcript) => {
+            console.log(`[Conv] Transcription: "${transcript}"`);
             if (!isConvModeRef.current || !activeRef.current) return;
             if (!transcript) {
+              console.log('[Conv] Empty transcript, restarting listener');
               setConvState('listening');
               scheduleRestart(400, () => startListening());
               return;
@@ -282,11 +290,14 @@ export function useVoiceConversation({
             }
 
             try {
+              console.log(`[Conv] Sending to advisor: "${transcript.slice(0, 50)}..."`);
               const response = await onSend(transcript);
+              console.log(`[Conv] Advisor response: "${(response || '').slice(0, 80)}..." (${(response || '').length} chars)`);
               if (!isConvModeRef.current || !activeRef.current) return;
               if (response) {
                 onResponseReceived?.(response);
                 setConvState('speaking');
+                console.log('[Conv] Starting TTS...');
                 ttsHandleRef.current = speakWithTTS(response, () => {
                   ttsHandleRef.current = null;
                   if (!isConvModeRef.current || !activeRef.current) {
