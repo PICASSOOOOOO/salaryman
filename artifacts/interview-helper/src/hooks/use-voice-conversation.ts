@@ -224,10 +224,19 @@ export function useVoiceConversation({
       const SILENCE_THRESHOLD = 8;
       const SILENCE_FRAMES_NEEDED = Math.ceil((silenceTimeoutMs / 1000) * 30);
 
+      let frameCount = 0;
       const checkAudioLevel = () => {
-        if (!analyserRef.current || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+        if (!analyserRef.current || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+          console.log(`[Conv] checkAudioLevel: recorder not recording, stopping check`);
+          return;
+        }
         analyserRef.current.getByteFrequencyData(dataArr);
         const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
+        frameCount++;
+
+        if (frameCount % 60 === 0) {
+          console.log(`[Conv] Audio level: avg=${avg.toFixed(1)}, speechDetected=${speechDetected}, silentFrames=${silentFrames}/${SILENCE_FRAMES_NEEDED}`);
+        }
 
         if (avg > SILENCE_THRESHOLD) {
           speechDetected = true;
@@ -236,6 +245,7 @@ export function useVoiceConversation({
         } else if (speechDetected) {
           silentFrames++;
           if (silentFrames >= SILENCE_FRAMES_NEEDED) {
+            console.log(`[Conv] Silence detected after speech, stopping recorder`);
             if (mediaRecorderRef.current?.state === 'recording') {
               mediaRecorderRef.current.stop();
             }
@@ -339,10 +349,12 @@ export function useVoiceConversation({
 
       setConvState('listening');
       recorder.start(1000);
+      console.log(`[Conv] Recording started, mimeType=${mimeType}, silenceTimeout=${silenceTimeoutMs}ms, framesNeeded=${SILENCE_FRAMES_NEEDED}`);
       requestAnimationFrame(checkAudioLevel);
 
       silenceTimerRef.current = setTimeout(() => {
         silenceTimerRef.current = null;
+        console.log('[Conv] Max recording timeout (30s), stopping recorder');
         if (mediaRecorderRef.current?.state === 'recording') {
           mediaRecorderRef.current.stop();
         }
