@@ -181,17 +181,28 @@ export function useVoiceConversation({
     cleanupMic();
   }, [clearAllTimers, cleanupMic]);
 
+  const ensureMicStream = useCallback(async (): Promise<MediaStream> => {
+    if (micStreamRef.current) {
+      const tracks = micStreamRef.current.getAudioTracks();
+      if (tracks.length > 0 && tracks[0].readyState === 'live') {
+        return micStreamRef.current;
+      }
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStreamRef.current = stream;
+    console.log(`[Conv] Got mic stream, device: ${stream.getAudioTracks()[0]?.label}`);
+    return stream;
+  }, []);
+
   const startListening = useCallback(async () => {
     if (!isConvModeRef.current || !activeRef.current) return;
     if (mediaRecorderRef.current) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (!isConvModeRef.current || !activeRef.current) {
-        stream.getTracks().forEach(t => t.stop());
-        return;
-      }
-      micStreamRef.current = stream;
+      const stream = await ensureMicStream();
+      if (!isConvModeRef.current || !activeRef.current) return;
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -208,8 +219,6 @@ export function useVoiceConversation({
       };
 
       recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        micStreamRef.current = null;
         mediaRecorderRef.current = null;
 
         if (!isConvModeRef.current || !activeRef.current) {
@@ -392,7 +401,7 @@ export function useVoiceConversation({
         scheduleRestart(1000, () => startListening());
       }
     }
-  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart]);
+  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, ensureMicStream]);
 
   const startConversation = useCallback(() => {
     setPermissionDenied(false);
