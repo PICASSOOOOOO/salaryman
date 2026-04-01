@@ -197,11 +197,16 @@ export function useVoiceConversation({
 
       const audioCtx = new AudioContext();
       audioCtxRef.current = audioCtx;
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
       analyserRef.current = analyser;
+      console.log(`[Conv] AudioContext state: ${audioCtx.state}, sampleRate: ${audioCtx.sampleRate}`);
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -225,6 +230,8 @@ export function useVoiceConversation({
       const SILENCE_FRAMES_NEEDED = Math.ceil((silenceTimeoutMs / 1000) * 30);
 
       let frameCount = 0;
+      const recordingStartTime = Date.now();
+      const MIN_RECORD_MS = 2000;
       const checkAudioLevel = () => {
         if (!analyserRef.current || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
           console.log(`[Conv] checkAudioLevel: recorder not recording, stopping check`);
@@ -233,18 +240,19 @@ export function useVoiceConversation({
         analyserRef.current.getByteFrequencyData(dataArr);
         const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
         frameCount++;
+        const elapsed = Date.now() - recordingStartTime;
 
         if (frameCount % 60 === 0) {
-          console.log(`[Conv] Audio level: avg=${avg.toFixed(1)}, speechDetected=${speechDetected}, silentFrames=${silentFrames}/${SILENCE_FRAMES_NEEDED}`);
+          console.log(`[Conv] Audio level: avg=${avg.toFixed(1)}, speechDetected=${speechDetected}, silentFrames=${silentFrames}/${SILENCE_FRAMES_NEEDED}, elapsed=${Math.round(elapsed/1000)}s`);
         }
 
         if (avg > SILENCE_THRESHOLD) {
           speechDetected = true;
           hasAudioRef.current = true;
           silentFrames = 0;
-        } else if (speechDetected) {
+        } else {
           silentFrames++;
-          if (silentFrames >= SILENCE_FRAMES_NEEDED) {
+          if (speechDetected && elapsed > MIN_RECORD_MS && silentFrames >= SILENCE_FRAMES_NEEDED) {
             console.log(`[Conv] Silence detected after speech, stopping recorder`);
             if (mediaRecorderRef.current?.state === 'recording') {
               mediaRecorderRef.current.stop();
@@ -269,9 +277,10 @@ export function useVoiceConversation({
         }
 
         const chunks = audioChunksRef.current;
-        console.log(`[Conv] onstop: ${chunks.length} chunks, hasAudio=${hasAudioRef.current}`);
-        if (chunks.length === 0 || !hasAudioRef.current) {
-          console.log('[Conv] No audio detected, restarting listener');
+        const hasChunks = chunks.length > 0;
+        console.log(`[Conv] onstop: ${chunks.length} chunks, hasAudio=${hasAudioRef.current}, totalSize=${chunks.reduce((a, b) => a + b.size, 0)}`);
+        if (!hasChunks) {
+          console.log('[Conv] No chunks recorded, restarting listener');
           scheduleRestart(500, () => startListening());
           return;
         }
@@ -354,11 +363,11 @@ export function useVoiceConversation({
 
       silenceTimerRef.current = setTimeout(() => {
         silenceTimerRef.current = null;
-        console.log('[Conv] Max recording timeout (30s), stopping recorder');
+        console.log('[Conv] Max recording timeout (10s), stopping recorder');
         if (mediaRecorderRef.current?.state === 'recording') {
           mediaRecorderRef.current.stop();
         }
-      }, 30000);
+      }, 10000);
 
     } catch (err: any) {
       console.error('Conv mode getUserMedia error:', err);
