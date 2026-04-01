@@ -1,0 +1,186 @@
+
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+onClick @ Home-DoKLzg85.js:8
+pd @ vendor-react-C3DdKlqP.js:8
+(anonymous) @ vendor-react-C3DdKlqP.js:8
+No @ vendor-react-C3DdKlqP.js:8
+cc @ vendor-react-C3DdKlqP.js:8
+Ac @ vendor-react-C3DdKlqP.js:9
+vy @ vendor-react-C3DdKlqP.js:9Understand this warning
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM recording started, sampleRate=48000, silenceTimeout=3000ms
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=1s, chunks=10
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=2s, chunks=20
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=3s, chunks=30
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=4s, chunks=40
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=5s, chunks=50
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=5s, chunks=60
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=6s, chunks=70
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=7s, chunks=80
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=8s, chunks=90
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=9s, chunks=100
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=10s, chunks=110
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Max recording timeout (10s), stopping
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Building WAV from 113 PCM chunks, 462848 samples
+use-voice-conversation-DjRxMtAi.js:1 [Conv] WAV blob: 308608 bytes, duration=9.6s
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Transcribing WAV...
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Transcription: ""
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Empty transcript, restarting listener
+use-voice-conversation-DjRxMtAi.js:1 [Deprecation] The ScriptProcessorNode is deprecated. Use AudioWorkletNode instead. (https://bit.ly/audio-worklet)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+Promise.then
+G.onloadend @ use-voice-conversation-DjRxMtAi.js:1
+FileReader
+z @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+onClick @ Home-DoKLzg85.js:8
+pd @ vendor-react-C3DdKlqP.js:8
+(anonymous) @ vendor-react-C3DdKlqP.js:8
+No @ vendor-react-C3DdKlqP.js:8
+cc @ vendor-react-C3DdKlqP.js:8
+Ac @ vendor-react-C3DdKlqP.js:9
+vy @ vendor-react-C3DdKlqP.js:9Understand this warning
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM recording started, sampleRate=48000, silenceTimeout=3000ms
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=1s, chunks=10
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=2s, chunks=20
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=3s, chunks=30
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=3s, chunks=40
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=4s, chunks=50
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=5s, chunks=60
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=6s, chunks=70
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=7s, chunks=80
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=8s, chunks=90
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=9s, chunks=100
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=9s, chunks=110
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Max recording timeout (10s), stopping
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Building WAV from 116 PCM chunks, 475136 samples
+use-voice-conversation-DjRxMtAi.js:1 [Conv] WAV blob: 316800 bytes, duration=9.9s
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Transcribing WAV...
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Transcription: "아우라로 꽃이 피는"
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Sending to advisor: "아우라로 꽃이 피는..."
+MarkdownRenderer-qv_sYY8o.js:6  POST https://salaryman.replit.app/api/interview/advisor 400 (Bad Request)
+(anonymous) @ MarkdownRenderer-qv_sYY8o.js:6
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+Promise.then
+G.onloadend @ use-voice-conversation-DjRxMtAi.js:1
+FileReader
+z @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+Promise.then
+G.onloadend @ use-voice-conversation-DjRxMtAi.js:1
+FileReader
+z @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+onClick @ Home-DoKLzg85.js:8
+pd @ vendor-react-C3DdKlqP.js:8
+(anonymous) @ vendor-react-C3DdKlqP.js:8
+No @ vendor-react-C3DdKlqP.js:8
+cc @ vendor-react-C3DdKlqP.js:8
+Ac @ vendor-react-C3DdKlqP.js:9
+vy @ vendor-react-C3DdKlqP.js:9Understand this error
+use-voice-conversation-DjRxMtAi.js:1 [Conv] Advisor response: "..." (0 chars)
+use-voice-conversation-DjRxMtAi.js:1 [Deprecation] The ScriptProcessorNode is deprecated. Use AudioWorkletNode instead. (https://bit.ly/audio-worklet)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+Promise.then
+G.onloadend @ use-voice-conversation-DjRxMtAi.js:1
+FileReader
+z @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+Promise.then
+G.onloadend @ use-voice-conversation-DjRxMtAi.js:1
+FileReader
+z @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+await in (anonymous)
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+setTimeout
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+(anonymous) @ use-voice-conversation-DjRxMtAi.js:1
+onClick @ Home-DoKLzg85.js:8
+pd @ vendor-react-C3DdKlqP.js:8
+(anonymous) @ vendor-react-C3DdKlqP.js:8
+No @ vendor-react-C3DdKlqP.js:8
+cc @ vendor-react-C3DdKlqP.js:8
+Ac @ vendor-react-C3DdKlqP.js:9
+vy @ vendor-react-C3DdKlqP.js:9Understand this warning
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM recording started, sampleRate=48000, silenceTimeout=3000ms
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=1s, chunks=10
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=2s, chunks=20
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=3s, chunks=30
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=3s, chunks=40
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=4s, chunks=50
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=5s, chunks=60
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=6s, chunks=70
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=7s, chunks=80
+use-voice-conversation-DjRxMtAi.js:1 [Conv] PCM rms=0.0000, speechDetected=false, silentFrames=0/36, elapsed=8s, chunks=90
+use-voice-conversation-DjRxMtAi.js:1 [Conv] onstop: conv mode inactive, skipping
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error
+index-PoHqZ8uV.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-PoHqZ8uV.js:9
+(anonymous) @ index-PoHqZ8uV.js:9Understand this error

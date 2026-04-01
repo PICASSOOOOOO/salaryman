@@ -114,29 +114,46 @@ router.post("/transcribe", async (req, res) => {
     const audioBuffer = Buffer.from(audio, "base64");
     console.log(`[Transcribe] Received ${audioBuffer.length} bytes, mimeType: ${mimeType || 'not specified'}, first bytes: ${audioBuffer.slice(0, 8).toString('hex')}`);
 
-    let rmsLevel = 0;
-    const { speechToText, detectAudioFormat } = await import("@workspace/integrations-openai-ai-server/audio");
+    const { speechToText, detectAudioFormat, convertToWav } = await import("@workspace/integrations-openai-ai-server/audio");
     const detected = detectAudioFormat(audioBuffer);
-    const format: "wav" | "mp3" | "webm" = detected === "wav" ? "wav" : detected === "mp3" ? "mp3" : "webm";
+    console.log(`[Transcribe] Detected format: ${detected}`);
 
-    if (detected === "wav" && audioBuffer.length > 44) {
+    let finalBuffer = audioBuffer;
+    let finalFormat: "wav" | "mp3" | "webm" = "wav";
+
+    if (detected === "wav") {
+      finalFormat = "wav";
+    } else if (detected === "mp3") {
+      finalFormat = "mp3";
+    } else {
+      console.log(`[Transcribe] Converting ${detected} to WAV via ffmpeg...`);
+      try {
+        finalBuffer = await convertToWav(audioBuffer);
+        finalFormat = "wav";
+        console.log(`[Transcribe] Converted to WAV: ${finalBuffer.length} bytes`);
+      } catch (convErr: any) {
+        console.error(`[Transcribe] ffmpeg conversion failed: ${convErr?.message}, sending as webm`);
+        finalFormat = "webm";
+      }
+    }
+
+    if (finalFormat === "wav" && finalBuffer.length > 44) {
       let sumSq = 0;
       const dataStart = 44;
-      const sampleCount = Math.floor((audioBuffer.length - dataStart) / 2);
+      const sampleCount = Math.floor((finalBuffer.length - dataStart) / 2);
       for (let i = 0; i < sampleCount; i++) {
-        const sample = audioBuffer.readInt16LE(dataStart + i * 2);
+        const sample = finalBuffer.readInt16LE(dataStart + i * 2);
         sumSq += sample * sample;
       }
-      rmsLevel = Math.sqrt(sumSq / sampleCount);
-      const maxSample = Math.max(...Array.from({ length: Math.min(sampleCount, 10000) }, (_, i) => Math.abs(audioBuffer.readInt16LE(dataStart + i * 2))));
+      const rmsLevel = Math.sqrt(sumSq / sampleCount);
+      const maxSample = Math.max(...Array.from({ length: Math.min(sampleCount, 10000) }, (_, i) => Math.abs(finalBuffer.readInt16LE(dataStart + i * 2))));
       const durationSec = (sampleCount / 16000).toFixed(1);
       console.log(`[Transcribe] WAV analysis: ${sampleCount} samples, ${durationSec}s, RMS=${rmsLevel.toFixed(0)}, peak=${maxSample}, silence=${rmsLevel < 50 ? 'YES' : 'NO'}`);
     }
 
-    console.log(`[Transcribe] Detected format: ${detected}, using: ${format}`);
-    const text = await speechToText(audioBuffer, format);
+    const text = await speechToText(finalBuffer, finalFormat);
     console.log(`[Transcribe] Result: "${text}" (${text.length} chars)`);
-    res.json({ text: text || "", rms: Math.round(rmsLevel) });
+    res.json({ text: text || "" });
   } catch (err: any) {
     console.error("Transcription error:", err?.message || err);
     res.status(500).json({ error: `Transcription failed: ${err?.message || "unknown"}` });
