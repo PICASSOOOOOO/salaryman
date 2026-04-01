@@ -263,7 +263,7 @@ function usePabloVoice() {
                   setMicError(`Server error ${resp.status}: ${t.slice(0, 100)}`);
                 });
               }
-              return resp.json().then((data: { text?: string }) => {
+              return resp.json().then((data: { text?: string; rms?: number }) => {
                 const text = data?.text?.trim();
                 if (text) {
                   setLiveTranscript(text);
