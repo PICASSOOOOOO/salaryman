@@ -207,7 +207,7 @@ export function useVoiceConversation({
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         micStreamRef.current = null;
         mediaRecorderRef.current = null;
@@ -227,8 +227,79 @@ export function useVoiceConversation({
         }
 
         setConvState('processing');
-        console.log('[Conv] Sending raw WebM to server for transcription...');
-        transcribeAudio(chunks, mimeType)
+
+        const rawBlob = new Blob(chunks, { type: mimeType });
+        let wavBlob: Blob;
+        let sendMime = mimeType;
+        try {
+          console.log('[Conv] Converting WebM to WAV client-side...');
+          const arrayBuf = await rawBlob.arrayBuffer();
+          const actx = new AudioContext({ sampleRate: 16000 });
+          const decoded = await actx.decodeAudioData(arrayBuf);
+          const offline = new OfflineAudioContext(1, decoded.length, 16000);
+          const bufSrc = offline.createBufferSource();
+          bufSrc.buffer = decoded;
+          bufSrc.connect(offline.destination);
+          bufSrc.start();
+          const rendered = await offline.startRendering();
+          actx.close();
+          const pcm = rendered.getChannelData(0);
+
+          let sumSq = 0;
+          for (let i = 0; i < pcm.length; i++) sumSq += pcm[i] * pcm[i];
+          const rms = Math.sqrt(sumSq / pcm.length);
+          console.log(`[Conv] WAV conversion: ${pcm.length} samples, rms=${rms.toFixed(4)}, duration=${(pcm.length/16000).toFixed(1)}s`);
+
+          const wavBuf = new ArrayBuffer(44 + pcm.length * 2);
+          const view = new DataView(wavBuf);
+          const writeStr = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+          writeStr(0, 'RIFF');
+          view.setUint32(4, 36 + pcm.length * 2, true);
+          writeStr(8, 'WAVE');
+          writeStr(12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, 1, true);
+          view.setUint32(24, 16000, true);
+          view.setUint32(28, 32000, true);
+          view.setUint16(32, 2, true);
+          view.setUint16(34, 16, true);
+          writeStr(36, 'data');
+          view.setUint32(40, pcm.length * 2, true);
+          for (let i = 0; i < pcm.length; i++) {
+            const s = Math.max(-1, Math.min(1, pcm[i]));
+            view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          }
+          wavBlob = new Blob([wavBuf], { type: 'audio/wav' });
+          sendMime = 'audio/wav';
+          console.log(`[Conv] WAV blob: ${wavBlob.size} bytes`);
+        } catch (e) {
+          console.warn('[Conv] WAV conversion failed, sending raw WebM:', e);
+          wavBlob = rawBlob;
+        }
+
+        const reader2 = new FileReader();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader2.onloadend = () => {
+            const result = reader2.result as string;
+            const b64 = result.split(',')[1];
+            if (b64) resolve(b64);
+            else reject(new Error('Failed to encode'));
+          };
+          reader2.onerror = () => reject(new Error('FileReader error'));
+          reader2.readAsDataURL(wavBlob);
+        });
+
+        console.log(`[Conv] Sending ${sendMime} (${Math.round(base64.length/1024)}KB) for transcription...`);
+
+        fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio: base64, mimeType: sendMime }),
+          signal: AbortSignal.timeout(30000),
+        })
+          .then(resp => resp.ok ? resp.json() : Promise.reject(new Error(`Server ${resp.status}`)))
+          .then((data: { text?: string }) => data?.text?.trim() || '')
           .then(async (transcript) => {
             console.log(`[Conv] Transcription: "${transcript}"`);
             if (!isConvModeRef.current || !activeRef.current) return;
