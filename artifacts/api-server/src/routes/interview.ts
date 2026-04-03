@@ -604,13 +604,11 @@ router.post("/interview/advisor", async (req, res) => {
     if (messages && typeof messages === 'object') {
       const converted = Object.values(messages) as any[];
       if (converted.length > 0 && converted[0]?.role) {
-        console.log(`[Advisor] Recovered ${converted.length} messages from object`);
         messages = converted;
       }
     }
   }
   if (!Array.isArray(messages) || messages.length === 0) {
-    console.error(`[Advisor] 400: body=${JSON.stringify(req.body || {}).slice(0, 500)}`);
     res.status(400).json({ error: "Missing messages" });
     return;
   }
