@@ -596,12 +596,21 @@ Rules for action tags:
 }
 
 router.post("/interview/advisor", async (req, res) => {
-  const { messages, businessMemory = "" } = req.body as {
+  let { messages, businessMemory = "" } = req.body as {
     messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
     businessMemory?: string;
   };
+  if (!Array.isArray(messages)) {
+    if (messages && typeof messages === 'object') {
+      const converted = Object.values(messages) as any[];
+      if (converted.length > 0 && converted[0]?.role) {
+        console.log(`[Advisor] Recovered ${converted.length} messages from object`);
+        messages = converted;
+      }
+    }
+  }
   if (!Array.isArray(messages) || messages.length === 0) {
-    console.error(`[Advisor] 400: body keys=${Object.keys(req.body || {})}, messages type=${typeof messages}, body size=${JSON.stringify(req.body || {}).length}`);
+    console.error(`[Advisor] 400: body=${JSON.stringify(req.body || {}).slice(0, 500)}`);
     res.status(400).json({ error: "Missing messages" });
     return;
   }

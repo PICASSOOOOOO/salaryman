@@ -61,24 +61,27 @@ export function detectAudioFormat(buffer: Buffer): AudioFormat {
 /**
  * Convert any audio/video format to WAV using ffmpeg.
  */
-export async function convertToWav(audioBuffer: Buffer): Promise<Buffer> {
+export async function convertToWav(audioBuffer: Buffer, normalize = false): Promise<Buffer> {
   const inputPath = join(tmpdir(), `input-${randomUUID()}`);
   const outputPath = join(tmpdir(), `output-${randomUUID()}.wav`);
 
   try {
     await writeFile(inputPath, audioBuffer);
 
+    const args = [
+      "-i", inputPath,
+      "-vn",
+      ...(normalize ? ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] : []),
+      "-f", "wav",
+      "-ar", "16000",
+      "-ac", "1",
+      "-acodec", "pcm_s16le",
+      "-y",
+      outputPath,
+    ];
+
     await new Promise<void>((resolve, reject) => {
-      const ffmpeg = spawn("ffmpeg", [
-        "-i", inputPath,
-        "-vn",
-        "-f", "wav",
-        "-ar", "16000",
-        "-ac", "1",
-        "-acodec", "pcm_s16le",
-        "-y",
-        outputPath,
-      ]);
+      const ffmpeg = spawn("ffmpeg", args);
 
       ffmpeg.stderr.on("data", () => {});
       ffmpeg.on("close", (code) => {

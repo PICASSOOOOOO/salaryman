@@ -152,16 +152,13 @@ router.post("/transcribe", async (req, res) => {
       const durationSec = (sampleCount / 16000).toFixed(1);
       console.log(`[Transcribe] WAV analysis: ${sampleCount} samples, ${durationSec}s, RMS=${rmsLevel.toFixed(0)}, peak=${peakSample}, silence=${rmsLevel < 50 ? 'YES' : 'NO'}`);
 
-      const TARGET_RMS = 3000;
-      if (rmsLevel > 10 && rmsLevel < TARGET_RMS) {
-        const gain = Math.min(TARGET_RMS / rmsLevel, 32767 / (peakSample || 1));
-        const clampedGain = Math.min(gain, 20);
-        console.log(`[Transcribe] Normalizing audio: gain=${clampedGain.toFixed(1)}x (RMS ${rmsLevel.toFixed(0)} -> ~${(rmsLevel * clampedGain).toFixed(0)})`);
-        for (let i = 0; i < sampleCount; i++) {
-          const offset = dataStart + i * 2;
-          const sample = finalBuffer.readInt16LE(offset);
-          const boosted = Math.max(-32768, Math.min(32767, Math.round(sample * clampedGain)));
-          finalBuffer.writeInt16LE(boosted, offset);
+      if (rmsLevel > 10 && rmsLevel < 1500) {
+        console.log(`[Transcribe] Audio too quiet (RMS=${rmsLevel.toFixed(0)}), re-converting with loudnorm...`);
+        try {
+          finalBuffer = await convertToWav(audioBuffer, true) as Buffer<ArrayBuffer>;
+          console.log(`[Transcribe] Normalized WAV: ${finalBuffer.length} bytes`);
+        } catch (normErr: any) {
+          console.error(`[Transcribe] Normalization failed: ${normErr?.message}`);
         }
       }
     }
