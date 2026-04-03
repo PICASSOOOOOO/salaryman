@@ -138,17 +138,32 @@ router.post("/transcribe", async (req, res) => {
     }
 
     if (finalFormat === "wav" && finalBuffer.length > 44) {
-      let sumSq = 0;
       const dataStart = 44;
       const sampleCount = Math.floor((finalBuffer.length - dataStart) / 2);
+      let sumSq = 0;
+      let peakSample = 0;
       for (let i = 0; i < sampleCount; i++) {
         const sample = finalBuffer.readInt16LE(dataStart + i * 2);
         sumSq += sample * sample;
+        const absSample = Math.abs(sample);
+        if (absSample > peakSample) peakSample = absSample;
       }
       const rmsLevel = Math.sqrt(sumSq / sampleCount);
-      const maxSample = Math.max(...Array.from({ length: Math.min(sampleCount, 10000) }, (_, i) => Math.abs(finalBuffer.readInt16LE(dataStart + i * 2))));
       const durationSec = (sampleCount / 16000).toFixed(1);
-      console.log(`[Transcribe] WAV analysis: ${sampleCount} samples, ${durationSec}s, RMS=${rmsLevel.toFixed(0)}, peak=${maxSample}, silence=${rmsLevel < 50 ? 'YES' : 'NO'}`);
+      console.log(`[Transcribe] WAV analysis: ${sampleCount} samples, ${durationSec}s, RMS=${rmsLevel.toFixed(0)}, peak=${peakSample}, silence=${rmsLevel < 50 ? 'YES' : 'NO'}`);
+
+      const TARGET_RMS = 3000;
+      if (rmsLevel > 10 && rmsLevel < TARGET_RMS) {
+        const gain = Math.min(TARGET_RMS / rmsLevel, 32767 / (peakSample || 1));
+        const clampedGain = Math.min(gain, 20);
+        console.log(`[Transcribe] Normalizing audio: gain=${clampedGain.toFixed(1)}x (RMS ${rmsLevel.toFixed(0)} -> ~${(rmsLevel * clampedGain).toFixed(0)})`);
+        for (let i = 0; i < sampleCount; i++) {
+          const offset = dataStart + i * 2;
+          const sample = finalBuffer.readInt16LE(offset);
+          const boosted = Math.max(-32768, Math.min(32767, Math.round(sample * clampedGain)));
+          finalBuffer.writeInt16LE(boosted, offset);
+        }
+      }
     }
 
     const text = await speechToText(finalBuffer, finalFormat);
