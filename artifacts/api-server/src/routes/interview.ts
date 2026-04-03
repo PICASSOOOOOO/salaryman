@@ -601,6 +601,7 @@ router.post("/interview/advisor", async (req, res) => {
     businessMemory?: string;
   };
   if (!Array.isArray(messages) || messages.length === 0) {
+    console.error(`[Advisor] 400: body keys=${Object.keys(req.body || {})}, messages type=${typeof messages}, body size=${JSON.stringify(req.body || {}).length}`);
     res.status(400).json({ error: "Missing messages" });
     return;
   }
