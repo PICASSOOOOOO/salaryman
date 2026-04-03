@@ -191,11 +191,16 @@ export function useVoiceConversation({
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.label);
-      if (audioInputs.length > 1) {
-        const realMic = audioInputs.find(d => !d.label.toLowerCase().includes('virtual'));
-        if (realMic) {
-          constraints = { audio: { deviceId: { exact: realMic.deviceId } } };
-          console.log(`[Conv] Selecting real mic: "${realMic.label}"`);
+      if (audioInputs.length > 0) {
+        const label = (d: MediaDeviceInfo) => d.label.toLowerCase();
+        const isVirtual = (d: MediaDeviceInfo) => label(d).includes('virtual');
+        const isBluetooth = (d: MediaDeviceInfo) => label(d).includes('airpod') || label(d).includes('bluetooth') || label(d).includes('beats') || label(d).includes('jabra') || label(d).includes('sony wh') || label(d).includes('bose');
+        const isAux = (d: MediaDeviceInfo) => label(d).includes('headset') || label(d).includes('headphone') || label(d).includes('earphone') || label(d).includes('aux') || label(d).includes('wired');
+        const realDevices = audioInputs.filter(d => !isVirtual(d));
+        const preferred = realDevices.find(d => isBluetooth(d)) || realDevices.find(d => isAux(d)) || realDevices[0];
+        if (preferred) {
+          constraints = { audio: { deviceId: { exact: preferred.deviceId } } };
+          console.log(`[Conv] Selecting mic: "${preferred.label}" (from ${audioInputs.length} devices)`);
         }
       }
     } catch {}
