@@ -661,16 +661,16 @@ export function useAdvisorChat() {
     }
   }, [messages, isStreaming, businessMemory]);
 
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   const sendVoice = useCallback(async (transcript: string): Promise<string> => {
     if (!transcript.trim()) return '';
     const userMsg: ChatMessage = { role: 'user', content: transcript.trim() };
     setIsStreaming(true);
 
-    let snapshotHistory: ChatMessage[] = [];
-    setMessages(prev => {
-      snapshotHistory = [...prev, userMsg];
-      return [...snapshotHistory, { role: 'assistant', content: '' }];
-    });
+    const snapshotHistory = [...messagesRef.current, userMsg];
+    setMessages([...snapshotHistory, { role: 'assistant', content: '' }]);
 
     const advisorUrl = `${import.meta.env.BASE_URL}api/interview/advisor`;
     let fullText = '';
