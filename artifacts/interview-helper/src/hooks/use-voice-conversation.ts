@@ -181,18 +181,28 @@ export function useVoiceConversation({
     cleanupMic();
   }, [clearAllTimers, cleanupMic]);
 
-  const ensureMicStream = useCallback(async (): Promise<MediaStream> => {
+  const getFreshMicStream = useCallback(async (): Promise<MediaStream> => {
     if (micStreamRef.current) {
-      const tracks = micStreamRef.current.getAudioTracks();
-      if (tracks.length > 0 && tracks[0].readyState === 'live') {
-        return micStreamRef.current;
-      }
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    let constraints: MediaStreamConstraints = { audio: true };
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.label);
+      if (audioInputs.length > 1) {
+        const realMic = audioInputs.find(d => !d.label.toLowerCase().includes('virtual'));
+        if (realMic) {
+          constraints = { audio: { deviceId: { exact: realMic.deviceId } } };
+          console.log(`[Conv] Selecting real mic: "${realMic.label}"`);
+        }
+      }
+    } catch {}
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     micStreamRef.current = stream;
-    console.log(`[Conv] Got mic stream, device: ${stream.getAudioTracks()[0]?.label}`);
+    console.log(`[Conv] Fresh mic stream, device: ${stream.getAudioTracks()[0]?.label}`);
     return stream;
   }, []);
 
@@ -201,7 +211,7 @@ export function useVoiceConversation({
     if (mediaRecorderRef.current) return;
 
     try {
-      const stream = await ensureMicStream();
+      const stream = await getFreshMicStream();
       if (!isConvModeRef.current || !activeRef.current) return;
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -330,7 +340,7 @@ export function useVoiceConversation({
         scheduleRestart(1000, () => startListening());
       }
     }
-  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, ensureMicStream]);
+  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, getFreshMicStream]);
 
   const startConversation = useCallback(() => {
     setPermissionDenied(false);
