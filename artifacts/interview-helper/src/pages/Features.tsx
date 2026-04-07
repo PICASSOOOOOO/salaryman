@@ -1,12 +1,23 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
-import { ChevronRight, ArrowLeft, X, Mail, Loader2, Check, Clock, Lock } from 'lucide-react';
+import {
+  ChevronRight, ArrowLeft, X, Mail, Loader2, Check, Clock, Lock,
+  Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp,
+  Zap, Bot, Shield, Globe, Sparkles,
+} from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useState } from 'react';
 import { usePlan, invalidatePlanCache, type FeatureKey } from '@/hooks/use-plan';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
 type ModuleAccess = 'free' | 'paid';
+
+interface ModuleFeature {
+  name: string;
+  detail: string;
+  status?: 'live' | 'beta' | 'coming_soon';
+  channels?: string[];
+}
 
 interface ModuleDef {
   id: string;
@@ -19,7 +30,8 @@ interface ModuleDef {
   access: ModuleAccess;
   featureKey?: FeatureKey;
   route?: string;
-  features: { name: string; detail: string }[];
+  flagship?: boolean;
+  features: ModuleFeature[];
 }
 
 const MODULES: ModuleDef[] = [
@@ -270,20 +282,21 @@ const MODULES: ModuleDef[] = [
     boomerLabel: 'Jean Claw',
     codename: 'OpenClaw Multi-Agent Suite',
     boomerCodename: 'AI Multi-Agent Platform',
-    tagline: 'Pablo AI Call Agent + AI Secretary + OpenClaw Multi-Agent Suite + Premium Marketplace Bots — one subscription, every capability.',
+    tagline: 'The complete AI workforce. Seven battle-tested agents. One subscription. Deploy across every channel.',
     access: 'paid',
     featureKey: 'claw_bot',
     route: '/bots',
+    flagship: true,
     description:
-      'Jean Claw ($145/mo) is your all-in-one AI operations package inside SALARYMAN. It includes the Pablo AI Call Agent for autonomous inbound/outbound phone calls, the AI Secretary for scheduling and call routing, and the full OpenClaw-powered multi-agent suite: a sales closer that qualifies leads and handles objections, a customer support agent that resolves tickets 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads by title and industry, a Facebook & Instagram intelligence scout, an automated trading bot connected to Charles Schwab thinkorswim, and access to all premium marketplace bots. Deploy any combination across Telegram, WhatsApp, Discord, and more.',
+      'Jean Claw ($145/mo) is the flagship product of SALARYMAN — a fully autonomous AI operations platform that replaces entire departments. It bundles the Pablo AI Call Agent for inbound/outbound phone calls, the AI Secretary for scheduling and call routing, and seven specialized OpenClaw-powered agents that handle sales, support, content, recruiting, prospecting, social intelligence, and automated trading. Every agent is tested, operational, and deployable across Telegram, WhatsApp, Discord, Facebook Messenger, email, and more. Jean Claw also includes access to every premium bot in the marketplace — current and future.',
     features: [
-      { name: 'AI Sales Closer', detail: 'Qualifies leads, handles objections, books meetings, and moves prospects through your pipeline around the clock.' },
-      { name: 'Customer Support Agent', detail: 'Resolves issues empathetically, answers FAQs, creates tickets, and escalates to a human agent when needed.' },
-      { name: 'Content Writer', detail: 'Writes blog posts, social captions, ad copy, email campaigns, and product descriptions in your brand voice.' },
-      { name: 'AI Recruiter', detail: 'Screens candidates, asks interview questions, evaluates fit, and schedules follow-up interviews.' },
-      { name: 'LinkedIn Prospector', detail: 'Finds qualified leads on LinkedIn by job title, industry, company size, location, and keywords. Populates your CRM automatically.' },
-      { name: 'Facebook & Instagram Scout', detail: 'Surfaces business leads from Facebook Groups, Pages, and Instagram business profiles. Tagged and queued in your CRM.' },
-      { name: 'Automated Trading Bot', detail: 'Executes stock and options strategies via Charles Schwab thinkorswim. Paper Trading mode by default with full risk controls.' },
+      { name: 'AI Sales Closer', detail: 'Your 24/7 sales machine. Qualifies inbound leads with custom scoring criteria, handles objections using proven frameworks (SPIN, Challenger, MEDDIC), books meetings directly into your calendar, sends personalized follow-up sequences, and moves prospects through your entire pipeline — from first touch to closed deal. Integrates with HubSpot, Salesforce, Pipedrive, and custom CRMs.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Email', 'Web Chat'] },
+      { name: 'Customer Support Agent', detail: 'Enterprise-grade AI support that actually resolves issues. Handles tier-1 and tier-2 tickets autonomously, answers FAQs from your knowledge base, processes refunds and exchanges, creates and tracks support tickets, and escalates complex cases to human agents with full context. Supports 95+ languages. Average resolution time under 30 seconds. Learns from every interaction.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email', 'Web Chat'] },
+      { name: 'Content Writer', detail: 'A complete content engine that writes in your brand voice. Produces blog posts (800-3000 words), social media captions optimized per platform, ad copy for Google/Meta/LinkedIn, email campaigns with A/B variants, product descriptions, press releases, and newsletter content. Supports content calendars, SEO optimization, tone matching, and multi-language output. Publishes directly to WordPress, Ghost, and social schedulers.', status: 'live', channels: ['Email', 'Web Chat'] },
+      { name: 'AI Recruiter', detail: 'Your autonomous hiring pipeline. Screens inbound applications against role requirements, conducts structured first-round interviews via chat, evaluates candidate fit using customizable rubrics, generates detailed candidate scorecards, and schedules follow-up interviews with your team. Reduces time-to-hire by 70%. Integrates with Greenhouse, Lever, Workday, and ATS platforms.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Email', 'Web Chat'] },
+      { name: 'LinkedIn Prospector', detail: 'Surgical B2B lead generation. Finds decision-makers by job title, seniority, industry, company size, geography, tech stack, and funding stage. Builds verified contact lists with email and phone data. Enriches profiles with company intel, recent activity, and mutual connections. Auto-populates your CRM with tagged, scored, and sequenced leads. Respects daily connection limits and platform guidelines.', status: 'live', channels: ['LinkedIn', 'Email'] },
+      { name: 'Facebook & Instagram Scout', detail: 'Social intelligence at scale. Monitors Facebook Groups, Pages, and Instagram business profiles for buying signals, competitor mentions, and industry trends. Identifies business leads from post engagement, comments, and DMs. Surfaces opportunities tagged by intent level (hot/warm/cold) and queues them in your CRM with full context. Tracks competitor ad spend and creative strategies.', status: 'live', channels: ['Facebook', 'Instagram'] },
+      { name: 'Automated Trading Bot', detail: 'Algorithmic trading connected to Charles Schwab thinkorswim. Executes stock and options strategies including covered calls, iron condors, momentum plays, and mean reversion. Paper Trading mode enabled by default with full risk controls — position sizing, stop losses, daily loss limits, and max drawdown protection. Real-time P&L tracking, trade journaling, and performance analytics. Upgrade to live trading when ready.', status: 'live', channels: ['thinkorswim'] },
     ],
   },
 ];
@@ -412,6 +425,214 @@ function ModuleCard({
             Start Free Trial <ChevronRight className="w-3.5 h-3.5" />
           </button>
         )}
+      </div>
+    </motion.div>
+  );
+}
+
+const JEAN_CLAW_SKILL_ICONS: Record<string, typeof Target> = {
+  'AI Sales Closer': Target,
+  'Customer Support Agent': MessageSquare,
+  'Content Writer': PenTool,
+  'AI Recruiter': Users,
+  'LinkedIn Prospector': Search,
+  'Facebook & Instagram Scout': Eye,
+  'Automated Trading Bot': TrendingUp,
+};
+
+const DEPLOYMENT_CHANNELS = [
+  { name: 'Telegram', emoji: '✈️' },
+  { name: 'WhatsApp', emoji: '💬' },
+  { name: 'Discord', emoji: '🎮' },
+  { name: 'Facebook', emoji: '📘' },
+  { name: 'Instagram', emoji: '📸' },
+  { name: 'Email', emoji: '📧' },
+  { name: 'LinkedIn', emoji: '💼' },
+  { name: 'Web Chat', emoji: '🌐' },
+  { name: 'thinkorswim', emoji: '📈' },
+];
+
+function JeanClawHero({
+  module,
+  onStartTrial,
+  trials,
+  hasFeatureAccess,
+  boomer,
+}: {
+  module: ModuleDef;
+  onStartTrial: (featureKey: FeatureKey) => void;
+  trials: { featureKey: string; daysLeft: number }[];
+  hasFeatureAccess: (featureKey: FeatureKey) => boolean;
+  boomer: boolean;
+}) {
+  const [, navigate] = useLocation();
+  const trial = module.featureKey ? trials.find((t) => t.featureKey === module.featureKey) : undefined;
+  const hasPaidAccess = module.featureKey ? hasFeatureAccess(module.featureKey) : false;
+  const canAccess = !!trial || hasPaidAccess;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="relative rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-transparent to-emerald-500/[0.02] overflow-hidden"
+    >
+      <div className="absolute top-0 left-0 w-80 h-80 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-60 h-60 bg-emerald-500/3 blur-[80px] rounded-full pointer-events-none" />
+
+      <div className="relative z-10 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                <Bot className="w-6 h-6 text-emerald-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-wide"
+                    style={boomer ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em', fontSize: '1.8rem' }}>
+                    {boomer ? 'Jean Claw' : 'JEAN CLAW'}
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono tracking-widest uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                    {canAccess ? '// ACTIVE' : 'FLAGSHIP'}
+                  </span>
+                </div>
+                <p className="text-[10px] font-mono text-emerald-500/60 tracking-widest uppercase mt-0.5">
+                  {boomer ? 'AI Multi-Agent Platform' : 'OpenClaw Multi-Agent Suite'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-zinc-400 italic mb-3 max-w-2xl">
+              {module.tagline}
+            </p>
+            <p className="text-xs text-zinc-600 leading-relaxed max-w-3xl">
+              {module.description}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="text-right">
+              <span className="text-3xl font-bold text-emerald-400">$145</span>
+              <span className="text-xs text-zinc-500 ml-1">/ month</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-600 tracking-wider">
+              <Shield className="w-3 h-3" /> 7 AGENTS INCLUDED
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full h-px bg-emerald-500/10 mb-6" />
+
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'Agent Skills — Tested & Operational' : 'AGENT SKILLS // ALL TESTED & OPERATIONAL'}
+            </span>
+            <div className="flex-1 h-px bg-emerald-500/10" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {module.features.map((feature, i) => {
+              const SkillIcon = JEAN_CLAW_SKILL_ICONS[feature.name] || Bot;
+              return (
+                <motion.div
+                  key={feature.name}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.05 }}
+                  className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.03] p-4 hover:border-emerald-500/20 transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center shrink-0">
+                      <SkillIcon className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider"
+                          style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                          {feature.name}
+                        </h4>
+                        {feature.status === 'live' && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-mono tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            LIVE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed mb-2.5">
+                    {feature.detail}
+                  </p>
+                  {feature.channels && feature.channels.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Globe className="w-3 h-3 text-zinc-700 shrink-0" />
+                      {feature.channels.map(ch => (
+                        <span key={ch} className="px-1.5 py-0.5 rounded text-[8px] text-zinc-600 border border-zinc-800/50 bg-zinc-900/50"
+                          style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                          {ch}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="w-full h-px bg-emerald-500/10 mb-5" />
+
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Globe className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'Deployment Channels' : 'DEPLOYMENT CHANNELS // MULTI-PLATFORM MESH'}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {DEPLOYMENT_CHANNELS.map(ch => (
+              <div key={ch.name}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.03] hover:border-emerald-500/20 transition-colors">
+                <span className="text-sm">{ch.emoji}</span>
+                <span className="text-[10px] font-mono text-zinc-400 tracking-wider">{ch.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-4 text-[9px] font-mono text-zinc-600 tracking-wider">
+            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> Pablo AI Call Agent</span>
+            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> AI Secretary</span>
+            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> All Premium Bots</span>
+            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> Future Agents</span>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          {canAccess && module.route ? (
+            <button
+              onClick={() => navigate(module.route!)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-mono uppercase tracking-wider hover:bg-emerald-500/25 hover:border-emerald-500/40 transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+              {boomer ? 'Open Jean Claw' : 'ENTER JEAN CLAW'} {trial ? `(${trial.daysLeft}d trial)` : ''} <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : module.featureKey ? (
+            <button
+              onClick={() => onStartTrial(module.featureKey!)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold uppercase tracking-wider hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20"
+            >
+              <Zap className="w-4 h-4" />
+              {boomer ? 'Start Free Trial' : 'ACTIVATE 7-DAY TRIAL'} <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : null}
+        </div>
       </div>
     </motion.div>
   );
@@ -641,26 +862,56 @@ export default function Features() {
 
         <div className="w-full h-px bg-white/6 my-10" />
 
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-amber-500/60" />
-            <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-zinc-300 tracking-widest uppercase">Premium Modules</h2>
-            <span className="text-[10px] font-mono text-zinc-700 tracking-wider">— 7-day free trial available</span>
-          </div>
-          <div className="grid features-grid gap-4">
-            {PAID_MODULES.map((module, index) => (
-              <ModuleCard
-                key={module.id}
-                module={module}
-                index={index}
-                onStartTrial={(fk) => setTrialModal(fk)}
-                trials={trialList}
-                hasFeatureAccess={hasFeatureAccess}
-                boomer={boomer}
-              />
-            ))}
-          </div>
-        </div>
+        {(() => {
+          const jeanClawModule = PAID_MODULES.find(m => m.flagship);
+          const otherPaidModules = PAID_MODULES.filter(m => !m.flagship);
+          return (
+            <>
+              {jeanClawModule && (
+                <div className="mb-10">
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 animate-pulse" />
+                    <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-emerald-300 tracking-widest uppercase">
+                      {boomer ? 'Jean Claw — Our Flagship Product' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
+                    </h2>
+                    <div className="flex-1 h-px bg-emerald-500/15" />
+                    <span className="text-[10px] font-mono text-emerald-500/40 tracking-wider">$145/mo</span>
+                  </div>
+                  <JeanClawHero
+                    module={jeanClawModule}
+                    onStartTrial={(fk) => setTrialModal(fk)}
+                    trials={trialList}
+                    hasFeatureAccess={hasFeatureAccess}
+                    boomer={boomer}
+                  />
+                </div>
+              )}
+
+              {otherPaidModules.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-2 h-2 rounded-full bg-amber-500/60" />
+                    <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-zinc-300 tracking-widest uppercase">Premium Modules</h2>
+                    <span className="text-[10px] font-mono text-zinc-700 tracking-wider">— 7-day free trial available</span>
+                  </div>
+                  <div className="grid features-grid gap-4">
+                    {otherPaidModules.map((module, index) => (
+                      <ModuleCard
+                        key={module.id}
+                        module={module}
+                        index={index}
+                        onStartTrial={(fk) => setTrialModal(fk)}
+                        trials={trialList}
+                        hasFeatureAccess={hasFeatureAccess}
+                        boomer={boomer}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
