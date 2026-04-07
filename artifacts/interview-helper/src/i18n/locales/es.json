@@ -354,7 +354,7 @@
   },
   "botFactory": {
     "title": "Fábrica de Bots",
-    "titleCodename": "OPENCLAW BOT FACTORY",
+    "titleCodename": "JEAN CLAW FACTORY",
     "subtitle": "Crea y gestiona bots de IA para Telegram, WhatsApp y más",
     "subtitleCodename": "DESPLIEGUE DE AGENTES AUTÓNOMOS · MALLA MULTIPLATAFORMA",
     "tabStore": "Tienda de Bots",

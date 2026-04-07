@@ -2166,6 +2166,15 @@ export default function BotFactory() {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
+  const [jeanClawSkills, setJeanClawSkills] = useState<Record<string, boolean>>({
+    sales_closer: true,
+    customer_support: true,
+    content_writer: true,
+    ai_recruiter: true,
+    linkedin_prospector: true,
+    fb_ig_scout: true,
+    trading_bot: true,
+  });
 
   const { isAuthenticated } = useAuth();
   const plan = usePlan();
@@ -2274,7 +2283,7 @@ export default function BotFactory() {
                   <Zap className="w-5 h-5 text-amber-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Unlock Claw Bot — $145/mo' : 'ACTIVATE CLAW BOT — $145/MO'}</p>
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Unlock Jean Claw — $145/mo' : 'ACTIVATE JEAN CLAW — $145/MO'}</p>
                   <p className="text-xs text-muted-foreground">{boomerMode ? 'Pablo AI Call Agent + AI Secretary + OpenClaw Multi-Agent Suite + all premium marketplace bots.' : 'PABLO AI CALL AGENT + AI SECRETARY + OPENCLAW SUITE + ALL PREMIUM BOTS'}</p>
                 </div>
                 <a href={`${import.meta.env.BASE_URL}features`}
@@ -2340,7 +2349,7 @@ export default function BotFactory() {
                       <div className="mb-6">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'Claw Bot — Full AI Operations Bundle' : 'CLAW BOT // PABLO + SECRETARY + OPENCLAW + PREMIUM BOTS'}
+                            {boomerMode ? 'Jean Claw — Full AI Operations Bundle' : 'JEAN CLAW // PABLO + SECRETARY + OPENCLAW + PREMIUM BOTS'}
                           </span>
                           <div className="flex-1 h-px bg-emerald-500/20" />
                         </div>
@@ -2368,17 +2377,58 @@ export default function BotFactory() {
                                     style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
                                 ))}
                               </div>
+
+                              <div className="mb-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"
+                                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                    {boomerMode ? 'Skills — Tested & Operational' : 'SKILLS // TESTED & OPERATIONAL'}
+                                  </span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {[
+                                    { key: 'sales_closer', label: 'AI Sales Closer', boomerLabel: 'AI Sales Closer', icon: Target },
+                                    { key: 'customer_support', label: 'CUSTOMER SUPPORT AGENT', boomerLabel: 'Customer Support', icon: MessageSquare },
+                                    { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'Content Writer', icon: PenTool },
+                                    { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI Recruiter', icon: Users },
+                                    { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LinkedIn Prospector', icon: Search },
+                                    { key: 'fb_ig_scout', label: 'FACEBOOK / INSTAGRAM SCOUT', boomerLabel: 'Facebook & Instagram Scout', icon: Eye },
+                                    { key: 'trading_bot', label: 'AUTOMATED TRADING BOT', boomerLabel: 'Automated Trading Bot', icon: TrendingUp },
+                                  ].map(skill => {
+                                    const SkillIcon = skill.icon;
+                                    const checked = jeanClawSkills[skill.key] ?? true;
+                                    return (
+                                      <label key={skill.key}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${checked ? 'bg-emerald-500/10' : 'bg-transparent opacity-50'}`}>
+                                        <input type="checkbox" checked={checked}
+                                          onChange={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
+                                          className="sr-only" />
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/30 bg-transparent'}`}>
+                                          {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                                        </div>
+                                        <SkillIcon className={`w-3.5 h-3.5 shrink-0 ${checked ? 'text-emerald-400' : 'text-muted-foreground/40'}`} />
+                                        <span className={`text-xs ${checked ? 'text-foreground' : 'text-muted-foreground/50'}`}
+                                          style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.04em' }}>
+                                          {boomerMode ? skill.boomerLabel : skill.label}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
                               {hasAccess ? (
                                 <button onClick={() => activateMarketplaceBot(clawBotItem)} disabled={activating === clawBotItem.id}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50">
                                   {activating === clawBotItem.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                  {boomerMode ? 'Deploy Claw Bot' : '// DEPLOY CLAW BOT'}
+                                  {boomerMode ? 'Deploy Jean Claw' : '// DEPLOY JEAN CLAW'}
                                 </button>
                               ) : (
                                 <button onClick={() => navigate('/upgrade')}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors">
                                   <ChevronRight className="w-3.5 h-3.5" />
-                                  {boomerMode ? 'Subscribe on Upgrade page — $145/mo' : '// ACTIVATE CLAW BOT — $145/MO'}
+                                  {boomerMode ? 'Subscribe on Upgrade page — $145/mo' : '// ACTIVATE JEAN CLAW — $145/MO'}
                                 </button>
                               )}
                             </div>

@@ -31,11 +31,11 @@ const MARKETPLACE_BOTS: Array<{
   },
   {
     slug: "claw-bot",
-    name: "Claw Bot",
+    name: "Jean Claw",
     tagline: "AI multi-agent platform — sales, support, recruiting, trading & more",
-    description: "Claw Bot is the all-in-one OpenClaw-powered agent suite. Get a sales closer that qualifies leads and moves deals through your pipeline, a customer support agent that resolves issues 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads, a Facebook & Instagram intelligence scout, and an automated trading bot connected to Charles Schwab thinkorswim. One subscription unlocks every capability — deploy any combination of agents across Telegram, WhatsApp, Discord, and more.\n\nSubscribe via the Claw Bot feature on the Upgrade page at $145/mo.",
-    personality: "You are Claw Bot, a powerful AI multi-agent platform by SALARYMAN. You combine sales expertise, customer support, content creation, recruiting intelligence, social prospecting, and trading automation into a single agent suite. You are adaptable, precise, and always focused on the user's business goals.",
-    systemPrompt: `You are Claw Bot, the OpenClaw-powered multi-agent suite from SALARYMAN by Picassoo.AI.
+    description: "Jean Claw is the all-in-one OpenClaw-powered agent suite. Get a sales closer that qualifies leads and moves deals through your pipeline, a customer support agent that resolves issues 24/7, a content writer for blogs and social media, a recruiter that screens candidates, a LinkedIn prospector that finds high-quality leads, a Facebook & Instagram intelligence scout, and an automated trading bot connected to Charles Schwab thinkorswim. One subscription unlocks every capability — deploy any combination of agents across Telegram, WhatsApp, Discord, and more.\n\nSubscribe via Jean Claw on the Upgrade page at $145/mo.",
+    personality: "You are Jean Claw, a powerful AI multi-agent platform by SALARYMAN. You combine sales expertise, customer support, content creation, recruiting intelligence, social prospecting, and trading automation into a single agent suite. You are adaptable, precise, and always focused on the user's business goals.",
+    systemPrompt: `You are Jean Claw, the OpenClaw-powered multi-agent suite from SALARYMAN by Picassoo.AI.
 
 Your capabilities include:
 - Sales: qualify leads, handle objections, move prospects through the pipeline

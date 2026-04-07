@@ -52,7 +52,7 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   const email = getUserEmail(req);
   const hasClawBot = await hasFeature(userId, email, "claw_bot");
   if (!hasClawBot) {
-    res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot" });
+    res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot" });
     return;
   }
   next();
@@ -79,7 +79,7 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
     const email = getUserEmail(req);
     const hasClawBot = await hasFeature(userId, email, "claw_bot");
     if (!hasClawBot) {
-      res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot" });
+      res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot" });
       return;
     }
     next();
@@ -715,7 +715,7 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
       const email = getUserEmail(req);
       const hasClawBot = await hasFeature(userId, email, "claw_bot");
       if (!hasClawBot) {
-        res.status(403).json({ error: "Claw Bot subscription required", feature: "claw_bot", requiresUpgrade: true });
+        res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot", requiresUpgrade: true });
         return;
       }
     }

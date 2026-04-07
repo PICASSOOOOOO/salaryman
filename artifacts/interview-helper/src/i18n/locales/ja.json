@@ -353,7 +353,7 @@
   },
   "botFactory": {
     "title": "ボットファクトリー",
-    "titleCodename": "OPENCLAW BOT FACTORY",
+    "titleCodename": "JEAN CLAW FACTORY",
     "subtitle": "Telegram、WhatsAppなどのAIボットを作成・管理",
     "subtitleCodename": "自律エージェント展開 · マルチプラットフォームメッシュ",
     "tabStore": "ボットストア",

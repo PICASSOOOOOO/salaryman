@@ -29,7 +29,7 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
     desc: "Unlimited predictive dialing & text messaging by Picassoo.AI for business and marketing partners",
   },
   claw_bot: {
-    name: "Claw Bot",
+    name: "Jean Claw",
     codename: "OPENCLAW MULTI-AGENT SUITE",
     price: 145,
     desc: "AI multi-agent platform — sales, support, content creation, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading. All OpenClaw-powered capabilities in one subscription.",

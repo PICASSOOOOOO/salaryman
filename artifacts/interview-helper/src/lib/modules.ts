@@ -123,11 +123,11 @@ export const MODULES: Module[] = [
     id: 'bots',
     path: '/bots',
     label: 'BOTS',
-    codename: 'CLAW FACTORY',
+    codename: 'JEAN CLAW FACTORY',
     icon: Bot,
     defaultPath: '/bots',
     subs: [
-      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT FACTORY', codename: 'MARKET', icon: Store },
+      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'Jean Claw', codename: 'MARKET', icon: Store },
       { id: 'my-bots', path: '/bots/my', label: 'MY BOTS', boomerLabel: 'MY BOTS', codename: 'MY AGENTS', icon: Bot },
       { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
     ],
