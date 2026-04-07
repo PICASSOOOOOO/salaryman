@@ -2346,89 +2346,143 @@ export default function BotFactory() {
                 return (
                   <>
                     {clawBotItem && (
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-3">
+                      <div className="mb-8">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                           <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'Jean Claw — Full AI Operations Bundle' : 'JEAN CLAW // PABLO + SECRETARY + OPENCLAW + PREMIUM BOTS'}
+                            {boomerMode ? 'Jean Claw — Flagship Product' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
                           </span>
-                          <div className="flex-1 h-px bg-emerald-500/20" />
+                          <div className="flex-1 h-px bg-emerald-500/15" />
+                          <span className="text-[9px] font-mono text-emerald-500/40 tracking-wider">$145/MO</span>
                         </div>
                         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                          className={`rounded-2xl border p-5 ${hasAccess ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-card'}`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${hasAccess ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-muted/30 border-border'}`}>
-                              {hasAccess ? <Sparkles className="w-5 h-5 text-emerald-400" /> : <Lock className="w-5 h-5 text-muted-foreground/50" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                  {clawBotItem.name}
-                                </h3>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  {hasAccess ? (boomerMode ? 'SUBSCRIBED' : '// ACTIVE') : (boomerMode ? '$145/mo' : '$145/MO')}
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mb-2">{clawBotItem.tagline}</p>
-                              <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{clawBotItem.description}</p>
-                              <div className="flex flex-wrap gap-1 mb-3">
-                                {clawBotItem.capabilities.map(cap => (
-                                  <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
-                                ))}
-                              </div>
+                          className={`rounded-2xl border relative overflow-hidden ${hasAccess ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent' : 'border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.03] via-transparent to-emerald-500/[0.01]'}`}>
+                          <div className="absolute top-0 left-0 w-60 h-60 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
+                          <div className="absolute bottom-0 right-0 w-40 h-40 bg-emerald-500/3 blur-[60px] rounded-full pointer-events-none" />
 
-                              <div className="mb-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"
+                          <div className="relative z-10 p-5">
+                            <div className="flex items-start gap-3 mb-4">
+                              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${hasAccess ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/15'}`}>
+                                {hasAccess ? <Sparkles className="w-6 h-6 text-emerald-400" /> : <Bot className="w-6 h-6 text-emerald-400" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h3 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.4rem' }}>
+                                    {boomerMode ? 'Jean Claw' : 'JEAN CLAW'}
+                                  </h3>
+                                  {!boomerMode && <span className="text-[9px] font-mono text-emerald-500/50 tracking-wider">OPENCLAW MULTI-AGENT SUITE</span>}
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
                                     style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                    {boomerMode ? 'Skills — Tested & Operational' : 'SKILLS // TESTED & OPERATIONAL'}
+                                    {hasAccess ? (boomerMode ? 'SUBSCRIBED' : '// ACTIVE') : 'FLAGSHIP'}
                                   </span>
                                 </div>
-                                <div className="space-y-1.5">
-                                  {[
-                                    { key: 'sales_closer', label: 'AI Sales Closer', boomerLabel: 'AI Sales Closer', icon: Target },
-                                    { key: 'customer_support', label: 'CUSTOMER SUPPORT AGENT', boomerLabel: 'Customer Support', icon: MessageSquare },
-                                    { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'Content Writer', icon: PenTool },
-                                    { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI Recruiter', icon: Users },
-                                    { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LinkedIn Prospector', icon: Search },
-                                    { key: 'fb_ig_scout', label: 'FACEBOOK / INSTAGRAM SCOUT', boomerLabel: 'Facebook & Instagram Scout', icon: Eye },
-                                    { key: 'trading_bot', label: 'AUTOMATED TRADING BOT', boomerLabel: 'Automated Trading Bot', icon: TrendingUp },
-                                  ].map(skill => {
-                                    const SkillIcon = skill.icon;
-                                    const checked = jeanClawSkills[skill.key] ?? true;
-                                    return (
-                                      <label key={skill.key}
-                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${checked ? 'bg-emerald-500/10' : 'bg-transparent opacity-50'}`}>
-                                        <input type="checkbox" checked={checked}
-                                          onChange={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
-                                          className="sr-only" />
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/30 bg-transparent'}`}>
+                                <p className="text-xs text-muted-foreground italic mb-2">
+                                  {boomerMode ? 'The complete AI workforce. Seven agents. One subscription.' : 'The complete AI workforce. Seven battle-tested agents. One subscription. Deploy across every channel.'}
+                                </p>
+                                <p className="text-xs text-muted-foreground/60 leading-relaxed">{clawBotItem.description}</p>
+                              </div>
+                            </div>
+
+                            <div className="h-px bg-emerald-500/10 mb-4" />
+
+                            <div className="mb-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {boomerMode ? 'Agent Skills — Select & Deploy' : 'AGENT SKILLS // SELECT & DEPLOY'}
+                                </span>
+                                <div className="flex-1 h-px bg-emerald-500/10" />
+                                <span className="text-[8px] font-mono text-emerald-500/40">
+                                  {Object.values(jeanClawSkills).filter(Boolean).length}/7 ACTIVE
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {[
+                                  { key: 'sales_closer', label: 'AI SALES CLOSER', boomerLabel: 'AI Sales Closer', icon: Target, desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'] },
+                                  { key: 'customer_support', label: 'CUSTOMER SUPPORT', boomerLabel: 'Customer Support', icon: MessageSquare, desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context. 95+ languages.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'] },
+                                  { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'Content Writer', icon: PenTool, desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'] },
+                                  { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI Recruiter', icon: Users, desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups. 70% faster hiring.', channels: ['Telegram', 'WhatsApp', 'Email'] },
+                                  { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LinkedIn Prospector', icon: Search, desc: 'Finds decision-makers by title, industry, company size. Builds verified contact lists. Auto-populates CRM.', channels: ['LinkedIn', 'Email'] },
+                                  { key: 'fb_ig_scout', label: 'FB / IG SCOUT', boomerLabel: 'Facebook & Instagram Scout', icon: Eye, desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent (hot/warm/cold).', channels: ['Facebook', 'Instagram'] },
+                                  { key: 'trading_bot', label: 'TRADING BOT', boomerLabel: 'Automated Trading Bot', icon: TrendingUp, desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum plays. Paper Trading by default.', channels: ['thinkorswim'] },
+                                ].map(skill => {
+                                  const SkillIcon = skill.icon;
+                                  const checked = jeanClawSkills[skill.key] ?? true;
+                                  return (
+                                    <motion.div key={skill.key}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className={`rounded-xl border p-3 transition-all cursor-pointer ${
+                                        checked
+                                          ? 'border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/30'
+                                          : 'border-border/30 bg-transparent opacity-40 hover:opacity-60'
+                                      }`}
+                                      onClick={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
+                                    >
+                                      <div className="flex items-center gap-2 mb-1.5">
+                                        <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${
+                                          checked ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-muted/20 border-border/30'
+                                        }`}>
+                                          <SkillIcon className={`w-3.5 h-3.5 ${checked ? 'text-emerald-400' : 'text-muted-foreground/30'}`} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${checked ? 'text-foreground' : 'text-muted-foreground/40'}`}
+                                              style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                              {boomerMode ? skill.boomerLabel : skill.label}
+                                            </span>
+                                            {checked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
+                                          </div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                          checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/20 bg-transparent'
+                                        }`}>
                                           {checked && <Check className="w-2.5 h-2.5 text-white" />}
                                         </div>
-                                        <SkillIcon className={`w-3.5 h-3.5 shrink-0 ${checked ? 'text-emerald-400' : 'text-muted-foreground/40'}`} />
-                                        <span className={`text-xs ${checked ? 'text-foreground' : 'text-muted-foreground/50'}`}
-                                          style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.04em' }}>
-                                          {boomerMode ? skill.boomerLabel : skill.label}
-                                        </span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
+                                      </div>
+                                      <p className={`text-[10px] leading-relaxed ml-9 ${checked ? 'text-muted-foreground/60' : 'text-muted-foreground/30'}`}>
+                                        {skill.desc}
+                                      </p>
+                                      {checked && skill.channels && (
+                                        <div className="flex items-center gap-1 mt-1.5 ml-9 flex-wrap">
+                                          {skill.channels.map(ch => (
+                                            <span key={ch} className="px-1 py-0.5 rounded text-[7px] font-mono text-emerald-500/40 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
+                                              {ch}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </motion.div>
+                                  );
+                                })}
                               </div>
+                            </div>
 
+                            <div className="h-px bg-emerald-500/10 mb-4" />
+
+                            <div className="flex items-center gap-3 mb-4 flex-wrap">
+                              <div className="flex items-center gap-3 text-[8px] font-mono text-muted-foreground/30 tracking-wider">
+                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> Pablo Call Agent</span>
+                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> AI Secretary</span>
+                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> All Premium Bots</span>
+                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> Future Agents</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 flex-wrap">
                               {hasAccess ? (
                                 <button onClick={() => activateMarketplaceBot(clawBotItem)} disabled={activating === clawBotItem.id}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50">
-                                  {activating === clawBotItem.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-lg shadow-emerald-500/20">
+                                  {activating === clawBotItem.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                   {boomerMode ? 'Deploy Jean Claw' : '// DEPLOY JEAN CLAW'}
                                 </button>
                               ) : (
                                 <button onClick={() => navigate('/upgrade')}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors">
+                                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/20">
+                                  <Zap className="w-3.5 h-3.5" />
+                                  {boomerMode ? 'Subscribe — $145/mo' : 'ACTIVATE JEAN CLAW — $145/MO'}
                                   <ChevronRight className="w-3.5 h-3.5" />
-                                  {boomerMode ? 'Subscribe on Upgrade page — $145/mo' : '// ACTIVATE JEAN CLAW — $145/MO'}
                                 </button>
                               )}
                             </div>

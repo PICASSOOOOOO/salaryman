@@ -4,6 +4,7 @@ import {
   Zap, CreditCard, Check, Lock, Phone,
   ChevronRight, Loader2, AlertCircle, Mic, Monitor,
   ShoppingBag, Heart, Package, Shield, Sparkles, Bot,
+  Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp, Globe,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -24,7 +25,20 @@ interface FeatureCard {
   color: string;
   borderColor: string;
   bgColor: string;
+  flagship?: boolean;
+  skills?: { name: string; desc: string }[];
+  channels?: string[];
 }
+
+const JEAN_CLAW_SKILL_ICONS: Record<string, typeof Target> = {
+  'AI Sales Closer': Target,
+  'Customer Support': MessageSquare,
+  'Content Writer': PenTool,
+  'AI Recruiter': Users,
+  'LinkedIn Prospector': Search,
+  'FB & IG Scout': Eye,
+  'Trading Bot': TrendingUp,
+};
 
 const FEATURE_CARDS: FeatureCard[] = [
   {
@@ -497,87 +511,245 @@ export default function Upgrade() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              {FEATURE_CARDS.map((card, i) => {
-                const Icon = card.icon;
-                const isActive = features.has(card.key);
-                const isLoading = loadingFeature === card.key;
-                const isPhoneSystem = card.key === "phone_system";
+            {(() => {
+              const standardCards = FEATURE_CARDS.filter(c => !c.flagship);
+              const flagshipCard = FEATURE_CARDS.find(c => c.flagship);
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    {standardCards.map((card, i) => {
+                      const Icon = card.icon;
+                      const isActive = features.has(card.key);
+                      const isLoading = loadingFeature === card.key;
+                      const isPhoneSystem = card.key === "phone_system";
 
-                return (
-                  <motion.div
-                    key={card.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`rounded-2xl border p-5 relative overflow-hidden flex flex-col ${
-                      isActive
-                        ? `${card.borderColor} ${card.bgColor}`
-                        : "border-border bg-card hover:border-muted-foreground/20"
-                    } ${isPhoneSystem && !isActive ? "sm:col-span-2" : ""} transition-all`}
-                  >
-                    {isPhoneSystem && (
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 blur-[60px] rounded-full pointer-events-none" />
-                    )}
-
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`w-10 h-10 rounded-xl ${card.bgColor} border ${card.borderColor} flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${card.color}`} />
-                      </div>
-                      {isActive && (
-                        <span className={`text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full ${card.bgColor} ${card.color} border ${card.borderColor}`}>
-                          ACTIVE
-                        </span>
-                      )}
-                    </div>
-
-                    <p className={`text-[10px] font-mono tracking-wider uppercase mb-1 ${card.color}`}>
-                      {boomerMode ? "" : card.codename}
-                    </p>
-                    <h3 className="text-lg font-bold text-foreground mb-1">
-                      {boomerMode ? card.boomerLabel : card.label}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-4 flex-1">
-                      {boomerMode ? card.boomerDesc : card.desc}
-                    </p>
-
-                    <div className="flex items-end justify-between mt-auto">
-                      <div className="flex items-baseline gap-1">
-                        <span className={`text-2xl font-bold ${isActive ? card.color : "text-foreground"}`}>
-                          ${card.price}
-                        </span>
-                        <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
-                      </div>
-
-                      {isActive ? (
-                        <span className="text-xs text-muted-foreground font-mono">{t('upgrade.subscribed')}</span>
-                      ) : (
-                        <button
-                          onClick={() => handleCheckout(card.key)}
-                          disabled={isLoading || loadingFeature !== null}
-                          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                            isPhoneSystem
-                              ? "bg-amber-500 hover:bg-amber-400 text-black"
-                              : "bg-foreground hover:bg-foreground/80 text-background"
-                          }`}
+                      return (
+                        <motion.div
+                          key={card.key}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`rounded-2xl border p-5 relative overflow-hidden flex flex-col ${
+                            isActive
+                              ? `${card.borderColor} ${card.bgColor}`
+                              : "border-border bg-card hover:border-muted-foreground/20"
+                          } ${isPhoneSystem && !isActive ? "sm:col-span-2" : ""} transition-all`}
                         >
-                          {isLoading ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <>
-                              {isAuthenticated
-                                ? (boomerMode ? t('upgrade.subscribe') : t('upgrade.activate'))
-                                : t('common.signIn')}
-                              <ChevronRight className="w-3 h-3" />
-                            </>
+                          {isPhoneSystem && (
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 blur-[60px] rounded-full pointer-events-none" />
                           )}
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+
+                          <div className="flex items-start justify-between mb-3">
+                            <div className={`w-10 h-10 rounded-xl ${card.bgColor} border ${card.borderColor} flex items-center justify-center`}>
+                              <Icon className={`w-5 h-5 ${card.color}`} />
+                            </div>
+                            {isActive && (
+                              <span className={`text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full ${card.bgColor} ${card.color} border ${card.borderColor}`}>
+                                ACTIVE
+                              </span>
+                            )}
+                          </div>
+
+                          <p className={`text-[10px] font-mono tracking-wider uppercase mb-1 ${card.color}`}>
+                            {boomerMode ? "" : card.codename}
+                          </p>
+                          <h3 className="text-lg font-bold text-foreground mb-1">
+                            {boomerMode ? card.boomerLabel : card.label}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mb-4 flex-1">
+                            {boomerMode ? card.boomerDesc : card.desc}
+                          </p>
+
+                          <div className="flex items-end justify-between mt-auto">
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-2xl font-bold ${isActive ? card.color : "text-foreground"}`}>
+                                ${card.price}
+                              </span>
+                              <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
+                            </div>
+
+                            {isActive ? (
+                              <span className="text-xs text-muted-foreground font-mono">{t('upgrade.subscribed')}</span>
+                            ) : (
+                              <button
+                                onClick={() => handleCheckout(card.key)}
+                                disabled={isLoading || loadingFeature !== null}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  isPhoneSystem
+                                    ? "bg-amber-500 hover:bg-amber-400 text-black"
+                                    : "bg-foreground hover:bg-foreground/80 text-background"
+                                }`}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    {isAuthenticated
+                                      ? (boomerMode ? t('upgrade.subscribe') : t('upgrade.activate'))
+                                      : t('common.signIn')}
+                                    <ChevronRight className="w-3 h-3" />
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {flagshipCard && (() => {
+                    const isActive = features.has(flagshipCard.key);
+                    const isLoading = loadingFeature === flagshipCard.key;
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className={`rounded-2xl border relative overflow-hidden mb-8 ${
+                          isActive
+                            ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent"
+                            : "border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.03] via-transparent to-emerald-500/[0.01]"
+                        }`}
+                      >
+                        <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
+                        <div className="absolute bottom-0 right-0 w-48 h-48 bg-emerald-500/3 blur-[60px] rounded-full pointer-events-none" />
+
+                        <div className="relative z-10 p-5 sm:p-6">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[9px] font-mono tracking-widest uppercase text-emerald-400/80">
+                              {boomerMode ? 'FLAGSHIP PRODUCT' : 'FLAGSHIP // RECOMMENDED'}
+                            </span>
+                            <div className="flex-1 h-px bg-emerald-500/10" />
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+                            <div className="flex items-start gap-3">
+                              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                                <Bot className="w-6 h-6 text-emerald-400" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <h3 className="text-xl font-bold text-foreground"
+                                    style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.5rem' }}>
+                                    {boomerMode ? flagshipCard.boomerLabel : flagshipCard.label}
+                                  </h3>
+                                  {!boomerMode && (
+                                    <span className="text-[10px] font-mono tracking-wider text-emerald-400/60">{flagshipCard.codename}</span>
+                                  )}
+                                  {isActive && (
+                                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                                      ACTIVE
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                                  {boomerMode ? flagshipCard.boomerDesc : flagshipCard.desc}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-bold text-emerald-400">${flagshipCard.price}</span>
+                                <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
+                              </div>
+                              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">7 AGENTS + CALL AGENT + SECRETARY</span>
+                            </div>
+                          </div>
+
+                          {flagshipCard.skills && (
+                            <div className="mb-5">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Zap className="w-3 h-3 text-emerald-400" />
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {boomerMode ? 'Included Agent Skills' : 'AGENT SKILLS // ALL OPERATIONAL'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                                {flagshipCard.skills.map((skill) => {
+                                  const SkIcon = JEAN_CLAW_SKILL_ICONS[skill.name] || Bot;
+                                  return (
+                                    <div key={skill.name}
+                                      className="flex items-start gap-2.5 p-2.5 rounded-xl border border-emerald-500/10 bg-emerald-500/[0.03]">
+                                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                                        <SkIcon className="w-3.5 h-3.5 text-emerald-400" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                          <span className="text-[10px] font-bold text-foreground uppercase tracking-wider"
+                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                            {skill.name}
+                                          </span>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{skill.desc}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {flagshipCard.channels && (
+                            <div className="mb-5">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Globe className="w-3 h-3 text-emerald-400/60" />
+                                <span className="text-[9px] font-mono text-emerald-400/50 uppercase tracking-widest">
+                                  {boomerMode ? 'Deploy on' : 'DEPLOYMENT CHANNELS'}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {flagshipCard.channels.map(ch => (
+                                  <span key={ch} className="px-2 py-1 rounded-lg text-[10px] font-mono text-muted-foreground/60 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
+                                    {ch}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
+                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Pablo Call Agent</span>
+                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> AI Secretary</span>
+                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> All Premium Bots</span>
+                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Future Agents</span>
+                            </div>
+                            <div className="flex-1" />
+                            {isActive ? (
+                              <span className="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5" /> {t('upgrade.subscribed')}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleCheckout(flagshipCard.key)}
+                                disabled={isLoading || loadingFeature !== null}
+                                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    {isAuthenticated
+                                      ? (boomerMode ? 'Subscribe to Jean Claw' : 'ACTIVATE JEAN CLAW')
+                                      : t('common.signIn')}
+                                    <ChevronRight className="w-3 h-3" />
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
