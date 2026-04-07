@@ -14688,7 +14688,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.18)', lineHeight: 1.7, textAlign: 'center', maxWidth: '85%' }}>
                       Audio settings have been consolidated into a single panel. Use the 🔊 button in the top-right corner of the screen.
                     </div>
-                    <button onClick={() => { setShowSoundPanel(true); setShowPabloTerm(false); }} style={{ padding: '.5rem 1.2rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
+                    <button onClick={() => { setShowSoundPanel(true); setShowPablo(false); }} style={{ padding: '.5rem 1.2rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace" }}>
                       🔊 OPEN AUDIO PANEL
                     </button>
                     <div style={{ display: 'flex', gap: '.6rem', marginTop: '.3rem' }}>
