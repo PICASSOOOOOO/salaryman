@@ -38,10 +38,6 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-TWILIO_PHONE_NUMBER = "+18884024561"
-TWILIO_ACCOUNT_SID = "AC8367e2fd8959023c6233f1131cc88a7d"
-TWILIO_AUTH_TOKEN = "61ee3f8eb4d4a9d807704f07fb3e1ba9"
-ELEVENLABS_API_KEY = "sk_1f7f182ed0794fb7bbfbeec1f62ed84037cadcd290b190d3"
 
 [[ports]]
 localPort = 8080
