@@ -326,10 +326,10 @@ export default function LeadsPage() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-3">
             <Users className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-bold uppercase tracking-wider">LEAD DATABASE</h1>
+            <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wider">LEAD DATABASE</h1>
             {admin ? (
               <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">
                 <Shield className="w-3 h-3" /> ADMIN
@@ -340,19 +340,19 @@ export default function LeadsPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {admin && (
               <>
                 <button onClick={() => setShowImport(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
                   <Upload className="w-3.5 h-3.5" /> IMPORT CSV
                 </button>
                 <button onClick={exportCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
                   <Download className="w-3.5 h-3.5" /> EXPORT
                 </button>
                 <button onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold uppercase bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 transition-colors">
                   <Plus className="w-3.5 h-3.5" /> ADD LEAD
                 </button>
               </>
@@ -392,10 +392,10 @@ export default function LeadsPage() {
           </select>
         </div>
 
-        <div className="flex gap-4">
-          <div className={`flex-1 ${selectedLead ? 'max-w-[55%]' : ''}`}>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className={`flex-1 ${selectedLead ? 'sm:max-w-[55%]' : ''}`}>
             <div className="bg-card border border-border">
-              <div className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-0 border-b border-border px-4 py-2 text-xs font-bold uppercase text-muted-foreground">
+              <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-0 border-b border-border px-4 py-2 text-xs font-bold uppercase text-muted-foreground">
                 <span>NAME</span>
                 <span>COMPANY</span>
                 <span>CONTACT</span>
@@ -412,31 +412,49 @@ export default function LeadsPage() {
                   <div
                     key={lead.id}
                     onClick={() => openDetail(lead)}
-                    className={`grid grid-cols-[1fr_1fr_1fr_auto_auto_auto] gap-0 px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-muted/10 transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
+                    className={`border-b border-border/50 cursor-pointer hover:bg-muted/10 transition-colors ${selectedLead?.id === lead.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
-                      <span className="font-medium truncate text-sm">{lead.name}</span>
+                    <div className="hidden sm:grid grid-cols-[1fr_1fr_1fr_auto_auto_auto] gap-0 px-4 py-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
+                        <span className="font-medium truncate text-sm">{lead.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
+                        {lead.company && <Building2 className="w-3 h-3 shrink-0" />}
+                        <span className="truncate">{lead.company || '-'}</span>
+                      </div>
+                      <div className="flex flex-col text-xs text-muted-foreground truncate">
+                        {lead.phone && <span className="truncate">{lead.phone}</span>}
+                        {lead.email && <span className="truncate">{lead.email}</span>}
+                        {!lead.phone && !lead.email && <span>-</span>}
+                      </div>
+                      <div className="w-24 text-xs text-muted-foreground truncate">
+                        {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/40">UNASSIGNED</span>}
+                      </div>
+                      <div>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${statusColor(lead.status)}`}>
+                          {statusLabel(lead.status)}
+                        </span>
+                      </div>
+                      <div className="w-20 text-right text-xs text-muted-foreground">
+                        {lead.callCount > 0 ? `${lead.callCount} CALL${lead.callCount !== 1 ? 'S' : ''}` : '-'}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground truncate">
-                      {lead.company && <Building2 className="w-3 h-3 shrink-0" />}
-                      <span className="truncate">{lead.company || '-'}</span>
-                    </div>
-                    <div className="flex flex-col text-xs text-muted-foreground truncate">
-                      {lead.phone && <span className="truncate">{lead.phone}</span>}
-                      {lead.email && <span className="truncate">{lead.email}</span>}
-                      {!lead.phone && !lead.email && <span>-</span>}
-                    </div>
-                    <div className="w-24 text-xs text-muted-foreground truncate">
-                      {lead.assignedUserId ? (memberMap[lead.assignedUserId] || 'ASSIGNED') : <span className="text-muted-foreground/40">UNASSIGNED</span>}
-                    </div>
-                    <div>
-                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border ${statusColor(lead.status)}`}>
-                        {statusLabel(lead.status)}
-                      </span>
-                    </div>
-                    <div className="w-20 text-right text-xs text-muted-foreground">
-                      {lead.callCount > 0 ? `${lead.callCount} CALL${lead.callCount !== 1 ? 'S' : ''}` : '-'}
+                    <div className="sm:hidden px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {lead.isLocked && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
+                          <span className="font-medium truncate text-sm">{lead.name}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border shrink-0 ${statusColor(lead.status)}`}>
+                          {statusLabel(lead.status)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                        {lead.company && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.company}</span>}
+                        {lead.phone && <span>{lead.phone}</span>}
+                        {lead.callCount > 0 && <span>{lead.callCount} CALL{lead.callCount !== 1 ? 'S' : ''}</span>}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -453,7 +471,7 @@ export default function LeadsPage() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="w-[45%] bg-card border border-border max-h-[80vh] overflow-y-auto"
+                className="w-full sm:w-[45%] bg-card border border-border max-h-[80vh] overflow-y-auto"
               >
                 <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center justify-between z-10">
                   <div className="flex items-center gap-2">

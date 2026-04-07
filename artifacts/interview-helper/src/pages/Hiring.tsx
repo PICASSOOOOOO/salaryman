@@ -342,7 +342,7 @@ export default function Hiring() {
           {boomerMode ? 'Post jobs, track applicants, manage your team and HR records.' : 'Post positions, track candidates, manage your roster.'}
         </p>
 
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: boomerMode ? 'Open Jobs' : 'Open Positions', value: stats.openPositions, color: 'text-sky-400' },
             { label: 'Applicants', value: stats.totalApplicants, color: 'text-blue-400' },
@@ -402,7 +402,7 @@ export default function Hiring() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <Field label="Job Title *" name="title" value={jobForm.title} onChange={v => setJobForm(p => ({ ...p, title: v }))} placeholder="Senior Software Engineer" />
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</label>
@@ -517,7 +517,7 @@ export default function Hiring() {
                     <h3 className="font-bold text-foreground">New Applicant</h3>
                     <button onClick={() => setShowApplicantForm(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"><X className="w-4 h-4" /></button>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Position *</label>
                       <select value={applicantForm.jobId} onChange={e => setApplicantForm(p => ({ ...p, jobId: e.target.value }))}
@@ -554,7 +554,7 @@ export default function Hiring() {
             ) : (
               <div>
                 <p className="text-xs text-muted-foreground mb-3">{filteredApplicants.length} applicant{filteredApplicants.length !== 1 ? 's' : ''} in pipeline</p>
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   {STAGES.filter(s => s !== 'hired' && s !== 'rejected').map(stage => {
                     const stageApps = filteredApplicants.filter(a => a.stage === stage);
                     return (
@@ -588,7 +588,7 @@ export default function Hiring() {
                   })}
                 </div>
                 {(filteredApplicants.some(a => a.stage === 'hired') || filteredApplicants.some(a => a.stage === 'rejected')) && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {['hired', 'rejected'].map(stage => {
                       const stageApps = filteredApplicants.filter(a => a.stage === stage);
                       if (stageApps.length === 0) return null;
@@ -647,7 +647,7 @@ export default function Hiring() {
               ) : (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   {!selectedStaff && (
-                    <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-border bg-muted/10">
+                    <div className="hidden sm:grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-border bg-muted/10">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Name</span>
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Role / Dept</span>
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Start Date</span>
@@ -727,7 +727,7 @@ export default function Hiring() {
                     {/* Details sub-tab */}
                     {staffPanel === 'directory' && (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Role</label>
                             <p className="text-sm text-foreground mt-0.5">{selectedStaff.role || '—'}</p>

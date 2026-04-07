@@ -404,7 +404,7 @@ export default function ContactCollector() {
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-accent/8 blur-[120px] rounded-full pointer-events-none" />
 
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
 
         {/* Follow-up scheduling modal */}
         <AnimatePresence>
@@ -512,7 +512,7 @@ export default function ContactCollector() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <Field label="Full Name *" name="name" value={form.name} onChange={f('name')} placeholder="Jane Smith" />
                 <Field label="Company" name="company" value={form.company} onChange={f('company')} placeholder="Acme Corp" />
                 <Field label="Email" name="email" value={form.email} onChange={f('email')} type="email" placeholder="jane@example.com" />
@@ -621,7 +621,7 @@ export default function ContactCollector() {
               /* ─── Pipeline Board with Drag & Drop ─── */
               <div>
                 <p className="text-xs text-muted-foreground mb-3">Drag contacts between stages to move them through your pipeline</p>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {DEAL_STAGES.map(stage => {
                     const stageContacts = filteredContacts.filter(c => c.dealStage === stage);
                     const isDragTarget = dragOverStage === stage;
@@ -674,7 +674,7 @@ export default function ContactCollector() {
             ) : (
               /* ─── Table / List View ─── */
               <div>
-                <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-2 mb-1 border-b border-border/50">
+                <div className="hidden sm:grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-2 mb-1 border-b border-border/50">
                   {[
                     { key: 'name' as const, label: 'Name' },
                     { key: 'createdAt' as const, label: 'Company / Added' },
@@ -694,7 +694,7 @@ export default function ContactCollector() {
                   {filteredContacts.map(contact => (
                     <motion.div key={contact.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                       className="bg-card border border-border rounded-2xl overflow-hidden">
-                      <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors items-center"
+                      <div className="hidden sm:grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors items-center"
                         onClick={() => handleExpand(contact.id)}>
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border border-border flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
@@ -750,13 +750,60 @@ export default function ContactCollector() {
                           {expandedId === contact.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                         </div>
                       </div>
+                      <div className="sm:hidden px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                        onClick={() => handleExpand(contact.id)}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border border-border flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
+                            {contact.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-semibold text-sm text-foreground truncate">{contact.name}</p>
+                              {expandedId === contact.id ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">{contact.email || contact.phone || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {contact.company && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Building2 className="w-2.5 h-2.5" />{contact.company}</span>}
+                          {contact.tag && <span className={`text-[9px] px-1.5 py-0.5 rounded border ${TAG_COLORS[contact.tag] ?? TAG_COLORS.Other} font-bold uppercase`}>{contact.tag}</span>}
+                          {contact.dealStage && <span className={`text-[9px] px-1.5 py-0.5 rounded border ${STAGE_COLORS[contact.dealStage] ?? ''} font-bold uppercase`}>{contact.dealStage}</span>}
+                          {contact.dealValue && <span className="text-[10px] text-sky-400 font-semibold">${contact.dealValue.toLocaleString()}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 mt-2">
+                          <button onClick={e => { e.stopPropagation(); openFollowUp(contact); }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Schedule follow-up">
+                            <CalendarPlus className="w-3.5 h-3.5" />
+                          </button>
+                          {contact.email && (
+                            <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors">
+                              <Mail className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {contact.phone && (
+                            <a href={`tel:${contact.phone}`} onClick={e => e.stopPropagation()}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10 transition-colors">
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          <button onClick={e => { e.stopPropagation(); handleEdit(contact); }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); handleDelete(contact.id); }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
 
                       {/* Expanded: interaction history */}
                       <AnimatePresence>
                         {expandedId === contact.id && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                             className="border-t border-border overflow-hidden">
-                            <div className="px-5 pt-4 pb-5 grid grid-cols-2 gap-6">
+                            <div className="px-5 pt-4 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
                               {/* Details */}
                               <div>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Details</p>
