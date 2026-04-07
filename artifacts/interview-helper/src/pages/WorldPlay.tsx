@@ -15059,67 +15059,85 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>PABLO AI . . .</div>
                       )}
                     </div>
-                    {worldConv.isConvMode && (
-                      <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', padding: '.45rem .5rem', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                        <div style={{
-                          width: 12, height: 12, borderRadius: '50%', flexShrink: 0,
-                          background: worldConv.convState === 'listening' ? '#38bdf8' :
-                                      worldConv.convState === 'processing' ? '#ffcc00' :
-                                      worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.3)',
-                          animation: worldConv.convState !== 'idle' ? 'pulse 1.5s infinite' : 'none',
-                          boxShadow: worldConv.convState === 'listening' ? '0 0 12px rgba(56,189,248,.6)' :
-                                     worldConv.convState === 'speaking' ? '0 0 12px rgba(204,136,255,.6)' : 'none',
-                        }} />
-                        <span style={{ ...ST, fontSize: '.6rem', flex: 1,
-                          color: worldConv.convState === 'listening' ? '#38bdf8' :
-                                 worldConv.convState === 'processing' ? '#ffcc00' :
-                                 worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.4)',
-                        }}>
-                          {worldConv.convState === 'listening' ? '● LISTENING...' :
-                           worldConv.convState === 'processing' ? '◉ PABLO IS THINKING...' :
-                           worldConv.convState === 'speaking' ? '◉ PABLO IS SPEAKING...' :
-                           '○ VOICE ACTIVE'}
-                        </span>
+                    {worldConv.isConvMode ? (
+                      <div style={{ borderTop: '1px solid rgba(56,189,248,.25)', padding: '.5rem', background: 'rgba(56,189,248,.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '.4rem' }}>
+                          <div style={{
+                            width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                            background: worldConv.convState === 'listening' ? '#38bdf8' :
+                                        worldConv.convState === 'processing' ? '#ffcc00' :
+                                        worldConv.convState === 'speaking' ? '#cc88ff' :
+                                        worldConv.convState === 'error' ? '#ff4444' : 'rgba(56,189,248,.3)',
+                            animation: worldConv.convState !== 'idle' && worldConv.convState !== 'error' ? 'pulse 1.5s infinite' : 'none',
+                            boxShadow: worldConv.convState === 'listening' ? '0 0 12px rgba(56,189,248,.6)' :
+                                       worldConv.convState === 'speaking' ? '0 0 12px rgba(204,136,255,.6)' :
+                                       worldConv.convState === 'error' ? '0 0 8px rgba(255,68,68,.5)' : 'none',
+                          }} />
+                          <span style={{ ...VT, fontSize: '.75rem', flex: 1, letterSpacing: '.06em',
+                            color: worldConv.convState === 'listening' ? '#38bdf8' :
+                                   worldConv.convState === 'processing' ? '#ffcc00' :
+                                   worldConv.convState === 'speaking' ? '#cc88ff' :
+                                   worldConv.convState === 'error' ? '#ff4444' : 'rgba(56,189,248,.4)',
+                          }}>
+                            {worldConv.convState === 'listening' ? '● LISTENING — SPEAK NOW...' :
+                             worldConv.convState === 'processing' ? '◉ PABLO IS THINKING...' :
+                             worldConv.convState === 'speaking' ? '◉ PABLO IS SPEAKING...' :
+                             worldConv.convState === 'error' ? '✕ ERROR' :
+                             '○ VOICE ACTIVE'}
+                          </span>
+                        </div>
+                        {worldConv.errorMsg && (
+                          <div style={{ background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.3)', padding: '.35rem .5rem', marginBottom: '.4rem' }}>
+                            <span style={{ ...ST, fontSize: '.6rem', color: '#ff6666', lineHeight: 1.5 }}>
+                              ⚠ {worldConv.errorMsg}
+                            </span>
+                          </div>
+                        )}
                         <button onClick={worldConv.stopConversation}
-                          style={{ ...VT, fontSize: '.7rem', background: 'rgba(255,50,50,.15)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', padding: '.25rem .6rem', minHeight: 32, touchAction: 'manipulation' }}>
-                          ✕ END
+                          style={{ ...VT, fontSize: '.8rem', width: '100%', background: 'rgba(255,50,50,.12)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', padding: '.45rem .6rem', minHeight: 40, touchAction: 'manipulation', letterSpacing: '.08em' }}>
+                          ✕ END VOICE MODE
                         </button>
                       </div>
-                    )}
-                    {worldConv.errorMsg && (
-                      <div style={{ borderTop: '1px solid rgba(255,80,80,.2)', padding: '.4rem .5rem', background: 'rgba(255,50,50,.08)', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
-                        <span style={{ ...ST, fontSize: '.6rem', color: 'rgba(255,100,100,.8)', lineHeight: 1.4 }}>
-                          ⚠ {worldConv.errorMsg}
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem', alignItems: 'stretch' }}>
-                      <input
-                        value={pabloIn}
-                        onChange={e => setPabloIn(e.target.value)}
-                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
-                        placeholder={worldConv.isConvMode ? 'Voice active — speak to PABLO...' : 'Ask PABLO AI anything...'}
-                        disabled={worldConv.isConvMode}
-                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.7rem', padding: '.4rem .5rem', outline: 'none', caretColor: '#38bdf8', opacity: worldConv.isConvMode ? 0.4 : 1, minHeight: 36 }}
-                      />
-                      {worldConv.isSupported && (
+                    ) : (
+                      <div style={{ borderTop: '1px solid rgba(56,189,248,.15)', padding: '.5rem' }}>
                         <button
-                          onClick={() => worldConv.isConvMode ? worldConv.stopConversation() : worldConv.startConversation()}
+                          onClick={() => worldConv.startConversation()}
                           disabled={pabloLoad}
                           style={{
-                            background: worldConv.isConvMode ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.05)',
-                            border: worldConv.isConvMode ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.2)',
-                            color: worldConv.isConvMode ? '#38bdf8' : 'rgba(56,189,248,.5)',
-                            cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem',
-                            animation: worldConv.isConvMode ? 'pulse 2s infinite' : 'none',
-                            minWidth: 40, minHeight: 36, touchAction: 'manipulation',
+                            ...VT, fontSize: '.8rem', width: '100%',
+                            background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)',
+                            color: '#38bdf8', cursor: 'pointer', padding: '.45rem .6rem',
+                            minHeight: 40, touchAction: 'manipulation', letterSpacing: '.08em',
+                            marginBottom: '.4rem', display: worldConv.isSupported ? 'block' : 'none',
                           }}
-                          title={worldConv.isConvMode ? 'End voice conversation' : 'Start voice conversation with PABLO'}
-                        >🎙</button>
-                      )}
-                      <button onClick={sendPablo} disabled={pabloLoad || worldConv.isConvMode}
-                        style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1.1rem', opacity: worldConv.isConvMode ? 0.4 : 1, minWidth: 36, minHeight: 36, touchAction: 'manipulation' }}>↵</button>
-                    </div>
+                        >🎙 SPEAK TO PABLO</button>
+                        {!worldConv.isSupported && (
+                          <div style={{ background: 'rgba(255,165,0,.08)', border: '1px solid rgba(255,165,0,.25)', padding: '.35rem .5rem', marginBottom: '.4rem' }}>
+                            <span style={{ ...ST, fontSize: '.55rem', color: 'rgba(255,165,0,.7)', lineHeight: 1.5 }}>
+                              ⚠ VOICE NOT AVAILABLE — Your browser does not support microphone access. Use Chrome or Safari on HTTPS.
+                            </span>
+                          </div>
+                        )}
+                        {worldConv.errorMsg && !worldConv.isConvMode && (
+                          <div style={{ background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.3)', padding: '.35rem .5rem', marginBottom: '.4rem' }}>
+                            <span style={{ ...ST, fontSize: '.6rem', color: '#ff6666', lineHeight: 1.5 }}>
+                              ⚠ {worldConv.errorMsg}
+                            </span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '.3rem', alignItems: 'stretch' }}>
+                          <input
+                            value={pabloIn}
+                            onChange={e => setPabloIn(e.target.value)}
+                            onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
+                            placeholder="Type to PABLO AI..."
+                            style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.7rem', padding: '.4rem .5rem', outline: 'none', caretColor: '#38bdf8', minHeight: 36 }}
+                          />
+                          <button onClick={sendPablo} disabled={pabloLoad}
+                            style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1.1rem', minWidth: 40, minHeight: 36, touchAction: 'manipulation' }}>↵</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
