@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 
 type BotStatus = 'active' | 'paused' | 'error';
-type Tab = 'my-bots' | 'marketplace';
+type Tab = 'jean-claw' | 'my-bots' | 'marketplace';
 
 const platformIcons: Record<string, string> = {
   whatsapp: '💬',
@@ -2157,7 +2157,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
 export default function BotFactory() {
   const { t } = useTranslation();
   const [boomerMode] = useBoomerMode();
-  const [tab, setTab] = useState<Tab>('marketplace');
+  const [tab, setTab] = useState<Tab>('jean-claw');
   const [bots, setBots] = useState<BotData[]>([]);
   const [marketplace, setMarketplace] = useState<MarketplaceItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Array<{ marketplaceItemId: number; status: string }>>([]);
@@ -2295,7 +2295,12 @@ export default function BotFactory() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            <button onClick={() => setTab('jean-claw')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+              <Sparkles className="w-4 h-4" />
+              JEAN CLAW
+            </button>
             <button onClick={() => setTab('marketplace')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'marketplace' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
               <Store className="w-4 h-4" />
@@ -2325,6 +2330,182 @@ export default function BotFactory() {
                 {boomerMode ? t('botFactory.loadingBots') : t('botFactory.loadingBotsCodename')}
               </span>
             </div>
+          ) : tab === 'jean-claw' ? (
+            <div className="space-y-6">
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-80 h-80 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-60 h-60 bg-emerald-500/3 blur-[80px] rounded-full pointer-events-none" />
+
+                <div className="relative z-10 p-6">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                      <Bot className="w-8 h-8 text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1 flex-wrap">
+                        <h2 className="font-bold text-foreground text-2xl" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '2rem' }}>
+                          JEAN CLAW
+                        </h2>
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {hasAccess ? 'ACTIVE' : 'FLAGSHIP PRODUCT'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {boomerMode
+                          ? 'The complete AI workforce. Seven specialized agents that automate sales, support, content, recruiting, prospecting, social intelligence, and trading — deployed across every channel.'
+                          : 'SEVEN BATTLE-TESTED AGENTS. ONE SUBSCRIPTION. DEPLOY ACROSS EVERY CHANNEL. AUTOMATE EVERYTHING.'}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-2xl font-bold text-emerald-400" style={{ fontFamily: "'VT323', monospace" }}>$145</div>
+                      <div className="text-[10px] text-muted-foreground/50">/ MONTH</div>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-emerald-500/10 mb-5" />
+
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Zap className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                        {boomerMode ? 'INCLUDED AGENT SKILLS' : 'AGENT SKILLS // OPERATIONAL'}
+                      </span>
+                      <div className="flex-1 h-px bg-emerald-500/10" />
+                      <span className="text-[10px] font-mono text-emerald-500/50">
+                        {Object.values(jeanClawSkills).filter(Boolean).length}/7 ACTIVE
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[
+                        { key: 'sales_closer', label: 'AI SALES CLOSER', icon: Target, color: '#f59e0b', desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'], stat: '3X PIPELINE' },
+                        { key: 'customer_support', label: 'CUSTOMER SUPPORT', icon: MessageSquare, color: '#3b82f6', desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'], stat: '90% RESOLVED' },
+                        { key: 'content_writer', label: 'CONTENT WRITER', icon: PenTool, color: '#a855f7', desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'], stat: '10X OUTPUT' },
+                        { key: 'ai_recruiter', label: 'AI RECRUITER', icon: Users, color: '#10b981', desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups.', channels: ['Telegram', 'WhatsApp', 'Email'], stat: '70% FASTER' },
+                        { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', icon: Search, color: '#0ea5e9', desc: 'Finds decision-makers by title, industry, company size. Auto-populates CRM with scored leads.', channels: ['LinkedIn', 'Email'], stat: '500+ LEADS' },
+                        { key: 'fb_ig_scout', label: 'FB & IG SCOUT', icon: Eye, color: '#ec4899', desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent level.', channels: ['Facebook', 'Instagram'], stat: 'REAL-TIME' },
+                        { key: 'trading_bot', label: 'TRADING BOT', icon: TrendingUp, color: '#22c55e', desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum. Paper Trading default.', channels: ['thinkorswim'], stat: 'AUTOMATED' },
+                      ].map(skill => {
+                        const SkillIcon = skill.icon;
+                        const checked = jeanClawSkills[skill.key] ?? true;
+                        return (
+                          <motion.div key={skill.key}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className={`rounded-xl border p-4 transition-all cursor-pointer group ${
+                              checked
+                                ? 'border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/40 hover:bg-emerald-500/[0.08]'
+                                : 'border-border/20 bg-transparent opacity-30 hover:opacity-50'
+                            }`}
+                            onClick={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className={`w-9 h-9 rounded-lg border flex items-center justify-center ${
+                                checked ? 'border-emerald-500/25' : 'border-border/20'
+                              }`} style={{ background: checked ? `${skill.color}15` : 'transparent' }}>
+                                <SkillIcon className="w-4.5 h-4.5" style={{ color: checked ? skill.color : 'rgba(161,161,170,0.3)' }} />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {checked && (
+                                  <span className="text-[8px] font-bold tracking-wider" style={{ color: skill.color }}>{skill.stat}</span>
+                                )}
+                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                                  checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/20'
+                                }`}>
+                                  {checked && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className={`text-[11px] font-bold uppercase tracking-wider ${checked ? 'text-foreground' : 'text-muted-foreground/30'}`}>
+                                {skill.label}
+                              </span>
+                              {checked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                            </div>
+                            <p className={`text-[10px] leading-relaxed mb-2 ${checked ? 'text-muted-foreground/60' : 'text-muted-foreground/20'}`}>
+                              {skill.desc}
+                            </p>
+                            {checked && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {skill.channels.map(ch => (
+                                  <span key={ch} className="px-1.5 py-0.5 rounded text-[7px] font-mono tracking-wider border" style={{ color: `${skill.color}80`, borderColor: `${skill.color}20`, background: `${skill.color}08` }}>
+                                    {ch}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-emerald-500/10 mb-5" />
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                    {[
+                      { label: 'PABLO CALL AGENT', icon: Phone },
+                      { label: 'AI SECRETARY', icon: Settings },
+                      { label: 'ALL PREMIUM BOTS', icon: Bot },
+                      { label: 'FUTURE AGENTS', icon: Sparkles },
+                    ].map(perk => {
+                      const PerkIcon = perk.icon;
+                      return (
+                        <div key={perk.label} className="flex items-center gap-2 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.02] p-3">
+                          <PerkIcon className="w-3.5 h-3.5 text-emerald-400/60 shrink-0" />
+                          <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider">{perk.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {hasAccess ? (
+                      <>
+                        <button onClick={() => { const clawBotItem = marketplace.find(i => i.slug === 'claw-bot'); if (clawBotItem) activateMarketplaceBot(clawBotItem); }}
+                          className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-lg shadow-emerald-500/20">
+                          <Sparkles className="w-4 h-4" />
+                          {boomerMode ? 'DEPLOY JEAN CLAW' : '// DEPLOY JEAN CLAW'}
+                        </button>
+                        <button onClick={() => setTab('my-bots')}
+                          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-colors">
+                          <Settings className="w-4 h-4" />
+                          MANAGE BOTS
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => navigate('/upgrade')}
+                        className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/30">
+                        <Zap className="w-4 h-4" />
+                        {boomerMode ? 'ACTIVATE JEAN CLAW — $145/MO' : 'ACTIVATE JEAN CLAW — $145/MO'}
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+
+              <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-4 h-4 text-sky-400/60" />
+                  <span className="text-xs font-bold text-sky-400/80 uppercase tracking-wider">FREE WITH PABLO AI</span>
+                  <div className="flex-1 h-px bg-sky-500/10" />
+                </div>
+                <p className="text-xs text-muted-foreground/60 leading-relaxed mb-3">
+                  {boomerMode
+                    ? 'Pablo AI handles all the basics for free — chat, voice, translation, website analysis, CRM, calendar, documents, invoices, dashboard, and more. Jean Claw adds the advanced automation layer on top.'
+                    : 'PABLO AI HANDLES CORE OPS — CHAT, VOICE, TRANSLATION, ANALYSIS, CRM, CALENDAR, DOCUMENTS, INVOICES, DASHBOARD. JEAN CLAW ADDS ADVANCED AUTOMATION + MULTI-CHANNEL DEPLOYMENT.'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['AI CHAT', 'VOICE MODE', 'TRANSLATOR', 'WEBSITE ANALYZER', 'CRM', 'CALENDAR', 'DOCUMENTS', 'INVOICES', 'DASHBOARD', 'STUDIO', 'REPORTS'].map(feat => (
+                    <span key={feat} className="px-2 py-1 rounded-lg text-[9px] font-bold text-emerald-400/60 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
+                      {feat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : tab === 'marketplace' ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card/50 p-4 mb-4">
@@ -2334,7 +2515,6 @@ export default function BotFactory() {
               </div>
 
               {(() => {
-                const clawBotItem = marketplace.find(i => i.slug === 'claw-bot');
                 const freeItems = marketplace.filter(i => i.priceMonthly === 0 && i.slug !== 'claw-bot');
                 const paidItems = marketplace.filter(i => i.priceMonthly > 0);
                 const categories: Record<string, MarketplaceItem[]> = {};
@@ -2345,157 +2525,30 @@ export default function BotFactory() {
 
                 return (
                   <>
-                    {clawBotItem && (
-                      <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'Jean Claw — Flagship Product' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
-                          </span>
-                          <div className="flex-1 h-px bg-emerald-500/15" />
-                          <span className="text-[9px] font-mono text-emerald-500/40 tracking-wider">$145/MO</span>
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 cursor-pointer hover:border-emerald-500/30 transition-all"
+                      onClick={() => setTab('jean-claw')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-5 h-5 text-emerald-400" />
                         </div>
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                          className={`rounded-2xl border relative overflow-hidden ${hasAccess ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent' : 'border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.03] via-transparent to-emerald-500/[0.01]'}`}>
-                          <div className="absolute top-0 left-0 w-60 h-60 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
-                          <div className="absolute bottom-0 right-0 w-40 h-40 bg-emerald-500/3 blur-[60px] rounded-full pointer-events-none" />
-
-                          <div className="relative z-10 p-5">
-                            <div className="flex items-start gap-3 mb-4">
-                              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${hasAccess ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-emerald-500/10 border-emerald-500/15'}`}>
-                                {hasAccess ? <Sparkles className="w-6 h-6 text-emerald-400" /> : <Bot className="w-6 h-6 text-emerald-400" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <h3 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.4rem' }}>
-                                    {boomerMode ? 'Jean Claw' : 'JEAN CLAW'}
-                                  </h3>
-                                  {!boomerMode && <span className="text-[9px] font-mono text-emerald-500/50 tracking-wider">OPENCLAW MULTI-AGENT SUITE</span>}
-                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                    {hasAccess ? (boomerMode ? 'SUBSCRIBED' : '// ACTIVE') : 'FLAGSHIP'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground italic mb-2">
-                                  {boomerMode ? 'The complete AI workforce. Seven agents. One subscription.' : 'The complete AI workforce. Seven battle-tested agents. One subscription. Deploy across every channel.'}
-                                </p>
-                                <p className="text-xs text-muted-foreground/60 leading-relaxed">{clawBotItem.description}</p>
-                              </div>
-                            </div>
-
-                            <div className="h-px bg-emerald-500/10 mb-4" />
-
-                            <div className="mb-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  {boomerMode ? 'Agent Skills — Select & Deploy' : 'AGENT SKILLS // SELECT & DEPLOY'}
-                                </span>
-                                <div className="flex-1 h-px bg-emerald-500/10" />
-                                <span className="text-[8px] font-mono text-emerald-500/40">
-                                  {Object.values(jeanClawSkills).filter(Boolean).length}/7 ACTIVE
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {[
-                                  { key: 'sales_closer', label: 'AI SALES CLOSER', boomerLabel: 'AI SALES CLOSER', icon: Target, desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'] },
-                                  { key: 'customer_support', label: 'CUSTOMER SUPPORT', boomerLabel: 'CUSTOMER SUPPORT', icon: MessageSquare, desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context. 95+ languages.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'] },
-                                  { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'CONTENT WRITER', icon: PenTool, desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'] },
-                                  { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI RECRUITER', icon: Users, desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups. 70% faster hiring.', channels: ['Telegram', 'WhatsApp', 'Email'] },
-                                  { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LINKEDIN PROSPECTOR', icon: Search, desc: 'Finds decision-makers by title, industry, company size. Builds verified contact lists. Auto-populates CRM.', channels: ['LinkedIn', 'Email'] },
-                                  { key: 'fb_ig_scout', label: 'FB / IG SCOUT', boomerLabel: 'FB & IG SCOUT', icon: Eye, desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent (hot/warm/cold).', channels: ['Facebook', 'Instagram'] },
-                                  { key: 'trading_bot', label: 'TRADING BOT', boomerLabel: 'TRADING BOT', icon: TrendingUp, desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum plays. Paper Trading by default.', channels: ['thinkorswim'] },
-                                ].map(skill => {
-                                  const SkillIcon = skill.icon;
-                                  const checked = jeanClawSkills[skill.key] ?? true;
-                                  return (
-                                    <motion.div key={skill.key}
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      className={`rounded-xl border p-3 transition-all cursor-pointer ${
-                                        checked
-                                          ? 'border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/30'
-                                          : 'border-border/30 bg-transparent opacity-40 hover:opacity-60'
-                                      }`}
-                                      onClick={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
-                                    >
-                                      <div className="flex items-center gap-2 mb-1.5">
-                                        <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${
-                                          checked ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-muted/20 border-border/30'
-                                        }`}>
-                                          <SkillIcon className={`w-3.5 h-3.5 ${checked ? 'text-emerald-400' : 'text-muted-foreground/30'}`} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${checked ? 'text-foreground' : 'text-muted-foreground/40'}`}
-                                              style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                              {boomerMode ? skill.boomerLabel : skill.label}
-                                            </span>
-                                            {checked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
-                                          </div>
-                                        </div>
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                                          checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/20 bg-transparent'
-                                        }`}>
-                                          {checked && <Check className="w-2.5 h-2.5 text-white" />}
-                                        </div>
-                                      </div>
-                                      <p className={`text-[10px] leading-relaxed ml-9 ${checked ? 'text-muted-foreground/60' : 'text-muted-foreground/30'}`}>
-                                        {skill.desc}
-                                      </p>
-                                      {checked && skill.channels && (
-                                        <div className="flex items-center gap-1 mt-1.5 ml-9 flex-wrap">
-                                          {skill.channels.map(ch => (
-                                            <span key={ch} className="px-1 py-0.5 rounded text-[7px] font-mono text-emerald-500/40 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
-                                              {ch}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </motion.div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="h-px bg-emerald-500/10 mb-4" />
-
-                            <div className="flex items-center gap-3 mb-4 flex-wrap">
-                              <div className="flex items-center gap-3 text-[8px] font-mono text-muted-foreground/30 tracking-wider">
-                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> Pablo Call Agent</span>
-                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> AI Secretary</span>
-                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> All Premium Bots</span>
-                                <span className="flex items-center gap-1"><Check className="w-2.5 h-2.5 text-emerald-500/30" /> Future Agents</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 flex-wrap">
-                              {hasAccess ? (
-                                <button onClick={() => activateMarketplaceBot(clawBotItem)} disabled={activating === clawBotItem.id}
-                                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 shadow-lg shadow-emerald-500/20">
-                                  {activating === clawBotItem.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                  {boomerMode ? 'Deploy Jean Claw' : '// DEPLOY JEAN CLAW'}
-                                </button>
-                              ) : (
-                                <button onClick={() => navigate('/upgrade')}
-                                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/20">
-                                  <Zap className="w-3.5 h-3.5" />
-                                  {boomerMode ? 'Subscribe — $145/mo' : 'ACTIVATE JEAN CLAW — $145/MO'}
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground text-sm">JEAN CLAW</span>
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">FLAGSHIP</span>
                           </div>
-                        </motion.div>
+                          <p className="text-[11px] text-muted-foreground">7 AI agents, 8 channels, full automation — $145/mo</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-emerald-400/50" />
                       </div>
-                    )}
+                    </motion.div>
 
                     {freeItems.length > 0 && (
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'Free Bots' : 'FREE // NO COST'}
+                            {boomerMode ? 'FREE BOTS' : 'FREE // NO COST'}
                           </span>
                           <div className="flex-1 h-px bg-emerald-500/20" />
                         </div>

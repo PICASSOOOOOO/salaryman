@@ -67,6 +67,7 @@ const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
+const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,7 +78,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards", "/meet"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards", "/meet", "/jean-claw"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
@@ -231,6 +232,9 @@ function AppShell() {
               const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
               return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
+
+            {/* Jean Claw landing — standalone sales page */}
+            <Route path="/jean-claw" component={JeanClawLanding} />
 
             {/* BOTS module */}
             <Route path="/bots" component={BotFactory} />
