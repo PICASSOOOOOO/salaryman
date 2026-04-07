@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { speakWithTTS } from '../lib/tts';
 
-export type ConvState = 'idle' | 'listening' | 'processing' | 'speaking';
+export type ConvState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
 
 interface UseVoiceConversationOptions {
   onSend: (transcript: string) => Promise<string>;
@@ -9,17 +9,44 @@ interface UseVoiceConversationOptions {
   silenceTimeoutMs?: number;
 }
 
+const isIOS = typeof navigator !== 'undefined' && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+);
+const isSafari = typeof navigator !== 'undefined' &&
+  /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isMobile = typeof navigator !== 'undefined' &&
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 let sharedAudioCtx: AudioContext | null = null;
-function getAudioCtx(): AudioContext {
+function getOrCreateAudioCtx(): AudioContext {
   if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
-    sharedAudioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const Ctor = window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    sharedAudioCtx = new Ctor();
   }
   return sharedAudioCtx;
 }
 
+async function warmAudioCtx(): Promise<AudioContext> {
+  const ctx = getOrCreateAudioCtx();
+  if (ctx.state === 'suspended') {
+    try { await ctx.resume(); } catch {}
+  }
+  if (ctx.state === 'suspended' && isIOS) {
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    try { await ctx.resume(); } catch {}
+  }
+  return ctx;
+}
+
 function playReadyChime(): void {
   try {
-    const ctx = getAudioCtx();
+    const ctx = getOrCreateAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -32,55 +59,27 @@ function playReadyChime(): void {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.25);
     osc.onended = () => { osc.disconnect(); gain.disconnect(); };
-  } catch {
-  }
+  } catch {}
 }
 
-async function convertToWav(inputBlob: Blob): Promise<Blob> {
-  try {
-    const arrayBuf = await inputBlob.arrayBuffer();
-    const actx = new AudioContext({ sampleRate: 16000 });
-    const decoded = await actx.decodeAudioData(arrayBuf);
-    const offline = new OfflineAudioContext(1, decoded.length, 16000);
-    const src = offline.createBufferSource();
-    src.buffer = decoded;
-    src.connect(offline.destination);
-    src.start();
-    const rendered = await offline.startRendering();
-    actx.close();
-    const pcm = rendered.getChannelData(0);
-    const wavBuf = new ArrayBuffer(44 + pcm.length * 2);
-    const view = new DataView(wavBuf);
-    const writeStr = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
-    writeStr(0, 'RIFF');
-    view.setUint32(4, 36 + pcm.length * 2, true);
-    writeStr(8, 'WAVE');
-    writeStr(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, 16000, true);
-    view.setUint32(28, 32000, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeStr(36, 'data');
-    view.setUint32(40, pcm.length * 2, true);
-    for (let i = 0; i < pcm.length; i++) {
-      const s = Math.max(-1, Math.min(1, pcm[i]));
-      view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    }
-    return new Blob([wavBuf], { type: 'audio/wav' });
-  } catch (e) {
-    console.warn('WAV conversion failed, using original:', e);
-    return inputBlob;
+function pickMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidates = isIOS || isSafari
+    ? ['audio/mp4', 'audio/aac', 'audio/webm;codecs=opus', 'audio/webm', 'audio/wav']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/wav'];
+  for (const mt of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(mt)) return mt;
+    } catch {}
   }
+  return '';
 }
 
 async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string> {
-  const rawBlob = new Blob(chunks, { type: mimeType });
+  const rawBlob = new Blob(chunks, { type: mimeType || 'audio/webm' });
 
-  const reader = new FileReader();
   const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
       const b64 = result.split(',')[1];
@@ -98,11 +97,14 @@ async function transcribeAudio(chunks: Blob[], mimeType: string): Promise<string
     const resp = await fetch(`${import.meta.env.BASE_URL}api/transcribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ audio: base64, mimeType }),
+      body: JSON.stringify({ audio: base64, mimeType: mimeType || 'audio/webm' }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => '');
+      throw new Error(`Server ${resp.status}: ${errBody.slice(0, 200)}`);
+    }
     const data = await resp.json() as { text?: string };
     return data?.text?.trim() || '';
   } catch (err) {
@@ -119,6 +121,7 @@ export function useVoiceConversation({
   const [convState, setConvState] = useState<ConvState>('idle');
   const [isConvMode, setIsConvMode] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const activeRef = useRef(false);
   const isConvModeRef = useRef(false);
@@ -128,9 +131,7 @@ export function useVoiceConversation({
   const audioChunksRef = useRef<Blob[]>([]);
   const micStreamRef = useRef<MediaStream | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const hasAudioRef = useRef(false);
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
     isConvModeRef.current = isConvMode;
@@ -161,18 +162,15 @@ export function useVoiceConversation({
   }, []);
 
   const cleanupMic = useCallback(() => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      try { mediaRecorderRef.current.stop(); } catch {}
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state === 'recording') {
+        try { mediaRecorderRef.current.stop(); } catch {}
+      }
+      mediaRecorderRef.current = null;
     }
-    mediaRecorderRef.current = null;
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
-    }
-    analyserRef.current = null;
-    if (audioCtxRef.current) {
-      try { audioCtxRef.current.close(); } catch {}
-      audioCtxRef.current = null;
     }
   }, []);
 
@@ -181,33 +179,45 @@ export function useVoiceConversation({
     cleanupMic();
   }, [clearAllTimers, cleanupMic]);
 
-  const getFreshMicStream = useCallback(async (): Promise<MediaStream> => {
+  const getMicStream = useCallback(async (): Promise<MediaStream> => {
     if (micStreamRef.current) {
+      const existingTrack = micStreamRef.current.getAudioTracks()[0];
+      if (existingTrack && existingTrack.readyState === 'live') {
+        return micStreamRef.current;
+      }
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
 
-    let constraints: MediaStreamConstraints = { audio: true };
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.label);
-      if (audioInputs.length > 0) {
-        const label = (d: MediaDeviceInfo) => d.label.toLowerCase();
-        const isVirtual = (d: MediaDeviceInfo) => label(d).includes('virtual');
-        const isBluetooth = (d: MediaDeviceInfo) => label(d).includes('airpod') || label(d).includes('bluetooth') || label(d).includes('beats') || label(d).includes('jabra') || label(d).includes('sony wh') || label(d).includes('bose');
-        const isAux = (d: MediaDeviceInfo) => label(d).includes('headset') || label(d).includes('headphone') || label(d).includes('earphone') || label(d).includes('aux') || label(d).includes('wired');
-        const realDevices = audioInputs.filter(d => !isVirtual(d));
-        const preferred = realDevices.find(d => isBluetooth(d)) || realDevices.find(d => isAux(d)) || realDevices[0];
-        if (preferred) {
-          constraints = { audio: { deviceId: { exact: preferred.deviceId } } };
-          console.log(`[Conv] Selecting mic: "${preferred.label}" (from ${audioInputs.length} devices)`);
-        }
-      }
-    } catch {}
+    let constraints: MediaStreamConstraints = {
+      audio: isMobile
+        ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        : true,
+    };
 
+    if (!isMobile) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.label);
+        if (audioInputs.length > 0) {
+          const label = (d: MediaDeviceInfo) => d.label.toLowerCase();
+          const isVirtual = (d: MediaDeviceInfo) => label(d).includes('virtual');
+          const isBluetooth = (d: MediaDeviceInfo) => label(d).includes('airpod') || label(d).includes('bluetooth') || label(d).includes('beats') || label(d).includes('jabra') || label(d).includes('sony wh') || label(d).includes('bose');
+          const isAux = (d: MediaDeviceInfo) => label(d).includes('headset') || label(d).includes('headphone') || label(d).includes('earphone') || label(d).includes('aux') || label(d).includes('wired');
+          const realDevices = audioInputs.filter(d => !isVirtual(d));
+          const preferred = realDevices.find(d => isBluetooth(d)) || realDevices.find(d => isAux(d)) || realDevices[0];
+          if (preferred) {
+            constraints = { audio: { deviceId: { exact: preferred.deviceId } } };
+          }
+        }
+      } catch {}
+    }
+
+    console.log('[Conv] Requesting mic with constraints:', JSON.stringify(constraints));
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     micStreamRef.current = stream;
-    console.log(`[Conv] Fresh mic stream, device: ${stream.getAudioTracks()[0]?.label}`);
+    const track = stream.getAudioTracks()[0];
+    console.log(`[Conv] Got mic stream: "${track?.label}", readyState=${track?.readyState}`);
     return stream;
   }, []);
 
@@ -216,21 +226,50 @@ export function useVoiceConversation({
     if (mediaRecorderRef.current) return;
 
     try {
-      const stream = await getFreshMicStream();
+      console.log('[Conv] startListening: getting mic...');
+      const stream = await getMicStream();
       if (!isConvModeRef.current || !activeRef.current) return;
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : 'audio/webm';
+      const mimeType = pickMimeType();
+      console.log(`[Conv] Selected MIME type: "${mimeType}" (iOS=${isIOS}, Safari=${isSafari})`);
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      if (!mimeType) {
+        console.error('[Conv] No supported MediaRecorder MIME type');
+        setErrorMsg('Voice recording not supported on this browser');
+        setConvState('error');
+        return;
+      }
+
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType });
+      } catch (mrErr) {
+        console.error('[Conv] MediaRecorder creation failed:', mrErr);
+        try {
+          recorder = new MediaRecorder(stream);
+          console.log(`[Conv] Fallback MediaRecorder, mimeType=${recorder.mimeType}`);
+        } catch (mrErr2) {
+          console.error('[Conv] Fallback MediaRecorder also failed:', mrErr2);
+          setErrorMsg('Cannot create audio recorder');
+          setConvState('error');
+          return;
+        }
+      }
+
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
+      const actualMime = recorder.mimeType || mimeType;
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onerror = (e: any) => {
+        console.error('[Conv] MediaRecorder error:', e?.error || e);
+        mediaRecorderRef.current = null;
+        if (isConvModeRef.current && activeRef.current) {
+          scheduleRestart(1000, () => startListening());
+        }
       };
 
       recorder.onstop = async () => {
@@ -241,127 +280,166 @@ export function useVoiceConversation({
           return;
         }
 
-        const chunks = audioChunksRef.current;
+        const chunks = [...audioChunksRef.current];
         const totalSize = chunks.reduce((a, b) => a + b.size, 0);
-        console.log(`[Conv] onstop: ${chunks.length} chunks, totalSize=${totalSize}`);
-        if (chunks.length === 0) {
-          console.log('[Conv] No chunks, restarting listener');
+        console.log(`[Conv] onstop: ${chunks.length} chunks, totalSize=${totalSize}, mime=${actualMime}`);
+
+        if (chunks.length === 0 || totalSize < 100) {
+          console.log('[Conv] No meaningful audio, restarting listener');
+          retryCountRef.current++;
+          if (retryCountRef.current > 5) {
+            setErrorMsg('Microphone not capturing audio — check mic permissions');
+            setConvState('error');
+            return;
+          }
           scheduleRestart(500, () => startListening());
           return;
         }
 
+        retryCountRef.current = 0;
         setConvState('processing');
-        console.log('[Conv] Sending audio to server for transcription...');
-        transcribeAudio(chunks, mimeType)
-          .then(async (transcript) => {
-            console.log(`[Conv] Transcription: "${transcript}"`);
-            if (!isConvModeRef.current || !activeRef.current) return;
-            if (!transcript) {
-              console.log('[Conv] Empty transcript, restarting listener');
-              setConvState('listening');
-              scheduleRestart(400, () => startListening());
-              return;
-            }
+        console.log('[Conv] Sending audio for transcription...');
 
-            const STOP_PHRASES = ['goodbye pablo', 'bye pablo', 'stop conversation', 'end conversation', 'stop pablo'];
-            if (STOP_PHRASES.some(p => transcript.toLowerCase().includes(p))) {
-              cleanupMic();
-              setIsConvMode(false);
-              activeRef.current = false;
-              isConvModeRef.current = false;
-              setConvState('idle');
-              return;
-            }
+        try {
+          const transcript = await transcribeAudio(chunks, actualMime);
+          console.log(`[Conv] Transcript: "${transcript}"`);
+          if (!isConvModeRef.current || !activeRef.current) return;
 
-            try {
-              console.log(`[Conv] Sending to advisor: "${transcript.slice(0, 50)}..."`);
-              const response = await onSend(transcript);
-              console.log(`[Conv] Advisor response: "${(response || '').slice(0, 80)}..." (${(response || '').length} chars)`);
-              if (!isConvModeRef.current || !activeRef.current) return;
-              if (response) {
-                onResponseReceived?.(response);
-                setConvState('speaking');
-                console.log('[Conv] Starting TTS...');
-                ttsHandleRef.current = speakWithTTS(response, () => {
-                  ttsHandleRef.current = null;
-                  if (!isConvModeRef.current || !activeRef.current) {
-                    setConvState('idle');
-                    return;
-                  }
-                  playReadyChime();
-                  setConvState('listening');
-                  scheduleRestart(300, () => startListening());
-                }, () => {
-                  ttsHandleRef.current = null;
-                  if (!isConvModeRef.current || !activeRef.current) {
-                    setConvState('idle');
-                    return;
-                  }
-                  setConvState('listening');
-                  scheduleRestart(1000, () => startListening());
-                });
-              } else {
-                setConvState('listening');
-                scheduleRestart(400, () => startListening());
-              }
-            } catch {
-              if (isConvModeRef.current && activeRef.current) {
-                setConvState('listening');
-                scheduleRestart(1000, () => startListening());
-              } else {
+          if (!transcript) {
+            console.log('[Conv] Empty transcript, restarting listener');
+            setConvState('listening');
+            scheduleRestart(400, () => startListening());
+            return;
+          }
+
+          const STOP_PHRASES = ['goodbye pablo', 'bye pablo', 'stop conversation', 'end conversation', 'stop pablo'];
+          if (STOP_PHRASES.some(p => transcript.toLowerCase().includes(p))) {
+            cleanupMic();
+            setIsConvMode(false);
+            activeRef.current = false;
+            isConvModeRef.current = false;
+            setConvState('idle');
+            return;
+          }
+
+          console.log(`[Conv] Sending to advisor: "${transcript.slice(0, 50)}..."`);
+          const response = await onSend(transcript);
+          console.log(`[Conv] Response: "${(response || '').slice(0, 80)}..." (${(response || '').length} chars)`);
+          if (!isConvModeRef.current || !activeRef.current) return;
+
+          if (response) {
+            onResponseReceived?.(response);
+            setConvState('speaking');
+            console.log('[Conv] Starting TTS...');
+            await warmAudioCtx();
+            ttsHandleRef.current = speakWithTTS(response, () => {
+              ttsHandleRef.current = null;
+              if (!isConvModeRef.current || !activeRef.current) {
                 setConvState('idle');
+                return;
               }
-            }
-          })
-          .catch(() => {
-            if (isConvModeRef.current && activeRef.current) {
+              playReadyChime();
+              setConvState('listening');
+              scheduleRestart(300, () => startListening());
+            }, () => {
+              ttsHandleRef.current = null;
+              if (!isConvModeRef.current || !activeRef.current) {
+                setConvState('idle');
+                return;
+              }
               setConvState('listening');
               scheduleRestart(1000, () => startListening());
-            }
-          });
+            });
+          } else {
+            setConvState('listening');
+            scheduleRestart(400, () => startListening());
+          }
+        } catch (err: any) {
+          console.error('[Conv] Processing error:', err);
+          if (isConvModeRef.current && activeRef.current) {
+            setConvState('listening');
+            scheduleRestart(1000, () => startListening());
+          } else {
+            setConvState('idle');
+          }
+        }
       };
 
       setConvState('listening');
-      recorder.start(1000);
-      console.log(`[Conv] Recording started, mimeType=${mimeType}`);
+      setErrorMsg(null);
+
+      const timeslice = isIOS ? 500 : 1000;
+      recorder.start(timeslice);
+      console.log(`[Conv] Recording started, mimeType=${actualMime}, timeslice=${timeslice}ms`);
 
       silenceTimerRef.current = setTimeout(() => {
         silenceTimerRef.current = null;
-        console.log('[Conv] Recording timeout (8s), stopping');
+        console.log('[Conv] Recording timeout, stopping');
         if (mediaRecorderRef.current?.state === 'recording') {
-          mediaRecorderRef.current.stop();
+          try { mediaRecorderRef.current.stop(); } catch {}
         }
-      }, 8000);
+      }, silenceTimeoutMs);
 
     } catch (err: any) {
-      console.error('Conv mode getUserMedia error:', err);
+      console.error('[Conv] startListening error:', err?.name, err?.message, err);
+
       if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
         setPermissionDenied(true);
+        setErrorMsg('Microphone access denied — enable it in browser settings');
         setIsConvMode(false);
         activeRef.current = false;
         isConvModeRef.current = false;
-        setConvState('idle');
+        setConvState('error');
+      } else if (err?.name === 'NotFoundError') {
+        setErrorMsg('No microphone found on this device');
+        setIsConvMode(false);
+        activeRef.current = false;
+        isConvModeRef.current = false;
+        setConvState('error');
+      } else if (err?.name === 'NotReadableError' || err?.name === 'AbortError') {
+        setErrorMsg('Microphone is in use by another app');
+        if (isConvModeRef.current && activeRef.current) {
+          scheduleRestart(2000, () => startListening());
+        }
       } else if (isConvModeRef.current && activeRef.current) {
-        scheduleRestart(1000, () => startListening());
+        setErrorMsg(`Mic error: ${err?.message || 'unknown'}`);
+        scheduleRestart(1500, () => {
+          setErrorMsg(null);
+          startListening();
+        });
       }
     }
-  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, getFreshMicStream]);
+  }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, getMicStream]);
 
-  const startConversation = useCallback(() => {
+  const startConversation = useCallback(async () => {
+    console.log('[Conv] === startConversation called ===');
     setPermissionDenied(false);
+    setErrorMsg(null);
+    retryCountRef.current = 0;
+
+    try {
+      await warmAudioCtx();
+      console.log('[Conv] AudioContext warmed up');
+    } catch (e) {
+      console.warn('[Conv] AudioContext warm-up failed (continuing):', e);
+    }
+
     setIsConvMode(true);
     activeRef.current = true;
     isConvModeRef.current = true;
     cancelTTS();
     playReadyChime();
     setConvState('listening');
-    scheduleRestart(200, () => startListening());
+
+    scheduleRestart(300, () => startListening());
   }, [startListening, scheduleRestart, cancelTTS]);
 
   const stopConversation = useCallback(() => {
+    console.log('[Conv] === stopConversation called ===');
     activeRef.current = false;
     isConvModeRef.current = false;
     setIsConvMode(false);
+    setErrorMsg(null);
     stopListening();
     cancelTTS();
     setConvState('idle');
@@ -377,13 +455,16 @@ export function useVoiceConversation({
     };
   }, [clearAllTimers, cleanupMic]);
 
-  const isSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  const isSupported = typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    typeof MediaRecorder !== 'undefined';
 
   return {
     convState,
     isConvMode,
     isSupported,
     permissionDenied,
+    errorMsg,
     startConversation,
     stopConversation,
   };

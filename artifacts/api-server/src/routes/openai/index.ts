@@ -126,14 +126,24 @@ router.post("/transcribe", async (req, res) => {
     } else if (detected === "mp3") {
       finalFormat = "mp3";
     } else {
-      console.log(`[Transcribe] Converting ${detected} to WAV via ffmpeg...`);
+      console.log(`[Transcribe] Converting ${detected} (client mimeType: ${mimeType || 'n/a'}) to WAV via ffmpeg...`);
       try {
         finalBuffer = await convertToWav(audioBuffer) as Buffer<ArrayBuffer>;
         finalFormat = "wav";
         console.log(`[Transcribe] Converted to WAV: ${finalBuffer.length} bytes`);
       } catch (convErr: any) {
-        console.error(`[Transcribe] ffmpeg conversion failed: ${convErr?.message}, sending as webm`);
-        finalFormat = "webm";
+        console.error(`[Transcribe] ffmpeg conversion failed: ${convErr?.message}`);
+        if (detected === "webm" || detected === "ogg") {
+          finalFormat = "webm";
+        } else {
+          console.log(`[Transcribe] Retrying ffmpeg conversion for ${detected}...`);
+          try {
+            finalBuffer = await convertToWav(audioBuffer) as Buffer<ArrayBuffer>;
+            finalFormat = "wav";
+          } catch {
+            finalFormat = "webm";
+          }
+        }
       }
     }
 

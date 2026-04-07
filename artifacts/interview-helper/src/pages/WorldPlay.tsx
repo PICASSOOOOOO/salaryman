@@ -6462,7 +6462,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
   const worldConv = useVoiceConversation({
     onSend: sendPabloVoice,
-    silenceTimeoutMs: 3000,
+    silenceTimeoutMs: 8000,
   });
 
   // ── Game loop ─────────────────────────────────────────────────────────────
@@ -15060,40 +15060,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       )}
                     </div>
                     {worldConv.isConvMode && (
-                      <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', padding: '.3rem .4rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                      <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', padding: '.45rem .5rem', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
                         <div style={{
-                          width: 8, height: 8, borderRadius: '50%',
+                          width: 12, height: 12, borderRadius: '50%', flexShrink: 0,
                           background: worldConv.convState === 'listening' ? '#38bdf8' :
                                       worldConv.convState === 'processing' ? '#ffcc00' :
                                       worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.3)',
                           animation: worldConv.convState !== 'idle' ? 'pulse 1.5s infinite' : 'none',
-                          boxShadow: worldConv.convState === 'listening' ? '0 0 8px rgba(56,189,248,.6)' :
-                                     worldConv.convState === 'speaking' ? '0 0 8px rgba(204,136,255,.6)' : 'none',
+                          boxShadow: worldConv.convState === 'listening' ? '0 0 12px rgba(56,189,248,.6)' :
+                                     worldConv.convState === 'speaking' ? '0 0 12px rgba(204,136,255,.6)' : 'none',
                         }} />
-                        <span style={{ ...ST, fontSize: '.5rem', flex: 1,
+                        <span style={{ ...ST, fontSize: '.6rem', flex: 1,
                           color: worldConv.convState === 'listening' ? '#38bdf8' :
                                  worldConv.convState === 'processing' ? '#ffcc00' :
                                  worldConv.convState === 'speaking' ? '#cc88ff' : 'rgba(56,189,248,.4)',
                         }}>
-                          {worldConv.convState === 'listening' ? 'LISTENING...' :
-                           worldConv.convState === 'processing' ? 'PABLO IS THINKING...' :
-                           worldConv.convState === 'speaking' ? 'PABLO IS SPEAKING...' :
-                           'VOICE ACTIVE'}
+                          {worldConv.convState === 'listening' ? '● LISTENING...' :
+                           worldConv.convState === 'processing' ? '◉ PABLO IS THINKING...' :
+                           worldConv.convState === 'speaking' ? '◉ PABLO IS SPEAKING...' :
+                           '○ VOICE ACTIVE'}
                         </span>
                         <button onClick={worldConv.stopConversation}
-                          style={{ ...VT, fontSize: '.65rem', background: 'rgba(255,50,50,.1)', border: '1px solid rgba(255,50,50,.3)', color: '#ff4444', cursor: 'pointer', padding: '1px 6px' }}>
-                          END
+                          style={{ ...VT, fontSize: '.7rem', background: 'rgba(255,50,50,.15)', border: '1px solid rgba(255,50,50,.4)', color: '#ff4444', cursor: 'pointer', padding: '.25rem .6rem', minHeight: 32, touchAction: 'manipulation' }}>
+                          ✕ END
                         </button>
                       </div>
                     )}
-                    <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem' }}>
+                    {worldConv.errorMsg && (
+                      <div style={{ borderTop: '1px solid rgba(255,80,80,.2)', padding: '.4rem .5rem', background: 'rgba(255,50,50,.08)', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                        <span style={{ ...ST, fontSize: '.6rem', color: 'rgba(255,100,100,.8)', lineHeight: 1.4 }}>
+                          ⚠ {worldConv.errorMsg}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', paddingTop: '.4rem', display: 'flex', gap: '.3rem', alignItems: 'stretch' }}>
                       <input
                         value={pabloIn}
                         onChange={e => setPabloIn(e.target.value)}
                         onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
                         placeholder={worldConv.isConvMode ? 'Voice active — speak to PABLO...' : 'Ask PABLO AI anything...'}
                         disabled={worldConv.isConvMode}
-                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.62rem', padding: '.3rem .5rem', outline: 'none', caretColor: '#38bdf8', opacity: worldConv.isConvMode ? 0.4 : 1 }}
+                        style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.7rem', padding: '.4rem .5rem', outline: 'none', caretColor: '#38bdf8', opacity: worldConv.isConvMode ? 0.4 : 1, minHeight: 36 }}
                       />
                       {worldConv.isSupported && (
                         <button
@@ -15103,14 +15110,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             background: worldConv.isConvMode ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.05)',
                             border: worldConv.isConvMode ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.2)',
                             color: worldConv.isConvMode ? '#38bdf8' : 'rgba(56,189,248,.5)',
-                            cursor: 'pointer', padding: '0 .4rem', ...VT, fontSize: '.75rem',
+                            cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem',
                             animation: worldConv.isConvMode ? 'pulse 2s infinite' : 'none',
+                            minWidth: 40, minHeight: 36, touchAction: 'manipulation',
                           }}
                           title={worldConv.isConvMode ? 'End voice conversation' : 'Start voice conversation with PABLO'}
                         >🎙</button>
                       )}
                       <button onClick={sendPablo} disabled={pabloLoad || worldConv.isConvMode}
-                        style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1rem', opacity: worldConv.isConvMode ? 0.4 : 1 }}>↵</button>
+                        style={{ background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', padding: '0 .55rem', ...VT, fontSize: '1.1rem', opacity: worldConv.isConvMode ? 0.4 : 1, minWidth: 36, minHeight: 36, touchAction: 'manipulation' }}>↵</button>
                     </div>
                   </div>
                 )}

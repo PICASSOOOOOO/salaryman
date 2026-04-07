@@ -68,8 +68,16 @@ function getAudioCtx(): AudioContext {
   return sharedCtx;
 }
 
+async function ensureResumed(ctx: AudioContext): Promise<void> {
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+}
+
 async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {
-  return getAudioCtx().decodeAudioData(arrayBuf);
+  const ctx = getAudioCtx();
+  await ensureResumed(ctx);
+  return ctx.decodeAudioData(arrayBuf);
 }
 
 function speakWithBrowserTTS(text: string, onEnd: () => void): { cancel: () => void } {
@@ -111,9 +119,7 @@ export function speakWithTTS(
 
   async function playSentences() {
     const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') {
-      await ctx.resume();
-    }
+    await ensureResumed(ctx);
 
     type PrefetchResult =
       | { ok: true; buffer: AudioBuffer }
