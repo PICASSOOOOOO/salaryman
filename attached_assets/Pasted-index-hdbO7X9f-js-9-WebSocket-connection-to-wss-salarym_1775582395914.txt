@@ -1,0 +1,73 @@
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9
+ha @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+Ul @ vendor-react-C3DdKlqP.js:8
+kr @ vendor-react-C3DdKlqP.js:8
+yd @ vendor-react-C3DdKlqP.js:8
+(anonymous) @ vendor-react-C3DdKlqP.js:8
+_t @ vendor-react-C3DdKlqP.js:1Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
+index-hdbO7X9f.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-hdbO7X9f.js:9
+(anonymous) @ index-hdbO7X9f.js:9Understand this error
