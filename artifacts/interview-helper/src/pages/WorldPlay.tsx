@@ -14265,14 +14265,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <StatRow label="TOTAL EXP" val={gs.current.totalExpEarned?.toLocaleString() ?? '0'} col="#ffcc00" />
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>NET WORTH & FINANCES</div>
-                      <StatRow label="NET WORTH" val={`ƒ${netWorth.toLocaleString()}`} col="#FFD700" />
-                      <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#67e8f9" />
+                      <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
+                      <StatRow label="SALARY" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#67e8f9" />
                       <StatRow label="CHECKING" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="SAVINGS" val={`ƒ${(g.savings ?? 0).toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz (ƒ${(goldBalance * FIAT_PER_GOLD).toLocaleString()})`} col="#FFD700" />
                       {propertyValue > 0 && <StatRow label="PROPERTY" val={`ƒ${propertyValue.toLocaleString()}`} col="#cc88ff" />}
-                      <StatRow label="INCOME" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#67e8f9" />
+                      <StatRow label="NET WORTH" val={`ƒ${netWorth.toLocaleString()}`} col="#FFD700" />
+                      <StatRow label="USD VALUE" val={`~$${usdConversion}`} col="#67e8f9" />
                     </div>
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
