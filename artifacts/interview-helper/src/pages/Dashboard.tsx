@@ -484,9 +484,9 @@ export default function Dashboard() {
   }, []);
 
   const tabs: { id: Tab; label: string; boomerLabel: string; icon: React.FC<any> }[] = [
-    { id: 'projects',  label: 'Projects',       boomerLabel: 'Projects',       icon: FolderOpen },
-    { id: 'knowledge', label: 'Knowledge Base',  boomerLabel: 'My Notes',       icon: BookOpen   },
-    { id: 'creative',  label: 'Creative Kit',    boomerLabel: 'Brand Settings', icon: Palette    },
+    { id: 'projects',  label: 'Projects',       boomerLabel: 'PROJECTS',       icon: FolderOpen },
+    { id: 'knowledge', label: 'Knowledge Base',  boomerLabel: 'MY NOTES',       icon: BookOpen   },
+    { id: 'creative',  label: 'Creative Kit',    boomerLabel: 'BRAND SETTINGS', icon: Palette    },
   ];
 
   if (!isAuthenticated) {

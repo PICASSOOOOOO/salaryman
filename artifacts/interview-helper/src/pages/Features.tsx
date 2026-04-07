@@ -279,7 +279,7 @@ const MODULES: ModuleDef[] = [
   {
     id: 'claw_bot',
     label: 'JEAN CLAW',
-    boomerLabel: 'Jean Claw',
+    boomerLabel: 'JEAN CLAW',
     codename: 'OpenClaw Multi-Agent Suite',
     boomerCodename: 'AI Multi-Agent Platform',
     tagline: 'The complete AI workforce. Seven battle-tested agents. One subscription. Deploy across every channel.',

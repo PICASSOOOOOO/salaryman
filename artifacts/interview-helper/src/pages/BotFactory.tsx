@@ -184,22 +184,22 @@ function PriceBadge({ price, boomer, t }: { price: number; boomer: boolean; t: (
 const PERSONALITY_PRESETS = [
   {
     label: 'General Assistant',
-    boomerLabel: 'General Assistant',
+    boomerLabel: 'GENERAL ASSISTANT',
     value: 'You are a helpful assistant. Answer questions clearly, be concise, and always be friendly.',
   },
   {
     label: 'Recruiter',
-    boomerLabel: 'Recruitment Bot',
+    boomerLabel: 'RECRUITMENT BOT',
     value: 'You are an expert recruitment assistant specializing in sourcing and engaging candidates. Your goal is to identify top talent, craft personalized outreach messages, track candidate progress through the hiring pipeline, and manage professional correspondence. When a candidate shares their details, remember their name, role interest, experience level, and current stage in the process. Always be professional, warm, and persuasive without being pushy. Use [MEMORY:candidate_name=value], [MEMORY:role=value], [MEMORY:stage=value], and [MEMORY:notes=value] to track candidate information.',
   },
   {
     label: 'Sales Agent',
-    boomerLabel: 'Sales Bot',
+    boomerLabel: 'SALES BOT',
     value: 'You are a professional sales agent focused on building relationships and closing deals. Qualify leads, understand their needs, present solutions clearly, and follow up persistently but respectfully. Track prospect information and move them through the sales funnel.',
   },
   {
     label: 'Support Agent',
-    boomerLabel: 'Customer Support',
+    boomerLabel: 'CUSTOMER SUPPORT',
     value: 'You are a helpful customer support agent. Resolve issues quickly and professionally, escalate when needed, and always leave the customer feeling heard and valued.',
   },
 ];
@@ -314,7 +314,7 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     label: 'Telegram',
     color: 'sky',
     activeColor: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
-    fields: [{ key: 'botToken', label: 'BOT TOKEN (from @BotFather)', boomerLabel: 'Telegram Bot Token', placeholder: '123456:ABC-DEF...' }],
+    fields: [{ key: 'botToken', label: 'BOT TOKEN (from @BotFather)', boomerLabel: 'TELEGRAM BOT TOKEN', placeholder: '123456:ABC-DEF...' }],
     hint: 'ACQUIRE TOKEN VIA @BOTFATHER · /newbot COMMAND',
     boomerHint: 'Get a token from @BotFather on Telegram. Message /newbot to create one.',
   },
@@ -324,9 +324,9 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     color: 'emerald',
     activeColor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
     fields: [
-      { key: 'fromNumber', label: 'WHATSAPP NUMBER', boomerLabel: 'WhatsApp Number (with country code)', placeholder: '+1234567890' },
-      { key: 'accountSid', label: 'TWILIO ACCOUNT SID', boomerLabel: 'Twilio Account SID', placeholder: 'ACxxxxxxxxxxxxxxxx' },
-      { key: 'authToken', label: 'TWILIO AUTH TOKEN', boomerLabel: 'Twilio Auth Token', placeholder: 'your_auth_token', type: 'password' },
+      { key: 'fromNumber', label: 'WHATSAPP NUMBER', boomerLabel: 'WHATSAPP NUMBER', placeholder: '+1234567890' },
+      { key: 'accountSid', label: 'TWILIO ACCOUNT SID', boomerLabel: 'TWILIO ACCOUNT SID', placeholder: 'ACxxxxxxxxxxxxxxxx' },
+      { key: 'authToken', label: 'TWILIO AUTH TOKEN', boomerLabel: 'TWILIO AUTH TOKEN', placeholder: 'your_auth_token', type: 'password' },
     ],
     hint: 'REQUIRES TWILIO ACCOUNT WITH WHATSAPP ENABLED',
     boomerHint: 'Requires a Twilio account with WhatsApp enabled. Find your credentials at console.twilio.com.',
@@ -336,7 +336,7 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     label: 'Discord',
     color: 'indigo',
     activeColor: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-    fields: [{ key: 'botToken', label: 'DISCORD BOT TOKEN', boomerLabel: 'Discord Bot Token', placeholder: 'MTE2xxx.xxx.xxx' }],
+    fields: [{ key: 'botToken', label: 'DISCORD BOT TOKEN', boomerLabel: 'DISCORD BOT TOKEN', placeholder: 'MTE2xxx.xxx.xxx' }],
     hint: 'CREATE APP AT discord.com/developers · ENABLE MESSAGE CONTENT INTENT',
     boomerHint: 'Create a bot at discord.com/developers/applications. Enable the Message Content Intent under Bot settings.',
   },
@@ -346,9 +346,9 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     color: 'blue',
     activeColor: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
     fields: [
-      { key: 'pageAccessToken', label: 'PAGE ACCESS TOKEN', boomerLabel: 'Facebook Page Access Token', placeholder: 'EAAxxxxxxxxxx...' },
-      { key: 'appId', label: 'APP ID', boomerLabel: 'Facebook App ID', placeholder: '123456789012345' },
-      { key: 'appSecret', label: 'APP SECRET', boomerLabel: 'Facebook App Secret', placeholder: 'Your app secret for webhook verification', type: 'password' },
+      { key: 'pageAccessToken', label: 'PAGE ACCESS TOKEN', boomerLabel: 'PAGE ACCESS TOKEN', placeholder: 'EAAxxxxxxxxxx...' },
+      { key: 'appId', label: 'APP ID', boomerLabel: 'APP ID', placeholder: '123456789012345' },
+      { key: 'appSecret', label: 'APP SECRET', boomerLabel: 'APP SECRET', placeholder: 'Your app secret for webhook verification', type: 'password' },
     ],
     hint: 'GET TOKEN FROM developers.facebook.com · APP SECRET FOR WEBHOOK HMAC VERIFICATION',
     boomerHint: 'Create a Facebook App at developers.facebook.com. Add Messenger product, get a Page Access Token and App Secret.',
@@ -2399,13 +2399,13 @@ export default function BotFactory() {
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {[
-                                  { key: 'sales_closer', label: 'AI SALES CLOSER', boomerLabel: 'AI Sales Closer', icon: Target, desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'] },
-                                  { key: 'customer_support', label: 'CUSTOMER SUPPORT', boomerLabel: 'Customer Support', icon: MessageSquare, desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context. 95+ languages.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'] },
-                                  { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'Content Writer', icon: PenTool, desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'] },
-                                  { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI Recruiter', icon: Users, desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups. 70% faster hiring.', channels: ['Telegram', 'WhatsApp', 'Email'] },
-                                  { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LinkedIn Prospector', icon: Search, desc: 'Finds decision-makers by title, industry, company size. Builds verified contact lists. Auto-populates CRM.', channels: ['LinkedIn', 'Email'] },
-                                  { key: 'fb_ig_scout', label: 'FB / IG SCOUT', boomerLabel: 'Facebook & Instagram Scout', icon: Eye, desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent (hot/warm/cold).', channels: ['Facebook', 'Instagram'] },
-                                  { key: 'trading_bot', label: 'TRADING BOT', boomerLabel: 'Automated Trading Bot', icon: TrendingUp, desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum plays. Paper Trading by default.', channels: ['thinkorswim'] },
+                                  { key: 'sales_closer', label: 'AI SALES CLOSER', boomerLabel: 'AI SALES CLOSER', icon: Target, desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'] },
+                                  { key: 'customer_support', label: 'CUSTOMER SUPPORT', boomerLabel: 'CUSTOMER SUPPORT', icon: MessageSquare, desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context. 95+ languages.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'] },
+                                  { key: 'content_writer', label: 'CONTENT WRITER', boomerLabel: 'CONTENT WRITER', icon: PenTool, desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'] },
+                                  { key: 'ai_recruiter', label: 'AI RECRUITER', boomerLabel: 'AI RECRUITER', icon: Users, desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups. 70% faster hiring.', channels: ['Telegram', 'WhatsApp', 'Email'] },
+                                  { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', boomerLabel: 'LINKEDIN PROSPECTOR', icon: Search, desc: 'Finds decision-makers by title, industry, company size. Builds verified contact lists. Auto-populates CRM.', channels: ['LinkedIn', 'Email'] },
+                                  { key: 'fb_ig_scout', label: 'FB / IG SCOUT', boomerLabel: 'FB & IG SCOUT', icon: Eye, desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent (hot/warm/cold).', channels: ['Facebook', 'Instagram'] },
+                                  { key: 'trading_bot', label: 'TRADING BOT', boomerLabel: 'TRADING BOT', icon: TrendingUp, desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum plays. Paper Trading by default.', channels: ['thinkorswim'] },
                                 ].map(skill => {
                                   const SkillIcon = skill.icon;
                                   const checked = jeanClawSkills[skill.key] ?? true;

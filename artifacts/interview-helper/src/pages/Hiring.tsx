@@ -358,11 +358,11 @@ export default function Hiring() {
 
         <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border flex-wrap">
           {([
-            { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'Job Board', icon: Briefcase },
-            { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'Applicants', icon: UserPlus },
-            { id: 'staff' as const, label: 'Staff', boomerLabel: 'Employees', icon: Users },
-            { id: 'conduct' as const, label: 'Interview Conductor', boomerLabel: 'Interview Conductor', icon: Mic2 },
-            { id: 'present' as const, label: 'Presentation', boomerLabel: 'Presentation', icon: Presentation },
+            { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'JOB BOARD', icon: Briefcase },
+            { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'APPLICANTS', icon: UserPlus },
+            { id: 'staff' as const, label: 'Staff', boomerLabel: 'EMPLOYEES', icon: Users },
+            { id: 'conduct' as const, label: 'Interview Conductor', boomerLabel: 'INTERVIEW CONDUCTOR', icon: Mic2 },
+            { id: 'present' as const, label: 'Presentation', boomerLabel: 'PRESENTATION', icon: Presentation },
           ]).map(({ id, label, boomerLabel, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors

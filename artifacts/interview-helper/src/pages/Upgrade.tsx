@@ -45,7 +45,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "live_listen",
     icon: Mic,
     label: "ECHO-7 NERVE TAP",
-    boomerLabel: "Live Listen",
+    boomerLabel: "LIVE LISTEN",
     codename: "ECHO-7",
     desc: "Real-time audio intercept. AI listens to your meetings and interviews and feeds you responses instantly.",
     boomerDesc: "AI listens to your meetings live and gives you real-time answers and coaching.",
@@ -58,7 +58,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "screen_scan",
     icon: Monitor,
     label: "OPTIC-9 RETINAL SCANNER",
-    boomerLabel: "Screen Scan",
+    boomerLabel: "SCREEN SCAN",
     codename: "OPTIC-9",
     desc: "Military-grade screen capture. Identifies code, languages, and content on your screen automatically.",
     boomerDesc: "AI sees your screen and identifies code, content, and context — no copy-paste needed.",
@@ -71,7 +71,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "say_this",
     icon: Zap,
     label: "VOX-4 LARYNX MODULE",
-    boomerLabel: "Say This — Live Coaching",
+    boomerLabel: "SAY THIS — LIVE COACHING",
     codename: "VOX-4",
     desc: "Real-time speech coaching. AI tells you exactly what to say during live conversations.",
     boomerDesc: "AI gives you 3 bullet points to read aloud — coaching in real time.",
@@ -84,7 +84,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "phone_system",
     icon: Phone,
     label: "TTC",
-    boomerLabel: "Phone System",
+    boomerLabel: "PHONE SYSTEM",
     codename: "TTC",
     desc: "Unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, and conference calling for business and marketing partners.",
     boomerDesc: "Unlimited predictive dialing and text messaging for your business. AI call coaching, voicemail, SMS campaigns, and conference calling included.",
@@ -97,7 +97,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     key: "claw_bot",
     icon: Bot,
     label: "OPENCLAW MULTI-AGENT SUITE",
-    boomerLabel: "Jean Claw",
+    boomerLabel: "JEAN CLAW",
     codename: "JEAN CLAW",
     flagship: true,
     desc: "The flagship product of SALARYMAN. A fully autonomous AI operations platform with seven specialized agents — sales, support, content, recruiting, prospecting, social intelligence, and automated trading. Also includes the Pablo AI Call Agent, AI Secretary, and every premium marketplace bot — current and future.",
@@ -256,11 +256,11 @@ const BATTLE_PASS_ITEMS: ComingSoonItem[] = [
 type Tab = "subscriptions" | "cosmetics" | "donations" | "merch" | "battle_pass";
 
 const TABS: { key: Tab; label: string; boomerLabel: string; icon: typeof CreditCard }[] = [
-  { key: "subscriptions", label: "MODULES", boomerLabel: "Subscriptions", icon: CreditCard },
-  { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "Cosmetic Store", icon: Sparkles },
-  { key: "donations", label: "TIP JAR", boomerLabel: "Donate", icon: Heart },
-  { key: "merch", label: "MERCH", boomerLabel: "Merchandise", icon: Package },
-  { key: "battle_pass", label: "SEASON PASS", boomerLabel: "Battle Pass", icon: Shield },
+  { key: "subscriptions", label: "MODULES", boomerLabel: "SUBSCRIPTIONS", icon: CreditCard },
+  { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "COSMETIC STORE", icon: Sparkles },
+  { key: "donations", label: "TIP JAR", boomerLabel: "DONATE", icon: Heart },
+  { key: "merch", label: "MERCH", boomerLabel: "MERCHANDISE", icon: Package },
+  { key: "battle_pass", label: "SEASON PASS", boomerLabel: "BATTLE PASS", icon: Shield },
 ];
 
 function ComingSoonCard({ item, index }: { item: ComingSoonItem; index: number }) {
