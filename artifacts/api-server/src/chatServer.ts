@@ -171,7 +171,16 @@ export function broadcastLeadEvent(orgId: number, event: { type: string; [key: s
 }
 
 export function setupChatServer(server: Server) {
-  const wss = new WebSocketServer({ server, path: '/ws/chat' });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (req, socket, head) => {
+    const pathname = (req.url ?? '').split('?')[0];
+    if (pathname === '/ws/chat') {
+      wss.handleUpgrade(req, socket as any, head, (ws) => {
+        wss.emit('connection', ws, req);
+      });
+    }
+  });
 
   wss.on('connection', async (ws: WebSocket, req) => {
     const url = new URL(req.url ?? '', `http://localhost`);
