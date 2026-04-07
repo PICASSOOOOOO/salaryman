@@ -507,6 +507,14 @@ export default function World() {
   // WS connect
   useEffect(()=>{ if(!char) return; connectWS(char); return()=>{ wsRef.current?.close(); wsRef.current=null; }; },[char?.name]);
 
+  useEffect(()=>{
+    if(!char) return;
+    const send = () => { apiFetch('/api/world/heartbeat',{method:'POST'}).catch(()=>{}); };
+    send();
+    const iv = setInterval(send, 15000);
+    return () => clearInterval(iv);
+  },[char?.name]);
+
   // Broadcast position
   useEffect(()=>{
     if(!char) return;

@@ -780,19 +780,18 @@ export default function WorldMenu() {
   }, []);
 
   useEffect(() => {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/ws?name=_probe&class=corporate&x=0&y=0`);
-    let done = false;
-    ws.onmessage = (e) => {
-      try {
-        const m = JSON.parse(e.data);
-        if (m.type === 'player_list' && !done) { done = true; setPlayers(m.players.length); ws.close(); }
-        if (m.type === 'server_full' && !done) { done = true; setPlayers(-1); ws.close(); }
-      } catch { /* ignore */ }
+    const fetchStatus = () => {
+      apiFetch('/api/world/server-status')
+        .then(r => r.json())
+        .then(d => {
+          if (d.online >= d.max) setPlayers(-1);
+          else setPlayers(d.online ?? 0);
+        })
+        .catch(() => setPlayers(0));
     };
-    ws.onerror = () => ws.close();
-    const timeout = setTimeout(() => { if (!done) ws.close(); }, 3000);
-    return () => { clearTimeout(timeout); ws.close(); };
+    fetchStatus();
+    const iv = setInterval(fetchStatus, 10000);
+    return () => clearInterval(iv);
   }, []);
 
   const selected = CLASSES.find(c => c.id === cls)!;
@@ -944,7 +943,7 @@ export default function WorldMenu() {
           </select>
         </span>
         <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>
-          {players === -1 ? 'SERVER FULL — MAX 50' : players !== null ? `${players}/50 ONLINE` : 'CONNECTING...'}
+          {players === -1 ? 'SERVER FULL — MAX 100' : players !== null ? `${players}/100 ONLINE` : 'CONNECTING...'}
           {tick % 2 === 0 ? ' ▮' : ' ▯'}
         </span>
       </div>

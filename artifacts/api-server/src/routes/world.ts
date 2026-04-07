@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable } from "@workspace/db";
-import { getServerStatus, getLiberationProgress } from "../worldServer";
+import { getServerStatus, getLiberationProgress, recordHeartbeat } from "../worldServer";
 
 const router = Router();
 
@@ -304,6 +304,14 @@ router.get("/world/business-profit-rate", async (req, res) => {
 
 router.get("/world/server-status", (_req, res) => {
   res.json(getServerStatus());
+});
+
+router.post("/world/heartbeat", (req, res) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  const name = derivePlayerName(req);
+  recordHeartbeat(String(user.id), name);
+  res.json({ ok: true });
 });
 
 router.get("/world/liberation", (_req, res) => {

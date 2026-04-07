@@ -698,12 +698,38 @@ const handleMessage = (player: Player, raw: string) => {
   }
 };
 
+// ── Heartbeat tracking (REST-based, survives WebSocket routing issues) ───────
+const heartbeats = new Map<string, { name: string; ts: number }>();
+const HEARTBEAT_TTL_MS = 45_000;
+
+export const recordHeartbeat = (userId: string, name: string) => {
+  heartbeats.set(userId, { name, ts: Date.now() });
+};
+
+const pruneHeartbeats = () => {
+  const cutoff = Date.now() - HEARTBEAT_TTL_MS;
+  for (const [uid, hb] of heartbeats) {
+    if (hb.ts < cutoff) heartbeats.delete(uid);
+  }
+};
+
+setInterval(pruneHeartbeats, 10_000);
+
+export const getHeartbeatCount = () => {
+  pruneHeartbeats();
+  return heartbeats.size;
+};
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
-export const getServerStatus = () => ({
-  online: players.size,
-  max: MAX_PLAYERS,
-  liberationProgress,
-});
+export const getServerStatus = () => {
+  const wsOnline = players.size;
+  const hbOnline = getHeartbeatCount();
+  return {
+    online: Math.max(wsOnline, hbOnline),
+    max: MAX_PLAYERS,
+    liberationProgress,
+  };
+};
 
 export const attachWorldServer = (httpServer: Server) => {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
