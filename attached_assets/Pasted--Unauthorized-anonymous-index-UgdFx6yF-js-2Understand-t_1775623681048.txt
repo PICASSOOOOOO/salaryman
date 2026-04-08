@@ -1,0 +1,62 @@
+(Unauthorized)
+(anonymous) @ index-UgdFx6yF.js:2Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:2  GET https://salaryman.replit.app/api/notifications 401 (Unauthorized)
+(anonymous) @ index-UgdFx6yF.js:2Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:2  GET https://salaryman.replit.app/api/notifications 401 (Unauthorized)
+(anonymous) @ index-UgdFx6yF.js:2Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
+index-UgdFx6yF.js:2  GET https://salaryman.replit.app/api/notifications 401 (Unauthorized)
+(anonymous) @ index-UgdFx6yF.js:2Understand this error
+index-UgdFx6yF.js:9 WebSocket connection to 'wss://salaryman.replit.app/ws/chat?userId=55993510&userName=Alex+Duong&profileImageUrl=https%3A%2F%2Flh3.googleusercontent.com%2Fa%2FACg8ocJVlGssgpRaCLcVKcuC8PN-cz4UYuma-Toqz_7PeKjvWXf2cQ%3Ds96-c&orgId=' failed: 
+(anonymous) @ index-UgdFx6yF.js:9
+(anonymous) @ index-UgdFx6yF.js:9Understand this error
