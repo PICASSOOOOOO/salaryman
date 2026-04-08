@@ -46,7 +46,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'listen', path: '/console', label: 'LIVE LISTEN', boomerLabel: 'LIVE LISTEN', codename: 'ECHO-7', icon: Mic },
       { id: 'scan', path: '/console', label: 'SCREEN SCAN', boomerLabel: 'SCREEN SCAN', codename: 'OPTIC-9', icon: Monitor },
-      { id: 'interview', path: '/console', label: 'INTERVIEW SOLVER', boomerLabel: 'CODE ASSISTANT', codename: 'CIPHER-X', icon: Code2 },
+      { id: 'interview', path: '/console', label: 'INTERVIEW OFFICE', boomerLabel: 'INTERVIEW OFFICE', codename: 'CIPHER-X', icon: Code2 },
     ],
   },
   {

@@ -792,7 +792,7 @@ function StepSequencer({ busGain, bpm, swing, onActivePads, globalPlaying, globa
   );
 }
 
-function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMasterVolChange, playing, onPlayToggle, engineReady, instrumentMutes, onMuteToggle }: {
+function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMasterVolChange, playing, onPlayToggle, engineReady, instrumentMutes, onMuteToggle, instrumentVols, onVolChange }: {
   bpm: number; onBpmChange: (v: number) => void;
   swing: number; onSwingChange: (v: number) => void;
   masterVol: number; onMasterVolChange: (v: number) => void;
@@ -801,13 +801,17 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
   engineReady: boolean;
   instrumentMutes: Record<string, boolean>;
   onMuteToggle: (id: string) => void;
+  instrumentVols: Record<string, number>;
+  onVolChange: (id: string, v: number) => void;
 }) {
   const instruments = [
     { id: 'drums', label: 'DRUMS', color: '#ff4444' },
+    { id: 'synth', label: 'SYNTH', color: C },
     { id: 'arp', label: 'ARP', color: '#4488ff' },
+    { id: 'sampler', label: 'SMPL', color: '#ffaa00' },
   ];
   return (
-    <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 14px' }}>
+    <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 14px' }}>
       <button onClick={onPlayToggle} style={{
         padding: '5px 14px',
         background: playing ? 'linear-gradient(to bottom, rgba(255,68,68,.2), rgba(255,68,68,.08))' : 'linear-gradient(to bottom, rgba(56,189,248,.12), rgba(56,189,248,.04))',
@@ -826,20 +830,25 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
           style={{ width: 50, background: '#050805', border: `2px solid ${BORDER}`, color: C, ...MONO, fontSize: '.6rem', padding: '3px 6px', borderRadius: 3, textAlign: 'center' }} />
       </div>
       <HwKnob label="SWING" val={swing} min={0} max={0.5} onChange={onSwingChange} size={32} />
-      <HwKnob label="MASTER" val={masterVol} min={0} max={1} onChange={onMasterVolChange} size={32} />
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 6px', borderLeft: `1px solid ${BORDER}`, borderRight: `1px solid ${BORDER}` }}>
+      <div style={{ width: 1, height: 28, background: BORDER }} />
+      <HwKnob label="MASTER" val={masterVol} min={0} max={1} onChange={onMasterVolChange} size={32} color={OC} />
+      <div style={{ width: 1, height: 28, background: BORDER }} />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
         {instruments.map(inst => (
           <div key={inst.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <LED on={playing && !instrumentMutes[inst.id]} color={inst.color} />
-            <button onClick={() => onMuteToggle(inst.id)} style={{
-              padding: '2px 5px',
-              background: instrumentMutes[inst.id] ? 'rgba(255,68,68,.12)' : 'transparent',
-              border: `1px solid ${instrumentMutes[inst.id] ? '#ff444455' : BORDER}`,
-              color: instrumentMutes[inst.id] ? '#ff4444' : inst.color + '88',
-              cursor: 'pointer', ...MONO, fontSize: '.3rem', borderRadius: 2, letterSpacing: '.05em',
-            }}>
-              {instrumentMutes[inst.id] ? 'M' : inst.label.slice(0, 3)}
-            </button>
+            <HwKnob label="" val={instrumentVols[inst.id] ?? 0.8} min={0} max={1} onChange={v => onVolChange(inst.id, v)} size={24} color={inst.color} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <LED on={playing && !instrumentMutes[inst.id]} color={inst.color} />
+              <button onClick={() => onMuteToggle(inst.id)} style={{
+                padding: '2px 5px',
+                background: instrumentMutes[inst.id] ? 'rgba(255,68,68,.12)' : 'transparent',
+                border: `1px solid ${instrumentMutes[inst.id] ? '#ff444455' : BORDER}`,
+                color: instrumentMutes[inst.id] ? '#ff4444' : inst.color + '88',
+                cursor: 'pointer', ...MONO, fontSize: '.28rem', borderRadius: 2, letterSpacing: '.05em',
+              }}>
+                {instrumentMutes[inst.id] ? 'M' : inst.label}
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -924,7 +933,10 @@ function SynthPanel({ busGain, synth, onSynthChange }: { busGain: GainNode | nul
   );
 }
 
-function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGain: GainNode | null; bpm: number; globalPlaying: boolean; globalStep: number; muted: boolean }) {
+function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted, synth, arpActive, onToggleArp }: {
+  busGain: GainNode | null; bpm: number; globalPlaying: boolean; globalStep: number; muted: boolean;
+  synth: SynthVoice; arpActive: boolean; onToggleArp: () => void;
+}) {
   const [rootNote, setRootNote] = useState(0);
   const [scale, setScale] = useState('Minor');
   const [pattern, setPattern] = useState('Up');
@@ -932,7 +944,6 @@ function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGa
   const [octaveRange, setOctaveRange] = useState(2);
   const [gateLen, setGateLen] = useState(0.5);
   const [currentNote, setCurrentNote] = useState(-1);
-  const [synth, setSynth] = useState<SynthVoice>(DEFAULT_SYNTH);
   const posRef = useRef(0);
 
   const stepsPerNoteMap: Record<string, number> = { '1/4': 4, '1/8': 2, '1/16': 1, '1/32': 1 };
@@ -967,7 +978,7 @@ function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGa
   }, [pattern]);
 
   useEffect(() => {
-    if (!globalPlaying) { setCurrentNote(-1); posRef.current = 0; return; }
+    if (!arpActive || !globalPlaying) { setCurrentNote(-1); posRef.current = 0; return; }
     if (muted) return;
     if (globalStep % stepsPerNote !== 0) return;
     const c = actx();
@@ -978,12 +989,21 @@ function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGa
       playSynthNote(c, note, synth, out, (60 / bpm) * (noteDurMap[rate] ?? 0.5) * gateLen);
       setCurrentNote(note);
     }
-  }, [globalPlaying, globalStep, muted, stepsPerNote, scaleNotes, getNextNote, synth, gateLen, bpm, rate, busGain]);
+  }, [arpActive, globalPlaying, globalStep, muted, stepsPerNote, scaleNotes, getNextNote, synth, gateLen, bpm, rate, busGain]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <LED on={globalPlaying && !muted} color="#4488ff" />
+        <HwButton
+          label={arpActive ? '■ STOP ARP' : '▶ START ARP'}
+          onClick={onToggleArp}
+          active={arpActive}
+          color={arpActive ? '#ff4444' : '#4488ff'}
+        />
+        <LED on={arpActive && globalPlaying && !muted} color="#4488ff" />
+        <span style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>
+          {!globalPlaying ? 'PRESS GLOBAL PLAY FIRST' : arpActive ? 'ARP RUNNING' : 'ARP OFF'}
+        </span>
         <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
         <span style={{ ...VT, fontSize: '.8rem', color: C }}>{bpm}</span>
       </div>
@@ -1020,13 +1040,13 @@ function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted }: { busGa
       <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>
         CURRENT: {currentNote >= 0 ? `${NOTE_NAMES[currentNote % 12]}${Math.floor(currentNote / 12) - 1}` : '—'}
       </div>
-      <div style={hwPanel}>
-        <div style={hwLabel}>SYNTH VOICE</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {(['sine','square','sawtooth','triangle'] as WaveType[]).map(w => <HwButton key={w} label={w.slice(0,3).toUpperCase()} onClick={() => setSynth(s => ({ ...s, osc1Type: w }))} active={synth.osc1Type === w} small />)}
-          <HwKnob label="ATK" val={synth.attack} min={0.001} max={1} onChange={v => setSynth(s => ({ ...s, attack: v }))} size={32} />
-          <HwKnob label="REL" val={synth.release} min={0.01} max={2} onChange={v => setSynth(s => ({ ...s, release: v }))} size={32} />
-          <HwKnob label="CUTOFF" val={synth.filterCutoff} min={200} max={18000} step={100} onChange={v => setSynth(s => ({ ...s, filterCutoff: v }))} size={32} color={OC} />
+      <div style={{ ...hwPanel, padding: 8 }}>
+        <div style={hwLabel}>USING SYNTH VOICE</div>
+        <div style={{ ...MONO, fontSize: '.35rem', color: C2 + '.3)' }}>
+          OSC: {synth.osc1Type.toUpperCase()} · FILTER: {synth.filterCutoff}Hz · ATK: {synth.attack.toFixed(3)} · REL: {synth.release.toFixed(2)}
+        </div>
+        <div style={{ ...MONO, fontSize: '.32rem', color: OC2 + '.4)', marginTop: 4 }}>
+          EDIT SYNTH VOICE IN THE SYNTH TAB — ARP USES THE SAME ENGINE
         </div>
       </div>
     </div>
@@ -1176,7 +1196,10 @@ function AudioRecorder() {
   );
 }
 
-function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute }: { bpm: number; globalPlaying: boolean; muted: boolean; onToggleMute: () => void }) {
+function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onMasterVolChange }: {
+  bpm: number; globalPlaying: boolean; muted: boolean; onToggleMute: () => void;
+  masterVol: number; onMasterVolChange: (v: number) => void;
+}) {
   const [loopLength, setLoopLength] = useState(4);
   const [layers, setLayers] = useState<Array<{ url: string; label: string; blob: Blob }>>([]);
   const [recording, setRecording] = useState(false);
@@ -1279,6 +1302,9 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute }: { bpm: numbe
             <HwButton label="EXPORT" onClick={exportLoop} small />
           </>
         )}
+
+        <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
+        <HwKnob label="MST" val={masterVol} min={0} max={1} onChange={onMasterVolChange} size={22} color={OC} />
 
         <span style={{ ...MONO, fontSize: '.32rem', color: C2 + '.25)', marginLeft: 'auto' }}>
           {(loopDurationMs / 1000).toFixed(1)}s
@@ -1905,9 +1931,15 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   const globalStepRef = useRef(0);
   const transportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [instrumentMutes, setInstrumentMutes] = useState<Record<string, boolean>>({ drums: false, arp: false, looper: false });
+  const [instrumentVols, setInstrumentVols] = useState<Record<string, number>>({ drums: 0.8, synth: 0.8, arp: 0.7, sampler: 0.8 });
+  const [arpPlaying, setArpPlaying] = useState(false);
 
   const toggleMute = useCallback((id: string) => {
     setInstrumentMutes(m => ({ ...m, [id]: !m[id] }));
+  }, []);
+
+  const setInstrumentVol = useCallback((id: string, val: number) => {
+    setInstrumentVols(v => ({ ...v, [id]: val }));
   }, []);
 
   const masterEffectsRef = useRef(masterEffects);
@@ -1978,6 +2010,15 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (engineRef.current) engineRef.current.masterGain.gain.value = masterVol;
   }, [masterVol]);
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    const busMap: Record<string, number> = { drums: 0, synth: 1, sampler: 3, arp: 4 };
+    for (const [id, busIdx] of Object.entries(busMap)) {
+      const bus = engineRef.current.trackBuses[busIdx];
+      if (bus) bus.gain.gain.value = instrumentVols[id] ?? 0.8;
+    }
+  }, [instrumentVols]);
 
   const bpmRef = useRef(bpm);
   const swingRef = useRef(swing);
@@ -2176,6 +2217,9 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
             globalPlaying={globalPlaying}
             globalStep={globalStep}
             muted={instrumentMutes.arp}
+            synth={synthVoice}
+            arpActive={arpPlaying}
+            onToggleArp={() => setArpPlaying(p => !p)}
           />
         </div>
 
@@ -2202,6 +2246,8 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           globalPlaying={globalPlaying}
           muted={instrumentMutes.looper}
           onToggleMute={() => toggleMute('looper')}
+          masterVol={masterVol}
+          onMasterVolChange={setMasterVol}
         />
       </div>
 
@@ -2213,6 +2259,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           playing={globalPlaying} onPlayToggle={toggleGlobalPlay}
           engineReady={engineReady}
           instrumentMutes={instrumentMutes} onMuteToggle={toggleMute}
+          instrumentVols={instrumentVols} onVolChange={setInstrumentVol}
         />
       </div>
 
