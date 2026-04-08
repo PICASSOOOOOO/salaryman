@@ -7,7 +7,7 @@ import {
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
-  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles,
+  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles, Phone,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';

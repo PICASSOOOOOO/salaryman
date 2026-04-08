@@ -306,9 +306,9 @@ router.get("/world/server-status", (_req, res) => {
   res.json(getServerStatus());
 });
 
-router.post("/world/heartbeat", (req, res) => {
+router.post("/world/heartbeat", (req, res): void => {
   const user = req.user;
-  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const name = derivePlayerName(req);
   recordHeartbeat(String(user.id), name);
   res.json({ ok: true });

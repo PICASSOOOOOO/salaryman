@@ -114,7 +114,7 @@ interface SynthVoice {
   filterRes: number;
 }
 
-type DAWSection = 'machine' | 'synth' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects' | 'looper';
+type DAWSection = 'machine' | 'synth' | 'arpeggiator' | 'sampler' | 'timeline' | 'mixer' | 'effects';
 
 const TRACK_COLORS = ['#38bdf8', '#ff4444', '#4488ff', '#ffaa00', '#cc44ff', '#44ffff', '#ff44cc', '#7dd3fc'];
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -805,7 +805,6 @@ function TransportBar({ bpm, onBpmChange, swing, onSwingChange, masterVol, onMas
   const instruments = [
     { id: 'drums', label: 'DRUMS', color: '#ff4444' },
     { id: 'arp', label: 'ARP', color: '#4488ff' },
-    { id: 'looper', label: 'LOOP', color: '#ffaa00' },
   ];
   return (
     <div style={{ ...hwPanel, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 14px' }}>
@@ -1177,11 +1176,12 @@ function AudioRecorder() {
   );
 }
 
-function Looper({ bpm, globalPlaying, muted }: { bpm: number; globalPlaying: boolean; muted: boolean }) {
+function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute }: { bpm: number; globalPlaying: boolean; muted: boolean; onToggleMute: () => void }) {
   const [loopLength, setLoopLength] = useState(4);
-  const [layers, setLayers] = useState<Array<{ url: string; label: string }>>([]);
+  const [layers, setLayers] = useState<Array<{ url: string; label: string; blob: Blob }>>([]);
   const [recording, setRecording] = useState(false);
   const [position, setPosition] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1196,7 +1196,7 @@ function Looper({ bpm, globalPlaying, muted }: { bpm: number; globalPlaying: boo
     mr.ondataavailable = e => chunksRef.current.push(e.data);
     mr.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-      setLayers(l => [...l, { url: URL.createObjectURL(blob), label: `LAYER ${l.length + 1}` }]);
+      setLayers(l => [...l, { url: URL.createObjectURL(blob), label: `L${l.length + 1}`, blob }]);
       stream.getTracks().forEach(t => t.stop());
     };
     setTimeout(() => { mr.stop(); setRecording(false); }, loopDurationMs);
@@ -1214,28 +1214,103 @@ function Looper({ bpm, globalPlaying, muted }: { bpm: number; globalPlaying: boo
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [globalPlaying, muted, layers, loopDurationMs]);
 
+  const exportLoop = () => {
+    if (layers.length === 0) return;
+    const blob = layers[layers.length - 1].blob;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `loop_${Date.now()}.webm`;
+    a.click();
+  };
+
+  const barMarkers = Array.from({ length: loopLength }, (_, i) => i);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <LED on={globalPlaying && !muted} color="#ffaa00" />
-        <HwButton label={recording ? '■ STOP' : '● REC LAYER'} onClick={recording ? () => { mediaRef.current?.stop(); setRecording(false); } : startRecord} active={recording} color="#ff4444" />
-        <HwButton label="CLEAR" onClick={() => { setLayers([]); audioRefs.current = []; setPosition(0); }} small />
-        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BPM</span>
-        <span style={{ ...VT, fontSize: '.8rem', color: C }}>{bpm}</span>
-        <span style={{ ...MONO, fontSize: '.4rem', color: C2 + '.5)' }}>BARS</span>
-        {[1,2,4,8].map(n => <HwButton key={n} label={String(n)} onClick={() => setLoopLength(n)} active={loopLength === n} small />)}
-      </div>
-      <div style={{ height: 6, background: '#050805', border: `1px solid ${BORDER}`, borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${position * 100}%`, background: C + '55' }} />
-      </div>
-      {layers.length === 0 && <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.2)' }}>No layers — REC lasts {(loopDurationMs / 1000).toFixed(1)}s</div>}
-      {layers.map((layer, i) => (
-        <div key={i} style={{ ...hwPanel, display: 'flex', gap: 6, alignItems: 'center', padding: 6 }}>
-          <span style={{ ...VT, fontSize: '.7rem', color: C, flex: 1 }}>{layer.label}</span>
-          <audio ref={el => { if (el) audioRefs.current[i] = el; }} src={layer.url} />
-          <HwButton label="✕" onClick={() => { setLayers(l => l.filter((_, li) => li !== i)); audioRefs.current.splice(i, 1); }} small />
+    <div style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20,
+      background: 'linear-gradient(to top, #0a0d0a, #0d100dee)',
+      borderTop: `2px solid ${recording ? '#ff444488' : '#ffaa0044'}`,
+      backdropFilter: 'blur(8px)',
+      transition: 'border-color .3s',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <LED on={recording} color="#ff4444" />
+          <span style={{ ...VT, fontSize: '.7rem', color: '#ffaa00', letterSpacing: '.1em', cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setExpanded(e => !e)}>
+            LOOP {expanded ? '▾' : '▸'}
+          </span>
         </div>
+
+        <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
+
+        <HwButton
+          label={recording ? '■ STOP' : '● REC'}
+          onClick={recording ? () => { mediaRef.current?.stop(); setRecording(false); } : startRecord}
+          active={recording}
+          color="#ff4444"
+          small
+        />
+        <HwButton label={muted ? 'UNMUTE' : 'MUTE'} onClick={onToggleMute} active={muted} small />
+        <HwButton label="CLR" onClick={() => { setLayers([]); audioRefs.current = []; setPosition(0); }} small />
+
+        <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
+
+        <span style={{ ...MONO, fontSize: '.35rem', color: C2 + '.4)' }}>BARS</span>
+        {[1,2,4,8].map(n => <HwButton key={n} label={String(n)} onClick={() => setLoopLength(n)} active={loopLength === n} small />)}
+
+        <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {layers.map((_, i) => (
+            <div key={i} style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: (globalPlaying && !muted) ? C : C2 + '.25)',
+              border: `1px solid ${C2 + '.4)'}`,
+              transition: 'background .2s',
+            }} />
+          ))}
+          {layers.length === 0 && <span style={{ ...MONO, fontSize: '.32rem', color: C2 + '.2)' }}>NO LAYERS</span>}
+        </div>
+
+        {layers.length > 0 && (
+          <>
+            <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
+            <HwButton label="EXPORT" onClick={exportLoop} small />
+          </>
+        )}
+
+        <span style={{ ...MONO, fontSize: '.32rem', color: C2 + '.25)', marginLeft: 'auto' }}>
+          {(loopDurationMs / 1000).toFixed(1)}s
+        </span>
+      </div>
+
+      <div style={{ height: 4, background: '#050805', margin: '0 10px', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${position * 100}%`, background: recording ? '#ff444466' : '#ffaa0044', transition: 'width 50ms linear' }} />
+        {barMarkers.map((_, i) => (
+          <div key={i} style={{ position: 'absolute', top: 0, left: `${(i / loopLength) * 100}%`, width: 1, height: '100%', background: C2 + '.15)' }} />
+        ))}
+      </div>
+
+      {expanded && layers.length > 0 && (
+        <div style={{ padding: '4px 10px 2px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {layers.map((layer, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 4, alignItems: 'center', padding: '2px 6px',
+              background: '#080b08', border: `1px solid ${BORDER}`, borderRadius: 3,
+            }}>
+              <span style={{ ...VT, fontSize: '.6rem', color: '#ffaa00' }}>{layer.label}</span>
+              <audio ref={el => { if (el) audioRefs.current[i] = el; }} src={layer.url} />
+              <HwButton label="✕" onClick={() => { setLayers(l => l.filter((_, li) => li !== i)); audioRefs.current.splice(i, 1); }} small />
+            </div>
+          ))}
+        </div>
+      )}
+      {!expanded && layers.map((layer, i) => (
+        <audio key={i} ref={el => { if (el) audioRefs.current[i] = el; }} src={layer.url} style={{ display: 'none' }} />
       ))}
+
+      <div style={{ height: 3 }} />
     </div>
   );
 }
@@ -1943,7 +2018,6 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
     { id: 'arpeggiator', label: 'ARP' },
     { id: 'sampler', label: 'SAMPLER' },
     { id: 'timeline', label: 'TIMELINE' },
-    { id: 'looper', label: 'LOOPER' },
     { id: 'mixer', label: 'MIXER' },
     { id: 'effects', label: 'FX' },
   ];
@@ -2113,10 +2187,6 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <Timeline tracks={tracks} bpm={bpm} />
         </div>
 
-        <div style={{ display: section === 'looper' ? 'block' : 'none' }}>
-          <Looper bpm={bpm} globalPlaying={globalPlaying} muted={instrumentMutes.looper} />
-        </div>
-
         <div style={{ display: section === 'mixer' ? 'block' : 'none' }}>
           <Mixer tracks={tracks} onTracksChange={setTracks} engine={engineRef.current} />
         </div>
@@ -2125,6 +2195,14 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <EffectsRack effects={masterEffects} onEffectsChange={setMasterEffects} engine={engineRef.current} />
         </div>
 
+        <div style={{ height: 60 }} />
+
+        <LooperOverlay
+          bpm={bpm}
+          globalPlaying={globalPlaying}
+          muted={instrumentMutes.looper}
+          onToggleMute={() => toggleMute('looper')}
+        />
       </div>
 
       <div style={{ padding: '6px 10px', borderTop: `1px solid ${BORDER}`, background: CHASSIS, flexShrink: 0 }}>
