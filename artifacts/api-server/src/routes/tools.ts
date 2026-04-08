@@ -422,4 +422,281 @@ router.get("/tools/skills", (_req, res) => {
   res.json({ skills: getSkillCatalog() });
 });
 
+// ── Video URL helpers ─────────────────────────────────────────────────────────
+
+interface VideoMeta {
+  platform: "youtube" | "tiktok" | "vimeo" | "instagram" | "twitter" | "generic";
+  videoId: string | null;
+  embedUrl: string | null;
+  title: string;
+  description: string;
+  thumbnail: string | null;
+  transcript: string | null;
+  pageContent: string;
+}
+
+function detectPlatform(url: string): VideoMeta["platform"] {
+  const u = url.toLowerCase();
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
+  if (u.includes("tiktok.com")) return "tiktok";
+  if (u.includes("vimeo.com")) return "vimeo";
+  if (u.includes("instagram.com")) return "instagram";
+  if (u.includes("twitter.com") || u.includes("x.com")) return "twitter";
+  return "generic";
+}
+
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /\/embed\/([a-zA-Z0-9_-]{11})/,
+    /\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function extractVimeoId(url: string): string | null {
+  const m = url.match(/vimeo\.com\/(\d+)/);
+  return m ? m[1] : null;
+}
+
+function extractMetaFromHtml(html: string): { title: string; description: string; thumbnail: string | null } {
+  const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+  const title = ogTitle?.[1]
+    ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]
+    ?? "";
+  const ogDesc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+  const metaDesc = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+  const description = ogDesc?.[1] ?? metaDesc?.[1] ?? "";
+  const ogImage = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+  return {
+    title: title.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim(),
+    description: description.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim(),
+    thumbnail: ogImage?.[1] ?? null,
+  };
+}
+
+async function fetchYouTubeTranscript(videoId: string): Promise<string | null> {
+  try {
+    const pageRes = await safeFetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      timeoutMs: 10000,
+      maxResponseBytes: 2 * 1024 * 1024,
+    });
+    const pageHtml = await pageRes.text();
+
+    const captionMatch = pageHtml.match(/"captions":\s*(\{[^}]*"playerCaptionsTracklistRenderer"[^}]*\})/);
+    if (!captionMatch) {
+      const timedTextMatch = pageHtml.match(/timedtext[^"]*lang=en[^"]*/i)
+        ?? pageHtml.match(/timedtext[^"]*/i);
+      if (!timedTextMatch) return null;
+    }
+
+    const captionUrlMatch = pageHtml.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
+    if (!captionUrlMatch) return null;
+
+    let captionUrl = captionUrlMatch[1].replace(/\\u0026/g, "&");
+    if (!captionUrl.includes("lang=")) captionUrl += "&lang=en";
+
+    const captionRes = await safeFetch(captionUrl, { timeoutMs: 8000, maxResponseBytes: 512 * 1024 });
+    const captionXml = await captionRes.text();
+
+    const lines = [...captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)]
+      .map(m => m[1]
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\n/g, " ")
+        .trim()
+      )
+      .filter(Boolean);
+
+    return lines.length > 0 ? lines.join(" ").slice(0, 15000) : null;
+  } catch (e) {
+    console.error("YouTube transcript fetch error:", e);
+    return null;
+  }
+}
+
+async function fetchOEmbed(url: string, platform: string): Promise<{ title: string; description: string; thumbnail: string | null } | null> {
+  try {
+    let oembedUrl: string | null = null;
+    if (platform === "youtube") {
+      oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    } else if (platform === "vimeo") {
+      oembedUrl = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
+    } else if (platform === "tiktok") {
+      oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+    }
+    if (!oembedUrl) return null;
+    const res = await safeFetch(oembedUrl, { timeoutMs: 6000, maxResponseBytes: 64 * 1024 });
+    if (!res.ok) return null;
+    const data = await res.json() as Record<string, unknown>;
+    return {
+      title: String(data.title ?? ""),
+      description: String(data.author_name ? `By ${data.author_name}` : ""),
+      thumbnail: String(data.thumbnail_url ?? "") || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchVideoMeta(url: string): Promise<VideoMeta> {
+  const platform = detectPlatform(url);
+  let videoId: string | null = null;
+  let embedUrl: string | null = null;
+  let transcript: string | null = null;
+  let title = "";
+  let description = "";
+  let thumbnail: string | null = null;
+  let pageContent = "";
+
+  if (platform === "youtube") {
+    videoId = extractYouTubeId(url);
+    if (videoId) {
+      embedUrl = `https://www.youtube.com/embed/${videoId}`;
+      thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      transcript = await fetchYouTubeTranscript(videoId);
+    }
+  } else if (platform === "vimeo") {
+    videoId = extractVimeoId(url);
+    if (videoId) embedUrl = `https://player.vimeo.com/video/${videoId}`;
+  }
+
+  const oembed = await fetchOEmbed(url, platform);
+  if (oembed) {
+    title = oembed.title;
+    description = oembed.description;
+    if (oembed.thumbnail) thumbnail = oembed.thumbnail;
+  }
+
+  try {
+    const res = await safeFetch(url, { timeoutMs: 10000, maxResponseBytes: 1024 * 1024 });
+    const html = await res.text();
+    const meta = extractMetaFromHtml(html);
+    if (!title) title = meta.title;
+    if (!description) description = meta.description;
+    if (!thumbnail) thumbnail = meta.thumbnail;
+    pageContent = htmlToText(html);
+  } catch (e) {
+    console.error("Video page fetch error:", e);
+  }
+
+  return { platform, videoId, embedUrl, title, description, thumbnail, transcript, pageContent };
+}
+
+// ── POST /tools/analyze-video ─────────────────────────────────────────────────
+router.post("/tools/analyze-video", async (req, res) => {
+  const { url, goal } = req.body as { url: string; goal?: string };
+  if (!url || typeof url !== "string") {
+    res.status(400).json({ error: "Provide a video URL" });
+    return;
+  }
+
+  try {
+    new URL(url);
+  } catch {
+    res.status(400).json({ error: "Invalid URL format" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    res.write(`data: ${JSON.stringify({ status: "fetching" })}\n\n`);
+    const meta = await fetchVideoMeta(url);
+
+    res.write(`data: ${JSON.stringify({
+      status: "meta",
+      platform: meta.platform,
+      title: meta.title,
+      thumbnail: meta.thumbnail,
+      embedUrl: meta.embedUrl,
+      hasTranscript: !!meta.transcript,
+    })}\n\n`);
+
+    const contentParts: string[] = [];
+    contentParts.push(`VIDEO URL: ${url}`);
+    contentParts.push(`PLATFORM: ${meta.platform.toUpperCase()}`);
+    if (meta.title) contentParts.push(`TITLE: ${meta.title}`);
+    if (meta.description) contentParts.push(`DESCRIPTION: ${meta.description}`);
+    if (meta.transcript) {
+      contentParts.push(`\nFULL TRANSCRIPT:\n${meta.transcript}`);
+    } else if (meta.pageContent) {
+      contentParts.push(`\nPAGE CONTENT (no transcript available):\n${meta.pageContent}`);
+    }
+
+    const systemPrompt = `You are a senior business strategist and AI operations expert working for a company called Picasso AI. 
+You analyze videos that users share and extract actionable intelligence.
+
+Your analysis must be structured, insightful, and immediately useful. You turn video content into competitive advantages.
+
+Always respond in this exact format:
+
+## VIDEO INTELLIGENCE REPORT
+
+### SUMMARY
+[2-3 sentence overview of what this video covers]
+
+### KEY INSIGHTS
+• [Insight 1 — specific, actionable, max 25 words]
+• [Insight 2]
+• [Insight 3]
+• [Insight 4]
+• [Insight 5]
+
+### STRATEGIES TO IMPLEMENT
+For each strategy, include a difficulty rating (EASY / MEDIUM / HARD) and expected impact (LOW / MEDIUM / HIGH):
+
+1. **[Strategy name]** [DIFFICULTY] | [IMPACT]
+   [1-2 sentences on exactly how to implement this]
+
+2. **[Strategy name]** [DIFFICULTY] | [IMPACT]
+   [1-2 sentences on how to implement]
+
+3. **[Strategy name]** [DIFFICULTY] | [IMPACT]
+   [1-2 sentences on how to implement]
+
+### COMPETITIVE TAKEAWAY
+[1-2 sentences — what does this mean for our business? What's the main thing to act on RIGHT NOW?]`;
+
+    const userPrompt = `Analyze this video content and extract actionable intelligence.
+${goal ? `\nUSER'S SPECIFIC GOAL: ${goal}` : ""}
+
+${contentParts.join("\n")}`;
+
+    res.write(`data: ${JSON.stringify({ status: "analyzing" })}\n\n`);
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 2000,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("analyze-video error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to analyze video" })}\n\n`);
+  }
+
+  res.end();
+});
+
 export default router;

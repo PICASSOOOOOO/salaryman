@@ -4,7 +4,7 @@ import {
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
-  Store, Plug, FolderOpen, PenTool,
+  Store, Plug, FolderOpen, PenTool, Video,
 } from 'lucide-react';
 
 export type Module = {
@@ -98,6 +98,7 @@ export const MODULES: Module[] = [
       { id: 'agents', path: '/intel/agents', label: 'AGENT TEAM', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
       { id: 'seo', path: '/intel/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
+      { id: 'video', path: '/intel/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'balance-sheet', path: '/intel/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
     ],
   },

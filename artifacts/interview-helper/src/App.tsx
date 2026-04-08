@@ -47,6 +47,7 @@ const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
+const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -231,6 +232,7 @@ function AppShell() {
             <Route path="/intel/agents" component={AgentTeam} />
             <Route path="/intel/goals" component={Goals} />
             <Route path="/intel/seo" component={SeoModule} />
+            <Route path="/intel/video" component={VideoAnalyzer} />
             <Route path="/intel/balance-sheet" component={BalanceSheet} />
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 

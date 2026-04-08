@@ -13,6 +13,7 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **AI Agents:** Equipped with a structured skill system for planning, review, execution, security, design, and analysis.
 - **Interview Preparation:** Tools for real-time coaching, including live listening and screen analysis.
 - **Content Creation:** AI-generated presentations, long-form content creation (Writer's Studio), and a comprehensive creative suite.
+- **Video Intelligence:** Video Analyzer (VID-SCAN) at `/intel/video` — paste any video URL (YouTube, TikTok, Vimeo, Instagram, X, any website) and AI extracts transcript + metadata, analyzes content, and returns structured intelligence reports with actionable strategies.
 - **Communication:** A robust phone system with autonomous call agents and dual-DID routing, alongside real-time translation tools.
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
