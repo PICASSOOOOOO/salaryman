@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -163,19 +164,24 @@ function AppShell() {
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
       {/* Keep-alive panels */}
-      <Suspense fallback={isHome ? <CRTFallback /> : null}>
-        <div style={{ display: isHome ? "block" : "none" }}>
-          {isAuthenticated ? <MemoHome /> : <Cover />}
-        </div>
-      </Suspense>
-      <Suspense fallback={isConsole ? <CRTFallback /> : null}>
-        <div style={{ display: isConsole ? "block" : "none" }}>
-          <MemoConsole />
-        </div>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={isHome ? <CRTFallback /> : null}>
+          <div style={{ display: isHome ? "block" : "none" }}>
+            {isAuthenticated ? <MemoHome /> : <Cover />}
+          </div>
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={isConsole ? <CRTFallback /> : null}>
+          <div style={{ display: isConsole ? "block" : "none" }}>
+            <MemoConsole />
+          </div>
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Other routes — lazy-loaded */}
       {!isKeepAliveActive && (
+        <ErrorBoundary>
         <Suspense fallback={<CRTFallback />}>
           <Switch>
             {/* Standalone routes */}
@@ -275,6 +281,7 @@ function AppShell() {
             <Route component={NotFound} />
           </Switch>
         </Suspense>
+        </ErrorBoundary>
       )}
       {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
       {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
@@ -329,20 +336,22 @@ function AppShell() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ActiveCallProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <NavBarVisibilityProvider>
-              <FeatureStateProvider>
-                <AppShell />
-              </FeatureStateProvider>
-            </NavBarVisibilityProvider>
-          </WouterRouter>
-          <Toaster />
-        </ActiveCallProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary fallbackTitle="APP CRASHED">
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ActiveCallProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <NavBarVisibilityProvider>
+                <FeatureStateProvider>
+                  <AppShell />
+                </FeatureStateProvider>
+              </NavBarVisibilityProvider>
+            </WouterRouter>
+            <Toaster />
+          </ActiveCallProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
