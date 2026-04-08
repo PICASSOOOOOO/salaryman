@@ -189,6 +189,15 @@ export default function Cover() {
         </motion.p>
 
         <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-[11px] font-mono tracking-[0.3em] uppercase text-sky-400/60 mb-5"
+        >
+          THE PICASSO PLATFORM
+        </motion.p>
+
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.35 }}
@@ -196,6 +205,17 @@ export default function Cover() {
         >
           {t('cover.tagline')}
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.42 }}
+          className="flex flex-wrap justify-center gap-2 mb-6"
+        >
+          {['AI AGENTS', 'INTERVIEWS', 'PRESENTATIONS', 'PHONE SYSTEM', 'WRITER STUDIO', 'CREATIVE TOOLS'].map(cap => (
+            <span key={cap} className="text-[9px] font-mono text-zinc-500 border border-zinc-800/60 px-2 py-0.5 rounded tracking-wider uppercase">{cap}</span>
+          ))}
+        </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}

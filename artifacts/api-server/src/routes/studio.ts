@@ -175,4 +175,111 @@ router.post("/studio/generate-social", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/studio/writer", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const {
+    action, genre = 'fiction', tone = 'literary',
+    title = '', synopsis = '', chapterTitle = '',
+    chapterContent = '', chapterNotes = '', context = '',
+  } = req.body as Record<string, string>;
+
+  if (!action) { res.status(400).json({ error: "Action required" }); return; }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const kit = await getBrandKit(userId);
+    const brandCtx = buildBrandContext(kit);
+
+    const projectCtx = [
+      title && `Title: "${title}"`,
+      `Genre: ${genre}`,
+      `Tone: ${tone}`,
+      synopsis && `Synopsis: ${synopsis}`,
+      chapterTitle && `Current chapter: ${chapterTitle}`,
+      chapterNotes && `Author's notes for this chapter: ${chapterNotes}`,
+      context && `Additional direction: ${context}`,
+    ].filter(Boolean).join('\n');
+
+    const contentCtx = chapterContent.trim()
+      ? `\n\nCurrent chapter content (${chapterContent.split(/\s+/).length} words so far):\n---\n${chapterContent.slice(-6000)}\n---`
+      : '';
+
+    const actionPrompts: Record<string, string> = {
+      outline: `Create a detailed chapter-by-chapter outline for this work. For each chapter, include: chapter number, title suggestion, a 2-3 sentence summary of what happens, and key character/theme developments. Suggest 8-15 chapters.
+
+${projectCtx}`,
+
+      write_section: `Write the next section of this chapter (800-1500 words). Write with full creative depth — vivid imagery, authentic dialogue, emotional resonance. Do NOT summarize or skip ahead. Show, don't tell. Every sentence should earn its place.
+
+${projectCtx}${contentCtx}`,
+
+      continue: `Continue writing exactly where the text left off. Write 600-1200 words. Maintain the exact same voice, pacing, and style. Do not repeat what was already written. Pick up mid-scene if needed. Write with full creative commitment.
+
+${projectCtx}${contentCtx}`,
+
+      rewrite: `Rewrite the current chapter content with improved prose, sharper dialogue, and deeper character work. Maintain the same plot points and story beats but elevate the writing quality. Same length or slightly longer.
+
+${projectCtx}${contentCtx}`,
+
+      expand: `Expand and deepen the current text. Add sensory details, internal monologue, environmental description, subtext in dialogue, and emotional complexity. Double the depth without changing the story direction. Add 400-800 words of enrichment woven into the existing text.
+
+${projectCtx}${contentCtx}`,
+
+      critique: `Provide a detailed editorial critique of this chapter. Cover:
+1. PROSE QUALITY — sentence-level craft, word choice, rhythm
+2. PACING — does it move well? Where does it drag or rush?
+3. CHARACTER — are voices distinct? Motivations clear?
+4. DIALOGUE — natural? Purposeful? Subtext?
+5. STRUCTURE — does the chapter arc work?
+6. SPECIFIC LINE EDITS — quote 3-5 specific passages and suggest improvements
+
+Be honest but constructive. This is a working draft, not a finished piece.
+
+${projectCtx}${contentCtx}`,
+    };
+
+    const userPrompt = actionPrompts[action] ?? actionPrompts.write_section;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      max_completion_tokens: 8000,
+      messages: [
+        {
+          role: "system",
+          content: `You are Pablo, a world-class creative writer and editor. You write with the depth of literary fiction, the pacing of a thriller, and the emotional truth of memoir. You are NOT a corporate copywriter — you are a novelist, poet, and storyteller.
+
+Your writing is:
+- Vivid and sensory — readers should feel, smell, hear the world
+- Character-driven — every character has a distinct voice and inner life
+- Structurally intentional — every scene serves the larger story
+- Emotionally honest — you don't shy from complexity or discomfort
+- Genre-appropriate — you adapt your style to match ${genre} conventions while maintaining craft
+
+You match the requested tone: ${tone}. You write complete, polished prose — never outlines or summaries unless specifically asked. You never use placeholder text or "[continue here]" markers.${brandCtx}`,
+        },
+        { role: "user", content: userPrompt },
+      ],
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err: unknown) {
+    console.error("Writer generation error:", err);
+    const message = err instanceof Error ? err.message : "Failed to generate content";
+    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+  }
+
+  res.end();
+});
+
 export default router;

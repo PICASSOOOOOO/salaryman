@@ -5,13 +5,15 @@ import { useAuth } from '@workspace/replit-auth-web';
 
 const ONBOARDING_KEY = 'salaryman_onboarding_done';
 
-const USE_CASES = [
-  { id: 'interviewer', label: 'Interviewing candidates' },
-  { id: 'interviewee', label: 'Being interviewed' },
-  { id: 'presentations', label: 'Running presentations' },
-  { id: 'meetings', label: 'Managing meetings' },
-  { id: 'research', label: 'Researching / recon' },
-  { id: 'networking', label: 'Networking & contacts' },
+const HELP_OPTIONS = [
+  { id: 'interviews', label: 'RUN INTERVIEWS' },
+  { id: 'presentations', label: 'BUILD PRESENTATIONS' },
+  { id: 'meetings', label: 'PREPARE FOR MEETINGS' },
+  { id: 'research', label: 'RESEARCH & RECON' },
+  { id: 'writing', label: 'WRITE CONTENT' },
+  { id: 'sales', label: 'CLOSE DEALS' },
+  { id: 'strategy', label: 'PLAN & STRATEGIZE' },
+  { id: 'creative', label: 'CREATIVE PROJECTS' },
 ];
 
 interface OnboardingModalProps {
@@ -29,8 +31,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [role, setRole] = useState('');
   const [company, setCompany] = useState('');
   const [industry, setIndustry] = useState('');
-  const [useCases, setUseCases] = useState<string[]>([]);
-  const [extra, setExtra] = useState('');
+  const [helpWith, setHelpWith] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -48,9 +49,9 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       .catch(() => {});
   }, [isAuthenticated, user]);
 
-  const toggleUseCase = (id: string) => {
-    setUseCases(prev =>
-      prev.includes(id) ? prev.filter(u => u !== id) : [...prev, id]
+  const toggleHelp = (id: string) => {
+    setHelpWith(prev =>
+      prev.includes(id) ? prev.filter(h => h !== id) : [...prev, id]
     );
   };
 
@@ -62,9 +63,9 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const handleSubmit = async () => {
     setSaving(true);
 
-    const useCaseLabels = USE_CASES
-      .filter(u => useCases.includes(u.id))
-      .map(u => u.label)
+    const helpLabels = HELP_OPTIONS
+      .filter(h => helpWith.includes(h.id))
+      .map(h => h.label)
       .join(', ');
 
     const memory = [
@@ -72,8 +73,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       role ? `Role: ${role}` : '',
       company ? `Company: ${company}` : '',
       industry ? `Industry: ${industry}` : '',
-      useCaseLabels ? `Main use cases: ${useCaseLabels}` : '',
-      extra ? `Additional context: ${extra}` : '',
+      helpLabels ? `Needs help with: ${helpLabels}` : '',
     ].filter(Boolean).join('\n');
 
     try {
@@ -94,34 +94,33 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   };
 
   const canContinue = [
-    step === 0 ? (name.trim() || role.trim()) : true,
-    step === 1 ? (company.trim() || industry.trim()) : true,
-    step === 2 ? useCases.length > 0 : true,
-    step === 3 ? true : true,
+    step === 0 ? name.trim().length > 0 : true,
+    true,
+    step === 2 ? helpWith.length > 0 : true,
   ][step];
 
   const STEPS = [
     {
-      question: `Hey${name ? `, ${name}` : ''}! I'm PABLO — I run Salaryman.`,
-      sub: "Let me get to know you so I can actually be useful from the start.",
+      title: "WHO ARE YOU?",
+      sub: "Just the basics — so Pablo knows who he's talking to.",
       content: (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Your name</label>
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">YOUR NAME</label>
             <input
               autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="What do people call you?"
+              placeholder="What should we call you?"
               className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Your role or title</label>
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">YOUR ROLE</label>
             <input
               value={role}
               onChange={e => setRole(e.target.value)}
-              placeholder="e.g. CEO, Sales Director, Software Engineer..."
+              placeholder="e.g. CEO, Sales Lead, Freelancer..."
               className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
@@ -129,26 +128,26 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       ),
     },
     {
-      question: "Nice. Tell me about your work.",
-      sub: "I'll use this to give you more relevant help.",
+      title: "WHAT'S YOUR BUSINESS?",
+      sub: "Helps us tailor everything to your world. Skip if personal use.",
       content: (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Company or team name</label>
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">COMPANY NAME</label>
             <input
               autoFocus
               value={company}
               onChange={e => setCompany(e.target.value)}
-              placeholder="Where do you work?"
+              placeholder="Your company or team"
               className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Industry or space</label>
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">INDUSTRY</label>
             <input
               value={industry}
               onChange={e => setIndustry(e.target.value)}
-              placeholder="e.g. Tech startup, Healthcare, Finance, Legal..."
+              placeholder="e.g. Tech, Healthcare, Finance..."
               className="bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors"
             />
           </div>
@@ -156,39 +155,25 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       ),
     },
     {
-      question: "What will you mainly use Salaryman for?",
-      sub: "Pick everything that applies — I'll adapt to your needs.",
+      title: "WHAT DO YOU NEED HELP WITH?",
+      sub: "Pick as many as you want — you can always change this later.",
       content: (
         <div className="grid grid-cols-2 gap-2">
-          {USE_CASES.map(uc => (
+          {HELP_OPTIONS.map(opt => (
             <button
-              key={uc.id}
-              onClick={() => toggleUseCase(uc.id)}
-              className={`px-4 py-3 rounded-xl text-sm font-medium text-left transition-all border
-                ${useCases.includes(uc.id)
+              key={opt.id}
+              onClick={() => toggleHelp(opt.id)}
+              className={`px-4 py-3 rounded-xl text-xs font-bold text-left transition-all border tracking-wider
+                ${helpWith.includes(opt.id)
                   ? 'bg-sky-500/20 border-sky-500/50 text-sky-300'
                   : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground hover:border-border/80'
                 }`}
             >
-              {useCases.includes(uc.id) && <Check className="w-3 h-3 inline mr-1.5 text-sky-400" />}
-              {uc.label}
+              {helpWith.includes(opt.id) && <Check className="w-3 h-3 inline mr-1.5 text-sky-400" />}
+              {opt.label}
             </button>
           ))}
         </div>
-      ),
-    },
-    {
-      question: "Anything else I should know?",
-      sub: "Communication style, goals, priorities — totally optional but helps a lot.",
-      content: (
-        <textarea
-          autoFocus
-          value={extra}
-          onChange={e => setExtra(e.target.value)}
-          placeholder="e.g. 'I'm a tech CEO, prefer concise answers, mostly interview engineers and give board presentations...'"
-          rows={5}
-          className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/50 transition-colors resize-none"
-        />
       ),
     },
   ];
@@ -223,13 +208,12 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   <Sparkles className="w-8 h-8 text-sky-400" />
                 </motion.div>
                 <div className="text-center">
-                  <p className="text-base font-bold text-foreground">All set{name ? `, ${name}` : ''}!</p>
-                  <p className="text-sm text-muted-foreground mt-1">I know enough to get started. Let's go.</p>
+                  <p className="text-base font-bold text-foreground">ALL SET{name ? `, ${name.toUpperCase()}` : ''}!</p>
+                  <p className="text-sm text-muted-foreground mt-1">Pablo knows enough to get started. Let's go.</p>
                 </div>
               </div>
             ) : (
               <>
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 pt-6 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
@@ -237,7 +221,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-sky-400 uppercase tracking-wider">PABLO</p>
-                      <p className="text-[10px] text-muted-foreground">Quick intro — {STEPS.length - step} step{STEPS.length - step !== 1 ? 's' : ''} left</p>
+                      <p className="text-[10px] text-muted-foreground">STEP {step + 1} OF {STEPS.length}</p>
                     </div>
                   </div>
                   <button
@@ -249,7 +233,6 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   </button>
                 </div>
 
-                {/* Progress bar */}
                 <div className="px-6 pb-4">
                   <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
                     <motion.div
@@ -260,7 +243,6 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   </div>
                 </div>
 
-                {/* Content */}
                 <div className="px-6 pb-6">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -270,41 +252,40 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <p className="text-base font-bold text-foreground mb-1">{currentStep.question}</p>
+                      <p className="text-base font-bold text-foreground mb-1">{currentStep.title}</p>
                       <p className="text-xs text-muted-foreground mb-5">{currentStep.sub}</p>
                       {currentStep.content}
                     </motion.div>
                   </AnimatePresence>
                 </div>
 
-                {/* Footer */}
                 <div className="flex items-center justify-between px-6 pb-6">
                   <button
                     onClick={dismiss}
                     className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                   >
-                    Skip for now
+                    SKIP FOR NOW
                   </button>
                   <div className="flex items-center gap-2">
                     {step > 0 && (
                       <button
-                        onClick={() => setStep(s => s - 1)}
+                        onClick={() => setStep(s => s - 1 as 0 | 1 | 2)}
                         className="px-4 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                       >
-                        Back
+                        BACK
                       </button>
                     )}
                     <button
-                      onClick={isLast ? handleSubmit : () => setStep(s => s + 1)}
+                      onClick={isLast ? handleSubmit : () => setStep(s => (s + 1) as 0 | 1 | 2)}
                       disabled={!canContinue || saving}
                       className="flex items-center gap-2 px-5 py-2 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-bold hover:bg-sky-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {saving ? (
-                        <span className="animate-pulse">Saving...</span>
+                        <span className="animate-pulse">SAVING...</span>
                       ) : isLast ? (
-                        <>Done <Check className="w-3.5 h-3.5" /></>
+                        <>DONE <Check className="w-3.5 h-3.5" /></>
                       ) : (
-                        <>Next <ArrowRight className="w-3.5 h-3.5" /></>
+                        <>NEXT <ArrowRight className="w-3.5 h-3.5" /></>
                       )}
                     </button>
                   </div>

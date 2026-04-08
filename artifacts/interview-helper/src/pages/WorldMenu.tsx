@@ -528,7 +528,59 @@ function GuideContent({ section }: { section: GuideSection }) {
   return null;
 }
 
+const WORLD_LOCKED = true;
+
+function ClassifiedGate() {
+  const [, navigate] = useLocation();
+  const S: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#030803', ...S, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/brand/other/pixel-office.png)', backgroundSize: 'cover', backgroundPosition: 'center bottom', opacity: 0.08, filter: 'sepia(1) hue-rotate(80deg) saturate(3)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
+
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', maxWidth: 560, textAlign: 'center' }}>
+          <div style={{ ...VT, fontSize: 'clamp(1rem, 2.5vw, 1.4rem)', color: 'rgba(255,60,60,.7)', letterSpacing: '.25em', textShadow: '0 0 20px rgba(255,60,60,.3)', animation: 'smblink 1.2s step-end infinite' }}>
+            ▓▓ CLASSIFIED ▓▓
+          </div>
+          <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#38bdf8', textShadow: '0 0 30px rgba(56,189,248,.5)', letterSpacing: '.15em', lineHeight: 1.2 }}>
+            MINX CITY
+          </div>
+          <div style={{ ...S, fontSize: '.7rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 440 }}>
+            THE VIRTUAL OFFICE SIMULATION IS BEING REDESIGNED FROM THE GROUND UP. ALL OPERATIVE DATA AND SAVE FILES ARE PRESERVED. PABLO CORP WILL ANNOUNCE RE-ENTRY WHEN THE NEW INFRASTRUCTURE IS OPERATIONAL.
+          </div>
+          <div style={{ width: '100%', border: '1px solid rgba(56,189,248,.15)', background: 'rgba(56,189,248,.03)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(255,204,0,.7)', letterSpacing: '.12em' }}>WHAT'S COMING</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .8rem', ...S, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.06em', lineHeight: 1.7 }}>
+              <div>→ PIXEL OFFICE SIMULATION</div>
+              <div>→ REAL-TIME AGENT WORKSPACE</div>
+              <div>→ VIRTUAL EMPLOYEE SYSTEM</div>
+              <div>→ TERRITORY CONTROL v2</div>
+              <div>→ PERSISTENT WORLD STATE</div>
+              <div>→ CROSS-SERVER NETWORK</div>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            style={{ padding: '.6rem 2rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer', textShadow: '0 0 8px rgba(56,189,248,.4)' }}
+          >
+            ← RETURN TO HUB
+          </button>
+          <div style={{ ...S, fontSize: '.4rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.12em', marginTop: '.5rem' }}>
+            PABLO CORP INFRASTRUCTURE DIVISION · REDESIGN IN PROGRESS · ALL RIGHTS RESERVED
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes smblink { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
+    </div>
+  );
+}
+
 export default function WorldMenu() {
+  if (WORLD_LOCKED) return <ClassifiedGate />;
   const [, navigate] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated, login } = useAuth();
   const isMobile = useIsMobile();

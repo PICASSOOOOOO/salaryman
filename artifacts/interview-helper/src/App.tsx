@@ -37,6 +37,7 @@ const Deals = lazy(() => import("@/pages/Deals"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
+const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
@@ -218,6 +219,7 @@ function AppShell() {
             {/* CREATIVE module */}
             <Route path="/creative/studio" component={ContentStudio} />
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
+            <Route path="/creative/writer" component={WriterStudio} />
             <Route path="/creative/campaigns" component={Campaigns} />
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
