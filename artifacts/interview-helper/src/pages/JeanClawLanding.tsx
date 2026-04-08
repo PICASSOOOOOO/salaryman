@@ -133,7 +133,7 @@ function JeanClawLanding() {
           </div>
           <div>
             <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.2rem', color: '#10b981', letterSpacing: '0.15em' }}>JEAN CLAW</div>
-            <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY SALARYMAN</div>
+            <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY PICASSO AI</div>
           </div>
         </div>
         <button
@@ -475,6 +475,13 @@ function JeanClawLanding() {
             {isAuthenticated ? 'OPEN JEAN CLAW DASHBOARD' : 'ACTIVATE JEAN CLAW'}
             <ArrowRight size={20} />
           </button>
+
+          <p style={{
+            fontSize: '0.7rem', color: 'rgba(16,185,129,0.4)',
+            marginTop: 20, letterSpacing: '0.08em',
+          }}>
+            YOUR SUBSCRIPTION KEEPS THE PLATFORM RUNNING
+          </p>
         </div>
       </section>
 

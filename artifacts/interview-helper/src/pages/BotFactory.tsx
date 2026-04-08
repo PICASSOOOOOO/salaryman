@@ -2154,10 +2154,17 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
   );
 }
 
+function tabFromPath(): Tab {
+  const p = window.location.pathname;
+  if (p.includes('/bots/my')) return 'my-bots';
+  if (p.includes('/bots/connectors')) return 'my-bots';
+  return 'jean-claw';
+}
+
 export default function BotFactory() {
   const { t } = useTranslation();
   const [boomerMode] = useBoomerMode();
-  const [tab, setTab] = useState<Tab>('jean-claw');
+  const [tab, setTab] = useState<Tab>(tabFromPath);
   const [bots, setBots] = useState<BotData[]>([]);
   const [marketplace, setMarketplace] = useState<MarketplaceItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Array<{ marketplaceItemId: number; status: string }>>([]);
@@ -2277,22 +2284,30 @@ export default function BotFactory() {
           </div>
 
           {!hasAccess && (
-            <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <a href={`${import.meta.env.BASE_URL}jean-claw`}
+              className="block mb-6 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/[0.08] via-emerald-500/[0.04] to-transparent p-4 hover:border-emerald-500/40 transition-all group cursor-pointer no-underline">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5 text-amber-400" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Bot className="w-6 h-6 text-emerald-400" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Unlock Jean Claw — $145/mo' : 'ACTIVATE JEAN CLAW — $145/MO'}</p>
-                  <p className="text-xs text-muted-foreground">{boomerMode ? 'Pablo AI Call Agent + AI Secretary + OpenClaw Multi-Agent Suite + all premium marketplace bots.' : 'PABLO AI CALL AGENT + AI SECRETARY + OPENCLAW SUITE + ALL PREMIUM BOTS'}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em', fontSize: '1rem' }}>JEAN CLAW</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">$145/MO</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {boomerMode
+                      ? '7 AI agents across 8 channels. Sales, support, recruiting, content, prospecting, scouting, and trading — all automated.'
+                      : 'SEVEN AUTONOMOUS AGENTS. EIGHT CHANNELS. SALES. SUPPORT. RECRUITING. CONTENT. PROSPECTING. SCOUTING. TRADING.'}
+                  </p>
                 </div>
-                <a href={`${import.meta.env.BASE_URL}features`}
-                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black transition-colors">
+                <div className="shrink-0 flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors group-hover:shadow-lg group-hover:shadow-emerald-500/20">
                   <Zap className="w-3.5 h-3.5" />
-                  {boomerMode ? 'Subscribe' : 'ACTIVATE'}
-                </a>
+                  {boomerMode ? 'SEE DETAILS' : 'VIEW INTEL'}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
               </div>
-            </div>
+            </a>
           )}
 
           <div className="flex items-center gap-2 mb-6 flex-wrap">
@@ -2773,6 +2788,44 @@ export default function BotFactory() {
         {selectedBot && <BotDetailModal bot={selectedBot} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} boomer={boomerMode} t={t} />}
         {connectBot && <ConnectPlatformModal bot={connectBot} onClose={() => setConnectBot(null)} onConnected={loadBots} boomer={boomerMode} t={t} />}
       </AnimatePresence>
+
+      <div className="relative z-10 px-4 md:px-6 pb-6">
+        <div className="max-w-4xl mx-auto">
+          <motion.a href={`${import.meta.env.BASE_URL}jean-claw`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="block rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.04] via-transparent to-emerald-500/[0.02] overflow-hidden no-underline hover:border-emerald-500/30 transition-all group">
+            <div className="relative p-5">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                  <Bot className="w-7 h-7 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em', fontSize: '1.1rem' }}>
+                      {boomerMode ? 'POWER YOUR BUSINESS WITH JEAN CLAW' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+                    {boomerMode
+                      ? 'Jean Claw is how Picasso AI keeps the lights on. Your subscription funds the servers, the free tools, and the entire platform. 7 AI agents. 8 channels. One price.'
+                      : 'YOUR SUBSCRIPTION POWERS THE SERVERS. FUNDS THE FREE TOOLS. KEEPS THE PLATFORM ALIVE. 7 AGENTS. 8 CHANNELS. $145/MO.'}
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-emerald-500 group-hover:bg-emerald-400 text-black transition-all shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30">
+                  <Sparkles className="w-4 h-4" />
+                  {hasAccess ? 'VIEW PLAN' : (boomerMode ? 'LEARN MORE' : 'FULL BRIEFING')}
+                  <ExternalLink className="w-3 h-3" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-emerald-500/10 relative z-10 overflow-x-auto">
+                {['SALES CLOSER', 'CUSTOMER SUPPORT', 'CONTENT WRITER', 'AI RECRUITER', 'LINKEDIN PROSPECTOR', 'FB & IG SCOUT', 'TRADING BOT'].map(skill => (
+                  <span key={skill} className="text-[7px] font-bold text-emerald-400/40 uppercase tracking-widest whitespace-nowrap">{skill}</span>
+                ))}
+              </div>
+            </div>
+          </motion.a>
+        </div>
+      </div>
     </div>
   );
 }
