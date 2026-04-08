@@ -700,6 +700,68 @@ ${contentParts.join("\n")}`;
   res.end();
 });
 
+// ── GET /tools/claude-templates ───────────────────────────────────────────────
+let cachedTemplates: { data: unknown; fetchedAt: number } | null = null;
+const TEMPLATES_TTL = 60 * 60 * 1000;
+
+let fullTemplateData: Record<string, unknown[]> | null = null;
+
+async function ensureTemplateData(): Promise<Record<string, unknown[]>> {
+  if (fullTemplateData && cachedTemplates && Date.now() - cachedTemplates.fetchedAt < TEMPLATES_TTL) {
+    return fullTemplateData;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const r = await fetch(
+    "https://raw.githubusercontent.com/davila7/claude-code-templates/main/docs/components.json",
+    { signal: controller.signal },
+  );
+  clearTimeout(timeout);
+  if (!r.ok) throw new Error(`GitHub returned ${r.status}`);
+  const data = await r.json() as Record<string, unknown[]>;
+  fullTemplateData = data;
+
+  const index: Record<string, unknown[]> = {};
+  for (const [key, arr] of Object.entries(data)) {
+    if (!Array.isArray(arr)) { index[key] = arr; continue; }
+    index[key] = arr.map((item: Record<string, unknown>) => {
+      const { content, ...meta } = item;
+      return { ...meta, hasContent: !!content };
+    });
+  }
+  cachedTemplates = { data: index, fetchedAt: Date.now() };
+  return data;
+}
+
+router.get("/tools/claude-templates", async (_req, res) => {
+  try {
+    await ensureTemplateData();
+    res.json(cachedTemplates!.data);
+  } catch (err) {
+    console.error("claude-templates fetch error:", err);
+    if (cachedTemplates) {
+      res.json(cachedTemplates.data);
+    } else {
+      res.status(502).json({ error: "Failed to fetch template catalog" });
+    }
+  }
+});
+
+router.get("/tools/claude-templates/:type/:name", async (req, res) => {
+  try {
+    const data = fullTemplateData ?? await ensureTemplateData();
+    const { type, name } = req.params;
+    const arr = data[type];
+    if (!Array.isArray(arr)) { res.status(404).json({ error: "Type not found" }); return; }
+    const item = arr.find((i: Record<string, unknown>) => i.name === name);
+    if (!item) { res.status(404).json({ error: "Component not found" }); return; }
+    res.json(item);
+  } catch (err) {
+    console.error("claude-template detail error:", err);
+    res.status(500).json({ error: "Failed to fetch component" });
+  }
+});
+
 // ── POST /tools/job-evaluate ──────────────────────────────────────────────────
 router.post("/tools/job-evaluate", requireFeature("claw_bot"), async (req, res) => {
   const { jobDescription, jobUrl, userProfile } = req.body as {

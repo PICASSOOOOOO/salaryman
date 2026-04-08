@@ -4,7 +4,7 @@ import {
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
-  Store, Plug, FolderOpen, PenTool, Video, Crosshair,
+  Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen,
 } from 'lucide-react';
 
 export type Module = {
@@ -134,6 +134,7 @@ export const MODULES: Module[] = [
       { id: 'my-bots', path: '/bots/my', label: 'MANAGE', boomerLabel: 'MANAGE', codename: 'ROBO DOC', icon: Bot },
       { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
       { id: 'job-command', path: '/bots/jobs', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
+      { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
     ],
   },
 ];

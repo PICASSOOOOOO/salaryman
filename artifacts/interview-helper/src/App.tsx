@@ -49,6 +49,7 @@ const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
+const ClaudeTemplates = lazy(() => import("@/pages/ClaudeTemplates"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -254,6 +255,7 @@ function AppShell() {
 
             {/* BOTS module */}
             <Route path="/bots/jobs" component={JobCommandCenter} />
+            <Route path="/bots/templates" component={ClaudeTemplates} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />
 
