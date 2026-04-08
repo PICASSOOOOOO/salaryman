@@ -48,6 +48,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const AgentTeam = lazy(() => import("@/pages/AgentTeam"));
 const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
+const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -252,6 +253,7 @@ function AppShell() {
             <Route path="/jean-claw" component={JeanClawLanding} />
 
             {/* BOTS module */}
+            <Route path="/bots/jobs" component={JobCommandCenter} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />
 

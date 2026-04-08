@@ -14,6 +14,7 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Interview Preparation:** Tools for real-time coaching, including live listening and screen analysis.
 - **Content Creation:** AI-generated presentations, long-form content creation (Writer's Studio), and a comprehensive creative suite.
 - **Video Intelligence:** Video Analyzer (VID-SCAN) at `/intel/video` — paste any video URL (YouTube, TikTok, Vimeo, Instagram, X, any website) and AI extracts transcript + metadata, analyzes content, and returns structured intelligence reports with actionable strategies.
+- **Job Command Center (JCC):** Jean Claw premium feature at `/bots/jobs` — AI-powered job search automation inspired by career-ops. Features: Pipeline (A-F job scoring across 10 dimensions), Tracker (application status management), Resume AI (ATS-optimized resume tailoring), Interview Prep (STAR framework + company intel + salary negotiation). All endpoints gated behind `claw_bot` subscription.
 - **Communication:** A robust phone system with autonomous call agents and dual-DID routing, alongside real-time translation tools.
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 

@@ -6,6 +6,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
 import { safeFetch, SafeFetchError } from "../lib/safe-fetch";
 import { getSkillCatalog } from "../lib/ai-skills";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router: IRouter = Router();
 
@@ -696,6 +697,250 @@ ${contentParts.join("\n")}`;
     res.write(`data: ${JSON.stringify({ error: "Failed to analyze video" })}\n\n`);
   }
 
+  res.end();
+});
+
+// ── POST /tools/job-evaluate ──────────────────────────────────────────────────
+router.post("/tools/job-evaluate", requireFeature("claw_bot"), async (req, res) => {
+  const { jobDescription, jobUrl, userProfile } = req.body as {
+    jobDescription: string;
+    jobUrl?: string;
+    userProfile?: string;
+  };
+
+  if (!jobDescription || typeof jobDescription !== "string") {
+    res.status(400).json({ error: "Provide a job description" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    if (jobUrl) {
+      res.write(`data: ${JSON.stringify({ status: "fetching_url" })}\n\n`);
+    }
+
+    let fullContent = jobDescription;
+    if (jobUrl) {
+      try {
+        const r = await safeFetch(jobUrl, { timeoutMs: 8000, maxResponseBytes: 512 * 1024 });
+        const html = await r.text();
+        const pageText = htmlToText(html);
+        if (pageText.length > 200) {
+          fullContent = `JOB URL: ${jobUrl}\n\nJOB POSTING PAGE CONTENT:\n${pageText}\n\nUSER-PROVIDED DESCRIPTION:\n${jobDescription}`;
+        }
+      } catch {}
+    }
+
+    res.write(`data: ${JSON.stringify({ status: "analyzing" })}\n\n`);
+
+    const systemPrompt = `You are an elite career strategist AI inside Jean Claw's Job Command Center. You evaluate job offers with surgical precision using a structured scoring system.
+
+RESPOND IN THIS EXACT JSON FORMAT (no markdown fences, just raw JSON):
+{
+  "company": "Company Name",
+  "role": "Job Title",
+  "location": "Location / Remote",
+  "grade": "A",
+  "score": 4.5,
+  "verdict": "One-line verdict (max 15 words)",
+  "dimensions": [
+    {"name": "Role Fit", "score": 5, "note": "Brief explanation"},
+    {"name": "Growth Potential", "score": 4, "note": "Brief explanation"},
+    {"name": "Compensation Signal", "score": 4, "note": "Brief explanation"},
+    {"name": "Company Stage", "score": 5, "note": "Brief explanation"},
+    {"name": "Tech Stack", "score": 4, "note": "Brief explanation"},
+    {"name": "Culture Signal", "score": 3, "note": "Brief explanation"},
+    {"name": "Work-Life Balance", "score": 4, "note": "Brief explanation"},
+    {"name": "Location/Remote", "score": 5, "note": "Brief explanation"},
+    {"name": "Brand Value", "score": 4, "note": "Brief explanation"},
+    {"name": "Mission Alignment", "score": 4, "note": "Brief explanation"}
+  ],
+  "keyInsights": [
+    "Insight about why this role is/isn't worth pursuing",
+    "What makes this stand out or what's a red flag",
+    "Specific recommendation"
+  ],
+  "resumeKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "interviewTopics": ["Topic to prepare for", "Another topic"],
+  "applyRecommendation": "STRONG APPLY" | "APPLY" | "CONSIDER" | "SKIP"
+}
+
+Scoring guide: 5=Exceptional, 4=Strong, 3=Average, 2=Below Average, 1=Poor
+Grading: A=4.5-5.0, B=3.5-4.4, C=2.5-3.4, D=1.5-2.4, F=below 1.5
+${userProfile ? `\nCANDIDATE PROFILE:\n${userProfile}` : ""}
+Score honestly. If the job is mediocre, say so. If it's exceptional, explain why.`;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 2000,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Evaluate this job opportunity:\n\n${fullContent.slice(0, 8000)}` },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("job-evaluate error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to evaluate job" })}\n\n`);
+  }
+  res.end();
+});
+
+// ── POST /tools/job-resume ───────────────────────────────────────────────────
+router.post("/tools/job-resume", requireFeature("claw_bot"), async (req, res) => {
+  const { jobDescription, currentResume, targetKeywords } = req.body as {
+    jobDescription: string;
+    currentResume: string;
+    targetKeywords?: string[];
+  };
+
+  if (!jobDescription || !currentResume) {
+    res.status(400).json({ error: "Provide job description and current resume" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    res.write(`data: ${JSON.stringify({ status: "generating" })}\n\n`);
+
+    const systemPrompt = `You are an ATS optimization expert inside Jean Claw's Job Command Center. You tailor resumes to specific job descriptions for maximum ATS compatibility.
+
+Your task:
+1. Extract 15-20 keywords from the job description
+2. Rewrite the resume to naturally incorporate these keywords
+3. Reorder experience bullets to prioritize relevance to this role
+4. Optimize the summary/objective for this specific position
+5. Ensure ATS-friendly formatting (no tables, columns, or graphics)
+
+Output the tailored resume in clean Markdown format. Include:
+- A brief "OPTIMIZATION NOTES" section at the top explaining what you changed and why
+- The full tailored resume below it
+- A "KEYWORD INJECTION MAP" at the bottom showing where each keyword was placed
+
+${targetKeywords?.length ? `\nPRIORITY KEYWORDS TO INCLUDE: ${targetKeywords.join(", ")}` : ""}`;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 3000,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `JOB DESCRIPTION:\n${jobDescription.slice(0, 4000)}\n\nCURRENT RESUME:\n${currentResume.slice(0, 4000)}` },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("job-resume error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to generate resume" })}\n\n`);
+  }
+  res.end();
+});
+
+// ── POST /tools/job-interview-prep ───────────────────────────────────────────
+router.post("/tools/job-interview-prep", requireFeature("claw_bot"), async (req, res) => {
+  const { jobDescription, company, role, resume } = req.body as {
+    jobDescription: string;
+    company?: string;
+    role?: string;
+    resume?: string;
+  };
+
+  if (!jobDescription) {
+    res.status(400).json({ error: "Provide a job description" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    res.write(`data: ${JSON.stringify({ status: "preparing" })}\n\n`);
+
+    const systemPrompt = `You are an elite interview preparation coach inside Jean Claw's Job Command Center. Generate a comprehensive interview prep package.
+
+Output in this exact format:
+
+## INTERVIEW PREP: [Role] at [Company]
+
+### LIKELY QUESTIONS (Behavioral)
+For each question, provide a STAR framework answer outline:
+1. **[Question]**
+   - **Situation:** [What to describe]
+   - **Task:** [Your responsibility]
+   - **Action:** [What you did]
+   - **Result:** [Measurable outcome]
+
+### TECHNICAL DEEP-DIVE
+• [Technical topic they'll likely test]
+• [Key concept to review]
+• [Framework/tool to demonstrate knowledge of]
+
+### COMPANY INTELLIGENCE
+• [Key fact about the company's recent moves]
+• [Culture/values to reference]
+• [Competitive landscape insight]
+
+### QUESTIONS TO ASK THEM
+1. [Smart question showing research]
+2. [Question about growth/impact]
+3. [Question about team/culture]
+
+### RED FLAGS TO WATCH FOR
+• [Potential concern to probe]
+
+### SALARY NEGOTIATION INTEL
+• [Market range estimate]
+• [Leverage points]
+• [Negotiation strategy]`;
+
+    const userPrompt = `Prepare me for an interview.
+${company ? `COMPANY: ${company}` : ""}
+${role ? `ROLE: ${role}` : ""}
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 4000)}
+${resume ? `\nMY RESUME:\n${resume.slice(0, 3000)}` : ""}`;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 3000,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("job-interview-prep error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to generate prep" })}\n\n`);
+  }
   res.end();
 });
 
