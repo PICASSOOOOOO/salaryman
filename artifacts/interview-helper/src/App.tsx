@@ -205,6 +205,7 @@ function AppShell() {
             <Route path="/business/leads" component={LeadsPage} />
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
+            <Route path="/business/interview" component={Console} />
             <Route path="/business/calendar" component={Calendar} />
             <Route path="/business/documents" component={Documents} />
             <Route path="/business/invoices" component={Invoices} />

@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, TicketCheck, Bug } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, TicketCheck, Bug, ExternalLink } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -381,6 +381,16 @@ export function NavBar() {
               </button>
             );
           })}
+          <button
+            onClick={() => {
+              const base = import.meta.env.BASE_URL ?? '/';
+              window.open(`${base}${pathname.replace(/^\//, '')}`, '_blank', 'noopener');
+            }}
+            title="OPEN IN NEW TAB"
+            className="ml-auto p-1 rounded text-zinc-600 hover:text-sky-400 hover:bg-white/4 transition-colors shrink-0"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </button>
         </div>
       )}
 

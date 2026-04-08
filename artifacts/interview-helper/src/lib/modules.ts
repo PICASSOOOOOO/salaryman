@@ -46,7 +46,6 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'listen', path: '/console', label: 'LIVE LISTEN', boomerLabel: 'LIVE LISTEN', codename: 'ECHO-7', icon: Mic },
       { id: 'scan', path: '/console', label: 'SCREEN SCAN', boomerLabel: 'SCREEN SCAN', codename: 'OPTIC-9', icon: Monitor },
-      { id: 'interview', path: '/console', label: 'INTERVIEW OFFICE', boomerLabel: 'INTERVIEW OFFICE', codename: 'CIPHER-X', icon: Code2 },
     ],
   },
   {
@@ -60,6 +59,7 @@ export const MODULES: Module[] = [
       { id: 'leads', path: '/business/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
       { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
+      { id: 'interview', path: '/business/interview', label: 'INTERVIEW OFFICE', boomerLabel: 'INTERVIEW OFFICE', codename: 'CIPHER-X', icon: Code2 },
       { id: 'calendar', path: '/business/calendar', label: 'CALENDAR', boomerLabel: 'CALENDAR', codename: 'CHRONO-4', icon: CalendarDays },
       { id: 'documents', path: '/business/documents', label: 'DOCUMENTS', boomerLabel: 'DOCUMENTS', codename: 'INK-6', icon: Archive },
       { id: 'invoices', path: '/business/invoices', label: 'INVOICES', boomerLabel: 'INVOICES', codename: 'LEDGER-3', icon: FileText },
