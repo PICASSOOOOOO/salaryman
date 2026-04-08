@@ -64,6 +64,9 @@ export function useChatSocket(): UseChatSocket {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
+  const retriesRef = useRef(0);
+  const MAX_RETRIES = 10;
+  const BASE_DELAY = 2000;
 
   const appendMessage = useCallback((msg: ChatMessage) => {
     setState(prev => {
@@ -123,6 +126,7 @@ export function useChatSocket(): UseChatSocket {
 
     ws.onopen = () => {
       if (!isMounted.current) return;
+      retriesRef.current = 0;
       setState(prev => ({ ...prev, connected: true }));
       refreshChannels();
     };
@@ -147,9 +151,12 @@ export function useChatSocket(): UseChatSocket {
       if (!isMounted.current) return;
       setState(prev => ({ ...prev, connected: false }));
       wsRef.current = null;
+      if (retriesRef.current >= MAX_RETRIES) return;
+      const delay = Math.min(BASE_DELAY * Math.pow(2, retriesRef.current), 60000);
+      retriesRef.current += 1;
       reconnectTimerRef.current = setTimeout(() => {
         if (isMounted.current) connect();
-      }, 3000);
+      }, delay);
     };
 
     ws.onerror = () => {
