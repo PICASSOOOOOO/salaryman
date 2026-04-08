@@ -677,7 +677,7 @@ export default function Home() {
             const dataObj = newest.data as Record<string, unknown>;
             if (dataObj.governmentBaseSalary === undefined) {
               const cls = (newest.charClass ?? dataObj.class) as string | undefined;
-              dataObj.governmentBaseSalary = cls === 'corporate' ? 25000 : cls === 'replicant' ? 18000 : cls === 'outlaw' ? 10000 : undefined;
+              dataObj.governmentBaseSalary = cls === 'corporate' ? 100 : cls === 'replicant' ? 50 : cls === 'outlaw' ? 25 : undefined;
             }
             const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
             if (cloud.level >= localLevel) setGameSave(cloud);
@@ -761,12 +761,12 @@ export default function Home() {
               <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>ƒ SALARY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt).toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>ƒ GOV SALARY</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? 0, gameSave.createdAt).toLocaleString()}/min` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${(computeDecayedSalary(gameSave.governmentBaseSalary ?? gameSave.salary, gameSave.createdAt) + gameSave.goldBalance * 100000).toLocaleString()}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>BALANCE</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
             </div>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(255,204,0,0.25)', letterSpacing: '0.1em' }}>GOLD</div>
