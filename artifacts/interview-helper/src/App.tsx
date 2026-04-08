@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useUndoShortcut } from "@/hooks/use-undo";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -39,6 +40,7 @@ const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
+const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -120,6 +122,7 @@ const FLOATING_BAR_ROUTES = [
 ];
 
 function AppShell() {
+  useUndoShortcut();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated } = useAuth();
@@ -216,6 +219,7 @@ function AppShell() {
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
             <Route path="/creative/campaigns" component={Campaigns} />
             <Route path="/creative/brand" component={BrandKit} />
+            <Route path="/creative/media" component={MediaLibrary} />
             <Route path="/creative">{() => <Redirect to="/creative/studio" />}</Route>
 
             {/* INTEL module */}

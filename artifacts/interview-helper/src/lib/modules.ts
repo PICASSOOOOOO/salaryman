@@ -4,7 +4,7 @@ import {
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
-  Store, Plug,
+  Store, Plug, FolderOpen,
 } from 'lucide-react';
 
 export type Module = {
@@ -81,6 +81,7 @@ export const MODULES: Module[] = [
       { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: 'THE LAB', codename: '1999', icon: Music2 },
       { id: 'campaigns', path: '/creative/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
+      { id: 'media', path: '/creative/media', label: 'MEDIA', boomerLabel: 'MEDIA LIBRARY', codename: 'VAULT-X', icon: FolderOpen },
     ],
   },
   {
