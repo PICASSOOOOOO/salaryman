@@ -5,6 +5,7 @@ import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@w
 import { eq, and, sql } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
 import { safeFetch, SafeFetchError } from "../lib/safe-fetch";
+import { getSkillCatalog } from "../lib/ai-skills";
 
 const router: IRouter = Router();
 
@@ -415,6 +416,10 @@ router.post("/tools/send-email", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: `Email error: ${String(err)}` });
   }
+});
+
+router.get("/tools/skills", (_req, res) => {
+  res.json({ skills: getSkillCatalog() });
 });
 
 export default router;

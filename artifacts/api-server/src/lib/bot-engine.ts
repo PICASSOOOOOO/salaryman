@@ -11,6 +11,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { streamWithRouter } from "./ai-router";
 import { getConnector, type IncomingMessage } from "./bot-connectors";
+import { matchSkill, executeSkill, getSkillCatalog } from "./ai-skills";
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   ai_chat: "General AI conversation and knowledge queries",
@@ -160,14 +161,6 @@ export async function processIncomingMessage(
 
   const permissionContext = buildPermissionContext(permissions);
 
-  const systemPrompt = [
-    bot.personality,
-    bot.systemPrompt,
-    memoryContext,
-    permissionContext,
-    "\n\nIMPORTANT: If the user shares important information (their name, preferences, facts they want you to remember), prefix your internal note with [MEMORY:key=value] to save it. The user won't see this tag.",
-  ].filter(Boolean).join("\n");
-
   const conversationHistory = recentLogs
     .reverse()
     .map(log => ({
@@ -175,16 +168,38 @@ export async function processIncomingMessage(
       content: log.content,
     }));
 
+  const skill = matchSkill(msg.text);
+
   let fullResponse = "";
 
-  await streamWithRouter(
-    conversationHistory,
-    systemPrompt,
-    { maxTokens: bot.maxTokensPerResponse },
-    (chunk) => {
-      if (chunk.content) fullResponse += chunk.content;
-    }
-  );
+  if (msg.text.trim().toLowerCase() === "/skills" || msg.text.trim().toLowerCase() === "/tools") {
+    const catalog = getSkillCatalog();
+    fullResponse = "**AVAILABLE SKILLS**\n\n" +
+      catalog.map(s => `\`${s.command}\` — **${s.name}**\n${s.description}`).join("\n\n") +
+      "\n\nUse any command followed by your request. Example: `/plan launch our new product by Q3`";
+  } else if (skill) {
+    fullResponse = await executeSkill(skill, msg.text, conversationHistory);
+  } else {
+    const skillCatalogHint = `\n\nYou have access to specialized skills the user can invoke with slash commands: ${getSkillCatalog().map(s => s.command).join(", ")}. If the user asks for something that matches a skill, mention the relevant command they can use for a more structured result.`;
+
+    const systemPrompt = [
+      bot.personality,
+      bot.systemPrompt,
+      memoryContext,
+      permissionContext,
+      skillCatalogHint,
+      "\n\nIMPORTANT: If the user shares important information (their name, preferences, facts they want you to remember), prefix your internal note with [MEMORY:key=value] to save it. The user won't see this tag.",
+    ].filter(Boolean).join("\n");
+
+    await streamWithRouter(
+      conversationHistory,
+      systemPrompt,
+      { maxTokens: bot.maxTokensPerResponse },
+      (chunk) => {
+        if (chunk.content) fullResponse += chunk.content;
+      }
+    );
+  }
 
   const memoryMatches = fullResponse.matchAll(/\[MEMORY:(\w+)=([^\]]+)\]/g);
   for (const match of memoryMatches) {
