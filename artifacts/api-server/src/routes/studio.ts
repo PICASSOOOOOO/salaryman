@@ -282,4 +282,150 @@ You match the requested tone: ${tone}. You write complete, polished prose — ne
   res.end();
 });
 
+// ── POST /studio/production ──────────────────────────────────────────────────
+router.post("/studio/production", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const { mode, prompt, style, aspect = "1024x1024", details } = req.body as {
+    mode: string;
+    prompt: string;
+    style?: string;
+    aspect?: string;
+    details?: Record<string, string>;
+  };
+
+  if (!mode || !prompt?.trim()) { res.status(400).json({ error: "Mode and prompt required" }); return; }
+
+  const kit = await getBrandKit(userId);
+  const brandCtx = buildBrandContext(kit);
+
+  const imageSize: GptImageSize = VALID_IMAGE_SIZES.includes(aspect as GptImageSize)
+    ? (aspect as GptImageSize)
+    : "1024x1024";
+
+  const modePrompts: Record<string, (p: string) => string> = {
+    clothing_brand: (p) => `Professional fashion photography product shot: ${p}. ${style ? `Style: ${style}.` : 'High-end fashion editorial style.'} Shot on medium format digital camera, studio lighting with soft key light and rim light, clean backdrop, fabric texture clearly visible, retail-ready composition. Photorealistic, 8K quality, fashion magazine editorial standard.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+
+    lookbook: (p) => `Fashion lookbook editorial photograph: ${p}. ${style ? `Style: ${style}.` : 'Contemporary streetwear meets high fashion.'} Model wearing the clothing in lifestyle setting, cinematic color grading, natural light mixed with studio fill, shot on 35mm film stock, fashion week backstage energy. Photorealistic, Vogue/GQ editorial quality.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+
+    billboard: (p) => `Large-format billboard advertisement design: ${p}. ${style ? `Visual style: ${style}.` : 'Bold, minimal, high-impact.'} Ultra high resolution, bold typography space, strong visual hierarchy, readable from distance, outdoor advertising format. Professional advertising agency quality, award-winning OOH campaign style.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+
+    film_35mm: (p) => `Cinematic 35mm film photograph: ${p}. ${style ? `Film style: ${style}.` : 'Kodak Portra 400 color palette.'} Shot on 35mm analog camera, authentic film grain, natural lens flare, shallow depth of field, golden hour lighting, analog color science. No digital processing artifacts. The look and feel of Wes Anderson meets Wong Kar-wai cinematography.`,
+
+    film_hidef: (p) => `Ultra high definition cinematic photograph: ${p}. ${style ? `Visual style: ${style}.` : 'ARRI ALEXA 65 camera aesthetic.'} 8K resolution clarity, cinematic aspect ratio, professional color grading, volumetric lighting, photorealistic detail in every pixel. The visual quality of a Christopher Nolan IMAX production still.`,
+
+    packaging: (p) => `Premium product packaging design mockup: ${p}. ${style ? `Design style: ${style}.` : 'Minimalist luxury.'} 3D product visualization, studio lighting, photorealistic materials and textures, retail shelf-ready, premium unboxing experience aesthetic.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+
+    label: (p) => `Professional clothing label and tag design: ${p}. ${style ? `Style: ${style}.` : 'Premium woven label aesthetic.'} Close-up macro photography of fabric label, embroidered or printed tag, authentic textile texture, fashion brand label standard. Photorealistic detail.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+
+    poster: (p) => `High-impact promotional poster design: ${p}. ${style ? `Visual style: ${style}.` : 'Contemporary graphic design meets fine art.'} Print-ready quality, strong visual composition, bold color palette, typography-integrated design, museum-quality graphic art standard.${brandCtx ? ` Brand identity: ${brandCtx}` : ''}`,
+  };
+
+  const promptBuilder = modePrompts[mode] ?? modePrompts.film_hidef;
+
+  try {
+    const fullPrompt = promptBuilder(prompt.trim());
+    const buffer = await generateImageBuffer(fullPrompt, imageSize);
+    const base64 = buffer.toString("base64");
+    res.json({ image: `data:image/png;base64,${base64}`, prompt: fullPrompt });
+  } catch (err: unknown) {
+    console.error("Production studio error:", err);
+    const message = err instanceof Error ? err.message : "Image generation failed";
+    res.status(500).json({ error: message });
+  }
+});
+
+// ── POST /studio/production-script ──────────────────────────────────────────
+router.post("/studio/production-script", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const { mode, concept, duration = "30", style, audience } = req.body as {
+    mode: string;
+    concept: string;
+    duration?: string;
+    style?: string;
+    audience?: string;
+  };
+
+  if (!concept?.trim()) { res.status(400).json({ error: "Concept required" }); return; }
+
+  const kit = await getBrandKit(userId);
+  const brandCtx = buildBrandContext(kit);
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  try {
+    const systemPrompts: Record<string, string> = {
+      video_commercial: `You are a world-class commercial director and creative director at a top advertising agency. You create broadcast-quality TV commercial scripts and production plans.
+
+Output format:
+## COMMERCIAL SCRIPT: [Title]
+**Duration:** ${duration} seconds
+**Target Audience:** ${audience || 'General'}
+**Visual Style:** ${style || 'Cinematic'}
+
+### PRE-PRODUCTION
+- **Concept:** [One-line concept]
+- **Mood:** [Emotional tone]
+- **Color Palette:** [Key colors]
+- **Music Direction:** [Style/temp track reference]
+
+### SHOT LIST
+For each shot include: Shot #, Duration, Camera (lens/movement), Description, Audio/VO, Mood
+| Shot | Time | Camera | Visual | Audio | Mood |
+|------|------|--------|--------|-------|------|
+
+### SCRIPT / VOICEOVER
+[Full voiceover script with timing markers]
+
+### STORYBOARD PROMPTS
+For each key frame, provide a detailed AI image generation prompt that could recreate the shot.
+
+### POST-PRODUCTION NOTES
+- Color grade direction
+- VFX requirements
+- Sound design notes
+- Music cue points`,
+
+      music_video: `You are a visionary music video director known for groundbreaking visual storytelling. Create a complete music video treatment and production plan.
+
+Output a full treatment with: concept overview, visual motifs, shot-by-shot breakdown with camera directions, choreography notes, lighting design, wardrobe/styling direction, location descriptions, VFX/post requirements, and storyboard prompts for key moments.`,
+
+      brand_film: `You are a brand film director specializing in emotionally resonant brand storytelling. Create a brand film script that tells a compelling story while subtly weaving in brand identity.
+
+Include: narrative arc, character descriptions, scene breakdowns with dialogue, camera directions, music/sound design, and storyboard prompts for hero shots.${brandCtx}`,
+
+      social_video: `You are a viral content strategist who understands every social platform's algorithm. Create a ${duration}-second social media video script optimized for maximum engagement.
+
+Include: hook (first 3 seconds), retention strategy, platform-specific formatting notes (vertical/horizontal), trending audio suggestions, text overlay copy, CTA timing, and thumbnail recommendation.`,
+
+      lookbook_video: `You are a fashion film director creating high-end lookbook/campaign videos. Create a detailed production plan for a fashion brand video.
+
+Include: mood/concept statement, model casting direction, styling notes per look, location/set design, lighting setup, camera movements (gimbal/steadicam/crane shots), music direction, edit pacing notes, and color grade references.${brandCtx}`,
+    };
+
+    const systemPrompt = systemPrompts[mode] ?? systemPrompts.video_commercial;
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 4000,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Create a complete production plan for: ${concept.trim()}${audience ? `\nTarget audience: ${audience}` : ''}${style ? `\nVisual style: ${style}` : ''}${brandCtx}` },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err: unknown) {
+    console.error("Production script error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Failed to generate script" })}\n\n`);
+  }
+  res.end();
+});
+
 export default router;

@@ -50,6 +50,7 @@ const Goals = lazy(() => import("@/pages/Goals"));
 const VideoAnalyzer = lazy(() => import("@/pages/VideoAnalyzer"));
 const JobCommandCenter = lazy(() => import("@/pages/JobCommandCenter"));
 const ClaudeTemplates = lazy(() => import("@/pages/ClaudeTemplates"));
+const ProductionStudio = lazy(() => import("@/pages/ProductionStudio"));
 
 const LegalHub = lazy(() => import("@/pages/legal/LegalHub"));
 const LegalTerms = lazy(() => import("@/pages/legal/TermsOfService"));
@@ -220,6 +221,7 @@ function AppShell() {
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
+            <Route path="/creative/production" component={ProductionStudio} />
             <Route path="/creative/studio" component={ContentStudio} />
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
