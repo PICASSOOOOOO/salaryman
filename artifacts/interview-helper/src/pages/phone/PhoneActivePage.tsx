@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
+import { Zap, PhoneOff, Mic, MicOff, PauseCircle, PlayCircle, ArrowRightLeft, Phone, X, AlertTriangle, Radio, ChevronRight, FileText, MessageSquare, Clock, Shield, Volume2, Hash, User, Activity } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
@@ -89,6 +89,7 @@ export default function PhoneActivePage() {
   const [error, setError] = useState('');
   const [dialingSession, setDialingSession] = useState<DialingSession | null>(() => loadSession());
   const [advancingNext, setAdvancingNext] = useState(false);
+  const [expandedCall, setExpandedCall] = useState<string | null>(null);
   const connectedConferenceRef = useRef<string | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
@@ -122,6 +123,13 @@ export default function PhoneActivePage() {
       });
     }
   }, [activeCalls, connectToConference]);
+
+  useEffect(() => {
+    if (!expandedCall) {
+      const firstLive = activeCalls.find(c => c.status === 'in-progress');
+      if (firstLive) setExpandedCall(firstLive.callSid);
+    }
+  }, [activeCalls, expandedCall]);
 
   const advanceSession = async () => {
     if (!dialingSession || advancingNext) return;
@@ -348,6 +356,7 @@ export default function PhoneActivePage() {
               const isLive = c.status === 'in-progress';
               const isRinging = c.status === 'ringing';
               const showTransfer = transferTarget === c.callSid;
+              const isExpanded = expandedCall === c.callSid;
               return (
                 <div key={c.callSid || i} style={{
                   borderBottom: `1px solid ${crt(0.06)}`,
@@ -406,26 +415,94 @@ export default function PhoneActivePage() {
                           {c.direction === 'inbound' && <span style={{ color: blue(0.7) }}>↙ IN</span>}
                           {c.muted && <span style={{ color: amber(0.7) }}>🔇 MUTED</span>}
                           {c.onHold && <span style={{ color: amber(0.7) }}>⏸ HOLD</span>}
+                          {c.recordingActive && <span style={{ color: red(0.7), display: 'flex', alignItems: 'center', gap: 2 }}><div style={{ width: 5, height: 5, borderRadius: '50%', background: red(0.9), animation: 'pulse 1s infinite' }} /> REC</span>}
                         </div>
                       </div>
-                      {!ended && (
-                        <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-                          <PhoneBtn onClick={() => handleMute(c.callSid, !!c.muted)} color={c.muted ? amber : crt} size="sm" title={c.muted ? 'Unmute' : 'Mute'}>
-                            {c.muted ? <MicOff size={13} /> : <Mic size={13} />}
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {!ended && (
+                          <PhoneBtn onClick={() => setExpandedCall(isExpanded ? null : c.callSid)} color={isExpanded ? crt : undefined} size="sm" title="Call details">
+                            <FileText size={13} />
                           </PhoneBtn>
-                          <PhoneBtn onClick={() => handleHold(c.callSid, !!c.onHold)} color={c.onHold ? amber : crt} size="sm" title={c.onHold ? 'Resume' : 'Hold'}>
-                            {c.onHold ? <PlayCircle size={13} /> : <PauseCircle size={13} />}
-                          </PhoneBtn>
-                          <PhoneBtn onClick={() => setTransferTarget(showTransfer ? null : c.callSid)} color={blue} size="sm" title="Transfer">
-                            <ArrowRightLeft size={13} />
-                          </PhoneBtn>
-                          <PhoneBtn onClick={() => handleHangup(c.callSid)} color={red} size="sm">
-                            <PhoneOff size={13} />
-                          </PhoneBtn>
-                        </div>
-                      )}
+                        )}
+                        {!ended && (
+                          <>
+                            <PhoneBtn onClick={() => handleMute(c.callSid, !!c.muted)} color={c.muted ? amber : crt} size="sm" title={c.muted ? 'Unmute' : 'Mute'}>
+                              {c.muted ? <MicOff size={13} /> : <Mic size={13} />}
+                            </PhoneBtn>
+                            <PhoneBtn onClick={() => handleHold(c.callSid, !!c.onHold)} color={c.onHold ? amber : crt} size="sm" title={c.onHold ? 'Resume' : 'Hold'}>
+                              {c.onHold ? <PlayCircle size={13} /> : <PauseCircle size={13} />}
+                            </PhoneBtn>
+                            <PhoneBtn onClick={() => setTransferTarget(showTransfer ? null : c.callSid)} color={blue} size="sm" title="Transfer">
+                              <ArrowRightLeft size={13} />
+                            </PhoneBtn>
+                            <PhoneBtn onClick={() => handleHangup(c.callSid)} color={red} size="sm">
+                              <PhoneOff size={13} />
+                            </PhoneBtn>
+                          </>
+                        )}
+                      </div>
                     </div>
                     {isLive && <CallWaveformVisualizer active={!c.muted && !c.onHold} color={c.onHold ? amber : crt} />}
+
+                    {isExpanded && (
+                      <div style={{ marginTop: 12, borderTop: `1px solid ${crt(0.06)}`, paddingTop: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                          {[
+                            { icon: Hash, label: 'CALL SID', value: c.callSid?.slice(-8) || '—', full: c.callSid },
+                            { icon: User, label: 'CONTACT', value: c.name || 'UNKNOWN' },
+                            { icon: Phone, label: 'NUMBER', value: formatPhone(c.phone) },
+                            { icon: Clock, label: 'STARTED', value: new Date(c.startTime).toLocaleTimeString() },
+                            { icon: Activity, label: 'DURATION', value: formatDuration(c.elapsed) },
+                            { icon: Volume2, label: 'DIRECTION', value: (c.direction || 'outbound').toUpperCase() },
+                            { icon: Shield, label: 'ENCRYPTION', value: 'TLS 1.3 / SRTP' },
+                            { icon: Radio, label: 'CONFERENCE', value: c.conferenceName ? c.conferenceName.slice(-10) : 'DIRECT' },
+                          ].map(({ icon: Icon, label, value, full }) => (
+                            <div key={label} style={{ padding: '6px 8px', background: crt(0.02), borderRadius: 4, border: `1px solid ${crt(0.06)}` }} title={full || value}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                                <Icon size={9} style={{ color: crt(0.25) }} />
+                                <span style={{ fontSize: '0.35rem', color: crt(0.25), letterSpacing: '0.15em' }}>{label}</span>
+                              </div>
+                              <div style={{ fontSize: '0.5rem', color: crt(0.6), fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ background: crt(0.02), borderRadius: 6, border: `1px solid ${crt(0.06)}`, overflow: 'hidden' }}>
+                          <div style={{ padding: '8px 10px', borderBottom: `1px solid ${crt(0.06)}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <MessageSquare size={10} style={{ color: crt(0.4) }} />
+                              <span style={{ fontSize: '0.4rem', color: crt(0.4), letterSpacing: '0.15em' }}>LIVE TRANSCRIPT</span>
+                              {isLive && <div style={{ width: 5, height: 5, borderRadius: '50%', background: crt(0.6), animation: 'pulse 1.5s infinite' }} />}
+                            </div>
+                            <span style={{ fontSize: '0.35rem', color: crt(0.2) }}>AUTO-CAPTURE</span>
+                          </div>
+                          <div style={{
+                            padding: '10px 12px', minHeight: 60, maxHeight: 150, overflowY: 'auto',
+                            fontSize: '0.5rem', color: crt(0.5), lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                            ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                          }}>
+                            {c.liveTranscript
+                              ? c.liveTranscript
+                              : isLive
+                                ? '⏳ Waiting for speech...'
+                                : isRinging
+                                  ? '📞 Connecting...'
+                                  : 'No transcript available'
+                            }
+                          </div>
+                        </div>
+
+                        {c.aiCoachTip && (
+                          <div style={{ marginTop: 8, padding: '8px 10px', background: blue(0.03), borderRadius: 6, border: `1px solid ${blue(0.1)}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                              <Zap size={9} style={{ color: blue(0.6) }} />
+                              <span style={{ fontSize: '0.35rem', color: blue(0.5), letterSpacing: '0.15em' }}>AI COACH</span>
+                            </div>
+                            <div style={{ fontSize: '0.45rem', color: blue(0.7), lineHeight: 1.5 }}>{c.aiCoachTip}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {showTransfer && (
                     <div style={{ padding: '12px 20px', display: 'flex', gap: 8, background: blue(0.03), borderTop: `1px solid ${blue(0.1)}` }}>

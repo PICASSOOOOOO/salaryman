@@ -37,6 +37,9 @@ export interface ActiveCall {
   direction?: string;
   signalLevel?: number;
   conferenceName?: string;
+  liveTranscript?: string;
+  recordingActive?: boolean;
+  aiCoachTip?: string;
 }
 
 export function callStatusToSignalLevel(status: string): number {

@@ -385,7 +385,7 @@ router.put("/tools/memory", async (req, res) => {
 
 // ── POST /tools/send-email ────────────────────────────────────────────────────
 // Sends an email via the Resend integration connector
-router.post("/tools/send-email", async (req, res) => {
+router.post("/tools/send-email", requireFeature("claw_bot"), async (req, res) => {
   const { to, subject, html, text } = req.body as {
     to: string;
     subject: string;

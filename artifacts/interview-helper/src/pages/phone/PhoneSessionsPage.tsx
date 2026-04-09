@@ -246,7 +246,7 @@ export default function PhoneSessionsPage() {
                 size="lg"
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                {loading ? 'STARTING SESSION...' : `LAUNCH SESSION (${selected.size})`}
+                {loading ? 'GOING ACTIVE...' : `GO ACTIVE (${selected.size})`}
               </PhoneBtn>
             </div>
           </PhoneCard>

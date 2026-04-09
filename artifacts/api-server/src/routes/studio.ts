@@ -4,6 +4,7 @@ import { generateImageBuffer, type GptImageSize } from "@workspace/integrations-
 import { db, brandKitTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { BrandKit } from "@workspace/db/schema";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router: IRouter = Router();
 
@@ -13,6 +14,8 @@ function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return null; }
   return (req.user as { id: string } | undefined)?.id ?? null;
 }
+
+const requireClaw = requireFeature("claw_bot");
 
 async function getBrandKit(userId: string): Promise<BrandKit | null> {
   const [kit] = await db.select().from(brandKitTable).where(eq(brandKitTable.userId, userId));
@@ -35,7 +38,7 @@ function buildBrandContext(kit: BrandKit | null): string {
   return `\n\nBrand context:\n${parts.join("\n")}`;
 }
 
-router.post("/studio/generate-image", async (req: Request, res: Response) => {
+router.post("/studio/generate-image", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { prompt, size = "1024x1024" } = req.body as { prompt?: string; size?: string };
   if (!prompt?.trim()) { res.status(400).json({ error: "Prompt required" }); return; }
@@ -55,7 +58,7 @@ router.post("/studio/generate-image", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/studio/generate-copy", async (req: Request, res: Response) => {
+router.post("/studio/generate-copy", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { type, tone = "professional", context = "", platform } = req.body as {
     type?: string; tone?: string; context?: string; platform?: string;
@@ -124,7 +127,7 @@ Label each as Variation A, B, C.`,
   res.end();
 });
 
-router.post("/studio/generate-social", async (req: Request, res: Response) => {
+router.post("/studio/generate-social", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { template, topic = "" } = req.body as { template?: string; topic?: string };
 
@@ -175,7 +178,7 @@ router.post("/studio/generate-social", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/studio/writer", async (req: Request, res: Response) => {
+router.post("/studio/writer", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const {
     action, genre = 'fiction', tone = 'literary',
@@ -283,7 +286,7 @@ You match the requested tone: ${tone}. You write complete, polished prose — ne
 });
 
 // ── POST /studio/production ──────────────────────────────────────────────────
-router.post("/studio/production", async (req: Request, res: Response) => {
+router.post("/studio/production", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { mode, prompt, style, aspect = "1024x1024", details } = req.body as {
     mode: string;
@@ -335,7 +338,7 @@ router.post("/studio/production", async (req: Request, res: Response) => {
 });
 
 // ── POST /studio/production-script ──────────────────────────────────────────
-router.post("/studio/production-script", async (req: Request, res: Response) => {
+router.post("/studio/production-script", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { mode, concept, duration = "30", style, audience } = req.body as {
     mode: string;

@@ -911,7 +911,7 @@ export function PhoneDialer({
                 </div>
               ) : (
                 <div>
-                  <div style={{ fontSize: '0.45rem', color: crt(0.4), marginBottom: 6 }}>Select contacts from CONTACTS tab, then launch session:</div>
+                  <div style={{ fontSize: '0.45rem', color: crt(0.4), marginBottom: 6 }}>Select contacts from CONTACTS tab, then GO ACTIVE:</div>
                   <div style={{ fontSize: '0.45rem', color: crt(0.6), marginBottom: 8 }}>{selected.size} contacts selected</div>
                   <button onClick={startDialingSession} disabled={selected.size === 0} style={{ width: '100%', padding: '8px', background: selected.size > 0 ? crt(0.1) : crt(0.04), border: `1px solid ${selected.size > 0 ? crt(0.4) : crt(0.1)}`, color: selected.size > 0 ? crt(0.9) : crt(0.2), cursor: selected.size > 0 ? 'pointer' : 'default', fontSize: '0.55rem', letterSpacing: '0.1em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                     <Radio size={11} />START {dialingMode.toUpperCase()} DIALING ({selected.size})

@@ -386,7 +386,7 @@ export default function PhoneDialerPage() {
                   size="lg"
                 >
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
-                  {loading ? 'STARTING...' : `LAUNCH SESSION (${recentContacts.length} contacts)`}
+                  {loading ? 'STARTING...' : `GO ACTIVE (${recentContacts.length} contacts)`}
                 </PhoneBtn>
                 <PhoneBtn onClick={() => navigate('/phone/sessions')} style={{ flexShrink: 0 }} title="Full session controls">
                   <ArrowRight size={13} />

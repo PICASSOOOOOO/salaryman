@@ -11,10 +11,12 @@ import {
   ListOpenaiMessagesParams,
   SendOpenaiMessageParams,
 } from "@workspace/api-zod";
+import { requireFeature } from "../../middlewares/requirePro";
 
 const router: IRouter = Router();
+const requireClaw = requireFeature("claw_bot");
 
-router.post("/tts", async (req, res) => {
+router.post("/tts", requireClaw, async (req, res) => {
   const { text } = req.body as { text?: string };
   if (!text || typeof text !== "string") {
     res.status(400).json({ error: "text is required" });
@@ -103,7 +105,7 @@ router.post("/tts", async (req, res) => {
   }
 });
 
-router.post("/transcribe", async (req, res) => {
+router.post("/transcribe", requireClaw, async (req, res) => {
   const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "audio (base64) is required" });
