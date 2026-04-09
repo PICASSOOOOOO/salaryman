@@ -5,7 +5,7 @@
     "commitHash": null,
     "changes": [
       "Initial alpha launch",
-      "CIPHER-X interview office core",
+      "CIPHER-X interview solver core",
       "PABLO AI chat",
       "Basic cover and auth flow"
     ]
@@ -69,6 +69,18 @@
       "Discreet mode and boomer mode",
       "Investor portal and legal pages",
       "Auto changelog on landing page"
+    ]
+  },
+  {
+    "version": "v.1.9a",
+    "date": "2026-04-09",
+    "commitHash": "eaabb62c36022925542cda71e0e525b240a2a39e",
+    "changes": [
+      "Production Studio (PRD-X) — AI image and video production",
+      "Cost-gating: all paid APIs behind Jean Claw subscription",
+      "Phone system GO ACTIVE rename and enhanced live call monitor",
+      "Live transcript panel and AI coaching tips in call view",
+      "Video Intelligence (VID-SCAN) analyzer"
     ]
   }
 ]
