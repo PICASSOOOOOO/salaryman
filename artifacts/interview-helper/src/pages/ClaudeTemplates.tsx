@@ -270,14 +270,14 @@ export default function ClaudeTemplates() {
                 </p>
               </div>
             ) : (
-              filtered.slice(0, 100).map((item) => {
-                const isExpanded = expandedItem === `${activeType}-${item.name}`;
-                const itemKey = `${activeType}-${item.name}`;
+              filtered.slice(0, 100).map((item, idx) => {
+                const itemKey = `${activeType}-${item.name}-${idx}`;
+                const isExpanded = expandedItem === itemKey;
                 const Icon = tc.icon;
                 return (
                   <motion.div key={itemKey} layout
                     className={`rounded-xl border bg-card/50 overflow-hidden transition-colors ${isExpanded ? 'border-emerald-500/20' : 'border-border hover:border-zinc-600'}`}>
-                    <button onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
+                    <button onClick={() => expandAndLoad(itemKey, item)}
                       className="w-full flex items-center gap-3 p-3 text-left">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tc.color}`}
                         style={{ background: `color-mix(in srgb, currentColor 10%, transparent)` }}>
@@ -337,8 +337,8 @@ export default function ClaudeTemplates() {
                                 {copied === `install-${item.name}` ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                                 {copied === `install-${item.name}` ? 'COPIED' : 'COPY INSTALL CMD'}
                               </button>
-                              {item.content && (
-                                <button onClick={(e) => { e.stopPropagation(); copyContent(item.content!, `content-${item.name}`); }}
+                              {(loadedContent[`${activeType}-${item.name}`] || item.content) && (
+                                <button onClick={(e) => { e.stopPropagation(); copyContent(loadedContent[`${activeType}-${item.name}`] || item.content!, `content-${item.name}`); }}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/20 transition-colors">
                                   {copied === `content-${item.name}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                                   {copied === `content-${item.name}` ? 'COPIED' : boomerMode ? 'COPY CONTENT' : 'COPY SOURCE'}
@@ -349,19 +349,30 @@ export default function ClaudeTemplates() {
                               )}
                             </div>
 
-                            {item.content && (
-                              <div className="rounded-lg border border-border/40 bg-zinc-950/50 overflow-hidden">
-                                <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-zinc-900/50">
-                                  <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">SOURCE</span>
-                                  <span className="text-[9px] text-muted-foreground/20">{item.path || item.name}</span>
+                            {(() => {
+                              const contentText = loadedContent[`${activeType}-${item.name}`] || item.content;
+                              const isLoadingThis = loadingContent === `${activeType}-${item.name}`;
+                              if (isLoadingThis) return (
+                                <div className="flex items-center gap-2 py-3 text-muted-foreground/40">
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span className="text-[10px]">Loading source...</span>
                                 </div>
-                                <pre className="p-3 text-[11px] text-muted-foreground/70 overflow-x-auto max-h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap break-words"
-                                  style={{ fontFamily: "'Share Tech Mono', 'Fira Code', monospace" }}>
-                                  {(item.content ?? '').slice(0, 4000)}
-                                  {(item.content ?? '').length > 4000 && '\n\n... [truncated]'}
-                                </pre>
-                              </div>
-                            )}
+                              );
+                              if (!contentText) return null;
+                              return (
+                                <div className="rounded-lg border border-border/40 bg-zinc-950/50 overflow-hidden">
+                                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-zinc-900/50">
+                                    <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">SOURCE</span>
+                                    <span className="text-[9px] text-muted-foreground/20">{item.path || item.name}</span>
+                                  </div>
+                                  <pre className="p-3 text-[11px] text-muted-foreground/70 overflow-x-auto max-h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap break-words"
+                                    style={{ fontFamily: "'Share Tech Mono', 'Fira Code', monospace" }}>
+                                    {contentText.slice(0, 4000)}
+                                    {contentText.length > 4000 && '\n\n... [truncated]'}
+                                  </pre>
+                                </div>
+                              );
+                            })()}
 
                             {item.files && (
                               <div className="mt-3">
