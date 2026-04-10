@@ -597,8 +597,7 @@ export default function ProductionStudio({ embedded }: { embedded?: boolean } = 
             </div>
           )}
 
-        </div>
-    </>
+    </> 
   );
 
   if (embedded) return innerContent;
