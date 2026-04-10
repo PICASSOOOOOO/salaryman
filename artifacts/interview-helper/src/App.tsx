@@ -256,7 +256,8 @@ function AppShell() {
             <Route path="/intel/reports" component={Reporting} />
             <Route path="/intel/dashboard" component={Dashboard} />
             <Route path="/intel/goals" component={Goals} />
-            <Route path="/intel/balance-sheet" component={BalanceSheet} />
+            <Route path="/business/balance-sheet" component={BalanceSheet} />
+            <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
             <Route path="/intel/agents">{() => <Redirect to="/console/agents" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
