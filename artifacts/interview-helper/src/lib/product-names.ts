@@ -173,12 +173,17 @@ export const PABLO_PRODUCTS = {
   CREATIVE_MODULE: {
     name: "FORGE MATRIX v3.0",
     short: "FORGE MATRIX",
-    desc: "Creative fabrication suite. Dark Room, 1999, campaign engine, and brand identity matrix.",
+    desc: "Creative fabrication suite. Dark Room, 1999, Hemingway, brand identity matrix, and media vault.",
+  },
+  MARKETING_MODULE: {
+    name: "SIGNAL CORPS v1.0",
+    short: "SIGNAL CORPS",
+    desc: "Outbound growth engine. Campaigns, SEO intelligence, and lead generation unified under one command.",
   },
   INTEL_MODULE: {
     name: "COMMAND NET v1.0",
     short: "COMMAND NET",
-    desc: "Intelligence and analytics hub. Reports, workspace dashboard, agent team roster, and objective tracker.",
+    desc: "Business analytics hub. Reports, dashboard, goal tracking, and balance sheet.",
   },
   DEALS: {
     name: "PIPELINE-X DEAL TRACKER",

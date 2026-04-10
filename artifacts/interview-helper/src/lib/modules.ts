@@ -3,7 +3,7 @@ import {
   Users, CalendarDays, Archive, FileText, TrendingUp,
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
-  Voicemail, Hash, Zap, Clock, MessageSquare, DollarSign, Receipt, CreditCard, Scale,
+  Voicemail, Hash, Zap, Clock, DollarSign, Receipt, CreditCard, Scale,
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
 } from 'lucide-react';
 
@@ -44,8 +44,9 @@ export const MODULES: Module[] = [
     icon: Code2,
     defaultPath: '/console',
     subs: [
-      { id: 'listen', path: '/console', label: 'LIVE LISTEN', boomerLabel: 'LIVE LISTEN', codename: 'ECHO-7', icon: Mic },
-      { id: 'scan', path: '/console', label: 'SCREEN SCAN', boomerLabel: 'SCREEN SCAN', codename: 'OPTIC-9', icon: Monitor },
+      { id: 'terminal', path: '/console', label: 'TERMINAL', boomerLabel: 'TERMINAL', codename: 'CIPHER-X', icon: Code2 },
+      { id: 'agents', path: '/console/agents', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
+      { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
     ],
   },
   {
@@ -56,7 +57,6 @@ export const MODULES: Module[] = [
     icon: Briefcase,
     defaultPath: '/business/contacts',
     subs: [
-      { id: 'leads', path: '/business/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
       { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
       { id: 'interview', path: '/business/interview', label: 'INTERVIEW OFFICE', boomerLabel: 'INTERVIEW OFFICE', codename: 'CIPHER-X', icon: Code2 },
@@ -79,10 +79,22 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'darkroom', path: '/creative/darkroom', label: 'DARK ROOM', boomerLabel: 'DARK ROOM', codename: 'DARK ROOM', icon: Clapperboard },
       { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
-      { id: 'campaigns', path: '/creative/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
       { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },
       { id: 'media', path: '/creative/media', label: 'MEDIA', boomerLabel: 'MEDIA LIBRARY', codename: 'VAULT-X', icon: FolderOpen },
+    ],
+  },
+  {
+    id: 'marketing',
+    path: '/marketing',
+    label: 'MARKETING',
+    codename: 'SIGNAL CORPS',
+    icon: Megaphone,
+    defaultPath: '/marketing/campaigns',
+    subs: [
+      { id: 'campaigns', path: '/marketing/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
+      { id: 'seo', path: '/marketing/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
+      { id: 'leads', path: '/marketing/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
     ],
   },
   {
@@ -95,10 +107,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
       { id: 'dashboard', path: '/intel/dashboard', label: 'DASHBOARD', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
-      { id: 'agents', path: '/intel/agents', label: 'AGENT TEAM', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
-      { id: 'seo', path: '/intel/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
-      { id: 'video', path: '/intel/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'balance-sheet', path: '/intel/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
     ],
   },
@@ -144,8 +153,9 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[1];
   if (pathname.startsWith('/business')) return MODULES[2];
   if (pathname.startsWith('/creative')) return MODULES[3];
-  if (pathname.startsWith('/intel')) return MODULES[4];
-  if (pathname.startsWith('/phone')) return MODULES[5];
-  if (pathname.startsWith('/bots')) return MODULES[6];
+  if (pathname.startsWith('/marketing')) return MODULES[4];
+  if (pathname.startsWith('/intel')) return MODULES[5];
+  if (pathname.startsWith('/phone')) return MODULES[6];
+  if (pathname.startsWith('/bots')) return MODULES[7];
   return null;
 }

@@ -218,7 +218,6 @@ function AppShell() {
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}
-            <Route path="/business/leads" component={LeadsPage} />
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/interview" component={Console} />
@@ -229,6 +228,7 @@ function AppShell() {
             <Route path="/business/payroll" component={Payroll} />
             <Route path="/business/bills" component={Bills} />
             <Route path="/business/expenses" component={Expenses} />
+            <Route path="/business/leads">{() => <Redirect to="/marketing/leads" />}</Route>
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
@@ -237,19 +237,29 @@ function AppShell() {
             <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
-            <Route path="/creative/campaigns" component={Campaigns} />
+            <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
             <Route path="/creative">{() => <Redirect to="/creative/darkroom" />}</Route>
 
+            {/* MARKETING module */}
+            <Route path="/marketing/campaigns" component={Campaigns} />
+            <Route path="/marketing/seo" component={SeoModule} />
+            <Route path="/marketing/leads" component={LeadsPage} />
+            <Route path="/marketing">{() => <Redirect to="/marketing/campaigns" />}</Route>
+
+            {/* CONSOLE sub-routes (agents + video moved here) */}
+            <Route path="/console/agents" component={AgentTeam} />
+            <Route path="/console/video" component={VideoAnalyzer} />
+
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />
             <Route path="/intel/dashboard" component={Dashboard} />
-            <Route path="/intel/agents" component={AgentTeam} />
             <Route path="/intel/goals" component={Goals} />
-            <Route path="/intel/seo" component={SeoModule} />
-            <Route path="/intel/video" component={VideoAnalyzer} />
             <Route path="/intel/balance-sheet" component={BalanceSheet} />
+            <Route path="/intel/agents">{() => <Redirect to="/console/agents" />}</Route>
+            <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>
+            <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 
             {/* PHONE module — unified Calll Home hub */}
@@ -280,11 +290,11 @@ function AppShell() {
             <Route path="/documents">{() => <Redirect to="/business/documents" />}</Route>
             <Route path="/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/lab">{() => <Redirect to="/creative/lab" />}</Route>
-            <Route path="/campaigns">{() => <Redirect to="/creative/campaigns" />}</Route>
+            <Route path="/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/reporting">{() => <Redirect to="/intel/reports" />}</Route>
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
-            <Route path="/agents">{() => <Redirect to="/intel/agents" />}</Route>
-            <Route path="/seo">{() => <Redirect to="/intel/seo" />}</Route>
+            <Route path="/agents">{() => <Redirect to="/console/agents" />}</Route>
+            <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>
 
             {/* Feedback admin */}
             <Route path="/feedback" component={FeedbackAdmin} />
