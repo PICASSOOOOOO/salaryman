@@ -32,6 +32,8 @@ export default function PhoneContactsPage() {
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => {
+    if (!userId) return;
+    setError('');
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
         if (r.status === 403) { navigate('/upgrade'); return; }
