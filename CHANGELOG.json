@@ -82,5 +82,22 @@
       "Live transcript panel and AI coaching tips in call view",
       "Video Intelligence (VID-SCAN) analyzer"
     ]
+  },
+  {
+    "version": "v.2.0",
+    "date": "2026-04-10",
+    "commitHash": null,
+    "changes": [
+      "Dark Room — merged Content Studio + Production Studio",
+      "Signal Corps (Marketing) module with Campaigns, SEO, Leads",
+      "Nav reorganization — Intel trimmed, AI Agents + Video Intel moved to Console",
+      "Trade bot enhanced with risk profile presets and 20+ international markets",
+      "Multi-server architecture — 24 planned cities worldwide",
+      "Business registration + org structure on main terminal",
+      "Employment status display with salary and role classification",
+      "Enterprise accounts limited to 1 save slot",
+      "Writer renamed to HEMINGWAY",
+      "SoundLab/1999 moved exclusively to Creative module"
+    ]
   }
 ]

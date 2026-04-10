@@ -1326,6 +1326,14 @@ export default function Home() {
 
             {isAuthenticated && (
               <>
+                <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                    <span className="text-[10px] font-bold text-sky-400" style={{ fontFamily: "'VT323', monospace", fontSize: '0.85rem', letterSpacing: '0.12em' }}>{CITY_NAME}</span>
+                    <span className="text-[8px] text-sky-400/30" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.1em' }}>SERVER: PST · 24 CITIES WORLDWIDE</span>
+                  </div>
+                </div>
+
                 {/* Employment Status */}
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                   <div className="flex items-center gap-2 mb-2">

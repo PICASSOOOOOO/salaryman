@@ -563,6 +563,52 @@ function ClassifiedGate() {
               <div>→ CROSS-CITY NETWORK</div>
             </div>
           </div>
+          <div style={{ width: '100%', border: '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.02)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.12em' }}>24 CITIES · WORLDWIDE NETWORK</div>
+            <div style={{ ...S, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', lineHeight: 1.7, marginBottom: '.3rem' }}>
+              EACH SERVER CARRIES A DIFFERENT NAME. SAME TOWER. SAME CORP. SAME CURRENCY.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.35rem .6rem' }}>
+              {[
+                { name: 'MINX CITY', region: 'US WEST', active: true },
+                { name: 'NEW YORK TOWER', region: 'US EAST', active: false },
+                { name: 'TORONTO NODE', region: 'NA', active: false },
+                { name: 'MEXICO SIGNAL', region: 'NA', active: false },
+                { name: 'NEON LAGOS', region: 'W. AFRICA', active: false },
+                { name: 'NAIROBI PULSE', region: 'E. AFRICA', active: false },
+                { name: 'JOHANNESBURG MINE', region: 'S. AFRICA', active: false },
+                { name: 'CAIRO PYRAMID', region: 'N. AFRICA', active: false },
+                { name: 'SECTOR BERLIN', region: 'EUROPE', active: false },
+                { name: 'LONDON VAULT', region: 'EUROPE', active: false },
+                { name: 'ISTANBUL BRIDGE', region: 'EURASIA', active: false },
+                { name: 'MOSCOW ZERO', region: 'E. EUROPE', active: false },
+                { name: 'DUBAI SPIRE', region: 'MIDDLE EAST', active: false },
+                { name: 'MUMBAI CIRCUIT', region: 'S. ASIA', active: false },
+                { name: 'OLD SHANGHAI', region: 'E. ASIA', active: false },
+                { name: 'TOKYO CORE', region: 'E. ASIA', active: false },
+                { name: 'SEOUL GRID', region: 'E. ASIA', active: false },
+                { name: 'SINGAPORE HUB', region: 'SE ASIA', active: false },
+                { name: 'JAKARTA FLOW', region: 'SE ASIA', active: false },
+                { name: 'MANILA WAVE', region: 'SE ASIA', active: false },
+                { name: 'SYDNEY ARC', region: 'OCEANIA', active: false },
+                { name: 'SAO PAULO NEXUS', region: 'S. AMERICA', active: false },
+                { name: 'BUENOS AIRES TANGO', region: 'S. AMERICA', active: false },
+                { name: 'HAVANA GRID', region: 'CARIBBEAN', active: false },
+              ].map(c => (
+                <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', padding: '.25rem .4rem', border: `1px solid ${c.active ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.06)'}`, background: c.active ? 'rgba(56,189,248,.06)' : 'transparent' }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.active ? '#38bdf8' : 'rgba(56,189,248,.15)', boxShadow: c.active ? '0 0 6px rgba(56,189,248,.5)' : 'none', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ ...S, fontSize: '.5rem', color: c.active ? 'rgba(56,189,248,.8)' : 'rgba(56,189,248,.3)', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.name}</div>
+                    <div style={{ ...S, fontSize: '.35rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em' }}>{c.region}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ ...S, fontSize: '.38rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em', textAlign: 'center', marginTop: '.3rem' }}>
+              ONLY MINX CITY (PST) IS OPERATIONAL · REMAINING SERVERS PENDING DEPLOYMENT
+            </div>
+          </div>
+
           <button
             onClick={() => navigate('/')}
             style={{ padding: '.6rem 2rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer', textShadow: '0 0 8px rgba(56,189,248,.4)' }}
