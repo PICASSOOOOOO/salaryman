@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
@@ -7,6 +7,8 @@ import {
   ChevronRight, Check, Zap, Globe, Shield, Sparkles, ArrowRight,
   Send, Mail, MessageCircle, Hash, Linkedin, Phone,
 } from 'lucide-react';
+
+const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
 
 const SKILLS = [
   {
@@ -238,6 +240,21 @@ function JeanClawLanding() {
               <ChevronRight size={18} />
             </a>
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            style={{ width: '100%', maxWidth: 700, marginTop: 48 }}
+          >
+            <Suspense fallback={
+              <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, border: '1px solid rgba(16,185,129,0.15)', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: 'rgba(16,185,129,0.3)', fontSize: '0.75rem', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.15em' }}>LOADING TRAILER...</span>
+              </div>
+            }>
+              <TrailerPlayer />
+            </Suspense>
+          </motion.div>
         </motion.div>
 
         <motion.div

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { motion } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
@@ -6,6 +6,8 @@ import { useLocation } from 'wouter';
 import { PicassoLogo } from '../components/PicassoLogo';
 import { useTranslation } from 'react-i18next';
 import changelogData from '../changelog.json';
+
+const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -221,10 +223,25 @@ export default function Cover() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.45 }}
-          className="text-sky-500/60 text-sm mb-14 font-mono tracking-widest uppercase"
+          className="text-sky-500/60 text-sm mb-10 font-mono tracking-widest uppercase"
         >
           {t('common.attentionIsAllYouNeed')}
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="w-full max-w-2xl mb-14"
+        >
+          <Suspense fallback={
+            <div className="w-full rounded-lg border border-sky-500/15 bg-[#09090b]" style={{ aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="text-sky-500/30 text-xs font-mono tracking-widest">LOADING TRAILER...</span>
+            </div>
+          }>
+            <TrailerPlayer />
+          </Suspense>
+        </motion.div>
 
         {/* CTAs */}
         <motion.div

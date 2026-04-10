@@ -62,10 +62,12 @@ router.post("/world/register", async (req, res) => {
     }
 
     const sessionId = req.cookies?.session_id ?? null;
+    const userId = req.user?.id ? String(req.user.id) : null;
     const [row] = await db
       .insert(worldBusinessesTable)
       .values({
         playerName: String(playerName).slice(0, 32).toUpperCase(),
+        userId,
         businessType: finalBizType,
         companyName: finalBizType === "unemployed" ? null : (companyName ? String(companyName).trim().toUpperCase().slice(0, 80) : null),
         industry: finalBizType === "unemployed" ? null : (industry ? String(industry).slice(0, 60) : null),

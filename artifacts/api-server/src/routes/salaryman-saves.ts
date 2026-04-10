@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
 
@@ -21,7 +21,13 @@ async function hasActiveEnterprise(userId: string): Promise<boolean> {
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
     .limit(1);
-  return membership.length > 0;
+  if (membership.length > 0) return true;
+  const realBiz = await db
+    .select({ id: worldBusinessesTable.id })
+    .from(worldBusinessesTable)
+    .where(and(eq(worldBusinessesTable.userId, userId), eq(worldBusinessesTable.businessType, "real")))
+    .limit(1);
+  return realBiz.length > 0;
 }
 
 router.get("/salaryman/saves", async (req, res) => {

@@ -21,7 +21,7 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
 ### Minx City World
-A pixel office simulation with a virtual employee system, territory control, and a persistent world state. Multi-city expansion planned: 24 cities worldwide (Minx City live; Neon Lagos, Sector Berlin, Old Shanghai, etc. planned). Cities schema in `lib/db/src/schema/server-regions.ts` (`citiesTable`, `PLANNED_CITIES`).
+A pixel office simulation with a virtual employee system, territory control, and a persistent world state. Multi-city expansion planned: 24 cities worldwide (Minx City live; Neon Lagos, Sector Berlin, Old Shanghai, etc. planned). Cities schema in `lib/db/src/schema/server-regions.ts` (`citiesTable`, `PLANNED_CITIES`). World businesses (`world_businesses` table) now include a `userId` column for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.
 
 ## User Preferences
 
