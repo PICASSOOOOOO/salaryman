@@ -232,10 +232,10 @@ export default function Cover() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="w-full max-w-2xl mb-14"
+          className="w-full max-w-3xl mx-auto mb-14"
         >
           <Suspense fallback={
-            <div className="w-full rounded-lg border border-sky-500/15 bg-[#09090b]" style={{ aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="w-full rounded-xl border border-sky-500/15 bg-[#06080d]" style={{ maxWidth: 720, margin: '0 auto', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span className="text-sky-500/30 text-xs font-mono tracking-widest">LOADING TRAILER...</span>
             </div>
           }>

@@ -245,10 +245,10 @@ function JeanClawLanding() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            style={{ width: '100%', maxWidth: 700, marginTop: 48 }}
+            style={{ width: '100%', maxWidth: 720, margin: '48px auto 0' }}
           >
             <Suspense fallback={
-              <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, border: '1px solid rgba(16,185,129,0.15)', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', aspectRatio: '16/9', borderRadius: 12, border: '1px solid rgba(16,185,129,0.15)', background: '#06080d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ color: 'rgba(16,185,129,0.3)', fontSize: '0.75rem', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.15em' }}>LOADING TRAILER...</span>
               </div>
             }>
