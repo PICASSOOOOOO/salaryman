@@ -381,6 +381,13 @@ export default function Home() {
   const [serverMax, setServerMax] = useState(50);
   const [gameSave, setGameSave] = useState<{ salary: number; governmentBaseSalary?: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number; createdAt?: string } | null>(null);
 
+  const [orgData, setOrgData] = useState<{ org: { id: number; name: string; industry?: string; size?: string } | null; member: { role: string; title?: string; salary?: string; department?: string } | null; members: { userId: string; role: string; inviteEmail?: string; title?: string; status: string }[] } | null>(null);
+  const [worldBiz, setWorldBiz] = useState<{ id: number; businessType: string; companyName?: string; industry?: string; companySize?: string; contactEmail?: string; isPaid: boolean }[]>([]);
+  const [bizRegOpen, setBizRegOpen] = useState(false);
+  const [bizRegForm, setBizRegForm] = useState({ companyName: '', businessType: 'real' as 'real' | 'minx', industry: '', companySize: '', contactEmail: '' });
+  const [bizRegLoading, setBizRegLoading] = useState(false);
+  const [bizRegError, setBizRegError] = useState('');
+
   const [translatorText, setTranslatorText] = useState('');
   const [translatorFrom, setTranslatorFrom] = useState(() => localStorage.getItem('sm_xlat_from') ?? 'vi');
   const [translatorTo, setTranslatorTo] = useState(() => localStorage.getItem('sm_xlat_to') ?? 'en');
@@ -693,6 +700,38 @@ export default function Home() {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setOrgData({ org: data.org, member: data.member, members: data.members ?? [] }); })
+      .catch(() => {});
+    fetch(`${import.meta.env.BASE_URL}api/world/my-business`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.businesses) setWorldBiz(data.businesses); })
+      .catch(() => {});
+  }, [isAuthenticated]);
+
+  const registerBusiness = async () => {
+    setBizRegLoading(true);
+    setBizRegError('');
+    try {
+      const playerName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim().toUpperCase() : (user?.email?.split('@')[0] ?? 'PLAYER').toUpperCase();
+      const res = await fetch(`${import.meta.env.BASE_URL}api/world/register`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerName, ...bizRegForm }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBizRegError(data.error || 'Registration failed'); setBizRegLoading(false); return; }
+      const refreshRes = await fetch(`${import.meta.env.BASE_URL}api/world/my-business`, { credentials: 'include' });
+      if (refreshRes.ok) { const d = await refreshRes.json(); setWorldBiz(d.businesses ?? []); }
+      setBizRegOpen(false);
+      setBizRegForm({ companyName: '', businessType: 'real', industry: '', companySize: '', contactEmail: '' });
+    } catch { setBizRegError('Network error'); }
+    setBizRegLoading(false);
+  };
+
   const { messages: chatMessages, businessMemory, isStreaming: chatStreaming, currentAgent, send: sendChat, sendVoice: sendChatVoice, clear: clearChat, clearMemory, updateMemory } = useAdvisorChat();
 
   const handlePABLOAction = (action: { to: string; tab?: string; autoFill?: Record<string, unknown> }) => {
@@ -761,7 +800,7 @@ export default function Home() {
               <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · ALPHA {__BUILD_VERSION__}</div>
             </div>
           </div>
-          <div className="flex-1 grid grid-cols-3 sm:grid-cols-6 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <div className="flex-1 grid grid-cols-4 sm:grid-cols-8 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
             <div>
               <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
               <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
@@ -783,8 +822,12 @@ export default function Home() {
               <div style={{ fontSize: '0.65rem', color: 'rgba(255,100,100,0.7)' }}>{gameSave ? `LV.${gameSave.level} · ${gameSave.hp}/${gameSave.maxHp}` : '—'}</div>
             </div>
             <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(100,200,255,0.25)', letterSpacing: '0.1em' }}>AVAILABLE</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(100,200,255,0.7)' }}>{gameSave ? `$${(gameSave.savings * 0.012).toFixed(2)}` : '—'}</div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(100,200,255,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(100,200,255,0.7)' }}>{gameSave ? `${(((gameSave.salary + gameSave.savings) / 100000) + gameSave.goldBalance).toFixed(2)} oz` : '—'}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.45rem', color: 'rgba(100,255,180,0.25)', letterSpacing: '0.1em' }}>WITHDRAW</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(100,255,180,0.7)' }}>{gameSave ? `ƒ${Math.floor(gameSave.savings * 0.97).toLocaleString()}` : '—'}</div>
             </div>
           </div>
         </div>
@@ -1279,6 +1322,164 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {isAuthenticated && (
+              <>
+                {/* Employment Status */}
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-xs font-bold text-emerald-400" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>EMPLOYMENT STATUS</span>
+                  </div>
+                  {orgData?.org ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-xs font-bold text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>EMPLOYED</span>
+                      </div>
+                      <div className="space-y-1.5 rounded-md border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">
+                        <div>
+                          <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>EMPLOYER</div>
+                          <div className="text-xs text-emerald-300 font-bold" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.org.name.toUpperCase()}</div>
+                        </div>
+                        {orgData.member?.role && (
+                          <div>
+                            <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>POSITION</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{(orgData.member.title ?? orgData.member.role).toUpperCase()}</div>
+                          </div>
+                        )}
+                        {orgData.member?.department && (
+                          <div>
+                            <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>DEPARTMENT</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.member.department.toUpperCase()}</div>
+                          </div>
+                        )}
+                        {orgData.member?.salary && (
+                          <div>
+                            <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>SALARY</div>
+                            <div className="text-xs text-emerald-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>${Number(orgData.member.salary).toLocaleString()}</div>
+                          </div>
+                        )}
+                        {orgData.org.industry && (
+                          <div>
+                            <div style={{ fontSize: '0.45rem', color: 'rgba(52,211,153,0.4)', letterSpacing: '0.1em' }}>INDUSTRY</div>
+                            <div className="text-xs text-emerald-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{orgData.org.industry.toUpperCase()}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-400/60" />
+                      <span className="text-xs text-amber-300/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NOT EMPLOYED — REGISTER A BUSINESS BELOW OR JOIN AN ORGANIZATION</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Business Registration */}
+                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="text-xs font-bold text-cyan-400" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>BUSINESS REGISTRATION</span>
+                    </div>
+                    {!bizRegOpen && (
+                      <button onClick={() => setBizRegOpen(true)}
+                        className="text-[10px] px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                        style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        + REGISTER
+                      </button>
+                    )}
+                  </div>
+
+                  {worldBiz.length > 0 && (
+                    <div className="space-y-2 mb-2">
+                      {worldBiz.map(biz => (
+                        <div key={biz.id} className="rounded-md border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-cyan-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{(biz.companyName ?? 'UNNAMED').toUpperCase()}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold" style={{
+                              fontFamily: "'Share Tech Mono', monospace",
+                              ...(biz.businessType === 'real' ? { color: 'rgba(52,211,153,0.8)', borderColor: 'rgba(52,211,153,0.3)', background: 'rgba(52,211,153,0.1)' } : { color: 'rgba(56,189,248,0.8)', borderColor: 'rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' })
+                            }}>
+                              {biz.businessType === 'real' ? 'REAL ENTERPRISE' : 'MINX CORP'}
+                            </span>
+                          </div>
+                          {biz.industry && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>INDUSTRY: {biz.industry.toUpperCase()}</div>}
+                          {biz.companySize && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>SIZE: {biz.companySize.toUpperCase()}</div>}
+                          {biz.contactEmail && <div className="text-[10px] text-cyan-400/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>CONTACT: {biz.contactEmail.toUpperCase()}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {orgData?.org && orgData.members.length > 0 && (
+                    <div className="rounded-md border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 mb-2">
+                      <div className="text-[10px] font-bold text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>
+                        ORGANIZATION STRUCTURE — {orgData.org.name.toUpperCase()}
+                      </div>
+                      <div className="space-y-1">
+                        {orgData.members.filter(m => m.status === 'active' || m.status === 'invited').map((m, i) => {
+                          const classification = m.role === 'owner' ? 'OWNER / PARTNER' : m.role === 'manager' ? 'PARTNER / MANAGER' : 'EMPLOYEE';
+                          return (
+                            <div key={i} className="flex items-center justify-between text-[10px]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ background: m.status === 'active' ? 'rgba(52,211,153,0.6)' : 'rgba(255,200,50,0.4)' }} />
+                                <span className="text-cyan-300/80">{(m.inviteEmail ?? m.userId).toUpperCase()}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {m.title && <span className="text-cyan-400/40">{m.title.toUpperCase()}</span>}
+                                <span className="px-1 py-0.5 rounded text-[8px] font-bold border" style={{
+                                  ...(m.role === 'owner' ? { color: 'rgba(255,200,50,0.8)', borderColor: 'rgba(255,200,50,0.3)', background: 'rgba(255,200,50,0.1)' }
+                                    : m.role === 'manager' ? { color: 'rgba(200,140,255,0.8)', borderColor: 'rgba(200,140,255,0.3)', background: 'rgba(200,140,255,0.1)' }
+                                    : { color: 'rgba(56,189,248,0.8)', borderColor: 'rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)' })
+                                }}>
+                                  {classification}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {bizRegOpen && (
+                    <div className="rounded-md border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-2">
+                      <div className="text-[10px] font-bold text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>REGISTER NEW BUSINESS</div>
+                      <select value={bizRegForm.businessType} onChange={e => setBizRegForm(f => ({ ...f, businessType: e.target.value as 'real' | 'minx' }))}
+                        className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        <option value="real">REAL-WORLD ENTERPRISE</option>
+                        <option value="minx">MINX CORP (IN-GAME)</option>
+                      </select>
+                      <input value={bizRegForm.companyName} onChange={e => setBizRegForm(f => ({ ...f, companyName: e.target.value }))}
+                        placeholder="Company name" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                      <input value={bizRegForm.industry} onChange={e => setBizRegForm(f => ({ ...f, industry: e.target.value }))}
+                        placeholder="Industry (e.g. Technology, Finance)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                      <input value={bizRegForm.companySize} onChange={e => setBizRegForm(f => ({ ...f, companySize: e.target.value }))}
+                        placeholder="Company size (e.g. 1-10, 50-100)" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                      <input value={bizRegForm.contactEmail} onChange={e => setBizRegForm(f => ({ ...f, contactEmail: e.target.value }))}
+                        placeholder="Contact email" className="w-full bg-background border border-border rounded-md px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none" style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                      {bizRegError && <div className="text-[10px] text-red-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{bizRegError}</div>}
+                      <div className="flex gap-2">
+                        <button onClick={() => { setBizRegOpen(false); setBizRegError(''); }}
+                          className="flex-1 text-xs py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          CANCEL
+                        </button>
+                        <button onClick={registerBusiness} disabled={bizRegLoading || !bizRegForm.companyName.trim()}
+                          className="flex-1 text-xs py-1.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors disabled:opacity-50" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                          {bizRegLoading ? 'REGISTERING...' : 'REGISTER'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {worldBiz.length === 0 && !bizRegOpen && (
+                    <p className="text-[10px] text-cyan-400/30 text-center" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NO BUSINESSES REGISTERED. CLICK + REGISTER TO GET STARTED.</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* PABLO AI Chat — FREE */}

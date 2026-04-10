@@ -537,4 +537,77 @@ router.get("/bots/:id/trading/positions", requireAuth, async (req, res) => {
   }
 });
 
+import { RISK_PROFILES, INTERNATIONAL_MARKETS, isMarketOpenNow } from "../lib/trading-strategies";
+
+router.get("/trading/risk-profiles", (_req: Request, res: Response) => {
+  res.json({ profiles: RISK_PROFILES });
+});
+
+router.get("/trading/markets", (_req: Request, res: Response) => {
+  const markets = INTERNATIONAL_MARKETS.map(m => ({
+    ...m,
+    isOpen: isMarketOpenNow(m),
+  }));
+  res.json({ markets });
+});
+
+router.post("/bots/:id/trading/risk-profile", requireAuth, async (req: Request, res: Response) => {
+  const botId = Number(req.params.id);
+  const { profile } = req.body;
+  if (!profile || !RISK_PROFILES[profile as keyof typeof RISK_PROFILES]) {
+    res.status(400).json({ error: "Invalid risk profile. Must be conservative, moderate, or aggressive." });
+    return;
+  }
+  const cfg = RISK_PROFILES[profile as keyof typeof RISK_PROFILES];
+  try {
+    const strategies = await db
+      .select()
+      .from(botTradeStrategiesTable)
+      .where(eq(botTradeStrategiesTable.botId, botId));
+
+    for (const strat of strategies) {
+      const enabled = cfg.allowedStrategies.includes(strat.strategyType);
+      await db.update(botTradeStrategiesTable)
+        .set({
+          enabled,
+          maxDailyLossPercent: cfg.maxDailyLossPercent,
+          maxPositionSize: Math.round(cfg.maxPositionSizePercent * 100),
+          maxConcurrentTrades: cfg.maxConcurrentTrades,
+          stopLossPercent: cfg.stopLossPercent,
+          trailingStopPercent: cfg.trailingStopPercent,
+        })
+        .where(eq(botTradeStrategiesTable.id, strat.id));
+    }
+
+    const enabledStrategies = cfg.allowedStrategies;
+    const existingTypes = strategies.map(s => s.strategyType);
+    for (const stratType of enabledStrategies) {
+      if (!existingTypes.includes(stratType)) {
+        await db.insert(botTradeStrategiesTable).values({
+          botId,
+          strategyType: stratType,
+          enabled: true,
+          maxDailyLoss: 0,
+          maxDailyLossPercent: cfg.maxDailyLossPercent,
+          maxPositionSize: Math.round(cfg.maxPositionSizePercent * 100),
+          maxConcurrentTrades: cfg.maxConcurrentTrades,
+          stopLossPercent: cfg.stopLossPercent,
+          trailingStopPercent: cfg.trailingStopPercent,
+          killSwitch: false,
+        });
+      }
+    }
+
+    const updated = await db
+      .select()
+      .from(botTradeStrategiesTable)
+      .where(eq(botTradeStrategiesTable.botId, botId));
+
+    res.json({ ok: true, profile, config: cfg, strategies: updated });
+  } catch (err) {
+    console.error("Error applying risk profile:", err);
+    res.status(500).json({ error: "Failed to apply risk profile" });
+  }
+});
+
 export default router;

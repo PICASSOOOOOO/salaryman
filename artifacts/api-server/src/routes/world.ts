@@ -302,6 +302,25 @@ router.get("/world/business-profit-rate", async (req, res) => {
   }
 });
 
+router.get("/world/my-business", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const playerName = derivePlayerName(req);
+    const businesses = await db
+      .select()
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.playerName, playerName))
+      .orderBy(desc(worldBusinessesTable.createdAt));
+    res.json({ businesses });
+  } catch (err: any) {
+    console.error("[World] my-business error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.get("/world/server-status", (_req, res) => {
   res.json(getServerStatus());
 });

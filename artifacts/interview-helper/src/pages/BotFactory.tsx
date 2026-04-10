@@ -681,6 +681,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
   const [tradeFilterSide, setTradeFilterSide] = useState<'all' | 'BUY' | 'SELL'>('all');
   const [portfolioPositions, setPortfolioPositions] = useState<Array<{ symbol: string; quantity: number; marketValue: number; averagePrice: number; unrealizedPnl: number; assetType: string }>>([]);
   const [portfolioSource, setPortfolioSource] = useState<'live' | 'paper'>('paper');
+  const [intlMarkets, setIntlMarkets] = useState<Array<{ id: string; name: string; region: string; currency: string; isOpen: boolean }>>([]);
 
   const hasTrading = bot.permissions.includes('trading_read') || bot.permissions.includes('trading_paper') || bot.permissions.includes('trading_execute');
 
@@ -697,6 +698,11 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
       if (strRes.ok) { const d = await strRes.json(); setStrategies(d.strategies ?? []); }
       if (trRes.ok) { const d = await trRes.json(); setTrades(d.trades ?? []); setTradeStats(d.stats ?? { totalPnl: 0, wins: 0, losses: 0, total: 0 }); }
       if (posRes.ok) { const d = await posRes.json(); setPortfolioPositions(d.positions ?? []); setPortfolioSource(d.source ?? 'paper'); }
+
+      try {
+        const mkRes = await apiFetch('/api/trading/markets');
+        if (mkRes.ok) { const d = await mkRes.json(); setIntlMarkets(d.markets ?? []); }
+      } catch {}
 
       const acc = account;
       const strats = strategies;
@@ -1053,14 +1059,64 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               </p>
             </div>
           )}
+
+          {intlMarkets.length > 0 && (
+            <div className="rounded-xl border border-violet-500/15 bg-violet-500/5 p-3">
+              <p className="text-[10px] font-bold text-violet-400/70 mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>INTERNATIONAL MARKETS</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {intlMarkets.map(m => (
+                  <div key={m.id} className="flex items-center justify-between rounded-md border border-border/50 px-2 py-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.isOpen ? 'bg-green-400' : 'bg-red-400/50'}`} />
+                      <span className="text-[9px] text-foreground/80 truncate" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{m.name}</span>
+                    </div>
+                    <span className="text-[8px] text-muted-foreground shrink-0 ml-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{m.currency}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {tradingTab === 'strategies' && (
         <div className="space-y-3">
+          <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-3">
+            <p className="text-[10px] font-bold text-green-400/70 mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>RISK PROFILE PRESETS</p>
+            <p className="text-[10px] text-muted-foreground mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+              {boomer ? 'Select a risk level to auto-configure all strategies and risk parameters.' : 'SELECT RISK LEVEL · AUTO-CONFIGURES STRATEGIES + RISK PARAMS'}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: 'conservative', label: 'CONSERVATIVE', desc: 'Low risk, 2 strategies, tight stops', color: 'green' },
+                { key: 'moderate', label: 'MODERATE', desc: 'Balanced, 6 strategies, standard risk', color: 'amber' },
+                { key: 'aggressive', label: 'AGGRESSIVE', desc: 'High risk, all strategies, wide stops', color: 'red' },
+              ] as const).map(p => (
+                <button key={p.key}
+                  onClick={async () => {
+                    try {
+                      const res = await apiFetch(`/api/bots/${bot.id}/trading/risk-profile`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ profile: p.key }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setStrategies(data.strategies ?? []);
+                      }
+                    } catch {}
+                  }}
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2 transition-colors hover:border-${p.color}-500/40`}
+                  style={{ borderColor: `rgba(${p.color === 'green' ? '34,197,94' : p.color === 'amber' ? '245,158,11' : '239,68,68'},0.2)`, background: `rgba(${p.color === 'green' ? '34,197,94' : p.color === 'amber' ? '245,158,11' : '239,68,68'},0.05)` }}>
+                  <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", color: `rgba(${p.color === 'green' ? '34,197,94' : p.color === 'amber' ? '245,158,11' : '239,68,68'},0.8)` }}>{p.label}</span>
+                  <span className="text-[8px] text-muted-foreground text-center leading-tight" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{p.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <p className="text-xs text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-            {boomer ? 'Toggle strategies on/off. The bot will run enabled strategies during market hours.' : 'ENABLE STRATEGIES · BOT RUNS DURING MARKET HOURS 9:30AM–4PM ET'}
-          </p>
+            {boomer ? 'Toggle strategies on/off. The bot will run enabled strategies during market hours.' : 'ENABLE STRATEGIES · BOT RUNS ON ALL SUPPORTED MARKETS WORLDWIDE'}</p>
           {ALL_STRATEGIES.map(type => {
             const strat = strategies.find(s => s.strategyType === type);
             const enabled = strat?.enabled ?? false;

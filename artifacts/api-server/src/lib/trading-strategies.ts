@@ -555,3 +555,128 @@ export const STRATEGY_RUNNERS: Record<string, StrategyRunner> = {
   vertical_spreads: (c, q, _max, g) => verticalSpreadSignal(c, q, g),
   straddles: (c, q, _max, g) => straddleSignal(c, q, g),
 };
+
+export type RiskProfile = "conservative" | "moderate" | "aggressive";
+
+export interface RiskProfileConfig {
+  label: string;
+  description: string;
+  maxDailyLossPercent: number;
+  maxPositionSizePercent: number;
+  maxConcurrentTrades: number;
+  stopLossPercent: number;
+  trailingStopPercent: number;
+  allowedStrategies: string[];
+  confidenceThreshold: number;
+  positionSizeFactor: number;
+}
+
+export const RISK_PROFILES: Record<RiskProfile, RiskProfileConfig> = {
+  conservative: {
+    label: "CONSERVATIVE",
+    description: "Low-risk approach — swing trading and covered calls only. Tight stop losses, small positions, minimal concurrent exposure.",
+    maxDailyLossPercent: 1,
+    maxPositionSizePercent: 5,
+    maxConcurrentTrades: 2,
+    stopLossPercent: 2,
+    trailingStopPercent: 1.5,
+    allowedStrategies: ["swing_trading", "covered_calls"],
+    confidenceThreshold: 0.75,
+    positionSizeFactor: 0.5,
+  },
+  moderate: {
+    label: "MODERATE",
+    description: "Balanced approach — uses swing, day, volume, and momentum strategies. Standard risk parameters with moderate position sizing.",
+    maxDailyLossPercent: 3,
+    maxPositionSizePercent: 10,
+    maxConcurrentTrades: 5,
+    stopLossPercent: 4,
+    trailingStopPercent: 3,
+    allowedStrategies: ["swing_trading", "day_trading", "volume_trading", "momentum_trading", "covered_calls", "vertical_spreads"],
+    confidenceThreshold: 0.65,
+    positionSizeFactor: 1.0,
+  },
+  aggressive: {
+    label: "AGGRESSIVE",
+    description: "High-risk, high-reward — all strategies enabled including scalping, iron condors, and straddles. Wider stops, larger positions.",
+    maxDailyLossPercent: 5,
+    maxPositionSizePercent: 20,
+    maxConcurrentTrades: 10,
+    stopLossPercent: 6,
+    trailingStopPercent: 4,
+    allowedStrategies: Object.keys(STRATEGY_RUNNERS),
+    confidenceThreshold: 0.55,
+    positionSizeFactor: 1.5,
+  },
+};
+
+export function applyRiskProfile(
+  signal: TradeSignal,
+  profile: RiskProfile,
+  accountEquity: number,
+): TradeSignal {
+  const cfg = RISK_PROFILES[profile];
+  if (signal.action === "HOLD") return signal;
+  if (signal.confidence < cfg.confidenceThreshold) {
+    return { ...signal, action: "HOLD", reason: `${signal.reason} — below ${cfg.label} confidence threshold (${cfg.confidenceThreshold})` };
+  }
+  if (!cfg.allowedStrategies.includes(signal.strategyType)) {
+    return { ...signal, action: "HOLD", reason: `${signal.strategyType} not permitted under ${cfg.label} risk profile` };
+  }
+  const maxPositionDollars = (accountEquity * cfg.maxPositionSizePercent) / 100;
+  const adjustedQty = Math.max(1, Math.floor((maxPositionDollars / signal.suggestedPrice) * cfg.positionSizeFactor));
+  return { ...signal, suggestedQuantity: Math.min(signal.suggestedQuantity, adjustedQty) };
+}
+
+export interface InternationalMarket {
+  id: string;
+  name: string;
+  region: string;
+  timezone: string;
+  currency: string;
+  tradingHoursUtc: { open: string; close: string };
+  supported: boolean;
+}
+
+export const INTERNATIONAL_MARKETS: InternationalMarket[] = [
+  { id: "us_nyse", name: "NYSE", region: "NORTH AMERICA", timezone: "America/New_York", currency: "USD", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
+  { id: "us_nasdaq", name: "NASDAQ", region: "NORTH AMERICA", timezone: "America/New_York", currency: "USD", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
+  { id: "uk_lse", name: "LONDON STOCK EXCHANGE", region: "EUROPE", timezone: "Europe/London", currency: "GBP", tradingHoursUtc: { open: "08:00", close: "16:30" }, supported: true },
+  { id: "eu_euronext", name: "EURONEXT", region: "EUROPE", timezone: "Europe/Paris", currency: "EUR", tradingHoursUtc: { open: "08:00", close: "16:30" }, supported: true },
+  { id: "de_xetra", name: "XETRA (FRANKFURT)", region: "EUROPE", timezone: "Europe/Berlin", currency: "EUR", tradingHoursUtc: { open: "08:00", close: "16:30" }, supported: true },
+  { id: "jp_tse", name: "TOKYO STOCK EXCHANGE", region: "ASIA-PACIFIC", timezone: "Asia/Tokyo", currency: "JPY", tradingHoursUtc: { open: "00:00", close: "06:00" }, supported: true },
+  { id: "hk_hkex", name: "HONG KONG EXCHANGE", region: "ASIA-PACIFIC", timezone: "Asia/Hong_Kong", currency: "HKD", tradingHoursUtc: { open: "01:30", close: "08:00" }, supported: true },
+  { id: "cn_sse", name: "SHANGHAI STOCK EXCHANGE", region: "ASIA-PACIFIC", timezone: "Asia/Shanghai", currency: "CNY", tradingHoursUtc: { open: "01:30", close: "07:00" }, supported: true },
+  { id: "au_asx", name: "ASX (AUSTRALIA)", region: "ASIA-PACIFIC", timezone: "Australia/Sydney", currency: "AUD", tradingHoursUtc: { open: "00:00", close: "06:00" }, supported: true },
+  { id: "in_bse", name: "BOMBAY STOCK EXCHANGE", region: "SOUTH ASIA", timezone: "Asia/Kolkata", currency: "INR", tradingHoursUtc: { open: "03:45", close: "10:00" }, supported: true },
+  { id: "br_b3", name: "B3 (BRAZIL)", region: "SOUTH AMERICA", timezone: "America/Sao_Paulo", currency: "BRL", tradingHoursUtc: { open: "13:00", close: "20:00" }, supported: true },
+  { id: "kr_krx", name: "KOREA EXCHANGE", region: "ASIA-PACIFIC", timezone: "Asia/Seoul", currency: "KRW", tradingHoursUtc: { open: "00:00", close: "06:30" }, supported: true },
+  { id: "ca_tsx", name: "TORONTO STOCK EXCHANGE", region: "NORTH AMERICA", timezone: "America/Toronto", currency: "CAD", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
+  { id: "sg_sgx", name: "SGX (SINGAPORE)", region: "ASIA-PACIFIC", timezone: "Asia/Singapore", currency: "SGD", tradingHoursUtc: { open: "01:00", close: "09:00" }, supported: true },
+  { id: "za_jse", name: "JSE (SOUTH AFRICA)", region: "AFRICA", timezone: "Africa/Johannesburg", currency: "ZAR", tradingHoursUtc: { open: "07:00", close: "15:00" }, supported: true },
+  { id: "mx_bmv", name: "BMV (MEXICO)", region: "NORTH AMERICA", timezone: "America/Mexico_City", currency: "MXN", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
+  { id: "sa_tadawul", name: "TADAWUL (SAUDI)", region: "MIDDLE EAST", timezone: "Asia/Riyadh", currency: "SAR", tradingHoursUtc: { open: "07:00", close: "12:00" }, supported: true },
+  { id: "ng_nse", name: "NGX (NIGERIA)", region: "AFRICA", timezone: "Africa/Lagos", currency: "NGN", tradingHoursUtc: { open: "09:30", close: "14:30" }, supported: true },
+  { id: "crypto_global", name: "CRYPTO (24/7)", region: "GLOBAL", timezone: "UTC", currency: "MULTI", tradingHoursUtc: { open: "00:00", close: "23:59" }, supported: true },
+  { id: "fx_global", name: "FOREX (24/5)", region: "GLOBAL", timezone: "UTC", currency: "MULTI", tradingHoursUtc: { open: "22:00", close: "22:00" }, supported: true },
+];
+
+export function isMarketOpenNow(market: InternationalMarket): boolean {
+  const now = new Date();
+  const utcHours = now.getUTCHours();
+  const utcMinutes = now.getUTCMinutes();
+  const utcTime = utcHours * 60 + utcMinutes;
+  const [openH, openM] = market.tradingHoursUtc.open.split(":").map(Number);
+  const [closeH, closeM] = market.tradingHoursUtc.close.split(":").map(Number);
+  const openTime = openH * 60 + openM;
+  const closeTime = closeH * 60 + closeM;
+  if (market.id === "crypto_global") return true;
+  if (market.id === "fx_global") {
+    const day = now.getUTCDay();
+    return day >= 1 && day <= 5;
+  }
+  const day = now.getUTCDay();
+  if (day === 0 || day === 6) return false;
+  if (openTime < closeTime) return utcTime >= openTime && utcTime <= closeTime;
+  return utcTime >= openTime || utcTime <= closeTime;
+}

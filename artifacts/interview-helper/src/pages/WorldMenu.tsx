@@ -138,7 +138,7 @@ const FLAVOR = [
   'Every building in Minx City has a price. The corp set them all.',
   'Villain of the poor. Hero of the rich. That\'s PABLO CORP.',
   'Gang territory starts where the lights end.',
-  'Server: MINX CITY · PST — 24 regional servers worldwide.',
+  'City: MINX CITY · PST — 24 cities worldwide.',
   'A helicopter left the tower at 3 AM. Nobody knows which city it came from. Nobody asks.',
   'They say there are towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
   'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP network never sleeps.',
@@ -537,7 +537,7 @@ function ClassifiedGate() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#030803', ...S, position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url(/brand/other/pixel-office.png)', backgroundSize: 'cover', backgroundPosition: 'center bottom', opacity: 0.08, filter: 'sepia(1) hue-rotate(80deg) saturate(3)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(56,189,248,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none' }} />
 
@@ -560,7 +560,7 @@ function ClassifiedGate() {
               <div>→ VIRTUAL EMPLOYEE SYSTEM</div>
               <div>→ TERRITORY CONTROL v2</div>
               <div>→ PERSISTENT WORLD STATE</div>
-              <div>→ CROSS-SERVER NETWORK</div>
+              <div>→ CROSS-CITY NETWORK</div>
             </div>
           </div>
           <button
@@ -966,12 +966,9 @@ export default function WorldMenu() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#030803', ...S, position: 'relative', overflow: 'hidden' }}>
-      {/* Pixel Office background art — subtle, low opacity */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        backgroundImage: 'url(/brand/other/pixel-office.png)',
-        backgroundSize: 'cover', backgroundPosition: 'center bottom',
-        opacity: 0.06, filter: 'sepia(1) hue-rotate(80deg) saturate(3)',
+        background: 'radial-gradient(ellipse at center, rgba(56,189,248,0.03) 0%, transparent 70%)',
       }} />
       <div style={{ position: 'fixed', inset: 0, background: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px)', pointerEvents: 'none', zIndex: 99 }} />
       <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 0 }} />
@@ -1043,6 +1040,51 @@ export default function WorldMenu() {
             </div>
           </div>
         )}
+
+        {/* ── PABLO CORP CITIES ── */}
+        <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem', border: '1px solid rgba(56,189,248,.1)', background: 'rgba(5,15,25,.6)', padding: '.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
+            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em' }}>PABLO CORP CITIES — 24 PLANNED</div>
+            <div style={{ fontSize: '.38rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.1em' }}>EXPANSION ROADMAP</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.3rem' }}>
+            {[
+              { name: 'MINX CITY', region: 'US WEST', status: 'live' as const },
+              { name: 'NEON LAGOS', region: 'W. AFRICA', status: 'planned' as const },
+              { name: 'SECTOR BERLIN', region: 'EUROPE', status: 'planned' as const },
+              { name: 'OLD SHANGHAI', region: 'E. ASIA', status: 'planned' as const },
+              { name: 'HAVANA GRID', region: 'CARIBBEAN', status: 'planned' as const },
+              { name: 'TOKYO CORE', region: 'E. ASIA', status: 'planned' as const },
+              { name: 'SAO PAULO NEXUS', region: 'S. AMERICA', status: 'planned' as const },
+              { name: 'DUBAI SPIRE', region: 'MIDDLE EAST', status: 'planned' as const },
+              { name: 'MUMBAI CIRCUIT', region: 'S. ASIA', status: 'planned' as const },
+              { name: 'LONDON VAULT', region: 'W. EUROPE', status: 'planned' as const },
+              { name: 'SYDNEY ARC', region: 'OCEANIA', status: 'planned' as const },
+              { name: 'NAIROBI PULSE', region: 'E. AFRICA', status: 'planned' as const },
+              { name: 'SEOUL GRID', region: 'E. ASIA', status: 'planned' as const },
+              { name: 'MEXICO SIGNAL', region: 'N. AMERICA', status: 'planned' as const },
+              { name: 'ISTANBUL BRIDGE', region: 'EURASIA', status: 'planned' as const },
+              { name: 'TORONTO NODE', region: 'N. AMERICA', status: 'planned' as const },
+              { name: 'JOHANNESBURG MINE', region: 'S. AFRICA', status: 'planned' as const },
+              { name: 'SINGAPORE HUB', region: 'SE. ASIA', status: 'planned' as const },
+              { name: 'CAIRO PYRAMID', region: 'N. AFRICA', status: 'planned' as const },
+              { name: 'BUENOS AIRES TANGO', region: 'S. AMERICA', status: 'planned' as const },
+              { name: 'JAKARTA FLOW', region: 'SE. ASIA', status: 'planned' as const },
+              { name: 'MOSCOW ZERO', region: 'E. EUROPE', status: 'planned' as const },
+              { name: 'NEW YORK TOWER', region: 'US EAST', status: 'planned' as const },
+              { name: 'MANILA WAVE', region: 'SE. ASIA', status: 'planned' as const },
+            ].map(city => (
+              <div key={city.name} style={{ padding: '.25rem .35rem', border: `1px solid ${city.status === 'live' ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.08)'}`, background: city.status === 'live' ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.02)', display: 'flex', flexDirection: 'column', gap: '.1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.2rem' }}>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: city.status === 'live' ? '#38bdf8' : 'rgba(56,189,248,.15)', boxShadow: city.status === 'live' ? '0 0 6px rgba(56,189,248,.6)' : 'none' }} />
+                  <span style={{ fontSize: '.38rem', color: city.status === 'live' ? '#38bdf8' : 'rgba(56,189,248,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city.name}</span>
+                </div>
+                <span style={{ fontSize: '.3rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{city.region}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: '.4rem', fontSize: '.35rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em', textAlign: 'center' }}>YOU ARE IN: MINX CITY (US WEST · PST) — MORE CITIES COMING 2026-2027</div>
+        </div>
 
         {/* ── PABLO TOOLS GRID ── */}
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
