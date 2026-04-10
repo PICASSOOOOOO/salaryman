@@ -262,6 +262,134 @@ router.delete("/bots/:id", requireBotWrite, async (req, res) => {
   }
 });
 
+router.post("/bots/:id/collaboration", requireBotWrite, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const { enabled, collaborationRole } = req.body;
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const updates: Partial<Record<string, unknown>> = {};
+    if (enabled !== undefined) updates.collaborationEnabled = !!enabled;
+    if (collaborationRole !== undefined) updates.collaborationRole = collaborationRole;
+
+    const [updated] = await db
+      .update(botsTable)
+      .set(updates)
+      .where(eq(botsTable.id, botId))
+      .returning();
+
+    res.json({ bot: updated });
+  } catch (err) {
+    console.error("Error updating collaboration:", err);
+    res.status(500).json({ error: "Failed to update collaboration" });
+  }
+});
+
+router.post("/bots/:id/spawn-custom", requireBotWrite, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const parentBotId = parseInt(parseParam(req.params.id), 10);
+    const { name, personality, systemPrompt, permissions, collaborationRole } = req.body;
+
+    const [parent] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, parentBotId), eq(botsTable.ownerId, userId)));
+
+    if (!parent) {
+      res.status(404).json({ error: "Parent bot not found" });
+      return;
+    }
+
+    const existingChildren = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.ownerId, userId), eq(botsTable.parentBotId, parentBotId)));
+
+    if (existingChildren.length >= 5) {
+      res.status(400).json({ error: "Maximum 5 custom sub-bots per parent bot" });
+      return;
+    }
+
+    const [child] = await db
+      .insert(botsTable)
+      .values({
+        ownerId: userId,
+        name: name?.trim() || `${parent.name} (Custom)`,
+        personality: personality || parent.personality,
+        systemPrompt: systemPrompt || parent.systemPrompt,
+        permissions: permissions || parent.permissions,
+        maxTokensPerResponse: parent.maxTokensPerResponse,
+        rateLimitPerMinute: parent.rateLimitPerMinute,
+        parentBotId,
+        collaborationEnabled: true,
+        collaborationRole: collaborationRole || "specialist",
+      })
+      .returning();
+
+    res.json({ bot: child });
+  } catch (err) {
+    console.error("Error spawning custom bot:", err);
+    res.status(500).json({ error: "Failed to spawn custom bot" });
+  }
+});
+
+router.get("/bots/:id/team", requireBotAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+
+    const [bot] = await db
+      .select()
+      .from(botsTable)
+      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+
+    if (!bot) {
+      res.status(404).json({ error: "Bot not found" });
+      return;
+    }
+
+    const allBots = await db
+      .select()
+      .from(botsTable)
+      .where(eq(botsTable.ownerId, userId));
+
+    const collaborators = allBots.filter(b => b.collaborationEnabled && b.id !== botId);
+    const children = allBots.filter(b => b.parentBotId === botId);
+
+    res.json({
+      team: collaborators.map(b => ({
+        id: b.id,
+        name: b.name,
+        status: b.status,
+        role: b.collaborationRole || "general",
+        isChild: b.parentBotId === botId,
+        permissions: b.permissions,
+      })),
+      children: children.map(b => ({
+        id: b.id,
+        name: b.name,
+        status: b.status,
+        role: b.collaborationRole || "specialist",
+        permissions: b.permissions,
+      })),
+    });
+  } catch (err) {
+    console.error("Error fetching team:", err);
+    res.status(500).json({ error: "Failed to fetch team" });
+  }
+});
+
 router.post("/bots/:id/connect", requireBotWrite, async (req, res) => {
   try {
     const userId = getUserId(req);

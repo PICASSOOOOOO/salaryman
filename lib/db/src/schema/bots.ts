@@ -105,6 +105,9 @@ export const botsTable = pgTable("bots", {
   maxTokensPerResponse: integer("max_tokens_per_response").notNull().default(4096),
   rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),
   marketplaceItemId: integer("marketplace_item_id"),
+  collaborationEnabled: boolean("collaboration_enabled").notNull().default(false),
+  parentBotId: integer("parent_bot_id"),
+  collaborationRole: varchar("collaboration_role", { length: 40 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
 });

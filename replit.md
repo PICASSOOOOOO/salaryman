@@ -21,7 +21,7 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
 ### Minx City World
-A pixel office simulation with a virtual employee system, territory control, and a persistent world state.
+A pixel office simulation with a virtual employee system, territory control, and a persistent world state. Multi-city expansion planned: 24 cities worldwide (Minx City live; Neon Lagos, Sector Berlin, Old Shanghai, etc. planned). Cities schema in `lib/db/src/schema/server-regions.ts` (`citiesTable`, `PLANNED_CITIES`).
 
 ## User Preferences
 
@@ -53,7 +53,7 @@ The project is a pnpm workspace monorepo built with TypeScript, focusing on modu
 - **Org-Specific Screening Scripts:** Dynamic application of company-specific scripts for Pablo's call agent based on the user's organization.
 - **Voice Conversation Mode:** A `useVoiceConversation` hook enables continuous, hands-free voice interaction with Pablo AI across the platform, using Web Speech API for STT and OpenAI TTS-1 for TTS.
 - **Subscription Model:** Feature-based subscription system using Stripe, gated by `ProGate` component and backend middleware. All cost-incurring APIs (DALL-E image gen, ElevenLabs/OpenAI TTS, transcription, Resend email, studio content generation) are gated behind `requireFeature('claw_bot')` to prevent free-tier cost exposure. Phone system (TTC) retains its own `phone_system` feature gate.
-- **Bot Factory:** OpenClaw-powered system for creating custom AI bots and managing pre-built bots, with integration to multiple communication platforms. Features persistent memory, configurable personality, access control, and scheduled tasks. Billing is handled via Stripe.
+- **Bot Factory:** OpenClaw-powered system for creating custom AI bots and managing pre-built bots, with integration to multiple communication platforms. Features persistent memory, configurable personality, access control, scheduled tasks, and bot collaboration mode (team bots share context, delegate sub-tasks, spawn custom sub-bots like "Jean Claw (Custom)"). Billing is handled via Stripe.
 - **Documents & Media:** Invoice and contract generators, a file manager for GCS-backed object storage, and a dedicated Media Library (VAULT-X) for managing audio/image/video files.
 - **Sound Lab Looper:** A persistent, always-visible overlay for the Sound Lab (1999) that allows recording and managing audio loops across different instrument sections.
 

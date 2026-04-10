@@ -46,7 +46,19 @@ interface BotData {
   rateLimitPerMinute: number;
   marketplaceItemId: number | null;
   connections: BotConnection[];
+  collaborationEnabled?: boolean;
+  parentBotId?: number | null;
+  collaborationRole?: string | null;
   createdAt: string;
+}
+
+interface TeamMember {
+  id: number;
+  name: string;
+  status: string;
+  role: string;
+  isChild: boolean;
+  permissions: string[];
 }
 
 interface MarketplaceItem {
@@ -1875,7 +1887,12 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
 function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; onClose: () => void; onRefresh: () => void; boomer: boolean; t: (key: string, opts?: Record<string, unknown>) => string }) {
   const hasTrading = bot.permissions.some(p => ['trading_read', 'trading_paper', 'trading_execute'].includes(p));
   const hasProspecting = bot.permissions.includes('crm_write') && bot.permissions.includes('contacts_write') && !!bot.marketplaceItemId;
-  const [tab, setTab] = useState<'test' | 'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting'>('test');
+  const [tab, setTab] = useState<'test' | 'logs' | 'memory' | 'tasks' | 'settings' | 'trading' | 'prospecting' | 'team'>('test');
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [spawning, setSpawning] = useState(false);
+  const [spawnName, setSpawnName] = useState('');
+  const [spawnRole, setSpawnRole] = useState('specialist');
+  const [togglingCollab, setTogglingCollab] = useState(false);
   const [logs, setLogs] = useState<ConversationLog[]>([]);
   const [memories, setMemories] = useState<BotMemory[]>([]);
   const [tasks, setTasks] = useState<BotTask[]>([]);
@@ -1897,6 +1914,9 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         } else if (tab === 'tasks') {
           const res = await apiFetch(`/api/bots/${bot.id}/tasks`);
           if (res.ok) { const data = await res.json(); setTasks(data.tasks ?? []); }
+        } else if (tab === 'team') {
+          const res = await apiFetch(`/api/bots/${bot.id}/team`);
+          if (res.ok) { const data = await res.json(); setTeamMembers([...(data.team ?? []), ...(data.children ?? []).map((c: TeamMember) => ({ ...c, isChild: true }))]); }
         } else {
           setLoading(false);
           return;
@@ -2006,19 +2026,21 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
         </div>
 
         <div className="flex border-b border-border overflow-x-auto">
-          {(['test', 'logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'settings'] as const).map((tabKey: string) => (
+          {(['test', 'logs', 'memory', 'tasks', ...(hasTrading ? ['trading'] : []), ...(hasProspecting ? ['prospecting'] : []), 'team', 'settings'] as const).map((tabKey: string) => (
             <button key={tabKey} onClick={() => setTab(tabKey as typeof tab)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold transition-colors ${tab === tabKey ? 'text-sky-400 border-b-2 border-sky-400' : 'text-muted-foreground hover:text-foreground'}`}
               style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {tabKey === 'test' && <MessageSquare className="w-3 h-3" />}
               {tabKey === 'trading' && <TrendingUp className="w-3 h-3" />}
               {tabKey === 'prospecting' && <Search className="w-3 h-3" />}
+              {tabKey === 'team' && <Users className="w-3 h-3" />}
               {tabKey === 'test' ? (boomer ? 'Test Chat' : 'TEST CHAT') :
                tabKey === 'logs' ? (boomer ? t('botFactory.detailTabLogs') : t('botFactory.detailTabLogsCodename')) :
                tabKey === 'memory' ? (boomer ? t('botFactory.detailTabMemory') : t('botFactory.detailTabMemoryCodename')) :
                tabKey === 'tasks' ? (boomer ? t('botFactory.detailTabTasks') : t('botFactory.detailTabTasksCodename')) :
                tabKey === 'trading' ? (boomer ? 'Trading' : 'TRADING') :
                tabKey === 'prospecting' ? (boomer ? 'Prospecting' : 'PROSPECTING') :
+               tabKey === 'team' ? 'TEAM' :
                (boomer ? t('botFactory.detailTabSettings') : t('botFactory.detailTabSettingsCodename'))}
             </button>
           ))}
@@ -2151,6 +2173,152 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
             <TradingConsole bot={bot} boomer={boomer} />
           ) : tab === 'prospecting' ? (
             <ProspectingConsole bot={bot} boomer={boomer} />
+          ) : tab === 'team' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-violet-400" />
+                  <span className="text-xs font-bold text-violet-400 uppercase tracking-widest" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                    COLLABORATION MODE
+                  </span>
+                </div>
+                <button
+                  disabled={togglingCollab}
+                  onClick={async () => {
+                    setTogglingCollab(true);
+                    try {
+                      await apiFetch(`/api/bots/${bot.id}/collaboration`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enabled: !bot.collaborationEnabled }),
+                      });
+                      onRefresh();
+                    } catch {} finally { setTogglingCollab(false); }
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                    bot.collaborationEnabled
+                      ? 'border-violet-500/30 bg-violet-500/10 text-violet-400'
+                      : 'border-border text-muted-foreground hover:border-violet-500/20'
+                  }`}
+                  style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                >
+                  {togglingCollab ? <div className="w-3 h-3 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" /> :
+                    bot.collaborationEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  {bot.collaborationEnabled ? 'ENABLED' : 'DISABLED'}
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-violet-500/15 bg-violet-500/[0.03] p-4">
+                <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+                  WHEN ENABLED, THIS BOT CAN WORK WITH OTHER TEAMED BOTS — SHARING CONTEXT, DELEGATING SUB-TASKS, AND USING EACH OTHER'S PERMISSIONS AND AUTOMATIONS. ANY TEAMED BOT CAN ALSO SPAWN CUSTOM SUB-BOTS.
+                </p>
+              </div>
+
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {teamMembers.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-2" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        AVAILABLE TEAM
+                      </div>
+                      <div className="space-y-2">
+                        {teamMembers.map(m => (
+                          <div key={m.id} className="flex items-center justify-between rounded-lg border border-violet-500/10 bg-violet-500/[0.02] p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${m.isChild ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-violet-500/10 border border-violet-500/20'}`}>
+                                <Bot className={`w-4 h-4 ${m.isChild ? 'text-amber-400' : 'text-violet-400'}`} />
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '0.95rem' }}>{m.name}</div>
+                                <div className="text-[10px] text-muted-foreground/50" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {m.role.toUpperCase()} · {m.permissions.length} PERMISSIONS
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {m.isChild && (
+                                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">CUSTOM</span>
+                              )}
+                              <StatusBadge status={m.status as BotStatus} boomer={boomer} t={t} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {teamMembers.length === 0 && bot.collaborationEnabled && (
+                    <div className="rounded-xl border border-border p-6 text-center">
+                      <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground/20" />
+                      <p className="text-xs text-muted-foreground/50">NO OTHER BOTS WITH COLLABORATION ENABLED YET. ENABLE COLLABORATION ON MORE BOTS TO BUILD A TEAM.</p>
+                    </div>
+                  )}
+
+                  <div className="h-px bg-border" />
+
+                  <div>
+                    <div className="text-[10px] font-bold text-amber-400/70 uppercase tracking-widest mb-3" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                      SPAWN CUSTOM BOT
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/50 leading-relaxed mb-3">
+                      CREATE A SPECIALIZED SUB-BOT THAT INHERITS THIS BOT'S CAPABILITIES BUT CAN BE CUSTOMIZED FOR A SPECIFIC ROLE. UP TO 5 CUSTOM BOTS PER PARENT.
+                    </p>
+                    <div className="space-y-2">
+                      <input
+                        value={spawnName}
+                        onChange={e => setSpawnName(e.target.value)}
+                        placeholder={`${bot.name} (Custom)`}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:border-amber-500/50 focus:outline-none"
+                        style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                      />
+                      <select
+                        value={spawnRole}
+                        onChange={e => setSpawnRole(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-amber-500/50 focus:outline-none"
+                        style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                      >
+                        <option value="specialist">SPECIALIST</option>
+                        <option value="researcher">RESEARCHER</option>
+                        <option value="closer">CLOSER</option>
+                        <option value="analyst">ANALYST</option>
+                        <option value="coordinator">COORDINATOR</option>
+                        <option value="scout">SCOUT</option>
+                      </select>
+                      <button
+                        disabled={spawning}
+                        onClick={async () => {
+                          setSpawning(true);
+                          try {
+                            const res = await apiFetch(`/api/bots/${bot.id}/spawn-custom`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ name: spawnName || undefined, collaborationRole: spawnRole }),
+                            });
+                            if (res.ok) {
+                              setSpawnName('');
+                              onRefresh();
+                              const teamRes = await apiFetch(`/api/bots/${bot.id}/team`);
+                              if (teamRes.ok) { const data = await teamRes.json(); setTeamMembers([...(data.team ?? []), ...(data.children ?? []).map((c: TeamMember) => ({ ...c, isChild: true }))]); }
+                            } else {
+                              const data = await res.json().catch(() => ({}));
+                              alert(data.error || 'Failed to spawn bot');
+                            }
+                          } catch {} finally { setSpawning(false); }
+                        }}
+                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-black text-sm font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        {spawning ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                        SPAWN JEAN CLAW (CUSTOM)
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <div className="space-y-4">
               <div>
@@ -2770,6 +2938,34 @@ export default function BotFactory() {
                   </div>
                 </div>
               ) : (
+                <>
+                {bots.some(b => b.collaborationEnabled) && (
+                  <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-4 h-4 text-violet-400" />
+                      <span className="text-xs font-bold text-violet-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        COLLABORATION MODE
+                      </span>
+                      <div className="flex-1 h-px bg-violet-500/10" />
+                      <span className="text-[10px] text-violet-400/50 font-mono">
+                        {bots.filter(b => b.collaborationEnabled).length} BOTS TEAMED
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60 leading-relaxed mb-3">
+                      TEAMED BOTS SHARE CONTEXT, DELEGATE TASKS TO EACH OTHER, AND CAN SPAWN CUSTOM SUB-BOTS TO HANDLE SPECIALIZED WORK. EACH BOT CONTRIBUTES ITS PERMISSIONS AND SKILLS TO THE COLLECTIVE.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {bots.filter(b => b.collaborationEnabled).map(b => (
+                        <span key={b.id} className="px-2 py-1 rounded-lg text-[9px] font-bold border border-violet-500/20 bg-violet-500/[0.06] text-violet-300 flex items-center gap-1.5"
+                          style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                          {b.name.toUpperCase()}
+                          {b.collaborationRole && <span className="text-violet-400/40">· {b.collaborationRole.toUpperCase()}</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <AnimatePresence>
                   {bots.map((bot, i) => {
                     const sub = bot.marketplaceItemId
@@ -2808,6 +3004,18 @@ export default function BotFactory() {
                                   {boomerMode ? 'Free' : '// FREE'}
                                 </span>
                               )}
+                              {bot.collaborationEnabled && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/25"
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  TEAM
+                                </span>
+                              )}
+                              {bot.parentBotId && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25"
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  CUSTOM
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
@@ -2833,6 +3041,7 @@ export default function BotFactory() {
                     );
                   })}
                 </AnimatePresence>
+                </>
               )}
             </div>
           )}
