@@ -916,7 +916,7 @@ const TABS: { id: StudioTab; label: string; boomerLabel: string; icon: React.FC<
   { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Instagram, Twitter, LinkedIn, TikTok & Facebook templates' },
 ];
 
-export default function ContentStudio() {
+export default function ContentStudio({ embedded }: { embedded?: boolean } = {}) {
   const { isAuthenticated } = useAuth();
   usePlan();
   const [tab, setTab] = useState<StudioTab>('graphics');
@@ -929,21 +929,13 @@ export default function ContentStudio() {
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !embedded) {
     return <SignInPage context={boomerMode ? 'Sign in to access the content studio.' : 'Operative credentials required. CONTENT STUDIO access locked.'} />;
   }
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#030803', color: CRT_GREEN }}>
-      {/* Scanline overlay */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-      }} />
-
-      <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-
-        {/* Header */}
+  const innerContent = (
+    <>
+      {!embedded && (
         <div style={{ marginBottom: '24px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
             <div style={{
@@ -972,67 +964,79 @@ export default function ContentStudio() {
             </div>
           </div>
         </div>
+      )}
 
-        {/* Tab Bar */}
-        <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '0' }}>
-          {TABS.map(t => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '0.7rem',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
-                  background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
-                  border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
-                  borderBottom: active ? '1px solid #030803' : '1px solid transparent',
-                  padding: '8px 20px',
-                  cursor: 'pointer',
-                  marginBottom: active ? '-1px' : '0',
-                  transition: 'all 0.15s',
-                  textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
-                }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
-              >
-                <t.icon className="w-3.5 h-3.5" />
-                {boomerMode ? t.boomerLabel : t.label}
-              </button>
-            );
-          })}
-        </div>
+      <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '0' }}>
+        {TABS.map(t => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: '0.7rem',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
+                background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
+                border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
+                borderBottom: active ? '1px solid #030803' : '1px solid transparent',
+                padding: '8px 20px',
+                cursor: 'pointer',
+                marginBottom: active ? '-1px' : '0',
+                transition: 'all 0.15s',
+                textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
+              }}
+              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
+              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
+            >
+              <t.icon className="w-3.5 h-3.5" />
+              {boomerMode ? t.boomerLabel : t.label}
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Tab desc */}
-        <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
-          {TABS.find(t => t.id === tab)?.desc.toUpperCase()}
-        </div>
+      <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
+        {TABS.find(t => t.id === tab)?.desc.toUpperCase()}
+      </div>
 
-        {/* Tab content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.12 }}
-          >
-            {tab === 'graphics' && <GraphicsStudio />}
-            {tab === 'copy' && <CopyStudio />}
-            {tab === 'social' && <SocialStudio />}
-          </motion.div>
-        </AnimatePresence>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.12 }}
+        >
+          {tab === 'graphics' && <GraphicsStudio />}
+          {tab === 'copy' && <CopyStudio />}
+          {tab === 'social' && <SocialStudio />}
+        </motion.div>
+      </AnimatePresence>
 
-        {/* Footer note */}
+      {!embedded && (
         <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid rgba(56,189,248,0.08)', textAlign: 'center' }}>
           <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(56,189,248,0.2)', letterSpacing: '0.12em' }}>
             PABLO USES YOUR BRAND KIT FROM DASHBOARD · CONTENT IS AI-GENERATED · REVIEW BEFORE PUBLISHING
           </span>
         </div>
+      )}
+    </>
+  );
+
+  if (embedded) return innerContent;
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#030803', color: CRT_GREEN }}>
+      <div style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
+      }} />
+      <main style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+        {innerContent}
       </main>
     </div>
   );

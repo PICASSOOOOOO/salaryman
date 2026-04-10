@@ -75,10 +75,9 @@ export const MODULES: Module[] = [
     label: 'CREATIVE',
     codename: 'FORGE MATRIX',
     icon: Layers,
-    defaultPath: '/creative/studio',
+    defaultPath: '/creative/darkroom',
     subs: [
-      { id: 'studio', path: '/creative/studio', label: 'STUDIO', boomerLabel: 'STUDIO', codename: 'FORGE-7', icon: Layers },
-      { id: 'production', path: '/creative/production', label: 'PRODUCTION', boomerLabel: 'PRODUCTION STUDIO', codename: 'PRD-X', icon: Clapperboard },
+      { id: 'darkroom', path: '/creative/darkroom', label: 'DARK ROOM', boomerLabel: 'DARK ROOM', codename: 'DARK ROOM', icon: Clapperboard },
       { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
       { id: 'campaigns', path: '/creative/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },

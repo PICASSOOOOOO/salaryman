@@ -123,6 +123,11 @@ export const PABLO_PRODUCTS = {
     short: "FORGE-7",
     desc: "AI-powered content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
   },
+  DARK_ROOM: {
+    name: "DARK ROOM v2.0",
+    short: "DARK ROOM",
+    desc: "Full-spectrum creative processing lab. Content fabrication, image production, and video pipeline unified under blackout conditions.",
+  },
   SEO: {
     name: "SPIDER-X SEARCH CRAWLER",
     short: "SPIDER-X",
@@ -168,7 +173,7 @@ export const PABLO_PRODUCTS = {
   CREATIVE_MODULE: {
     name: "FORGE MATRIX v3.0",
     short: "FORGE MATRIX",
-    desc: "Creative fabrication suite. Content studio, 1999, campaign engine, and brand identity matrix.",
+    desc: "Creative fabrication suite. Dark Room, 1999, campaign engine, and brand identity matrix.",
   },
   INTEL_MODULE: {
     name: "COMMAND NET v1.0",

@@ -36,6 +36,7 @@ const Invoices = lazy(() => import("@/pages/Invoices"));
 const Deals = lazy(() => import("@/pages/Deals"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
+const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
@@ -231,14 +232,15 @@ function AppShell() {
             <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
 
             {/* CREATIVE module */}
-            <Route path="/creative/production" component={ProductionStudio} />
-            <Route path="/creative/studio" component={ContentStudio} />
+            <Route path="/creative/darkroom" component={DarkRoom} />
+            <Route path="/creative/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
+            <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
             <Route path="/creative/campaigns" component={Campaigns} />
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/creative">{() => <Redirect to="/creative/studio" />}</Route>
+            <Route path="/creative">{() => <Redirect to="/creative/darkroom" />}</Route>
 
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />
@@ -276,7 +278,7 @@ function AppShell() {
             <Route path="/hiring">{() => <Redirect to="/business/hiring" />}</Route>
             <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
             <Route path="/documents">{() => <Redirect to="/business/documents" />}</Route>
-            <Route path="/studio">{() => <Redirect to="/creative/studio" />}</Route>
+            <Route path="/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/lab">{() => <Redirect to="/creative/lab" />}</Route>
             <Route path="/campaigns">{() => <Redirect to="/creative/campaigns" />}</Route>
             <Route path="/reporting">{() => <Redirect to="/intel/reports" />}</Route>

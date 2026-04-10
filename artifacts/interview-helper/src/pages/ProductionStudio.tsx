@@ -93,7 +93,7 @@ function daysUntilExpiry(expiresAt: string | null): number | null {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-export default function ProductionStudio() {
+export default function ProductionStudio({ embedded }: { embedded?: boolean } = {}) {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
 
@@ -140,7 +140,7 @@ export default function ProductionStudio() {
     if (isAuthenticated) loadSavedProductions();
   }, [isAuthenticated, loadSavedProductions]);
 
-  if (!isAuthenticated) return <SignInPage />;
+  if (!isAuthenticated && !embedded) return <SignInPage />;
 
   const generateImage = async () => {
     if (!prompt.trim() || generating) return;
@@ -267,31 +267,27 @@ export default function ProductionStudio() {
   const currentImageMode = IMAGE_MODES.find(m => m.key === imageMode)!;
   const currentVideoMode = VIDEO_MODES.find(m => m.key === videoMode)!;
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
-
-      <main className="flex-1 p-4 md:p-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-
-          <div className="mb-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                <Clapperboard className="w-5 h-5 text-violet-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
-                  {boomerMode ? 'PRODUCTION STUDIO' : 'PRODUCTION STUDIO // PRD-X'}
-                </h1>
-                <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomerMode ? 'AI-POWERED CREATIVE PRODUCTION FOR BRANDS, FILM & VIDEO' : 'CLOTHING · BILLBOARDS · 35MM · HI-DEF · VIDEO PRODUCTION'}
-                </p>
-              </div>
+  const innerContent = (
+    <>
+      {!embedded && (
+        <div className="mb-5">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+              <Clapperboard className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
+                {boomerMode ? 'PRODUCTION STUDIO' : 'PRODUCTION STUDIO // PRD-X'}
+              </h1>
+              <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                {boomerMode ? 'AI-POWERED CREATIVE PRODUCTION FOR BRANDS, FILM & VIDEO' : 'CLOTHING · BILLBOARDS · 35MM · HI-DEF · VIDEO PRODUCTION'}
+              </p>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-5">
             {([
               { key: 'image' as Tab, label: 'IMAGE STUDIO', codename: 'STILLS', icon: Camera },
               { key: 'video' as Tab, label: 'VIDEO PRODUCTION', codename: 'MOTION', icon: Video },
@@ -601,6 +597,19 @@ export default function ProductionStudio() {
             </div>
           )}
 
+        </div>
+    </>
+  );
+
+  if (embedded) return innerContent;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-violet-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <main className="flex-1 p-4 md:p-6 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          {innerContent}
         </div>
       </main>
     </div>
