@@ -621,13 +621,19 @@ export default function Home() {
   const lastSpokenRef = useRef(-1);
 
   useEffect(() => {
+    const sendHeartbeat = () => {
+      if (isAuthenticated) {
+        fetch(`${import.meta.env.BASE_URL}api/world/heartbeat`, { method: 'POST', credentials: 'include' }).catch(() => {});
+      }
+    };
     const fetchStatus = () => {
+      sendHeartbeat();
       fetch(`${import.meta.env.BASE_URL}api/world/server-status`).then(r => r.json()).then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); }).catch(() => {});
     };
     fetchStatus();
     const iv = setInterval(fetchStatus, 15000);
     return () => clearInterval(iv);
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const parseFields = (s: Record<string, unknown>, fallbackCreatedAt?: string) => {

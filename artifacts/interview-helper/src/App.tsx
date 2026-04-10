@@ -150,6 +150,16 @@ function AppShell() {
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    const sendHeartbeat = () => {
+      fetch(`${import.meta.env.BASE_URL}api/world/heartbeat`, { method: 'POST', credentials: 'include' }).catch(() => {});
+    };
+    sendHeartbeat();
+    const hbInterval = setInterval(sendHeartbeat, 30000);
+    return () => clearInterval(hbInterval);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     if (isGameRoute) {
       document.body.classList.add("game-route");
     } else {
