@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, Film, Shirt, Tv, Image as ImageIcon,
   Loader2, Copy, Check, Download, Sparkles,
   Tag, Package, Clapperboard, Music, Palette,
   Video, Eye, RefreshCw, ChevronRight, X,
+  Lock, Unlock, Trash2, Cloud, CloudOff,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -15,6 +16,18 @@ type ImageMode = 'clothing_brand' | 'lookbook' | 'billboard' | 'film_35mm' | 'fi
 type VideoMode = 'video_commercial' | 'music_video' | 'brand_film' | 'social_video' | 'lookbook_video';
 type Tab = 'image' | 'video';
 
+interface SavedProduction {
+  id: number;
+  name: string;
+  objectPath: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  isLocked: boolean;
+  expiresAt: string | null;
+  source: string | null;
+  createdAt: string;
+}
+
 interface GeneratedImage {
   id: string;
   mode: ImageMode;
@@ -22,6 +35,7 @@ interface GeneratedImage {
   style: string;
   dataUrl: string;
   createdAt: string;
+  fileId?: number | null;
 }
 
 const IMAGE_MODES: { key: ImageMode; label: string; codename: string; icon: typeof Camera; desc: string }[] = [
@@ -73,6 +87,12 @@ function renderMd(md: string): string {
     .replace(/\n/g, '<br />');
 }
 
+function daysUntilExpiry(expiresAt: string | null): number | null {
+  if (!expiresAt) return null;
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
 export default function ProductionStudio() {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
@@ -93,11 +113,32 @@ export default function ProductionStudio() {
     try { return JSON.parse(localStorage.getItem('prod-gallery') ?? '[]'); } catch { return []; }
   });
 
+  const [savedProductions, setSavedProductions] = useState<SavedProduction[]>([]);
+  const [loadingProductions, setLoadingProductions] = useState(false);
+
   const [videoScript, setVideoScript] = useState('');
   const [scriptLoading, setScriptLoading] = useState(false);
 
   const [copied, setCopied] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+
+  const loadSavedProductions = useCallback(async () => {
+    try {
+      setLoadingProductions(true);
+      const res = await apiFetch('/api/studio/productions');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedProductions(data.items ?? []);
+      }
+    } catch {
+    } finally {
+      setLoadingProductions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) loadSavedProductions();
+  }, [isAuthenticated, loadSavedProductions]);
 
   if (!isAuthenticated) return <SignInPage />;
 
@@ -121,10 +162,12 @@ export default function ProductionStudio() {
         style: style,
         dataUrl: data.image,
         createdAt: new Date().toISOString(),
+        fileId: data.fileId ?? null,
       };
       const updated = [entry, ...gallery].slice(0, 20);
       setGallery(updated);
       localStorage.setItem('prod-gallery', JSON.stringify(updated));
+      loadSavedProductions();
     } catch (e: unknown) {
       setGeneratedImage(null);
       alert((e as Error).message || 'Generation failed');
@@ -176,10 +219,22 @@ export default function ProductionStudio() {
     }
   };
 
-  const copyText = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(''), 2000);
+  const toggleLock = async (id: number, currentlyLocked: boolean) => {
+    try {
+      const res = await apiFetch(`/api/studio/productions/${id}/lock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked: !currentlyLocked }),
+      });
+      if (res.ok) loadSavedProductions();
+    } catch {}
+  };
+
+  const deleteProduction = async (id: number) => {
+    try {
+      const res = await apiFetch(`/api/studio/productions/${id}`, { method: 'DELETE' });
+      if (res.ok) loadSavedProductions();
+    } catch {}
   };
 
   const downloadImage = (dataUrl: string, name: string) => {
@@ -187,6 +242,26 @@ export default function ProductionStudio() {
     a.href = dataUrl;
     a.download = `${name}.png`;
     a.click();
+  };
+
+  const downloadFromServer = async (id: number, name: string) => {
+    try {
+      const res = await apiFetch(`/api/tools/documents/files/${id}/download`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  };
+
+  const copyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(''), 2000);
   };
 
   const currentImageMode = IMAGE_MODES.find(m => m.key === imageMode)!;
@@ -317,11 +392,14 @@ export default function ProductionStudio() {
                     <div className="flex items-center gap-2">
                       <Camera className="w-4 h-4 text-violet-400" />
                       <span className="text-xs font-bold text-violet-400 uppercase tracking-widest">{boomerMode ? currentImageMode.label : currentImageMode.codename}</span>
+                      <span className="flex items-center gap-1 text-[9px] text-emerald-400/60">
+                        <Cloud className="w-3 h-3" /> SAVED
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button onClick={() => downloadImage(generatedImage, `${imageMode}-${Date.now()}`)}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-violet-400 border border-border hover:border-violet-500/20 transition-colors">
-                        <Download className="w-3 h-3" /> DOWNLOAD
+                        <Download className="w-3 h-3" /> EXPORT
                       </button>
                       <button onClick={() => { setGeneratedImage(null); generateImage(); }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-violet-400 border border-border hover:border-violet-500/20 transition-colors">
@@ -350,6 +428,73 @@ export default function ProductionStudio() {
                         </div>
                       </button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {savedProductions.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Cloud className="w-3.5 h-3.5 text-violet-400/50" />
+                    <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                      {boomerMode ? 'SAVED FILES' : 'FILE SYSTEM'}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/30">
+                      {savedProductions.length} {savedProductions.length === 1 ? 'FILE' : 'FILES'}
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card/30 overflow-hidden">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2 border-b border-border/50 text-[9px] font-bold text-muted-foreground/40 uppercase tracking-wider">
+                      <span>FILE</span>
+                      <span>STATUS</span>
+                      <span>EXPIRES</span>
+                      <span>LOCK</span>
+                      <span></span>
+                    </div>
+                    {savedProductions.map(p => {
+                      const days = daysUntilExpiry(p.expiresAt);
+                      return (
+                        <div key={p.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2.5 border-b border-border/20 items-center hover:bg-violet-500/[0.02] transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ImageIcon className="w-3.5 h-3.5 text-violet-400/50 shrink-0" />
+                            <span className="text-[10px] text-foreground truncate" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                              {p.name}
+                            </span>
+                          </div>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${p.isLocked ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'}`}>
+                            {p.isLocked ? 'LOCKED' : 'ACTIVE'}
+                          </span>
+                          <span className={`text-[9px] font-mono ${p.isLocked ? 'text-muted-foreground/30' : days !== null && days <= 7 ? 'text-red-400' : 'text-muted-foreground/50'}`}>
+                            {p.isLocked ? 'NEVER' : days !== null ? `${days}D` : '--'}
+                          </span>
+                          <button
+                            onClick={() => toggleLock(p.id, p.isLocked)}
+                            className={`p-1.5 rounded-lg border transition-colors ${p.isLocked ? 'text-amber-400 border-amber-500/20 hover:bg-amber-500/10' : 'text-muted-foreground border-border hover:border-violet-500/20 hover:text-violet-400'}`}
+                            title={p.isLocked ? 'Unlock file (will expire in 30 days)' : 'Lock file (prevents auto-deletion)'}
+                          >
+                            {p.isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => downloadFromServer(p.id, p.name)}
+                              className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-violet-400 hover:border-violet-500/20 transition-colors"
+                              title="Export file">
+                              <Download className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => deleteProduction(p.id)}
+                              className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-red-400 hover:border-red-500/20 transition-colors"
+                              title="Delete file">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 px-1">
+                    <CloudOff className="w-3 h-3 text-muted-foreground/20" />
+                    <span className="text-[9px] text-muted-foreground/30" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                      {boomerMode ? 'UNLOCKED FILES AUTO-DELETE AFTER 30 DAYS. LOCK TO KEEP PERMANENTLY.' : 'UNLOCKED FILES AUTO-PURGE IN 30D // LOCK TO PRESERVE'}
+                    </span>
                   </div>
                 </div>
               )}

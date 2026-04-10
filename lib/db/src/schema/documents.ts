@@ -63,12 +63,16 @@ export const filesFoldersTable = pgTable("files_folders", {
   fileSize: integer("file_size"),
   isPublic: boolean("is_public").notNull().default(false),
   shareToken: varchar("share_token", { length: 100 }),
+  isLocked: boolean("is_locked").notNull().default(false),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  source: varchar("source", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("files_folders_user_id_idx").on(table.userId),
   index("files_folders_parent_id_idx").on(table.parentId),
   index("files_folders_share_token_idx").on(table.shareToken),
+  index("files_folders_expires_at_idx").on(table.expiresAt),
 ]);
 
 export const insertFileFolderSchema = createInsertSchema(filesFoldersTable).omit({ id: true, createdAt: true, updatedAt: true });

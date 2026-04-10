@@ -106,7 +106,7 @@ export default function ClaudeTemplates() {
     }
     setExpandedItem(itemKey);
     const contentKey = `${activeType}-${item.name}`;
-    if (!loadedContent[contentKey] && (item as Record<string, unknown>).hasContent) {
+    if (!loadedContent[contentKey] && (item as unknown as Record<string, unknown>).hasContent) {
       setLoadingContent(contentKey);
       apiFetch(`/api/tools/claude-templates/${activeType}/${encodeURIComponent(item.name)}`)
         .then(r => r.ok ? r.json() : null)

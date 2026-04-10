@@ -1,12 +1,14 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImageBuffer, type GptImageSize } from "@workspace/integrations-openai-ai-server/image";
-import { db, brandKitTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, brandKitTable, filesFoldersTable } from "@workspace/db";
+import { eq, and, lt, isNull, isNotNull, sql } from "drizzle-orm";
 import type { BrandKit } from "@workspace/db/schema";
 import { requireFeature } from "../middlewares/requirePro";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const objectStorage = new ObjectStorageService();
 
 const VALID_IMAGE_SIZES: GptImageSize[] = ["1024x1024", "1024x1536", "1536x1024"];
 
@@ -38,6 +40,41 @@ function buildBrandContext(kit: BrandKit | null): string {
   return `\n\nBrand context:\n${parts.join("\n")}`;
 }
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+async function saveImageToStorage(userId: string, buffer: Buffer, fileName: string, source: string): Promise<{ fileId: number; objectPath: string } | null> {
+  try {
+    const uploadURL = await objectStorage.getObjectEntityUploadURL();
+    const objectPath = objectStorage.normalizeObjectEntityPath(uploadURL);
+
+    await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      body: buffer,
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    const expiresAt = new Date(Date.now() + THIRTY_DAYS_MS);
+
+    const [record] = await db.insert(filesFoldersTable).values({
+      userId,
+      name: fileName,
+      isFolder: false,
+      objectPath,
+      mimeType: "image/png",
+      fileSize: buffer.length,
+      isLocked: false,
+      expiresAt,
+      source,
+    }).returning();
+
+    return { fileId: record.id, objectPath };
+  } catch (err) {
+    console.error("[Studio] Failed to save image to storage:", err);
+    return null;
+  }
+}
+
 router.post("/studio/generate-image", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
   const { prompt, size = "1024x1024" } = req.body as { prompt?: string; size?: string };
@@ -50,7 +87,9 @@ router.post("/studio/generate-image", requireClaw, async (req: Request, res: Res
   try {
     const buffer = await generateImageBuffer(prompt.trim(), imageSize);
     const base64 = buffer.toString("base64");
-    res.json({ image: `data:image/png;base64,${base64}` });
+    const fileName = `studio-${Date.now()}.png`;
+    const saved = await saveImageToStorage(userId, buffer, fileName, "studio");
+    res.json({ image: `data:image/png;base64,${base64}`, fileId: saved?.fileId ?? null });
   } catch (err: unknown) {
     console.error("Image generation error:", err);
     const message = err instanceof Error ? err.message : "Image generation failed";
@@ -329,7 +368,9 @@ router.post("/studio/production", requireClaw, async (req: Request, res: Respons
     const fullPrompt = promptBuilder(prompt.trim());
     const buffer = await generateImageBuffer(fullPrompt, imageSize);
     const base64 = buffer.toString("base64");
-    res.json({ image: `data:image/png;base64,${base64}`, prompt: fullPrompt });
+    const fileName = `production-${mode}-${Date.now()}.png`;
+    const saved = await saveImageToStorage(userId, buffer, fileName, "production");
+    res.json({ image: `data:image/png;base64,${base64}`, prompt: fullPrompt, fileId: saved?.fileId ?? null });
   } catch (err: unknown) {
     console.error("Production studio error:", err);
     const message = err instanceof Error ? err.message : "Image generation failed";
@@ -430,5 +471,102 @@ Include: mood/concept statement, model casting direction, styling notes per look
   }
   res.end();
 });
+
+router.get("/studio/productions", requireClaw, async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  try {
+    const rows = await db.select().from(filesFoldersTable)
+      .where(and(
+        eq(filesFoldersTable.userId, userId),
+        eq(filesFoldersTable.isFolder, false),
+        sql`${filesFoldersTable.source} IN ('studio', 'production')`,
+      ))
+      .orderBy(sql`${filesFoldersTable.createdAt} DESC`)
+      .limit(50);
+    res.json({ items: rows });
+  } catch (err) {
+    console.error("[Studio] List productions error:", err);
+    res.status(500).json({ error: "Failed to list productions" });
+  }
+});
+
+router.patch("/studio/productions/:id/lock", requireClaw, async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const id = Number(req.params.id);
+  const { locked } = req.body as { locked?: boolean };
+  if (typeof locked !== "boolean") { res.status(400).json({ error: "locked (boolean) required" }); return; }
+
+  try {
+    const updates: Record<string, unknown> = {
+      isLocked: locked,
+      updatedAt: new Date(),
+    };
+    if (locked) {
+      updates.expiresAt = null;
+    } else {
+      updates.expiresAt = new Date(Date.now() + THIRTY_DAYS_MS);
+    }
+
+    const [record] = await db.update(filesFoldersTable).set(updates)
+      .where(and(eq(filesFoldersTable.id, id), eq(filesFoldersTable.userId, userId)))
+      .returning();
+    if (!record) { res.status(404).json({ error: "File not found" }); return; }
+    res.json({ item: record });
+  } catch (err) {
+    console.error("[Studio] Lock toggle error:", err);
+    res.status(500).json({ error: "Failed to update lock status" });
+  }
+});
+
+router.delete("/studio/productions/:id", requireClaw, async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const id = Number(req.params.id);
+  try {
+    const [item] = await db.select().from(filesFoldersTable)
+      .where(and(eq(filesFoldersTable.id, id), eq(filesFoldersTable.userId, userId)));
+    if (!item) { res.status(404).json({ error: "File not found" }); return; }
+    await db.delete(filesFoldersTable)
+      .where(and(eq(filesFoldersTable.id, id), eq(filesFoldersTable.userId, userId)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[Studio] Delete production error:", err);
+    res.status(500).json({ error: "Failed to delete production" });
+  }
+});
+
+async function cleanupExpiredFiles() {
+  try {
+    const now = new Date();
+    const expired = await db.select().from(filesFoldersTable)
+      .where(and(
+        eq(filesFoldersTable.isLocked, false),
+        isNotNull(filesFoldersTable.expiresAt),
+        lt(filesFoldersTable.expiresAt, now),
+      ));
+
+    if (expired.length === 0) return;
+
+    console.log(`[Cleanup] Removing ${expired.length} expired file(s)...`);
+
+    for (const file of expired) {
+      try {
+        if (file.objectPath) {
+          const objectFile = await objectStorage.getObjectEntityFile(file.objectPath);
+          await objectFile.delete();
+        }
+      } catch {
+        // Object may already be gone
+      }
+      await db.delete(filesFoldersTable).where(eq(filesFoldersTable.id, file.id));
+    }
+
+    console.log(`[Cleanup] Removed ${expired.length} expired file(s)`);
+  } catch (err) {
+    console.error("[Cleanup] Error cleaning expired files:", err);
+  }
+}
+
+cleanupExpiredFiles();
+setInterval(cleanupExpiredFiles, 24 * 60 * 60 * 1000);
 
 export default router;

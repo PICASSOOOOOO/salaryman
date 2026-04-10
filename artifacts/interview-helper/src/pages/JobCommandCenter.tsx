@@ -506,7 +506,7 @@ export default function JobCommandCenter() {
           {tab === 'tracker' && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
-                {(['all', ...Object.keys(STATUS_CONFIG)] as const).map(s => (
+                {(['all', ...Object.keys(STATUS_CONFIG)] as Array<'all' | AppStatus>).map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${statusFilter === s ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'text-muted-foreground border-border hover:border-emerald-500/20'}`}>
                     {s === 'all' ? `ALL (${jobs.length})` : `${STATUS_CONFIG[s].label} (${jobs.filter(j => j.status === s).length})`}
