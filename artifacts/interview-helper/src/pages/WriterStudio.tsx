@@ -267,7 +267,7 @@ export default function WriterStudio() {
         <div className="text-center space-y-4">
           <BookOpen className="w-12 h-12 text-amber-400/40 mx-auto" />
           <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">ACCESS RESTRICTED</p>
-          <p className="text-zinc-600 font-mono text-xs">SIGN IN TO ACCESS THE WRITER'S STUDIO</p>
+          <p className="text-zinc-600 font-mono text-xs">SIGN IN TO ACCESS HEMINGWAY</p>
           <button onClick={login} className="px-6 py-2 border border-amber-500/30 text-amber-400 font-mono text-xs uppercase tracking-widest hover:bg-amber-500/10 transition-colors">SIGN IN</button>
         </div>
       </div>
@@ -279,7 +279,7 @@ export default function WriterStudio() {
       <div className="border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <PenTool className="w-4 h-4 text-amber-400/60" />
-          <span className="text-amber-400/80 text-xs tracking-[0.2em] uppercase">PABLO — THE WRITER</span>
+          <span className="text-amber-400/80 text-xs tracking-[0.2em] uppercase">HEMINGWAY</span>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-zinc-600 tracking-wider">
           <span>{totalWords.toLocaleString()} WORDS</span>
