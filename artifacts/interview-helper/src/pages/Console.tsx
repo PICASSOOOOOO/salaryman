@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Music2, Radio, Upload, FileImage, FileAudio, FileVideo, X } from 'lucide-react';
+import { Terminal, Code, Settings2, Trash2, StopCircle, Check, Copy, Mic, Loader2, ScanSearch, Bot, Square, Keyboard, RotateCcw, Radio, Upload, FileImage, FileAudio, FileVideo, X } from 'lucide-react';
 import { useInterviewSolver, useVoiceListen, useScreenScan, useTypingSimulator, useAdvisorChat, type InterviewMode } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { useMediaAnalyzer, detectMediaFileType, validateMediaFile } from '@/hooks/use-media-analyzer';
@@ -15,8 +15,6 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 
-const SoundLab = lazy(() => import('./SoundLab'));
-
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
 ];
@@ -29,7 +27,6 @@ export default function Console() {
   const [activePanel, setActivePanel] = useState<'solve' | 'listen' | 'scan' | 'media'>('solve');
   const [typeMode, setTypeMode] = useState(false);
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  const [consoleView, setConsoleView] = useState<'terminal' | 'lab'>('terminal');
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -196,21 +193,13 @@ export default function Console() {
       <div className="relative z-20 px-4 py-2 flex items-center gap-3"
         style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(56,189,248,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-          <button onClick={() => setConsoleView('terminal')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'terminal' ? 'rgba(56,189,248,0.08)' : 'transparent', border: consoleView === 'terminal' ? '1px solid rgba(56,189,248,0.25)' : '1px solid transparent', color: consoleView === 'terminal' ? 'rgba(56,189,248,0.7)' : 'rgba(56,189,248,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', color: 'rgba(56,189,248,0.7)', borderRadius: '4px' }}>
             <Terminal className="w-3.5 h-3.5 shrink-0" />
             {boomerMode ? t('console.terminal') : PABLO_PRODUCTS.CONSOLE.short}
-          </button>
-          <button onClick={() => setConsoleView('lab')}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 10px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', cursor: 'pointer', background: consoleView === 'lab' ? 'rgba(236,72,153,0.08)' : 'transparent', border: consoleView === 'lab' ? '1px solid rgba(236,72,153,0.25)' : '1px solid transparent', color: consoleView === 'lab' ? 'rgba(236,72,153,0.7)' : 'rgba(56,189,248,0.3)', borderRadius: '4px', transition: 'all .15s' }}>
-            <Music2 className="w-3.5 h-3.5 shrink-0" />
-            {boomerMode ? t('console.lab') : PABLO_PRODUCTS.SOUND_LAB.short}
-          </button>
+          </div>
         </div>
         <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.06em' }}>
-          {consoleView === 'terminal'
-            ? (boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.')
-            : (boomerMode ? `${t('console.lab')} — ${t('console.labDesc')}` : PABLO_PRODUCTS.SOUND_LAB.desc)}
+          {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>
         <button
           onClick={() => {
@@ -237,13 +226,6 @@ export default function Console() {
         </button>
       </div>
 
-      {consoleView === 'lab' ? (
-        <div className="flex-1 relative z-10 min-h-0 overflow-auto">
-          <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '0.9rem', letterSpacing: '.15em' }}>LOADING...</div>}>
-            <SoundLab />
-          </Suspense>
-        </div>
-      ) : (
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10 min-h-0">
 
         {/* LEFT PANEL */}
@@ -590,7 +572,6 @@ export default function Console() {
           </div>
         </section>
       </main>
-      )}
     </div>
   );
 }

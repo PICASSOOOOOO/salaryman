@@ -168,7 +168,7 @@ export const PABLO_PRODUCTS = {
   CREATIVE_MODULE: {
     name: "FORGE MATRIX v3.0",
     short: "FORGE MATRIX",
-    desc: "Creative fabrication suite. Content studio, The Lab, campaign engine, and brand identity matrix.",
+    desc: "Creative fabrication suite. Content studio, 1999, campaign engine, and brand identity matrix.",
   },
   INTEL_MODULE: {
     name: "COMMAND NET v1.0",

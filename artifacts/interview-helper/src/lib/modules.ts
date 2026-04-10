@@ -79,7 +79,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'studio', path: '/creative/studio', label: 'STUDIO', boomerLabel: 'STUDIO', codename: 'FORGE-7', icon: Layers },
       { id: 'production', path: '/creative/production', label: 'PRODUCTION', boomerLabel: 'PRODUCTION STUDIO', codename: 'PRD-X', icon: Clapperboard },
-      { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: 'THE LAB', codename: '1999', icon: Music2 },
+      { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
       { id: 'campaigns', path: '/creative/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
       { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
       { id: 'writer', path: '/creative/writer', label: 'WRITER', boomerLabel: 'LONG-FORM WRITER', codename: 'QUILL-X', icon: PenTool },
