@@ -372,7 +372,7 @@ function EmailCompose({
               <Zap className="w-4 h-4 text-violet-400" />
               <span className="text-sm font-bold text-violet-300">AI Email Generator</span>
             </div>
-            <p className="text-xs text-muted-foreground">Powered by Content Studio. Generated content will replace the current email body.</p>
+            <p className="text-xs text-muted-foreground">Powered by Dark Room. Generated content will replace the current email body.</p>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Campaign Goal</label>

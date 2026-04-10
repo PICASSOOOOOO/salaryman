@@ -93,11 +93,11 @@ function daysUntilExpiry(expiresAt: string | null): number | null {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-export default function ProductionStudio({ embedded }: { embedded?: boolean } = {}) {
+export default function ProductionStudio({ embedded, initialTab }: { embedded?: boolean; initialTab?: Tab } = {}) {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
 
-  const [tab, setTab] = useState<Tab>('image');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'image');
   const [imageMode, setImageMode] = useState<ImageMode>('clothing_brand');
   const [videoMode, setVideoMode] = useState<VideoMode>('video_commercial');
   const [prompt, setPrompt] = useState('');
@@ -287,7 +287,8 @@ export default function ProductionStudio({ embedded }: { embedded?: boolean } = 
         </div>
       )}
 
-      <div className="flex items-center gap-2 mb-5">
+      {!initialTab && (
+        <div className="flex items-center gap-2 mb-5">
             {([
               { key: 'image' as Tab, label: 'IMAGE STUDIO', codename: 'STILLS', icon: Camera },
               { key: 'video' as Tab, label: 'VIDEO PRODUCTION', codename: 'MOTION', icon: Video },
@@ -302,6 +303,7 @@ export default function ProductionStudio({ embedded }: { embedded?: boolean } = 
               );
             })}
           </div>
+      )}
 
           {tab === 'image' && (
             <div className="space-y-4">

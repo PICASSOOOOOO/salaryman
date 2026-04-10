@@ -916,10 +916,10 @@ const TABS: { id: StudioTab; label: string; boomerLabel: string; icon: React.FC<
   { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Instagram, Twitter, LinkedIn, TikTok & Facebook templates' },
 ];
 
-export default function ContentStudio({ embedded }: { embedded?: boolean } = {}) {
+export default function ContentStudio({ embedded, initialTab }: { embedded?: boolean; initialTab?: StudioTab } = {}) {
   const { isAuthenticated } = useAuth();
   usePlan();
-  const [tab, setTab] = useState<StudioTab>('graphics');
+  const [tab, setTab] = useState<StudioTab>(initialTab ?? 'graphics');
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
 
   useEffect(() => {
@@ -966,42 +966,46 @@ export default function ContentStudio({ embedded }: { embedded?: boolean } = {})
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '0' }}>
-        {TABS.map(t => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                fontFamily: "'Share Tech Mono', monospace",
-                fontSize: '0.7rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
-                background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
-                border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
-                borderBottom: active ? '1px solid #030803' : '1px solid transparent',
-                padding: '8px 20px',
-                cursor: 'pointer',
-                marginBottom: active ? '-1px' : '0',
-                transition: 'all 0.15s',
-                textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
-              }}
-              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
-              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
-            >
-              <t.icon className="w-3.5 h-3.5" />
-              {boomerMode ? t.boomerLabel : t.label}
-            </button>
-          );
-        })}
-      </div>
+      {!initialTab && (
+        <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '0' }}>
+          {TABS.map(t => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: active ? CRT_GREEN : 'rgba(56,189,248,0.35)',
+                  background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
+                  border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
+                  borderBottom: active ? '1px solid #030803' : '1px solid transparent',
+                  padding: '8px 20px',
+                  cursor: 'pointer',
+                  marginBottom: active ? '-1px' : '0',
+                  transition: 'all 0.15s',
+                  textShadow: active ? '0 0 8px rgba(56,189,248,0.5)' : 'none',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.7)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(56,189,248,0.35)'; }}
+              >
+                <t.icon className="w-3.5 h-3.5" />
+                {boomerMode ? t.boomerLabel : t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
-        {TABS.find(t => t.id === tab)?.desc.toUpperCase()}
-      </div>
+      {!initialTab && (
+        <div style={{ marginBottom: '16px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.65rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>
+          {TABS.find(t => t.id === tab)?.desc.toUpperCase()}
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div

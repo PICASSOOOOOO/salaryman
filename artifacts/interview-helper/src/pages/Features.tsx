@@ -162,10 +162,10 @@ const MODULES: ModuleDef[] = [
     label: 'STUDIO',
     boomerLabel: 'STUDIO',
     codename: 'Forge-7 Content Matrix',
-    boomerCodename: 'Content Studio',
+    boomerCodename: 'DARK ROOM',
     tagline: 'Create like a creative director. Ship like a machine.',
     access: 'free',
-    route: '/creative/studio',
+    route: '/creative/darkroom',
     description:
       'Studio is the content production arm of SALARYMAN. Design graphics, generate images, write compelling copy — all without leaving your workflow.',
     features: [

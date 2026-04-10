@@ -242,7 +242,7 @@ export default function InvestorsPage() {
                 { label: "TTC Phone System", desc: "AI-powered phone & SMS with call coaching and transcription" },
                 { label: "CRM & Contacts", desc: "Intelligent contact management with AI-enhanced relationship context" },
                 { label: "Agent Team", desc: "Deployable AI agents for research, outreach, and intelligence tasks" },
-                { label: "Content Studio", desc: "Social content calendar, copy tools, and brand kit management" },
+                { label: "Dark Room", desc: "Creative studio — graphics, copy, social, image production & video scripts" },
                 { label: "Hiring Module", desc: "Candidate pipeline, job descriptions, and interview tooling" },
               ].map((item) => (
                 <div key={item.label} className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/20">

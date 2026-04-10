@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, Clapperboard, Camera } from 'lucide-react';
+import { Clapperboard, Image, FileText, Share2, Camera, Video } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
@@ -9,7 +9,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 const ContentStudioInner = lazy(() => import('./ContentStudio'));
 const ProductionStudioInner = lazy(() => import('./ProductionStudio'));
 
-type DarkRoomTab = 'content' | 'production';
+type DarkRoomTab = 'graphics' | 'copy' | 'social' | 'image' | 'video';
 
 const CRT_GREEN = '#38bdf8';
 
@@ -26,15 +26,18 @@ const LOADER = (
 export default function DarkRoom() {
   const [boomerMode] = useBoomerMode();
   const { isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<DarkRoomTab>('content');
+  const [activeTab, setActiveTab] = useState<DarkRoomTab>('graphics');
 
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? 'Sign in to access the Dark Room.' : 'Operative credentials required. DARK ROOM access locked.'} />;
   }
 
-  const tabs: { id: DarkRoomTab; label: string; boomerLabel: string; icon: typeof Layers; desc: string }[] = [
-    { id: 'content', label: 'FORGE', boomerLabel: 'CONTENT STUDIO', icon: Layers, desc: 'Graphics, copy & social content generation' },
-    { id: 'production', label: 'EXPOSURE', boomerLabel: 'PRODUCTION STUDIO', icon: Camera, desc: 'Image production, video scripts & visual assets' },
+  const tabs: { id: DarkRoomTab; label: string; boomerLabel: string; icon: typeof Image; desc: string }[] = [
+    { id: 'graphics', label: 'GRAPHICS', boomerLabel: 'IMAGES', icon: Image, desc: 'AI image generation + canvas editor' },
+    { id: 'copy', label: 'COPY', boomerLabel: 'COPYWRITING', icon: FileText, desc: 'Marketing copy, emails, ads & pitches' },
+    { id: 'social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', icon: Share2, desc: 'Social media templates & scheduling' },
+    { id: 'image', label: 'PRODUCTION', boomerLabel: 'PRODUCTION', icon: Camera, desc: 'Image production — clothing, lookbook, billboard, film, packaging' },
+    { id: 'video', label: 'VIDEO', boomerLabel: 'VIDEO SCRIPTS', icon: Video, desc: 'TV commercial, music video, brand film & social video scripts' },
   ];
 
   return (
@@ -68,13 +71,13 @@ export default function DarkRoom() {
                 {boomerMode ? 'DARK ROOM' : PABLO_PRODUCTS.DARK_ROOM.name}
               </h1>
               <p style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: 'rgba(56,189,248,0.35)', letterSpacing: '0.1em', marginTop: '4px' }}>
-                {boomerMode ? 'Content creation & production studio' : PABLO_PRODUCTS.DARK_ROOM.desc}
+                {boomerMode ? 'Creative studio — graphics, copy, social, production & video' : PABLO_PRODUCTS.DARK_ROOM.desc}
               </p>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)' }}>
+        <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', flexWrap: 'wrap' }}>
           {tabs.map(t => {
             const active = activeTab === t.id;
             return (
@@ -91,7 +94,7 @@ export default function DarkRoom() {
                   background: active ? 'rgba(56,189,248,0.08)' : 'transparent',
                   border: `1px solid ${active ? 'rgba(56,189,248,0.4)' : 'transparent'}`,
                   borderBottom: active ? '1px solid #030803' : '1px solid transparent',
-                  padding: '8px 20px',
+                  padding: '8px 16px',
                   cursor: 'pointer',
                   marginBottom: active ? '-1px' : '0',
                   transition: 'all 0.15s',
@@ -120,8 +123,12 @@ export default function DarkRoom() {
             transition={{ duration: 0.12 }}
           >
             <Suspense fallback={LOADER}>
-              {activeTab === 'content' && <ContentStudioInner embedded />}
-              {activeTab === 'production' && <ProductionStudioInner embedded />}
+              {(activeTab === 'graphics' || activeTab === 'copy' || activeTab === 'social') && (
+                <ContentStudioInner embedded initialTab={activeTab} />
+              )}
+              {(activeTab === 'image' || activeTab === 'video') && (
+                <ProductionStudioInner embedded initialTab={activeTab} />
+              )}
             </Suspense>
           </motion.div>
         </AnimatePresence>
