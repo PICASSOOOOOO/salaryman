@@ -77,7 +77,7 @@ const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
-const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
+
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
@@ -91,7 +91,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/jean-claw"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
@@ -291,8 +291,8 @@ function AppShell() {
               return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
-            {/* Jean Claw landing — standalone sales page */}
-            <Route path="/jean-claw" component={JeanClawLanding} />
+            {/* Jean Claw — redirect into Bot Factory */}
+            <Route path="/jean-claw">{() => <Redirect to="/bots" />}</Route>
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />

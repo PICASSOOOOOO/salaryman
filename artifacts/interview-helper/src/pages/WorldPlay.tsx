@@ -17,6 +17,12 @@ const ArcadeGame = lazy(() => import('./ArcadeGames'));
 const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 import {
+  type CityBuilding, type BuildingTypeSpec,
+  fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
+  buildBuilding, customizeBuilding, rentBuilding, demolishBuilding,
+  drawPlayerBuilding, findNearPlayerBuilding, isInsidePlayerBuilding, PLAYER_BUILDING_RANGE,
+} from '../lib/city-buildings';
+import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
@@ -3295,6 +3301,12 @@ export default function WorldPlay() {
   const [crmNoteInput, setCrmNoteInput] = useState('');
   const [crmCatInput, setCrmCatInput] = useState('');
   const [showDmPicker, setShowDmPicker] = useState(false);
+  const playerBuildingsRef = useRef<CityBuilding[]>([]);
+  const [nearPlayerBuilding, setNearPlayerBuilding] = useState<CityBuilding | null>(null);
+  const [showBuildPanel, setShowBuildPanel] = useState(false);
+  const [showBuildingManage, setShowBuildingManage] = useState<CityBuilding | null>(null);
+  const [buildingTypes, setBuildingTypes] = useState<BuildingTypeSpec[]>([]);
+  const [buildingColors, setBuildingColors] = useState<string[]>([]);
 
   // Chat
   const [chatOpen,  setChatOpen]  = useState(false);
@@ -5629,13 +5641,16 @@ export default function WorldPlay() {
           }
           g.near = null; g.nearNpc = null; g.nearBillboard = null; g.nearEmployee = null;
           for (const b of BUILDINGS) { if (Math.hypot(g.px - (b.x + b.w / 2), g.py - (b.y + b.h / 2)) < RANGE + (b.id === 'pablo_tower' ? 40 : 0)) { g.near = b.id; break; } }
-          if (!g.near) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
-          if (!g.near && g.nearNpc === null) { for (let ei = 0; ei < g.employeeNpcs.length; ei++) { if (Math.hypot(g.px - g.employeeNpcs[ei].x, g.py - g.employeeNpcs[ei].y) < 40) { g.nearEmployee = ei; break; } } }
-          if (!g.near && g.nearNpc === null && g.nearEmployee === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
+          const nearPB = !g.near ? findNearPlayerBuilding(g.px, g.py, playerBuildingsRef.current) : null;
+          if (nearPB) setNearPlayerBuilding(nearPB); else setNearPlayerBuilding(null);
+          if (!g.near && !nearPB) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
+          if (!g.near && !nearPB && g.nearNpc === null) { for (let ei = 0; ei < g.employeeNpcs.length; ei++) { if (Math.hypot(g.px - g.employeeNpcs[ei].x, g.py - g.employeeNpcs[ei].y) < 40) { g.nearEmployee = ei; break; } } }
+          if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
           if (nb) tryEnter(nb);
+          else if (nearPB) { setShowBuildingManage(nearPB); }
           else if (nbb) {
             const bb = BILLBOARDS.find(b => b.locationId === nbb);
             if (bb) { setShowBillboard(bb); fetchBillboards(); }
@@ -6219,6 +6234,23 @@ export default function WorldPlay() {
     } catch { /* silent */ }
   }, []);
   useEffect(() => { fetchBillboards(); const iv = setInterval(fetchBillboards, 30000); return () => clearInterval(iv); }, [fetchBillboards]);
+
+  useEffect(() => {
+    const loadPlayerBuildings = async () => {
+      const blds = await fetchCityBuildings('minx_prime');
+      playerBuildingsRef.current = blds;
+    };
+    loadPlayerBuildings();
+    const iv = setInterval(loadPlayerBuildings, 20000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    fetchBuildingTypes().then(data => {
+      setBuildingTypes(data.types);
+      setBuildingColors(data.colors);
+    });
+  }, []);
 
   useEffect(() => {
     const fetchServerStatus = async () => {
@@ -11761,6 +11793,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('🔒', bx + b.w / 2, by + b.h / 2);
         }
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
+      }
+
+      for (const pb of playerBuildingsRef.current) {
+        const pbx = pb.x + ox, pby = pb.y + oy;
+        if (pbx + pb.w < 0 || pbx > cw || pby + pb.h < 0 || pby > ch) continue;
+        const pbNear = Math.hypot(g.px - (pb.x + pb.w / 2), g.py - (pb.y + pb.h / 2)) < PLAYER_BUILDING_RANGE;
+        drawPlayerBuilding(ctx, pb, ox, oy, pbNear, !!g.blink, g.frame);
       }
 
       // ── Shared vehicle draw helper (directional pixel art) ──

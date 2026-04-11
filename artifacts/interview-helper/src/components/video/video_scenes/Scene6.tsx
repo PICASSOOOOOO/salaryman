@@ -5,7 +5,7 @@ const CALL_LOG = [
   { name: 'Sarah Mitchell', time: '2:34', status: 'completed', color: '#10b981' },
   { name: 'Corp Inc HQ', time: '5:12', status: 'completed', color: '#10b981' },
   { name: 'Jake Rivera', time: '0:45', status: 'missed', color: '#ef4444' },
-  { name: 'New Lead — Prospect', time: '—', status: 'incoming', color: '#f59e0b' },
+  { name: 'New Lead — Marcus', time: '—', status: 'incoming', color: '#f59e0b' },
 ];
 
 const DIAL_PAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];

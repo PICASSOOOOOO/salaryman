@@ -2521,8 +2521,8 @@ export default function BotFactory() {
           </div>
 
           {!hasAccess && (
-            <a href={`${import.meta.env.BASE_URL}jean-claw`}
-              className="block mb-6 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/[0.08] via-emerald-500/[0.04] to-transparent p-4 hover:border-emerald-500/40 transition-all group cursor-pointer no-underline">
+            <div onClick={() => setTab('jean-claw')}
+              className="block mb-6 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/[0.08] via-emerald-500/[0.04] to-transparent p-4 hover:border-emerald-500/40 transition-all group cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
                   <Bot className="w-6 h-6 text-emerald-400" />
@@ -2544,7 +2544,7 @@ export default function BotFactory() {
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>
-            </a>
+            </div>
           )}
 
           <div className="flex items-center gap-2 mb-6 flex-wrap">

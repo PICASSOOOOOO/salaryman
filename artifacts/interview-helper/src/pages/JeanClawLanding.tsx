@@ -16,8 +16,8 @@ const TEAM_CATEGORIES = [
     name: 'SALES & CRM',
     icon: Target,
     color: '#f59e0b',
-    desc: 'Prospect, Inbox, Commish, and Gig handle your entire sales pipeline — from finding leads to closing deals to collecting commissions.',
-    bots: ['Prospect', 'Inbox', 'Commish', 'Gig'],
+    desc: 'Marcus, Elena, Derek, and Priya handle your entire sales pipeline — from finding leads to closing deals to collecting commissions.',
+    bots: ['Marcus', 'Elena', 'Derek', 'Priya'],
     stats: '4 bots · Sales pipeline',
   },
   {
@@ -25,8 +25,8 @@ const TEAM_CATEGORIES = [
     name: 'SUPPORT & OPS',
     icon: MessageSquare,
     color: '#3b82f6',
-    desc: 'Resolve handles customer tickets 24/7. Relay manages internal communications. People runs HR. Scout finds talent.',
-    bots: ['Resolve', 'Relay', 'People', 'Scout'],
+    desc: 'Nadia handles customer tickets 24/7. Tomás manages internal communications. Kenji runs HR. Amara finds talent.',
+    bots: ['Nadia', 'Tomás', 'Kenji', 'Amara'],
     stats: '4 bots · Operations',
   },
   {
@@ -34,8 +34,8 @@ const TEAM_CATEGORIES = [
     name: 'CREATIVE STUDIO',
     icon: PenTool,
     color: '#a855f7',
-    desc: 'Canvas designs, Ink writes copy, Reel produces content, Shutter handles photos, Glam does beauty, and Quill writes long-form.',
-    bots: ['Canvas', 'Ink', 'Reel', 'Shutter', 'Glam', 'Quill'],
+    desc: 'Sasha designs, Milo writes copy, Zara produces content, Lena handles photos, Camille does beauty, and Felix writes long-form.',
+    bots: ['Sasha', 'Milo', 'Zara', 'Lena', 'Camille', 'Felix'],
     stats: '6 bots · Content factory',
   },
   {
@@ -43,8 +43,8 @@ const TEAM_CATEGORIES = [
     name: 'FINANCE & LEGAL',
     icon: Shield,
     color: '#10b981',
-    desc: 'Penny does taxes, Vault manages your books, Ledger handles invoices, Counsel provides legal guidance, and Shield covers insurance.',
-    bots: ['Penny', 'Vault', 'Ledger', 'Counsel', 'Shield'],
+    desc: 'Rosa does taxes, Victor manages your books, Hana handles invoices, Julian provides legal guidance, and Margot covers insurance.',
+    bots: ['Rosa', 'Victor', 'Hana', 'Julian', 'Margot'],
     stats: '5 bots · Money & compliance',
   },
   {
@@ -52,8 +52,8 @@ const TEAM_CATEGORIES = [
     name: 'MUSIC & PUBLISHING',
     icon: Sparkles,
     color: '#0ea5e9',
-    desc: 'Tempo produces music, Royalty tracks earnings, Sync licenses tracks, A&R scouts talent, Distro distributes, and the publishing team handles books.',
-    bots: ['Tempo', 'Royalty', 'Sync', 'A&R', 'Distro', 'Editor', 'Press', 'Narrator'],
+    desc: 'Dante produces music, Cleo tracks earnings, Omar licenses tracks, Bianca scouts talent, Kai distributes, and the publishing team handles books.',
+    bots: ['Dante', 'Cleo', 'Omar', 'Bianca', 'Kai', 'Remi', 'Nina', 'Theo'],
     stats: '8 bots · Full publishing stack',
   },
   {
@@ -61,8 +61,8 @@ const TEAM_CATEGORIES = [
     name: 'ECOMMERCE & TRADES',
     icon: Eye,
     color: '#ec4899',
-    desc: 'Dropsy runs dropshipping, Shopkeep manages stores, Chief handles FBA, Foreman manages contractors, and Torque handles auto.',
-    bots: ['Dropsy', 'Shopkeep', 'Merch', 'Chief', 'Foreman', 'Torque'],
+    desc: 'Lucia runs dropshipping, Anton manages stores, Jade handles merch, Rafael handles FBA, Yuki manages contractors, and Bruno handles auto.',
+    bots: ['Lucia', 'Anton', 'Jade', 'Rafael', 'Yuki', 'Bruno'],
     stats: '6 bots · Commerce engine',
   },
   {
@@ -71,7 +71,7 @@ const TEAM_CATEGORIES = [
     icon: TrendingUp,
     color: '#22c55e',
     desc: 'Education, real estate, agriculture, travel, security, crypto, nonprofits, pet care, auto sales, interior design, and more. Every industry covered.',
-    bots: ['Rex', 'Atlas', 'Sensei', 'Harvest', 'Wanderer', 'Sentinel', 'Paws'],
+    bots: ['Diana', 'Carlos', 'Mei', 'Ezra', 'Ingrid', 'Leo', 'Ava'],
     stats: '77 bots total',
   },
 ];
@@ -102,11 +102,7 @@ function JeanClawLanding() {
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
 
   const handleCTA = () => {
-    if (isAuthenticated) {
-      navigate('/bots');
-    } else {
-      login();
-    }
+    navigate('/bots');
   };
 
   return (
@@ -194,6 +190,13 @@ function JeanClawLanding() {
           </h1>
 
           <p style={{
+            fontSize: '0.7rem', color: 'rgba(16,185,129,0.5)',
+            letterSpacing: '0.15em', marginBottom: 8,
+          }}>
+            PART OF BOT FACTORY
+          </p>
+
+          <p style={{
             fontSize: 'clamp(1rem, 2.5vw, 1.4rem)',
             color: 'rgba(161,161,170,0.8)',
             maxWidth: 700, margin: '0 auto 12px',
@@ -221,7 +224,7 @@ function JeanClawLanding() {
                 display: 'flex', alignItems: 'center', gap: 10,
               }}
             >
-              {isAuthenticated ? 'OPEN BOT FACTORY' : 'START FREE TRIAL'}
+              OPEN BOT FACTORY
               <ArrowRight size={18} />
             </button>
             <a
@@ -489,7 +492,7 @@ function JeanClawLanding() {
               display: 'inline-flex', alignItems: 'center', gap: 10,
             }}
           >
-            {isAuthenticated ? 'OPEN JEAN CLAW DASHBOARD' : 'ACTIVATE JEAN CLAW'}
+            OPEN BOT FACTORY
             <ArrowRight size={20} />
           </button>
 

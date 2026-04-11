@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, sql, desc, and } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat } from "../worldServer";
 
 const router = Router();
@@ -394,6 +394,199 @@ router.post("/world/heartbeat", (req, res): void => {
 
 router.get("/world/liberation", (_req, res) => {
   res.json({ progress: getLiberationProgress() });
+});
+
+const BUILDING_TYPES: Record<string, { minW: number; minH: number; maxW: number; maxH: number; baseCost: number }> = {
+  shack:     { minW: 40, minH: 30, maxW: 60,  maxH: 50,  baseCost: 200 },
+  kiosk:     { minW: 30, minH: 25, maxW: 50,  maxH: 40,  baseCost: 150 },
+  office:    { minW: 60, minH: 50, maxW: 120, maxH: 90,  baseCost: 500 },
+  shop:      { minW: 50, minH: 40, maxW: 100, maxH: 70,  baseCost: 400 },
+  warehouse: { minW: 80, minH: 60, maxW: 160, maxH: 100, baseCost: 800 },
+  tower:     { minW: 60, minH: 80, maxW: 120, maxH: 160, baseCost: 2000 },
+  compound:  { minW: 100, minH: 80, maxW: 200, maxH: 150, baseCost: 3000 },
+};
+
+const VALID_COLORS = ['#38bdf8','#a855f7','#10b981','#f59e0b','#ef4444','#ec4899','#3b82f6','#84cc16','#67e8f9','#fb923c','#f472b6','#a78bfa','#fbbf24','#6ee7b7'];
+
+function calcBuildCost(type: string, w: number, h: number): number {
+  const spec = BUILDING_TYPES[type];
+  if (!spec) return 9999;
+  const area = w * h;
+  const baseArea = spec.minW * spec.minH;
+  const sizeMultiplier = Math.max(1, area / baseArea);
+  return Math.round(spec.baseCost * sizeMultiplier);
+}
+
+router.get("/world/buildings", async (req, res) => {
+  try {
+    const serverId = (req.query.serverId as string) || "minx_prime";
+    const rows = await db
+      .select()
+      .from(cityBuildingsTable)
+      .where(and(eq(cityBuildingsTable.serverId, serverId), eq(cityBuildingsTable.demolished, false)));
+    res.json({ buildings: rows });
+  } catch (err: any) {
+    console.error("[World] buildings list error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/world/building-types", (_req, res) => {
+  const types = Object.entries(BUILDING_TYPES).map(([id, spec]) => ({
+    id,
+    label: id.toUpperCase(),
+    minW: spec.minW, minH: spec.minH,
+    maxW: spec.maxW, maxH: spec.maxH,
+    baseCost: spec.baseCost,
+  }));
+  res.json({ types, colors: VALID_COLORS });
+});
+
+router.post("/world/buildings", async (req, res) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const { name, buildingType, x, y, w, h, color, label, description, rentPrice, isPublic, serverId } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      res.status(400).json({ error: "Building name required" }); return;
+    }
+    const type = buildingType || "office";
+    const spec = BUILDING_TYPES[type];
+    if (!spec) {
+      res.status(400).json({ error: `Invalid building type. Valid: ${Object.keys(BUILDING_TYPES).join(", ")}` }); return;
+    }
+    const bw = Math.max(spec.minW, Math.min(spec.maxW, Number(w) || spec.minW));
+    const bh = Math.max(spec.minH, Math.min(spec.maxH, Number(h) || spec.minH));
+    const bx = Number(x) || 0;
+    const by = Number(y) || 0;
+    const bColor = VALID_COLORS.includes(color) ? color : "#38bdf8";
+    const cost = calcBuildCost(type, bw, bh);
+    const ownerName = derivePlayerName(req);
+    const sid = serverId || "minx_prime";
+
+    const existing = await db
+      .select({ id: cityBuildingsTable.id })
+      .from(cityBuildingsTable)
+      .where(and(eq(cityBuildingsTable.serverId, sid), eq(cityBuildingsTable.demolished, false)));
+
+    for (const eb of existing) {
+      const rows = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, eb.id));
+      if (rows.length === 0) continue;
+      const e = rows[0];
+      const overlap = bx < e.x + e.w && bx + bw > e.x && by < e.y + e.h && by + bh > e.y;
+      if (overlap) {
+        res.status(409).json({ error: "Location overlaps existing building" }); return;
+      }
+    }
+
+    const [inserted] = await db.insert(cityBuildingsTable).values({
+      ownerId: String(user.id),
+      ownerName,
+      name: name.trim().toUpperCase().slice(0, 80),
+      buildingType: type,
+      x: bx, y: by, w: bw, h: bh,
+      color: bColor,
+      label: (label || name).trim().toUpperCase().slice(0, 40),
+      description: description?.trim().slice(0, 200) || null,
+      rentPrice: Math.max(0, Number(rentPrice) || 0),
+      buildCost: cost,
+      isPublic: isPublic === true,
+      serverId: sid,
+    }).returning();
+
+    res.json({ building: inserted, cost });
+  } catch (err: any) {
+    console.error("[World] build error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/world/buildings/:id", async (req, res) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const buildingId = Number(req.params.id as string);
+    const rows = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, buildingId));
+    if (rows.length === 0) { res.status(404).json({ error: "Building not found" }); return; }
+    const building = rows[0];
+    if (building.ownerId !== String(user.id)) {
+      res.status(403).json({ error: "Not your building" }); return;
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    const { name, color, label, description, rentPrice, isPublic } = req.body;
+    if (name && typeof name === "string") updates.name = name.trim().toUpperCase().slice(0, 80);
+    if (color && VALID_COLORS.includes(color)) updates.color = color;
+    if (label && typeof label === "string") updates.label = label.trim().toUpperCase().slice(0, 40);
+    if (typeof description === "string") updates.description = description.trim().slice(0, 200) || null;
+    if (typeof rentPrice === "number") updates.rentPrice = Math.max(0, rentPrice);
+    if (typeof isPublic === "boolean") updates.isPublic = isPublic;
+
+    const [updated] = await db.update(cityBuildingsTable)
+      .set(updates)
+      .where(eq(cityBuildingsTable.id, buildingId))
+      .returning();
+    res.json({ building: updated });
+  } catch (err: any) {
+    console.error("[World] building update error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/world/buildings/:id/rent", async (req, res) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const buildingId = Number(req.params.id as string);
+    const rows = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, buildingId));
+    if (rows.length === 0) { res.status(404).json({ error: "Building not found" }); return; }
+    const building = rows[0];
+    if (building.ownerId === String(user.id)) {
+      res.status(400).json({ error: "Cannot rent your own building" }); return;
+    }
+    if (building.tenantId && building.tenantId !== String(user.id)) {
+      res.status(409).json({ error: "Already rented by someone else" }); return;
+    }
+    if (building.tenantId === String(user.id)) {
+      const [updated] = await db.update(cityBuildingsTable)
+        .set({ tenantId: null, tenantName: null, updatedAt: new Date() })
+        .where(eq(cityBuildingsTable.id, buildingId))
+        .returning();
+      res.json({ building: updated, action: "vacated" });
+      return;
+    }
+    const tenantName = derivePlayerName(req);
+    const [updated] = await db.update(cityBuildingsTable)
+      .set({ tenantId: String(user.id), tenantName, updatedAt: new Date() })
+      .where(eq(cityBuildingsTable.id, buildingId))
+      .returning();
+    res.json({ building: updated, action: "rented", rentPrice: building.rentPrice });
+  } catch (err: any) {
+    console.error("[World] rent error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/world/buildings/:id", async (req, res) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const buildingId = Number(req.params.id as string);
+    const rows = await db.select().from(cityBuildingsTable).where(eq(cityBuildingsTable.id, buildingId));
+    if (rows.length === 0) { res.status(404).json({ error: "Building not found" }); return; }
+    const building = rows[0];
+    if (building.ownerId !== String(user.id)) {
+      res.status(403).json({ error: "Not your building" }); return;
+    }
+    const refund = Math.round(building.buildCost * 0.4);
+    await db.update(cityBuildingsTable)
+      .set({ demolished: true, updatedAt: new Date() })
+      .where(eq(cityBuildingsTable.id, buildingId));
+    res.json({ ok: true, refund });
+  } catch (err: any) {
+    console.error("[World] demolish error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 export default router;

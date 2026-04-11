@@ -61,3 +61,4 @@ export * from "./server-regions";
 export * from "./insurance";
 export * from "./platform-api";
 export * from "./bans";
+export * from "./city-buildings";
