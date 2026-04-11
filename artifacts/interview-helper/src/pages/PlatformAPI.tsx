@@ -471,7 +471,8 @@ export default function PlatformAPI() {
 
   const setTab = (tab: Tab) => {
     setActiveTab(tab);
-    const newUrl = tab === "overview" ? "/platform" : `/platform?tab=${tab}`;
+    const basePath = window.location.pathname.includes('/profile/') ? '/profile/platform' : '/platform';
+    const newUrl = tab === "overview" ? basePath : `${basePath}?tab=${tab}`;
     window.history.replaceState(null, "", `${import.meta.env.BASE_URL.replace(/\/$/, "")}${newUrl}`);
   };
 

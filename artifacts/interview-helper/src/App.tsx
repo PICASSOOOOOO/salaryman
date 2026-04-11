@@ -90,7 +90,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/admin/billboards", "/meet", "/jean-claw"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/jean-claw"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
@@ -208,15 +208,27 @@ function AppShell() {
           <Switch>
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
+            <Route path="/profile/admin/billboards" component={BillboardAdmin} />
+            <Route path="/profile/admin/tickets" component={AdminTickets} />
+            <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
+            <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
+            <Route path="/profile/admin" component={Profile} />
+            <Route path="/profile/platform" component={Profile} />
+            <Route path="/profile/moderator" component={Profile} />
+            <Route path="/profile/world-map" component={Profile} />
             <Route path="/profile" component={Profile} />
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
-            <Route path="/admin/billboards" component={BillboardAdmin} />
-            <Route path="/admin/tickets" component={AdminTickets} />
-            <Route path="/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
-            <Route path="/admin/dev-tasks" component={DevTasksAdmin} />
+            <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
+            <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
+            <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
+            <Route path="/admin/dev-tasks">{() => <Redirect to="/profile/admin/dev-tasks" />}</Route>
+            <Route path="/admin">{() => {
+              const qs = window.location.search;
+              return <Redirect to={`/profile/admin${qs}`} />;
+            }}</Route>
             <Route path="/mobile" component={MobileTerminal} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
@@ -284,8 +296,11 @@ function AppShell() {
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
 
-            {/* PLATFORM API module */}
-            <Route path="/platform" component={PlatformAPI} />
+            {/* PLATFORM API module — redirected into profile (preserves query params) */}
+            <Route path="/platform">{() => {
+              const qs = window.location.search;
+              return <Redirect to={`/profile/platform${qs}`} />;
+            }}</Route>
 
             {/* BOTS module */}
             <Route path="/bots/jobs" component={JobCommandCenter} />

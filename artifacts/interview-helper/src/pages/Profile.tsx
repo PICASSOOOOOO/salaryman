@@ -1,14 +1,21 @@
 import { apiFetch } from '@/lib/api-client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
+import { useOrg } from '@/hooks/use-org';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
+import { PROFILE_MODULES } from '@/lib/modules';
+
+const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
+const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
+const ModeratorPanel = lazy(() => import("@/pages/ModeratorPanel"));
+const WorldMapPanel = lazy(() => import("@/pages/WorldMapPanel"));
 
 interface DonationRecord {
   id: number;
@@ -397,7 +404,25 @@ function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAff
   );
 }
 
-export default function Profile() {
+type ProfileTab = 'account' | 'admin' | 'platform' | 'moderator' | 'world-map';
+
+function getTabFromPath(pathname: string): ProfileTab {
+  if (pathname.startsWith('/profile/admin')) return 'admin';
+  if (pathname.startsWith('/profile/platform')) return 'platform';
+  if (pathname.startsWith('/profile/moderator')) return 'moderator';
+  if (pathname.startsWith('/profile/world-map')) return 'world-map';
+  return 'account';
+}
+
+const TAB_CONFIG: { id: ProfileTab; path: string; label: string; boomerLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'account', path: '/profile', label: 'ACCOUNT', boomerLabel: 'MY ACCOUNT', icon: User },
+  { id: 'admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', icon: ShieldCheck },
+  { id: 'platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', icon: Network },
+  { id: 'moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', icon: Eye },
+  { id: 'world-map', path: '/profile/world-map', label: 'WORLD MAP', boomerLabel: 'WORLD OVERVIEW', icon: Map },
+];
+
+function AccountTab() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
@@ -499,10 +524,6 @@ export default function Profile() {
     URL.revokeObjectURL(url);
   };
 
-  if (!isAuthenticated) {
-    return <SignInPage context="Sign in to manage your account." />;
-  }
-
   const displayName = user?.firstName
     ? [user.firstName, user.lastName].filter(Boolean).join(' ')
     : user?.email?.split('@')[0] ?? 'User';
@@ -516,20 +537,7 @@ export default function Profile() {
     : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-2xl mx-auto w-full relative z-10">
-
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{t('profile.myAccount')}</h2>
-            <p className="text-sm text-muted-foreground">{boomerMode ? t('profile.manageProfileMemoryData') : t('profile.manageProfileData')}</p>
-          </div>
-        </div>
-
+    <>
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
@@ -845,7 +853,6 @@ export default function Profile() {
 
           </div>
         )}
-      </main>
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4">
@@ -891,6 +898,76 @@ export default function Profile() {
           </motion.div>
         </div>
       )}
+    </>
+  );
+}
+
+export default function Profile() {
+  const { isAuthenticated } = useAuth();
+  const [location, navigate] = useLocation();
+  const [boomerMode] = useBoomerMode();
+  const { org: userOrg } = useOrg();
+  const { isOwner } = usePlan();
+
+  if (!isAuthenticated) {
+    return <SignInPage context="Sign in to manage your account." />;
+  }
+
+  const pathname = location.split('?')[0];
+  const activeTab = getTabFromPath(pathname);
+
+  const showAdminTabs = !!(userOrg || isOwner);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="sticky top-0 z-40 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.06]">
+        <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto scrollbar-hide max-w-5xl mx-auto">
+          {TAB_CONFIG.map(tab => {
+            if ((tab.id === 'admin' || tab.id === 'moderator' || tab.id === 'world-map') && !showAdminTabs) return null;
+            const active = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+                  active
+                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
+                }`}
+              >
+                <Icon className="w-3 h-3 shrink-0" />
+                {boomerMode ? tab.boomerLabel : tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <main className="flex-1 relative z-10">
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>}>
+          {activeTab === 'account' && (
+            <div className="p-6 max-w-2xl mx-auto w-full">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'MY ACCOUNT' : 'IDENTITY'}</h2>
+                  <p className="text-sm text-muted-foreground">{boomerMode ? 'Manage your profile, memory, and data' : 'Manage your profile and data'}</p>
+                </div>
+              </div>
+              <AccountTab />
+            </div>
+          )}
+          {activeTab === 'admin' && showAdminTabs && <AdminPanel />}
+          {activeTab === 'platform' && <PlatformAPI />}
+          {activeTab === 'moderator' && showAdminTabs && <ModeratorPanel />}
+          {activeTab === 'world-map' && showAdminTabs && <WorldMapPanel />}
+        </Suspense>
+      </main>
     </div>
   );
 }

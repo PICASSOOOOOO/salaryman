@@ -7,6 +7,7 @@ import {
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
   Shield, Link2,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
+  User, Eye, Map, AlertTriangle, Activity,
 } from 'lucide-react';
 
 export type Module = {
@@ -37,6 +38,41 @@ export const MODULES: Module[] = [
     icon: Terminal,
     defaultPath: '/',
     subs: [],
+  },
+  {
+    id: 'phone',
+    path: '/phone',
+    label: 'PHONE',
+    codename: 'TTC',
+    icon: Phone,
+    defaultPath: '/phone/dialer',
+    subs: [
+      { id: 'dialer', path: '/phone/dialer', label: 'DIALER', boomerLabel: 'DIALER', codename: 'DIAL-PAD', icon: PhoneCall },
+      { id: 'contacts', path: '/phone/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'COMM-BOOK', icon: Users },
+      { id: 'active', path: '/phone/active', label: 'ACTIVE CALLS', boomerLabel: 'ACTIVE CALLS', codename: 'LIVE-OPS', icon: Zap },
+      { id: 'history', path: '/phone/history', label: 'CALL LOG', boomerLabel: 'CALL LOG', codename: 'CHRONO-LOG', icon: Clock },
+      { id: 'voicemail', path: '/phone/voicemail', label: 'VOICEMAIL', boomerLabel: 'VOICEMAIL', codename: 'V-MAIL', icon: Voicemail },
+      { id: 'conference', path: '/phone/conference', label: 'CONFERENCE', boomerLabel: 'CONFERENCE', codename: 'CONF-ROOM', icon: Users },
+      { id: 'sessions', path: '/phone/sessions', label: 'DIALING SESSIONS', boomerLabel: 'DIALING SESSIONS', codename: 'AUTO-DIAL', icon: Radio },
+      { id: 'coach', path: '/phone/coach', label: 'AI COACH', boomerLabel: 'AI COACH', codename: 'AI-COACH', icon: Bot },
+      { id: 'secretary', path: '/phone/secretary', label: 'AI SECRETARY', boomerLabel: 'AI SECRETARY', codename: 'AI-SEC', icon: Settings },
+      { id: 'numbers', path: '/phone/numbers', label: 'PHONE NUMBERS', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
+    ],
+  },
+  {
+    id: 'bots',
+    path: '/bots',
+    label: 'BOTS',
+    codename: 'JEAN CLAW FACTORY',
+    icon: Bot,
+    defaultPath: '/bots',
+    subs: [
+      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT FACTORY', codename: 'MARKET', icon: Store },
+      { id: 'my-bots', path: '/bots/my', label: 'MANAGE', boomerLabel: 'MANAGE', codename: 'ROBO DOC', icon: Bot },
+      { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
+      { id: 'job-command', path: '/bots/jobs', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
+      { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
+    ],
   },
   {
     id: 'console',
@@ -114,78 +150,47 @@ export const MODULES: Module[] = [
       { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
-  {
-    id: 'phone',
-    path: '/phone',
-    label: 'PHONE',
-    codename: 'TTC',
-    icon: Phone,
-    defaultPath: '/phone/dialer',
-    subs: [
-      { id: 'dialer', path: '/phone/dialer', label: 'DIALER', boomerLabel: 'DIALER', codename: 'DIAL-PAD', icon: PhoneCall },
-      { id: 'contacts', path: '/phone/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'COMM-BOOK', icon: Users },
-      { id: 'active', path: '/phone/active', label: 'ACTIVE CALLS', boomerLabel: 'ACTIVE CALLS', codename: 'LIVE-OPS', icon: Zap },
-      { id: 'history', path: '/phone/history', label: 'CALL LOG', boomerLabel: 'CALL LOG', codename: 'CHRONO-LOG', icon: Clock },
-      { id: 'voicemail', path: '/phone/voicemail', label: 'VOICEMAIL', boomerLabel: 'VOICEMAIL', codename: 'V-MAIL', icon: Voicemail },
-      { id: 'conference', path: '/phone/conference', label: 'CONFERENCE', boomerLabel: 'CONFERENCE', codename: 'CONF-ROOM', icon: Users },
-      { id: 'sessions', path: '/phone/sessions', label: 'DIALING SESSIONS', boomerLabel: 'DIALING SESSIONS', codename: 'AUTO-DIAL', icon: Radio },
-      { id: 'coach', path: '/phone/coach', label: 'AI COACH', boomerLabel: 'AI COACH', codename: 'AI-COACH', icon: Bot },
-      { id: 'secretary', path: '/phone/secretary', label: 'AI SECRETARY', boomerLabel: 'AI SECRETARY', codename: 'AI-SEC', icon: Settings },
-      { id: 'numbers', path: '/phone/numbers', label: 'PHONE NUMBERS', boomerLabel: 'PHONE NUMBERS', codename: 'NUM-VAULT', icon: Hash },
-    ],
-  },
-  {
-    id: 'admin',
-    path: '/admin',
-    label: 'ADMIN',
-    codename: 'COMMAND',
-    icon: ShieldCheck,
-    defaultPath: '/admin',
-    subs: [
-      { id: 'admin-users', path: '/admin', label: 'USERS', boomerLabel: 'USERS', codename: 'ROSTER', icon: Users },
-      { id: 'admin-orgs', path: '/admin?tab=orgs', label: 'BUSINESSES', boomerLabel: 'BUSINESSES', codename: 'ORGS', icon: Building2 },
-      { id: 'admin-roles', path: '/admin?tab=roles', label: 'ROLES & PERMISSIONS', boomerLabel: 'ROLES & PERMISSIONS', codename: 'ACCESS', icon: UserCog },
-      { id: 'admin-tickets', path: '/admin/tickets', label: 'TICKETS', boomerLabel: 'SUPPORT TICKETS', codename: 'TICKETS', icon: FileText },
-      { id: 'admin-billboards', path: '/admin/billboards', label: 'BILLBOARDS', boomerLabel: 'BILLBOARDS', codename: 'ADS', icon: LayoutDashboard },
-      { id: 'admin-tasks', path: '/admin/dev-tasks', label: 'DEV TASKS', boomerLabel: 'DEV TASKS', codename: 'TASKS', icon: Crosshair },
-    ],
-  },
-  {
-    id: 'bots',
-    path: '/bots',
-    label: 'BOTS',
-    codename: 'JEAN CLAW FACTORY',
-    icon: Bot,
-    defaultPath: '/bots',
-    subs: [
-      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT FACTORY', codename: 'MARKET', icon: Store },
-      { id: 'my-bots', path: '/bots/my', label: 'MANAGE', boomerLabel: 'MANAGE', codename: 'ROBO DOC', icon: Bot },
-      { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
-      { id: 'job-command', path: '/bots/jobs', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
-      { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
-    ],
-  },
+];
+
+export const PROFILE_MODULES: SubItem[] = [
+  { id: 'profile-account', path: '/profile', label: 'ACCOUNT', boomerLabel: 'MY ACCOUNT', codename: 'IDENTITY', icon: User },
+  { id: 'profile-admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', codename: 'COMMAND', icon: ShieldCheck },
+  { id: 'profile-platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
+  { id: 'profile-moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', codename: 'WATCHTOWER', icon: Eye },
+  { id: 'profile-world-map', path: '/profile/world-map', label: 'WORLD MAP', boomerLabel: 'WORLD OVERVIEW', codename: 'OVERWATCH', icon: Map },
+];
+
+export const ADMIN_SUBS: SubItem[] = [
+  { id: 'admin-users', path: '/profile/admin', label: 'USERS', boomerLabel: 'USERS', codename: 'ROSTER', icon: Users },
+  { id: 'admin-orgs', path: '/profile/admin?tab=orgs', label: 'BUSINESSES', boomerLabel: 'BUSINESSES', codename: 'ORGS', icon: Building2 },
+  { id: 'admin-roles', path: '/profile/admin?tab=roles', label: 'ROLES & PERMISSIONS', boomerLabel: 'ROLES & PERMISSIONS', codename: 'ACCESS', icon: UserCog },
+  { id: 'admin-moderators', path: '/profile/admin?tab=moderators', label: 'MODERATORS', boomerLabel: 'MODERATORS', codename: 'WATCHTOWER', icon: Eye },
+  { id: 'admin-bans', path: '/profile/admin?tab=bans', label: 'BANS', boomerLabel: 'BANS & SUSPENSIONS', codename: 'EXILE', icon: AlertTriangle },
+  { id: 'admin-tickets', path: '/profile/admin/tickets', label: 'TICKETS', boomerLabel: 'SUPPORT TICKETS', codename: 'TICKETS', icon: FileText },
+  { id: 'admin-billboards', path: '/profile/admin/billboards', label: 'BILLBOARDS', boomerLabel: 'BILLBOARDS', codename: 'ADS', icon: LayoutDashboard },
+  { id: 'admin-tasks', path: '/profile/admin/dev-tasks', label: 'DEV TASKS', boomerLabel: 'DEV TASKS', codename: 'TASKS', icon: Crosshair },
 ];
 
 export const SETTINGS_MODULES: SubItem[] = [
-  { id: 'plat-overview', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
-  { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
-  { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
-  { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
-  { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+  { id: 'plat-overview', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
+  { id: 'plat-keys', path: '/profile/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
+  { id: 'plat-webhooks', path: '/profile/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
+  { id: 'plat-endpoints', path: '/profile/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
+  { id: 'plat-apps', path: '/profile/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/') return MODULES[0];
-  if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[1];
-  if (pathname.startsWith('/business')) return MODULES[2];
-  if (pathname.startsWith('/insurance')) return MODULES[2];
-  if (pathname.startsWith('/creative')) return MODULES[3];
-  if (pathname.startsWith('/marketing')) return MODULES[4];
-  if (pathname.startsWith('/intel')) return MODULES[5];
-  if (pathname.startsWith('/phone')) return MODULES[6];
-  if (pathname.startsWith('/admin')) return MODULES[7];
+  if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[3];
+  if (pathname.startsWith('/business')) return MODULES[4];
+  if (pathname.startsWith('/insurance')) return MODULES[4];
+  if (pathname.startsWith('/creative')) return MODULES[5];
+  if (pathname.startsWith('/marketing')) return MODULES[6];
+  if (pathname.startsWith('/intel')) return MODULES[7];
+  if (pathname.startsWith('/phone')) return MODULES[1];
+  if (pathname.startsWith('/profile')) return null;
+  if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/platform')) return null;
-  if (pathname.startsWith('/bots')) return MODULES[8];
+  if (pathname.startsWith('/bots')) return MODULES[2];
   return null;
 }

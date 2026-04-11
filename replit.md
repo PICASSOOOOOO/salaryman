@@ -20,6 +20,19 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Communication:** A robust phone system (CalllHome/TTC) with autonomous call agents, dual-DID routing, real-time translation tools, and enhanced live call monitoring with expandable call details (SID, metadata, encryption, conference), live transcript panel, and AI coaching tips. Session launch renamed to "GO ACTIVE".
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
+### Navigation Structure
+- **Main nav order:** Pablo AI → Phone (TTC) → Bots (Jean Claw Factory) → Console → Business → Creative → Marketing → Intel → Explore
+- **Profile Hub:** `/profile` is the control center with tabs: Account, Admin, Platform, Moderator, World Map
+  - Account: user info, subscriptions, Pablo memory, data export/delete
+  - Admin: users, businesses, roles & permissions, moderators, bans (org members/owners only)
+  - Platform: API keys, webhooks, endpoints, connected apps (was `/platform`)
+  - Moderator: live activity feed, ban management, chat monitor, flagged content (org members/owners only)
+  - World Map: real-time surveillance of all Minx City players, zone density, player inspector
+- **Admin moved to Profile:** Old `/admin/*` paths redirect to `/profile/admin/*`
+- **Platform moved to Profile:** Old `/platform` redirects to `/profile/platform`
+- **Permissions:** 4 role types: owner, manager, moderator, member
+  - Moderators can: monitor activity, issue bans, review content, access world overview
+
 ### Insurance API (Shield Prime)
 - **Module:** `/insurance` — accessible as a Business sub-item "INSURANCE API" (not in main nav)
 - **Bot:** Shield Prime — AI insurance agent for inbound/outbound calls, sales vs partner detection, client intake
