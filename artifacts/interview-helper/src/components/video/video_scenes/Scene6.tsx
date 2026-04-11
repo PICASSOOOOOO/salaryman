@@ -110,7 +110,7 @@ export function Scene6() {
           animate={phase >= 3 ? { opacity: 1 } : {}}
           transition={{ duration: 0.5 }}
         >
-          {['74 BOTS', 'PHONE', 'CRM', 'INSURANCE', 'PUBLISHING', 'API'].map((t, i) => (
+          {['75 BOTS', 'PHONE', 'CRM', 'INSURANCE', 'PUBLISHING', 'API'].map((t, i) => (
             <motion.span
               key={t}
               style={{

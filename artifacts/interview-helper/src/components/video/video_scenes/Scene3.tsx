@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 const FEATURES = [
-  { title: '74 AI BOTS', sub: 'MARKETPLACE WORKFORCE', color: '#10b981', icon: '◆' },
+  { title: '75 AI BOTS', sub: 'MARKETPLACE WORKFORCE', color: '#10b981', icon: '◆' },
   { title: 'PHONE SYSTEM', sub: 'AUTONOMOUS CALL AGENTS', color: '#f59e0b', icon: '◎' },
   { title: 'CRM & PIPELINE', sub: 'DEALS · CONTACTS · LEADS', color: '#ef4444', icon: '◐' },
   { title: 'SHIELD-9', sub: 'INSURANCE HUB · 9 CARRIERS', color: '#3b82f6', icon: '◈' },
