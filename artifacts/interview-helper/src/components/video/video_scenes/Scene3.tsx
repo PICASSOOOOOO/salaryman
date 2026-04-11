@@ -2,13 +2,13 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 const FEATURES = [
-  { title: '7 AI AGENTS', sub: 'MULTI-AGENT WORKFORCE', color: '#10b981', icon: '◆' },
-  { title: '8 CHANNELS', sub: 'OMNICHANNEL DEPLOYMENT', color: '#3b82f6', icon: '◈' },
-  { title: 'DARK ROOM', sub: 'CREATIVE STUDIO', color: '#a855f7', icon: '◉' },
+  { title: '73 AI BOTS', sub: 'MARKETPLACE WORKFORCE', color: '#10b981', icon: '◆' },
   { title: 'PHONE SYSTEM', sub: 'AUTONOMOUS CALL AGENTS', color: '#f59e0b', icon: '◎' },
   { title: 'CRM & PIPELINE', sub: 'DEALS · CONTACTS · LEADS', color: '#ef4444', icon: '◐' },
-  { title: 'BOT FACTORY', sub: 'CUSTOM AI BOTS', color: '#38bdf8', icon: '◑' },
-  { title: '24 CITIES', sub: 'WORLDWIDE NETWORK', color: '#10b981', icon: '◒' },
+  { title: 'SHIELD-9', sub: 'INSURANCE HUB · 9 CARRIERS', color: '#3b82f6', icon: '◈' },
+  { title: 'PUBLISHING', sub: 'MUSIC + BOOKS · 11 BOTS', color: '#a855f7', icon: '◉' },
+  { title: 'NEXUS-API', sub: 'PLATFORM API · WEBHOOKS', color: '#38bdf8', icon: '◑' },
+  { title: 'JEAN CLAW', sub: '$145/MO · FLAGSHIP TIER', color: '#f59e0b', icon: '◒' },
 ];
 
 export function Scene3() {

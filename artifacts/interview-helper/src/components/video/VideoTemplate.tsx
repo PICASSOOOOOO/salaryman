@@ -5,12 +5,14 @@ import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
+import { Scene6 } from './video_scenes/Scene6';
 
 const SCENE_DURATIONS = {
   logo: 2500,
   platform: 3000,
   features: 8000,
-  version: 2500,
+  cityscape: 3500,
+  hud: 3500,
   lockup: 3000,
 };
 
@@ -32,8 +34,9 @@ export default function VideoTemplate() {
         {currentScene === 0 && <Scene1 key="logo" />}
         {currentScene === 1 && <Scene2 key="platform" />}
         {currentScene === 2 && <Scene3 key="features" />}
-        {currentScene === 3 && <Scene4 key="version" />}
-        {currentScene === 4 && <Scene5 key="lockup" />}
+        {currentScene === 3 && <Scene4 key="cityscape" />}
+        {currentScene === 4 && <Scene5 key="hud" />}
+        {currentScene === 5 && <Scene6 key="lockup" />}
       </AnimatePresence>
     </div>
   );
