@@ -9533,7 +9533,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { const a = 1500 + Math.floor(Math.random() * 2000); g.salary -= a; setSalary(g.salary); sfxError(); return `> CITY TAX AUDIT — PABLO CORP seized ƒ${a.toLocaleString()} in "compliance fees". No appeal. No tribunal.`; },
             () => { g.hunger = Math.max(0, g.hunger - 20); setHunger(Math.floor(g.hunger)); sfxError(); return '> FOOD RECALL — All vendor synth-protein recalled. Contaminated batch traced to Pablo Corp. Processing Unit 9. "Regrettable." −20 Hunger.'; },
             () => { g.thirst = Math.max(0, g.thirst - 25); setThirst(Math.floor(g.thirst)); sfxError(); return '> WATER RATION CUT — Sector 2–7 on reduced supply. "Infrastructure maintenance." −25 Thirst.'; },
-            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> SURVEILLANCE FINE — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} deducted automatically. "Irregular mobility risk score: elevated."`; },
+            () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> MOBILITY TAX — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} auto-taxed. "Irregular mobility risk score: elevated."`; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 8); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed diluted stim-packs city-wide. "Productivity metric: normalized." HP +8.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
             () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
@@ -9559,82 +9559,82 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.oregonTick = 0;
         }
 
-        // ── ECONOMY: Police shakedowns (city only, every ~45s) ──────────────
+        // ── TAXES: Street tax (police-enforced, city only, every ~45s) ──────
         if (g.shakedownCd > 0) g.shakedownCd--;
         if (g.shakedownCd <= 0 && inCity && !g.interior && !gamePausedRef.current) {
           g.shakedownCd = 2700 + Math.floor(Math.random() * 900);
           const nearPol = g.police.some(p => Math.hypot(g.px - p.x, g.py - p.y) < 200);
           if (nearPol && Math.random() < 0.55) {
-            const fineBase = [
-              { amt: 800, msg: 'IDENTITY CHECK' },
-              { amt: 1200, msg: 'CONTRABAND SCAN' },
-              { amt: 2000, msg: 'TRANSIT VIOLATION' },
-              { amt: 1500, msg: 'CURFEW INFRACTION' },
-              { amt: 2500, msg: 'SUSPICIOUS ACTIVITY' },
-              { amt: 3000, msg: 'ILLEGAL LOITERING' },
+            const taxTypes = [
+              { amt: 800, msg: 'PEDESTRIAN TAX' },
+              { amt: 1200, msg: 'BREATHING TAX' },
+              { amt: 2000, msg: 'TRANSIT TAX' },
+              { amt: 1500, msg: 'CURFEW TAX' },
+              { amt: 2500, msg: 'EXISTENCE TAX' },
+              { amt: 3000, msg: 'LOITERING TAX' },
             ];
-            const pick = fineBase[Math.floor(Math.random() * fineBase.length)];
+            const pick = taxTypes[Math.floor(Math.random() * taxTypes.length)];
             const nightMult = (g.worldTime >= 20 || g.worldTime < 5) ? 1.8 : 1;
             const wantedMult = 1 + g.wantedLevel * 0.5;
-            const fine = Math.floor(pick.amt * nightMult * wantedMult);
-            if (g.salary >= fine) {
-              g.salary -= fine; setSalary(g.salary);
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${fine.toLocaleString()} ${pick.msg}`, color: '#ff4444', life: 80, maxLife: 80 });
-              setNarr(`> PABLO CORP ENFORCEMENT — ${pick.msg}. ƒ${fine.toLocaleString()} deducted. "Compliance is not optional."`);
+            const tax = Math.floor(pick.amt * nightMult * wantedMult);
+            if (g.salary >= tax) {
+              g.salary -= tax; setSalary(g.salary);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${tax.toLocaleString()} ${pick.msg}`, color: '#ff4444', life: 80, maxLife: 80 });
+              setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} collected. "Taxation is civilization."`);
               sfxError();
-              addBankTx(`ENFORCEMENT: ${pick.msg}`, -fine, g.salary);
+              addBankTx(`TAX: ${pick.msg}`, -tax, g.salary);
             } else {
               g.wantedLevel = Math.min(5, g.wantedLevel + 1);
-              g.bountyAmount += fine;
+              g.bountyAmount += tax;
               g.lastCrimeFrame = g.frame;
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★+1 — CAN'T PAY`, color: '#ff2222', life: 80, maxLife: 80 });
-              setNarr(`> PABLO CORP ENFORCEMENT — ${pick.msg}: ƒ${fine.toLocaleString()} fine. Insufficient funds. WANTED LEVEL INCREASED.`);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★+1 — TAX EVASION`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} owed. Insufficient funds. TAX EVASION — WANTED LEVEL INCREASED.`);
               sfxError();
             }
           }
         }
 
-        // ── ECONOMY: City utility bills (every ~3 min) ─────────────────────
+        // ── TAXES: City services tax (every ~3 min) ───────────────────────
         if (g.cityBillCd > 0) g.cityBillCd--;
         if (g.cityBillCd <= 0) {
           g.cityBillCd = 10800 + Math.floor(Math.random() * 3600);
-          const bills = [
-            { amt: 1000, label: 'GRID ACCESS FEE' },
-            { amt: 1500, label: 'WATER RATION PAYMENT' },
-            { amt: 2000, label: 'SECTOR MAINTENANCE LEVY' },
-            { amt: 800,  label: 'COMM-NET SUBSCRIPTION' },
-            { amt: 2500, label: 'CITIZEN REGISTRATION RENEWAL' },
-            { amt: 3500, label: 'PABLO CORP PROTECTION FEE' },
+          const taxes = [
+            { amt: 1000, label: 'GRID TAX' },
+            { amt: 1500, label: 'WATER TAX' },
+            { amt: 2000, label: 'INFRASTRUCTURE TAX' },
+            { amt: 800,  label: 'COMMUNICATIONS TAX' },
+            { amt: 2500, label: 'CITIZEN REGISTRATION TAX' },
+            { amt: 3500, label: 'PROTECTION TAX' },
           ];
-          const bill = bills[Math.floor(Math.random() * bills.length)];
-          if (g.salary >= bill.amt) {
-            g.salary -= bill.amt; setSalary(g.salary);
-            g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${bill.amt.toLocaleString()} ${bill.label}`, color: '#ff8844', life: 80, maxLife: 80 });
-            setNarr(`> CITY BILLING — ${bill.label}: ƒ${bill.amt.toLocaleString()} auto-deducted. "Non-payment results in service disconnection and wanted classification."`);
-            addBankTx(bill.label, -bill.amt, g.salary);
+          const t = taxes[Math.floor(Math.random() * taxes.length)];
+          if (g.salary >= t.amt) {
+            g.salary -= t.amt; setSalary(g.salary);
+            g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${t.amt.toLocaleString()} ${t.label}`, color: '#ff8844', life: 80, maxLife: 80 });
+            setNarr(`> PABLO CORP TAXES — ${t.label}: ƒ${t.amt.toLocaleString()} auto-collected. "Non-payment is tax evasion. Tax evasion is a crime."`);
+            addBankTx(t.label, -t.amt, g.salary);
           } else {
-            g.taxDebt += bill.amt;
-            g.floaters.push({ x: g.px, y: g.py - 25, text: `${bill.label} — DEBT +ƒ${bill.amt.toLocaleString()}`, color: '#ff4444', life: 80, maxLife: 80 });
+            g.taxDebt += t.amt;
+            g.floaters.push({ x: g.px, y: g.py - 25, text: `${t.label} — DEBT +ƒ${t.amt.toLocaleString()}`, color: '#ff4444', life: 80, maxLife: 80 });
           }
         }
 
-        // ── ECONOMY: Surveillance camera fines (city, random position checks) ─
+        // ── TAXES: Surveillance tax (city, random assessments) ────────────
         if (g.surveillanceCd > 0) g.surveillanceCd--;
         if (g.surveillanceCd <= 0 && inCity && !g.interior) {
           g.surveillanceCd = 3600 + Math.floor(Math.random() * 1800);
           if (Math.random() < 0.4) {
-            const violations = [
-              { amt: 600, msg: 'JAYWALKING DETECTED' },
-              { amt: 1000, msg: 'UNAUTHORIZED ZONE ENTRY' },
-              { amt: 1800, msg: 'FACIAL SCAN MISMATCH' },
-              { amt: 2200, msg: 'BIOMETRIC ANOMALY' },
-              { amt: 500, msg: 'SPEED VIOLATION' },
-              { amt: 1500, msg: 'NOISE ORDINANCE BREACH' },
+            const assessments = [
+              { amt: 600, msg: 'JAYWALKING TAX' },
+              { amt: 1000, msg: 'ZONE ENTRY TAX' },
+              { amt: 1800, msg: 'FACIAL SCAN TAX' },
+              { amt: 2200, msg: 'BIOMETRIC TAX' },
+              { amt: 500, msg: 'SPEED TAX' },
+              { amt: 1500, msg: 'NOISE TAX' },
             ];
-            const v = violations[Math.floor(Math.random() * violations.length)];
+            const v = assessments[Math.floor(Math.random() * assessments.length)];
             g.salary -= v.amt; setSalary(g.salary);
             g.floaters.push({ x: g.px, y: g.py - 30, text: `−ƒ${v.amt.toLocaleString()} ${v.msg}`, color: '#ff6644', life: 60, maxLife: 60 });
-            setNarr(`> SURVEILLANCE — ${v.msg}. Automated fine: ƒ${v.amt.toLocaleString()}. "PABLO CORP City-AI is always watching."`);
+            setNarr(`> PABLO CORP TAXES — ${v.msg}: ƒ${v.amt.toLocaleString()} auto-assessed. "The cameras see everything. The tax man sees more."`);
             sfxError();
             if (g.salary < 0) {
               g.wantedLevel = Math.min(5, g.wantedLevel + 1);
@@ -9644,17 +9644,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── ECONOMY: Gang territory tolls (wasteland zones) ─────────────────
+        // ── TAXES: Territory tax (wasteland gang zones) ─────────────────
         if (g.gangTollCd > 0) g.gangTollCd--;
         if (g.gangTollCd <= 0 && !inCity && !g.interior) {
           g.gangTollCd = 4200 + Math.floor(Math.random() * 1800);
           const inGangZone = GANG_ZONES.find(gz => g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h && gz.id !== 'minx_city');
           if (inGangZone) {
-            const toll = 2000 + Math.floor(Math.random() * 4000);
-            if (g.salary >= toll) {
-              g.salary -= toll; setSalary(g.salary);
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${toll.toLocaleString()} TERRITORY TOLL`, color: '#ff6622', life: 80, maxLife: 80 });
-              setNarr(`> ${inGangZone.name} TOLL — "You're on our turf. ƒ${toll.toLocaleString()} or we take it from your corpse." You paid.`);
+            const taxAmt = 2000 + Math.floor(Math.random() * 4000);
+            if (g.salary >= taxAmt) {
+              g.salary -= taxAmt; setSalary(g.salary);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${taxAmt.toLocaleString()} TERRITORY TAX`, color: '#ff6622', life: 80, maxLife: 80 });
+              setNarr(`> ${inGangZone.name} TERRITORY TAX — "Our turf, our tax. ƒ${taxAmt.toLocaleString()} or your corpse." You paid.`);
               sfxError();
             } else {
               for (const t of g.threats) {
@@ -9662,8 +9662,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   t.behavior = 'HOSTILE'; t.behaviorTimer = 400;
                 }
               }
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `CAN'T PAY — HOSTILES ALERTED`, color: '#ff2222', life: 80, maxLife: 80 });
-              setNarr(`> ${inGangZone.name} TOLL — "No money? Then you pay with blood." Gang members turn hostile.`);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `CAN'T PAY — TAX EVADER`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> ${inGangZone.name} TERRITORY TAX — "No money? Tax evaders get dealt with." Gang turns hostile.`);
               sfxError();
             }
           }
