@@ -64,6 +64,7 @@ const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
 const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
+const BusinessHub = lazy(() => import("@/pages/BusinessHub"));
 const Payroll = lazy(() => import("@/pages/Payroll"));
 const Bills = lazy(() => import("@/pages/Bills"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
@@ -244,7 +245,7 @@ function AppShell() {
             <Route path="/business/bills" component={Bills} />
             <Route path="/business/expenses" component={Expenses} />
             <Route path="/business/leads">{() => <Redirect to="/marketing/leads" />}</Route>
-            <Route path="/business">{() => <Redirect to="/business/contacts" />}</Route>
+            <Route path="/business" component={BusinessHub} />
 
             {/* CREATIVE module */}
             <Route path="/creative/darkroom" component={DarkRoom} />

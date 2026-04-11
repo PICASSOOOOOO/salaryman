@@ -93,7 +93,7 @@ export const MODULES: Module[] = [
     label: 'BUSINESS',
     codename: 'OPS-CORE',
     icon: Briefcase,
-    defaultPath: '/business/contacts',
+    defaultPath: '/business',
     subs: [
       { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },

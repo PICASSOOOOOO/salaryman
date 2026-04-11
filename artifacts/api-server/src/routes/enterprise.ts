@@ -576,4 +576,73 @@ router.get("/enterprise/balance-sheet/ledger", async (req, res) => {
   res.json({ ledger: rows });
 });
 
+router.get("/enterprise/summary", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+
+  const [employeeRows] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(realEmployeesTable)
+    .where(and(eq(realEmployeesTable.userId, userId), eq(realEmployeesTable.status, "active")));
+
+  const [billRows] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      pendingCount: sql<number>`count(*) filter (where ${billsTable.status} = 'pending')::int`,
+      overdueCount: sql<number>`count(*) filter (where ${billsTable.status} = 'overdue')::int`,
+    })
+    .from(billsTable)
+    .where(eq(billsTable.userId, userId));
+
+  const [expenseRows] = await db
+    .select({ count: sql<number>`count(*)::int`, total: sql<number>`coalesce(sum(${businessExpensesTable.amount}::numeric), 0)` })
+    .from(businessExpensesTable)
+    .where(eq(businessExpensesTable.userId, userId));
+
+  const [invoiceRows] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      paidCount: sql<number>`count(*) filter (where ${invoicesTable.status} = 'paid')::int`,
+      openCount: sql<number>`count(*) filter (where ${invoicesTable.status} in ('draft', 'sent'))::int`,
+      overdueCount: sql<number>`count(*) filter (where ${invoicesTable.status} = 'overdue')::int`,
+    })
+    .from(invoicesTable)
+    .where(eq(invoicesTable.userId, userId));
+
+  const [payrollRows] = await db
+    .select({ count: sql<number>`count(*)::int`, total: sql<number>`coalesce(sum(${payrollRunsTable.totalAmount}::numeric), 0)` })
+    .from(payrollRunsTable)
+    .where(eq(payrollRunsTable.userId, userId));
+
+  const paidInvoices = await db
+    .select()
+    .from(invoicesTable)
+    .where(and(eq(invoicesTable.userId, userId), eq(invoicesTable.status, "paid")));
+
+  const grossIncome = paidInvoices.reduce((sum, inv) => {
+    const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems as { quantity: number; rate: number }[] : [];
+    const sub = lineItems.reduce((s, item) => s + item.quantity * item.rate, 0);
+    const tax = sub * ((inv.taxRate || 0) / 100);
+    return sum + sub + tax;
+  }, 0);
+
+  const txRows = await db
+    .select({ type: balanceSheetTxTable.type, amount: balanceSheetTxTable.amount })
+    .from(balanceSheetTxTable)
+    .where(eq(balanceSheetTxTable.userId, userId));
+
+  const payrollTotal = txRows.filter(t => t.type === "payroll").reduce((s, t) => s + Number(t.amount), 0);
+  const billsTotal = txRows.filter(t => t.type === "bill").reduce((s, t) => s + Number(t.amount), 0);
+  const expensesTotal = txRows.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+
+  res.json({
+    employees: { active: employeeRows.count },
+    bills: { total: billRows.count, pending: billRows.pendingCount, overdue: billRows.overdueCount },
+    expenses: { total: expenseRows.count, amount: Number(expenseRows.total) },
+    invoices: { total: invoiceRows.count, paid: invoiceRows.paidCount, open: invoiceRows.openCount, overdue: invoiceRows.overdueCount },
+    payroll: { runs: payrollRows.count, total: Number(payrollRows.total) },
+    financials: { grossIncome, payrollTotal, billsTotal, expensesTotal, netProfit: grossIncome - payrollTotal - billsTotal - expensesTotal },
+  });
+});
+
 export default router;

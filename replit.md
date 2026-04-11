@@ -45,3 +45,12 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Database:** PostgreSQL
 - **Payment Processing:** Stripe
 - **Music Generation:** Replicate MusicGen API (used by Tempo Prime)
+
+## Business Management Hub
+
+The `/business` route renders a BusinessHub landing page that provides an overview of all business management tools. It displays:
+- Organization details (name, industry, member count, user role)
+- Financial summary stats (net profit, gross income, invoices, bills, employees, payroll, expenses, outgoings)
+- Action required alerts for overdue bills and invoices
+- Categorized navigation cards linking to all business sub-modules (Contacts, Hiring, Interview Office, Calendar, Documents, Deals, Invoices, Payroll, Bills, Expenses, Balance Sheet, Insurance API)
+- Backend summary endpoint at `/api/enterprise/summary` aggregates counts and financials across all enterprise tables
