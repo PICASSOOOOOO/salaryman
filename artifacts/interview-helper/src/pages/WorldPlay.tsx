@@ -7189,16 +7189,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (g.frame % 180 === 0) setNarr('> SOUTHERN FOOTHILLS — The ground rises sharply. The mountains are impassable.');
           }
         }
-        // ── River collision — bezier-based, blocked unless near a bridge ────
+        // ── River collision — bezier-based, slowed unless near a bridge ────
         const COLLISION_RIVERS = [
           { sx: 3200, sy: BORDER + 80,      ex: BORDER + 60,      ey: 5000,
-            cp1x: 2600, cp1y: 1800, cp2x: 800,  cp2y: 3800 },
+            cp1x: 3600, cp1y: 1400, cp2x: 600,  cp2y: 3200 },
           { sx: 8500, sy: BORDER + 100,     ex: W - BORDER - 80,  ey: 4200,
-            cp1x: 9200, cp1y: 1600, cp2x: 12600, cp2y: 3000 },
+            cp1x: 7800, cp1y: 1200, cp2x: 12200, cp2y: 2400 },
           { sx: 5800, sy: H - BORDER - 90,  ex: BORDER + 80,      ey: 8800,
-            cp1x: 5000, cp1y: 10800, cp2x: 1200, cp2y: 9600 },
+            cp1x: 4200, cp1y: 11200, cp2x: 1800, cp2y: 9200 },
           { sx: 9200, sy: H - BORDER - 110, ex: W - BORDER - 70,  ey: 9400,
-            cp1x: 10000, cp1y: 11400, cp2x: 12800, cp2y: 10200 },
+            cp1x: 10800, cp1y: 11800, cp2x: 12000, cp2y: 9800 },
         ];
         const RIVER_BRIDGES = [
           { wx: 2369, wy: 1800 }, { wx: 2000, wy: 2329 },
@@ -7236,13 +7236,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         const nearBridge = (px: number, py: number) =>
           RIVER_BRIDGES.some(b => Math.hypot(px - b.wx, py - b.wy) < BRIDGE_RADIUS);
-        const checkRiverCollision = (px: number, py: number) =>
+        const inRiver = (px: number, py: number) =>
           !nearBridge(px, py) && riverPolylines.some(pts => pointNearPolyline(px, py, pts, RIVER_HALF));
-        if (checkRiverCollision(nx, ny)) {
-          if (!checkRiverCollision(g.px, ny)) nx = g.px;
-          else if (!checkRiverCollision(nx, g.py)) ny = g.py;
-          else { nx = g.px; ny = g.py; }
-          if (g.frame % 200 === 0) setNarr('> RIVER — The current is strong here. Find a bridge to cross.');
+        const wasInRiver = inRiver(g.px, g.py);
+        const nowInRiver = inRiver(nx, ny);
+        if (nowInRiver) {
+          const riverSlow = 0.35;
+          nx = g.px + (nx - g.px) * riverSlow;
+          ny = g.py + (ny - g.py) * riverSlow;
+          if (!wasInRiver) {
+            g.floaters.push({ x: g.px, y: g.py - 15, text: 'WADING', color: '#66aaff', life: 50, maxLife: 50 });
+            setNarr('> RIVER — You wade into the current. Movement slowed. Bridges are faster.');
+          } else if (g.frame % 300 === 0) {
+            g.floaters.push({ x: g.px, y: g.py - 12, text: '~', color: 'rgba(100,180,255,.5)', life: 30, maxLife: 30 });
+          }
+          (g as any).inWater = true;
+        } else {
+          if (wasInRiver) {
+            g.floaters.push({ x: g.px, y: g.py - 15, text: 'DRY LAND', color: '#88cc44', life: 40, maxLife: 40 });
+          }
+          (g as any).inWater = false;
         }
         g.px = nx;
         g.py = ny;
@@ -11026,16 +11039,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── RIVERS: from mountains toward coast ───────────────────────────────
-        // Wide bezier-curve rivers — gentle bends, no sine-wave snake
+        // Wide bezier-curve rivers — natural winding bends
         const RIVERS = [
           { sx: 3200, sy: BORDER + 80,      ex: BORDER + 60,      ey: 5000,
-            cp1x: 2600, cp1y: 1800, cp2x: 800,  cp2y: 3800 },
+            cp1x: 3600, cp1y: 1400, cp2x: 600,  cp2y: 3200 },
           { sx: 8500, sy: BORDER + 100,     ex: W - BORDER - 80,  ey: 4200,
-            cp1x: 9200, cp1y: 1600, cp2x: 12600, cp2y: 3000 },
+            cp1x: 7800, cp1y: 1200, cp2x: 12200, cp2y: 2400 },
           { sx: 5800, sy: H - BORDER - 90,  ex: BORDER + 80,      ey: 8800,
-            cp1x: 5000, cp1y: 10800, cp2x: 1200, cp2y: 9600 },
+            cp1x: 4200, cp1y: 11200, cp2x: 1800, cp2y: 9200 },
           { sx: 9200, sy: H - BORDER - 110, ex: W - BORDER - 70,  ey: 9400,
-            cp1x: 10000, cp1y: 11400, cp2x: 12800, cp2y: 10200 },
+            cp1x: 10800, cp1y: 11800, cp2x: 12000, cp2y: 9800 },
         ];
         const riverT = g.frame * 0.012;
         for (const rv of RIVERS) {
@@ -13163,6 +13176,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
       ctx.shadowColor = g.poisoned ? '#7dd3fc' : factionGlow; ctx.shadowBlur = 6;
+      if ((g as any).inWater && !g.vehicle) {
+        const ripT = g.frame * 0.08;
+        ctx.strokeStyle = `rgba(100,180,255,${0.25 + Math.sin(ripT) * 0.1})`;
+        ctx.lineWidth = 1;
+        for (let ri = 0; ri < 3; ri++) {
+          const rr = 8 + ri * 5 + Math.sin(ripT + ri * 2.1) * 2;
+          const ra = 0.3 - ri * 0.08;
+          ctx.globalAlpha = ra;
+          ctx.beginPath(); ctx.ellipse(px, py2 + 6, rr, rr * 0.35, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.globalAlpha = bodyAlpha;
+      }
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.beginPath(); ctx.ellipse(px, py2 + 9, g.vehicle ? 10 : 7, g.vehicle ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
       const facingDir = g.facing;
