@@ -19,7 +19,7 @@ function generateWebhookSecret(): string {
 }
 
 router.get("/platform/api-keys", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -42,7 +42,7 @@ router.get("/platform/api-keys", async (req, res) => {
 });
 
 router.post("/platform/api-keys", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -67,7 +67,7 @@ router.post("/platform/api-keys", async (req, res) => {
 });
 
 router.delete("/platform/api-keys/:id", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -81,7 +81,7 @@ router.delete("/platform/api-keys/:id", async (req, res) => {
 });
 
 router.get("/platform/webhooks", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -100,7 +100,7 @@ router.get("/platform/webhooks", async (req, res) => {
 });
 
 router.post("/platform/webhooks", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -123,7 +123,7 @@ router.post("/platform/webhooks", async (req, res) => {
 });
 
 router.delete("/platform/webhooks/:id", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -137,7 +137,7 @@ router.delete("/platform/webhooks/:id", async (req, res) => {
 });
 
 router.get("/platform/apps", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -169,7 +169,7 @@ router.get("/platform/apps", async (req, res) => {
 });
 
 router.post("/platform/apps/connect", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
@@ -244,7 +244,7 @@ router.get("/platform/music/status", async (_req, res) => {
 });
 
 router.post("/platform/music/generate", async (req, res) => {
-  const userId = (req as any).userId;
+  const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   if (!isMusicConfigured()) {

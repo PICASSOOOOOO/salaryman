@@ -16,6 +16,18 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 
+function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  if (name.endsWith(' Prime')) {
+    const base = name.slice(0, -6);
+    return (
+      <span className={className} style={style}>
+        {base} <span style={{ color: '#f59e0b', textShadow: '0 0 8px rgba(245,158,11,0.3)' }}>Prime</span>
+      </span>
+    );
+  }
+  return <span className={className} style={style}>{name}</span>;
+}
+
 type BotStatus = 'active' | 'paused' | 'error';
 type Tab = 'jean-claw' | 'my-bots' | 'marketplace';
 
@@ -2808,9 +2820,7 @@ export default function BotFactory() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                          {item.name}
-                                        </h3>
+                                        <BotNameDisplay name={item.name} className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }} />
                                         <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
                                       </div>
                                       <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
@@ -2869,9 +2879,7 @@ export default function BotFactory() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <h3 className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                          {item.name}
-                                        </h3>
+                                        <BotNameDisplay name={item.name} className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }} />
                                         <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
                                         {isActive && (
                                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"

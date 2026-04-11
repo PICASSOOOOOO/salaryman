@@ -159,7 +159,7 @@ export default function PromptSensei() {
           </div>
           <div>
             <div style={{ ...VT, fontSize: '1.1rem', color: '#f59e0b', letterSpacing: '.1em' }}>
-              {boomerMode ? 'PROMPT COACH' : 'PROMPT SENSEI'}
+              {boomerMode ? 'PROMPT COACH' : 'SENSEI PRIME'}
             </div>
             <div style={{ fontSize: '.4rem', color: 'rgba(255,255,255,.2)', letterSpacing: '.08em' }}>
               {boomerMode ? 'LEARN HOW TO USE AI BETTER' : 'MASTER CLAUDE & PABLO — GET 10X MORE FROM AI'}

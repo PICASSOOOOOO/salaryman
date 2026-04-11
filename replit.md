@@ -5,9 +5,9 @@
 SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive productivity platform. It unifies AI agents, communication tools, creative suites, and CRM functionalities into a single operating environment to provide AI-augmented workflows for professionals.
 
 ### Flagship Products
-- **Jean Claw:** A premium AI agent service offering specialized AI agents and communication channels.
+- **Jean Claw:** The manager of the Bot Factory — 77 specialized bots under one subscription ($145/mo). Jean Claw assigns the right bot to every job.
 - **Pablo AI:** A free-tier AI assistant integrated across the platform.
-- **Bot Factory:** A system for custom AI bot creation and a marketplace with multiple platform connectors.
+- **Bot Factory:** Home for all 77 bots. Each marketplace bot is a "Prime" version (Picasso originals, yellow emphasis). When users clone bots, copies get version IDs like A-001, B-002 etc.
 
 ### Core Capabilities
 - **AI Agents:** Equipped with a structured skill system for planning, review, execution, security, design, and analysis.
@@ -20,9 +20,9 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Communication:** A robust phone system (CalllHome/TTC) with autonomous call agents, dual-DID routing, real-time translation tools, and enhanced live call monitoring with expandable call details (SID, metadata, encryption, conference), live transcript panel, and AI coaching tips. Session launch renamed to "GO ACTIVE".
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
-### Insurance Hub (SHIELD-9)
-- **Module:** `/insurance` with tab-based navigation (Overview, Clients, Policies, Carriers, Calls)
-- **Bot:** SHIELD-9 marketplace bot — AI insurance agent for inbound/outbound calls, sales vs partner detection, client intake
+### Insurance API (Shield Prime)
+- **Module:** `/insurance` — accessible as a Business sub-item "INSURANCE API" (not in main nav)
+- **Bot:** Shield Prime — AI insurance agent for inbound/outbound calls, sales vs partner detection, client intake
 - **Carriers:** 9 seeded carriers (United Healthcare, Humana, Anthem, Zing, Devoted, Cigna, Aetna, WellCare, Sunfire)
 - **Multi-agency:** Users can connect to multiple carriers across multiple agencies with separate API tokens per connection
 - **DB Schema:** `insurance_carriers`, `insurance_agency_connections`, `insurance_clients`, `insurance_policies`, `insurance_call_logs`
@@ -38,12 +38,12 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Endpoints Reference:** 20 documented REST API endpoints with method, path, description, and scope
 - **Connected Apps:** 7 Picasso apps (SALARYMAN core, Publishing Music, Publishing Books, Minx City, Jean Claw, Storefront, Picasso Pay)
 - **DB Schema:** `platform_api_keys`, `platform_webhooks`, `platform_connected_apps`
-- **Nav Position:** Between SHIELD-9 and JEAN CLAW FACTORY
+- **Nav Position:** In SETTINGS_MODULES (profile/settings area)
 
 ### Publishing Bots (Picasso Publishing)
-- **Music Production:** TEMPO-X (AI music factory — generates beats, songs, instrumentals via Replicate MusicGen integration, continuous 24/7 production mode, batch generation, full songwriting/theory/mixing/mastering/distribution pipeline)
-- **Music Publishing:** ROYALTY-X (royalty tracking/PROs), SYNC-9 (sync licensing), SCOUT-A&R (talent discovery), DISTRO-7 (distribution), ARCHIVE-X (catalog management)
-- **Book Publishing:** EDITOR-PRO (manuscript editing), PRESS-9 (publishing pipeline), RIGHTS-MGR (subsidiary rights), BESTSELLER-X (book marketing), NARRATOR-5 (audiobook production)
+- **Music Production:** Tempo Prime (AI music factory — generates beats, songs, instrumentals via Replicate MusicGen integration, continuous 24/7 production mode, batch generation, full songwriting/theory/mixing/mastering/distribution pipeline)
+- **Music Publishing:** Royalty Prime (royalty tracking/PROs), Sync Prime (sync licensing), A&R Prime (talent discovery), Distro Prime (distribution), Archivist Prime (catalog management)
+- **Book Publishing:** Editor Prime (manuscript editing), Press Prime (publishing pipeline), Rights Prime (subsidiary rights), Bestseller Prime (book marketing), Narrator Prime (audiobook production)
 - **Category:** `publishing` in bot marketplace
 - **Music Generation Infrastructure:** `suno-connector.ts` (file kept for backward compat) now uses Replicate MusicGen API (generate, check status, parse [MUSIC_GENERATE] blocks). Bot engine auto-detects generation blocks in TEMPO-X responses and processes them. API routes at `/api/platform/music/*` (status, generate, track/:trackId). Requires `REPLICATE_API_TOKEN` environment variable. Permissions: `music_generate`, `audio_generate`.
 

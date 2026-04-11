@@ -519,7 +519,7 @@ export default function InsuranceHub() {
         <Shield size={20} style={{ color: "#38bdf8" }} />
         <div>
           <div style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 700, letterSpacing: "0.15em", color: "#38bdf8" }}>
-            INSURANCE HUB
+            INSURANCE API
           </div>
           <div style={{ fontFamily: "monospace", fontSize: 9, color: "#52525b", letterSpacing: "0.1em" }}>
             CARRIER CONNECTIONS & POLICY MANAGEMENT

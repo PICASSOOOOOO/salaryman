@@ -70,7 +70,7 @@ export const MODULES: Module[] = [
       { id: 'bills', path: '/business/bills', label: 'BILLS', boomerLabel: 'BILLS', codename: 'PAYABLE-X', icon: Receipt },
       { id: 'expenses', path: '/business/expenses', label: 'EXPENSES', boomerLabel: 'EXPENSES', codename: 'SPEND-TRACK', icon: CreditCard },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
-      { id: 'insurance-api', path: '/insurance', label: 'INSURANCE API', boomerLabel: 'INSURANCE API', codename: 'SHIELD-9', icon: Shield },
+      { id: 'insurance-api', path: '/insurance', label: 'INSURANCE API', boomerLabel: 'INSURANCE API', codename: 'SHIELD', icon: Shield },
     ],
   },
   {

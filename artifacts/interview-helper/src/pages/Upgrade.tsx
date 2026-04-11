@@ -96,24 +96,24 @@ const FEATURE_CARDS: FeatureCard[] = [
   {
     key: "claw_bot",
     icon: Bot,
-    label: "OPENCLAW MULTI-AGENT SUITE",
+    label: "BOT FACTORY — ALL 77 BOTS",
     boomerLabel: "JEAN CLAW",
     codename: "JEAN CLAW",
     flagship: true,
-    desc: "The flagship product of SALARYMAN. A fully autonomous AI operations platform with seven specialized agents — sales, support, content, recruiting, prospecting, social intelligence, and automated trading. Also includes the Pablo AI Call Agent, AI Secretary, and every premium marketplace bot — current and future.",
-    boomerDesc: "Our flagship product. Includes Pablo AI Call Agent, AI Secretary, and the full AI agent platform: sales closer, customer support, content writer, recruiter, LinkedIn prospector, Facebook & Instagram scout, automated trading bot, and all premium marketplace bots.",
+    desc: "Jean Claw manages 77 specialized bots across sales, support, creative, finance, legal, music, publishing, ecommerce, trades, and more. One subscription unlocks every bot on the platform — current and future. Includes Pablo AI Call Agent and AI Secretary.",
+    boomerDesc: "All 77 bots under one subscription. Jean Claw is the manager — he assigns the right bot to every job. Sales, support, creative, finance, legal, music, publishing, ecommerce, and more. Includes the Pablo AI Call Agent and AI Secretary.",
     price: 145,
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
     skills: [
-      { name: 'AI Sales Closer', desc: 'Qualifies leads, handles objections, books meetings, moves prospects through your pipeline 24/7.' },
-      { name: 'Customer Support', desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context.' },
-      { name: 'Content Writer', desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.' },
-      { name: 'AI Recruiter', desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups.' },
-      { name: 'LinkedIn Prospector', desc: 'Finds decision-makers by title, industry, company size. Auto-populates CRM with scored leads.' },
-      { name: 'FB & IG Scout', desc: 'Monitors Groups, Pages, and business profiles for buying signals. Tags leads by intent level.' },
-      { name: 'Trading Bot', desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum. Paper Trading by default.' },
+      { name: 'Sales Team', desc: 'Prospect, Inbox, Commish, and Gig — your entire sales pipeline on autopilot.' },
+      { name: 'Support & Ops', desc: 'Resolve, Relay, People, and Scout — customer support, HR, and recruiting.' },
+      { name: 'Creative Studio', desc: 'Canvas, Ink, Reel, Shutter, Glam, Quill — design, copy, content, and photography.' },
+      { name: 'Finance & Legal', desc: 'Penny, Vault, Ledger, Counsel, Shield — taxes, books, invoices, legal, and insurance.' },
+      { name: 'Music & Publishing', desc: 'Tempo, Royalty, Sync, A&R, Distro, Editor, Press, Narrator — full publishing stack.' },
+      { name: 'Commerce & Trades', desc: 'Dropsy, Shopkeep, Merch, Chief, Foreman, Torque — ecommerce and field services.' },
+      { name: '+ 40 More Specialists', desc: 'Education, real estate, agriculture, travel, security, crypto, nonprofits, and beyond.' },
     ],
     channels: ['Telegram', 'WhatsApp', 'Discord', 'Facebook', 'Email', 'LinkedIn', 'Web Chat'],
   },
@@ -735,7 +735,7 @@ export default function Upgrade() {
                                   <>
                                     <Sparkles className="w-3.5 h-3.5" />
                                     {isAuthenticated
-                                      ? (boomerMode ? 'Subscribe to Jean Claw' : 'ACTIVATE JEAN CLAW')
+                                      ? (boomerMode ? 'Subscribe to Jean Claw' : 'ACTIVATE BOT FACTORY')
                                       : t('common.signIn')}
                                     <ChevronRight className="w-3 h-3" />
                                   </>

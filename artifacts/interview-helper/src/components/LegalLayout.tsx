@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { ChevronLeft, Scale } from "lucide-react";
 
 const LEGAL_LINKS = [
-  { path: "/legal", label: "Legal Hub" },
+  { path: "/legal", label: "Legal Terminal" },
   { path: "/legal/terms", label: "Terms of Service" },
   { path: "/legal/privacy", label: "Privacy Policy" },
   { path: "/legal/contact", label: "Contact Us" },

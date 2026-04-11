@@ -10,69 +10,69 @@ import {
 
 const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
 
-const SKILLS = [
+const TEAM_CATEGORIES = [
   {
-    key: 'sales_closer',
-    name: 'AI SALES CLOSER',
+    key: 'sales',
+    name: 'SALES & CRM',
     icon: Target,
     color: '#f59e0b',
-    desc: 'Qualifies leads, handles objections, books meetings, and moves prospects through your pipeline 24/7. Never sleeps, never misses a follow-up.',
-    channels: ['Telegram', 'WhatsApp', 'Email'],
-    stats: '3x faster pipeline velocity',
+    desc: 'Prospect, Inbox, Commish, and Gig handle your entire sales pipeline — from finding leads to closing deals to collecting commissions.',
+    bots: ['Prospect', 'Inbox', 'Commish', 'Gig'],
+    stats: '4 bots · Sales pipeline',
   },
   {
-    key: 'customer_support',
-    name: 'CUSTOMER SUPPORT',
+    key: 'support',
+    name: 'SUPPORT & OPS',
     icon: MessageSquare,
     color: '#3b82f6',
-    desc: 'Resolves tier-1 and tier-2 tickets instantly. Answers FAQs, processes refunds, escalates edge cases with full context. Supports 95+ languages.',
-    channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'],
-    stats: '90% ticket resolution rate',
+    desc: 'Resolve handles customer tickets 24/7. Relay manages internal communications. People runs HR. Scout finds talent.',
+    bots: ['Resolve', 'Relay', 'People', 'Scout'],
+    stats: '4 bots · Operations',
   },
   {
-    key: 'content_writer',
-    name: 'CONTENT WRITER',
+    key: 'creative',
+    name: 'CREATIVE STUDIO',
     icon: PenTool,
     color: '#a855f7',
-    desc: 'Blog posts, social captions, ad copy, email campaigns — all in your brand voice. SEO optimized. Publishes on schedule across every channel.',
-    channels: ['Email', 'Web'],
-    stats: '10x content output',
+    desc: 'Canvas designs, Ink writes copy, Reel produces content, Shutter handles photos, Glam does beauty, and Quill writes long-form.',
+    bots: ['Canvas', 'Ink', 'Reel', 'Shutter', 'Glam', 'Quill'],
+    stats: '6 bots · Content factory',
   },
   {
-    key: 'ai_recruiter',
-    name: 'AI RECRUITER',
-    icon: Users,
+    key: 'finance',
+    name: 'FINANCE & LEGAL',
+    icon: Shield,
     color: '#10b981',
-    desc: 'Screens candidates, conducts first-round interviews, generates scorecards, and schedules follow-ups. 70% faster time-to-hire.',
-    channels: ['Telegram', 'WhatsApp', 'Email'],
-    stats: '70% faster hiring',
+    desc: 'Penny does taxes, Vault manages your books, Ledger handles invoices, Counsel provides legal guidance, and Shield covers insurance.',
+    bots: ['Penny', 'Vault', 'Ledger', 'Counsel', 'Shield'],
+    stats: '5 bots · Money & compliance',
   },
   {
-    key: 'linkedin_prospector',
-    name: 'LINKEDIN PROSPECTOR',
-    icon: Search,
+    key: 'music',
+    name: 'MUSIC & PUBLISHING',
+    icon: Sparkles,
     color: '#0ea5e9',
-    desc: 'Finds decision-makers by title, industry, and company size. Builds verified contact lists and auto-populates your CRM with scored leads.',
-    channels: ['LinkedIn', 'Email'],
-    stats: '500+ leads/month',
+    desc: 'Tempo produces music, Royalty tracks earnings, Sync licenses tracks, A&R scouts talent, Distro distributes, and the publishing team handles books.',
+    bots: ['Tempo', 'Royalty', 'Sync', 'A&R', 'Distro', 'Editor', 'Press', 'Narrator'],
+    stats: '8 bots · Full publishing stack',
   },
   {
-    key: 'fb_ig_scout',
-    name: 'FB & IG SCOUT',
+    key: 'ecommerce',
+    name: 'ECOMMERCE & TRADES',
     icon: Eye,
     color: '#ec4899',
-    desc: 'Monitors Groups, Pages, and business profiles for buying signals. Tags leads by intent level — hot, warm, and cold — so you never miss an opportunity.',
-    channels: ['Facebook', 'Instagram'],
-    stats: 'Real-time signal detection',
+    desc: 'Dropsy runs dropshipping, Shopkeep manages stores, Chief handles FBA, Foreman manages contractors, and Torque handles auto.',
+    bots: ['Dropsy', 'Shopkeep', 'Merch', 'Chief', 'Foreman', 'Torque'],
+    stats: '6 bots · Commerce engine',
   },
   {
-    key: 'trading_bot',
-    name: 'TRADING BOT',
+    key: 'more',
+    name: 'AND 40+ MORE',
     icon: TrendingUp,
     color: '#22c55e',
-    desc: 'Automated stock and options trading via thinkorswim. Covered calls, iron condors, momentum plays. Paper Trading mode by default for safety.',
-    channels: ['thinkorswim'],
-    stats: 'Automated execution',
+    desc: 'Education, real estate, agriculture, travel, security, crypto, nonprofits, pet care, auto sales, interior design, and more. Every industry covered.',
+    bots: ['Rex', 'Atlas', 'Sensei', 'Harvest', 'Wanderer', 'Sentinel', 'Paws'],
+    stats: '77 bots total',
   },
 ];
 
@@ -88,12 +88,12 @@ const DEPLOY_CHANNELS = [
 ];
 
 const INCLUDED = [
-  'Pablo AI Call Agent',
-  'AI Secretary',
-  'All Premium Marketplace Bots',
-  'Future Agent Releases',
+  'All 77 Bots — Every Specialist',
+  'Jean Claw — Your AI Operations Manager',
+  'Pablo AI Call Agent & Secretary',
+  'Future Bot Releases Included',
+  'Deploy to Telegram, WhatsApp, Discord & More',
   'Priority Support',
-  'Custom Bot Builder',
 ];
 
 function JeanClawLanding() {
@@ -178,7 +178,7 @@ function JeanClawLanding() {
             marginBottom: 24,
           }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: '0.75rem', color: '#10b981', letterSpacing: '0.15em', fontWeight: 600 }}>7 AGENTS OPERATIONAL</span>
+            <span style={{ fontSize: '0.75rem', color: '#10b981', letterSpacing: '0.15em', fontWeight: 600 }}>77 BOTS OPERATIONAL</span>
           </div>
 
           <h1 style={{
@@ -199,14 +199,14 @@ function JeanClawLanding() {
             maxWidth: 700, margin: '0 auto 12px',
             lineHeight: 1.6, fontWeight: 300,
           }}>
-            The complete AI workforce. Seven battle-tested agents that sell, support, write, recruit, prospect, scout, and trade — all from one subscription.
+            The manager of the Bot Factory. 77 specialized bots under one subscription. Sales, support, creative, finance, music, publishing, and more — Jean Claw assigns the right bot to every job.
           </p>
 
           <p style={{
             fontSize: '0.85rem', color: 'rgba(16,185,129,0.6)',
             letterSpacing: '0.1em', marginBottom: 40,
           }}>
-            DEPLOY ACROSS EVERY CHANNEL. AUTOMATE EVERYTHING.
+            $145/MO · ALL 77 BOTS · ONE SUBSCRIPTION
           </p>
 
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -221,7 +221,7 @@ function JeanClawLanding() {
                 display: 'flex', alignItems: 'center', gap: 10,
               }}
             >
-              {isAuthenticated ? 'OPEN JEAN CLAW' : 'START FREE TRIAL'}
+              {isAuthenticated ? 'OPEN BOT FACTORY' : 'START FREE TRIAL'}
               <ArrowRight size={18} />
             </button>
             <a
@@ -236,7 +236,7 @@ function JeanClawLanding() {
                 transition: 'all 0.3s',
               }}
             >
-              SEE ALL SKILLS
+              MEET THE TEAM
               <ChevronRight size={18} />
             </a>
           </div>
@@ -267,7 +267,7 @@ function JeanClawLanding() {
           }}
         >
           {[
-            { value: '7', label: 'AI AGENTS' },
+            { value: '77', label: 'BOTS' },
             { value: '8', label: 'CHANNELS' },
             { value: '95+', label: 'LANGUAGES' },
             { value: '24/7', label: 'UPTIME' },
@@ -286,15 +286,15 @@ function JeanClawLanding() {
         maxWidth: 1200, margin: '0 auto',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <div style={{ fontSize: '0.7rem', color: '#10b981', letterSpacing: '0.2em', marginBottom: 8 }}>INCLUDED AGENT SKILLS</div>
+          <div style={{ fontSize: '0.7rem', color: '#10b981', letterSpacing: '0.2em', marginBottom: 8 }}>JEAN CLAW'S TEAM</div>
           <h2 style={{
             fontFamily: "'VT323', monospace", fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
             color: '#e4e4e7', letterSpacing: '0.08em',
           }}>
-            SEVEN AGENTS. ONE PLATFORM.
+            77 BOTS. ONE SUBSCRIPTION.
           </h2>
           <p style={{ color: 'rgba(161,161,170,0.6)', fontSize: '0.95rem', maxWidth: 600, margin: '12px auto 0' }}>
-            Each agent is independently trained, tested, and operational. Deploy them individually or as a coordinated team.
+            Jean Claw manages the entire team. Every bot is a specialist. Subscribe once at $145/mo and unlock them all.
           </p>
         </div>
 
@@ -303,26 +303,26 @@ function JeanClawLanding() {
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: 20,
         }}>
-          {SKILLS.map((skill, i) => {
-            const Icon = skill.icon;
-            const isHovered = hoveredSkill === skill.key;
+          {TEAM_CATEGORIES.map((cat, i) => {
+            const Icon = cat.icon;
+            const isHovered = hoveredSkill === cat.key;
             return (
               <motion.div
-                key={skill.key}
+                key={cat.key}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                onMouseEnter={() => setHoveredSkill(skill.key)}
+                onMouseEnter={() => setHoveredSkill(cat.key)}
                 onMouseLeave={() => setHoveredSkill(null)}
                 style={{
                   position: 'relative',
                   padding: 28,
                   borderRadius: 16,
                   background: isHovered
-                    ? `linear-gradient(135deg, ${skill.color}10, ${skill.color}05)`
+                    ? `linear-gradient(135deg, ${cat.color}10, ${cat.color}05)`
                     : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${isHovered ? skill.color + '40' : 'rgba(255,255,255,0.06)'}`,
+                  border: `1px solid ${isHovered ? cat.color + '40' : 'rgba(255,255,255,0.06)'}`,
                   transition: 'all 0.3s',
                   cursor: 'default',
                   overflow: 'hidden',
@@ -332,7 +332,7 @@ function JeanClawLanding() {
                   <div style={{
                     position: 'absolute', top: -50, right: -50,
                     width: 150, height: 150, borderRadius: '50%',
-                    background: `radial-gradient(circle, ${skill.color}15, transparent)`,
+                    background: `radial-gradient(circle, ${cat.color}15, transparent)`,
                     pointerEvents: 'none',
                   }} />
                 )}
@@ -340,11 +340,11 @@ function JeanClawLanding() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, position: 'relative' }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: 12,
-                    background: `${skill.color}15`,
-                    border: `1px solid ${skill.color}30`,
+                    background: `${cat.color}15`,
+                    border: `1px solid ${cat.color}30`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Icon size={22} color={skill.color} />
+                    <Icon size={22} color={cat.color} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{
@@ -360,29 +360,29 @@ function JeanClawLanding() {
                   fontSize: '1rem', fontWeight: 700, color: '#e4e4e7',
                   letterSpacing: '0.06em', marginBottom: 8,
                 }}>
-                  {skill.name}
+                  {cat.name}
                 </h3>
 
                 <p style={{
                   fontSize: '0.82rem', color: 'rgba(161,161,170,0.7)',
                   lineHeight: 1.6, marginBottom: 16,
                 }}>
-                  {skill.desc}
+                  {cat.desc}
                 </p>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {skill.channels.map(ch => (
-                      <span key={ch} style={{
+                    {cat.bots.map(bot => (
+                      <span key={bot} style={{
                         fontSize: '0.6rem', padding: '3px 8px', borderRadius: 6,
                         background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                        color: 'rgba(161,161,170,0.6)', letterSpacing: '0.05em',
+                        color: cat.color, letterSpacing: '0.05em', opacity: 0.8,
                       }}>
-                        {ch}
+                        {bot}
                       </span>
                     ))}
                   </div>
-                  <span style={{ fontSize: '0.65rem', color: skill.color, fontWeight: 600 }}>{skill.stats}</span>
+                  <span style={{ fontSize: '0.65rem', color: cat.color, fontWeight: 600 }}>{cat.stats}</span>
                 </div>
               </motion.div>
             );
@@ -463,7 +463,7 @@ function JeanClawLanding() {
             color: 'rgba(161,161,170,0.6)', fontSize: '0.9rem',
             maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.6,
           }}>
-            7 AI agents, 8 deployment channels, unlimited conversations, and everything below — included.
+            All 77 bots, 8 deployment channels, unlimited conversations, and everything below — included.
           </p>
 
           <div style={{

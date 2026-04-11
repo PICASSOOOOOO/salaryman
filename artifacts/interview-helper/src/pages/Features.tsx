@@ -282,13 +282,13 @@ const MODULES: ModuleDef[] = [
     boomerLabel: 'JEAN CLAW',
     codename: 'OpenClaw Multi-Agent Suite',
     boomerCodename: 'AI Multi-Agent Platform',
-    tagline: 'The complete AI workforce. Seven battle-tested agents. One subscription. Deploy across every channel.',
+    tagline: '77 specialized bots. One subscription. Jean Claw manages the team. Deploy across every channel.',
     access: 'paid',
     featureKey: 'claw_bot',
     route: '/bots',
     flagship: true,
     description:
-      'Jean Claw ($145/mo) is the flagship product of SALARYMAN — a fully autonomous AI operations platform that replaces entire departments. It bundles the Pablo AI Call Agent for inbound/outbound phone calls, the AI Secretary for scheduling and call routing, and seven specialized OpenClaw-powered agents that handle sales, support, content, recruiting, prospecting, social intelligence, and automated trading. Every agent is tested, operational, and deployable across Telegram, WhatsApp, Discord, Facebook Messenger, email, and more. Jean Claw also includes access to every premium bot in the marketplace — current and future.',
+      'Jean Claw ($145/mo) is the manager of the Bot Factory — 77 specialized bots under one subscription. Sales, support, creative, finance, legal, music, publishing, ecommerce, trades, and more. Jean Claw assigns the right bot to every job. Also includes the Pablo AI Call Agent and AI Secretary. Deploy across Telegram, WhatsApp, Discord, Facebook, email, LinkedIn, and more.',
     features: [
       { name: 'AI Sales Closer', detail: 'Your 24/7 sales machine. Qualifies inbound leads with custom scoring criteria, handles objections using proven frameworks (SPIN, Challenger, MEDDIC), books meetings directly into your calendar, sends personalized follow-up sequences, and moves prospects through your entire pipeline — from first touch to closed deal. Integrates with HubSpot, Salesforce, Pipedrive, and custom CRMs.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Email', 'Web Chat'] },
       { name: 'Customer Support Agent', detail: 'Enterprise-grade AI support that actually resolves issues. Handles tier-1 and tier-2 tickets autonomously, answers FAQs from your knowledge base, processes refunds and exchanges, creates and tracks support tickets, and escalates complex cases to human agents with full context. Supports 95+ languages. Average resolution time under 30 seconds. Learns from every interaction.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email', 'Web Chat'] },
@@ -517,7 +517,7 @@ function JeanClawHero({
               <span className="text-xs text-zinc-500 ml-1">/ month</span>
             </div>
             <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-600 tracking-wider">
-              <Shield className="w-3 h-3" /> 7 AGENTS INCLUDED
+              <Shield className="w-3 h-3" /> 77 BOTS INCLUDED
             </div>
           </div>
         </div>
@@ -621,7 +621,7 @@ function JeanClawHero({
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-mono uppercase tracking-wider hover:bg-emerald-500/25 hover:border-emerald-500/40 transition-all"
             >
               <Sparkles className="w-4 h-4" />
-              {boomer ? 'Open Jean Claw' : 'ENTER JEAN CLAW'} {trial ? `(${trial.daysLeft}d trial)` : ''} <ChevronRight className="w-3.5 h-3.5" />
+              {boomer ? 'Open Bot Factory' : 'ENTER BOT FACTORY'} {trial ? `(${trial.daysLeft}d trial)` : ''} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           ) : module.featureKey ? (
             <button
@@ -872,7 +872,7 @@ export default function Features() {
                   <div className="flex items-center gap-2 mb-5">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 animate-pulse" />
                     <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-emerald-300 tracking-widest uppercase">
-                      {boomer ? 'Jean Claw — Our Flagship Product' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
+                      {boomer ? 'Jean Claw — Bot Factory Manager' : 'JEAN CLAW // 77 BOTS · ONE SUBSCRIPTION'}
                     </h2>
                     <div className="flex-1 h-px bg-emerald-500/15" />
                     <span className="text-[10px] font-mono text-emerald-500/40 tracking-wider">$145/mo</span>
