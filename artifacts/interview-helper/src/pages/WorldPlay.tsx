@@ -5106,8 +5106,8 @@ export default function WorldPlay() {
 
       if (hospitalCinematic) {
         const elapsed = Date.now() - hospitalCinematic.startTime;
-        const LINE_INTERVAL = 2200;
-        const HOSPITAL_LINES_COUNT = 10;
+        const LINE_INTERVAL = 1500;
+        const HOSPITAL_LINES_COUNT = 5;
         const allLinesShown = Math.floor(elapsed / LINE_INTERVAL) >= HOSPITAL_LINES_COUNT - 1 && elapsed >= (HOSPITAL_LINES_COUNT - 1) * LINE_INTERVAL + 1500;
         if (allLinesShown) {
           (document.querySelector('[data-cinematic-continue]') as HTMLButtonElement)?.click();
@@ -17334,15 +17334,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem' }}>
             <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2.5rem, 8vw, 5rem)', color: '#ff2222', textShadow: '0 0 32px rgba(255,0,0,.6)', letterSpacing: '.2em', marginBottom: '.5rem' }}>YOU ARE DEAD</div>
             <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.3), transparent)', marginBottom: '1rem' }} />
-            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '.6rem', textShadow: '0 0 8px rgba(255,60,30,.3)' }}>
-              CAUSE OF DEATH: {gs.current.deathReason || 'Unknown — vitals flatlined'}
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: '#ff6644', letterSpacing: '.1em', marginBottom: '1.2rem', textShadow: '0 0 8px rgba(255,60,30,.3)' }}>
+              {gs.current.deathReason || 'Vitals flatlined'}
             </div>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(255,80,80,.5)', lineHeight: 2, marginBottom: '1.2rem', letterSpacing: '.04em' }}>
-              {char.name} — {char.class.toUpperCase()}<br/>
-              Your vitals flatlined. The street goes dark around you.<br/>
-              Emergency frequency detected. A dispatch unit is standing by.
-            </div>
-            <div style={{ width: '100%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(255,0,0,.15), transparent)', marginBottom: '1.5rem' }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center' }}>
               <button
                 onClick={() => {
@@ -17690,25 +17684,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {hospitalCinematic && (() => {
         const HOSPITAL_LINES = [
-          '[ EMERGENCY DISPATCH — UNIT INBOUND ]',
-          'Sirens cut through the static. You feel pavement against your back.',
-          'Hands lift you onto a stretcher. Fluorescent light blurs overhead.',
+          '[ EMERGENCY DISPATCH ]',
           char.class.toLowerCase() === 'replicant'
-            ? 'ROBODOC: "Chassis integrity at 12%. Initiating full system rebuild."'
-            : 'MEDIC: "Pulse is weak. Start the IV. Move, move, move."',
-          'The hospital corridor smells like antiseptic and old wiring.',
-          char.class.toLowerCase() === 'replicant'
-            ? 'Servos whir. Diagnostic cables snake into your access ports.'
-            : 'A mask covers your face. Cold fluid enters your veins.',
+            ? 'ROBODOC: "Chassis critical. Initiating rebuild."'
+            : 'MEDIC: "Pulse is weak. Start the IV."',
           '...',
           char.class.toLowerCase() === 'replicant'
-            ? 'ROBODOC: "Core systems stabilized. Rebooting consciousness matrix."'
-            : 'MEDIC: "Vitals stabilizing. Blood pressure coming back up."',
-          'Time passes. You drift between static and silence.',
-          'Monitors beep steadily. The fluorescent light above your bed flickers.',
+            ? 'ROBODOC: "Core systems stabilized."'
+            : 'MEDIC: "Vitals stabilizing."',
+          'Monitors beep. The light above your bed flickers.',
         ];
         const elapsed = Date.now() - hospitalCinematic.startTime;
-        const LINE_INTERVAL = 2200;
+        const LINE_INTERVAL = 1500;
         const currentLine = Math.min(Math.floor(elapsed / LINE_INTERVAL), HOSPITAL_LINES.length - 1);
         const allLinesShown = currentLine >= HOSPITAL_LINES.length - 1 && elapsed >= (HOSPITAL_LINES.length - 1) * LINE_INTERVAL + 1500;
 
