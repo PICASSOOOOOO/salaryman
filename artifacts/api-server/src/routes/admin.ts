@@ -83,7 +83,7 @@ router.get("/admin/users", async (req: Request, res: Response) => {
 
 router.get("/admin/users/:userId", async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
-  const { userId } = req.params;
+  const userId = req.params.userId as string;
 
   const rows = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (rows.length === 0) {
@@ -118,38 +118,21 @@ router.get("/admin/orgs", async (req: Request, res: Response) => {
   const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
   const offset = (page - 1) * limit;
 
-  const memberCountSql = db
-    .select({
-      orgId: orgMembersTable.orgId,
-      memberCount: count().as("member_count"),
-    })
-    .from(orgMembersTable)
-    .where(eq(orgMembersTable.status, "active"))
-    .groupBy(orgMembersTable.orgId)
-    .as("mc");
+  const orgsRaw = search
+    ? await db.select().from(organizationsTable).where(ilike(organizationsTable.name, `%${search}%`)).orderBy(desc(organizationsTable.createdAt)).limit(limit).offset(offset)
+    : await db.select().from(organizationsTable).orderBy(desc(organizationsTable.createdAt)).limit(limit).offset(offset);
 
-  let baseQuery = db
-    .select({
-      id: organizationsTable.id,
-      name: organizationsTable.name,
-      industry: organizationsTable.industry,
-      size: organizationsTable.size,
-      ownerUserId: organizationsTable.ownerUserId,
-      isDeveloper: organizationsTable.isDeveloper,
-      createdAt: organizationsTable.createdAt,
-      memberCount: sql<number>`COALESCE(${memberCountSql.memberCount}, 0)`.as("member_count"),
-    })
-    .from(organizationsTable)
-    .leftJoin(memberCountSql, eq(organizationsTable.id, memberCountSql.orgId));
+  const orgIds = orgsRaw.map(o => o.id);
+  const memberCounts = orgIds.length > 0
+    ? await db
+        .select({ orgId: orgMembersTable.orgId, cnt: count() })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.status, "active"), sql`${orgMembersTable.orgId} = ANY(${sql.raw(`ARRAY[${orgIds.join(",")}]`)})`))
+        .groupBy(orgMembersTable.orgId)
+    : [];
 
-  if (search) {
-    baseQuery = baseQuery.where(ilike(organizationsTable.name, `%${search}%`)) as typeof baseQuery;
-  }
-
-  const orgs = await baseQuery
-    .orderBy(desc(organizationsTable.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const countMap = new Map(memberCounts.map(r => [r.orgId, Number(r.cnt)]));
+  const orgs = orgsRaw.map(o => ({ ...o, memberCount: countMap.get(o.id) ?? 0 }));
 
   const [{ value: total }] = await db
     .select({ value: count() })
@@ -224,7 +207,7 @@ router.post("/admin/bans", async (req: Request, res: Response) => {
 
 router.patch("/admin/bans/:banId", async (req: Request, res: Response) => {
   if (!(await requireAdmin(req, res))) return;
-  const banId = parseInt(req.params.banId);
+  const banId = parseInt(req.params.banId as string);
   const { active } = req.body;
 
   if (isNaN(banId)) {

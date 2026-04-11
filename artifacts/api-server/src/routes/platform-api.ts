@@ -21,7 +21,7 @@ function generateWebhookSecret(): string {
 router.get("/platform/api-keys", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const keys = await db
     .select({
@@ -44,10 +44,10 @@ router.get("/platform/api-keys", async (req, res) => {
 router.post("/platform/api-keys", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { name, scopes = [] } = req.body;
-  if (!name) return res.status(400).json({ error: "Name is required" });
+  if (!name) { res.status(400).json({ error: "Name is required" }); return; }
 
   const rawKey = generateApiKey();
   const keyHash = hashKey(rawKey);
@@ -69,7 +69,7 @@ router.post("/platform/api-keys", async (req, res) => {
 router.delete("/platform/api-keys/:id", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const id = parseInt(req.params.id);
   await db
@@ -83,7 +83,7 @@ router.delete("/platform/api-keys/:id", async (req, res) => {
 router.get("/platform/webhooks", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const webhooks = await db
     .select()
@@ -102,10 +102,10 @@ router.get("/platform/webhooks", async (req, res) => {
 router.post("/platform/webhooks", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { name, url, events = [] } = req.body;
-  if (!name || !url) return res.status(400).json({ error: "Name and URL are required" });
+  if (!name || !url) { res.status(400).json({ error: "Name and URL are required" }); return; }
 
   const secret = generateWebhookSecret();
 
@@ -125,7 +125,7 @@ router.post("/platform/webhooks", async (req, res) => {
 router.delete("/platform/webhooks/:id", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const id = parseInt(req.params.id);
   await db
@@ -139,7 +139,7 @@ router.delete("/platform/webhooks/:id", async (req, res) => {
 router.get("/platform/apps", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const connected = await db
     .select()
@@ -171,17 +171,17 @@ router.get("/platform/apps", async (req, res) => {
 router.post("/platform/apps/connect", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { appSlug, appName } = req.body;
-  if (!appSlug || !appName) return res.status(400).json({ error: "App slug and name required" });
+  if (!appSlug || !appName) { res.status(400).json({ error: "App slug and name required" }); return; }
 
   const existing = await db
     .select()
     .from(platformConnectedAppsTable)
     .where(and(eq(platformConnectedAppsTable.orgId, orgId), eq(platformConnectedAppsTable.appSlug, appSlug)));
 
-  if (existing.length > 0) return res.json({ success: true, message: "Already connected" });
+  if (existing.length > 0) { res.json({ success: true, message: "Already connected" }); return; }
 
   await db.insert(platformConnectedAppsTable).values({
     orgId,
@@ -245,18 +245,20 @@ router.get("/platform/music/status", async (_req, res) => {
 
 router.post("/platform/music/generate", async (req, res) => {
   const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   if (!isMusicConfigured()) {
-    return res.status(503).json({
+    res.status(503).json({
       error: "REPLICATE_API_TOKEN not configured",
       message: "Music generation requires a Replicate API token. Add REPLICATE_API_TOKEN to your environment to enable this feature.",
     });
+    return;
   }
 
   const { title, genre, mood, tempo, key, vocal, lyrics, stylePrompt, duration } = req.body;
   if (!title || !genre) {
-    return res.status(400).json({ error: "title and genre are required" });
+    res.status(400).json({ error: "title and genre are required" });
+    return;
   }
 
   try {
@@ -284,7 +286,7 @@ router.get("/platform/music/track/:trackId", async (req, res) => {
   const { trackId } = req.params;
   try {
     const track = await checkTrackStatus(trackId);
-    if (!track) return res.status(404).json({ error: "Track not found" });
+    if (!track) { res.status(404).json({ error: "Track not found" }); return; }
     res.json(track);
   } catch (err) {
     res.status(500).json({ error: "Failed to check track status" });

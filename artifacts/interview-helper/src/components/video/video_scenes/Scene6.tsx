@@ -29,6 +29,7 @@ export function Scene6() {
       const iv = setInterval(() => setRingPulse(p => !p), 600);
       return () => clearInterval(iv);
     }
+    return undefined;
   }, [phase]);
 
   return (

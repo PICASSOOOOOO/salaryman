@@ -69,7 +69,7 @@ router.post("/insurance/connections", async (req: Request, res: Response): Promi
 router.put("/insurance/connections/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAuth(req, res)) return;
   const userId = (req.user as any).id;
-  const connId = parseInt(req.params.id);
+  const connId = parseInt(req.params.id as string);
   const { agencyName, npn, apiToken, apiConfig, isActive } = req.body;
   const updates: Record<string, any> = {};
   if (agencyName !== undefined) updates.agencyName = agencyName;
@@ -92,7 +92,7 @@ router.put("/insurance/connections/:id", async (req: Request, res: Response): Pr
 router.delete("/insurance/connections/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAuth(req, res)) return;
   const userId = (req.user as any).id;
-  const connId = parseInt(req.params.id);
+  const connId = parseInt(req.params.id as string);
   await db
     .update(insuranceAgencyConnectionsTable)
     .set({ isActive: false })
@@ -138,7 +138,7 @@ router.post("/insurance/clients", async (req: Request, res: Response): Promise<v
 router.put("/insurance/clients/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAuth(req, res)) return;
   const userId = (req.user as any).id;
-  const clientId = parseInt(req.params.id);
+  const clientId = parseInt(req.params.id as string);
   const { firstName, lastName, email, phone, dateOfBirth, state, zipCode } = req.body;
   const updates: Record<string, any> = { updatedAt: new Date() };
   if (firstName !== undefined) updates.firstName = firstName;
@@ -207,7 +207,7 @@ router.post("/insurance/policies", async (req: Request, res: Response): Promise<
 router.put("/insurance/policies/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAuth(req, res)) return;
   const userId = (req.user as any).id;
-  const policyId = parseInt(req.params.id);
+  const policyId = parseInt(req.params.id as string);
   const { policyNumber, planName, planType, status, premiumMonthly, effectiveDate, terminationDate, cancelReason, notes } = req.body;
   const updates: Record<string, any> = { updatedAt: new Date() };
   if (policyNumber !== undefined) updates.policyNumber = policyNumber;

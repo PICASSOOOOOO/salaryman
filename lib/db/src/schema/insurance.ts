@@ -99,7 +99,7 @@ export const insertInsurancePolicySchema = createInsertSchema(insurancePoliciesT
 export type InsertInsurancePolicy = z.infer<typeof insertInsurancePolicySchema>;
 export type InsurancePolicy = typeof insurancePoliciesTable.$inferSelect;
 
-export const INSURANCE_CARRIERS_SEED = [
+export const INSURANCE_CARRIERS_SEED: { slug: string; name: string; shortName: string; category: string; logoColor: string; authType: string; apiBaseUrl?: string }[] = [
   { slug: "united_healthcare", name: "UNITED HEALTHCARE", shortName: "UHC", category: "health", logoColor: "#0072CE", authType: "jwt" },
   { slug: "humana", name: "HUMANA", shortName: "HUM", category: "health", logoColor: "#4CAF50", authType: "jwt" },
   { slug: "anthem", name: "ANTHEM", shortName: "ANT", category: "health", logoColor: "#003DA5", authType: "jwt" },
@@ -109,7 +109,7 @@ export const INSURANCE_CARRIERS_SEED = [
   { slug: "aetna", name: "AETNA", shortName: "AET", category: "health", logoColor: "#7B2D8E", authType: "jwt" },
   { slug: "wellcare", name: "WELLCARE", shortName: "WLC", category: "health", logoColor: "#00B4D8", authType: "jwt" },
   { slug: "sunfire", name: "SUNFIRE", shortName: "SUN", category: "health", logoColor: "#F59E0B", authType: "jwt", apiBaseUrl: "https://api.sunfireagents.com" },
-] as const;
+];
 
 export const POLICY_STATUSES = ["quoted", "submitted", "pending", "active", "cancelled", "lapsed", "declined", "expired"] as const;
 export type PolicyStatus = typeof POLICY_STATUSES[number];

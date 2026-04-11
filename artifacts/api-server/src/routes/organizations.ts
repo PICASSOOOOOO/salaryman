@@ -589,8 +589,8 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     salary?: string | null;
   } = {};
 
-  const assignableRoles = ORG_ROLES.filter(r => r !== "owner");
-  if (role && assignableRoles.includes(role as OrgRole)) updates.role = role;
+  const assignableRoles: string[] = ORG_ROLES.filter(r => r !== "owner");
+  if (role && assignableRoles.includes(role)) updates.role = role;
   if (department !== undefined) updates.department = department ? String(department).trim() : null;
   if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
   if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;

@@ -99,5 +99,49 @@
       "Writer renamed to HEMINGWAY",
       "SoundLab/1999 moved exclusively to Creative module"
     ]
+  },
+  {
+    "version": "v.2.1",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Add an admin panel for managing users, organizations, and bans",
+      "Consolidate admin and platform features into the user profile section",
+      "Update bot descriptions and fix API authentication",
+      "Update video scenes and module structure for improved organization",
+      "Update music generation to use Replicate and implement role hierarchy"
+    ]
+  },
+  {
+    "version": "v.2.2",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Bug fixes and improvements"
+    ]
+  },
+  {
+    "version": "v.2.3",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Bug fixes and improvements"
+    ]
+  },
+  {
+    "version": "v.2.4",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Bug fixes and improvements"
+    ]
+  },
+  {
+    "version": "v.2.5",
+    "date": "2026-04-11",
+    "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
+    "changes": [
+      "Bug fixes and improvements"
+    ]
   }
 ]
