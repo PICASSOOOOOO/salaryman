@@ -2653,9 +2653,47 @@ const AMBIENCE_LINES = [
   '> CITY BROADCAST: Water pressure reduced in east district. Emergency crews on site. PABLO CORP infrastructure division responding.',
 ];
 
+type BizIndustry = 'FOOD' | 'ARMS' | 'SERVICES' | 'TRADE' | 'ENTERTAINMENT' | 'TECH' | 'LOGISTICS';
+
+const BIZ_INDUSTRY_INFO: Record<BizIndustry, { label: string; desc: string; color: string; cut: number }> = {
+  FOOD:          { label: 'FOOD & DRINK',    desc: 'Earns from noodle bar, food court, vending machine food purchases',   color: '#88cc44', cut: 0.15 },
+  ARMS:          { label: 'ARMS & DEFENSE',  desc: 'Earns from weapon merchants, pawn shop weapon sales',                color: '#ff6644', cut: 0.12 },
+  SERVICES:      { label: 'SERVICES',        desc: 'Earns from clinic visits, hospital stays, office terminal rentals',   color: '#38bdf8', cut: 0.10 },
+  TRADE:         { label: 'TRADE & EXPORT',  desc: 'Earns from commodity trades, gold exchange, black market sales',      color: '#ffcc00', cut: 0.12 },
+  ENTERTAINMENT: { label: 'ENTERTAINMENT',   desc: 'Earns from nightclub, arcade, costume shop purchases',               color: '#cc88ff', cut: 0.10 },
+  TECH:          { label: 'TECH',            desc: 'Earns from device purchases, crafting, data vault decryption',        color: '#44ddff', cut: 0.12 },
+  LOGISTICS:     { label: 'LOGISTICS',       desc: 'Earns from subway fares, metro transit, cargo deliveries',            color: '#ff8844', cut: 0.08 },
+};
+
+const SPENDING_CATEGORY: Record<string, BizIndustry> = {
+  noodle_bar: 'FOOD', food_court: 'FOOD', vending_food: 'FOOD', bakery: 'FOOD',
+  merchant_weapon: 'ARMS', pawn_shop: 'ARMS', weapon_buy: 'ARMS',
+  clinic: 'SERVICES', hospital: 'SERVICES', office_rent: 'SERVICES', passport: 'SERVICES',
+  trade_buy: 'TRADE', gold_exchange: 'TRADE', commodity: 'TRADE', black_market: 'TRADE',
+  nightclub: 'ENTERTAINMENT', arcade: 'ENTERTAINMENT', costume: 'ENTERTAINMENT',
+  device_buy: 'TECH', crafting: 'TECH', data_vault: 'TECH',
+  subway: 'LOGISTICS', metro: 'LOGISTICS', cargo: 'LOGISTICS',
+};
+
+const INDUSTRY_NAME_TO_BIZ: Record<string, BizIndustry> = {
+  'Food & Beverage': 'FOOD', 'Shopkeeper': 'FOOD', 'Trader': 'FOOD',
+  'Weapons': 'ARMS', 'Assassin': 'ARMS', 'Bounty Hunting': 'ARMS', 'Security': 'ARMS',
+  'Consulting': 'SERVICES', 'Healthcare': 'SERVICES', 'Legal': 'SERVICES', 'Doctor': 'SERVICES',
+  'Education': 'SERVICES', 'Maintenance': 'SERVICES', 'Architect': 'SERVICES', 'Construction': 'SERVICES',
+  'E-Commerce / Retail': 'TRADE', 'Finance & Fintech': 'TRADE', 'Finance': 'TRADE',
+  'Drug Dealing': 'TRADE', 'Smuggling': 'TRADE', 'Sales': 'TRADE', 'Telemarketing': 'TRADE',
+  'Real Estate': 'TRADE', 'Thievery': 'TRADE', 'Salvaging': 'TRADE',
+  'Media & Entertainment': 'ENTERTAINMENT', 'Art': 'ENTERTAINMENT', 'Clothes Making': 'ENTERTAINMENT',
+  'Advertising': 'ENTERTAINMENT', 'Marketing & Advertising': 'ENTERTAINMENT',
+  'Software / SaaS': 'TECH', 'Technology': 'TECH', 'Hacking': 'TECH', 'Forgery': 'TECH', 'Engineering': 'TECH',
+  'Logistics': 'LOGISTICS', 'Transportation': 'LOGISTICS', 'Manufacturing': 'LOGISTICS',
+  'Energy': 'LOGISTICS', 'Landscaping': 'LOGISTICS',
+};
+
 interface OwnedBusiness {
   companyName: string;
   bizType: 'real' | 'minx';
+  industry: BizIndustry;
   workstation: string | null;
   workstationLabel: string | null;
   workstationSlot: string | null;
@@ -2663,6 +2701,9 @@ interface OwnedBusiness {
   lastActivityAt: number;
   buildingId?: string | null;
   floor?: number | null;
+  revenue: number;
+  totalRevenue: number;
+  customerCount: number;
 }
 
 interface Char {
@@ -3240,10 +3281,15 @@ export default function WorldPlay() {
     businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses.map((b: OwnedBusiness) => ({
       ...b,
       lastActivityAt: b.lastActivityAt ?? b.registeredAt ?? Date.now(),
+      industry: b.industry ?? 'SERVICES' as BizIndustry,
+      revenue: b.revenue ?? 0,
+      totalRevenue: b.totalRevenue ?? 0,
+      customerCount: b.customerCount ?? 0,
     })) : (
       char.hasBusiness && char.bizType && char.bizType !== 'unemployed' ? [{
         companyName: char.company,
         bizType: char.bizType,
+        industry: 'SERVICES' as BizIndustry,
         workstation: char.workstation ?? null,
         workstationLabel: char.workstationLabel ?? null,
         workstationSlot: char.workstationSlot ?? null,
@@ -3251,6 +3297,9 @@ export default function WorldPlay() {
         lastActivityAt: char.bizRegisteredAt ?? Date.now(),
         buildingId: char.workstation ?? null,
         floor: null,
+        revenue: 0,
+        totalRevenue: 0,
+        customerCount: 0,
       }] : []
     )) as OwnedBusiness[],
     floorOccupancy: (_ss?.floorOccupancy ?? {}) as Record<string, string>,
@@ -3765,6 +3814,25 @@ export default function WorldPlay() {
     setBankHistory(h => [{ id, desc, amount, bal, category, timestamp: Date.now() }, ...h].slice(0, 50));
   }, []);
 
+  const recordBizRevenue = useCallback((spendingType: string, amount: number) => {
+    const g = gs.current;
+    if (!g.businesses || g.businesses.length === 0) return;
+    const category = SPENDING_CATEGORY[spendingType];
+    if (!category) return;
+    const matching = g.businesses.filter((b: OwnedBusiness) => b.industry === category);
+    if (matching.length === 0) return;
+    const info = BIZ_INDUSTRY_INFO[category];
+    const cut = Math.max(1, Math.floor(amount * info.cut));
+    const perBiz = Math.max(1, Math.floor(cut / matching.length));
+    for (const biz of matching) {
+      biz.revenue = (biz.revenue ?? 0) + perBiz;
+      biz.totalRevenue = (biz.totalRevenue ?? 0) + perBiz;
+      biz.customerCount = (biz.customerCount ?? 0) + 1;
+    }
+    g.salary += cut; setSalary(g.salary);
+    g.floaters.push({ x: g.px, y: g.py - 40, text: `+ƒ${cut.toLocaleString()} BIZ REVENUE`, color: info.color, life: 70, maxLife: 70 });
+  }, []);
+
   // Player apartment assignment (persistent per character)
   const [aptUnit] = useState<string>(() => {
     const k = `sm_apt_${char?.name}`;
@@ -4010,13 +4078,13 @@ export default function WorldPlay() {
     }
     else if (bid === 'clinic')  {
       if (g.deviceBroken && g.salary >= 5000) {
-        g.salary -= 5000; g.deviceBroken = false; g.deviceDurability = 100;
+        g.salary -= 5000; g.deviceBroken = false; g.deviceDurability = 100; recordBizRevenue('device_buy', 5000);
         setSalary(g.salary); setDeviceBroken(false); sfxHeal();
         setNarr('> CITY CLINIC — [ƒ5,000 FIAT] Device repaired. "Cracked screen, fried board. Standard job. Press [P] — it\'s alive again."');
         return;
       }
       if (g.salary >= 10000) {
-        g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal();
+        g.hp = g.maxHp; g.salary -= 10000; setHp(g.maxHp); setSalary(g.salary); sfxHeal(); recordBizRevenue('hospital', 10000);
         let clinicMsg = '> CITY CLINIC — [ƒ10,000 FIAT] Patched up. "I\'ve fixed androids, mutants, and one man who claimed to be a ninja. You\'re fine."';
         if (g.deviceBroken) {
           g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
@@ -4047,7 +4115,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'overlook') {
       if (g.salary >= 8000) {
-        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000;
+        g.hp = Math.min(g.maxHp, g.hp + 50); g.energy = Math.min(100, g.energy + 45); g.salary -= 8000; recordBizRevenue('clinic', 8000);
         setHp(g.hp); setEnergy(g.energy); setSalary(g.salary); sfxHeal();
         setNarr('> THE PINNACLE [ƒ8,000 FIAT] — Room 237 is available. The elevator opens on its own. You sleep deeply and wake disturbed. HP +50. Energy +45. ALDRIC PENN waves from the corridor. The hallway carpet pattern repeats forever.');
       } else {
@@ -4063,7 +4131,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'rust_porch') {
       if (g.salary >= 4000) {
-        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000;
+        g.hp = Math.min(g.maxHp, g.hp + 55); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.salary -= 4000; recordBizRevenue('food_court', 4000);
         setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setSalary(g.salary); sfxHeal();
         doSave({ ...g, salary: g.salary });
         setNarr('> THE RUST PORCH [ƒ4,000 FIAT] — DREN MALIK has stew on the fire. You eat until the wasteland feels like a distant dream. HP +55. Hunger +60. Thirst +60. Progress saved. "Timber\'s hard to come by," Dren says, refilling your bowl, "but stew is the least I can do." He sounds like he means it.');
@@ -4205,7 +4273,7 @@ export default function WorldPlay() {
     else if (bid === 'noodle_bar') {
       sfxEnter();
       const cost = 1200;
-      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ƒ${cost.toLocaleString()} FIAT]`); }
+      if (g.salary >= cost) { g.salary -= cost; g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 40); setSalary(g.salary); setHunger(g.hunger); setThirst(g.thirst); sfxCoin(); recordBizRevenue('noodle_bar', cost); setNarr(`> NOODLE BAR — Steam. The real kind. Hunger +60. Thirst +40. [−ƒ${cost.toLocaleString()} FIAT]`); }
       else { sfxError(); setNarr('> NOODLE BAR — "No FIAT, no noodles. House rule since the collapse."'); }
     }
     else if (bid === 'pawn_shop') {
@@ -4223,7 +4291,7 @@ export default function WorldPlay() {
       sfxEnter();
       const passportCost = 12000;
       if (!g.passport && g.salary >= passportCost) {
-        g.passport = 'basic_city'; g.salary -= passportCost; setSalary(g.salary); setPassport('basic_city'); sfxCoin();
+        g.passport = 'basic_city'; g.salary -= passportCost; setSalary(g.salary); setPassport('basic_city'); sfxCoin(); recordBizRevenue('passport', passportCost);
         wsSend({ type: 'money_update', money: g.salary });
         setNarr(`> PABLO CORP NORTH — BASIC CITY PASSPORT issued. Crossing authorized (fee applies). [−ƒ${passportCost.toLocaleString()} FIAT] "Don\'t lose it. Replacements cost double."`);
       } else if (g.passport) {
@@ -5330,7 +5398,7 @@ export default function WorldPlay() {
               }
               g.officeTerminalRenting = { label: tObj.label, startTime: Date.now(), lastCharge: Date.now() };
               g.locks.set(lockKey, { ownerName: char.name, company: char.bizType ?? undefined, message: `RENTED — ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min` });
-              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary);
+              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary); recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE);
               sfxEnter();
               setNarr(`> ${tObj.label} — Rented. ƒ${PUBLIC_OFFICE_TERMINAL_RATE}/min charged to your account. Press [E] again to release. Terminal locked to: ${char.name}.`);
               return;
@@ -9376,13 +9444,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── ECONOMY: Periodic income — ONLY if player has a real job ──────
+        // ── ECONOMY: Periodic income — ONLY if player has a real job or owns a business ──────
         const cls = char.class.toLowerCase();
         const factionName = CLASS_DISPLAY_NAME[cls] ?? 'FACTION';
         const now = Date.now();
         const hasGameJob = (g.employedAt ?? null) !== null;
         const hasRealOrg = !!(char as any).orgId;
-        const hasIncome = hasGameJob || hasRealOrg;
+        const hasBiz = (g.businesses ?? []).length > 0;
+        const hasIncome = hasGameJob || hasRealOrg || hasBiz;
         if (now - g.lastIncomeTime >= 60000) {
           g.lastIncomeTime = now;
           reportMissionProgress('minutesPlayed', 1);
@@ -9496,7 +9565,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (now2 - g.officeTerminalRenting.lastCharge >= 60000) {
             g.officeTerminalRenting.lastCharge = now2;
             if (g.salary >= PUBLIC_OFFICE_TERMINAL_RATE) {
-              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary);
+              g.salary -= PUBLIC_OFFICE_TERMINAL_RATE; setSalary(g.salary); recordBizRevenue('office_rent', PUBLIC_OFFICE_TERMINAL_RATE);
               g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${PUBLIC_OFFICE_TERMINAL_RATE} TERMINAL RENT`, color: '#ff8844', life: 70, maxLife: 70 });
             } else {
               const lockKey = `po_${g.officeTerminalRenting.label}`;
@@ -14145,7 +14214,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
-              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {gs.current.employedAt ? `${gs.current.employedAt}` : 'UNEMPLOYED'}
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {(gs.current.businesses ?? []).length > 0 ? `OWNER: ${gs.current.businesses[0].companyName}` : gs.current.employedAt ? `${gs.current.employedAt}` : 'UNEMPLOYED'}
             </span>
           </div>
         </div>
@@ -14735,7 +14804,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
-                      <StatRow label="EMPLOYMENT" val={gs.current.employedAt ?? 'UNEMPLOYED'} col={gs.current.employedAt ? '#67e8f9' : '#ff6644'} />
+                      <StatRow label="EMPLOYMENT" val={(gs.current.businesses ?? []).length > 0 ? `BIZ OWNER (${gs.current.businesses.length})` : gs.current.employedAt ?? 'UNEMPLOYED'} col={(gs.current.businesses ?? []).length > 0 ? '#88cc44' : gs.current.employedAt ? '#67e8f9' : '#ff6644'} />
                       <StatRow label="CHECKING" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="SAVINGS" val={`ƒ${(g.savings ?? 0).toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz (ƒ${(goldBalance * FIAT_PER_GOLD).toLocaleString()})`} col="#FFD700" />
@@ -15704,7 +15773,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       if (isRented) { localStorage.removeItem('sm_office'); setRentedOffice(null); setNarr('> Lease cancelled.'); return; }
                       if (char.bizType !== 'real') { sfxError(); setNarr('> SHADOW TOWER — Office leases require a registered REAL ENTERPRISE. Fictitious entities operate from storefronts.'); return; }
                       if (!canAfford) { setNarr(`> Need ƒ${price.toLocaleString()} FIAT. Have ƒ${salary.toLocaleString()}.`); return; }
-                      const g = gs.current; g.salary -= price; setSalary(g.salary);
+                      const g = gs.current; g.salary -= price; setSalary(g.salary); recordBizRevenue('office_rent', price);
                       localStorage.setItem('sm_office', label); setRentedOffice(label);
                       setNarr(`> ${label} leased. ƒ${price.toLocaleString()} FIAT deducted. Set a security code from the lease panel.`);
                     }} style={{ marginTop: '.45rem', width: '100%', padding: '.28rem', background: isRented ? 'rgba(255,50,50,.06)' : canAfford && char.bizType === 'real' ? 'rgba(56,189,248,.07)' : 'transparent', border: isRented ? '1px solid rgba(255,80,80,.28)' : canAfford && char.bizType === 'real' ? '1px solid rgba(56,189,248,.38)' : '1px solid rgba(56,189,248,.08)', color: isRented ? 'rgba(255,80,80,.62)' : canAfford && char.bizType === 'real' ? '#38bdf8' : 'rgba(56,189,248,.16)', fontFamily: "'VT323',monospace", fontSize: '.8rem', letterSpacing: '.08em', cursor: (canAfford && char.bizType === 'real') || isRented ? 'pointer' : 'default' }}>
@@ -16331,7 +16400,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const fId = item.id.slice(5);
             if (g.ownedFurniture.includes(fId)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your furniture inventory.`); return; }
           } else if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
-          g.salary -= item.price; setSalary(g.salary); sfxCoin();
+          g.salary -= item.price; setSalary(g.salary); sfxCoin(); recordBizRevenue('vending_food', item.price);
           // ── Apply effects ──────────────────────────────────────
           if (item.consumable) {
             if (item.id === 'pablo_device') {
@@ -16980,7 +17049,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doMerchBuy = (item: MerchantItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
           if (g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
-          g.salary -= item.price; setSalary(g.salary); sfxCoin();
+          g.salary -= item.price; setSalary(g.salary); sfxCoin(); recordBizRevenue(item.effect.startsWith('passport_') ? 'passport' : 'merchant_weapon', item.price);
           g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
           if (item.effect.startsWith('unlock_')) {
             const wpnId = item.effect.replace('unlock_', '');
@@ -17226,7 +17295,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB TO EARN INCOME' },
+                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: (gs.current.businesses ?? []).length > 0 ? `BUSINESS OWNER — ${gs.current.businesses.length} REGISTERED` : gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
                       { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#38bdf8', sub: 'APY: 0.8% / CYCLE' },
 
                     ].map(({ label, val, color, sub }) => (
@@ -17992,7 +18061,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const g = gs.current;
           if (dest.id === subwayOrigin) { setNarr(`> METRO — You're already at ${dest.label}.`); setShowSubway(false); return; }
           if (g.salary < FARE) { sfxError(); setNarr(`> METRO — Insufficient FIAT. Fare is ƒ${FARE.toLocaleString()}. "No tokens, no transit."`); setShowSubway(false); return; }
-          g.salary -= FARE; setSalary(g.salary);
+          g.salary -= FARE; setSalary(g.salary); recordBizRevenue('subway', FARE);
           sfxEnter(); sfxCoin();
           g.subwayTransit = true;
           g.subwayTransitTimer = 90;
@@ -18119,7 +18188,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doBuy = (item: VendItem) => {
           if (g.salary < item.price) { sfxError(); setNarr(`> ${merchant.name} — Not enough FIAT.`); return; }
           if (g.ownedItems.has(item.id) && !item.consumable) { sfxError(); setNarr(`> ${merchant.name} — Already owned.`); return; }
-          g.salary -= item.price; setSalary(g.salary);
+          g.salary -= item.price; setSalary(g.salary); recordBizRevenue(item.consumable ? 'vending_food' : 'merchant_weapon', item.price);
           if (item.consumable && item.effect) {
             const fx = item.effect;
             if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
@@ -18182,7 +18251,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const spreadFee = Math.ceil(basePrice * GOLD_EXCHANGE_BUY_SPREAD);
           const totalCost = basePrice + spreadFee;
           if (g.salary < totalCost) { sfxError(); setNarr('> GOLD EXCHANGE — Insufficient FIAT.'); return; }
-          g.salary -= totalCost; g.goldBalance += amt;
+          g.salary -= totalCost; g.goldBalance += amt; recordBizRevenue('gold_exchange', totalCost);
           setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
           addBankTx(`GOLD BUY ${amt}oz`, -basePrice, g.salary, 'general');
           addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
@@ -18602,7 +18671,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     if (owned) {
                       gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> CLOTHES — Equipped: ${c.name}. ${c.desc}`);
                     } else if (c.price > 0 && salary >= c.price) {
-                      gs.current.salary -= c.price; setSalary(gs.current.salary); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> CLOTHES — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`);
+                      gs.current.salary -= c.price; setSalary(gs.current.salary); recordBizRevenue('costume', c.price); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> CLOTHES — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`);
                     } else {
                       setNarr(`> CLOTHES — Not enough FIAT. ${c.name} costs ƒ${c.price.toLocaleString()}.`);
                     }
@@ -18681,9 +18750,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ];
           const q = adminBizIndustry || adminBizName.trim().toUpperCase();
           const wsEntry = PLAY_WORKSTATION_ASSIGNMENTS.find(w => w.match.test(q)) ?? PLAY_WORKSTATION_ASSIGNMENTS[0];
+          const resolvedIndustry: BizIndustry = INDUSTRY_NAME_TO_BIZ[adminBizIndustry] ?? 'SERVICES';
           const newBiz: OwnedBusiness = {
             companyName: adminBizName.trim().toUpperCase(),
             bizType: adminBizType,
+            industry: resolvedIndustry,
             workstation: wsEntry.bid,
             workstationLabel: wsEntry.label,
             workstationSlot: wsEntry.slot,
@@ -18691,6 +18762,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             lastActivityAt: Date.now(),
             buildingId: wsEntry.bid,
             floor: null,
+            revenue: 0,
+            totalRevenue: 0,
+            customerCount: 0,
           };
           if (!g.businesses) g.businesses = [];
           g.businesses.push(newBiz);
@@ -18703,7 +18777,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             char.workstationLabel = wsEntry.label;
             char.workstationSlot = wsEntry.slot;
           }
-          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} in ${adminBizIndustry}. ƒ${regFee.toLocaleString()} FIAT deducted. Business ${(g.businesses ?? []).length} of ${nextSlot} slots available. Welcome to ${getBusinessLocationLabel(g.px, g.py)} commerce.`);
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} in ${adminBizIndustry}. Revenue category: ${BIZ_INDUSTRY_INFO[resolvedIndustry].label}. ${BIZ_INDUSTRY_INFO[resolvedIndustry].desc}. Cut: ${Math.round(BIZ_INDUSTRY_INFO[resolvedIndustry].cut * 100)}% of matching transactions. ƒ${regFee.toLocaleString()} FIAT deducted.`);
           setShowAdmin(false);
           setAdminBizName(''); setAdminBizIndustry('');
         };
@@ -18720,15 +18794,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {(g.businesses ?? []).length > 0 && (
                 <div style={{ marginBottom: '.8rem' }}>
                   <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em', marginBottom: '.4rem' }}>REGISTERED BUSINESSES ({(g.businesses ?? []).length})</div>
-                  {(g.businesses ?? []).map((biz, bi) => (
+                  {(g.businesses ?? []).map((biz, bi) => {
+                    const ind = biz.industry ?? 'SERVICES';
+                    const indInfo = BIZ_INDUSTRY_INFO[ind as BizIndustry];
+                    return (
                     <div key={bi} style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.5rem .7rem', background: 'rgba(56,189,248,.03)', marginBottom: '.3rem' }}>
-                      <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.07em' }}>{biz.companyName}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.07em' }}>{biz.companyName}</div>
+                        <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: indInfo?.color ?? '#38bdf8', letterSpacing: '.06em' }}>ƒ{(biz.totalRevenue ?? 0).toLocaleString()}</div>
+                      </div>
                       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>
                         {biz.bizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} · {biz.workstationLabel ?? 'UNASSIGNED'}<br/>
                         Registered: {new Date(biz.registeredAt).toLocaleDateString()}
                       </div>
+                      <div style={{ display: 'flex', gap: '.5rem', marginTop: '.3rem' }}>
+                        <div style={{ padding: '.15rem .35rem', background: `${indInfo?.color ?? '#38bdf8'}11`, border: `1px solid ${indInfo?.color ?? '#38bdf8'}33`, fontSize: '.42rem', color: indInfo?.color ?? '#38bdf8', letterSpacing: '.08em' }}>{indInfo?.label ?? ind}</div>
+                        <div style={{ padding: '.15rem .35rem', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.15)', fontSize: '.42rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.06em' }}>{Math.round((indInfo?.cut ?? 0.1) * 100)}% CUT</div>
+                        <div style={{ padding: '.15rem .35rem', background: 'rgba(56,189,248,.04)', border: '1px solid rgba(56,189,248,.15)', fontSize: '.42rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.06em' }}>{(biz.customerCount ?? 0).toLocaleString()} CUSTOMERS</div>
+                      </div>
+                      <div style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.25)', marginTop: '.2rem', lineHeight: 1.5 }}>{indInfo?.desc ?? ''}</div>
                     </div>
-                  ))}
+                    );
+                  })}
                   <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', lineHeight: 1.7, marginTop: '.3rem' }}>
                     All businesses on record with PABLO CORP municipal database. All transactions logged.
                   </div>
@@ -18774,17 +18861,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </div>
                   <div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.3rem' }}>INDUSTRY</div>
+                    {adminBizIndustry && INDUSTRY_NAME_TO_BIZ[adminBizIndustry] && (() => {
+                      const cat = INDUSTRY_NAME_TO_BIZ[adminBizIndustry];
+                      const info = BIZ_INDUSTRY_INFO[cat];
+                      return (
+                        <div style={{ padding: '.4rem .5rem', marginBottom: '.4rem', border: `1px solid ${info.color}33`, background: `${info.color}08` }}>
+                          <div style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: info.color, letterSpacing: '.08em' }}>REVENUE: {info.label}</div>
+                          <div style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.6, marginTop: '.15rem' }}>{info.desc}. Your cut: {Math.round(info.cut * 100)}% of every matching transaction.</div>
+                        </div>
+                      );
+                    })()}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.25rem', maxHeight: '30vh', overflow: 'auto' }}>
-                      {industries.map(ind => (
+                      {industries.map(ind => {
+                        const cat = INDUSTRY_NAME_TO_BIZ[ind];
+                        const catInfo = cat ? BIZ_INDUSTRY_INFO[cat] : null;
+                        return (
                         <button key={ind} onClick={() => setAdminBizIndustry(ind)} style={{
                           padding: '.3rem .4rem', background: adminBizIndustry === ind ? 'rgba(56,189,248,.1)' : 'transparent',
-                          border: `1px solid ${adminBizIndustry === ind ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.1)'}`,
-                          color: adminBizIndustry === ind ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer',
+                          border: `1px solid ${adminBizIndustry === ind ? (catInfo?.color ?? 'rgba(56,189,248,.4)') + '66' : 'rgba(56,189,248,.1)'}`,
+                          color: adminBizIndustry === ind ? (catInfo?.color ?? '#38bdf8') : 'rgba(56,189,248,.35)', cursor: 'pointer',
                           fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', textAlign: 'left',
                         }}>
-                          {ind}
+                          {ind}{catInfo ? ` [${catInfo.label}]` : ''}
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                   <div style={{ padding: '.5rem .7rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.25)', marginTop: '.2rem' }}>
