@@ -236,7 +236,7 @@ export default function Cover() {
         >
           <Suspense fallback={
             <div className="w-full rounded-xl" style={{ maxWidth: 480, margin: '0 auto', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="text-sky-500/30 text-xs font-mono tracking-widest">WAKING UP PABLO...</span>
+              <span className="text-sky-500/30 text-xs font-mono tracking-widest">CLOCKING IN...</span>
             </div>
           }>
             <PabloMascot />
