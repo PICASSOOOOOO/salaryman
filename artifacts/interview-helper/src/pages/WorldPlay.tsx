@@ -7765,14 +7765,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Look-ahead: camera leads slightly in the movement direction
+      // Look-ahead: camera leads in the movement direction
       let dx2 = 0, dy2 = 0;
       if (g.keys.has('arrowleft') || g.keys.has('a')) dx2 = -1;
       if (g.keys.has('arrowright') || g.keys.has('d')) dx2 = 1;
       if (g.keys.has('arrowup') || g.keys.has('w')) dy2 = -1;
       if (g.keys.has('arrowdown') || g.keys.has('s')) dy2 = 1;
-      const lookAheadDist = 40;
-      const laLerp = 0.06;
+      const isMoving = dx2 !== 0 || dy2 !== 0;
+      const lookAheadDist = 60;
+      const laLerp = isMoving ? 0.10 : 0.14;
       cameraLookAheadRef.current.x += (dx2 * lookAheadDist - cameraLookAheadRef.current.x) * laLerp;
       cameraLookAheadRef.current.y += (dy2 * lookAheadDist - cameraLookAheadRef.current.y) * laLerp;
 
@@ -7787,8 +7788,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       const camTargetX = focusX - cw / 2;
       const camTargetY = focusY - ch / 2;
-      g.cam.x += (Math.max(0, Math.min(W - cw, camTargetX)) - g.cam.x) * 0.08;
-      g.cam.y += (Math.max(0, Math.min(H - ch, camTargetY)) - g.cam.y) * 0.08;
+      const clampedX = Math.max(0, Math.min(W - cw, camTargetX));
+      const clampedY = Math.max(0, Math.min(H - ch, camTargetY));
+      const camDiffX = clampedX - g.cam.x;
+      const camDiffY = clampedY - g.cam.y;
+      const DEADZONE = 2;
+      if (Math.abs(camDiffX) > DEADZONE || Math.abs(camDiffY) > DEADZONE) {
+        const camSpeed = isMoving ? 0.16 : 0.22;
+        g.cam.x += camDiffX * camSpeed;
+        g.cam.y += camDiffY * camSpeed;
+      } else {
+        g.cam.x = clampedX;
+        g.cam.y = clampedY;
+      }
       const ox = -g.cam.x, oy = -g.cam.y;
 
       ctx.save();
