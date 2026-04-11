@@ -7735,15 +7735,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return false;
       });
 
-      // ── HP regen (passive, always active) — scaled by location ──
-      if (g.hp > 0 && g.hp < g.maxHp && g.frame % 90 === 0) {
-        const isIndoorsRegen = !!g.interior;
-        const nearBldRegen = g.interior?.bid ?? '';
-        const isRestLocRegen = REST_LOCATION_IDS.has(nearBldRegen);
-        const regenAmount = isRestLocRegen ? 3 : isIndoorsRegen ? 1 : 0;
-        g.hp = Math.min(g.maxHp, g.hp + regenAmount);
-        setHp(Math.floor(g.hp));
-      }
+      // HP regen handled in post-combat regen block below (no duplicate here)
       if (g.hp > 0 && lastDead) lastDead = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
@@ -9430,12 +9422,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── Health regeneration outside combat ──
         if (g.combatRegenCooldown > 0) g.combatRegenCooldown--;
         if (g.combatRegenCooldown <= 0 && g.hp < g.maxHp && g.hp > 0 && !gamePausedRef.current) {
-          if (g.frame % 120 === 0) {
+          const regenInterval = 90;
+          if (g.frame % regenInterval === 0) {
             const nearBld2 = (g.interior as { bid: string } | null)?.bid ?? '';
             const isRestLoc2 = REST_LOCATION_IDS.has(nearBld2);
-            const regenAmt = isRestLoc2 ? 4 : isIndoors ? 2 : 1;
+            const regenAmt = isRestLoc2 ? 5 : isIndoors ? 3 : 1;
             g.hp = Math.min(g.maxHp, g.hp + regenAmt);
             setHp(Math.floor(g.hp));
+            if (g.hp < g.maxHp * 0.5 && g.frame % (regenInterval * 4) === 0) {
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `+${regenAmt} HP`, color: '#44ff88', life: 40, maxLife: 40 });
+            }
           }
         }
 
