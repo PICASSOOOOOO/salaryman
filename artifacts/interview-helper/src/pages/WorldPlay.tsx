@@ -547,11 +547,11 @@ let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
 const GANG_FACTION_ALLIES: Record<string, string[]> = {
   outlaw:     ['rust_syndicate', 'static_monks'],
   replicant:  ['void_runners', 'eastern_bloc'],
-  corporate:  ['minx_city'],
+  corporate:  [],
 };
 const GANG_FACTION_ENEMIES: Record<string, string[]> = {
-  outlaw:     ['minx_city', 'void_runners'],
-  replicant:  ['minx_city', 'rust_syndicate'],
+  outlaw:     ['void_runners'],
+  replicant:  ['rust_syndicate'],
   corporate:  ['rust_syndicate', 'void_runners', 'static_monks', 'eastern_bloc'],
 };
 const TERRITORY_SHIFT_INTERVAL = 1800;
