@@ -2,66 +2,7 @@
 
 ## Overview
 
-SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive productivity platform. It unifies AI agents, communication tools, creative suites, and CRM functionalities into a single operating environment to provide AI-augmented workflows for professionals.
-
-### Flagship Products
-- **Jean Claw:** The manager of the Bot Factory — 77 specialized bots under one subscription ($145/mo). Jean Claw assigns the right bot to every job.
-- **Pablo AI:** A free-tier AI assistant integrated across the platform.
-- **Bot Factory:** Home for all 77 bots. Each marketplace bot is a "Prime" version (Picasso originals, yellow emphasis). When users clone bots, copies get version IDs like A-001, B-002 etc.
-
-### Core Capabilities
-- **AI Agents:** Equipped with a structured skill system for planning, review, execution, security, design, and analysis.
-- **Interview Preparation:** Tools for real-time coaching, including live listening and screen analysis.
-- **Content Creation:** AI-generated presentations, long-form content creation (Writer's Studio), and a comprehensive creative suite.
-- **Dark Room:** Unified creative studio at `/creative/darkroom` with 5 tabs: GRAPHICS (AI image gen + canvas editor), COPY (marketing copy, emails, ads), SOCIAL (social media templates), PRODUCTION (8 image modes: clothing brand, lookbook, billboard, 35mm film, hi-def cinema, packaging, labels/tags, poster), VIDEO (5 script modes: TV commercial, music video, brand film, social video, lookbook video). Gallery persists in localStorage. Old routes `/creative/studio` and `/creative/production` redirect to `/creative/darkroom`.
-- **Video Intelligence:** Video Analyzer (VID-SCAN) at `/intel/video` — paste any video URL (YouTube, TikTok, Vimeo, Instagram, X, any website) and AI extracts transcript + metadata, analyzes content, and returns structured intelligence reports with actionable strategies.
-- **Job Command Center (JCC):** Jean Claw premium feature at `/bots/jobs` — AI-powered job search automation inspired by career-ops. Features: Pipeline (A-F job scoring across 10 dimensions), Tracker (application status management), Resume AI (ATS-optimized resume tailoring), Interview Prep (STAR framework + company intel + salary negotiation). All endpoints gated behind `claw_bot` subscription.
-- **Claude Code Templates (CCT):** Template library browser at `/bots/templates` — indexes 1,700+ components from davila7/claude-code-templates: 417 AI agents, 804 skills, 280 commands, 84 MCPs, 54 hooks, 67 settings, 14 templates, 11 sandbox configs, 10 plugins. Backend caches full catalog (1hr TTL), serves stripped index without content, loads component source on demand. Category filtering, search, copy install command, copy source content.
-- **Communication:** A robust phone system (CalllHome/TTC) with autonomous call agents, dual-DID routing, real-time translation tools, and enhanced live call monitoring with expandable call details (SID, metadata, encryption, conference), live transcript panel, and AI coaching tips. Session launch renamed to "GO ACTIVE".
-- **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
-
-### Navigation Structure
-- **Main nav order:** Pablo AI → Phone (TTC) → Bots (Jean Claw Factory) → Console → Business → Creative → Marketing → Intel → Explore
-- **Profile Hub:** `/profile` is the control center with tabs: Account, Admin, Platform, Moderator, World Map
-  - Account: user info, subscriptions, Pablo memory, data export/delete
-  - Admin: users, businesses, roles & permissions, moderators, bans (org members/owners only)
-  - Platform: API keys, webhooks, endpoints, connected apps (was `/platform`)
-  - Moderator: live activity feed, ban management, chat monitor, flagged content (org members/owners only)
-  - World Map: real-time surveillance of all Minx City players, zone density, player inspector
-- **Admin moved to Profile:** Old `/admin/*` paths redirect to `/profile/admin/*`
-- **Platform moved to Profile:** Old `/platform` redirects to `/profile/platform`
-- **Permissions:** 4 role types: owner, manager, moderator, member
-  - Moderators can: monitor activity, issue bans, review content, access world overview
-
-### Insurance API (Shield Prime)
-- **Module:** `/insurance` — accessible as a Business sub-item "INSURANCE API" (not in main nav)
-- **Bot:** Shield Prime — AI insurance agent for inbound/outbound calls, sales vs partner detection, client intake
-- **Carriers:** 9 seeded carriers (United Healthcare, Humana, Anthem, Zing, Devoted, Cigna, Aetna, WellCare, Sunfire)
-- **Multi-agency:** Users can connect to multiple carriers across multiple agencies with separate API tokens per connection
-- **DB Schema:** `insurance_carriers`, `insurance_agency_connections`, `insurance_clients`, `insurance_policies`, `insurance_call_logs`
-- **API Token Security:** Tokens masked in API responses (last 8 chars only), stored server-side
-- **API Routes:** Full CRUD at `/api/insurance/*` — carriers (public), connections, clients, policies, call-logs, stats, carrier test
-- **Carrier API Integration:** Placeholder endpoints with JWT auth; Sunfire has `apiBaseUrl` pre-configured
-
-### Picasso Platform API (NEXUS-API)
-- **Module:** `/platform` with 5 tabs: Overview, API Keys, Webhooks, Endpoints, Apps
-- **Bot:** NEXUS-API — integration intelligence bot that helps users connect Picasso apps and design cross-app workflows
-- **API Key Management:** Generate scoped API keys (`psk_live_...`), keys hashed at rest (SHA-256), prefix stored for display
-- **Webhooks:** Configure webhook endpoints for 16 event types (contact, deal, invoice, insurance, music, book, Minx City events)
-- **Endpoints Reference:** 20 documented REST API endpoints with method, path, description, and scope
-- **Connected Apps:** 7 Picasso apps (SALARYMAN core, Publishing Music, Publishing Books, Minx City, Jean Claw, Storefront, Picasso Pay)
-- **DB Schema:** `platform_api_keys`, `platform_webhooks`, `platform_connected_apps`
-- **Nav Position:** In SETTINGS_MODULES (profile/settings area)
-
-### Publishing Bots (Picasso Publishing)
-- **Music Production:** Tempo Prime (AI music factory — generates beats, songs, instrumentals via Replicate MusicGen integration, continuous 24/7 production mode, batch generation, full songwriting/theory/mixing/mastering/distribution pipeline)
-- **Music Publishing:** Royalty Prime (royalty tracking/PROs), Sync Prime (sync licensing), A&R Prime (talent discovery), Distro Prime (distribution), Archivist Prime (catalog management)
-- **Book Publishing:** Editor Prime (manuscript editing), Press Prime (publishing pipeline), Rights Prime (subsidiary rights), Bestseller Prime (book marketing), Narrator Prime (audiobook production)
-- **Category:** `publishing` in bot marketplace
-- **Music Generation Infrastructure:** `suno-connector.ts` (file kept for backward compat) now uses Replicate MusicGen API (generate, check status, parse [MUSIC_GENERATE] blocks). Bot engine auto-detects generation blocks in TEMPO-X responses and processes them. API routes at `/api/platform/music/*` (status, generate, track/:trackId). Requires `REPLICATE_API_TOKEN` environment variable. Permissions: `music_generate`, `audio_generate`.
-
-### Minx City World
-A pixel office simulation with a virtual employee system, territory control, and a persistent world state. 11 global servers with original fictitious names — Minx City (LIVE), 10 others COMING SOON (Neon Lagos, Sector Berlin, Old Shanghai, etc.). Server data lives in `world-servers.ts` (frontend) and `server-regions.ts` (DB schema). ServerSelect.tsx gates non-live servers. World businesses (`world_businesses` table) include `userId` for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.
+SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive productivity platform. It integrates AI agents, communication tools, creative suites, and CRM functionalities to deliver AI-augmented workflows for professionals. Key offerings include the "Bot Factory" with 77 specialized bots managed by "Jean Claw," a free-tier AI assistant "Pablo AI," and tools for interview preparation, content creation, and video intelligence. The platform aims to unify various business operations into a single, efficient operating environment, offering advanced AI capabilities for enhanced productivity and creative output.
 
 ## User Preferences
 
@@ -69,44 +10,38 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 
 ## System Architecture
 
-The project is a pnpm workspace monorepo built with TypeScript, focusing on modularity and a distinct UI/UX for different sections.
+The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
 
 ### UI/UX Decisions
-- **Non-game pages:** Modern, dark SaaS aesthetic inspired by Linear/Vercel, featuring a dark zinc base, emerald green accents, Inter font for body, and Share Tech Mono for headings.
-- **Game pages:** CRT/Pip-Boy aesthetic with phosphor green on black, scan lines, VT323 and Share Tech Mono fonts, and square borders.
+- **Non-game pages:** Feature a modern, dark SaaS aesthetic inspired by Linear/Vercel, using a dark zinc base, emerald green accents, Inter font for body, and Share Tech Mono for headings.
+- **Game pages:** Employ a CRT/Pip-Boy aesthetic with phosphor green on black, scan lines, VT323 and Share Tech Mono fonts, and square borders.
 
 ### Technical Implementations
 - **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL with Drizzle ORM, Zod for validation, Orval for API codegen, and esbuild for bundling.
-- **Monorepo Structure:** Divided into deployable applications (`artifacts`), shared libraries (`lib`), and scripts.
-- **Database:** PostgreSQL managed by Drizzle ORM, with `drizzle-zod` for schema validation.
-- **API:** Express 5 server utilizing Zod for validation and Drizzle ORM for persistence. OpenAPI 3.1 specification drives codegen for React Query hooks and Zod schemas.
-- **Game World:** A large, persistent world with a 13-month calendar, 4-season weather system, day/night cycle, and interactive building interiors with NPCs.
-- **Error Handling:** `ErrorBoundary` components provide graceful degradation and prevent crashes.
-- **Authentication:** All feature pages require authentication, with a consistent sign-in prompt.
-- **Economy:** Dual currency system (FIAT and GOLD) with an exchange and stock market.
-- **Housing:** A multi-tier housing system with varying rent cycles and eviction mechanics.
-- **NPC System:** NPCs have defined roles, schedules, and engage in voice-acted dialogue.
-- **Communication:** WebRTC for video and proximity voice chat, a terminal phone system, private messaging, and an in-game CRM.
-- **App-Wide Chat (COMMS):** Persistent, real-time chat with Global, Company, and Private DM channels, powered by WebSockets.
-- **Audio:** Spatial audio engine for SFX and crowd murmurs, Web Speech API TTS for NPC dialogue.
-- **Pablo Voice Architecture:** Unified human-like voice using ElevenLabs TTS (with OpenAI TTS-1 fallback) for web/game chat and Google Neural2-F for phone calls. System prompts ensure natural conversational tone.
-- **Org-Specific Screening Scripts:** Dynamic application of company-specific scripts for Pablo's call agent based on the user's organization.
-- **Voice Conversation Mode:** A `useVoiceConversation` hook enables continuous, hands-free voice interaction with Pablo AI across the platform, using Web Speech API for STT and OpenAI TTS-1 for TTS.
-- **Subscription Model:** Feature-based subscription system using Stripe, gated by `ProGate` component and backend middleware. All cost-incurring APIs (DALL-E image gen, ElevenLabs/OpenAI TTS, transcription, Resend email, studio content generation) are gated behind `requireFeature('claw_bot')` to prevent free-tier cost exposure. Phone system (TTC) retains its own `phone_system` feature gate.
-- **Org Role Hierarchy:** 6-tier role system — Owner (100) > CEO (90) > Executive (80) > Director (60) > Manager (40) > Specialist (20). `hasRoleAccess()` function compares power levels. Platform admin roles separate from org roles: `platform_owner`, `platform_ceo`, `platform_executive`. Adult content toggle requires Executive+ rank. New invitees default to Specialist role.
-- **Content Rating:** Bot marketplace has `contentRating` field (sfw/mature/adult). Adult bots never shown in public marketplace. Orgs have `adultContentEnabled` toggle (default false, Executive+ to change). Adult content is build-your-own-bot only.
-- **Shadow Tower:** Pablo Corp HQ interior with 5 departments: BOT FACTORY (assembly line, neural compiler, core forge), AI LAB (model trainer, inference engine, GPU cluster), CODE BAY (3 dev terminals, CI/CD, deploy monitor), OPERATIONS (system dashboard, traffic monitor, global status), EXECUTIVE SUITE (board table, CEO/CTO desks, revenue display). 10 animated NPC workers including Pablo AI as Chief Architect.
-- **Bot Factory:** OpenClaw-powered system for creating custom AI bots and managing pre-built bots, with integration to multiple communication platforms. Features persistent memory, configurable personality, access control, scheduled tasks, and bot collaboration mode (team bots share context, delegate sub-tasks, spawn custom sub-bots like "Jean Claw (Custom)"). Billing is handled via Stripe.
-- **Documents & Media:** Invoice and contract generators, a file manager for GCS-backed object storage, and a dedicated Media Library (VAULT-X) for managing audio/image/video files.
-- **Sound Lab Looper:** A persistent, always-visible overlay for the Sound Lab (1999) that allows recording and managing audio loops across different instrument sections.
+- **Monorepo Structure:** Organized into deployable applications (`artifacts`), shared libraries (`lib`), and scripts.
+- **Database & API:** PostgreSQL managed by Drizzle ORM. The Express 5 API server uses Zod for validation, with an OpenAPI 3.1 specification for codegen of React Query hooks and Zod schemas.
+- **Game World:** A large, persistent world featuring a 13-month calendar, 4-season weather system, day/night cycle, and interactive building interiors with NPCs.
+- **Authentication:** All feature pages require authentication via Replit Auth (OIDC).
+- **Communication:** WebRTC for video and proximity voice chat, a terminal phone system, private messaging, and an in-game CRM. Features a persistent, real-time app-wide chat (COMMS) with Global, Company, and Private DM channels via WebSockets.
+- **AI Voice Architecture:** Utilizes ElevenLabs TTS (with OpenAI TTS-1 fallback) for web/game chat and Google Neural2-F for phone calls, ensuring natural conversational tones through system prompts. A `useVoiceConversation` hook enables continuous voice interaction with Pablo AI.
+- **Subscription Model:** A feature-based subscription system implemented with Stripe, gating cost-incurring APIs behind `requireFeature('claw_bot')`.
+- **Org Role Hierarchy:** A 6-tier role system (Owner, CEO, Executive, Director, Manager, Specialist) controls access and permissions, with separate platform admin roles.
+- **Content Rating:** Bot marketplace content is rated (sfw/mature/adult), with adult content restricted and build-your-own-bot only, controlled by an org `adultContentEnabled` toggle.
+- **Bot Factory:** An OpenClaw-powered system for creating and managing custom AI bots with persistent memory, configurable personality, access control, and collaborative modes.
+- **Creative Suite:** Unified "Dark Room" for graphics (AI image gen, canvas editor), copy, social media templates, and various production modes.
+- **Video Intelligence:** VID-SCAN for extracting transcripts and metadata from video URLs, generating structured intelligence reports.
+- **Job Command Center (JCC):** AI-powered job search automation with pipeline scoring, application tracking, resume tailoring, and interview prep.
+- **Claude Code Templates (CCT):** A browser for a template library of AI agents, skills, commands, and other components.
+- **Music Production:** "Tempo Prime" uses Replicate MusicGen for AI music generation, with full songwriting, mixing, mastering, and distribution pipeline capabilities.
 
 ## External Dependencies
 
-- **Email:** Resend (via Replit integration).
-- **AI:** Anthropic Claude Sonnet, OpenAI GPT-4o, and OpenClaw gateway.
-- **Authentication:** Replit Auth (OIDC).
-- **Telephony:** Twilio SDK for autonomous call agents, multi-turn conversations, CRM integration, call recording, and dual-DID call center functionalities.
-- **Enterprise Lead Database:** Role-based lead management system with CRUD operations, CSV import/export, and notes.
-- **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage).
-- **Database:** PostgreSQL.
-- **Payment Processing:** Stripe.
+- **Email:** Resend
+- **AI Models:** Anthropic Claude Sonnet, OpenAI GPT-4o
+- **AI Gateway:** OpenClaw
+- **Authentication:** Replit Auth (OIDC)
+- **Telephony:** Twilio SDK
+- **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage)
+- **Database:** PostgreSQL
+- **Payment Processing:** Stripe
+- **Music Generation:** Replicate MusicGen API (used by Tempo Prime)

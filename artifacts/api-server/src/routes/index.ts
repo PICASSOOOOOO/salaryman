@@ -44,6 +44,7 @@ import chatRouter from "./chat";
 import leadsRouter from "./leads";
 import insuranceRouter from "./insurance";
 import platformApiRouter from "./platform-api";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -92,5 +93,6 @@ router.use(chatRouter);
 router.use(leadsRouter);
 router.use(insuranceRouter);
 router.use(platformApiRouter);
+router.use(adminRouter);
 
 export default router;
