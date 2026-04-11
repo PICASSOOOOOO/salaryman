@@ -5150,10 +5150,11 @@ export default function WorldPlay() {
         if (def) {
           let spawnIx = def.exitX + def.exitW / 2;
           let spawnIy = def.exitY - 20;
+          const _spawnWalk = new Set(['window', 'plant', 'chair', 'couch']);
           const spawnICol = (ipx: number, ipy: number) => {
             if (ipx < PSIZE + 6 || ipx > def.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > def.height - PSIZE) return true;
             for (const obj of def.objects) {
-              if (obj.type === 'window' || obj.type === 'plant') continue;
+              if (_spawnWalk.has(obj.type)) continue;
               if (ipx + PSIZE > obj.x && ipx - PSIZE < obj.x + obj.w && ipy + PSIZE > obj.y && ipy - PSIZE < obj.y + obj.h) return true;
             }
             return false;
@@ -6957,19 +6958,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.interior && !frozen()) {
         const itr = g.interior;
         const iDef = itr.def;
+        const WALKTHROUGH_TYPES = new Set(['window', 'plant', 'chair', 'couch']);
         const iCol = (ipx: number, ipy: number) => {
           if (ipx < PSIZE + 6 || ipx > iDef.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > iDef.height - PSIZE) return true;
           for (const obj of iDef.objects) {
-            if (obj.type === 'window' || obj.type === 'plant') continue;
+            if (WALKTHROUGH_TYPES.has(obj.type)) continue;
             if (ipx + PSIZE > obj.x && ipx - PSIZE < obj.x + obj.w && ipy + PSIZE > obj.y && ipy - PSIZE < obj.y + obj.h) return true;
           }
           return false;
         };
         if (iCol(itr.px, itr.py)) {
+          const tryDirs: [number,number][] = [[0,-8],[0,8],[-8,0],[8,0],[-8,-8],[8,-8],[-8,8],[8,8]];
           for (let r = 8; r <= 200; r += 8) {
             let escaped = false;
-            for (const [ox, oy] of [[0,r],[0,-r],[r,0],[-r,0],[r,r],[-r,r],[r,-r],[-r,-r]]) {
-              if (!iCol(itr.px + ox, itr.py + oy)) { itr.px += ox; itr.py += oy; escaped = true; break; }
+            for (const [dox, doy] of tryDirs) {
+              const sc = r / 8;
+              if (!iCol(itr.px + dox * sc, itr.py + doy * sc)) { itr.px += dox * sc; itr.py += doy * sc; escaped = true; break; }
             }
             if (escaped) break;
           }
@@ -7000,7 +7004,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           let foundArcade: string | null = null;
           let foundWC = false;
           let closestObj: InteriorObject | null = null;
-          let closestDist = 30;
+          let closestEdgeDist = 40;
+          const edgeDist = (px2: number, py2: number, obj2: InteriorObject) => {
+            const cx = Math.max(obj2.x, Math.min(px2, obj2.x + obj2.w));
+            const cy = Math.max(obj2.y, Math.min(py2, obj2.y + obj2.h));
+            return Math.hypot(px2 - cx, py2 - cy);
+          };
           for (const obj of iDef.objects) {
             if (obj.type === 'arcade_machine' && obj.gameId) {
               const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
@@ -7013,9 +7022,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (Math.hypot(itr.px - ocx, itr.py - ocy) < 30) foundWC = true;
             }
             {
-              const ocx = obj.x + obj.w / 2, ocy = obj.y + obj.h / 2;
-              const d = Math.hypot(itr.px - ocx, itr.py - ocy);
-              if (d < closestDist) { closestDist = d; closestObj = obj; }
+              const d = edgeDist(itr.px, itr.py, obj);
+              if (d < closestEdgeDist) { closestEdgeDist = d; closestObj = obj; }
             }
           }
           setNearArcadeMachine(foundArcade);
