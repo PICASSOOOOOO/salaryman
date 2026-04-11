@@ -12,7 +12,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { streamWithRouter } from "./ai-router";
 import { getConnector, type IncomingMessage } from "./bot-connectors";
 import { matchSkill, executeSkill, getSkillCatalog } from "./ai-skills";
-import { parseMusicGenerateBlock, generateMusic, isSunoConfigured } from "./suno-connector";
+import { parseMusicGenerateBlock, generateMusic, isMusicConfigured } from "./suno-connector";
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   ai_chat: "General AI conversation and knowledge queries",
@@ -29,7 +29,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   trading_paper: "Run simulated paper trades against real market data",
   linkedin_outreach: "Send LinkedIn messages and connection requests for recruitment outreach",
   recruitment_manage: "Manage candidate tracking, recruitment pipeline, and hiring correspondence",
-  music_generate: "Generate AI music tracks, beats, instrumentals, and full songs via Suno API",
+  music_generate: "Generate AI music tracks, beats, instrumentals, and full songs via Replicate MusicGen",
   audio_generate: "Generate audio content — voice, sound effects, and audio processing",
 };
 
@@ -235,7 +235,7 @@ export async function processIncomingMessage(
   if (permissions.includes("music_generate")) {
     const musicReq = parseMusicGenerateBlock(cleanResponse);
     if (musicReq) {
-      if (isSunoConfigured()) {
+      if (isMusicConfigured()) {
         try {
           const result = await generateMusic(musicReq);
           const tracks = result.tracks;
@@ -247,14 +247,14 @@ export async function processIncomingMessage(
               musicAppendix += `\n`;
             }
             if (result.creditsRemaining >= 0) {
-              musicAppendix += `\nSuno credits remaining: ${result.creditsRemaining}`;
+              musicAppendix += `\nReplicate credits remaining: ${result.creditsRemaining}`;
             }
           }
         } catch (err) {
           musicAppendix = `\n\n⚠️ Music generation error: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
       } else {
-        musicAppendix = "\n\n📋 **GENERATION REQUEST QUEUED** — The [MUSIC_GENERATE] block above contains everything needed to create this track. Connect your Suno API key (SUNO_API_KEY) to enable automatic generation.";
+        musicAppendix = "\n\n📋 **GENERATION REQUEST QUEUED** — The [MUSIC_GENERATE] block above contains everything needed to create this track. Connect your Replicate API token (REPLICATE_API_TOKEN) to enable automatic generation.";
       }
     }
   }

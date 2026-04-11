@@ -1,6 +1,7 @@
-const SUNO_API_BASE = "https://studio-api.suno.ai/api";
+const REPLICATE_API_BASE = "https://api.replicate.com/v1";
+const MUSICGEN_MODEL = "meta/musicgen:671ac645ce5e552cc63a54a2bbff63fcf798043055f2a91c72b3c4e0d06b5c34";
 
-export interface SunoGenerateRequest {
+export interface MusicGenerateRequest {
   title: string;
   genre: string;
   mood: string;
@@ -12,7 +13,7 @@ export interface SunoGenerateRequest {
   duration: number;
 }
 
-export interface SunoTrack {
+export interface MusicTrack {
   id: string;
   title: string;
   audioUrl: string;
@@ -27,126 +28,140 @@ export interface SunoTrack {
   };
 }
 
-export interface SunoGenerateResponse {
-  tracks: SunoTrack[];
+export interface MusicGenerateResponse {
+  tracks: MusicTrack[];
   creditsRemaining: number;
 }
 
-function getSunoApiKey(): string | null {
-  return process.env.SUNO_API_KEY ?? null;
+function getReplicateToken(): string | null {
+  return process.env.REPLICATE_API_TOKEN ?? null;
 }
 
-export function isSunoConfigured(): boolean {
-  return !!getSunoApiKey();
+export function isMusicConfigured(): boolean {
+  return !!getReplicateToken();
+}
+
+export const isSunoConfigured = isMusicConfigured;
+
+function buildMusicPrompt(request: MusicGenerateRequest): string {
+  const parts: string[] = [];
+  if (request.genre) parts.push(request.genre);
+  if (request.mood) parts.push(request.mood);
+  if (request.tempo) parts.push(`${request.tempo} bpm`);
+  if (request.key) parts.push(`key of ${request.key}`);
+  if (request.vocal && request.vocal !== "instrumental") {
+    parts.push(`${request.vocal} vocals`);
+  }
+  if (request.stylePrompt) parts.push(request.stylePrompt);
+  if (request.title) parts.push(`"${request.title}"`);
+  return parts.join(", ");
 }
 
 export async function generateMusic(
-  request: SunoGenerateRequest
-): Promise<SunoGenerateResponse> {
-  const apiKey = getSunoApiKey();
-  if (!apiKey) {
+  request: MusicGenerateRequest
+): Promise<MusicGenerateResponse> {
+  const token = getReplicateToken();
+  if (!token) {
     throw new Error(
-      "SUNO_API_KEY not configured. Music generation requires a Suno API key."
+      "REPLICATE_API_TOKEN not configured. Music generation requires a Replicate API token."
     );
   }
 
-  const prompt = buildSunoPrompt(request);
+  const prompt = buildMusicPrompt(request);
+  const durationSec = Math.min(Math.max(request.duration, 5), 300);
 
   try {
-    const response = await fetch(`${SUNO_API_BASE}/generate/v2/`, {
+    const response = await fetch(`${REPLICATE_API_BASE}/predictions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        prompt: request.lyrics !== "instrumental" ? request.lyrics : "",
-        tags: request.stylePrompt,
-        title: request.title,
-        make_instrumental: request.vocal === "instrumental",
-        wait_audio: false,
+        version: MUSICGEN_MODEL.split(":")[1],
+        input: {
+          prompt,
+          duration: durationSec,
+          model_version: "stereo-melody-large",
+          output_format: "mp3",
+          normalization_strategy: "peak",
+        },
       }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`Suno API error (${response.status}): ${errorBody}`);
+      throw new Error(`Replicate API error (${response.status}): ${errorBody}`);
     }
 
-    const data = (await response.json()) as {
+    const prediction = (await response.json()) as {
       id: string;
-      clips: Array<{
-        id: string;
-        title: string;
-        audio_url: string;
-        image_url?: string;
-        metadata: { duration: number; tags: string };
-        status: string;
-      }>;
-      credits_left?: number;
+      status: string;
+      output?: string;
+      urls: { get: string };
     };
 
     return {
-      tracks: (data.clips ?? []).map((clip) => ({
-        id: clip.id,
-        title: clip.title || request.title,
-        audioUrl: clip.audio_url,
-        imageUrl: clip.image_url,
-        duration: clip.metadata?.duration ?? request.duration,
-        status: mapStatus(clip.status),
-        metadata: {
-          genre: request.genre,
-          mood: request.mood,
-          tempo: request.tempo,
-          key: request.key,
+      tracks: [
+        {
+          id: prediction.id,
+          title: request.title,
+          audioUrl: prediction.output ?? "",
+          duration: durationSec,
+          status: mapReplicateStatus(prediction.status),
+          metadata: {
+            genre: request.genre,
+            mood: request.mood,
+            tempo: request.tempo,
+            key: request.key,
+          },
         },
-      })),
-      creditsRemaining: data.credits_left ?? -1,
+      ],
+      creditsRemaining: -1,
     };
   } catch (error) {
-    if (error instanceof Error && error.message.includes("Suno API error")) {
+    if (error instanceof Error && error.message.includes("Replicate API error")) {
       throw error;
     }
     throw new Error(
-      `Failed to connect to Suno API: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to connect to Replicate API: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
 
-export async function checkTrackStatus(trackId: string): Promise<SunoTrack | null> {
-  const apiKey = getSunoApiKey();
-  if (!apiKey) return null;
+export async function checkTrackStatus(trackId: string): Promise<MusicTrack | null> {
+  const token = getReplicateToken();
+  if (!token) return null;
 
   try {
-    const response = await fetch(`${SUNO_API_BASE}/feed/${trackId}`, {
+    const response = await fetch(`${REPLICATE_API_BASE}/predictions/${trackId}`, {
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
     if (!response.ok) return null;
 
-    const data = (await response.json()) as Array<{
+    const prediction = (await response.json()) as {
       id: string;
-      title: string;
-      audio_url: string;
-      image_url?: string;
-      metadata: { duration: number; tags: string };
       status: string;
-    }>;
+      output?: string | string[];
+      input?: { prompt?: string };
+      created_at?: string;
+    };
 
-    const clip = data[0];
-    if (!clip) return null;
+    const audioUrl = Array.isArray(prediction.output)
+      ? prediction.output[0] ?? ""
+      : prediction.output ?? "";
 
     return {
-      id: clip.id,
-      title: clip.title,
-      audioUrl: clip.audio_url,
-      imageUrl: clip.image_url,
-      duration: clip.metadata?.duration ?? 0,
-      status: mapStatus(clip.status),
+      id: prediction.id,
+      title: prediction.input?.prompt?.slice(0, 60) ?? "GENERATED TRACK",
+      audioUrl,
+      duration: 0,
+      status: mapReplicateStatus(prediction.status),
       metadata: {
-        genre: clip.metadata?.tags ?? "",
+        genre: "",
         mood: "",
         tempo: 0,
         key: "",
@@ -157,44 +172,28 @@ export async function checkTrackStatus(trackId: string): Promise<SunoTrack | nul
   }
 }
 
-function mapStatus(
+function mapReplicateStatus(
   status: string
 ): "queued" | "processing" | "complete" | "failed" {
   switch (status?.toLowerCase()) {
-    case "complete":
-    case "streaming":
+    case "succeeded":
       return "complete";
+    case "starting":
     case "queued":
       return "queued";
     case "processing":
-    case "generating":
       return "processing";
-    case "error":
     case "failed":
+    case "canceled":
       return "failed";
     default:
       return "processing";
   }
 }
 
-function buildSunoPrompt(request: SunoGenerateRequest): string {
-  const parts: string[] = [];
-
-  if (request.genre) parts.push(request.genre);
-  if (request.mood) parts.push(request.mood);
-  if (request.tempo) parts.push(`${request.tempo} bpm`);
-  if (request.key) parts.push(`key of ${request.key}`);
-  if (request.vocal && request.vocal !== "instrumental") {
-    parts.push(`${request.vocal} vocals`);
-  }
-  if (request.stylePrompt) parts.push(request.stylePrompt);
-
-  return parts.join(", ");
-}
-
 export function parseMusicGenerateBlock(
   text: string
-): SunoGenerateRequest | null {
+): MusicGenerateRequest | null {
   const match = text.match(
     /\[MUSIC_GENERATE\]([\s\S]*?)\[\/MUSIC_GENERATE\]/
   );
@@ -215,9 +214,13 @@ export function parseMusicGenerateBlock(
     mood: get("mood"),
     tempo: parseInt(get("tempo")) || 120,
     key: get("key") || "C major",
-    vocal: (get("vocal") as SunoGenerateRequest["vocal"]) || "instrumental",
+    vocal: (get("vocal") as MusicGenerateRequest["vocal"]) || "instrumental",
     lyrics: get("lyrics") || "instrumental",
     stylePrompt: get("style_prompt"),
-    duration: parseInt(get("duration")) || 120,
+    duration: parseInt(get("duration")) || 30,
   };
 }
+
+export type SunoGenerateRequest = MusicGenerateRequest;
+export type SunoTrack = MusicTrack;
+export type SunoGenerateResponse = MusicGenerateResponse;

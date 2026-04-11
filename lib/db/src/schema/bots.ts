@@ -15,6 +15,7 @@ export const PERMISSION_KEYS = [
   "linkedin_outreach", "recruitment_manage",
   "phone_inbound", "phone_outbound",
   "sheets_read", "sheets_write",
+  "music_generate", "audio_generate",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
@@ -196,6 +197,9 @@ export const insertBotConversationLogSchema = createInsertSchema(botConversation
 export type BotConversationLog = typeof botConversationLogsTable.$inferSelect;
 export type InsertBotConversationLog = z.infer<typeof insertBotConversationLogSchema>;
 
+export const CONTENT_RATINGS = ["sfw", "mature", "adult"] as const;
+export type ContentRating = (typeof CONTENT_RATINGS)[number];
+
 export const botMarketplaceTable = pgTable("bot_marketplace", {
   id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
@@ -209,6 +213,7 @@ export const botMarketplaceTable = pgTable("bot_marketplace", {
   priceMonthly: integer("price_monthly").notNull().default(0),
   permissions: jsonb("permissions").$type<PermissionKey[]>().notNull().default(["ai_chat"]),
   capabilities: jsonb("capabilities").$type<string[]>().notNull().default([]),
+  contentRating: varchar("content_rating", { length: 20 }).notNull().default("sfw"),
   featured: boolean("featured").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

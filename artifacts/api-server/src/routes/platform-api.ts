@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, platformApiKeysTable, platformWebhooksTable, platformConnectedAppsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
-import { generateMusic, checkTrackStatus, isSunoConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
+import { generateMusic, checkTrackStatus, isMusicConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
 
 const router = Router();
 
@@ -240,17 +240,17 @@ router.get("/platform/endpoints", async (_req, res) => {
 });
 
 router.get("/platform/music/status", async (_req, res) => {
-  res.json({ configured: isSunoConfigured() });
+  res.json({ configured: isMusicConfigured() });
 });
 
 router.post("/platform/music/generate", async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-  if (!isSunoConfigured()) {
+  if (!isMusicConfigured()) {
     return res.status(503).json({
-      error: "SUNO_API_KEY not configured",
-      message: "Music generation requires a Suno API key. Add SUNO_API_KEY to your environment to enable this feature.",
+      error: "REPLICATE_API_TOKEN not configured",
+      message: "Music generation requires a Replicate API token. Add REPLICATE_API_TOKEN to your environment to enable this feature.",
     });
   }
 
@@ -269,7 +269,7 @@ router.post("/platform/music/generate", async (req, res) => {
       vocal: vocal ?? "instrumental",
       lyrics: lyrics ?? "instrumental",
       stylePrompt: stylePrompt ?? genre,
-      duration: duration ?? 120,
+      duration: duration ?? 30,
     });
     res.json(result);
   } catch (err) {

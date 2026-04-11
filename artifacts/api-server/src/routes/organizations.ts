@@ -11,6 +11,9 @@ import {
   FEATURE_KEYS,
   type FeatureKey,
   type OrgMember,
+  type OrgRole,
+  ORG_ROLES,
+  hasRoleAccess,
   isReservedOrgName,
 } from "@workspace/db";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -86,7 +89,7 @@ router.get("/orgs/me", async (req, res) => {
     .from(orgFeatureGrantsTable)
     .where(eq(orgFeatureGrantsTable.orgId, primaryOrg.id));
 
-  const isManager = primaryMember.role === "owner" || primaryMember.role === "manager";
+  const isManager = hasRoleAccess(primaryMember.role as OrgRole, "manager");
 
   let members: OrgMember[] = [];
   if (isManager) {
@@ -233,7 +236,7 @@ router.get("/orgs/members/:userId/profile", async (req, res) => {
   const callerOrgIds = new Set(callerMemberships.map((m) => m.orgId));
   const callerAdminOrgIds = new Set(
     callerMemberships
-      .filter((m) => m.role === "owner" || m.role === "manager")
+      .filter((m) => hasRoleAccess(m.role as OrgRole, "manager"))
       .map((m) => m.orgId)
   );
 
@@ -336,7 +339,7 @@ router.get("/orgs/:orgId", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(userId, orgId);
-  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -356,7 +359,7 @@ router.put("/orgs/:orgId", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(userId, orgId);
-  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -414,7 +417,7 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(userId, orgId);
-  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -505,7 +508,7 @@ router.post("/orgs/invite/accept", async (req, res) => {
     await db.insert(orgMembersTable).values({
       orgId: invite.orgId,
       userId,
-      role: "employee",
+      role: "specialist",
       featureBilling: "individual",
       status: "active",
       invitedByUserId: invite.invitedByUserId,
@@ -547,7 +550,7 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(callerId, orgId);
-  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -563,8 +566,8 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     res.status(403).json({ error: "Cannot modify the owner record" });
     return;
   }
-  if (caller.role === "manager" && target.role === "manager" && callerId !== memberId) {
-    res.status(403).json({ error: "Managers cannot modify other managers" });
+  if (!hasRoleAccess(caller.role as OrgRole, target.role as OrgRole) && callerId !== memberId) {
+    res.status(403).json({ error: "Cannot modify members at or above your rank" });
     return;
   }
 
@@ -586,7 +589,8 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     salary?: string | null;
   } = {};
 
-  if (role && ["manager", "employee"].includes(role)) updates.role = role;
+  const assignableRoles = ORG_ROLES.filter(r => r !== "owner");
+  if (role && assignableRoles.includes(role as OrgRole)) updates.role = role;
   if (department !== undefined) updates.department = department ? String(department).trim() : null;
   if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
   if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;
@@ -641,7 +645,7 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
 
   const isSelf = callerId === memberId;
 
-  if (!isSelf && caller.role !== "owner" && caller.role !== "manager") {
+  if (!isSelf && !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -658,8 +662,8 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
     return;
   }
 
-  if (caller.role === "manager" && target.role === "manager" && !isSelf) {
-    res.status(403).json({ error: "Managers cannot remove other managers" });
+  if (!hasRoleAccess(caller.role as OrgRole, target.role as OrgRole) && !isSelf) {
+    res.status(403).json({ error: "Cannot remove members at or above your rank" });
     return;
   }
 
@@ -678,7 +682,7 @@ router.post("/orgs/:orgId/features", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(callerId, orgId);
-  if (!caller || (caller.role !== "owner" && caller.role !== "manager")) {
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -814,6 +818,36 @@ router.post("/orgs/:orgId/stripe-checkout", async (req, res) => {
   });
 
   res.json({ url: session.url });
+});
+
+router.put("/orgs/:orgId/adult-content", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "executive")) {
+    res.status(403).json({ error: "EXECUTIVE rank or higher required" }); return;
+  }
+
+  const { enabled } = (req.body ?? {}) as { enabled?: boolean };
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled (boolean) required" }); return;
+  }
+
+  const [updated] = await db
+    .update(organizationsTable)
+    .set({ adultContentEnabled: enabled })
+    .where(eq(organizationsTable.id, orgId))
+    .returning();
+
+  res.json({ org: updated });
+});
+
+router.get("/orgs/:orgId/roles", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  res.json({ roles: ORG_ROLES });
 });
 
 export default router;

@@ -17,6 +17,7 @@ export const organizationsTable = pgTable("organizations", {
   ownerUserId: varchar("owner_user_id").notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
   isDeveloper: boolean("is_developer").notNull().default(false),
+  adultContentEnabled: boolean("adult_content_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
@@ -27,8 +28,38 @@ export const insertOrganizationSchema = createInsertSchema(organizationsTable).o
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizationsTable.$inferSelect;
 
-export const ORG_ROLES = ["owner", "manager", "employee"] as const;
+export const ORG_ROLES = ["owner", "ceo", "executive", "director", "manager", "specialist"] as const;
 export type OrgRole = (typeof ORG_ROLES)[number];
+
+export const ORG_ROLE_HIERARCHY: Record<OrgRole, number> = {
+  owner: 100,
+  ceo: 90,
+  executive: 80,
+  director: 60,
+  manager: 40,
+  specialist: 20,
+};
+
+export function hasRoleAccess(userRole: OrgRole, requiredRole: OrgRole): boolean {
+  return (ORG_ROLE_HIERARCHY[userRole] ?? 0) >= (ORG_ROLE_HIERARCHY[requiredRole] ?? 0);
+}
+
+export const PLATFORM_ADMIN_ROLES = ["platform_owner", "platform_ceo", "platform_executive"] as const;
+export type PlatformAdminRole = (typeof PLATFORM_ADMIN_ROLES)[number];
+
+export const PLATFORM_ROLE_HIERARCHY: Record<PlatformAdminRole, number> = {
+  platform_owner: 100,
+  platform_ceo: 90,
+  platform_executive: 80,
+};
+
+export function isPlatformAdmin(role: string): boolean {
+  return (PLATFORM_ADMIN_ROLES as readonly string[]).includes(role);
+}
+
+export function hasPlatformAccess(userRole: PlatformAdminRole, requiredRole: PlatformAdminRole): boolean {
+  return (PLATFORM_ROLE_HIERARCHY[userRole] ?? 0) >= (PLATFORM_ROLE_HIERARCHY[requiredRole] ?? 0);
+}
 
 export const ORG_BILLING_MODES = ["company", "individual"] as const;
 export type OrgBillingMode = (typeof ORG_BILLING_MODES)[number];
