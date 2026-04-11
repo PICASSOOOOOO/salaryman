@@ -79,6 +79,7 @@ const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
+const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -282,6 +283,9 @@ function AppShell() {
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
+
+            {/* PLATFORM API module */}
+            <Route path="/platform" component={PlatformAPI} />
 
             {/* BOTS module */}
             <Route path="/bots/jobs" component={JobCommandCenter} />

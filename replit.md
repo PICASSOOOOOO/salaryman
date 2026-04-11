@@ -30,6 +30,21 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **API Routes:** Full CRUD at `/api/insurance/*` — carriers (public), connections, clients, policies, call-logs, stats, carrier test
 - **Carrier API Integration:** Placeholder endpoints with JWT auth; Sunfire has `apiBaseUrl` pre-configured
 
+### Picasso Platform API (NEXUS-API)
+- **Module:** `/platform` with 5 tabs: Overview, API Keys, Webhooks, Endpoints, Apps
+- **Bot:** NEXUS-API — integration intelligence bot that helps users connect Picasso apps and design cross-app workflows
+- **API Key Management:** Generate scoped API keys (`psk_live_...`), keys hashed at rest (SHA-256), prefix stored for display
+- **Webhooks:** Configure webhook endpoints for 16 event types (contact, deal, invoice, insurance, music, book, Minx City events)
+- **Endpoints Reference:** 20 documented REST API endpoints with method, path, description, and scope
+- **Connected Apps:** 7 Picasso apps (SALARYMAN core, Publishing Music, Publishing Books, Minx City, Jean Claw, Storefront, Picasso Pay)
+- **DB Schema:** `platform_api_keys`, `platform_webhooks`, `platform_connected_apps`
+- **Nav Position:** Between SHIELD-9 and JEAN CLAW FACTORY
+
+### Publishing Bots (Picasso Publishing)
+- **Music Publishing:** ROYALTY-X (royalty tracking/PROs), SYNC-9 (sync licensing), SCOUT-A&R (talent discovery), DISTRO-7 (distribution), ARCHIVE-X (catalog management)
+- **Book Publishing:** EDITOR-PRO (manuscript editing), PRESS-9 (publishing pipeline), RIGHTS-MGR (subsidiary rights), BESTSELLER-X (book marketing), NARRATOR-5 (audiobook production)
+- **Category:** `publishing` in bot marketplace
+
 ### Minx City World
 A pixel office simulation with a virtual employee system, territory control, and a persistent world state. 11 global servers with original fictitious names — Minx City (LIVE), 10 others COMING SOON (Neon Lagos, Sector Berlin, Old Shanghai, etc.). Server data lives in `world-servers.ts` (frontend) and `server-regions.ts` (DB schema). ServerSelect.tsx gates non-live servers. World businesses (`world_businesses` table) include `userId` for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.
 

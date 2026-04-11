@@ -6,6 +6,7 @@ import {
   Voicemail, Hash, Zap, Clock, DollarSign, Receipt, CreditCard, Scale,
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
   Shield, Link2, PhoneOutgoing,
+  Key, Webhook, Globe, Network,
 } from 'lucide-react';
 
 export type Module = {
@@ -148,6 +149,21 @@ export const MODULES: Module[] = [
     ],
   },
   {
+    id: 'platform',
+    path: '/platform',
+    label: 'PLATFORM',
+    codename: 'NEXUS-API',
+    icon: Network,
+    defaultPath: '/platform',
+    subs: [
+      { id: 'plat-overview', path: '/platform', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'HQ', icon: Network },
+      { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
+      { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
+      { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
+      { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+    ],
+  },
+  {
     id: 'bots',
     path: '/bots',
     label: 'BOTS',
@@ -173,6 +189,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/intel')) return MODULES[5];
   if (pathname.startsWith('/phone')) return MODULES[6];
   if (pathname.startsWith('/insurance')) return MODULES[7];
-  if (pathname.startsWith('/bots')) return MODULES[8];
+  if (pathname.startsWith('/platform')) return MODULES[8];
+  if (pathname.startsWith('/bots')) return MODULES[9];
   return null;
 }
