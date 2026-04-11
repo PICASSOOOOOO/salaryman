@@ -41,9 +41,11 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Nav Position:** Between SHIELD-9 and JEAN CLAW FACTORY
 
 ### Publishing Bots (Picasso Publishing)
+- **Music Production:** TEMPO-X (AI music factory — generates beats, songs, instrumentals via Suno API integration, continuous 24/7 production mode, batch generation, full songwriting/theory/mixing/mastering/distribution pipeline)
 - **Music Publishing:** ROYALTY-X (royalty tracking/PROs), SYNC-9 (sync licensing), SCOUT-A&R (talent discovery), DISTRO-7 (distribution), ARCHIVE-X (catalog management)
 - **Book Publishing:** EDITOR-PRO (manuscript editing), PRESS-9 (publishing pipeline), RIGHTS-MGR (subsidiary rights), BESTSELLER-X (book marketing), NARRATOR-5 (audiobook production)
 - **Category:** `publishing` in bot marketplace
+- **Music Generation Infrastructure:** `suno-connector.ts` handles Suno API integration (generate, check status, parse [MUSIC_GENERATE] blocks). Bot engine auto-detects generation blocks in TEMPO-X responses and processes them. API routes at `/api/platform/music/*` (status, generate, track/:trackId). Requires `SUNO_API_KEY` environment variable. Permissions: `music_generate`, `audio_generate`.
 
 ### Minx City World
 A pixel office simulation with a virtual employee system, territory control, and a persistent world state. 11 global servers with original fictitious names — Minx City (LIVE), 10 others COMING SOON (Neon Lagos, Sector Berlin, Old Shanghai, etc.). Server data lives in `world-servers.ts` (frontend) and `server-regions.ts` (DB schema). ServerSelect.tsx gates non-live servers. World businesses (`world_businesses` table) include `userId` for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.

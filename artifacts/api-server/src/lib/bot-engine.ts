@@ -12,6 +12,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { streamWithRouter } from "./ai-router";
 import { getConnector, type IncomingMessage } from "./bot-connectors";
 import { matchSkill, executeSkill, getSkillCatalog } from "./ai-skills";
+import { parseMusicGenerateBlock, generateMusic, isSunoConfigured } from "./suno-connector";
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   ai_chat: "General AI conversation and knowledge queries",
@@ -28,6 +29,8 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   trading_paper: "Run simulated paper trades against real market data",
   linkedin_outreach: "Send LinkedIn messages and connection requests for recruitment outreach",
   recruitment_manage: "Manage candidate tracking, recruitment pipeline, and hiring correspondence",
+  music_generate: "Generate AI music tracks, beats, instrumentals, and full songs via Suno API",
+  audio_generate: "Generate audio content — voice, sound effects, and audio processing",
 };
 
 function buildPermissionContext(permissions: string[]): string {
@@ -58,6 +61,8 @@ const PERMISSION_ACTION_PATTERNS: Record<string, RegExp[]> = {
   documents_read: [/read\s+(the|this|a)?\s*(document|file|doc)/i, /open\s+(the|this|a)?\s*(document|file|doc)/i, /show\s+(me\s+)?(the|this|a)?\s*(document|file|doc)/i],
   linkedin_outreach: [/send\s+(a\s+)?linkedin\s+message/i, /connect\s+(with|to)\s+(them|this person|candidate)/i, /linkedin\s+outreach/i, /inmail/i],
   recruitment_manage: [/track\s+(this\s+)?(candidate|applicant)/i, /update\s+(the\s+)?(hiring|recruitment)\s+pipeline/i, /move\s+(to\s+)?(next|previous)\s+stage/i, /candidate\s+status/i],
+  music_generate: [/make\s+(a|me|an?)?\s*(song|beat|track|instrumental|music)/i, /generate\s+(a|an?)?\s*(song|beat|track|instrumental|music)/i, /create\s+(a|an?)?\s*(song|beat|track|instrumental|music)/i, /produce\s+(a|an?)?\s*(song|beat|track|instrumental)/i],
+  audio_generate: [/generate\s+(audio|sound|voice)/i, /create\s+(audio|sound|sfx)/i, /text\s*to\s*speech/i, /voice\s*over/i],
 };
 
 function enforcePermissions(permissions: string[], userMessage: string): string | null {
@@ -86,6 +91,7 @@ const OUTPUT_ACTION_MARKERS: Record<string, RegExp[]> = {
   calendar_write: [/\[ACTION:CREATE_EVENT\]/i, /\[ACTION:CANCEL_EVENT\]/i, /I('ve| have) (scheduled|booked|cancelled)/i],
   crm_write: [/\[ACTION:CREATE_CONTACT\]/i, /\[ACTION:UPDATE_DEAL\]/i, /I('ve| have) (created|updated|added) (the|a|an)? ?(contact|lead|deal)/i],
   contacts_write: [/\[ACTION:ADD_CONTACT\]/i, /I('ve| have) (saved|added|updated) (the|this)? ?contact/i],
+  music_generate: [/\[MUSIC_GENERATE\]/i],
 };
 
 function sanitizeOutput(permissions: string[], response: string): string {
@@ -224,7 +230,36 @@ export async function processIncomingMessage(
   }
 
   const cleanResponse = fullResponse.replace(/\[MEMORY:\w+=[^\]]+\]/g, "").trim();
-  const sanitizedResponse = sanitizeOutput(permissions, cleanResponse);
+
+  let musicAppendix = "";
+  if (permissions.includes("music_generate")) {
+    const musicReq = parseMusicGenerateBlock(cleanResponse);
+    if (musicReq) {
+      if (isSunoConfigured()) {
+        try {
+          const result = await generateMusic(musicReq);
+          const tracks = result.tracks;
+          if (tracks.length > 0) {
+            musicAppendix = "\n\n🎵 **TRACK GENERATED**\n";
+            for (const t of tracks) {
+              musicAppendix += `- **${t.title}** — Status: ${t.status.toUpperCase()}`;
+              if (t.audioUrl) musicAppendix += ` — [Listen](${t.audioUrl})`;
+              musicAppendix += `\n`;
+            }
+            if (result.creditsRemaining >= 0) {
+              musicAppendix += `\nSuno credits remaining: ${result.creditsRemaining}`;
+            }
+          }
+        } catch (err) {
+          musicAppendix = `\n\n⚠️ Music generation error: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      } else {
+        musicAppendix = "\n\n📋 **GENERATION REQUEST QUEUED** — The [MUSIC_GENERATE] block above contains everything needed to create this track. Connect your Suno API key (SUNO_API_KEY) to enable automatic generation.";
+      }
+    }
+  }
+
+  const sanitizedResponse = sanitizeOutput(permissions, cleanResponse + musicAppendix);
 
   await db.insert(botConversationLogsTable).values({
     botId: bot.id,

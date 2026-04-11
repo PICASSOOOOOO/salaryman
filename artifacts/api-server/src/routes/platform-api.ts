@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, platformApiKeysTable, platformWebhooksTable, platformConnectedAppsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
+import { generateMusic, checkTrackStatus, isSunoConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
 
 const router = Router();
 
@@ -236,6 +237,58 @@ router.get("/platform/endpoints", async (_req, res) => {
   ];
 
   res.json({ endpoints, webhookEvents });
+});
+
+router.get("/platform/music/status", async (_req, res) => {
+  res.json({ configured: isSunoConfigured() });
+});
+
+router.post("/platform/music/generate", async (req, res) => {
+  const userId = (req as any).userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  if (!isSunoConfigured()) {
+    return res.status(503).json({
+      error: "SUNO_API_KEY not configured",
+      message: "Music generation requires a Suno API key. Add SUNO_API_KEY to your environment to enable this feature.",
+    });
+  }
+
+  const { title, genre, mood, tempo, key, vocal, lyrics, stylePrompt, duration } = req.body;
+  if (!title || !genre) {
+    return res.status(400).json({ error: "title and genre are required" });
+  }
+
+  try {
+    const result = await generateMusic({
+      title,
+      genre,
+      mood: mood ?? "",
+      tempo: tempo ?? 120,
+      key: key ?? "C major",
+      vocal: vocal ?? "instrumental",
+      lyrics: lyrics ?? "instrumental",
+      stylePrompt: stylePrompt ?? genre,
+      duration: duration ?? 120,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      error: "Music generation failed",
+      message: err instanceof Error ? err.message : "Unknown error",
+    });
+  }
+});
+
+router.get("/platform/music/track/:trackId", async (req, res) => {
+  const { trackId } = req.params;
+  try {
+    const track = await checkTrackStatus(trackId);
+    if (!track) return res.status(404).json({ error: "Track not found" });
+    res.json(track);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to check track status" });
+  }
 });
 
 export default router;

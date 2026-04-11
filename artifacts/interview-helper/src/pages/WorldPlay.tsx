@@ -7632,51 +7632,174 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const ioy = (ich - iDef.height * iScale) / 2;
         ctx.translate(iox, ioy);
         ctx.scale(iScale, iScale);
-        ctx.fillStyle = '#1a1208';
+        const _iAcc = iDef.accentColor ?? 'rgba(0,200,255,.2)';
+        const _iAccRgb = _iAcc.match(/\d+/g)?.slice(0,3).map(Number) ?? [0,200,255];
+        const _iFloorType: 'carpet'|'tile'|'wood'|'concrete' = (() => {
+          const bid = itr.bid;
+          if (bid.includes('office') || bid === 'nexus_hub' || bid === 'admin_bureau' || bid === 'picassoo_hq' || bid === 'public_office') return 'carpet';
+          if (bid === 'clinic' || bid === 'oxide_labs' || bid === 'megabank' || bid === 'gold_exchange') return 'tile';
+          if (bid.includes('hotel') || bid === 'minx_arms' || bid === 'overlook' || bid.includes('flat') || bid.includes('apartment') || bid.includes('house') || bid.includes('villa')) return 'wood';
+          return 'concrete';
+        })();
+
+        ctx.fillStyle = '#0a0806';
         ctx.fillRect(-40, -40, iDef.width + 80, iDef.height + 80);
 
         ctx.fillStyle = iDef.floorColor;
         ctx.fillRect(0, 0, iDef.width, iDef.height);
 
-        for (let tx = 0; tx < iDef.width; tx += INTERIOR_TILE) {
-          for (let ty = 0; ty < iDef.height; ty += INTERIOR_TILE) {
+        const ITILE = INTERIOR_TILE;
+        for (let tx = 0; tx < iDef.width; tx += ITILE) {
+          for (let ty = 0; ty < iDef.height; ty += ITILE) {
             const fh = _tileHash(tx + iDef.width, ty + iDef.height);
-            if (fh > 0.6) {
-              ctx.fillStyle = 'rgba(255,255,255,0.03)';
-              ctx.fillRect(tx, ty, INTERIOR_TILE, INTERIOR_TILE);
-            } else if (fh < 0.2) {
-              ctx.fillStyle = 'rgba(0,0,0,0.04)';
-              ctx.fillRect(tx, ty, INTERIOR_TILE, INTERIOR_TILE);
+            if (_iFloorType === 'tile') {
+              ctx.fillStyle = fh > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              ctx.fillRect(tx, ty, ITILE, ITILE);
+              ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+              ctx.lineWidth = 0.3;
+              ctx.strokeRect(tx, ty, ITILE, ITILE);
+              if (fh > 0.85) { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(tx+1, ty+1, ITILE*0.4, ITILE*0.3); }
+            } else if (_iFloorType === 'wood') {
+              const plankShade = 0.03 + (fh * 0.04);
+              ctx.fillStyle = fh > 0.5 ? `rgba(140,100,50,${plankShade})` : `rgba(90,60,30,${plankShade})`;
+              ctx.fillRect(tx, ty, ITILE, ITILE);
+              ctx.strokeStyle = 'rgba(60,40,20,0.08)';
+              ctx.lineWidth = 0.4;
+              ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + ITILE, ty); ctx.stroke();
+              if (fh > 0.7) { ctx.fillStyle = 'rgba(80,50,20,0.03)'; ctx.fillRect(tx+2, ty+ITILE*0.3, ITILE-4, 1); }
+            } else if (_iFloorType === 'carpet') {
+              const cv = fh * 0.06;
+              ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},${cv * 0.3})`;
+              ctx.fillRect(tx, ty, ITILE, ITILE);
+              if (fh > 0.8) { ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.02)`; ctx.fillRect(tx, ty, ITILE, ITILE); }
+            } else {
+              if (fh > 0.6) { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(tx, ty, ITILE, ITILE); }
+              else if (fh < 0.2) { ctx.fillStyle = 'rgba(0,0,0,0.04)'; ctx.fillRect(tx, ty, ITILE, ITILE); }
             }
           }
         }
-        ctx.fillStyle = 'rgb(90,75,55)';
-        ctx.fillRect(0, 0, iDef.width, 20);
-        ctx.fillStyle = 'rgb(80,68,48)';
-        ctx.fillRect(0, 0, 6, iDef.height);
-        ctx.fillRect(iDef.width - 6, 0, 6, iDef.height);
-        ctx.fillStyle = 'rgb(70,60,42)';
-        ctx.fillRect(0, iDef.height - 4, iDef.width, 4);
 
-        ctx.strokeStyle = 'rgb(110,95,65)';
-        ctx.lineWidth = 1.5;
+        const _wallH = 24;
+        const _wallDepth = 8;
+        const _baseboardH = 3;
+        const wallTopR = 85, wallTopG = 75, wallTopB = 60;
+        const wallSideR = 70, wallSideG = 62, wallSideB = 48;
+
+        ctx.fillStyle = `rgb(${wallTopR},${wallTopG},${wallTopB})`;
+        ctx.fillRect(0, 0, iDef.width, _wallH);
+        const wallGrad = ctx.createLinearGradient(0, 0, 0, _wallH);
+        wallGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+        wallGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+        wallGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+        ctx.fillStyle = wallGrad;
+        ctx.fillRect(0, 0, iDef.width, _wallH);
+
+        for (let wx = 0; wx < iDef.width; wx += 32) {
+          const wh = _tileHash(wx, 999);
+          ctx.strokeStyle = `rgba(255,255,255,${0.02 + wh * 0.03})`;
+          ctx.lineWidth = 0.3;
+          ctx.beginPath(); ctx.moveTo(wx, 0); ctx.lineTo(wx, _wallH); ctx.stroke();
+        }
+        ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.06)`;
+        ctx.fillRect(0, _wallH - 2, iDef.width, 2);
+
+        ctx.fillStyle = `rgb(${wallSideR},${wallSideG},${wallSideB})`;
+        ctx.fillRect(0, 0, _wallDepth, iDef.height);
+        ctx.fillRect(iDef.width - _wallDepth, 0, _wallDepth, iDef.height);
+        const leftWallGrad = ctx.createLinearGradient(0, 0, _wallDepth, 0);
+        leftWallGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+        leftWallGrad.addColorStop(1, 'rgba(0,0,0,0.08)');
+        ctx.fillStyle = leftWallGrad;
+        ctx.fillRect(0, 0, _wallDepth, iDef.height);
+        const rightWallGrad = ctx.createLinearGradient(iDef.width - _wallDepth, 0, iDef.width, 0);
+        rightWallGrad.addColorStop(0, 'rgba(0,0,0,0.08)');
+        rightWallGrad.addColorStop(1, 'rgba(255,255,255,0.06)');
+        ctx.fillStyle = rightWallGrad;
+        ctx.fillRect(iDef.width - _wallDepth, 0, _wallDepth, iDef.height);
+
+        ctx.fillStyle = 'rgb(55,48,38)';
+        ctx.fillRect(0, iDef.height - _baseboardH, iDef.width, _baseboardH);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(0, iDef.height - _baseboardH, iDef.width, 1);
+        ctx.fillStyle = 'rgb(50,44,34)';
+        ctx.fillRect(0, _wallH, _wallDepth, _baseboardH);
+        ctx.fillRect(iDef.width - _wallDepth, _wallH, _wallDepth, _baseboardH);
+
+        ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.04)`;
+        ctx.fillRect(_wallDepth, _wallH, iDef.width - _wallDepth*2, 1);
+
+        ctx.strokeStyle = 'rgba(200,180,140,0.12)';
+        ctx.lineWidth = 0.8;
         ctx.strokeRect(0, 0, iDef.width, iDef.height);
+
+        const _drawObjShadow = (sx: number, sy: number, sw: number, sh: number) => {
+          ctx.fillStyle = 'rgba(0,0,0,0.12)';
+          ctx.fillRect(sx + 2, sy + sh, sw, 3);
+          ctx.fillStyle = 'rgba(0,0,0,0.06)';
+          ctx.fillRect(sx + 3, sy + sh + 3, sw - 2, 2);
+        };
+
+        const _windowLightShaft = (wx: number, wy: number, ww: number, wh: number) => {
+          if (!_isNight) {
+            ctx.save();
+            const shaftGrad = ctx.createLinearGradient(wx, wy + wh, wx + ww * 2, wy + wh + 80);
+            shaftGrad.addColorStop(0, 'rgba(255,240,200,0.08)');
+            shaftGrad.addColorStop(1, 'rgba(255,240,200,0)');
+            ctx.fillStyle = shaftGrad;
+            ctx.beginPath();
+            ctx.moveTo(wx, wy + wh);
+            ctx.lineTo(wx + ww, wy + wh);
+            ctx.lineTo(wx + ww * 2.5, wy + wh + 80);
+            ctx.lineTo(wx + ww * 0.5, wy + wh + 80);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+        };
+
+        for (const obj of iDef.objects) {
+          if (obj.type !== 'window' && obj.type !== 'door_lock') {
+            _drawObjShadow(obj.x, obj.y, obj.w, obj.h);
+          }
+        }
 
         for (const obj of iDef.objects) {
           const osx = obj.x, osy = obj.y;
 
           if (obj.type === 'window') {
-            ctx.fillStyle = 'rgb(60,50,40)';
+            ctx.fillStyle = 'rgb(50,42,32)';
+            ctx.fillRect(osx - 1, osy - 1, obj.w + 2, obj.h + 2);
+            ctx.fillStyle = 'rgb(65,55,42)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = _isNight ? 'rgb(20,30,50)' : 'rgb(120,160,210)';
-            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
-            if (!_isNight) {
-              ctx.fillStyle = 'rgba(200,220,255,0.3)';
-              ctx.fillRect(osx + 3, osy + 3, (obj.w - 6) / 3, (obj.h - 6) / 2);
+            if (_isNight) {
+              const nightGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+              nightGrad.addColorStop(0, 'rgb(12,18,35)');
+              nightGrad.addColorStop(1, 'rgb(8,12,25)');
+              ctx.fillStyle = nightGrad;
+              const starBlink = Math.sin(g.frame * 0.02 + osx) > 0.7;
+              ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+              if (starBlink) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(osx + obj.w * 0.3, osy + 5, 1, 1); ctx.fillRect(osx + obj.w * 0.7, osy + 8, 1, 1); }
+              ctx.fillStyle = 'rgba(255,180,80,0.06)';
+              ctx.fillRect(osx + 2, osy + obj.h - 8, obj.w - 4, 6);
+            } else {
+              const skyGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+              skyGrad.addColorStop(0, 'rgb(140,180,230)');
+              skyGrad.addColorStop(0.6, 'rgb(170,200,240)');
+              skyGrad.addColorStop(1, 'rgb(200,220,250)');
+              ctx.fillStyle = skyGrad;
+              ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
+              ctx.fillStyle = 'rgba(255,255,255,0.25)';
+              ctx.fillRect(osx + 3, osy + 3, (obj.w - 6) * 0.35, (obj.h - 6) * 0.4);
+              ctx.fillStyle = 'rgba(180,200,220,0.15)';
+              ctx.fillRect(osx + 3, osy + obj.h * 0.7, obj.w - 6, 3);
             }
-            ctx.fillStyle = 'rgb(50,40,30)';
-            ctx.fillRect(osx + obj.w / 2 - 0.5, osy, 1, obj.h);
-            ctx.fillRect(osx, osy + obj.h / 2 - 0.5, obj.w, 1);
+            ctx.fillStyle = 'rgb(55,45,35)';
+            ctx.fillRect(osx + obj.w / 2 - 0.7, osy, 1.4, obj.h);
+            ctx.fillRect(osx, osy + obj.h / 2 - 0.7, obj.w, 1.4);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(osx + 1, osy + 1, obj.w - 2, obj.h - 2);
+            _windowLightShaft(osx, osy, obj.w, obj.h);
           } else if (obj.type === 'medical_bed') {
             // Frame
             ctx.fillStyle = 'rgb(160,170,185)';
@@ -7732,16 +7855,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgba(240,230,215,0.6)';
             ctx.fillRect(osx + 5, osy + 6, obj.w - 10, 4);
           } else if (obj.type === 'terminal') {
-            ctx.fillStyle = 'rgb(50,50,55)';
+            ctx.fillStyle = 'rgba(25,25,30,0.8)';
+            ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(45,45,52)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            const tp = Math.sin(g.frame * 0.04 + obj.y * 0.05) * 0.3 + 0.7;
-            ctx.fillStyle = `rgb(0,${Math.floor(200 * tp)},${Math.floor(60 * tp)})`;
-            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 10);
-            const scanY = (g.frame * 0.5) % (obj.h - 10);
-            ctx.fillStyle = 'rgba(56,189,248,0.15)';
-            ctx.fillRect(osx + 3, osy + 3 + scanY, obj.w - 6, 2);
-            ctx.fillStyle = 'rgb(40,40,45)';
-            ctx.fillRect(osx + 2, osy + obj.h - 5, obj.w - 4, 3);
+            const tGrad = ctx.createLinearGradient(osx, osy, osx + obj.w, osy);
+            tGrad.addColorStop(0, 'rgba(255,255,255,0.04)');
+            tGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+            tGrad.addColorStop(1, 'rgba(0,0,0,0.06)');
+            ctx.fillStyle = tGrad;
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(8,8,12)';
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 12);
+            const tp = Math.sin(g.frame * 0.04 + obj.y * 0.05) * 0.15 + 0.85;
+            const scrGrad = ctx.createLinearGradient(osx+3, osy+3, osx+3, osy+obj.h-12);
+            scrGrad.addColorStop(0, `rgba(0,${Math.floor(180*tp)},${Math.floor(50*tp)},0.9)`);
+            scrGrad.addColorStop(1, `rgba(0,${Math.floor(120*tp)},${Math.floor(30*tp)},0.7)`);
+            ctx.fillStyle = scrGrad;
+            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h - 12);
+            for (let tl = 0; tl < 4; tl++) {
+              const ly = osy + 6 + tl * ((obj.h - 16) / 4);
+              const lw = (obj.w - 12) * (0.5 + _tileHash(osx + tl, osy) * 0.5);
+              ctx.fillStyle = `rgba(0,255,80,${0.15 + _tileHash(tl, osx) * 0.1})`;
+              ctx.fillRect(osx + 5, ly, lw, 1.5);
+            }
+            const scanY = (g.frame * 0.6) % (obj.h - 12);
+            ctx.fillStyle = 'rgba(56,189,248,0.08)';
+            ctx.fillRect(osx + 3, osy + 3 + scanY, obj.w - 6, 1);
+            ctx.fillStyle = `rgba(0,200,80,${tp * 0.06})`;
+            ctx.fillRect(osx - 2, osy - 2, obj.w + 4, obj.h + 2);
+            ctx.fillStyle = 'rgb(35,35,40)';
+            ctx.fillRect(osx + 2, osy + obj.h - 6, obj.w - 4, 4);
+            ctx.fillStyle = 'rgba(0,200,80,0.3)';
+            ctx.fillRect(osx + obj.w - 8, osy + obj.h - 5, 3, 2);
           } else if (obj.type === 'equipment') {
             ctx.fillStyle = 'rgb(70,75,80)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
@@ -7753,15 +7899,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgb(180,180,180)';
             ctx.fillRect(osx + obj.w / 2 - 3, osy + 12, 6, 2);
           } else if (obj.type === 'couch') {
-            ctx.fillStyle = 'rgb(140,90,50)';
+            ctx.fillStyle = 'rgba(80,50,25,0.3)';
+            ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(130,85,48)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgb(160,105,60)';
-            ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 6);
-            ctx.fillStyle = 'rgb(130,85,45)';
-            ctx.fillRect(osx, osy, 4, obj.h);
-            ctx.fillRect(osx + obj.w - 4, osy, 4, obj.h);
-            ctx.fillStyle = 'rgb(120,75,40)';
-            ctx.fillRect(osx, osy, obj.w, 3);
+            const soGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            soGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+            soGrad.addColorStop(0.4, 'rgba(0,0,0,0)');
+            soGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+            ctx.fillStyle = soGrad;
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(155,100,58)';
+            ctx.fillRect(osx + 4, osy + 5, obj.w - 8, obj.h - 8);
+            const cushions = Math.max(1, Math.floor(obj.w / 18));
+            const cw = (obj.w - 8) / cushions;
+            for (let ci = 0; ci < cushions; ci++) {
+              ctx.fillStyle = ci % 2 === 0 ? 'rgb(150,95,55)' : 'rgb(145,92,52)';
+              ctx.fillRect(osx + 4 + ci * cw, osy + 5, cw - 1, obj.h - 8);
+              ctx.fillStyle = 'rgba(255,255,255,0.04)';
+              ctx.fillRect(osx + 5 + ci * cw, osy + 6, cw - 3, 2);
+            }
+            ctx.fillStyle = 'rgb(120,78,42)';
+            ctx.fillRect(osx, osy, 5, obj.h);
+            ctx.fillRect(osx + obj.w - 5, osy, 5, obj.h);
+            ctx.fillStyle = 'rgb(115,72,38)';
+            ctx.fillRect(osx, osy, obj.w, 4);
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 1);
           } else if (obj.type === 'vending_machine') {
             // Body
             ctx.fillStyle = 'rgb(45,55,65)';
@@ -7946,55 +8110,80 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgba(0,200,255,.7)';
             ctx.fillText('▲▼', osx + obj.w / 2, osy + obj.h - 3);
           } else if (obj.type === 'conference_table') {
-            ctx.fillStyle = 'rgb(55,50,65)';
+            ctx.fillStyle = 'rgba(30,28,40,0.5)';
+            ctx.fillRect(osx + 2, osy + 5, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(50,46,58)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgb(65,60,75)';
+            const ctGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            ctGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+            ctGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+            ctGrad.addColorStop(1, 'rgba(0,0,0,0.08)');
+            ctx.fillStyle = ctGrad;
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(60,56,70)';
             ctx.fillRect(osx + 4, osy + 4, obj.w - 8, obj.h - 8);
-            ctx.strokeStyle = 'rgba(0,200,255,.15)';
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            ctx.fillRect(osx + 5, osy + 5, (obj.w - 10)*0.4, (obj.h - 10)*0.3);
+            ctx.strokeStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.12)`;
             ctx.lineWidth = 0.5;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
             const chairs = Math.floor(obj.w / 20);
             for (let ci = 0; ci < chairs; ci++) {
               const cx2 = osx + 10 + ci * (obj.w - 20) / Math.max(1, chairs - 1);
-              ctx.fillStyle = 'rgb(50,55,60)';
-              ctx.fillRect(cx2 - 3, osy - 4, 6, 4);
-              ctx.fillRect(cx2 - 3, osy + obj.h, 6, 4);
+              ctx.fillStyle = 'rgb(45,48,55)';
+              ctx.fillRect(cx2 - 3, osy - 5, 6, 5);
+              ctx.fillStyle = 'rgb(55,58,65)';
+              ctx.fillRect(cx2 - 3, osy + obj.h, 6, 5);
+              ctx.fillStyle = 'rgba(255,255,255,0.04)';
+              ctx.fillRect(cx2 - 2, osy - 4, 4, 1);
+              ctx.fillRect(cx2 - 2, osy + obj.h + 1, 4, 1);
             }
           } else if (obj.type === 'desk') {
-            // Desk surface
-            ctx.fillStyle = obj.color ?? 'rgba(45,60,85,.55)';
+            const dDepth = 4;
+            ctx.fillStyle = 'rgba(30,35,50,0.7)';
+            ctx.fillRect(osx + 1, osy + dDepth, obj.w, obj.h);
+            ctx.fillStyle = obj.color ?? 'rgba(55,65,90,.7)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            // Surface highlight (top-left corner light)
-            ctx.fillStyle = 'rgba(0,180,255,.12)';
-            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 4);
-            // Drawer row at bottom
-            ctx.fillStyle = 'rgba(0,0,0,.2)';
-            ctx.fillRect(osx + 2, osy + obj.h - 6, obj.w - 4, 5);
-            ctx.fillStyle = 'rgba(180,160,80,.5)';
-            ctx.fillRect(osx + obj.w / 2 - 3, osy + obj.h - 5, 6, 2);
-            // Top edge accent
-            ctx.fillStyle = 'rgba(0,180,255,.35)';
-            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, 2);
-            ctx.strokeStyle = 'rgba(0,180,255,.2)';
-            ctx.lineWidth = 0.8;
-            ctx.strokeRect(osx, osy, obj.w, obj.h);
-          } else if (obj.type === 'chair') {
-            // Chair seat
-            ctx.fillStyle = obj.color ?? 'rgba(35,45,65,.45)';
+            const deskGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            deskGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            deskGrad.addColorStop(0.3, 'rgba(0,0,0,0)');
+            deskGrad.addColorStop(1, 'rgba(0,0,0,0.12)');
+            ctx.fillStyle = deskGrad;
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            // Seat padding
-            ctx.fillStyle = 'rgba(0,150,200,.2)';
-            ctx.fillRect(osx + 3, osy + 3, obj.w - 6, obj.h * 0.55);
-            // Backrest
-            ctx.fillStyle = 'rgba(0,120,170,.35)';
-            ctx.fillRect(osx + 2, osy, obj.w - 4, obj.h * 0.35);
-            // Legs (4 corners as dots)
-            ctx.fillStyle = 'rgba(0,0,0,.4)';
-            ctx.fillRect(osx + 1, osy + obj.h - 3, 3, 3);
-            ctx.fillRect(osx + obj.w - 4, osy + obj.h - 3, 3, 3);
-            ctx.strokeStyle = 'rgba(0,150,200,.25)';
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.15)`;
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(osx + 2, osy + obj.h - 7, obj.w - 4, 6);
+            ctx.fillStyle = 'rgba(200,180,120,0.4)';
+            ctx.fillRect(osx + obj.w / 2 - 3, osy + obj.h - 6, 6, 2);
+            ctx.fillStyle = 'rgba(200,180,120,0.25)';
+            ctx.fillRect(osx + 6, osy + obj.h - 6, 6, 2);
+            ctx.fillStyle = 'rgba(30,80,120,0.15)';
+            const mw = Math.min(12, obj.w * 0.3), mh = Math.min(8, obj.h * 0.35);
+            ctx.fillRect(osx + obj.w - mw - 4, osy + 4, mw, mh);
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.2)`;
+            ctx.fillRect(osx + obj.w - mw - 3, osy + 5, mw - 2, mh - 2);
+            ctx.strokeStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.15)`;
             ctx.lineWidth = 0.6;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
+          } else if (obj.type === 'chair') {
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath(); ctx.ellipse(osx + obj.w/2, osy + obj.h + 1, obj.w*0.4, 2, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(80,80,90,0.6)';
+            ctx.fillRect(osx + obj.w/2 - 1, osy + obj.h*0.5, 2, obj.h*0.5);
+            ctx.fillStyle = 'rgba(60,60,70,0.5)';
+            ctx.beginPath(); ctx.arc(osx + obj.w/2, osy + obj.h - 2, obj.w*0.35, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = obj.color ?? 'rgba(40,50,70,.6)';
+            ctx.fillRect(osx + 2, osy + obj.h*0.3, obj.w - 4, obj.h*0.35);
+            const cGrad = ctx.createLinearGradient(osx, osy + obj.h*0.3, osx, osy + obj.h*0.65);
+            cGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+            cGrad.addColorStop(1, 'rgba(0,0,0,0.06)');
+            ctx.fillStyle = cGrad;
+            ctx.fillRect(osx + 2, osy + obj.h*0.3, obj.w - 4, obj.h*0.35);
+            ctx.fillStyle = obj.color ?? 'rgba(35,45,65,.7)';
+            ctx.fillRect(osx + 1, osy, obj.w - 2, obj.h*0.35);
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            ctx.fillRect(osx + 2, osy + 1, obj.w - 4, 2);
           } else if (obj.type === 'plant') {
             const px2 = osx + obj.w / 2, py2 = osy + obj.h;
             // Pot
@@ -8021,47 +8210,86 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = 'rgba(80,170,60,.25)';
             ctx.beginPath(); ctx.arc(px2 - obj.w * 0.08, osy + obj.h * 0.35, obj.w * 0.18, 0, Math.PI * 2); ctx.fill();
           } else if (obj.type === 'reception') {
-            ctx.fillStyle = obj.color ?? 'rgba(50,70,100,.55)';
+            ctx.fillStyle = 'rgba(30,40,60,0.4)';
+            ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
+            ctx.fillStyle = obj.color ?? 'rgba(55,70,100,.65)';
             ctx.fillRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgba(0,180,255,.2)';
-            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, 5);
-            ctx.fillRect(osx + 2, osy + 2, 3, obj.h - 4);
-            ctx.strokeStyle = 'rgba(0,180,255,.35)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(osx, osy, obj.w, obj.h);
-            ctx.fillStyle = 'rgba(0,200,255,.3)';
+            const rcGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            rcGrad.addColorStop(0, 'rgba(255,255,255,0.08)');
+            rcGrad.addColorStop(0.4, 'rgba(0,0,0,0)');
+            rcGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+            ctx.fillStyle = rcGrad;
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.2)`;
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 3);
+            ctx.fillRect(osx + 1, osy + 1, 3, obj.h - 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(osx + obj.w * 0.58, osy + 3, obj.w * 0.35, obj.h - 6);
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.25)`;
             ctx.fillRect(osx + obj.w * 0.6, osy + 4, obj.w * 0.32, obj.h - 8);
+            const rscn = Math.sin(g.frame * 0.04 + osx * 0.1) * 0.1 + 0.8;
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},${rscn * 0.15})`;
+            ctx.fillRect(osx + obj.w * 0.62, osy + 5, obj.w * 0.28, 2);
+            ctx.strokeStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.2)`;
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(osx, osy, obj.w, obj.h);
           } else if (obj.type === 'server') {
-            ctx.fillStyle = obj.color ?? 'rgba(0,60,100,.55)';
+            ctx.fillStyle = 'rgba(0,20,40,0.4)';
+            ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
+            ctx.fillStyle = obj.color ?? 'rgba(0,55,95,.65)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            const svGrad = ctx.createLinearGradient(osx, osy, osx + obj.w, osy);
+            svGrad.addColorStop(0, 'rgba(255,255,255,0.05)');
+            svGrad.addColorStop(1, 'rgba(0,0,0,0.08)');
+            ctx.fillStyle = svGrad;
             ctx.fillRect(osx, osy, obj.w, obj.h);
             const rackRows = Math.max(2, Math.floor(obj.h / 6));
             for (let ri = 0; ri < rackRows; ri++) {
               const ry = osy + 2 + ri * (obj.h - 4) / rackRows;
               const rh = (obj.h - 4) / rackRows - 1;
-              ctx.fillStyle = ri % 2 === 0 ? 'rgba(0,120,200,.3)' : 'rgba(0,80,140,.25)';
+              ctx.fillStyle = ri % 2 === 0 ? 'rgba(0,110,190,.3)' : 'rgba(0,70,130,.25)';
               ctx.fillRect(osx + 2, ry, obj.w - 4, rh);
-              if (Math.random() > 0.6) {
-                ctx.fillStyle = 'rgba(56,189,248,.7)';
+              ctx.fillStyle = 'rgba(255,255,255,0.03)';
+              ctx.fillRect(osx + 2, ry, obj.w - 4, 1);
+              const ledOn = _tileHash(ri, osx) > 0.4;
+              if (ledOn) {
+                const ledColor = _tileHash(ri, osy) > 0.7 ? 'rgba(255,80,40,.8)' : 'rgba(56,189,248,.7)';
+                ctx.fillStyle = ledColor;
                 ctx.fillRect(osx + obj.w - 5, ry + rh / 2 - 1, 2, 2);
+                ctx.fillStyle = ledColor.replace(/[0-9.]+\)$/, '0.15)');
+                ctx.fillRect(osx + obj.w - 8, ry + rh / 2 - 2, 5, 4);
               }
             }
-            ctx.strokeStyle = 'rgba(0,180,255,.25)';
-            ctx.lineWidth = 0.8;
+            ctx.fillStyle = `rgba(0,150,255,${0.04 + Math.sin(g.frame * 0.03 + osx) * 0.02})`;
+            ctx.fillRect(osx - 2, osy - 2, obj.w + 4, obj.h + 4);
+            ctx.strokeStyle = 'rgba(0,180,255,.2)';
+            ctx.lineWidth = 0.6;
             ctx.strokeRect(osx, osy, obj.w, obj.h);
           } else if (obj.type === 'locker') {
-            ctx.fillStyle = obj.color ?? 'rgba(50,60,80,.5)';
+            ctx.fillStyle = 'rgba(25,30,40,0.3)';
+            ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
+            ctx.fillStyle = obj.color ?? 'rgba(50,60,80,.6)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            const lkGrad = ctx.createLinearGradient(osx, osy, osx, osy + obj.h);
+            lkGrad.addColorStop(0, 'rgba(255,255,255,0.06)');
+            lkGrad.addColorStop(1, 'rgba(0,0,0,0.08)');
+            ctx.fillStyle = lkGrad;
             ctx.fillRect(osx, osy, obj.w, obj.h);
             const cols2 = Math.max(2, Math.floor(obj.w / 12));
             for (let lc = 0; lc < cols2; lc++) {
               const lx = osx + 1 + lc * (obj.w - 2) / cols2;
               const lw = (obj.w - 2) / cols2 - 1;
-              ctx.fillStyle = 'rgba(40,55,75,.8)';
+              ctx.fillStyle = 'rgba(38,52,72,.85)';
               ctx.fillRect(lx, osy + 2, lw, obj.h - 4);
-              ctx.strokeStyle = 'rgba(0,150,200,.2)';
-              ctx.lineWidth = 0.5;
+              ctx.fillStyle = 'rgba(255,255,255,0.03)';
+              ctx.fillRect(lx, osy + 2, lw, 1);
+              ctx.strokeStyle = 'rgba(0,140,190,.15)';
+              ctx.lineWidth = 0.4;
               ctx.strokeRect(lx, osy + 2, lw, obj.h - 4);
-              ctx.fillStyle = 'rgba(180,160,80,.6)';
+              ctx.fillStyle = 'rgba(200,180,100,.5)';
               ctx.fillRect(lx + lw - 3, osy + (obj.h - 4) / 2, 2, 3);
+              ctx.fillStyle = 'rgba(200,180,100,.2)';
+              ctx.fillRect(lx + lw - 4, osy + (obj.h - 4) / 2 - 1, 4, 5);
             }
           } else if (obj.type === 'counter') {
             ctx.fillStyle = obj.color ?? 'rgba(55,42,28,.55)';
