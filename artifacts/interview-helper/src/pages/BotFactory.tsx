@@ -7,7 +7,7 @@ import {
   Terminal, Target, PenTool, Calendar, Briefcase, X, Check,
   Eye, MemoryStick, Plug, AlertCircle, TrendingUp, TrendingDown,
   DollarSign, BarChart2, Activity, AlertTriangle, ToggleLeft, ToggleRight,
-  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles, Phone,
+  Siren, FlipHorizontal, Search, Users, RefreshCw, ExternalLink, Lock, Sparkles, Phone, Table2,
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -157,7 +157,7 @@ const ALL_STRATEGIES = Object.keys(STRATEGY_LABELS);
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   terminal: Terminal, target: Target, shield: Shield, 'pen-tool': PenTool,
-  calendar: Calendar, briefcase: Briefcase, bot: Bot,
+  calendar: Calendar, briefcase: Briefcase, bot: Bot, table: Table2,
 };
 
 function getIcon(name: string) {

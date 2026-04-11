@@ -14,6 +14,7 @@ export const PERMISSION_KEYS = [
   "trading_read", "trading_execute", "trading_paper",
   "linkedin_outreach", "recruitment_manage",
   "phone_inbound", "phone_outbound",
+  "sheets_read", "sheets_write",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
