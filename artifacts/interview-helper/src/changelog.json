@@ -143,5 +143,25 @@
     "changes": [
       "Bug fixes and improvements"
     ]
+  },
+  {
+    "version": "v.2.6",
+    "date": "2026-04-11",
+    "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
+    "changes": [
+      "Enhance website SEO with detailed meta tags, structured data, and sitemap",
+      "Published your App",
+      "Add more stacked content sections to the Business Hub page",
+      "Add a comprehensive business management hub with financial overview",
+      "Published your App"
+    ]
+  },
+  {
+    "version": "v.2.7",
+    "date": "2026-04-11",
+    "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
+    "changes": [
+      "Bug fixes and improvements"
+    ]
   }
 ]

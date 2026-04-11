@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, sql, desc, and } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat } from "../worldServer";
 
 const router = Router();
@@ -77,7 +77,64 @@ router.post("/world/register", async (req, res) => {
         sessionId,
       })
       .returning();
-    res.json({ ok: true, id: row.id });
+
+    let formalOrgId: number | null = null;
+    if (finalBizType === "real" && userId && companyName) {
+      const orgName = String(companyName).trim().toUpperCase().slice(0, 80);
+      try {
+        const [existingOrg] = await db
+          .select()
+          .from(organizationsTable)
+          .where(sql`lower(${organizationsTable.name}) = lower(${orgName})`);
+
+        if (!existingOrg) {
+          const [newOrg] = await db
+            .insert(organizationsTable)
+            .values({
+              name: orgName,
+              industry: industry ? String(industry).trim().slice(0, 60) : null,
+              size: companySize ? String(companySize).trim().slice(0, 30) : null,
+              ownerUserId: userId,
+            })
+            .returning();
+
+          await db.insert(orgMembersTable).values({
+            orgId: newOrg.id,
+            userId,
+            role: "owner",
+            featureBilling: "individual",
+            status: "active",
+            joinedAt: new Date(),
+          });
+          formalOrgId = newOrg.id;
+        } else {
+          formalOrgId = existingOrg.id;
+          const [existingMembership] = await db
+            .select()
+            .from(orgMembersTable)
+            .where(and(eq(orgMembersTable.orgId, existingOrg.id), eq(orgMembersTable.userId, userId)));
+          if (!existingMembership) {
+            await db.insert(orgMembersTable).values({
+              orgId: existingOrg.id,
+              userId,
+              role: "specialist",
+              featureBilling: "individual",
+              status: "active",
+              joinedAt: new Date(),
+            });
+          } else if (existingMembership.status === "removed") {
+            await db
+              .update(orgMembersTable)
+              .set({ status: "active", joinedAt: new Date() })
+              .where(and(eq(orgMembersTable.orgId, existingOrg.id), eq(orgMembersTable.userId, userId)));
+          }
+        }
+      } catch (orgErr: unknown) {
+        console.error("[World] formal org creation skipped:", (orgErr as Error).message);
+      }
+    }
+
+    res.json({ ok: true, id: row.id, formalOrgId });
   } catch (err: any) {
     console.error("[World] register error:", err.message);
     res.status(500).json({ error: "Server error" });
