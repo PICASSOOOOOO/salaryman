@@ -537,10 +537,10 @@ type NpcIdleBehavior = 'WALKING' | 'SITTING' | 'STANDING' | 'BROWSING' | 'EATING
 
 // ── Gang territories (wasteland — north + south of city) ─────────────────────
 const GANG_ZONES_BASE = [
-  { id: 'rust_syndicate',    name: 'RUST SYNDICATE',    x: 200,  y: 200,  w: 4800, h:4800, color: 'rgba(255,60,60,.06)',  border: 'rgba(255,60,60,.22)',  threat: 'rgba(255,60,60,.7)',  label: '[ RUST SYNDICATE TERRITORY ]' },
-  { id: 'void_runners',    name: 'VOID RUNNERS',    x: 5000, y: 200,  w: 4800, h:4800, color: 'rgba(255,140,0,.06)', border: 'rgba(255,140,0,.22)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID RUNNERS TERRITORY ]' },
-  { id: 'static_monks', name: 'STATIC MONKS', x: 200,  y: 7600, w: 7000, h:4800, color: 'rgba(200,255,0,.05)', border: 'rgba(200,255,0,.18)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
-  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 7200, y: 7600, w: 7000, h:4800, color: 'rgba(60,100,255,.05)',border: 'rgba(60,100,255,.20)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
+  { id: 'rust_syndicate',    name: 'RUST SYNDICATE',    x: 200,  y: 200,  w: 4800, h:4800, color: 'rgba(0,0,0,0)',  border: 'rgba(255,60,60,.15)',  threat: 'rgba(255,60,60,.7)',  label: '[ RUST SYNDICATE TERRITORY ]' },
+  { id: 'void_runners',    name: 'VOID RUNNERS',    x: 5000, y: 200,  w: 4800, h:4800, color: 'rgba(0,0,0,0)', border: 'rgba(255,140,0,.15)',  threat: 'rgba(255,140,0,.7)',  label: '[ VOID RUNNERS TERRITORY ]' },
+  { id: 'static_monks', name: 'STATIC MONKS', x: 200,  y: 7600, w: 7000, h:4800, color: 'rgba(0,0,0,0)', border: 'rgba(200,255,0,.12)',  threat: 'rgba(200,255,0,.65)', label: '[ STATIC MONKS TERRITORY ]' },
+  { id: 'eastern_bloc', name: 'EASTERN BLOC', x: 7200, y: 7600, w: 7000, h:4800, color: 'rgba(0,0,0,0)',border: 'rgba(60,100,255,.15)', threat: 'rgba(60,100,255,.65)',label: '[ EASTERN BLOC TERRITORY ]' },
   { id: 'minx_city',    name: CITY_NAME,    x: 200,  y: 200,  w: 14000, h:12200, color: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)',  threat: 'rgba(180,0,255,.55)', label: `[ ${CITY_NAME} LIMITS ]` },
 ];
 let GANG_ZONES = GANG_ZONES_BASE.map(gz => ({ ...gz }));
