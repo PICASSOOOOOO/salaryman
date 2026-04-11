@@ -77,6 +77,8 @@ const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
+const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
+const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -278,9 +280,13 @@ function AppShell() {
             {/* Jean Claw landing — standalone sales page */}
             <Route path="/jean-claw" component={JeanClawLanding} />
 
+            {/* INSURANCE module */}
+            <Route path="/insurance" component={InsuranceHub} />
+
             {/* BOTS module */}
             <Route path="/bots/jobs" component={JobCommandCenter} />
             <Route path="/bots/templates" component={ClaudeTemplates} />
+            <Route path="/bots/prompt-sensei" component={PromptSensei} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />
 

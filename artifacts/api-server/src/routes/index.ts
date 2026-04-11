@@ -42,6 +42,7 @@ import tradingRouter from "./trading";
 import prospectingRouter from "./prospecting";
 import chatRouter from "./chat";
 import leadsRouter from "./leads";
+import insuranceRouter from "./insurance";
 
 const router: IRouter = Router();
 
@@ -88,5 +89,6 @@ router.use(tradingRouter);
 router.use(prospectingRouter);
 router.use(chatRouter);
 router.use(leadsRouter);
+router.use(insuranceRouter);
 
 export default router;

@@ -5,6 +5,7 @@ import {
   PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, DollarSign, Receipt, CreditCard, Scale,
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
+  Shield, Link2, PhoneOutgoing,
 } from 'lucide-react';
 
 export type Module = {
@@ -132,6 +133,21 @@ export const MODULES: Module[] = [
     ],
   },
   {
+    id: 'insurance',
+    path: '/insurance',
+    label: 'INSURANCE',
+    codename: 'SHIELD-9',
+    icon: Shield,
+    defaultPath: '/insurance',
+    subs: [
+      { id: 'ins-overview', path: '/insurance', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'HQ', icon: Shield },
+      { id: 'ins-clients', path: '/insurance?tab=clients', label: 'CLIENTS', boomerLabel: 'CLIENTS', codename: 'INTAKE', icon: Users },
+      { id: 'ins-policies', path: '/insurance?tab=policies', label: 'POLICIES', boomerLabel: 'POLICIES', codename: 'COVERAGE', icon: FileText },
+      { id: 'ins-carriers', path: '/insurance?tab=connections', label: 'CARRIERS', boomerLabel: 'CARRIERS', codename: 'CARRIERS', icon: Link2 },
+      { id: 'ins-calls', path: '/insurance?tab=calls', label: 'CALLS', boomerLabel: 'CALLS', codename: 'CALLOPS', icon: PhoneOutgoing },
+    ],
+  },
+  {
     id: 'bots',
     path: '/bots',
     label: 'BOTS',
@@ -156,6 +172,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/marketing')) return MODULES[4];
   if (pathname.startsWith('/intel')) return MODULES[5];
   if (pathname.startsWith('/phone')) return MODULES[6];
-  if (pathname.startsWith('/bots')) return MODULES[7];
+  if (pathname.startsWith('/insurance')) return MODULES[7];
+  if (pathname.startsWith('/bots')) return MODULES[8];
   return null;
 }

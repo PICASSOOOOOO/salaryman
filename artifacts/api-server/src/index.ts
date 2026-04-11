@@ -7,6 +7,7 @@ import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
 import { rehydrateActiveBots } from './lib/bot-engine';
+import { seedInsuranceCarriers } from './routes/insurance';
 
 const rawPort = process.env["PORT"];
 
@@ -53,6 +54,9 @@ httpServer.listen(port, () => {
   });
   rehydrateActiveBots().catch(err => {
     console.error("[Bot Engine] Rehydration error:", err);
+  });
+  seedInsuranceCarriers().catch(err => {
+    console.error("[Insurance Seed] Error seeding carriers:", err);
   });
 });
 

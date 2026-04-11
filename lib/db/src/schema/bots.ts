@@ -13,6 +13,7 @@ export const PERMISSION_KEYS = [
   "documents_read", "contacts_read", "contacts_write", "ai_chat",
   "trading_read", "trading_execute", "trading_paper",
   "linkedin_outreach", "recruitment_manage",
+  "phone_inbound", "phone_outbound",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 

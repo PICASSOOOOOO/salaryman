@@ -20,8 +20,18 @@ SALARYMAN is the universal hub for THE PICASSO PLATFORM, an AI-powered executive
 - **Communication:** A robust phone system (CalllHome/TTC) with autonomous call agents, dual-DID routing, real-time translation tools, and enhanced live call monitoring with expandable call details (SID, metadata, encryption, conference), live transcript panel, and AI coaching tips. Session launch renamed to "GO ACTIVE".
 - **Business Management:** CRM with deals pipeline, lead management, contact database, and full document management.
 
+### Insurance Hub (SHIELD-9)
+- **Module:** `/insurance` with tab-based navigation (Overview, Clients, Policies, Carriers, Calls)
+- **Bot:** SHIELD-9 marketplace bot — AI insurance agent for inbound/outbound calls, sales vs partner detection, client intake
+- **Carriers:** 9 seeded carriers (United Healthcare, Humana, Anthem, Zing, Devoted, Cigna, Aetna, WellCare, Sunfire)
+- **Multi-agency:** Users can connect to multiple carriers across multiple agencies with separate API tokens per connection
+- **DB Schema:** `insurance_carriers`, `insurance_agency_connections`, `insurance_clients`, `insurance_policies`, `insurance_call_logs`
+- **API Token Security:** Tokens masked in API responses (last 8 chars only), stored server-side
+- **API Routes:** Full CRUD at `/api/insurance/*` — carriers (public), connections, clients, policies, call-logs, stats, carrier test
+- **Carrier API Integration:** Placeholder endpoints with JWT auth; Sunfire has `apiBaseUrl` pre-configured
+
 ### Minx City World
-A pixel office simulation with a virtual employee system, territory control, and a persistent world state. Multi-city expansion planned: 24 cities worldwide (Minx City live; Neon Lagos, Sector Berlin, Old Shanghai, etc. planned). Cities schema in `lib/db/src/schema/server-regions.ts` (`citiesTable`, `PLANNED_CITIES`). World businesses (`world_businesses` table) now include a `userId` column for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.
+A pixel office simulation with a virtual employee system, territory control, and a persistent world state. 11 global servers with original fictitious names — Minx City (LIVE), 10 others COMING SOON (Neon Lagos, Sector Berlin, Old Shanghai, etc.). Server data lives in `world-servers.ts` (frontend) and `server-regions.ts` (DB schema). ServerSelect.tsx gates non-live servers. World businesses (`world_businesses` table) include `userId` for reliable user linkage. Enterprise save limits (1 slot) check org ownership, active org membership, AND real-world businesses tied to the user's account.
 
 ## User Preferences
 
