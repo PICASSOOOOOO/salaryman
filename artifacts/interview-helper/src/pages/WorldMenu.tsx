@@ -528,7 +528,7 @@ function GuideContent({ section }: { section: GuideSection }) {
   return null;
 }
 
-const WORLD_LOCKED = true;
+const WORLD_LOCKED = false;
 
 function ClassifiedGate() {
   const [, navigate] = useLocation();
