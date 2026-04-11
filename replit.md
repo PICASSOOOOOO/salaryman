@@ -24,6 +24,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Authentication:** All feature pages require authentication via Replit Auth (OIDC).
 - **Communication:** WebRTC for video and proximity voice chat, a terminal phone system, private messaging, and an in-game CRM. Features a persistent, real-time app-wide chat (COMMS) with Global, Company, and Private DM channels via WebSockets.
 - **AI Voice Architecture:** Utilizes ElevenLabs TTS (with OpenAI TTS-1 fallback) for web/game chat and Google Neural2-F for phone calls, ensuring natural conversational tones through system prompts. A `useVoiceConversation` hook enables continuous voice interaction with Pablo AI.
+- **Pablo 3D Mascot:** Landing page features a 3D animated Maltese dog (Pablo, Chief Executive Dog) built with React Three Fiber + Drei. Cycles through funny quotes with speech bubbles. Falls back to animated 2D SVG when WebGL is unavailable. Component: `src/components/PabloMascot.tsx`.
 - **Subscription Model:** A feature-based subscription system implemented with Stripe, gating cost-incurring APIs behind `requireFeature('claw_bot')`.
 - **Org Role Hierarchy:** A 6-tier role system (Owner, CEO, Executive, Director, Manager, Specialist) controls access and permissions, with separate platform admin roles.
 - **Content Rating:** Bot marketplace content is rated (sfw/mature/adult), with adult content restricted and build-your-own-bot only, controlled by an org `adultContentEnabled` toggle.
