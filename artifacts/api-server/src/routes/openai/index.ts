@@ -16,7 +16,7 @@ import { requireFeature } from "../../middlewares/requirePro";
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
 
-router.post("/tts", requireClaw, async (req, res) => {
+async function handleTts(req: any, res: any) {
   const { text } = req.body as { text?: string };
   if (!text || typeof text !== "string") {
     res.status(400).json({ error: "text is required" });
@@ -103,6 +103,12 @@ router.post("/tts", requireClaw, async (req, res) => {
     console.error("TTS error (all engines failed):", err);
     res.status(502).json({ error: "TTS failed", fallback: "browser" });
   }
+}
+
+router.post("/tts", requireClaw, handleTts);
+
+router.post("/game-tts", async (req, res) => {
+  return handleTts(req, res);
 });
 
 router.post("/transcribe", requireClaw, async (req, res) => {

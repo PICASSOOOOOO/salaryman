@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
-import { speakWithTTS } from '@/lib/tts';
+import { speakWithTTS, speakGameTTS } from '@/lib/tts';
 import { CITY_NAME } from '../gameSystems';
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
@@ -3436,7 +3436,7 @@ export default function WorldPlay() {
   useEffect(() => {
     if (showPablo) {
       pabloTtsRef.current?.cancel();
-      pabloTtsRef.current = speakWithTTS(
+      pabloTtsRef.current = speakGameTTS(
         "Pablo AI online. Welcome back, operative. What do you need?",
         () => { pabloTtsRef.current = null; },
       );
@@ -6464,7 +6464,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   const pabloSay = useCallback((text: string) => {
     setPabloMsgs(m => [...m, { role: 'pablo', text }]);
     pabloTtsRef.current?.cancel();
-    pabloTtsRef.current = speakWithTTS(text, () => { pabloTtsRef.current = null; });
+    pabloTtsRef.current = speakGameTTS(text, () => { pabloTtsRef.current = null; });
   }, []);
 
   const sendPablo = useCallback(async () => {

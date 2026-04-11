@@ -19,7 +19,7 @@ function splitSentences(text: string): string[] {
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 800;
 
-async function fetchAudioWithRetry(sentence: string, signal: AbortSignal): Promise<ArrayBuffer> {
+async function fetchAudioWithRetry(sentence: string, signal: AbortSignal, endpoint = 'api/tts'): Promise<ArrayBuffer> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -34,7 +34,7 @@ async function fetchAudioWithRetry(sentence: string, signal: AbortSignal): Promi
       });
     }
     try {
-      const res = await apiFetch('api/tts', {
+      const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: sentence }),
@@ -108,11 +108,13 @@ export function speakWithTTS(
   text: string,
   onEnd: () => void,
   onError?: (err: Error) => void,
+  opts?: { endpoint?: string },
 ): TTSHandle {
   const abortController = new AbortController();
   const signal = abortController.signal;
   let currentSource: AudioBufferSourceNode | null = null;
   let browserFallback: { cancel: () => void } | null = null;
+  const ttsEndpoint = opts?.endpoint ?? 'api/tts';
 
   const clean = cleanText(text);
   const sentences = splitSentences(clean);
@@ -127,7 +129,7 @@ export function speakWithTTS(
 
     async function fetchAndDecode(sentence: string): Promise<PrefetchResult> {
       try {
-        const arrayBuf = await fetchAudioWithRetry(sentence, signal);
+        const arrayBuf = await fetchAudioWithRetry(sentence, signal, ttsEndpoint);
         if (signal.aborted) return { ok: false, err: new DOMException('Aborted', 'AbortError') };
         const buffer = await decodeBuffer(arrayBuf);
         return { ok: true, buffer };
@@ -202,4 +204,12 @@ export function speakWithTTS(
       }
     },
   };
+}
+
+export function speakGameTTS(
+  text: string,
+  onEnd: () => void,
+  onError?: (err: Error) => void,
+): TTSHandle {
+  return speakWithTTS(text, onEnd, onError, { endpoint: "api/game-tts" });
 }
