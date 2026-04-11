@@ -3190,6 +3190,7 @@ export default function WorldPlay() {
     bountyAmount: _ss?.bountyAmount ?? 0,
     lastCrimeFrame: 0,
     taxDebt: _ss?.taxDebt ?? 0,
+    policeConfrontCd: 0,
     shakedownCd: 0,
     cityBillCd: 0,
     loiteringCd: 0,
@@ -5958,15 +5959,21 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
-        setDialog(null); setShowStore(false); setShowOffice(false);
-        setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
-        setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
-        setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
-        if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
-        setJobPanel(null);
-        setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
-        setShowNewspaper(null); setShowInventory(false);
-        doSaveRef.current(buildSaveData());
+        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt;
+        if (anyModalOpen) {
+          setDialog(null); setShowStore(false); setShowOffice(false);
+          setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
+          setPwPrompt(null); pendingBidRef.current = null; setPendingBid(null);
+          setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
+          if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
+          setJobPanel(null);
+          setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
+          setShowNewspaper(null); setShowInventory(false);
+          doSaveRef.current(buildSaveData());
+        } else {
+          setGamePaused(prev => !prev);
+          sfxUIClick();
+        }
       }
       if (e.key === 'i' || e.key === 'I') {
         if (!chatOpenRef.current) setShowInventory(v => !v);
@@ -9795,13 +9802,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.policeCooldowns[pi] > 0) g.policeCooldowns[pi]--;
 
         const dPolToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
+        if (g.policeConfrontCd > 0) g.policeConfrontCd--;
         if (g.policeAlertTimer > 0 || g.wantedLevel > 0) {
           const alertRadius = 600 + g.wantedLevel * 200;
           const dToOrigin = g.wantedLevel > 0 ? dPolToPlayer : Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
           if (dToOrigin < alertRadius) {
             const ang = Math.atan2(g.py - p.y, g.px - p.x);
-            const wantedSpeedMult = 1 + g.wantedLevel * 0.3;
-            const polSpd = 2.2 * NPC_SPEED_MULT * wantedSpeedMult;
+            const wantedSpeedMult = 1 + g.wantedLevel * 0.15;
+            const polSpd = 1.5 * NPC_SPEED_MULT * wantedSpeedMult;
             const polR = 8;
             const pmx = p.x + Math.cos(ang) * polSpd;
             const pmy = p.y + Math.sin(ang) * polSpd;
@@ -9810,30 +9818,62 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (!polHitX) p.x = pmx;
             if (!polHitY) p.y = pmy;
             const dToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
-            if (dToPlayer < 22 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
-              g.policeCooldowns[pi] = 25;
+            if (g.wantedLevel <= 2 && dToPlayer < 30 && g.policeConfrontCd <= 0 && !gamePausedRef.current && !showDialoguePanel) {
+              g.policeConfrontCd = 1800;
+              g.policeCooldowns[pi] = 120;
+              const totalDebt = g.bountyAmount + g.taxDebt;
+              const fineAmt = totalDebt > 0 ? totalDebt : Math.floor(500 + g.wantedLevel * 1000);
+              const canPay = g.salary >= fineAmt;
+              const wantedReasons = [
+                'Outstanding warrant for tax evasion.',
+                'Unpaid municipal debts.',
+                'Suspected illegal activity.',
+                'Transit violation. Papers, now.',
+                'You match a description. Stand still.',
+              ];
+              const reasonText = wantedReasons[Math.floor(Math.random() * wantedReasons.length)];
+              const dlgNodes: Record<string, DialogueNode> = {
+                start: { id: 'start', speaker: 'OFFICER', portrait: 'npc', text: `"${reasonText} You owe ƒ${fineAmt.toLocaleString()} to PABLO CORP. Pay now or face escalation."`, choices: canPay ? [{ text: `PAY ƒ${fineAmt.toLocaleString()}`, nextId: 'pay' }, { text: 'I DON\'T HAVE TIME FOR THIS', nextId: 'resist' }, { text: 'WALK AWAY', nextId: 'flee' }] : [{ text: 'I CAN\'T PAY', nextId: 'cantpay' }, { text: 'I DON\'T HAVE TIME FOR THIS', nextId: 'resist' }] },
+                pay: { id: 'pay', speaker: 'OFFICER', portrait: 'npc', text: `"ƒ${fineAmt.toLocaleString()} received. Debt cleared. Stay out of trouble, citizen."`, choices: [], effect: 'pay_fine' },
+                resist: { id: 'resist', speaker: 'OFFICER', portrait: 'npc', text: '"Wrong answer. All units — suspect is resisting. Lethal force authorized."', choices: [], effect: 'resist_arrest' },
+                flee: { id: 'flee', speaker: 'OFFICER', portrait: 'npc', text: '"Walking away from a PABLO CORP officer. That\'s another charge. I\'ll remember your face."', choices: [] },
+                cantpay: { id: 'cantpay', speaker: 'OFFICER', portrait: 'npc', text: `"Insufficient funds. Debt warrant issued for ƒ${fineAmt.toLocaleString()}. Next time we meet, you'd better have the money or it gets worse."`, choices: [] },
+              };
+              const dlgTree: DialogueTree = { npcName: 'OFFICER', startId: 'start', nodes: dlgNodes };
+              pendingNpcActionRef.current = { type: 'newspaper', seasonIdx: 0 };
+              const _pFine = fineAmt;
+              (window as any).__pendingPoliceFine = _pFine;
+              setDialogueNpcName('PABLO CORP OFFICER');
+              setDialogueNode(dlgNodes.start as any);
+              setDialogueNpcSeed(pi + 100);
+              gs.current.activeDialogue = dlgTree;
+              gs.current.activeDialogueNode = 'start';
+              setShowDialoguePanel(true);
+              frozenRef.current = true;
+              sfxError();
+              setNarr(`> POLICE STOP — An officer confronts you.`);
+            } else if (g.wantedLevel >= 3 && dToPlayer < 28 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
+              g.policeCooldowns[pi] = 55;
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
-              const policeNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
-              g.hp = Math.max(0, g.hp - 4 * armorMult * defReduceP * policeNightMult); g.invincible = 40; g.flash = 6; g.deathReason = 'Killed by PABLO CORP police enforcement';
+              g.hp = Math.max(0, g.hp - 3 * armorMult * defReduceP); g.invincible = 50; g.flash = 6; g.deathReason = 'Killed by PABLO CORP police enforcement';
               g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
-            if (g.wantedLevel >= 3 && dToPlayer < 200 && dToPlayer > 30 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
-              g.policeCooldowns[pi] = 40;
+            if (g.wantedLevel >= 4 && dToPlayer < 180 && dToPlayer > 30 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
+              g.policeCooldowns[pi] = 70;
               const shootAng = Math.atan2(g.py - p.y, g.px - p.x);
-              g.projectiles.push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y, dx: Math.cos(shootAng) * 6, dy: Math.sin(shootAng) * 6, life: 30, damage: 3, type: 'pistol' });
+              g.projectiles.push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y, dx: Math.cos(shootAng) * 5, dy: Math.sin(shootAng) * 5, life: 25, damage: 2, type: 'pistol' });
               g.floaters.push({ x: p.x, y: p.y - 10, text: 'POLICE FIRE', color: '#4488ff', life: 25, maxLife: 25 });
             }
             continue;
           }
         }
 
-        // ── Passive police interest: drift toward player even without wanted ──
-        if (dPolToPlayer < 300 && dPolToPlayer > 30 && !g.interior && inCityBounds(g.px, g.py)) {
+        if (dPolToPlayer < 250 && dPolToPlayer > 50 && !g.interior && inCityBounds(g.px, g.py)) {
           const ang = Math.atan2(g.py - p.y, g.px - p.x);
-          const patrolSpd = 0.8 * NPC_SPEED_MULT;
+          const patrolSpd = 0.4 * NPC_SPEED_MULT;
           const polR2 = 8;
           const pmx2 = p.x + Math.cos(ang) * patrolSpd;
           const pmy2 = p.y + Math.sin(ang) * patrolSpd;
@@ -18596,6 +18636,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (nodeEffect === 'give_gold') { gs.current.goldBalance += 5; setGoldBalance(gs.current.goldBalance); }
             if (nodeEffect === 'give_fiat') { gs.current.salary += 2000; setSalary(gs.current.salary); }
             if (nodeEffect === 'heal') { gs.current.hp = gs.current.maxHp; setHp(gs.current.maxHp); }
+            if (nodeEffect === 'pay_fine') {
+              const fineAmt = (window as any).__pendingPoliceFine ?? 0;
+              if (fineAmt > 0 && gs.current.salary >= fineAmt) {
+                gs.current.salary -= fineAmt; setSalary(gs.current.salary);
+                gs.current.bountyAmount = 0; gs.current.taxDebt = 0;
+                gs.current.wantedLevel = Math.max(0, gs.current.wantedLevel - 2);
+                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `−ƒ${fineAmt.toLocaleString()} FINE PAID`, color: '#44ff88', life: 80, maxLife: 80 });
+                setNarr(`> FINE PAID — ƒ${fineAmt.toLocaleString()} collected. Debt cleared. Wanted level reduced.`);
+                addBankTx('POLICE FINE', -fineAmt, gs.current.salary);
+              }
+              (window as any).__pendingPoliceFine = 0;
+            }
+            if (nodeEffect === 'resist_arrest') {
+              gs.current.wantedLevel = Math.min(5, gs.current.wantedLevel + 2);
+              gs.current.bountyAmount += 1000;
+              gs.current.lastCrimeFrame = gs.current.frame;
+              gs.current.policeConfrontCd = 300;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: 'RESISTING ARREST ★+2', color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr('> RESISTING ARREST — Wanted level increased! All nearby units will use force.');
+              (window as any).__pendingPoliceFine = 0;
+            }
           } else {
             setShowDialoguePanel(false); setDialogueNode(null);
             gs.current.activeDialogue = null; gs.current.activeDialogueNode = null;

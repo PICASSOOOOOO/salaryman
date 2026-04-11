@@ -20,7 +20,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL with Drizzle ORM, Zod for validation, Orval for API codegen, and esbuild for bundling.
 - **Monorepo Structure:** Organized into deployable applications (`artifacts`), shared libraries (`lib`), and scripts.
 - **Database & API:** PostgreSQL managed by Drizzle ORM. The Express 5 API server uses Zod for validation, with an OpenAPI 3.1 specification for codegen of React Query hooks and Zod schemas.
-- **Game World:** A large, persistent world featuring a 13-month calendar, 4-season weather system, day/night cycle, and interactive building interiors with NPCs.
+- **Game World:** A large, persistent world featuring a 13-month calendar, 4-season weather system, day/night cycle, and interactive building interiors with NPCs. Police use a tiered confrontation system — low wanted levels trigger dialogue prompts (pay fine / resist / walk away), while high wanted levels (3+) trigger physical force. ESC key toggles game pause.
 - **Authentication:** All feature pages require authentication via Replit Auth (OIDC).
 - **Communication:** WebRTC for video and proximity voice chat, a terminal phone system, private messaging, and an in-game CRM. Features a persistent, real-time app-wide chat (COMMS) with Global, Company, and Private DM channels via WebSockets.
 - **AI Voice Architecture:** Utilizes ElevenLabs TTS (with OpenAI TTS-1 fallback) for web/game chat and Google Neural2-F for phone calls, ensuring natural conversational tones through system prompts. A `useVoiceConversation` hook enables continuous voice interaction with Pablo AI.

@@ -405,7 +405,7 @@ export interface DialogueNode {
   portrait: 'player' | 'npc';
   text: string;
   choices: DialogueChoice[];
-  effect?: 'open_shop' | 'give_gold' | 'give_fiat' | 'heal';
+  effect?: 'open_shop' | 'give_gold' | 'give_fiat' | 'heal' | 'pay_fine' | 'resist_arrest';
 }
 
 export interface DialogueTree {
