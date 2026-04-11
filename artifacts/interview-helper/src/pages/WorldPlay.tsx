@@ -3147,6 +3147,11 @@ export default function WorldPlay() {
     bountyAmount: _ss?.bountyAmount ?? 0,
     lastCrimeFrame: 0,
     taxDebt: _ss?.taxDebt ?? 0,
+    shakedownCd: 0,
+    cityBillCd: 0,
+    loiteringCd: 0,
+    gangTollCd: 0,
+    surveillanceCd: 0,
     lastDamageFrame: 0,
     combatRegenCooldown: 0,
     taxCollectorTimer: _ss?.taxCollectorTimer ?? 0,
@@ -9337,8 +9342,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── Wanted level decay over time ──
-        if (g.wantedLevel > 0 && g.frame - g.lastCrimeFrame > 7200) {
+        // ── Wanted level decay over time (slower: ~4 min per star) ──
+        if (g.wantedLevel > 0 && g.frame - g.lastCrimeFrame > 14400) {
           g.wantedLevel = Math.max(0, g.wantedLevel - 1);
           g.lastCrimeFrame = g.frame;
           if (g.wantedLevel === 0) {
@@ -9351,9 +9356,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         // ── Tax collector periodic visit ──
         if (g.taxCollectorTimer > 0) g.taxCollectorTimer--;
-        if (g.taxCollectorTimer <= 0 && (g.taxDebt > 0 || g.bountyAmount > 500)) {
-          g.taxCollectorTimer = 18000;
-          const tax = Math.floor(g.salary * 0.15) + Math.floor(g.bountyAmount * 0.1);
+        if (g.taxCollectorTimer <= 0 && (g.taxDebt > 0 || g.bountyAmount > 200 || g.salary > 5000)) {
+          g.taxCollectorTimer = 12000;
+          const tax = Math.floor(g.salary * 0.18) + Math.floor(g.bountyAmount * 0.15) + (g.salary > 20000 ? Math.floor((g.salary - 20000) * 0.05) : 0);
           g.taxDebt += tax;
           if (g.taxDebt > 0 && g.salary >= g.taxDebt) {
             g.salary -= g.taxDebt;
@@ -9553,6 +9558,116 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         } else if (g.oregonTick >= 12) {
           g.oregonTick = 0;
         }
+
+        // ── ECONOMY: Police shakedowns (city only, every ~45s) ──────────────
+        if (g.shakedownCd > 0) g.shakedownCd--;
+        if (g.shakedownCd <= 0 && inCity && !g.interior && !gamePausedRef.current) {
+          g.shakedownCd = 2700 + Math.floor(Math.random() * 900);
+          const nearPol = g.police.some(p => Math.hypot(g.px - p.x, g.py - p.y) < 200);
+          if (nearPol && Math.random() < 0.55) {
+            const fineBase = [
+              { amt: 800, msg: 'IDENTITY CHECK' },
+              { amt: 1200, msg: 'CONTRABAND SCAN' },
+              { amt: 2000, msg: 'TRANSIT VIOLATION' },
+              { amt: 1500, msg: 'CURFEW INFRACTION' },
+              { amt: 2500, msg: 'SUSPICIOUS ACTIVITY' },
+              { amt: 3000, msg: 'ILLEGAL LOITERING' },
+            ];
+            const pick = fineBase[Math.floor(Math.random() * fineBase.length)];
+            const nightMult = (g.worldTime >= 20 || g.worldTime < 5) ? 1.8 : 1;
+            const wantedMult = 1 + g.wantedLevel * 0.5;
+            const fine = Math.floor(pick.amt * nightMult * wantedMult);
+            if (g.salary >= fine) {
+              g.salary -= fine; setSalary(g.salary);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${fine.toLocaleString()} ${pick.msg}`, color: '#ff4444', life: 80, maxLife: 80 });
+              setNarr(`> PABLO CORP ENFORCEMENT — ${pick.msg}. ƒ${fine.toLocaleString()} deducted. "Compliance is not optional."`);
+              sfxError();
+              addBankTx(`ENFORCEMENT: ${pick.msg}`, -fine, g.salary);
+            } else {
+              g.wantedLevel = Math.min(5, g.wantedLevel + 1);
+              g.bountyAmount += fine;
+              g.lastCrimeFrame = g.frame;
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★+1 — CAN'T PAY`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> PABLO CORP ENFORCEMENT — ${pick.msg}: ƒ${fine.toLocaleString()} fine. Insufficient funds. WANTED LEVEL INCREASED.`);
+              sfxError();
+            }
+          }
+        }
+
+        // ── ECONOMY: City utility bills (every ~3 min) ─────────────────────
+        if (g.cityBillCd > 0) g.cityBillCd--;
+        if (g.cityBillCd <= 0) {
+          g.cityBillCd = 10800 + Math.floor(Math.random() * 3600);
+          const bills = [
+            { amt: 1000, label: 'GRID ACCESS FEE' },
+            { amt: 1500, label: 'WATER RATION PAYMENT' },
+            { amt: 2000, label: 'SECTOR MAINTENANCE LEVY' },
+            { amt: 800,  label: 'COMM-NET SUBSCRIPTION' },
+            { amt: 2500, label: 'CITIZEN REGISTRATION RENEWAL' },
+            { amt: 3500, label: 'PABLO CORP PROTECTION FEE' },
+          ];
+          const bill = bills[Math.floor(Math.random() * bills.length)];
+          if (g.salary >= bill.amt) {
+            g.salary -= bill.amt; setSalary(g.salary);
+            g.floaters.push({ x: g.px, y: g.py - 25, text: `−ƒ${bill.amt.toLocaleString()} ${bill.label}`, color: '#ff8844', life: 80, maxLife: 80 });
+            setNarr(`> CITY BILLING — ${bill.label}: ƒ${bill.amt.toLocaleString()} auto-deducted. "Non-payment results in service disconnection and wanted classification."`);
+            addBankTx(bill.label, -bill.amt, g.salary);
+          } else {
+            g.taxDebt += bill.amt;
+            g.floaters.push({ x: g.px, y: g.py - 25, text: `${bill.label} — DEBT +ƒ${bill.amt.toLocaleString()}`, color: '#ff4444', life: 80, maxLife: 80 });
+          }
+        }
+
+        // ── ECONOMY: Surveillance camera fines (city, random position checks) ─
+        if (g.surveillanceCd > 0) g.surveillanceCd--;
+        if (g.surveillanceCd <= 0 && inCity && !g.interior) {
+          g.surveillanceCd = 3600 + Math.floor(Math.random() * 1800);
+          if (Math.random() < 0.4) {
+            const violations = [
+              { amt: 600, msg: 'JAYWALKING DETECTED' },
+              { amt: 1000, msg: 'UNAUTHORIZED ZONE ENTRY' },
+              { amt: 1800, msg: 'FACIAL SCAN MISMATCH' },
+              { amt: 2200, msg: 'BIOMETRIC ANOMALY' },
+              { amt: 500, msg: 'SPEED VIOLATION' },
+              { amt: 1500, msg: 'NOISE ORDINANCE BREACH' },
+            ];
+            const v = violations[Math.floor(Math.random() * violations.length)];
+            g.salary -= v.amt; setSalary(g.salary);
+            g.floaters.push({ x: g.px, y: g.py - 30, text: `−ƒ${v.amt.toLocaleString()} ${v.msg}`, color: '#ff6644', life: 60, maxLife: 60 });
+            setNarr(`> SURVEILLANCE — ${v.msg}. Automated fine: ƒ${v.amt.toLocaleString()}. "PABLO CORP City-AI is always watching."`);
+            sfxError();
+            if (g.salary < 0) {
+              g.wantedLevel = Math.min(5, g.wantedLevel + 1);
+              g.lastCrimeFrame = g.frame;
+              g.bountyAmount += Math.abs(g.salary);
+            }
+          }
+        }
+
+        // ── ECONOMY: Gang territory tolls (wasteland zones) ─────────────────
+        if (g.gangTollCd > 0) g.gangTollCd--;
+        if (g.gangTollCd <= 0 && !inCity && !g.interior) {
+          g.gangTollCd = 4200 + Math.floor(Math.random() * 1800);
+          const inGangZone = GANG_ZONES.find(gz => g.px >= gz.x && g.px <= gz.x + gz.w && g.py >= gz.y && g.py <= gz.y + gz.h && gz.id !== 'minx_city');
+          if (inGangZone) {
+            const toll = 2000 + Math.floor(Math.random() * 4000);
+            if (g.salary >= toll) {
+              g.salary -= toll; setSalary(g.salary);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `−ƒ${toll.toLocaleString()} TERRITORY TOLL`, color: '#ff6622', life: 80, maxLife: 80 });
+              setNarr(`> ${inGangZone.name} TOLL — "You're on our turf. ƒ${toll.toLocaleString()} or we take it from your corpse." You paid.`);
+              sfxError();
+            } else {
+              for (const t of g.threats) {
+                if (t.type === inGangZone.id.toUpperCase().replace(/_FRAG$/, '') && Math.hypot(t.x - g.px, t.y - g.py) < 300) {
+                  t.behavior = 'HOSTILE'; t.behaviorTimer = 400;
+                }
+              }
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `CAN'T PAY — HOSTILES ALERTED`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> ${inGangZone.name} TOLL — "No money? Then you pay with blood." Gang members turn hostile.`);
+              sfxError();
+            }
+          }
+        }
       }
 
       // ── LIVING WORLD: Power Grid ─────────────────────────────────────────
@@ -9593,9 +9708,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!g.policeCooldowns[pi]) g.policeCooldowns[pi] = 0;
         if (g.policeCooldowns[pi] > 0) g.policeCooldowns[pi]--;
 
+        const dPolToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
         if (g.policeAlertTimer > 0 || g.wantedLevel > 0) {
           const alertRadius = 600 + g.wantedLevel * 200;
-          const dToOrigin = g.wantedLevel > 0 ? Math.hypot(g.px - p.x, g.py - p.y) : Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
+          const dToOrigin = g.wantedLevel > 0 ? dPolToPlayer : Math.hypot(g.policeAlertX - p.x, g.policeAlertY - p.y);
           if (dToOrigin < alertRadius) {
             const ang = Math.atan2(g.py - p.y, g.px - p.x);
             const wantedSpeedMult = 1 + g.wantedLevel * 0.3;
@@ -9626,6 +9742,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }
             continue;
           }
+        }
+
+        // ── Passive police interest: drift toward player even without wanted ──
+        if (dPolToPlayer < 300 && dPolToPlayer > 30 && !g.interior && inCityBounds(g.px, g.py)) {
+          const ang = Math.atan2(g.py - p.y, g.px - p.x);
+          const patrolSpd = 0.8 * NPC_SPEED_MULT;
+          const polR2 = 8;
+          const pmx2 = p.x + Math.cos(ang) * patrolSpd;
+          const pmy2 = p.y + Math.sin(ang) * patrolSpd;
+          const phx2 = BUILDINGS.some(b => pmx2 + polR2 > b.x && pmx2 - polR2 < b.x + b.w && p.y + polR2 > b.y && p.y - polR2 < b.y + b.h && !(b.doors?.some(d => pmx2 + polR2 > d.x && pmx2 - polR2 < d.x + d.w && p.y + polR2 > d.y && p.y - polR2 < d.y + d.h)));
+          const phy2 = BUILDINGS.some(b => p.x + polR2 > b.x && p.x - polR2 < b.x + b.w && pmy2 + polR2 > b.y && pmy2 - polR2 < b.y + b.h && !(b.doors?.some(d => p.x + polR2 > d.x && p.x - polR2 < d.x + d.w && pmy2 + polR2 > d.y && pmy2 - polR2 < d.y + d.h)));
+          if (!phx2) p.x = pmx2;
+          if (!phy2) p.y = pmy2;
+          continue;
         }
 
         const route = POLICE_ROUTES[p.routeIdx];
