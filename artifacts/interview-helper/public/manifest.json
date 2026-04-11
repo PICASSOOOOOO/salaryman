@@ -1,12 +1,15 @@
 {
-  "name": "SALARYMAN by Picasso.AI",
+  "name": "SALARYMAN by Picasso AI — AI Business Operating System",
   "short_name": "SALARYMAN",
-  "description": "Executive productivity suite by Picasso.AI — PABLO AI assistant, interview prep, and professional tools",
+  "description": "AI-powered business operating system with AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots. Built for professionals who refuse to settle.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "finance"],
+  "lang": "en-US",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -31,6 +34,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-salaryman.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "SALARYMAN Dashboard"
     }
   ]
 }
