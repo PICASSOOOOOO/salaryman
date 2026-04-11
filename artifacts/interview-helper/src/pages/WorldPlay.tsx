@@ -2606,7 +2606,7 @@ interface PatrolBand {
 }
 
 const BAND_CONFIGS: Record<BandType, { color: string; label: string; minSize: number; maxSize: number; hp: number; atkDmg: number; rangedRange: number }> = {
-  POLICE:       { color: '#4488ff', label: 'POLICE',     minSize: 3, maxSize: 5, hp: 80,  atkDmg: 25, rangedRange: 150 },
+  POLICE:       { color: '#4488ff', label: 'DEBT COLLECTOR', minSize: 2, maxSize: 3, hp: 80,  atkDmg: 15, rangedRange: 0 },
   RAIDERS:      { color: '#ff6622', label: 'RAIDERS',    minSize: 4, maxSize: 7, hp: 60,  atkDmg: 18, rangedRange: 120 },
   BIKERS:       { color: '#cc44ff', label: 'BIKERS',     minSize: 3, maxSize: 6, hp: 70,  atkDmg: 22, rangedRange: 100 },
   MUTANT_PACK:  { color: '#7dd3fc', label: 'MUTANTS',    minSize: 5, maxSize: 8, hp: 100, atkDmg: 30, rangedRange: 80 },
@@ -9437,9 +9437,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.lastCrimeFrame = g.frame;
           if (g.wantedLevel === 0) {
             g.bountyAmount = 0;
-            g.floaters.push({ x: g.px, y: g.py - 20, text: 'WANTED LEVEL CLEARED', color: '#44ff88', life: 80, maxLife: 80 });
+            g.floaters.push({ x: g.px, y: g.py - 20, text: 'BOUNTY CLEARED', color: '#44ff88', life: 80, maxLife: 80 });
           } else {
-            g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★ ${g.wantedLevel}`, color: '#ffcc00', life: 60, maxLife: 60 });
+            g.floaters.push({ x: g.px, y: g.py - 20, text: `BOUNTY ★ ${g.wantedLevel}`, color: '#ffcc00', life: 60, maxLife: 60 });
           }
         }
 
@@ -9684,8 +9684,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.wantedLevel = Math.min(5, g.wantedLevel + 1);
               g.bountyAmount += tax;
               g.lastCrimeFrame = g.frame;
-              g.floaters.push({ x: g.px, y: g.py - 20, text: `WANTED ★+1 — TAX EVASION`, color: '#ff2222', life: 80, maxLife: 80 });
-              setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} owed. Insufficient funds. TAX EVASION — WANTED LEVEL INCREASED.`);
+              g.floaters.push({ x: g.px, y: g.py - 20, text: `BOUNTY ★+1 — UNPAID TAX`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} owed. Insufficient funds. UNPAID TAX — BOUNTY INCREASED.`);
               sfxError();
             }
           }
@@ -9796,8 +9796,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.policeAlertTimer = 300;
           g.policeAlertX = g.pendingPoliceAlertX;
           g.policeAlertY = g.pendingPoliceAlertY;
-          setNarr('> POLICE ALERT — The tip came in. All units dispatched to your last location.');
-          g.floaters.push({ x: g.px, y: g.py - 20, text: 'POLICE DISPATCHED', color: '#ff4444', life: 80, maxLife: 80 });
+          setNarr('> COLLECTIONS ALERT — Your location has been reported. Debt collectors dispatched.');
+          g.floaters.push({ x: g.px, y: g.py - 20, text: 'COLLECTORS DISPATCHED', color: '#ff8844', life: 80, maxLife: 80 });
         }
       }
       for (let pi = 0; pi < g.police.length; pi++) {
@@ -9822,32 +9822,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (!polHitX) p.x = pmx;
             if (!polHitY) p.y = pmy;
             const dToPlayer = Math.hypot(g.px - p.x, g.py - p.y);
-            if (g.wantedLevel <= 2 && dToPlayer < 30 && g.policeConfrontCd <= 0 && !gamePausedRef.current && !showDialoguePanel) {
-              g.policeConfrontCd = 1800;
+            if (dToPlayer < 30 && g.policeConfrontCd <= 0 && !gamePausedRef.current && !showDialoguePanel) {
+              g.policeConfrontCd = 2400;
               g.policeCooldowns[pi] = 120;
               const totalDebt = g.bountyAmount + g.taxDebt;
               const fineAmt = totalDebt > 0 ? totalDebt : Math.floor(500 + g.wantedLevel * 1000);
+              const lateFee = Math.floor(fineAmt * 0.15);
               const canPay = g.salary >= fineAmt;
-              const wantedReasons = [
-                'Outstanding warrant for tax evasion.',
-                'Unpaid municipal debts.',
-                'Suspected illegal activity.',
-                'Transit violation. Papers, now.',
-                'You match a description. Stand still.',
+              const collectorLines = [
+                'Outstanding balance on your account.',
+                'PABLO CORP ledger shows unpaid obligations.',
+                'You have an overdue invoice. Let\'s settle this.',
+                'Delinquent account flagged. I\'m here to collect.',
+                'Your FIAT deficit has been forwarded to collections.',
               ];
-              const reasonText = wantedReasons[Math.floor(Math.random() * wantedReasons.length)];
+              const lineText = collectorLines[Math.floor(Math.random() * collectorLines.length)];
               const dlgNodes: Record<string, DialogueNode> = {
-                start: { id: 'start', speaker: 'OFFICER', portrait: 'npc', text: `"${reasonText} You owe ƒ${fineAmt.toLocaleString()} to PABLO CORP. Pay now or face escalation."`, choices: canPay ? [{ text: `PAY ƒ${fineAmt.toLocaleString()}`, nextId: 'pay' }, { text: 'I DON\'T HAVE TIME FOR THIS', nextId: 'resist' }, { text: 'WALK AWAY', nextId: 'flee' }] : [{ text: 'I CAN\'T PAY', nextId: 'cantpay' }, { text: 'I DON\'T HAVE TIME FOR THIS', nextId: 'resist' }] },
-                pay: { id: 'pay', speaker: 'OFFICER', portrait: 'npc', text: `"ƒ${fineAmt.toLocaleString()} received. Debt cleared. Stay out of trouble, citizen."`, choices: [], effect: 'pay_fine' },
-                resist: { id: 'resist', speaker: 'OFFICER', portrait: 'npc', text: '"Wrong answer. All units — suspect is resisting. Lethal force authorized."', choices: [], effect: 'resist_arrest' },
-                flee: { id: 'flee', speaker: 'OFFICER', portrait: 'npc', text: '"Walking away from a PABLO CORP officer. That\'s another charge. I\'ll remember your face."', choices: [] },
-                cantpay: { id: 'cantpay', speaker: 'OFFICER', portrait: 'npc', text: `"Insufficient funds. Debt warrant issued for ƒ${fineAmt.toLocaleString()}. Next time we meet, you'd better have the money or it gets worse."`, choices: [] },
+                start: { id: 'start', speaker: 'COLLECTOR', portrait: 'npc', text: `"${lineText} Total owed: ƒ${fineAmt.toLocaleString()}. Pay now or late fees apply."`, choices: canPay ? [{ text: `PAY ƒ${fineAmt.toLocaleString()}`, nextId: 'pay' }, { text: 'I\'M NOT PAYING', nextId: 'refuse' }, { text: 'WALK AWAY', nextId: 'flee' }] : [{ text: 'I DON\'T HAVE THE MONEY', nextId: 'cantpay' }, { text: 'I\'M NOT PAYING', nextId: 'refuse' }] },
+                pay: { id: 'pay', speaker: 'COLLECTOR', portrait: 'npc', text: `"ƒ${fineAmt.toLocaleString()} received. Account settled. Keep it clean — next time the fee doubles."`, choices: [], effect: 'pay_fine' },
+                refuse: { id: 'refuse', speaker: 'COLLECTOR', portrait: 'npc', text: `"Refusal noted. Late fee of ƒ${lateFee.toLocaleString()} added to your account. I'll be back. And I always find you."`, choices: [], effect: 'resist_arrest' },
+                flee: { id: 'flee', speaker: 'COLLECTOR', portrait: 'npc', text: `"Walking away doesn't erase debt. ƒ${lateFee.toLocaleString()} late fee added. Clock's ticking."`, choices: [], effect: 'flee_collector' },
+                cantpay: { id: 'cantpay', speaker: 'COLLECTOR', portrait: 'npc', text: `"Insufficient funds. ƒ${lateFee.toLocaleString()} late fee added. Total now ƒ${(fineAmt + lateFee).toLocaleString()}. Get the money. I'll be back."`, choices: [], effect: 'cantpay_collector' },
               };
-              const dlgTree: DialogueTree = { npcName: 'OFFICER', startId: 'start', nodes: dlgNodes };
+              const dlgTree: DialogueTree = { npcName: 'COLLECTOR', startId: 'start', nodes: dlgNodes };
               pendingNpcActionRef.current = { type: 'newspaper', seasonIdx: 0 };
               const _pFine = fineAmt;
               (window as any).__pendingPoliceFine = _pFine;
-              setDialogueNpcName('PABLO CORP OFFICER');
+              (window as any).__pendingLateFee = lateFee;
+              setDialogueNpcName('PABLO CORP DEBT COLLECTOR');
               setDialogueNode(dlgNodes.start as any);
               setDialogueNpcSeed(pi + 100);
               gs.current.activeDialogue = dlgTree;
@@ -9855,21 +9857,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               setShowDialoguePanel(true);
               frozenRef.current = true;
               sfxError();
-              setNarr(`> POLICE STOP — An officer confronts you.`);
-            } else if (g.wantedLevel >= 3 && dToPlayer < 28 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
-              g.policeCooldowns[pi] = 55;
+              setNarr(`> DEBT COLLECTOR — A PABLO CORP collections agent has found you.`);
+            } else if (g.wantedLevel >= 4 && dToPlayer < 28 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
+              g.policeCooldowns[pi] = 90;
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
-              g.hp = Math.max(0, g.hp - 3 * armorMult * defReduceP); g.invincible = 50; g.flash = 6; g.deathReason = 'Killed by PABLO CORP police enforcement';
+              g.hp = Math.max(0, g.hp - 2 * armorMult * defReduceP); g.invincible = 50; g.flash = 6; g.deathReason = 'Beaten by PABLO CORP debt enforcement';
               g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
-              g.floaters.push({ x: g.px, y: g.py - 12, text: 'POLICE STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
-            }
-            if (g.wantedLevel >= 4 && dToPlayer < 180 && dToPlayer > 30 && g.policeCooldowns[pi] <= 0 && g.invincible === 0 && !gamePausedRef.current) {
-              g.policeCooldowns[pi] = 70;
-              const shootAng = Math.atan2(g.py - p.y, g.px - p.x);
-              g.projectiles.push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y, dx: Math.cos(shootAng) * 5, dy: Math.sin(shootAng) * 5, life: 25, damage: 2, type: 'pistol' });
-              g.floaters.push({ x: p.x, y: p.y - 10, text: 'POLICE FIRE', color: '#4488ff', life: 25, maxLife: 25 });
+              g.floaters.push({ x: g.px, y: g.py - 12, text: 'ENFORCER STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
             continue;
           }
@@ -10342,7 +10338,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.policeAlertTimer = 450;
                   g.policeAlertX = vxT; g.policeAlertY = vyT;
                   g.pendingPoliceAlert = 0;
-                  setNarr(`> POLICE ALERT — A police unit witnessed the theft! All units converging.`);
+                  setNarr(`> COLLECTIONS ALERT — Your theft was reported. Debt collectors converging.`);
                 } else if (civilianNpcWitness) {
                   // Civilian witness — delayed alert (4 seconds = 240 frames at 60fps)
                   g.pendingPoliceAlert = 240;
@@ -14186,8 +14182,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (gangZone) proximityEvents.push(`⚠ ${GANG_ZONES.find(gz => gz.id === gangZone)?.name ?? 'GANG'} TERRITORY`);
         if (poisoned) proximityEvents.push('☠ POISONED');
         if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG')) proximityEvents.push('⚔ HOSTILES NEARBY');
-        if (g.wantedLevel > 0) proximityEvents.push(`🚨 WANTED ${'★'.repeat(g.wantedLevel)}`);
-        if (g.policeAlertTimer > 0) proximityEvents.push('🚔 POLICE ALERT');
+        if (g.wantedLevel > 0) proximityEvents.push(`💰 BOUNTY ${'★'.repeat(g.wantedLevel)}`);
+        if (g.policeAlertTimer > 0) proximityEvents.push('💰 COLLECTOR ALERT');
         if (dogActive && dogInjured) proximityEvents.push(`🐾 ${dogName} INJURED`);
         return proximityEvents.length > 0 ? (
           <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '8px', pointerEvents: 'none' }}>
@@ -14222,12 +14218,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         )}
         {/* Wanted level stars + bounty */}
         {gs.current.wantedLevel > 0 && (
-          <div style={{ background: 'rgba(40,0,0,.92)', border: '1px solid rgba(255,80,0,.5)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ff6644', letterSpacing: '.05em' }}>
+          <div style={{ background: 'rgba(40,20,0,.92)', border: '1px solid rgba(255,140,0,.5)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944', letterSpacing: '.06em' }}>BOUNTY</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ff8844', letterSpacing: '.05em' }}>
               {'★'.repeat(gs.current.wantedLevel)}{'☆'.repeat(5 - gs.current.wantedLevel)}
             </span>
             {gs.current.bountyAmount > 0 && (
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: '#ff8844' }}>ƒ{gs.current.bountyAmount.toLocaleString()}</span>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: '#ffaa44' }}>ƒ{gs.current.bountyAmount.toLocaleString()}</span>
             )}
           </div>
         )}
@@ -18480,20 +18477,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 gs.current.salary -= fineAmt; setSalary(gs.current.salary);
                 gs.current.bountyAmount = 0; gs.current.taxDebt = 0;
                 gs.current.wantedLevel = Math.max(0, gs.current.wantedLevel - 2);
-                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `−ƒ${fineAmt.toLocaleString()} FINE PAID`, color: '#44ff88', life: 80, maxLife: 80 });
-                setNarr(`> FINE PAID — ƒ${fineAmt.toLocaleString()} collected. Debt cleared. Wanted level reduced.`);
-                addBankTx('POLICE FINE', -fineAmt, gs.current.salary);
+                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `−ƒ${fineAmt.toLocaleString()} DEBT PAID`, color: '#44ff88', life: 80, maxLife: 80 });
+                setNarr(`> DEBT SETTLED — ƒ${fineAmt.toLocaleString()} collected. Account cleared. Bounty reduced.`);
+                addBankTx('DEBT COLLECTION', -fineAmt, gs.current.salary);
               }
               (window as any).__pendingPoliceFine = 0;
+              (window as any).__pendingLateFee = 0;
             }
             if (nodeEffect === 'resist_arrest') {
-              gs.current.wantedLevel = Math.min(5, gs.current.wantedLevel + 2);
-              gs.current.bountyAmount += 1000;
+              const lateFee = (window as any).__pendingLateFee ?? Math.floor(gs.current.bountyAmount * 0.15);
+              gs.current.bountyAmount += lateFee + 500;
+              gs.current.wantedLevel = Math.min(5, gs.current.wantedLevel + 1);
               gs.current.lastCrimeFrame = gs.current.frame;
-              gs.current.policeConfrontCd = 300;
-              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: 'RESISTING ARREST ★+2', color: '#ff2222', life: 80, maxLife: 80 });
-              setNarr('> RESISTING ARREST — Wanted level increased! All nearby units will use force.');
+              gs.current.policeConfrontCd = 600;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${(lateFee + 500).toLocaleString()} LATE FEE`, color: '#ff2222', life: 80, maxLife: 80 });
+              setNarr(`> REFUSAL — Late fee added. Bounty increased to ƒ${gs.current.bountyAmount.toLocaleString()}. The collector will return.`);
               (window as any).__pendingPoliceFine = 0;
+              (window as any).__pendingLateFee = 0;
+            }
+            if (nodeEffect === 'flee_collector') {
+              const lateFee = (window as any).__pendingLateFee ?? Math.floor(gs.current.bountyAmount * 0.15);
+              gs.current.bountyAmount += lateFee;
+              gs.current.policeConfrontCd = 900;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${lateFee.toLocaleString()} LATE FEE`, color: '#ff8844', life: 60, maxLife: 60 });
+              setNarr(`> WALKED AWAY — Late fee of ƒ${lateFee.toLocaleString()} added. Total bounty: ƒ${gs.current.bountyAmount.toLocaleString()}.`);
+              (window as any).__pendingPoliceFine = 0;
+              (window as any).__pendingLateFee = 0;
+            }
+            if (nodeEffect === 'cantpay_collector') {
+              const lateFee = (window as any).__pendingLateFee ?? Math.floor(gs.current.bountyAmount * 0.15);
+              gs.current.bountyAmount += lateFee;
+              gs.current.policeConfrontCd = 1200;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${lateFee.toLocaleString()} LATE FEE`, color: '#ff8844', life: 60, maxLife: 60 });
+              setNarr(`> INSUFFICIENT FUNDS — ƒ${lateFee.toLocaleString()} late fee added. Total bounty: ƒ${gs.current.bountyAmount.toLocaleString()}. Collector will return.`);
+              (window as any).__pendingPoliceFine = 0;
+              (window as any).__pendingLateFee = 0;
             }
           } else {
             setShowDialoguePanel(false); setDialogueNode(null);
@@ -18850,7 +18868,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       Class: {char.class?.toUpperCase()}<br/>
                       Level: {g.level}<br/>
                       Business: {(g.businesses ?? []).length > 0 ? `${(g.businesses ?? []).length} registered` : 'NONE REGISTERED'}<br/>
-                      Criminal Record: {(g as any).wantedLevel > 0 ? 'ACTIVE WARRANTS' : 'CLEAN'}
+                      Debt Status: {(g as any).wantedLevel > 0 ? 'OUTSTANDING BOUNTY' : 'CLEAR'}
                     </div>
                   </div>
                   <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.7rem', background: 'rgba(56,189,248,.03)' }}>
