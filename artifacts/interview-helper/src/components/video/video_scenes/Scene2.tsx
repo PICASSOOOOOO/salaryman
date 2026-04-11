@@ -56,7 +56,7 @@ export function Scene2() {
           animate={phase >= 1 ? { opacity: 0.8, y: 0, scale: 1 } : {}}
           transition={{ duration: 0.5, ease: 'backOut' }}
         >
-          THE PICASSO PLATFORM
+          THE SALARYMAN PLATFORM
         </motion.div>
 
         <div className="mt-4 space-y-1">

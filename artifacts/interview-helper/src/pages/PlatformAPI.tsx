@@ -35,9 +35,9 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div className="border border-cyan-500/20 rounded-lg p-6 bg-gradient-to-br from-cyan-500/5 to-blue-500/5">
-        <h2 className="text-lg font-bold text-cyan-400 tracking-wider mb-3">PICASSO PLATFORM API</h2>
+        <h2 className="text-lg font-bold text-cyan-400 tracking-wider mb-3">SALARYMAN PLATFORM API</h2>
         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-          THE PICASSO PLATFORM API CONNECTS ALL PICASSO PRODUCTS INTO ONE UNIFIED SYSTEM.
+          THE SALARYMAN PLATFORM API CONNECTS ALL SALARYMAN PRODUCTS INTO ONE UNIFIED SYSTEM.
           SYNC DATA BETWEEN SALARYMAN, PUBLISHING, MINX CITY, AND JEAN CLAW NETWORK.
           USE API KEYS FOR AUTHENTICATION, WEBHOOKS FOR REAL-TIME EVENTS, AND THE REST API FOR EVERYTHING ELSE.
         </p>
@@ -45,7 +45,7 @@ function OverviewTab() {
           {[
             { icon: Key, label: "API KEYS", desc: "AUTHENTICATE REQUESTS WITH SCOPED API KEYS", color: "text-amber-400" },
             { icon: Webhook, label: "WEBHOOKS", desc: "RECEIVE REAL-TIME EVENTS WHEN DATA CHANGES", color: "text-purple-400" },
-            { icon: Globe, label: "CONNECTED APPS", desc: "LINK PICASSO PRODUCTS FOR CROSS-APP WORKFLOWS", color: "text-emerald-400" },
+            { icon: Globe, label: "CONNECTED APPS", desc: "LINK SALARYMAN PRODUCTS FOR CROSS-APP WORKFLOWS", color: "text-emerald-400" },
           ].map(({ icon: Icon, label, desc, color }) => (
             <div key={label} className="border border-zinc-700/50 rounded-lg p-4 bg-zinc-800/30">
               <Icon className={`w-6 h-6 ${color} mb-2`} />
@@ -64,7 +64,7 @@ function OverviewTab() {
             { step: "02", text: "ADD YOUR KEY TO THE AUTHORIZATION HEADER: Bearer psk_live_..." },
             { step: "03", text: "MAKE REQUESTS TO ANY ENDPOINT LISTED IN THE ENDPOINTS TAB" },
             { step: "04", text: "SET UP WEBHOOKS TO RECEIVE REAL-TIME EVENT NOTIFICATIONS" },
-            { step: "05", text: "CONNECT PICASSO APPS FOR CROSS-APP DATA SYNC" },
+            { step: "05", text: "CONNECT SALARYMAN APPS FOR CROSS-APP DATA SYNC" },
           ].map(({ step, text }) => (
             <div key={step} className="flex items-start gap-3">
               <span className="text-cyan-400 font-mono text-xs font-bold shrink-0">{step}</span>
@@ -85,7 +85,7 @@ function OverviewTab() {
             \
           </div>
           <div className="pl-4">
-            <span className="text-zinc-300">https://api.picasso.ai/api/contacts</span>
+            <span className="text-zinc-300">https://api.salaryman.app/api/contacts</span>
           </div>
         </div>
       </div>
@@ -410,7 +410,7 @@ function AppsTab() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-bold text-zinc-300 tracking-wider">PICASSO APPS</h3>
+      <h3 className="text-sm font-bold text-zinc-300 tracking-wider">SALARYMAN APPS</h3>
       <div className="grid grid-cols-1 gap-3">
         {apps.map((app) => {
           const style = statusStyle[app.status] ?? statusStyle.available;
@@ -484,8 +484,8 @@ export default function PlatformAPI() {
             <Plug className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-wider">PICASSO PLATFORM API</h1>
-            <p className="text-xs text-zinc-500 tracking-wider">CONNECT ALL PICASSO APPS TOGETHER</p>
+            <h1 className="text-xl font-bold tracking-wider">SALARYMAN PLATFORM API</h1>
+            <p className="text-xs text-zinc-500 tracking-wider">CONNECT ALL SALARYMAN APPS TOGETHER</p>
           </div>
         </div>
 

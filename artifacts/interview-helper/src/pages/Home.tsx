@@ -889,7 +889,7 @@ export default function Home() {
               <Layers className="w-3.5 h-3.5 text-sky-400/70" />
             </div>
             <div>
-              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.7)' }}>THE PICASSO PLATFORM</span>
+              <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
             </div>
           </div>

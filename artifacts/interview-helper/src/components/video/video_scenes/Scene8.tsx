@@ -131,7 +131,7 @@ export function Scene8() {
         initial={{ opacity: 0 }}
         animate={phase >= 4 ? { opacity: 0.4 } : {}}
       >
-        THE PICASSO PLATFORM
+        THE SALARYMAN PLATFORM
       </motion.div>
     </motion.div>
   );

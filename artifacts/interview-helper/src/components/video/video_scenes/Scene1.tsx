@@ -143,7 +143,7 @@ export function Scene1() {
         <motion.div className="absolute bottom-[8%] left-0 right-0 flex justify-center"
           initial={{ opacity: 0 }} animate={{ opacity: 0.15 }} transition={{ duration: 0.6, delay: 0.3 }}>
           <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', letterSpacing: '0.5em', color: '#64748b' }}>
-            THE PICASSO PLATFORM
+            THE SALARYMAN PLATFORM
           </div>
         </motion.div>
       )}

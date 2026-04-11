@@ -196,7 +196,7 @@ export default function Cover() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="text-[11px] font-mono tracking-[0.3em] uppercase text-sky-400/60 mb-5"
         >
-          THE PICASSO PLATFORM
+          THE SALARYMAN PLATFORM
         </motion.p>
 
         <motion.p
