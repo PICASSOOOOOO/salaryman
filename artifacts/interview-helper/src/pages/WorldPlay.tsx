@@ -1470,7 +1470,7 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
 }
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
-interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; }
+interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; attackCd: number; strafeAngle: number; }
 const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   RUST_SYNDICATE:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
   VOID_RUNNERS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
@@ -1811,7 +1811,7 @@ function pickBehavior(type: string, worldHour: number): BehaviorState {
 }
 interface WeaponDef { id: string; label: string; desc: string; atkBonus: number; color: string; type: 'melee' | 'ranged'; range: number; cooldown: number; icon: string; }
 interface MerchantItem { id: string; name: string; desc: string; price: number; effect: string; }
-interface Projectile { x: number; y: number; prevX: number; prevY: number; dx: number; dy: number; life: number; damage: number; type: string; }
+interface Projectile { x: number; y: number; prevX: number; prevY: number; dx: number; dy: number; life: number; damage: number; type: string; fromEnemy?: boolean; }
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface HitEffect { x: number; y: number; life: number; maxLife: number; dx: number; dy: number; }
 interface MuzzleFlash { angle: number; life: number; }
@@ -1840,10 +1840,19 @@ const FACTION_STARTING_NET_WORTH: Record<string, number> = {
 };
 // MINX_CITY = "Suits" faction (dominant city enemies, suited enforcers) — buffed ATK
 const THREAT_ATK: Record<string, number> = {
-  RUST_SYNDICATE: 0.20, VOID_RUNNERS: 0.28, STATIC_MONKS: 0.35, MUTANT: 0.30,
-  RAIDER: 0.40, PROWLER: 0.18, BORDER_GANG: 0.22, EASTERN_BLOC: 0.32,
-  SPY: 0.15, PABLO_GUARD: 0.50, MINX_CITY: 0.90,
-  VAGRANT: 0.05, STRAY_DOG: 0.08, SCAVENGER: 0.12, RAT: 0.03,
+  RUST_SYNDICATE: 3, VOID_RUNNERS: 4, STATIC_MONKS: 5, MUTANT: 4.5,
+  RAIDER: 6, PROWLER: 2.5, BORDER_GANG: 3.5, EASTERN_BLOC: 5,
+  SPY: 2, PABLO_GUARD: 8, MINX_CITY: 12,
+  VAGRANT: 0.5, STRAY_DOG: 1, SCAVENGER: 1.5, RAT: 0.3,
+};
+const THREAT_RANGED: Record<string, { range: number; cooldown: number; speed: number; dmg: number; type: string }> = {
+  VOID_RUNNERS:  { range: 160, cooldown: 55, speed: 5, dmg: 3, type: 'pistol' },
+  EASTERN_BLOC:  { range: 200, cooldown: 45, speed: 6, dmg: 4, type: 'pistol' },
+  RAIDER:        { range: 140, cooldown: 60, speed: 5, dmg: 3.5, type: 'pistol' },
+  SPY:           { range: 120, cooldown: 70, speed: 4, dmg: 2, type: 'pistol' },
+  PABLO_GUARD:   { range: 180, cooldown: 35, speed: 6, dmg: 5, type: 'laser' },
+  MINX_CITY:     { range: 220, cooldown: 30, speed: 7, dmg: 7, type: 'laser' },
+  BORDER_GANG:   { range: 130, cooldown: 65, speed: 5, dmg: 3, type: 'pistol' },
 };
 const NPC_LOOT_TABLE = [
   { id: 'scrap_metal', name: 'SCRAP METAL', desc: 'Salvaged components' },
@@ -2089,7 +2098,7 @@ const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
   { bid: 'pablo_tower',x:  60, y: 0 },
   { bid: 'dojo',       x: -28, y: 0 },
 ];
-const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y,behavior:'PATROLLING',behaviorTimer:0}; };
+const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y,behavior:'PATROLLING',behaviorTimer:0,attackCd:0,strafeAngle:Math.random()*Math.PI*2}; };
 const THREATS_INIT: Threat[] = [
   // ── South city border — PROWLERs patrol near the checkpoints ──
   mkThreat(5600, 7350, 'PROWLER'), mkThreat(5900, 7380, 'PROWLER'),
@@ -6671,17 +6680,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           return false;
         }
         let hitAny = false;
+        // ── Enemy projectile hits the PLAYER ──────────────────────────────────
+        if (p.fromEnemy && !hitAny) {
+          const playerDist = segPointDist(p.prevX, p.prevY, p.x, p.y, g.px, g.py);
+          if (playerDist < 14 && g.invincible === 0 && !gamePausedRef.current && !npcDialogRef.current) {
+            hitAny = true;
+            const impactAngle = Math.atan2(p.dy, p.dx);
+            for (let si = 0; si < 4; si++) {
+              const sa = impactAngle + (Math.random() - 0.5) * 2.2;
+              g.hitEffects.push({ x: g.px, y: g.py, life: 5, maxLife: 5, dx: Math.cos(sa) * 1.5, dy: Math.sin(sa) * 1.5 });
+            }
+            const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
+            const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+            const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
+            const dmg = p.damage * armorMult * defReduce;
+            g.hp = Math.max(0, g.hp - dmg); g.invincible = 20; g.flash = 6;
+            g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
+            g.deathReason = 'Shot down by enemy fire';
+            g.floaters.push({ x: g.px, y: g.py - 12, text: `−${Math.floor(dmg)}`, color: '#ff4444', life: 35, maxLife: 35 });
+            sfxHit();
+          }
+        }
+        // ── Player projectile hits THREATS ─────────────────────────────────────
+        if (!p.fromEnemy && !hitAny) {
         g.threats = g.threats.map(t => {
           const d = segPointDist(p.prevX, p.prevY, p.x, p.y, t.x, t.y);
           if (d < (p.type === 'laser' ? 20 : 14)) {
             hitAny = true;
-            // Hit impact effect — burst sparks at impact point
             const impactAngle = Math.atan2(p.dy, p.dx);
             for (let si = 0; si < 4; si++) {
               const sa = impactAngle + (Math.random() - 0.5) * 2.2;
               g.hitEffects.push({ x: t.x, y: t.y, life: 5, maxLife: 5, dx: Math.cos(sa) * 1.5, dy: Math.sin(sa) * 1.5 });
             }
-            // Knockback visual: 2px displacement for 3 frames in shot direction
             const kbT = { ...t, knockback: { dx: Math.cos(impactAngle) * 2, dy: Math.sin(impactAngle) * 2, frames: 3 } };
             const isSilentProjectile = p.type === 'crossbow';
             if (!isSilentProjectile && !ANIMAL_TYPES.has(kbT.type)) {
@@ -6719,7 +6749,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           return t;
         }).filter(Boolean) as Threat[];
-        if (!hitAny) {
+        }
+        if (!hitAny && !p.fromEnemy) {
           for (const [, peer] of g.peers) {
             if (peer.interiorBid) continue;
             const pd = segPointDist(p.prevX, p.prevY, p.x, p.y, peer.x, peer.y);
@@ -7202,6 +7233,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         // ── Behavior state machine ───────────────────────────────────────────
         t.behaviorTimer--;
+        if (t.attackCd > 0) t.attackCd--;
         if (t.behaviorTimer <= 0 && t.behavior !== 'HOSTILE') {
           t.behavior = pickBehavior(t.type, g.worldTime);
           t.behaviorTimer = 300 + Math.floor(Math.random() * 300);
@@ -7221,38 +7253,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let hostilityMult = 1.0;
         if (hasFaction) {
           if (isAlly) {
-            hostilityMult = playerInThreatZone ? 0.05 : 0;
+            hostilityMult = playerInThreatZone ? 0.15 : 0;
           } else if (isEnemy) {
-            hostilityMult = playerInThreatZone ? 3.5 : 1.5;
+            hostilityMult = playerInThreatZone ? 3.0 : 1.8;
           } else {
-            hostilityMult = playerInThreatZone ? 1.0 : 0.3;
+            hostilityMult = playerInThreatZone ? 1.2 : 0.6;
           }
         } else {
           if (pClass === 'corporate') hostilityMult = 1.2;
-          else if (pClass === 'outlaw') hostilityMult = 0.5;
-          else if (pClass === 'replicant') hostilityMult = 0.6;
-          else hostilityMult = 0.8;
+          else if (pClass === 'outlaw') hostilityMult = 0.7;
+          else if (pClass === 'replicant') hostilityMult = 0.8;
+          else hostilityMult = 0.9;
         }
 
         const nightActive = g.worldTime >= 19 || g.worldTime < 4;
-        const nightAggroBoost = nightActive ? 1.6 : 1.0;
+        const nightAggroBoost = nightActive ? 1.5 : 1.0;
         const nightSpeedBoost = nightActive ? 1.3 : 1.0;
-        const baseAggroRange = isSpy ? 55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 35 : 45;
+        const baseAggroRange = isSpy ? 100 : (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') ? 140 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 90 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 120 : 100);
         const aggroRange = baseAggroRange * hostilityMult * nightAggroBoost;
-        const chaseSpeed  = (isSpy ? 0.55 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.28 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.32 : 0.25)) * NPC_SPEED_MULT * nightSpeedBoost;
-        const wanderSpeed = (isSpy ? 0.2 : 0.1) * NPC_SPEED_MULT;
+        const chaseSpeed  = (isSpy ? 0.65 : (t.type === 'PROWLER' || t.type === 'BORDER_GANG') ? 0.52 : (['RAIDER','EASTERN_BLOC'].includes(t.type) ? 0.58 : (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') ? 0.62 : 0.48)) * NPC_SPEED_MULT * nightSpeedBoost;
+        const wanderSpeed = (isSpy ? 0.25 : 0.15) * NPC_SPEED_MULT;
+        const rangedCfg = THREAT_RANGED[t.type] ?? null;
+        const hasRanged = !!rangedCfg;
 
         const shouldAggro = dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
 
         if (t.behavior === 'SLEEPING') {
           t.dx = 0; t.dy = 0;
-          if (shouldAggro && dist < aggroRange * 0.4) {
-            t.behavior = 'HOSTILE'; t.behaviorTimer = 180;
+          if (shouldAggro && dist < aggroRange * 0.5) {
+            t.behavior = 'HOSTILE'; t.behaviorTimer = 300;
+            const nearby = g.threats.filter(o => o !== t && o.type === t.type && o.behavior !== 'HOSTILE' && Math.hypot(o.x - t.x, o.y - t.y) < 150);
+            for (const ally of nearby) { ally.behavior = 'HOSTILE'; ally.behaviorTimer = 250; }
           }
         } else if (t.behavior === 'CAMPING') {
           t.dx *= 0.9; t.dy *= 0.9;
           if (shouldAggro && dist < aggroRange * 0.6) {
-            t.behavior = 'HOSTILE'; t.behaviorTimer = 180;
+            t.behavior = 'HOSTILE'; t.behaviorTimer = 300;
+            const nearby = g.threats.filter(o => o !== t && o.type === t.type && o.behavior !== 'HOSTILE' && Math.hypot(o.x - t.x, o.y - t.y) < 150);
+            for (const ally of nearby) { ally.behavior = 'HOSTILE'; ally.behaviorTimer = 250; }
           }
         } else if (t.behavior === 'WORKING') {
           if (t.timer <= 0) {
@@ -7260,8 +7298,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             t.dx = Math.cos(ang) * wanderSpeed * 0.5; t.dy = Math.sin(ang) * wanderSpeed * 0.5;
             t.timer = 180 + Math.floor(Math.random() * 200);
           }
-          if (shouldAggro && dist < aggroRange * 0.7) {
-            t.behavior = 'HOSTILE'; t.behaviorTimer = 180;
+          if (shouldAggro) {
+            t.behavior = 'HOSTILE'; t.behaviorTimer = 300;
           }
         } else if (t.behavior === 'SOCIALIZING') {
           const nearby = g.threats.filter(o => o !== t && o.type === t.type && o.behavior === 'SOCIALIZING' && Math.hypot(o.x - t.x, o.y - t.y) < 120);
@@ -7283,14 +7321,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               t.timer = 200 + Math.floor(Math.random() * 200);
             }
           }
-          if (shouldAggro && dist < aggroRange * 0.7) {
-            t.behavior = 'HOSTILE'; t.behaviorTimer = 180;
+          if (shouldAggro) {
+            t.behavior = 'HOSTILE'; t.behaviorTimer = 300;
+            for (const ally of nearby) { ally.behavior = 'HOSTILE'; ally.behaviorTimer = 250; }
           }
         } else if (t.behavior === 'HOSTILE' || shouldAggro) {
           t.behavior = 'HOSTILE';
           const ang = Math.atan2(g.py - t.y, g.px - t.x);
-          t.dx = Math.cos(ang) * chaseSpeed; t.dy = Math.sin(ang) * chaseSpeed;
-          if (dist > aggroRange * 2.5) {
+          const lowHp = t.hp < t.maxHp * 0.25;
+          if (hasRanged && dist < rangedCfg!.range && dist > 40) {
+            t.strafeAngle += (Math.random() - 0.5) * 0.15;
+            const strafeSpd = chaseSpeed * 0.7;
+            t.dx = Math.cos(ang + Math.PI / 2 + t.strafeAngle) * strafeSpd;
+            t.dy = Math.sin(ang + Math.PI / 2 + t.strafeAngle) * strafeSpd;
+          } else if (lowHp && hasRanged) {
+            t.dx = -Math.cos(ang) * chaseSpeed * 0.8;
+            t.dy = -Math.sin(ang) * chaseSpeed * 0.8;
+          } else {
+            t.dx = Math.cos(ang) * chaseSpeed; t.dy = Math.sin(ang) * chaseSpeed;
+          }
+          if (dist > aggroRange * 4) {
             t.behavior = pickBehavior(t.type, g.worldTime);
             t.behaviorTimer = 200 + Math.floor(Math.random() * 200);
           }
@@ -7310,15 +7360,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.x = Math.max(BORDER, Math.min(W - BORDER, nx2));
         t.y = Math.max(BORDER, Math.min(H - BORDER, ny2));
 
-        if (t.behavior === 'HOSTILE' && dist < 14 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current) {
+        // ── Melee attack ──────────────────────────────────────────────────────
+        if (t.behavior === 'HOSTILE' && dist < 18 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current && t.attackCd <= 0) {
           const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
-          const baseThreatAtk = THREAT_ATK[t.type] ?? 0.25;
+          const baseThreatAtk = THREAT_ATK[t.type] ?? 3;
           const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-          const defReduce = Math.max(0.1, 1 - cs.defBonus * 0.02);
-          const nightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
-          g.hp = Math.max(0, g.hp - baseThreatAtk * armorMult * defReduce * nightMult); g.invincible = 70; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
+          const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
+          const nightMult = nightActive ? 1.4 : 1.0;
+          const dmg = baseThreatAtk * armorMult * defReduce * nightMult;
+          g.hp = Math.max(0, g.hp - dmg); g.invincible = 25; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
           g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
-          if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.08) {
+          t.attackCd = 20;
+          g.floaters.push({ x: g.px, y: g.py - 12, text: `−${Math.floor(dmg)}`, color: '#ff4444', life: 35, maxLife: 35 });
+          if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
             g.poisoned = true; g.poisonTick = 0;
             sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
           }
@@ -7329,6 +7383,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               setNarr('> DEVICE DAMAGED — Your personal terminal took a hit. Screen cracked. Find a PUBLIC TERMINAL or repair at CITY CLINIC (ƒ5,000).');
             }
           }
+        }
+        // ── Ranged attack (enemy shoots projectile at player) ─────────────────
+        if (t.behavior === 'HOSTILE' && hasRanged && dist < rangedCfg!.range && dist > 25 && t.attackCd <= 0 && !gamePausedRef.current) {
+          t.attackCd = rangedCfg!.cooldown;
+          const finalAng = Math.atan2(g.py - t.y, g.px - t.x) + (Math.random() - 0.5) * 0.18;
+          g.projectiles.push({ x: t.x, y: t.y, prevX: t.x, prevY: t.y, dx: Math.cos(finalAng) * rangedCfg!.speed, dy: Math.sin(finalAng) * rangedCfg!.speed, life: 40, damage: rangedCfg!.dmg, type: rangedCfg!.type, fromEnemy: true });
+          g.floaters.push({ x: t.x, y: t.y - 10, text: `${t.type.replace(/_/g, ' ')} FIRE`, color: '#ff6644', life: 20, maxLife: 20 });
         }
       }
 
@@ -12657,7 +12718,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const a = chasing ? 1 : (t.behavior === 'SLEEPING' ? 0.3 : t.behavior === 'CAMPING' ? 0.45 : 0.5);
         ctx.globalAlpha = a;
         ctx.shadowColor = tc; ctx.shadowBlur = chasing ? 7 : 2;
-        // Ground shadow
+        if (chasing) {
+          const pulse = 0.3 + Math.sin(g.frame * 0.12) * 0.2;
+          ctx.strokeStyle = `rgba(255,50,30,${pulse})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(tx, ty - 2, 12, 0, Math.PI * 2); ctx.stroke();
+        }
         ctx.fillStyle = 'rgba(0,0,0,.2)';
         ctx.beginPath(); ctx.ellipse(tx, ty + 6, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = tc;
