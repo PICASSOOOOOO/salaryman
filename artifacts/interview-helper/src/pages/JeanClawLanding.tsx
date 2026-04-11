@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import {
   Bot, Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp,
   ChevronRight, Check, Zap, Globe, Shield, Sparkles, ArrowRight,
-  Send, Mail, MessageCircle, Hash, Linkedin, Phone,
+  Send, Mail, MessageCircle, Hash, Linkedin, Phone, Mic, GraduationCap,
 } from 'lucide-react';
 
 const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
@@ -64,6 +64,15 @@ const TEAM_CATEGORIES = [
     desc: 'Lucia runs dropshipping, Anton manages stores, Jade handles merch, Rafael handles FBA, Yuki manages contractors, and Bruno handles auto.',
     bots: ['Lucia', 'Anton', 'Jade', 'Rafael', 'Yuki', 'Bruno'],
     stats: '6 bots · Commerce engine',
+  },
+  {
+    key: 'academy',
+    name: 'PODCAST & ACADEMY',
+    icon: GraduationCap,
+    color: '#8b5cf6',
+    desc: 'Harlow hosts the podcast and teaches everything from vibe coding to no-code workflows. Sienna runs live workshops. Jonah builds course curriculums and certifications.',
+    bots: ['Harlow', 'Sienna', 'Jonah'],
+    stats: '3 bots · Learn anything',
   },
   {
     key: 'more',

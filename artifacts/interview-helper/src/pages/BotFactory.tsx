@@ -2418,6 +2418,7 @@ export default function BotFactory() {
     linkedin_prospector: true,
     fb_ig_scout: true,
     trading_bot: true,
+    podcast_academy: true,
   });
 
   const { isAuthenticated } = useAuth();
@@ -2626,7 +2627,7 @@ export default function BotFactory() {
                       </span>
                       <div className="flex-1 h-px bg-emerald-500/10" />
                       <span className="text-[10px] font-mono text-emerald-500/50">
-                        {Object.values(jeanClawSkills).filter(Boolean).length}/7 ACTIVE
+                        {Object.values(jeanClawSkills).filter(Boolean).length}/8 ACTIVE
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -2638,6 +2639,7 @@ export default function BotFactory() {
                         { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', icon: Search, color: '#0ea5e9', desc: 'Finds decision-makers by title, industry, company size. Auto-populates CRM with scored leads.', channels: ['LinkedIn', 'Email'], stat: '500+ LEADS' },
                         { key: 'fb_ig_scout', label: 'FB & IG SCOUT', icon: Eye, color: '#ec4899', desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent level.', channels: ['Facebook', 'Instagram'], stat: 'REAL-TIME' },
                         { key: 'trading_bot', label: 'TRADING BOT', icon: TrendingUp, color: '#22c55e', desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum. Paper Trading default.', channels: ['thinkorswim'], stat: 'AUTOMATED' },
+                        { key: 'podcast_academy', label: 'PODCAST & ACADEMY', icon: Users, color: '#8b5cf6', desc: 'Hosts podcast episodes, teaches vibe coding, no-code workflows, AI tools, business skills. Full course builder with certs.', channels: ['Web', 'YouTube', 'Telegram'], stat: 'ALWAYS ON' },
                       ].map(skill => {
                         const SkillIcon = skill.icon;
                         const checked = jeanClawSkills[skill.key] ?? true;
