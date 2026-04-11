@@ -2,11 +2,11 @@ import {
   Terminal, Code2, Briefcase, Layers, BarChart2,
   Users, CalendarDays, Archive, FileText, TrendingUp,
   Megaphone, Music2, Palette, LayoutDashboard, Bot, Target,
-  PhoneCall, Mic, Monitor, Search, Phone, Radio, Settings,
+  PhoneCall, Search, Phone, Radio, Settings,
   Voicemail, Hash, Zap, Clock, DollarSign, Receipt, CreditCard, Scale,
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
-  Shield, Link2, PhoneOutgoing,
-  Key, Webhook, Globe, Network,
+  Shield, Link2,
+  Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
 } from 'lucide-react';
 
 export type Module = {
@@ -70,6 +70,7 @@ export const MODULES: Module[] = [
       { id: 'bills', path: '/business/bills', label: 'BILLS', boomerLabel: 'BILLS', codename: 'PAYABLE-X', icon: Receipt },
       { id: 'expenses', path: '/business/expenses', label: 'EXPENSES', boomerLabel: 'EXPENSES', codename: 'SPEND-TRACK', icon: CreditCard },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
+      { id: 'insurance-api', path: '/insurance', label: 'INSURANCE API', boomerLabel: 'INSURANCE API', codename: 'SHIELD-9', icon: Shield },
     ],
   },
   {
@@ -134,33 +135,19 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    id: 'insurance',
-    path: '/insurance',
-    label: 'INSURANCE',
-    codename: 'SHIELD-9',
-    icon: Shield,
-    defaultPath: '/insurance',
+    id: 'admin',
+    path: '/admin',
+    label: 'ADMIN',
+    codename: 'COMMAND',
+    icon: ShieldCheck,
+    defaultPath: '/admin',
     subs: [
-      { id: 'ins-overview', path: '/insurance', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'HQ', icon: Shield },
-      { id: 'ins-clients', path: '/insurance?tab=clients', label: 'CLIENTS', boomerLabel: 'CLIENTS', codename: 'INTAKE', icon: Users },
-      { id: 'ins-policies', path: '/insurance?tab=policies', label: 'POLICIES', boomerLabel: 'POLICIES', codename: 'COVERAGE', icon: FileText },
-      { id: 'ins-carriers', path: '/insurance?tab=connections', label: 'CARRIERS', boomerLabel: 'CARRIERS', codename: 'CARRIERS', icon: Link2 },
-      { id: 'ins-calls', path: '/insurance?tab=calls', label: 'CALLS', boomerLabel: 'CALLS', codename: 'CALLOPS', icon: PhoneOutgoing },
-    ],
-  },
-  {
-    id: 'platform',
-    path: '/platform',
-    label: 'PLATFORM',
-    codename: 'NEXUS-API',
-    icon: Network,
-    defaultPath: '/platform',
-    subs: [
-      { id: 'plat-overview', path: '/platform', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'HQ', icon: Network },
-      { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
-      { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
-      { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
-      { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+      { id: 'admin-users', path: '/admin', label: 'USERS', boomerLabel: 'USERS', codename: 'ROSTER', icon: Users },
+      { id: 'admin-orgs', path: '/admin?tab=orgs', label: 'BUSINESSES', boomerLabel: 'BUSINESSES', codename: 'ORGS', icon: Building2 },
+      { id: 'admin-roles', path: '/admin?tab=roles', label: 'ROLES & PERMISSIONS', boomerLabel: 'ROLES & PERMISSIONS', codename: 'ACCESS', icon: UserCog },
+      { id: 'admin-tickets', path: '/admin/tickets', label: 'TICKETS', boomerLabel: 'SUPPORT TICKETS', codename: 'TICKETS', icon: FileText },
+      { id: 'admin-billboards', path: '/admin/billboards', label: 'BILLBOARDS', boomerLabel: 'BILLBOARDS', codename: 'ADS', icon: LayoutDashboard },
+      { id: 'admin-tasks', path: '/admin/dev-tasks', label: 'DEV TASKS', boomerLabel: 'DEV TASKS', codename: 'TASKS', icon: Crosshair },
     ],
   },
   {
@@ -180,16 +167,25 @@ export const MODULES: Module[] = [
   },
 ];
 
+export const SETTINGS_MODULES: SubItem[] = [
+  { id: 'plat-overview', path: '/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM', codename: 'NEXUS-API', icon: Network },
+  { id: 'plat-keys', path: '/platform?tab=keys', label: 'API KEYS', boomerLabel: 'API KEYS', codename: 'KEYS', icon: Key },
+  { id: 'plat-webhooks', path: '/platform?tab=webhooks', label: 'WEBHOOKS', boomerLabel: 'WEBHOOKS', codename: 'HOOKS', icon: Webhook },
+  { id: 'plat-endpoints', path: '/platform?tab=endpoints', label: 'ENDPOINTS', boomerLabel: 'ENDPOINTS', codename: 'DOCS', icon: FileText },
+  { id: 'plat-apps', path: '/platform?tab=apps', label: 'APPS', boomerLabel: 'CONNECTED APPS', codename: 'APPS', icon: Globe },
+];
+
 export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/') return MODULES[0];
   if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[1];
   if (pathname.startsWith('/business')) return MODULES[2];
+  if (pathname.startsWith('/insurance')) return MODULES[2];
   if (pathname.startsWith('/creative')) return MODULES[3];
   if (pathname.startsWith('/marketing')) return MODULES[4];
   if (pathname.startsWith('/intel')) return MODULES[5];
   if (pathname.startsWith('/phone')) return MODULES[6];
-  if (pathname.startsWith('/insurance')) return MODULES[7];
-  if (pathname.startsWith('/platform')) return MODULES[8];
-  if (pathname.startsWith('/bots')) return MODULES[9];
+  if (pathname.startsWith('/admin')) return MODULES[7];
+  if (pathname.startsWith('/platform')) return null;
+  if (pathname.startsWith('/bots')) return MODULES[8];
   return null;
 }

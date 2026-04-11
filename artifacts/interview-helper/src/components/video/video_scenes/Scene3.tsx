@@ -2,12 +2,12 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 const FEATURES = [
-  { title: '77 AI BOTS', sub: 'MARKETPLACE WORKFORCE', color: '#10b981', icon: '◆' },
-  { title: 'PHONE SYSTEM', sub: 'AUTONOMOUS CALL AGENTS', color: '#f59e0b', icon: '◎' },
-  { title: 'CRM & PIPELINE', sub: 'DEALS · CONTACTS · LEADS', color: '#ef4444', icon: '◐' },
-  { title: 'SHIELD-9', sub: 'INSURANCE HUB · 9 CARRIERS', color: '#3b82f6', icon: '◈' },
+  { title: '77 AI BOTS', sub: 'BOT FACTORY · MARKETPLACE', color: '#10b981', icon: '◆' },
+  { title: 'PHONE SYSTEM', sub: 'DIALER · AI SECRETARY · CONFERENCE', color: '#f59e0b', icon: '◎' },
+  { title: 'CRM & PIPELINE', sub: 'CONTACTS · DEALS · LEADS', color: '#ef4444', icon: '◐' },
+  { title: 'INSURANCE HUB', sub: '9 CARRIERS · CLIENTS · POLICIES', color: '#3b82f6', icon: '◈' },
   { title: 'PUBLISHING', sub: 'MUSIC + BOOKS · 11 BOTS', color: '#a855f7', icon: '◉' },
-  { title: 'NEXUS-API', sub: 'PLATFORM API · WEBHOOKS', color: '#38bdf8', icon: '◑' },
+  { title: 'PLATFORM API', sub: 'API KEYS · WEBHOOKS · ENDPOINTS', color: '#38bdf8', icon: '◑' },
   { title: 'JEAN CLAW', sub: '$145/MO · FLAGSHIP TIER', color: '#f59e0b', icon: '◒' },
 ];
 
