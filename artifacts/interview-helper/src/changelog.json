@@ -5,9 +5,9 @@
     "commitHash": null,
     "changes": [
       "Initial alpha launch",
-      "CIPHER-X interview solver core",
-      "PABLO AI chat",
-      "Basic cover and auth flow"
+      "CIPHER-X interview solver",
+      "PABLO AI chat assistant",
+      "Account creation and sign-in"
     ]
   },
   {
@@ -15,8 +15,8 @@
     "date": "2025-10-18",
     "commitHash": null,
     "changes": [
-      "Screen scan module added",
-      "Live listen audio capture",
+      "Screen scan module — real-time screen analysis",
+      "Live listen — audio capture and transcription",
       "Auto-type printer mode"
     ]
   },
@@ -35,9 +35,9 @@
     "date": "2025-11-22",
     "commitHash": null,
     "changes": [
-      "Phone system and dialer",
+      "Phone system with built-in dialer",
       "Voicemail and call log",
-      "Dialing sessions and AI coach"
+      "Dialing sessions with AI coaching"
     ]
   },
   {
@@ -45,7 +45,7 @@
     "date": "2025-12-10",
     "commitHash": null,
     "changes": [
-      "Stripe payments and module store",
+      "Payments and module store",
       "Invoices and billing tools",
       "Revenue and expense tracking"
     ]
@@ -76,10 +76,10 @@
     "date": "2026-04-09",
     "commitHash": "eaabb62c36022925542cda71e0e525b240a2a39e",
     "changes": [
-      "Production Studio (PRD-X) — AI image and video production",
-      "Cost-gating: all paid APIs behind Jean Claw subscription",
-      "Phone system GO ACTIVE rename and enhanced live call monitor",
-      "Live transcript panel and AI coaching tips in call view",
+      "Production Studio (PRD-X) — AI image and video generation",
+      "All paid APIs now gated behind Jean Claw subscription",
+      "Phone system renamed to GO ACTIVE with live call monitor",
+      "Live transcript panel with real-time AI coaching tips",
       "Video Intelligence (VID-SCAN) analyzer"
     ]
   },
@@ -88,16 +88,15 @@
     "date": "2026-04-10",
     "commitHash": null,
     "changes": [
-      "Dark Room — merged Content Studio + Production Studio",
-      "Signal Corps (Marketing) module with Campaigns, SEO, Leads",
-      "Nav reorganization — Intel trimmed, AI Agents + Video Intel moved to Console",
-      "Trade bot enhanced with risk profile presets and 20+ international markets",
+      "Dark Room — unified Content Studio and Production Studio",
+      "Signal Corps marketing module with Campaigns, SEO, and Leads",
+      "Navigation reorganized for faster access",
+      "Trade bot upgraded with risk presets and 20+ international markets",
       "Multi-server architecture — 24 planned cities worldwide",
-      "Business registration + org structure on main terminal",
-      "Employment status display with salary and role classification",
-      "Enterprise accounts limited to 1 save slot",
-      "Writer renamed to HEMINGWAY",
-      "SoundLab/1999 moved exclusively to Creative module"
+      "Business registration and org management",
+      "Employment status display with salary and role info",
+      "Writer tool renamed to HEMINGWAY",
+      "SoundLab/1999 moved to Creative module"
     ]
   },
   {
@@ -105,11 +104,11 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Add an admin panel for managing users, organizations, and bans",
-      "Consolidate admin and platform features into the user profile section",
-      "Update bot descriptions and fix API authentication",
-      "Update video scenes and module structure for improved organization",
-      "Update music generation to use Replicate and implement role hierarchy"
+      "Admin panel for user, org, and moderation management",
+      "Profile section now includes all admin and platform settings",
+      "Improved bot descriptions and API stability",
+      "Video scenes and module structure refinements",
+      "Music generation now powered by Replicate with role-based access"
     ]
   },
   {
@@ -117,7 +116,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Bug fixes and improvements"
+      "Performance and stability improvements"
     ]
   },
   {
@@ -125,7 +124,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Bug fixes and improvements"
+      "Performance and stability improvements"
     ]
   },
   {
@@ -133,7 +132,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Bug fixes and improvements"
+      "Performance and stability improvements"
     ]
   },
   {
@@ -141,7 +140,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Bug fixes and improvements"
+      "Performance and stability improvements"
     ]
   },
   {
@@ -149,11 +148,9 @@
     "date": "2026-04-11",
     "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
     "changes": [
-      "Enhance website SEO with detailed meta tags, structured data, and sitemap",
-      "Published your App",
-      "Add more stacked content sections to the Business Hub page",
-      "Add a comprehensive business management hub with financial overview",
-      "Published your App"
+      "SEO improvements — meta tags, structured data, and sitemap",
+      "Business Hub with financial overview and management tools",
+      "Published to production"
     ]
   },
   {
@@ -161,7 +158,9 @@
     "date": "2026-04-11",
     "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
     "changes": [
-      "Bug fixes and improvements"
+      "Jean Claw agents renamed — all bots now use real names",
+      "Jean Claw integrated into Bot Factory",
+      "Podcast & Academy bot category added — teaches vibe coding, AI tools, and more"
     ]
   }
 ]
