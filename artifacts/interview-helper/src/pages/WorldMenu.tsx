@@ -138,10 +138,10 @@ const FLAVOR = [
   'Every building in Minx City has a price. The corp set them all.',
   'Villain of the poor. Hero of the rich. That\'s PABLO CORP.',
   'Gang territory starts where the lights end.',
-  'City: MINX CITY · PST — 24 cities worldwide.',
+  'City: MINX CITY · PST — 11 servers worldwide.',
   'A helicopter left the tower at 3 AM. Nobody knows which city it came from. Nobody asks.',
-  'They say there are towers in 24 cities. Each one taller than the last. Minx City got the prototype.',
-  'Neon Lagos. Sector Berlin. Old Shanghai. The PABLO CORP network never sleeps.',
+  'They say there are towers in 11 cities. Each one taller than the last. Minx City got the prototype.',
+  'Solaris Drift. Obsidian Reach. Dragon Forge. The PABLO CORP network never sleeps.',
   'The helipad on Floor 62 runs day and night. Someone is always arriving. Someone is always leaving.',
 ];
 
@@ -212,7 +212,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         You feel it before you see it. A hum in the air — low, constant, electric. Neon crawls up every surface like a rash that won't heal. The buildings are too tall. The streets are too clean in some places and not clean enough in others. Somewhere above you, always above you, a tower watches. Sixty-two floors of glass and silence.
       </div>
       <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        This is Minx City. One of twenty-four. Each server carries a different name — Neon Lagos, Sector Berlin, Old Shanghai, the Havana Grid — but the architecture of control is identical. Same tower. Same corp. Same currency that replaced whatever came before. The collapse was not an accident. It was a transition. And the transition is complete.
+        This is Minx City. One of eleven. Each server carries a different name — Solaris Drift, Obsidian Reach, Dragon Forge, Coral Vault — but the architecture of control is identical. Same tower. Same corp. Same currency that replaced whatever came before. The collapse was not an accident. It was a transition. And the transition is complete.
       </div>
       <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
         South of the glow, the city ends. Not with a wall — with an absence. The light stops. The pavement cracks. The sky shifts from neon to smoke. Out there, people still live. Some of them remember what came before. Most of them just remember what they lost.
@@ -228,7 +228,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        Twenty-four cities. Twenty-four towers. The same story told in every timezone. You are in one of them now. The only question that matters: what will you do before the lights go out again?
+        Eleven cities. Eleven towers. The same story told in every timezone. You are in one of them now. The only question that matters: what will you do before the lights go out again?
       </div>
     </div>
   );
@@ -564,42 +564,29 @@ function ClassifiedGate() {
             </div>
           </div>
           <div style={{ width: '100%', border: '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.02)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.12em' }}>24 CITIES · WORLDWIDE NETWORK</div>
+            <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.12em' }}>11 SERVERS · WORLDWIDE NETWORK</div>
             <div style={{ ...S, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', lineHeight: 1.7, marginBottom: '.3rem' }}>
               EACH SERVER CARRIES A DIFFERENT NAME. SAME TOWER. SAME CORP. SAME CURRENCY.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.35rem .6rem' }}>
               {[
-                { name: 'MINX CITY', region: 'US WEST', active: true },
-                { name: 'NEW YORK TOWER', region: 'US EAST', active: false },
-                { name: 'TORONTO NODE', region: 'NA', active: false },
-                { name: 'MEXICO SIGNAL', region: 'NA', active: false },
-                { name: 'NEON LAGOS', region: 'W. AFRICA', active: false },
-                { name: 'NAIROBI PULSE', region: 'E. AFRICA', active: false },
-                { name: 'JOHANNESBURG MINE', region: 'S. AFRICA', active: false },
-                { name: 'CAIRO PYRAMID', region: 'N. AFRICA', active: false },
-                { name: 'SECTOR BERLIN', region: 'EUROPE', active: false },
-                { name: 'LONDON VAULT', region: 'EUROPE', active: false },
-                { name: 'ISTANBUL BRIDGE', region: 'EURASIA', active: false },
-                { name: 'MOSCOW ZERO', region: 'E. EUROPE', active: false },
-                { name: 'DUBAI SPIRE', region: 'MIDDLE EAST', active: false },
-                { name: 'MUMBAI CIRCUIT', region: 'S. ASIA', active: false },
-                { name: 'OLD SHANGHAI', region: 'E. ASIA', active: false },
-                { name: 'TOKYO CORE', region: 'E. ASIA', active: false },
-                { name: 'SEOUL GRID', region: 'E. ASIA', active: false },
-                { name: 'SINGAPORE HUB', region: 'SE ASIA', active: false },
-                { name: 'JAKARTA FLOW', region: 'SE ASIA', active: false },
-                { name: 'MANILA WAVE', region: 'SE ASIA', active: false },
-                { name: 'SYDNEY ARC', region: 'OCEANIA', active: false },
-                { name: 'SAO PAULO NEXUS', region: 'S. AMERICA', active: false },
-                { name: 'BUENOS AIRES TANGO', region: 'S. AMERICA', active: false },
-                { name: 'HAVANA GRID', region: 'CARIBBEAN', active: false },
+                { name: 'MINX CITY', region: 'AMERICAS — NORTH', active: true, color: '#38bdf8', icon: '🏙️' },
+                { name: 'SOLARIS DRIFT', region: 'AMERICAS — CENTRAL', active: false, color: '#f59e0b', icon: '☀️' },
+                { name: 'VERDE NEXUS', region: 'AMERICAS — SOUTH', active: false, color: '#22c55e', icon: '🌿' },
+                { name: 'OBSIDIAN REACH', region: 'AFRICA', active: false, color: '#a855f7', icon: '💎' },
+                { name: 'COBALT HARBOR', region: 'EUROPE — WEST', active: false, color: '#3b82f6', icon: '⚓' },
+                { name: 'VOSTOK GATE', region: 'EUROPE — EAST', active: false, color: '#ef4444', icon: '🚪' },
+                { name: 'CRESCENT SPIRE', region: 'ASIA — CRESCENT', active: false, color: '#eab308', icon: '🌙' },
+                { name: 'AMBER CIRCUIT', region: 'ASIA — SOUTH', active: false, color: '#f97316', icon: '🔶' },
+                { name: 'JADE MONSOON', region: 'ASIA — SOUTHEAST', active: false, color: '#14b8a6', icon: '🌊' },
+                { name: 'DRAGON FORGE', region: 'ASIA — EAST', active: false, color: '#dc2626', icon: '🐉' },
+                { name: 'CORAL VAULT', region: 'OCEANIA', active: false, color: '#06b6d4', icon: '🐚' },
               ].map(c => (
-                <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', padding: '.25rem .4rem', border: `1px solid ${c.active ? 'rgba(56,189,248,.25)' : 'rgba(56,189,248,.06)'}`, background: c.active ? 'rgba(56,189,248,.06)' : 'transparent' }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.active ? '#38bdf8' : 'rgba(56,189,248,.15)', boxShadow: c.active ? '0 0 6px rgba(56,189,248,.5)' : 'none', flexShrink: 0 }} />
+                <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: '.4rem', padding: '.25rem .4rem', border: `1px solid ${c.active ? `${c.color}40` : `${c.color}15`}`, background: c.active ? `${c.color}10` : 'transparent' }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: c.active ? c.color : `${c.color}30`, boxShadow: c.active ? `0 0 6px ${c.color}80` : 'none', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ ...S, fontSize: '.5rem', color: c.active ? 'rgba(56,189,248,.8)' : 'rgba(56,189,248,.3)', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.name}</div>
-                    <div style={{ ...S, fontSize: '.35rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em' }}>{c.region}</div>
+                    <div style={{ ...S, fontSize: '.5rem', color: c.active ? `${c.color}cc` : `${c.color}55`, letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{c.icon} {c.name}</div>
+                    <div style={{ ...S, fontSize: '.35rem', color: `${c.color}25`, letterSpacing: '.08em' }}>{c.region}</div>
                   </div>
                 </div>
               ))}
@@ -1087,49 +1074,36 @@ export default function WorldMenu() {
           </div>
         )}
 
-        {/* ── PABLO CORP CITIES ── */}
+        {/* ── PABLO CORP SERVERS ── */}
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem', border: '1px solid rgba(56,189,248,.1)', background: 'rgba(5,15,25,.6)', padding: '.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em' }}>PABLO CORP CITIES — 24 PLANNED</div>
+            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em' }}>PABLO CORP SERVERS — 11 PLANNED</div>
             <div style={{ fontSize: '.38rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.1em' }}>EXPANSION ROADMAP</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.3rem' }}>
             {[
-              { name: 'MINX CITY', region: 'US WEST', status: 'live' as const },
-              { name: 'NEON LAGOS', region: 'W. AFRICA', status: 'planned' as const },
-              { name: 'SECTOR BERLIN', region: 'EUROPE', status: 'planned' as const },
-              { name: 'OLD SHANGHAI', region: 'E. ASIA', status: 'planned' as const },
-              { name: 'HAVANA GRID', region: 'CARIBBEAN', status: 'planned' as const },
-              { name: 'TOKYO CORE', region: 'E. ASIA', status: 'planned' as const },
-              { name: 'SAO PAULO NEXUS', region: 'S. AMERICA', status: 'planned' as const },
-              { name: 'DUBAI SPIRE', region: 'MIDDLE EAST', status: 'planned' as const },
-              { name: 'MUMBAI CIRCUIT', region: 'S. ASIA', status: 'planned' as const },
-              { name: 'LONDON VAULT', region: 'W. EUROPE', status: 'planned' as const },
-              { name: 'SYDNEY ARC', region: 'OCEANIA', status: 'planned' as const },
-              { name: 'NAIROBI PULSE', region: 'E. AFRICA', status: 'planned' as const },
-              { name: 'SEOUL GRID', region: 'E. ASIA', status: 'planned' as const },
-              { name: 'MEXICO SIGNAL', region: 'N. AMERICA', status: 'planned' as const },
-              { name: 'ISTANBUL BRIDGE', region: 'EURASIA', status: 'planned' as const },
-              { name: 'TORONTO NODE', region: 'N. AMERICA', status: 'planned' as const },
-              { name: 'JOHANNESBURG MINE', region: 'S. AFRICA', status: 'planned' as const },
-              { name: 'SINGAPORE HUB', region: 'SE. ASIA', status: 'planned' as const },
-              { name: 'CAIRO PYRAMID', region: 'N. AFRICA', status: 'planned' as const },
-              { name: 'BUENOS AIRES TANGO', region: 'S. AMERICA', status: 'planned' as const },
-              { name: 'JAKARTA FLOW', region: 'SE. ASIA', status: 'planned' as const },
-              { name: 'MOSCOW ZERO', region: 'E. EUROPE', status: 'planned' as const },
-              { name: 'NEW YORK TOWER', region: 'US EAST', status: 'planned' as const },
-              { name: 'MANILA WAVE', region: 'SE. ASIA', status: 'planned' as const },
+              { name: 'MINX CITY', region: 'AMERICAS — NORTH', status: 'live' as const, color: '#38bdf8', icon: '🏙️' },
+              { name: 'SOLARIS DRIFT', region: 'AMERICAS — CENTRAL', status: 'planned' as const, color: '#f59e0b', icon: '☀️' },
+              { name: 'VERDE NEXUS', region: 'AMERICAS — SOUTH', status: 'planned' as const, color: '#22c55e', icon: '🌿' },
+              { name: 'OBSIDIAN REACH', region: 'AFRICA', status: 'planned' as const, color: '#a855f7', icon: '💎' },
+              { name: 'COBALT HARBOR', region: 'EUROPE — WEST', status: 'planned' as const, color: '#3b82f6', icon: '⚓' },
+              { name: 'VOSTOK GATE', region: 'EUROPE — EAST', status: 'planned' as const, color: '#ef4444', icon: '🚪' },
+              { name: 'CRESCENT SPIRE', region: 'ASIA — CRESCENT', status: 'planned' as const, color: '#eab308', icon: '🌙' },
+              { name: 'AMBER CIRCUIT', region: 'ASIA — SOUTH', status: 'planned' as const, color: '#f97316', icon: '🔶' },
+              { name: 'JADE MONSOON', region: 'ASIA — SOUTHEAST', status: 'planned' as const, color: '#14b8a6', icon: '🌊' },
+              { name: 'DRAGON FORGE', region: 'ASIA — EAST', status: 'planned' as const, color: '#dc2626', icon: '🐉' },
+              { name: 'CORAL VAULT', region: 'OCEANIA', status: 'planned' as const, color: '#06b6d4', icon: '🐚' },
             ].map(city => (
-              <div key={city.name} style={{ padding: '.25rem .35rem', border: `1px solid ${city.status === 'live' ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.08)'}`, background: city.status === 'live' ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.02)', display: 'flex', flexDirection: 'column', gap: '.1rem' }}>
+              <div key={city.name} style={{ padding: '.25rem .35rem', border: `1px solid ${city.status === 'live' ? `${city.color}66` : `${city.color}15`}`, background: city.status === 'live' ? `${city.color}10` : `${city.color}05`, display: 'flex', flexDirection: 'column', gap: '.1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '.2rem' }}>
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: city.status === 'live' ? '#38bdf8' : 'rgba(56,189,248,.15)', boxShadow: city.status === 'live' ? '0 0 6px rgba(56,189,248,.6)' : 'none' }} />
-                  <span style={{ fontSize: '.38rem', color: city.status === 'live' ? '#38bdf8' : 'rgba(56,189,248,.25)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city.name}</span>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: city.status === 'live' ? city.color : `${city.color}30`, boxShadow: city.status === 'live' ? `0 0 6px ${city.color}99` : 'none' }} />
+                  <span style={{ fontSize: '.38rem', color: city.status === 'live' ? city.color : `${city.color}44`, letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{city.icon} {city.name}</span>
                 </div>
-                <span style={{ fontSize: '.3rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{city.region}</span>
+                <span style={{ fontSize: '.3rem', color: `${city.color}22`, letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace" }}>{city.region}</span>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: '.4rem', fontSize: '.35rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em', textAlign: 'center' }}>YOU ARE IN: MINX CITY (US WEST · PST) — MORE CITIES COMING 2026-2027</div>
+          <div style={{ marginTop: '.4rem', fontSize: '.35rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em', textAlign: 'center' }}>YOU ARE IN: MINX CITY (PST) — MORE SERVERS COMING 2026-2027</div>
         </div>
 
         {/* ── PABLO TOOLS GRID ── */}
@@ -2420,7 +2394,7 @@ export default function WorldMenu() {
       {/* Bottom bar */}
       <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em' }}>
-          {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 24 TOWERS · 24 CITIES · PABLO CORP INTERNATIONAL
+          {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 11 TOWERS · 11 SERVERS · PABLO CORP INTERNATIONAL
         </span>
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>

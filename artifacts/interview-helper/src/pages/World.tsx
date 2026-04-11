@@ -4,6 +4,8 @@ import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { boomerize, CITY_NAME, CLASS_GOV_SALARY, TransactionCategory } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
+import ServerSelect from '../components/world/ServerSelect';
+import { type CityEntry, PLANNED_CITIES } from '@/lib/world-servers';
 
 // ── World ─────────────────────────────────────────────────────────────────────
 const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
@@ -11,17 +13,15 @@ const W = 1600, H = 1200, TILE = 32, SPD = 2.5, PSIZE = 8, RANGE = 55;
 // Road grid: H roads at y=450,570,690 | V roads at x=380,610,850,1080 (road width ~18px)
 // City blocks sit between roads; buildings placed with ~16px margin from road edges
 const BUILDINGS = [
-  // City buildings (CITY_TOP=407 to CITY_BOTTOM=793)
-  { id: 'pablo_store', x: 396, y: 466, w: 120, h: 80,  label: 'PABLO STORE',   bright: true  }, // block (380-610, 450-570)
-  { id: 'office',      x: 626, y: 466, w: 140, h: 90,  label: 'OFFICE TOWER',  bright: true  }, // block (610-850, 450-570)
-  { id: 'clinic',      x: 396, y: 586, w: 100, h: 70,  label: 'MED CLINIC',    bright: false }, // block (380-610, 570-690)
-  { id: 'megabank',    x: 626, y: 586, w: 120, h: 80,  label: 'BANCO OMBRA',   bright: false }, // block (610-850, 570-690)
-  { id: 'market',      x: 866, y: 586, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false }, // block (850-1080, 570-690)
-  { id: 'hotel',       x: 866, y: 466, w: 100, h: 90,  label: 'HOTEL NEON',    bright: false }, // block (850-1080, 450-570)
-  // Wasteland buildings (below city zone, Y > 793)
-  { id: 'bunker',      x: 280, y: 860, w: 130, h: 80,  label: 'BUNKER-09',     bright: false },
-  { id: 'scrap',       x: 580, y: 870, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false },
-  { id: 'radio',       x: 900, y: 855, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false },
+  { id: 'pablo_store', x: 396, y: 466, w: 120, h: 80,  label: 'PABLO STORE',   bright: true,  color: '#38bdf8', fillAlpha: .06 },
+  { id: 'office',      x: 626, y: 466, w: 140, h: 90,  label: 'OFFICE TOWER',  bright: true,  color: '#a78bfa', fillAlpha: .05 },
+  { id: 'clinic',      x: 396, y: 586, w: 100, h: 70,  label: 'MED CLINIC',    bright: false, color: '#34d399', fillAlpha: .04 },
+  { id: 'megabank',    x: 626, y: 586, w: 120, h: 80,  label: 'BANCO OMBRA',   bright: false, color: '#fbbf24', fillAlpha: .05 },
+  { id: 'market',      x: 866, y: 586, w: 110, h: 70,  label: 'BLACK MARKET',  bright: false, color: '#f472b6', fillAlpha: .04 },
+  { id: 'hotel',       x: 866, y: 466, w: 100, h: 90,  label: 'HOTEL NEON',    bright: false, color: '#fb923c', fillAlpha: .05 },
+  { id: 'bunker',      x: 280, y: 860, w: 130, h: 80,  label: 'BUNKER-09',     bright: false, color: '#6ee7b7', fillAlpha: .03 },
+  { id: 'scrap',       x: 580, y: 870, w: 160, h: 70,  label: 'SCRAP YARD',    bright: false, color: '#a3a3a3', fillAlpha: .03 },
+  { id: 'radio',       x: 900, y: 855, w: 100, h: 90,  label: 'PIRATE RADIO',  bright: false, color: '#f87171', fillAlpha: .04 },
 ];
 
 const NPCS = [
@@ -199,6 +199,17 @@ export default function World() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef     = useRef<WebSocket|null>(null);
   const animRef   = useRef(0);
+
+  const [selectedServer, setSelectedServer] = useState<CityEntry | null>(() => {
+    try {
+      const s = localStorage.getItem('sm_server');
+      if (!s) return null;
+      const parsed = JSON.parse(s);
+      const canonical = PLANNED_CITIES.find(c => c.cityId === parsed?.cityId);
+      if (!canonical || !canonical.isLive) { localStorage.removeItem('sm_server'); return null; }
+      return canonical;
+    } catch { return null; }
+  });
 
   const gs = useRef({
     px: 560, py: 320,
@@ -730,15 +741,22 @@ export default function World() {
       ctx.fillText((g.py>=CITY_TOP&&g.py<=CITY_BOTTOM)?'CITY':'WASTELAND',cw/2,ch/2);
 
       // Roads — grid: 3 horizontal + 4 vertical within city zone
-      ctx.lineWidth=18; ctx.strokeStyle='rgba(56,189,248,.06)';
-      // Horizontal roads
+      ctx.lineWidth=18; ctx.strokeStyle='rgba(56,189,248,.07)';
       for(const ry of [450,570,690]){
         ctx.beginPath();ctx.moveTo(0,ry+oy);ctx.lineTo(W+ox,ry+oy);ctx.stroke();
       }
-      // Vertical roads
       for(const rx of [380,610,850,1080]){
         ctx.beginPath();ctx.moveTo(rx+ox,CITY_TOP+oy);ctx.lineTo(rx+ox,CITY_BOTTOM+oy);ctx.stroke();
       }
+      // Road lane markings
+      ctx.setLineDash([6,10]);ctx.lineWidth=1;ctx.strokeStyle='rgba(255,200,60,.08)';
+      for(const ry of [450,570,690]){
+        ctx.beginPath();ctx.moveTo(0,ry+oy);ctx.lineTo(W+ox,ry+oy);ctx.stroke();
+      }
+      for(const rx of [380,610,850,1080]){
+        ctx.beginPath();ctx.moveTo(rx+ox,CITY_TOP+oy);ctx.lineTo(rx+ox,CITY_BOTTOM+oy);ctx.stroke();
+      }
+      ctx.setLineDash([]);
 
       // Buildings
       for(const b of BUILDINGS){
@@ -746,18 +764,20 @@ export default function World() {
         if(bx+b.w<0||bx>cw||by+b.h<0||by>ch) continue;
         const isNear=nb===b.id;
         const isLocked=g.locks.has(b.id)&&!!g.locks.get(b.id)?.ownerName;
-        ctx.strokeStyle=isLocked?`rgba(255,120,50,${isNear?.8:.3})`:b.bright?`rgba(56,189,248,${isNear?.9:.5})` :`rgba(0,180,50,${isNear?.7:.3})`;
+        const bc = b.color;
+        ctx.strokeStyle=isLocked?`rgba(255,120,50,${isNear?.8:.3})`:`${bc}${isNear?'dd':'66'}`;
         ctx.lineWidth=isNear?2:1; ctx.strokeRect(bx,by,b.w,b.h);
-        ctx.fillStyle=isLocked?'rgba(255,80,0,.04)':'rgba(56,189,248,.03)'; ctx.fillRect(bx,by,b.w,b.h);
-        // corners
-        const cs=7;ctx.lineWidth=1.5;ctx.strokeStyle=isLocked?'rgba(255,120,50,.55)':b.bright?'rgba(56,189,248,.75)':'rgba(0,200,50,.4)';
+        ctx.fillStyle=isLocked?'rgba(255,80,0,.04)':`${bc}${Math.round(b.fillAlpha*255).toString(16).padStart(2,'0')}`; ctx.fillRect(bx,by,b.w,b.h);
+        const cs=7;ctx.lineWidth=1.5;ctx.strokeStyle=isLocked?'rgba(255,120,50,.55)':`${bc}${isNear?'bb':'55'}`;
         [[bx,by,1,1],[bx+b.w,by,-1,1],[bx,by+b.h,1,-1],[bx+b.w,by+b.h,-1,-1]].forEach(([cx2,cy2,sx,sy])=>{
           ctx.beginPath();ctx.moveTo(cx2,cy2+sy*cs);ctx.lineTo(cx2,cy2);ctx.lineTo(cx2+sx*cs,cy2);ctx.stroke();
         });
-        ctx.fillStyle=isLocked?'rgba(255,140,60,.7)':b.bright?(isNear?'#38bdf8':'rgba(56,189,248,.6)'):'rgba(0,200,50,.45)';
+        if(isNear){ctx.shadowColor=bc;ctx.shadowBlur=12;}
+        ctx.fillStyle=isLocked?'rgba(255,140,60,.7)':isNear?bc:`${bc}99`;
         ctx.font=`${b.bright?10:9}px "Share Tech Mono"`;ctx.textAlign='center';
         ctx.fillText(b.label+(isLocked?' 🔒':''),bx+b.w/2,by+b.h/2+4);
-        if(isNear){ctx.fillStyle=g.blink?'rgba(56,189,248,.85)':'rgba(56,189,248,.35)';ctx.font='8px "Share Tech Mono"';ctx.fillText('[E]',bx+b.w/2,by-7);}
+        ctx.shadowBlur=0;
+        if(isNear){ctx.fillStyle=g.blink?`${bc}dd`:`${bc}55`;ctx.font='8px "Share Tech Mono"';ctx.fillText('[E]',bx+b.w/2,by-7);}
       }
 
       // NPCs
@@ -826,7 +846,19 @@ export default function World() {
     return()=>{ cancelAnimationFrame(animRef.current); window.removeEventListener('resize',resize); };
   },[char,dialog,showStore,showOffice,showPablo,pwPrompt,isDead,speaking]);
 
-  if(!char) return <CharSelect onStart={handleStart} onBack={() => navigate('/')} />;
+  if (!selectedServer) {
+    return (
+      <ServerSelect
+        onSelect={(city) => {
+          setSelectedServer(city);
+          localStorage.setItem('sm_server', JSON.stringify(city));
+        }}
+        onBack={() => navigate('/')}
+      />
+    );
+  }
+
+  if(!char) return <CharSelect onStart={handleStart} onBack={() => { setSelectedServer(null); localStorage.removeItem('sm_server'); }} />;
 
   return (
     <div style={{ width:'100vw',height:'100vh',overflow:'hidden',background:'#060d14',position:'relative',fontFamily:"'Share Tech Mono',monospace" }}>

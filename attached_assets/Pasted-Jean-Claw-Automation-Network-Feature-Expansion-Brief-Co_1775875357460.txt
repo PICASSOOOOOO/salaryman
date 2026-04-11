@@ -1,0 +1,32 @@
+Jean Claw Automation Network — Feature Expansion Brief
+Company: Picasso | Product: Salaryman
+
+1. Expanded Claw Bot Agents (Open Claw Network)
+We need a full suite of autonomous AI agents, referred to as Replicants, specialized in creating and managing businesses for users. These bots must operate visually, animated, and active 24/7. Each bot must contribute directly to revenue generation and self-sustainability, reporting through Pablo → Jean Claw → Specialized Agents.
+
+Proposed specialized bots include:
+
+Music Bot — Creates AI music continuously and publishes it across platforms.
+E-Commerce Bot — Manages automated storefronts on platforms like Etsy, eBay, Shopify, etc.
+Communications Bot — Manages all global communications (email, chat, phones) for users and provides live reporting. Note: The current global communication gateway is non-functional and must be resolved, as seamless communication is essential for productivity.
+Finance Bot — Tracks spending, revenue, payroll, profits, losses, and assets for users and businesses, pulling real-time metrics from Gusto API and Bank APIs.
+Viber/Store Agent — Handles storefront operations, customer interactions, and inventory visibility.
+Business Development Bot — Identifies every automation-focused business opportunity, builds it automatically, and begins outreach on behalf of the owner.
+All bots must be visualized with live movement and status indicators directly in users' virtual office environments (see Section 3).
+
+2. Technology Stack Recommendations
+Claude Opus 1.6 — Advanced AI model for reasoning and complex tasks.
+Gemini 1.5 (Google) — Multimodal AI for design and seamless interaction.
+Nana Banana Pro — Art and interface redesign for enhanced aesthetics.
+OpenRouter — Unified API management across models and integration layers.
+Codex Subscription — Code generation and automation support for bot programming.
+Gusto Payroll API — Real-world payroll integration for tracking employee salaries.
+Bank APIs — Financial transparency for real-time spending and revenue management.
+3. Virtual Office RPG — Core Redesign
+Salaryman's current design needs a complete overhaul into a centralized Virtual Office RPG focused on interactive office environments and enterprise systems. Key improvements include:
+
+Office Design:
+
+Expand interiors to include multi-room layouts (e.g., departments, meeting rooms, art spaces, and employee zones).
+The interior must reflect the hierarchy of the user’s business (admin, executives, directors, management, employees).
+Interaction
