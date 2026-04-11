@@ -9,6 +9,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -27,6 +28,20 @@ async function getCallerOrgMembership(userId: string) {
     .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
   return rows[0] ?? null;
+}
+
+async function ensurePabloChannel(userId: string): Promise<number> {
+  const existing = await db
+    .select()
+    .from(chatChannelsTable)
+    .where(and(eq(chatChannelsTable.type, "pablo"), eq(chatChannelsTable.user1Id, userId)))
+    .limit(1);
+  if (existing[0]) return existing[0].id;
+  const [ch] = await db
+    .insert(chatChannelsTable)
+    .values({ type: "pablo", name: "Pablo AI", user1Id: userId })
+    .returning();
+  return ch.id;
 }
 
 async function ensureGlobalChannel(): Promise<number> {
@@ -62,6 +77,7 @@ router.get("/chat/channels", async (req, res) => {
   const userId = req.user.id;
 
   const globalChannelId = await ensureGlobalChannel();
+  const pabloChannelId = await ensurePabloChannel(userId);
 
   const membership = await getCallerOrgMembership(userId);
 
@@ -93,6 +109,7 @@ router.get("/chat/channels", async (req, res) => {
 
   const allChannelIds = [
     globalChannelId,
+    pabloChannelId,
     ...(companyChannelId ? [companyChannelId] : []),
     ...privateChannels.map((r) => r.channel.id),
   ];
@@ -136,6 +153,7 @@ router.get("/chat/channels", async (req, res) => {
 
   res.json({
     globalChannelId,
+    pabloChannelId,
     companyChannelId,
     companyName: membership?.org.name ?? null,
     privateChannels: privateChannels.map((r) => ({
@@ -172,7 +190,12 @@ router.get("/chat/channels/:channelId/messages", async (req, res) => {
     return;
   }
 
-  if (channel.type === "private") {
+  if (channel.type === "pablo") {
+    if (channel.user1Id !== userId) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+  } else if (channel.type === "private") {
     if (channel.user1Id !== userId && channel.user2Id !== userId) {
       res.status(403).json({ error: "Not authorized" });
       return;
@@ -345,6 +368,103 @@ router.get("/chat/company/members", async (req, res) => {
       profileImageUrl: r.user?.profileImageUrl ?? null,
     })),
   });
+});
+
+const PABLO_SYSTEM_PROMPT = `You are Pablo, the AI assistant for the Salaryman platform by Picasso.ai. You are warm, knowledgeable, and direct. You help users navigate the platform, manage their businesses, optimize their workflows, and make strategic decisions. You know about:
+- AI Agents (Jean Claw system with 7 specialized bots)
+- Phone System (TTC - calls, voicemail, conference, AI secretary)
+- CRM & Pipeline (contacts, deals, leads)
+- Creative Studio (Dark Room, Hemingway writer, Brand Kit, 1999 music lab)
+- Bot Factory (custom AI bots for Telegram, WhatsApp, etc.)
+- Marketing (campaigns, SEO, lead generation)
+- Business Operations (Balance Sheet, financials, world businesses)
+- Minx City (virtual office RPG with 24 worldwide cities)
+
+Keep responses concise but helpful. Use ALL CAPS for feature names and system references. You are the user's dedicated AI partner inside the platform.`;
+
+router.post("/chat/pablo/message", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const { content } = (req.body ?? {}) as { content?: string };
+
+  if (!content || typeof content !== "string" || !content.trim()) {
+    res.status(400).json({ error: "content required" });
+    return;
+  }
+
+  try {
+    const pabloChannelId = await ensurePabloChannel(userId);
+
+    const [userMsg] = await db.insert(chatMessagesTable).values({
+      channelId: pabloChannelId,
+      senderUserId: userId,
+      senderName: (req.user as any).firstName ?? "User",
+      isBot: false,
+      content: content.slice(0, 2000),
+    }).returning();
+
+    const history = await db
+      .select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.channelId, pabloChannelId))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(20);
+
+    history.reverse();
+
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "system", content: PABLO_SYSTEM_PROMPT },
+    ];
+
+    for (const m of history) {
+      messages.push({
+        role: m.isBot ? "assistant" : "user",
+        content: m.content,
+      });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      max_tokens: 600,
+      temperature: 0.7,
+    });
+
+    const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
+
+    const [botMsg] = await db.insert(chatMessagesTable).values({
+      channelId: pabloChannelId,
+      senderUserId: null,
+      senderName: "PABLO",
+      isBot: true,
+      content: reply,
+    }).returning();
+
+    res.json({
+      userMessage: {
+        id: userMsg.id,
+        channelId: userMsg.channelId,
+        senderUserId: userMsg.senderUserId,
+        senderName: userMsg.senderName,
+        isBot: false,
+        content: userMsg.content,
+        createdAt: userMsg.createdAt,
+      },
+      pabloMessage: {
+        id: botMsg.id,
+        channelId: botMsg.channelId,
+        senderUserId: null,
+        senderName: "PABLO",
+        senderProfileImageUrl: null,
+        isBot: true,
+        content: botMsg.content,
+        createdAt: botMsg.createdAt,
+      },
+    });
+  } catch (err: unknown) {
+    console.error("[Pablo Chat] Error:", err instanceof Error ? err.message : err);
+    res.status(500).json({ error: "Pablo is temporarily unavailable" });
+  }
 });
 
 export async function postSystemMessage(channelId: number, content: string) {

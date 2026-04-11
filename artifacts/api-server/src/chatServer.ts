@@ -69,6 +69,13 @@ async function handleSubscribe(client: ChatClient, channelId: number) {
     return;
   }
 
+  if (channel.type === 'pablo') {
+    if (channel.user1Id !== client.userId) return;
+    client.subscribedChannels.add(channelId);
+    send(client.ws, { type: 'subscribed', channelId });
+    return;
+  }
+
   if (channel.type === 'private') {
     if (channel.user1Id !== client.userId && channel.user2Id !== client.userId) return;
     client.subscribedChannels.add(channelId);
@@ -90,7 +97,9 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
     .where(eq(chatChannelsTable.id, channelId));
   if (!channel) return;
 
-  if (channel.type === 'private') {
+  if (channel.type === 'pablo') {
+    if (channel.user1Id !== client.userId) return;
+  } else if (channel.type === 'private') {
     if (channel.user1Id !== client.userId && channel.user2Id !== client.userId) return;
     if (!client.subscribedChannels.has(channelId)) {
       client.subscribedChannels.add(channelId);

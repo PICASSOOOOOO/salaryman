@@ -15,6 +15,7 @@ export interface ChatMessage {
 
 interface ChannelMeta {
   globalChannelId: number | null;
+  pabloChannelId: number | null;
   companyChannelId: number | null;
   companyName: string | null;
   privateChannels: Array<{
@@ -41,12 +42,14 @@ type SendFn = (channelId: number, content: string) => void;
 type MarkReadFn = (channelId: number, lastMessageId: number) => void;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
+type SendToPabloFn = (content: string) => Promise<void>;
 
 interface UseChatSocket extends ChatState {
   send: SendFn;
   markRead: MarkReadFn;
   loadHistory: LoadHistoryFn;
   startPrivateChat: StartPrivateFn;
+  sendToPablo: SendToPabloFn;
   refreshChannels: () => Promise<void>;
 }
 
@@ -245,5 +248,20 @@ export function useChatSocket(): UseChatSocket {
     }
   }, [refreshChannels]);
 
-  return { ...state, send, markRead, loadHistory, startPrivateChat, refreshChannels };
+  const sendToPablo: SendToPabloFn = useCallback(async (content) => {
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/chat/pablo/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.userMessage) appendMessage(data.userMessage);
+      if (data.pabloMessage) appendMessage(data.pabloMessage);
+    } catch {}
+  }, [appendMessage]);
+
+  return { ...state, send, markRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };
 }

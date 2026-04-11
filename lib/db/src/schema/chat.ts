@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { usersTable } from "./auth";
 import { organizationsTable } from "./organizations";
 
-export const CHAT_CHANNEL_TYPES = ["global", "private", "company"] as const;
+export const CHAT_CHANNEL_TYPES = ["global", "private", "company", "pablo"] as const;
 export type ChatChannelType = (typeof CHAT_CHANNEL_TYPES)[number];
 
 export const chatChannelsTable = pgTable("chat_channels", {

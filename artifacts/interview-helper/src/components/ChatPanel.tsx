@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode } from "@/hooks/use-mobile";
@@ -11,7 +11,7 @@ const BG = "rgba(3,10,3,0.98)";
 const BORDER = (a: number) => `rgba(0,255,65,${a})`;
 const FONT = "'Share Tech Mono', monospace";
 
-type Tab = "global" | "company" | "private";
+type Tab = "pablo" | "global" | "company" | "private";
 
 interface UserSearchResult {
   userId: string;
@@ -477,9 +477,10 @@ export function ChatPanel() {
   const [boomerMode] = useBoomerMode();
   const boomer = boomerMode;
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("global");
+  const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [pabloLoading, setPabloLoading] = useState(false);
 
   const {
     connected,
@@ -491,16 +492,20 @@ export function ChatPanel() {
     markRead,
     loadHistory,
     startPrivateChat,
+    sendToPablo,
     refreshChannels,
   } = useChatSocket();
 
   const currentUserId = (user as any)?.id ?? "";
 
   const globalChannelId = channelMeta?.globalChannelId ?? null;
+  const pabloChannelId = channelMeta?.pabloChannelId ?? null;
   const companyChannelId = channelMeta?.companyChannelId ?? null;
 
   const activeChannelId =
-    activeTab === "global"
+    activeTab === "pablo"
+      ? pabloChannelId
+      : activeTab === "global"
       ? globalChannelId
       : activeTab === "company"
       ? companyChannelId
@@ -523,7 +528,16 @@ export function ChatPanel() {
     }
   }, [open, activeChannelId, messages]);
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
+    if (activeTab === "pablo") {
+      setPabloLoading(true);
+      try {
+        await sendToPablo(text);
+      } finally {
+        setPabloLoading(false);
+      }
+      return;
+    }
     if (activeChannelId == null) return;
     send(activeChannelId, text);
   };
@@ -550,6 +564,7 @@ export function ChatPanel() {
   const PANEL_W = 340;
   const PANEL_H = 480;
 
+  const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
   const tabCompanyUnread = unreadCounts[companyChannelId ?? -1] ?? 0;
   const tabPrivateUnread = channelMeta?.privateChannels.reduce(
@@ -640,6 +655,7 @@ export function ChatPanel() {
           >
             {(
               [
+                { id: "pablo" as Tab, label: "PABLO", icon: <Sparkles size={11} />, unread: tabPabloUnread },
                 { id: "global" as Tab, label: "GLOBAL", icon: <Globe size={11} />, unread: tabGlobalUnread },
                 ...(companyChannelId
                   ? [{ id: "company" as Tab, label: channelMeta?.companyName?.toUpperCase().slice(0, 8) ?? "COMPANY", icon: <Building2 size={11} />, unread: tabCompanyUnread }]
@@ -796,6 +812,25 @@ export function ChatPanel() {
             />
           ) : (
             <>
+              {activeTab === "pablo" && currentMessages.length === 0 && !pabloLoading && (
+                <div
+                  style={{
+                    padding: "20px 16px 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 8,
+                    color: AMBER(0.5),
+                    fontFamily: fontFor(boomer),
+                  }}
+                >
+                  <Sparkles size={20} style={{ opacity: 0.5 }} />
+                  <div style={{ fontSize: "0.6rem", letterSpacing: "0.12em", textAlign: "center", lineHeight: 1.6 }}>
+                    DIRECT LINE TO PABLO<br />
+                    <span style={{ color: AMBER(0.3), fontSize: "0.5rem" }}>YOUR AI PARTNER · REMEMBERS EVERYTHING</span>
+                  </div>
+                </div>
+              )}
               <MessageList
                 messages={currentMessages}
                 currentUserId={currentUserId}
@@ -803,9 +838,26 @@ export function ChatPanel() {
                 onLoadMore={handleLoadMore}
                 boomer={boomer}
               />
+              {pabloLoading && activeTab === "pablo" && (
+                <div
+                  style={{
+                    padding: "6px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    color: AMBER(0.5),
+                    fontFamily: fontFor(boomer),
+                    fontSize: "0.52rem",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                  PABLO IS THINKING...
+                </div>
+              )}
               <InputBar
                 onSend={handleSend}
-                disabled={activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
+                disabled={pabloLoading || activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
                 boomer={boomer}
               />
             </>
@@ -871,6 +923,10 @@ export function ChatPanel() {
         @keyframes chatSlideUp {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </>
