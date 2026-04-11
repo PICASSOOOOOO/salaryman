@@ -1819,7 +1819,7 @@ interface Floater { x: number; y: number; text: string; color: string; life: num
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
 const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
 const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 175, VOID_RUNNERS: 225, STATIC_MONKS: 250, MUTANT: 200, RAIDER: 300, PROWLER: 125, BORDER_GANG: 190, EASTERN_BLOC: 240, SPY: 400, PABLO_GUARD: 475, MINX_CITY: 450, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 25, RAT: 0 };
+const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 35, VOID_RUNNERS: 50, STATIC_MONKS: 55, MUTANT: 45, RAIDER: 65, PROWLER: 20, BORDER_GANG: 40, EASTERN_BLOC: 55, SPY: 90, PABLO_GUARD: 110, MINX_CITY: 100, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 5, RAT: 0 };
 const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const HP_PER_HEART = 20;
@@ -1833,7 +1833,7 @@ const CLASS_DISPLAY_NAME: Record<string, string> = {
 };
 const CITY_BUSINESS_NAME = 'MINX BUSINESS';
 const FACTION_SALARY_PER_MIN: Record<string, number> = {
-  corporate: 100, replicant: 50, outlaw: 25,
+  corporate: 0, replicant: 0, outlaw: 0,
 };
 const FACTION_STARTING_NET_WORTH: Record<string, number> = {
   corporate: 25000, replicant: 18000, outlaw: 10000,
@@ -2231,8 +2231,8 @@ const THREAT_COL: Record<string, string> = {
 };
 
 const NPC_RANGE = 60;
-const DOG_MAX_HP = 200;
-const DOG_ATK = 13;
+const DOG_MAX_HP = 60;
+const DOG_ATK = 3;
 const DOG_SPEED = 0.85;
 const DOG_DETECT_RANGE = 110;
 const DOG_ATTACK_COOLDOWN = 48;
@@ -3098,6 +3098,8 @@ export default function WorldPlay() {
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
     jobCooldowns: {} as Record<string, number>,
+    employedAt: (_ss?.employedAt ?? null) as string | null,
+    employedSalary: (_ss?.employedSalary ?? 0) as number,
     cargo: (_ss?.cargo && typeof _ss.cargo === 'object' ? { ..._ss.cargo } : {}) as Record<string, number>,
     classInitDone: false,
     myId: '',
@@ -4108,7 +4110,7 @@ export default function WorldPlay() {
       setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ƒ3,500 FIAT. 5 seconds." You find a PCB labeled NX-87.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'oxide_labs'){ g.salary += 5000; setSalary(g.salary); sfxCoin(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ5,000 in the drawer. I won\'t need it." +ƒ5,000 FIAT.'); }
+    else if (bid === 'oxide_labs'){ g.salary += 500; setSalary(g.salary); sfxCoin(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ500 in the drawer. I won\'t need it." +ƒ500 FIAT.'); }
     else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -4143,7 +4145,7 @@ export default function WorldPlay() {
       setNarr(crystalMsg);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 4000; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ4,000 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 400; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO CORP surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'print_shop') {
@@ -4168,7 +4170,7 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 6000; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ6,000 FIAT in unregistered tokens. Classic.'); }
+    else if (bid === 'supply_cache') { g.salary += 600; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ600 FIAT in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 12); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +12. Someone left coffee. Still warm.');
@@ -5413,15 +5415,15 @@ export default function WorldPlay() {
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 120000);
               const deskRoll = Math.random();
-              if (deskRoll > 0.7) {
-                const lootAmt = Math.floor(Math.random() * 80 + 20);
+              if (deskRoll > 0.8) {
+                const lootAmt = Math.floor(Math.random() * 15 + 3);
                 g.salary += lootAmt; setSalary(g.salary);
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — You rummage through the drawers. Found ƒ${lootAmt} FIAT tucked in the back.`);
-              } else if (deskRoll > 0.4) {
+              } else if (deskRoll > 0.3) {
                 const deskMsgs = ['Old receipts, a broken stylus, and dust.', 'A half-eaten energy bar and some encrypted notes.', 'Someone\'s expired transit pass and a crumpled resignation letter.', 'Empty. Someone cleared this out before you.'];
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — ${deskMsgs[Math.floor(Math.random() * deskMsgs.length)]}`);
               } else {
-                const smallLoot = Math.floor(Math.random() * 30 + 5);
+                const smallLoot = Math.floor(Math.random() * 5 + 1);
                 g.salary += smallLoot; setSalary(g.salary);
                 setNarr(`> ${tObj.type === 'desk' ? 'DESK' : 'NIGHTSTAND'} — Found ƒ${smallLoot} in loose change under the drawer.`);
               }
@@ -5432,8 +5434,8 @@ export default function WorldPlay() {
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
               const lockerRoll = Math.random();
-              if (lockerRoll > 0.65) {
-                const lootAmt = Math.floor(Math.random() * 120 + 30);
+              if (lockerRoll > 0.75) {
+                const lootAmt = Math.floor(Math.random() * 20 + 5);
                 g.salary += lootAmt; setSalary(g.salary);
                 setNarr(`> ${tObj.type === 'locker' ? 'LOCKER' : 'FILING CABINET'} — Found ƒ${lootAmt} FIAT. Someone left their lunch money and forgot about it.`);
               } else if (lockerRoll > 0.35) {
@@ -5449,8 +5451,8 @@ export default function WorldPlay() {
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
               const crateRoll = Math.random();
-              if (crateRoll > 0.6) {
-                const lootAmt = Math.floor(Math.random() * 150 + 50);
+              if (crateRoll > 0.7) {
+                const lootAmt = Math.floor(Math.random() * 25 + 8);
                 g.salary += lootAmt; setSalary(g.salary);
                 setNarr(`> CRATE — Pried it open. Found ƒ${lootAmt} FIAT in a sealed envelope at the bottom.`);
               } else {
@@ -9374,22 +9376,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── ECONOMY: Periodic income by class (salary per minute) ────────
+        // ── ECONOMY: Periodic income — ONLY if player has a real job ──────
         const cls = char.class.toLowerCase();
-        const salaryPerMin = FACTION_SALARY_PER_MIN[cls] ?? 25;
         const factionName = CLASS_DISPLAY_NAME[cls] ?? 'FACTION';
-        const INCOME_LABEL = cls === 'corporate' ? `${factionName} SALARY` : cls === 'replicant' ? `${factionName} GIG PAY` : `${factionName} SCAVENGING`;
         const now = Date.now();
+        const hasGameJob = (g.employedAt ?? null) !== null;
+        const hasRealOrg = !!(char as any).orgId;
+        const hasIncome = hasGameJob || hasRealOrg;
         if (now - g.lastIncomeTime >= 60000) {
           g.lastIncomeTime = now;
-          const bonus = cls === 'outlaw' && inWaste ? Math.floor(Math.random() * 150) : 0;
-          const total = salaryPerMin + bonus;
-          g.salary += total; setSalary(g.salary);
-          g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${INCOME_LABEL}`, color: '#38bdf8', life: 80, maxLife: 80 });
-          sfxCoin();
-          addBankTx(INCOME_LABEL, total, g.salary);
-          reportMissionProgress('fiatEarned', total);
           reportMissionProgress('minutesPlayed', 1);
+          if (hasIncome) {
+            const jobPay = hasGameJob ? (g.employedSalary ?? 50) : 0;
+            const orgPay = hasRealOrg ? 30 : 0;
+            const total = jobPay + orgPay;
+            if (total > 0) {
+              g.salary += total; setSalary(g.salary);
+              const label = hasGameJob ? `${g.employedAt ?? 'JOB'} PAYCHECK` : 'ORG SALARY';
+              g.floaters.push({ x: g.px, y: g.py - 30, text: `+ƒ${total.toLocaleString()} ${label}`, color: '#38bdf8', life: 80, maxLife: 80 });
+              sfxCoin();
+              addBankTx(label, total, g.salary);
+              reportMissionProgress('fiatEarned', total);
+            }
+          }
         }
 
         // ── ECONOMY: Real estate passive income (every 15 ticks) ────────────
@@ -9536,13 +9545,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             () => { const f = 500 + Math.floor(Math.random() * 800); g.salary -= f; setSalary(g.salary); sfxError(); return `> MOBILITY TAX — Your movement pattern flagged by City-AI. ƒ${f.toLocaleString()} auto-taxed. "Irregular mobility risk score: elevated."`; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 8); setHp(Math.floor(g.hp)); sfxHeal(); return '> CORPORATE MORALE DROP — PABLO CORP deployed diluted stim-packs city-wide. "Productivity metric: normalized." HP +8.'; },
             () => { g.energy = Math.min(100, g.energy + 30); setEnergy(Math.floor(g.energy)); sfxHeal(); return '> REST CYCLE — Mandatory 2-hour curfew across Sectors 4–6. You used the time. Energy +30.'; },
-            () => { const bonus = 3000 + Math.floor(Math.random() * 3000); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
+            () => { const bonus = 50 + Math.floor(Math.random() * 100); g.salary += bonus; setSalary(g.salary); sfxCoin(); return `> FOUND STASH — Loose FIAT tokens wedged behind a maintenance panel. Uncoded. Untraceable. +ƒ${bonus.toLocaleString()}.`; },
           ];
           const wasteEvents = [
             () => { if (!gamePausedRef.current) { g.hp = Math.max(1, g.hp - 25); g.deathReason = 'Died from acid rain exposure'; setHp(Math.floor(g.hp)); } sfxError(); return '> ACID RAIN — Wasteland squall. Unprotected exposure. HP −25. Find shelter.'; },
             () => { g.hunger = Math.max(0, g.hunger - 30); g.thirst = Math.max(0, g.thirst - 30); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxError(); return '> SUPPLY SPOILED — Heat and radiation destroyed your rations. Hunger −30. Thirst −30.'; },
             () => { g.poisoned = true; g.poisonTick = 0; setPoisoned(true); sfxPoison(); return '> MUTANT SPORE CLOUD — Inhaled a dense patch of spores. POISONED. HP slowly draining.'; },
-            () => { const loot = 5000 + Math.floor(Math.random() * 8000); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
+            () => { const loot = 80 + Math.floor(Math.random() * 120); g.salary += loot; setSalary(g.salary); sfxCoin(); return `> DEAD RUNNER — A courier. Expired. Their cache: ƒ${loot.toLocaleString()} in undelivered FIAT. Their last entry reads: "Don't go north."  You're going north.`; },
             () => { g.hp = Math.min(g.maxHp, g.hp + 10); setHp(Math.floor(g.hp)); sfxHeal(); return '> SHELTER FOUND — A reinforced alcove. Pre-collapse. Someone patched it. HP +10. Someone was looking out for you.'; },
             () => { g.hunger = Math.min(100, g.hunger + 25); g.thirst = Math.min(100, g.thirst + 25); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); sfxHeal(); return '> WILD GROVE — Impossible. But here: a cluster of growing things. Clean moisture. Hunger +25. Thirst +25.'; },
             () => { g.energy = Math.max(0, g.energy - 20); setEnergy(Math.floor(g.energy)); sfxError(); return '> DEAD ZONE PULSE — Electromagnetic burst from an unknown source. Your equipment flickered. Energy −20. Systems recovering.'; },
@@ -14136,7 +14145,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
-              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · ƒ{FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {gs.current.employedAt ? `${gs.current.employedAt}` : 'UNEMPLOYED'}
             </span>
           </div>
         </div>
@@ -14726,7 +14735,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
-                      <StatRow label="SALARY" val={`ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min`} col="#67e8f9" />
+                      <StatRow label="EMPLOYMENT" val={gs.current.employedAt ?? 'UNEMPLOYED'} col={gs.current.employedAt ? '#67e8f9' : '#ff6644'} />
                       <StatRow label="CHECKING" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="SAVINGS" val={`ƒ${(g.savings ?? 0).toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz (ƒ${(goldBalance * FIAT_PER_GOLD).toLocaleString()})`} col="#FFD700" />
@@ -16276,9 +16285,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       clearInterval(jobTimerRef.current!); jobTimerRef.current = null;
                       const g = gs.current;
                       g.salary += jobPanel.pay; g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
+                      g.employedAt = jobPanel.label; g.employedSalary = jobPanel.pay;
                       g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
                       setSalary(g.salary); sfxCoin();
-                      setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. Credits transferred.`);
+                      setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. You are now employed here.`);
                       setJobPanel(null);
                     } else {
                       setJobPanel(prev => prev ? { ...prev, progress: elapsed } : null);
@@ -17216,7 +17226,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'accounts' && (<>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: `${CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? 'FACTION'}: +ƒ${FACTION_SALARY_PER_MIN[char.class.toLowerCase()] ?? 0}/min` },
+                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB TO EARN INCOME' },
                       { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#38bdf8', sub: 'APY: 0.8% / CYCLE' },
 
                     ].map(({ label, val, color, sub }) => (
