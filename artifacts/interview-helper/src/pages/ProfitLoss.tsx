@@ -79,24 +79,24 @@ export default function ProfitLoss() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-5 h-5 text-emerald-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Profit & Loss' : 'P&L — INCOME STATEMENT'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Revenue minus costs — your bottom line.' : 'REVENUE, COSTS, GROSS MARGIN, NET PROFIT BREAKDOWN.'}
             </p>
           </div>
           <button onClick={fetchData} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-zinc-300 text-xs font-mono transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-zinc-300 text-xs font-mono transition-colors disabled:opacity-50 shrink-0">
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             REFRESH
           </button>
@@ -108,10 +108,10 @@ export default function ProfitLoss() {
           <div className="space-y-6">
             <div className={`rounded-2xl border p-6 ${netProfit >= 0 ? 'border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] to-transparent' : 'border-red-500/20 bg-gradient-to-br from-red-500/[0.04] to-transparent'}`}>
               <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2">NET PROFIT</div>
-              <div className={`text-4xl font-bold mb-2 ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className={`text-2xl sm:text-4xl font-bold mb-2 ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {fmt$(netProfit)}
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="flex items-center gap-1">
                   {netProfit >= 0 ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
                   <span className={`text-sm font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -124,7 +124,7 @@ export default function ProfitLoss() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
                 <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1">REVENUE</div>
                 <div className="text-xl font-bold text-emerald-400">{fmt$(income)}</div>

@@ -95,25 +95,23 @@ export default function TeamDirectory() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-                <Users className="w-5 h-5 text-indigo-400" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">
-                {boomerMode ? 'Team Directory' : 'TEAM ROSTER — PERSONNEL'}
-              </h2>
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-indigo-400" />
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
-              {boomerMode ? 'View your entire team with roles and departments.' : 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.'}
-            </p>
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">
+              {boomerMode ? 'Team Directory' : 'TEAM ROSTER — PERSONNEL'}
+            </h2>
           </div>
+          <p className="text-xs sm:text-sm text-muted-foreground ml-12">
+            {boomerMode ? 'View your entire team with roles and departments.' : 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.'}
+          </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-6">
           <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-4">
             <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">TOTAL MEMBERS</div>
             <div className="text-2xl font-bold text-indigo-400">{combined.length}</div>
@@ -128,14 +126,14 @@ export default function TeamDirectory() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or role..."
               className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
           </div>
           <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
-            className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
+            className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 transition-colors shrink-0">
             {departments.map(d => <option key={d} value={d}>{d === 'all' ? 'ALL DEPARTMENTS' : d.toUpperCase()}</option>)}
           </select>
         </div>

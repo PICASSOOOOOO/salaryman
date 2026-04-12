@@ -113,29 +113,29 @@ export default function Estimates() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
                 <FileText className="w-5 h-5 text-teal-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Estimates & Quotes' : 'QUOTIENT — ESTIMATES'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Create quotes for clients before invoicing.' : 'PRE-INVOICE QUOTES — LINE ITEMS, TAX, CLIENT PROPOSALS.'}
             </p>
           </div>
           <button onClick={() => openForm()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors">
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors shrink-0">
             <Plus className="w-4 h-4" /> NEW ESTIMATE
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
           <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.03] p-4">
             <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">TOTAL QUOTED</div>
             <div className="text-2xl font-bold text-teal-400">{fmt$(totalAll)}</div>
@@ -187,21 +187,23 @@ export default function Estimates() {
                   {isExp && (
                     <div className="px-5 pb-4 border-t border-zinc-800/50 pt-4">
                       {items.length > 0 && (
-                        <div className="rounded-lg border border-zinc-800 overflow-hidden mb-3">
-                          <div className="grid grid-cols-[1fr_80px_100px_100px] gap-0 bg-zinc-900/50 px-3 py-1.5 border-b border-zinc-800">
-                            <span className="text-[9px] font-mono text-zinc-500">DESCRIPTION</span>
-                            <span className="text-[9px] font-mono text-zinc-500 text-right">QTY</span>
-                            <span className="text-[9px] font-mono text-zinc-500 text-right">UNIT PRICE</span>
-                            <span className="text-[9px] font-mono text-zinc-500 text-right">TOTAL</span>
-                          </div>
-                          {items.map((l, i) => (
-                            <div key={i} className="grid grid-cols-[1fr_80px_100px_100px] gap-0 px-3 py-2 border-b border-zinc-800/30">
-                              <span className="text-xs text-foreground">{l.description || '—'}</span>
-                              <span className="text-xs text-zinc-400 text-right">{l.quantity}</span>
-                              <span className="text-xs text-zinc-400 text-right font-mono">{fmt$(l.unitPrice)}</span>
-                              <span className="text-xs text-teal-400 text-right font-mono">{fmt$(l.quantity * l.unitPrice)}</span>
+                        <div className="rounded-lg border border-zinc-800 overflow-x-auto mb-3">
+                          <div className="min-w-[360px]">
+                            <div className="grid grid-cols-[1fr_60px_80px_80px] sm:grid-cols-[1fr_80px_100px_100px] gap-0 bg-zinc-900/50 px-3 py-1.5 border-b border-zinc-800">
+                              <span className="text-[9px] font-mono text-zinc-500">DESCRIPTION</span>
+                              <span className="text-[9px] font-mono text-zinc-500 text-right">QTY</span>
+                              <span className="text-[9px] font-mono text-zinc-500 text-right">UNIT PRICE</span>
+                              <span className="text-[9px] font-mono text-zinc-500 text-right">TOTAL</span>
                             </div>
-                          ))}
+                            {items.map((l, i) => (
+                              <div key={i} className="grid grid-cols-[1fr_60px_80px_80px] sm:grid-cols-[1fr_80px_100px_100px] gap-0 px-3 py-2 border-b border-zinc-800/30">
+                                <span className="text-xs text-foreground truncate">{l.description || '—'}</span>
+                                <span className="text-xs text-zinc-400 text-right">{l.quantity}</span>
+                                <span className="text-xs text-zinc-400 text-right font-mono">{fmt$(l.unitPrice)}</span>
+                                <span className="text-xs text-teal-400 text-right font-mono">{fmt$(l.quantity * l.unitPrice)}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                       <div className="flex justify-end">
@@ -242,7 +244,7 @@ export default function Estimates() {
                         className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">ESTIMATE #</label>
                       <input value={form.estimateNumber} onChange={e => setForm(f => ({ ...f, estimateNumber: e.target.value }))}

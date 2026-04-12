@@ -99,24 +99,24 @@ export default function Announcements() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-3xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center shrink-0">
                 <Megaphone className="w-5 h-5 text-rose-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Announcements' : 'BROADCAST — ANNOUNCEMENTS'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Company-wide updates and announcements.' : 'COMPANY-WIDE UPDATES, POLICY CHANGES, AND TEAM BROADCASTS.'}
             </p>
           </div>
           <button onClick={() => openForm()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors">
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors shrink-0">
             <Plus className="w-4 h-4" /> POST
           </button>
         </div>
@@ -146,7 +146,7 @@ export default function Announcements() {
                       {a.authorName && `Posted by ${a.authorName} · `}{timeAgo(a.createdAt)}
                     </div>
                   </div>
-                  <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => togglePin(a)} className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${a.pinned ? 'border-amber-500/30 text-amber-400' : 'border-zinc-700 text-zinc-600 hover:text-amber-400'}`}>
                       <Pin className="w-3 h-3" />
                     </button>

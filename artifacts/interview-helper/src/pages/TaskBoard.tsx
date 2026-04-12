@@ -66,7 +66,10 @@ export default function TaskBoard() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
-  const [view, setView] = useState<'board' | 'list'>('board');
+  const [view, setView] = useState<'board' | 'list'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) return 'list';
+    return 'board';
+  });
 
   const fetchTasks = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -122,19 +125,19 @@ export default function TaskBoard() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-6xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
                 <ClipboardList className="w-5 h-5 text-violet-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Task Board' : 'TASK COMMAND — OPS BOARD'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Manage tasks, assignments, and deadlines.' : 'TASK ASSIGNMENTS, PRIORITIES, DEADLINES, STATUS TRACKING.'}
             </p>
           </div>
@@ -144,7 +147,7 @@ export default function TaskBoard() {
               <button onClick={() => setView('list')} className={`px-3 py-1.5 text-xs font-bold ${view === 'list' ? 'bg-violet-500/15 text-violet-400' : 'text-muted-foreground'}`}>LIST</button>
             </div>
             <button onClick={() => openForm()}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors">
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors shrink-0">
               <Plus className="w-4 h-4" /> NEW TASK
             </button>
           </div>
@@ -160,7 +163,7 @@ export default function TaskBoard() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>
         ) : view === 'board' ? (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {STATUSES.map(s => (
               <div key={s} className="space-y-2">
                 <div className={`rounded-lg border p-3 ${STATUS_COLORS[s]}`}>
@@ -174,7 +177,7 @@ export default function TaskBoard() {
                   <div key={t.id} className="rounded-xl border border-zinc-800 bg-white/[0.015] p-3 hover:border-violet-500/20 transition-colors group">
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-sm font-bold text-foreground leading-tight">{t.title}</span>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openForm(t)} className="text-zinc-600 hover:text-violet-400"><Edit2 className="w-3 h-3" /></button>
                         <button onClick={() => del(t.id)} className="text-zinc-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                       </div>

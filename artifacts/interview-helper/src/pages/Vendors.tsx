@@ -96,35 +96,35 @@ export default function Vendors() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center shrink-0">
                 <Store className="w-5 h-5 text-orange-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Vendor Directory' : 'VENDOR REGISTRY — SUPPLY CHAIN'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Manage vendor contacts, terms, and categories.' : 'VENDOR RELATIONSHIPS, PAYMENT TERMS, CONTACT DIRECTORY.'}
             </p>
           </div>
           <button onClick={() => openForm()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors">
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors shrink-0">
             <Plus className="w-4 h-4" /> ADD VENDOR
           </button>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 sm:gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search vendors..."
               className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
           </div>
-          <span className="text-[10px] font-mono text-zinc-600">{filtered.length} VENDOR{filtered.length !== 1 ? 'S' : ''}</span>
+          <span className="text-[10px] font-mono text-zinc-600 shrink-0">{filtered.length} VENDOR{filtered.length !== 1 ? 'S' : ''}</span>
         </div>
 
         {loading ? (
@@ -143,7 +143,7 @@ export default function Vendors() {
                     <div className="text-sm font-bold text-foreground">{v.name}</div>
                     {v.contactName && <div className="text-xs text-zinc-400">{v.contactName}</div>}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => openForm(v)} className="w-7 h-7 rounded-lg border border-zinc-700 flex items-center justify-center text-zinc-600 hover:text-orange-400 transition-colors"><Edit2 className="w-3 h-3" /></button>
                     <button onClick={() => del(v.id)} className="w-7 h-7 rounded-lg border border-zinc-700 flex items-center justify-center text-zinc-600 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
                   </div>

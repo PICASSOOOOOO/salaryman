@@ -109,29 +109,29 @@ export default function TimeTracking() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full relative z-10">
+      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full relative z-10">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
                 <Clock className="w-5 h-5 text-cyan-400" />
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground">
                 {boomerMode ? 'Time Tracking' : 'CHRONOS — TIME TRACKER'}
               </h2>
             </div>
-            <p className="text-sm text-muted-foreground ml-12">
+            <p className="text-xs sm:text-sm text-muted-foreground ml-12">
               {boomerMode ? 'Track hours, timesheets, and billable time.' : 'CLOCK IN/OUT, TIMESHEETS, BILLABLE HOURS, RATE TRACKING.'}
             </p>
           </div>
           <button onClick={() => { setForm(EMPTY); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors">
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-bold hover:bg-primary/20 transition-colors shrink-0">
             <Plus className="w-4 h-4" /> LOG TIME
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.03] p-4">
             <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1">TOTAL HOURS</div>
             <div className="text-2xl font-bold text-cyan-400">{totalHours.toFixed(1)}h</div>
@@ -215,7 +215,7 @@ export default function TimeTracking() {
                 </div>
                 <div className="space-y-3">
                   <Field label="EMPLOYEE NAME" value={form.employeeName} onChange={v => setForm(f => ({ ...f, employeeName: v }))} placeholder="Who worked?" />
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="DATE" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} type="date" />
                     <Field label="CLOCK IN" value={form.clockIn} onChange={v => setForm(f => ({ ...f, clockIn: v }))} type="time" />
                     <Field label="CLOCK OUT" value={form.clockOut} onChange={v => setForm(f => ({ ...f, clockOut: v }))} type="time" />
