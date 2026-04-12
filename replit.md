@@ -55,3 +55,21 @@ The `/business` route renders a BusinessHub landing page that provides an overvi
 - Action required alerts for overdue bills and invoices
 - Categorized navigation cards linking to all business sub-modules (Contacts, Hiring, Interview Office, Calendar, Documents, Deals, Invoices, Payroll, Bills, Expenses, Balance Sheet, Insurance API)
 - Backend summary endpoint at `/api/enterprise/summary` aggregates counts and financials across all enterprise tables
+
+## Finance & Dual Currency System
+
+The platform tracks two distinct currencies:
+- **FIAT (ƒ)**: In-game currency earned through gameplay, faction salaries, business profits, ATM interactions in the Salaryman MMO
+- **AVAILABLE ($)**: Real USD linked to bank accounts, Stripe revenue, Gusto payroll — withdrawable to real bank accounts
+- Negative balances = **DEBT** — always displayed, never hidden
+
+The Balance Sheet page (`/business/balance-sheet`) shows both currencies side by side with integration panels for:
+- **Gusto Payroll** — W-2, 1099, employee pay data (requires `GUSTO_API_KEY`)
+- **Bank (Plaid)** — auto-import transactions (future integration)
+- **Google Sheets** — sync accounting data to live spreadsheets
+
+The ATM in-game (Banco Ombra) displays FIAT checking/savings in amber and AVAILABLE (real USD) in green, with Gusto connection status.
+
+## Bot Factory (Jean Claw)
+
+All 77 marketplace bots live under "JEAN CLAW — 77 BOTS" tab (no separate marketplace tab). The "MY BOTS" tab shows user's active/custom bots. Key finance bot is **Viktor Vault** (AI CFO) with Google Sheets, bank, Gusto, and Stripe integration capabilities.

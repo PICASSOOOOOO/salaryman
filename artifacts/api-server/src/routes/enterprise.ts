@@ -645,4 +645,75 @@ router.get("/enterprise/summary", async (req, res) => {
   });
 });
 
+router.get("/enterprise/fiat-balance", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+
+  const txRows = await db
+    .select({ type: balanceSheetTxTable.type, amount: balanceSheetTxTable.amount })
+    .from(balanceSheetTxTable)
+    .where(eq(balanceSheetTxTable.userId, userId));
+
+  const income = txRows.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+  const outgoing = txRows.filter(t => t.type !== "income").reduce((s, t) => s + Number(t.amount), 0);
+
+  const fiatBalance = income - outgoing;
+
+  res.json({ fiatBalance });
+});
+
+router.get("/enterprise/gusto-status", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+
+  const gustoApiKey = process.env.GUSTO_API_KEY;
+  if (!gustoApiKey) {
+    return res.json({ connected: false });
+  }
+
+  try {
+    const response = await fetch("https://api.gusto.com/v1/me", {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+
+    if (!response.ok) {
+      return res.json({ connected: false });
+    }
+
+    const data = await response.json();
+    const companyId = data?.roles?.payroll_admin?.companies?.[0]?.id;
+
+    if (!companyId) {
+      return res.json({ connected: true, companyName: "Gusto Account" });
+    }
+
+    const companyRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+
+    if (!companyRes.ok) {
+      return res.json({ connected: true, companyName: "Gusto Account" });
+    }
+
+    const company = await companyRes.json();
+    const employeesRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/employees`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+    const employees = employeesRes.ok ? await employeesRes.json() : [];
+
+    const payrollsRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/payrolls?processed=true&page=1&per=1`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+    const payrolls = payrollsRes.ok ? await payrollsRes.json() : [];
+
+    res.json({
+      connected: true,
+      companyName: company.name || "Gusto Account",
+      employeeCount: Array.isArray(employees) ? employees.length : 0,
+      lastPayroll: Array.isArray(payrolls) && payrolls.length > 0 ? payrolls[0].check_date : null,
+    });
+  } catch {
+    res.json({ connected: false });
+  }
+});
+
 export default router;

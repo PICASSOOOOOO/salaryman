@@ -29,7 +29,7 @@ function BotNameDisplay({ name, className, style }: { name: string; className?: 
 }
 
 type BotStatus = 'active' | 'paused' | 'error';
-type Tab = 'jean-claw' | 'my-bots' | 'marketplace';
+type Tab = 'jean-claw' | 'my-bots';
 
 const platformIcons: Record<string, string> = {
   whatsapp: '💬',
@@ -2550,7 +2550,7 @@ export default function BotFactory() {
 
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <button onClick={() => setTab('jean-claw')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' || tab === 'marketplace' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
               <Sparkles className="w-4 h-4" />
               JEAN CLAW — 77 BOTS
             </button>
@@ -2754,14 +2754,6 @@ export default function BotFactory() {
                   ))}
                 </div>
               </div>
-            </div>
-          ) : tab === 'marketplace' ? (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-card/50 p-4 mb-4">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {boomerMode ? t('botFactory.marketplaceDesc') : t('botFactory.marketplaceDescCodename')}
-                </p>
-              </div>
 
               {(() => {
                 const freeItems = marketplace.filter(i => i.priceMonthly === 0 && i.slug !== 'claw-bot');
@@ -2774,25 +2766,6 @@ export default function BotFactory() {
 
                 return (
                   <>
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 cursor-pointer hover:border-emerald-500/30 transition-all"
-                      onClick={() => setTab('jean-claw')}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                          <Sparkles className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-foreground text-sm">JEAN CLAW</span>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">FLAGSHIP</span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">7 AI agents, 8 channels, full automation — $145/mo</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-emerald-400/50" />
-                      </div>
-                    </motion.div>
-
                     {freeItems.length > 0 && (
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-3">
@@ -2923,7 +2896,7 @@ export default function BotFactory() {
                   </>
                 );
               })()}
-            </div>
+          </div>
           ) : (
             <div className="space-y-4">
               {bots.length === 0 ? (
@@ -2937,9 +2910,9 @@ export default function BotFactory() {
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors">
                       <Plus className="w-4 h-4" /> {boomerMode ? t('botFactory.createBot') : t('botFactory.createBotCodename')}
                     </button>
-                    <button onClick={() => setTab('marketplace')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border border-border text-muted-foreground hover:text-foreground hover:border-sky-500/20 transition-colors">
-                      <Store className="w-4 h-4" /> {boomerMode ? t('botFactory.browseStore') : t('botFactory.browseStoreCodename')}
+                    <button onClick={() => setTab('jean-claw')}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/20 transition-colors">
+                      <Sparkles className="w-4 h-4" /> JEAN CLAW'S ROSTER
                     </button>
                   </div>
                 </div>

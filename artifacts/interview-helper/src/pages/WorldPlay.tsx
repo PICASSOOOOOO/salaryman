@@ -17201,18 +17201,33 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.75rem 1.1rem', overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
 
                 {bankTab === 'accounts' && (<>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(255,200,50,.4)', letterSpacing: '.15em', marginBottom: '.15rem', textAlign: 'center' }}>FIAT — IN-GAME CURRENCY</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING', val: `ƒ${salary.toLocaleString()}`, color: '#38bdf8', sub: (gs.current.businesses ?? []).length > 0 ? `BUSINESS OWNER — ${gs.current.businesses.length} REGISTERED` : gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
-                      { label: 'SAVINGS', val: `ƒ${savings.toLocaleString()}`, color: '#38bdf8', sub: 'APY: 0.8% / CYCLE' },
-
+                      { label: 'CHECKING (FIAT)', val: `ƒ${salary.toLocaleString()}`, color: '#fbbf24', sub: (gs.current.businesses ?? []).length > 0 ? `BUSINESS OWNER — ${gs.current.businesses.length} REGISTERED` : gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
+                      { label: 'SAVINGS (FIAT)', val: `ƒ${savings.toLocaleString()}`, color: '#fbbf24', sub: 'APY: 0.8% / CYCLE' },
                     ].map(({ label, val, color, sub }) => (
-                      <div key={label} style={{ border: '1px solid rgba(56,189,248,.2)', padding: '.55rem' }}>
-                        <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
+                      <div key={label} style={{ border: '1px solid rgba(251,191,36,.25)', padding: '.55rem', background: 'rgba(251,191,36,.03)' }}>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(251,191,36,.4)', letterSpacing: '.13em', marginBottom: '.2rem' }}>{label}</div>
                         <div style={{ ...VTB, fontSize: '1.6rem', color, letterSpacing: '.06em' }}>{val}</div>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.1rem' }}>{sub}</div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(251,191,36,.25)', marginTop: '.1rem' }}>{sub}</div>
                       </div>
                     ))}
+                  </div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.4)', letterSpacing: '.15em', marginTop: '.5rem', marginBottom: '.15rem', textAlign: 'center' }}>AVAILABLE — REAL MONEY (USD)</div>
+                  <div style={{ border: '1px solid rgba(52,211,153,.25)', padding: '.55rem', background: 'rgba(52,211,153,.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(52,211,153,.4)', letterSpacing: '.13em', marginBottom: '.2rem' }}>AVAILABLE TO WITHDRAW</div>
+                        <div style={{ ...VTB, fontSize: '1.6rem', color: '#34d399', letterSpacing: '.06em' }}>$0.00</div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.25)', marginTop: '.1rem' }}>REAL USD — STRIPE / GUSTO / BANK</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.3)', letterSpacing: '.1em' }}>GUSTO PAYROLL</div>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(52,211,153,.5)', marginTop: '.15rem' }}>NOT CONNECTED</div>
+                        <div style={{ fontSize: '.4rem', color: 'rgba(52,211,153,.2)', marginTop: '.1rem' }}>LINK AT BALANCE SHEET →</div>
+                      </div>
+                    </div>
                   </div>
                   <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>DEPOSIT — CHECKING → SAVINGS</div>
