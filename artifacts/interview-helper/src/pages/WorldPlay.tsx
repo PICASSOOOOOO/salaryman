@@ -2326,6 +2326,96 @@ const WORKER_AMBIENT_LINES = [
   'Message relay ready. Say the word.',
 ];
 
+// ── Jean Claw Workforce ──────────────────────────────────────────────────────
+interface ClawWorkerDef { firstName: string; dept: string; role: string; }
+const CLAW_DEPARTMENTS: { dept: string; role: string; members: string[] }[] = [
+  { dept: 'FINANCE', role: 'Finance', members: ['Penny', 'Viktor', 'Linda'] },
+  { dept: 'SALES', role: 'Sales', members: ['Marcus', 'Elena', 'Dante', 'Kenji', 'Serena'] },
+  { dept: 'E-COMMERCE', role: 'Clerk', members: ['Drake', 'Shawn', 'Mira', 'Felix'] },
+  { dept: 'CREATIVE', role: 'Creative', members: ['Terrence', 'Vanessa', 'Bryce', 'Vivian', 'Isaac', 'Regina', 'Zara'] },
+  { dept: 'OPERATIONS', role: 'Manager', members: ['Harlow', 'Kiera', 'Damon', 'Nadia', 'Gavin', 'Simone'] },
+  { dept: 'TRADES', role: 'Technician', members: ['Cole', 'Ruben', 'Tasha', 'Ivy', 'Miles', 'Hank', 'André', 'Gloria', 'Shane', 'Scarlett'] },
+  { dept: 'PUBLISHING', role: 'Editor', members: ['Margot', 'Julian', 'Celeste', 'Rowan', 'Astrid', 'Lenox'] },
+  { dept: 'MUSIC', role: 'Producer', members: ['Rio', 'Sable', 'Nico', 'Wren', 'Jasper'] },
+  { dept: 'EDUCATION', role: 'Instructor', members: ['Eleanor', 'Rosetta', 'Devonte'] },
+  { dept: 'MEDICAL', role: 'Doctor', members: ['Dominique'] },
+  { dept: 'LEGAL', role: 'Clerk', members: ['Lawson'] },
+  { dept: 'REAL ESTATE', role: 'Broker', members: ['Reese', 'Palmer'] },
+  { dept: 'INSURANCE', role: 'Agent', members: ['Chandler'] },
+  { dept: 'DESIGN', role: 'Creative', members: ['Lux', 'Soren'] },
+  { dept: 'LOGISTICS', role: 'Technician', members: ['Diesel', 'Sage', 'Atlas', 'Scout', 'Quinn', 'Blair', 'Hayes', 'Oakley', 'Piper', 'Rhett', 'Cleo'] },
+  { dept: 'CORE', role: 'Director', members: ['Marco'] },
+];
+const CLAW_FULL_ROSTER: ClawWorkerDef[] = [];
+for (const d of CLAW_DEPARTMENTS) for (const m of d.members) CLAW_FULL_ROSTER.push({ firstName: m, dept: d.dept, role: d.role });
+
+function clawSerial(seed: number): string {
+  const letter = String.fromCharCode(65 + (seed % 26));
+  const num = ((seed * 2654435761 >>> 0) % 999) + 1;
+  return `${letter}-${String(num).padStart(3, '0')}`;
+}
+
+const JEAN_CLAW_DIALOGUE = [
+  'Ah, you are here. Good. The operation runs itself — I merely ensure it runs *correctly*.',
+  'My team does not rest, mon ami. Efficiency is not a goal — it is a baseline.',
+  'Seventy-seven specialists. One vision. No complaints.',
+  'I delegate. That is leadership. You should try it.',
+  'Everything is on schedule. If it were not, you would already know.',
+  'The workers have their assignments. I have mine. We do not discuss them.',
+];
+
+const CLAW_WORKER_DIALOGUE = [
+  'Serial designation confirmed. Standing by for tasking.',
+  'Batch processing. Do not interrupt.',
+  'Report filed. Next task loading.',
+  'All metrics within tolerance. Continuing.',
+  'Queue depth nominal. Throughput stable.',
+  'Awaiting directive from Jean Claw.',
+  'Data relay active. No anomalies.',
+  'Task chain executing. Step 4 of 7.',
+  'Logs archived. Memory optimized.',
+  'Comms channel open. Monitoring.',
+];
+
+function generateClawWorkers(w: number, h: number, seed: number, scale: string): InteriorWorker[] {
+  const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
+  const workers: InteriorWorker[] = [];
+  const maxWorkers = scale === 'tower' ? 8 : scale === 'large' ? 6 : scale === 'medium' ? 4 : 3;
+  const margin = 30;
+  const usableW = w - margin * 2;
+  const usableH = h - margin * 2 - 40;
+  const jcDialIdx = Math.floor(hash(seed + 777) * JEAN_CLAW_DIALOGUE.length);
+  workers.push({
+    x: Math.floor(w * 0.5),
+    y: Math.floor(h * 0.18),
+    name: 'JEAN CLAW',
+    role: 'FOREMAN',
+    hostile: false,
+    dialogue: JEAN_CLAW_DIALOGUE[jcDialIdx],
+  });
+  const roster = [...CLAW_FULL_ROSTER];
+  const startIdx = Math.floor(hash(seed + 42) * roster.length);
+  for (let i = 0; i < maxWorkers; i++) {
+    const rIdx = (startIdx + i) % roster.length;
+    const bot = roster[rIdx];
+    const serial = clawSerial(seed * 31 + i * 17 + rIdx);
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const wx = margin + Math.floor((col + 0.5) * (usableW / Math.min(maxWorkers, 3)));
+    const wy = Math.floor(h * 0.38) + row * 55;
+    const dialIdx = Math.floor(hash(seed + i * 13 + 99) * CLAW_WORKER_DIALOGUE.length);
+    workers.push({
+      x: Math.min(wx, w - margin),
+      y: Math.min(wy, h - 60),
+      name: `${bot.firstName.toUpperCase()} ${serial}`,
+      role: `${bot.dept} — ${bot.role}`,
+      hostile: false,
+      dialogue: CLAW_WORKER_DIALOGUE[dialIdx],
+    });
+  }
+  return workers;
+}
+
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
   const scale = getBuildingScale(bid);
   const baseW = scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
@@ -2351,20 +2441,26 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.25)';
 
   if (isOwnedByPlayer && companyName) {
-    const deskX = Math.floor(w * 0.27);
-    const deskY = Math.floor(h * 0.23);
-    objects.push({ x: deskX, y: deskY, w: 55, h: 35, type: 'desk', label: 'PRIMARY DESK', color: 'rgba(0,80,40,.5)' });
-    objects.push({ x: deskX + 65, y: deskY, w: 45, h: 35, type: 'terminal', label: 'OPERATIONS TERMINAL', color: 'rgba(0,60,30,.4)' });
-    objects.push({ x: 40, y: Math.floor(h * 0.46), w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: Math.floor(w * 0.72), y: Math.floor(h * 0.46), w: 40, h: 30, type: 'chair', label: 'VISITOR SEAT', color: 'rgba(30,45,30,.4)' });
-    objects.push({ x: 20, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 45, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: Math.floor(w * 0.42), y: 20, w: 60, h: 35, type: 'desk', label: 'FOREMAN DESK', color: 'rgba(80,60,0,.5)' });
+    objects.push({ x: Math.floor(w * 0.42) + 65, y: 20, w: 45, h: 35, type: 'terminal', label: 'COMMAND TERMINAL', color: 'rgba(60,50,0,.4)' });
+    objects.push({ x: 20, y: 30, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 45, y: 30, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    const maxDesks = scale === 'tower' ? 8 : scale === 'large' ? 6 : scale === 'medium' ? 4 : 3;
+    for (let di = 0; di < maxDesks; di++) {
+      const col = di % 3;
+      const row = Math.floor(di / 3);
+      const dx = 30 + Math.floor((col + 0.5) * ((w - 60) / Math.min(maxDesks, 3))) - 20;
+      const dy = Math.floor(h * 0.35) + row * 55;
+      objects.push({ x: dx, y: Math.min(dy, h - 70), w: 40, h: 25, type: 'desk', label: 'WORKSTATION', color: 'rgba(0,60,40,.4)' });
+    }
+    objects.push({ x: 30, y: Math.floor(h * 0.7), w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: w - 70, y: Math.floor(h * 0.7), w: 40, h: 30, type: 'terminal', label: 'OPS TERMINAL', color: 'rgba(0,60,30,.4)' });
     if (isTowerFloor) {
       objects.push({ x: w - 70, y: 20, w: 60, h: 55, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
       objects.push({ x: w - 80, y: 100, w: 45, h: 30, type: 'server', label: 'SECURE SERVER', color: 'rgba(40,0,80,.5)' });
     }
-    const ambientIdx = Math.floor(hash(seed + 99) * WORKER_AMBIENT_LINES.length);
-    workers.push({ x: deskX + 12, y: deskY + 10, name: 'WORKER', role: `${companyName} — FLOOR OPS`, hostile: false, dialogue: WORKER_AMBIENT_LINES[ambientIdx] });
+    const clawTeam = generateClawWorkers(w, h, seed, scale);
+    for (const cw of clawTeam) workers.push(cw);
   } else {
     const baseObjCount = isTowerFloor ? 5 : scale === 'large' ? 4 : 3;
     const objCount = baseObjCount + Math.floor(hash(seed + 1) * 4);
@@ -2416,7 +2512,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     accentColor,
     exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
     ambientText: isOwnedByPlayer && companyName
-      ? `${companyName} operations floor. A worker manages communications from a desk near the center of the room.`
+      ? `${companyName} — JEAN CLAW DIVISION. Operatives at workstations. The foreman monitors from the front desk. Serial designations on every badge.`
       : fl.desc,
     buildingSize: scale === 'tower' ? 'tower' : scale === 'large' ? 'large' : scale === 'medium' ? 'medium' : 'small',
     workers,
@@ -5320,7 +5416,7 @@ export default function WorldPlay() {
               const inferredRole: string = roleLower.includes('police') || roleLower.includes('officer') || roleLower.includes('sergeant') || roleLower.includes('cop') ? 'police'
                 : roleLower.includes('guard') || roleLower.includes('security') ? 'guard'
                 : roleLower.includes('military') || roleLower.includes('soldier') || roleLower.includes('trooper') ? 'corpo_military'
-                : roleLower.includes('manager') || roleLower.includes('director') || roleLower.includes('executive') || roleLower.includes('chief') || roleLower.includes('engineer') || roleLower.includes('researcher') || roleLower.includes('teller') || roleLower.includes('clerk') || roleLower.includes('broker') || roleLower.includes('staff') || roleLower.includes('host') || roleLower.includes('trader') || roleLower.includes('registrar') ? 'corpo_worker'
+                : roleLower.includes('manager') || roleLower.includes('director') || roleLower.includes('executive') || roleLower.includes('chief') || roleLower.includes('engineer') || roleLower.includes('researcher') || roleLower.includes('teller') || roleLower.includes('clerk') || roleLower.includes('broker') || roleLower.includes('staff') || roleLower.includes('host') || roleLower.includes('trader') || roleLower.includes('registrar') || roleLower.includes('foreman') || roleLower.includes('finance') || roleLower.includes('sales') || roleLower.includes('creative') || roleLower.includes('producer') || roleLower.includes('editor') || roleLower.includes('instructor') || roleLower.includes('technician') || roleLower.includes('agent') || roleLower.includes('doctor') || roleLower.includes('medical') || roleLower.includes('logistics') || roleLower.includes('insurance') || roleLower.includes('real estate') || roleLower.includes('legal') || roleLower.includes('education') || roleLower.includes('publishing') || roleLower.includes('music') || roleLower.includes('e-commerce') || roleLower.includes('design') || roleLower.includes('core') ? 'corpo_worker'
                 : 'default';
               const dlgTree = getGenericDialogueTree(npcName, inferredRole, npcRole, npcSeedInt);
               const startNode = dlgTree.nodes[dlgTree.startId];
@@ -5338,9 +5434,9 @@ export default function WorldPlay() {
               }
               return false;
             };
-            const iDef = getInterior(itr.bid);
-            if (iDef?.workers) {
-              const nearWorker = iDef.workers.find(w => !w.hostile && Math.hypot(itr.px - w.x, itr.py - w.y) < 30);
+            const iDefInteract = itr.def;
+            if (iDefInteract?.workers) {
+              const nearWorker = iDefInteract.workers.find(w => !w.hostile && Math.hypot(itr.px - w.x, itr.py - w.y) < 30);
               if (nearWorker && openInteriorNpcDlg(nearWorker.name, nearWorker.role)) return;
             }
             const intNpcs = INTERIOR_NPCS[itr.bid] ?? [];
@@ -8873,15 +8969,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── NPC sprite helper — draws a role-appropriate character ────────────
         const drawInteriorNpcSprite = (nx: number, ny: number, name: string, role: string, hostile: boolean, seed: number) => {
           const roleLow = role.toLowerCase();
-          const isDoc = roleLow.includes('doc') || roleLow.includes('phys') || roleLow.includes('nurse') || roleLow.includes('med');
-          const isGuard2 = roleLow.includes('guard') || roleLow.includes('security') || roleLow.includes('police') || roleLow.includes('cop') || roleLow.includes('officer') || hostile;
-          const isCleaner2 = roleLow.includes('clean') || roleLow.includes('maid') || roleLow.includes('jan');
-          const isCorp2 = roleLow.includes('manager') || roleLow.includes('exec') || roleLow.includes('director') || roleLow.includes('chief') || roleLow.includes('teller') || roleLow.includes('broker') || roleLow.includes('clerk') || roleLow.includes('host');
+          const isForeman = roleLow === 'foreman' || name === 'JEAN CLAW';
+          const isClawWorker = roleLow.includes('finance') || roleLow.includes('sales') || roleLow.includes('creative') || roleLow.includes('operations') || roleLow.includes('trades') || roleLow.includes('publishing') || roleLow.includes('music') || roleLow.includes('education') || roleLow.includes('logistics') || roleLow.includes('e-commerce') || roleLow.includes('design') || roleLow.includes('insurance') || roleLow.includes('real estate') || roleLow.includes('legal') || roleLow.includes('medical') || roleLow.includes('core');
+          const isDoc = !isForeman && !isClawWorker && (roleLow.includes('doc') || roleLow.includes('phys') || roleLow.includes('nurse') || roleLow.includes('med'));
+          const isGuard2 = !isForeman && !isClawWorker && (roleLow.includes('guard') || roleLow.includes('security') || roleLow.includes('police') || roleLow.includes('cop') || roleLow.includes('officer') || hostile);
+          const isCleaner2 = !isForeman && !isClawWorker && (roleLow.includes('clean') || roleLow.includes('maid') || roleLow.includes('jan'));
+          const isCorp2 = !isForeman && !isClawWorker && (roleLow.includes('manager') || roleLow.includes('exec') || roleLow.includes('director') || roleLow.includes('chief') || roleLow.includes('teller') || roleLow.includes('broker') || roleLow.includes('clerk') || roleLow.includes('host'));
           const nBob2 = Math.sin(g.frame * 0.04 + nx * 0.07) * 0.8;
           ctx.fillStyle = 'rgba(0,0,0,0.12)';
           ctx.beginPath(); ctx.ellipse(nx, ny + 7, 5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
           // Legs
-          if (isGuard2) {
+          if (isForeman) {
+            ctx.fillStyle = '#2a2010'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+            ctx.fillStyle = '#1a1008'; ctx.fillRect(nx - 3, ny + 6, 3, 2); ctx.fillRect(nx, ny + 6, 3, 2);
+          } else if (isClawWorker) {
+            ctx.fillStyle = '#1a2a2a'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
+          } else if (isGuard2) {
             ctx.fillStyle = '#1a1a22'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
             ctx.fillStyle = '#111'; ctx.fillRect(nx - 3, ny + 6, 3, 2); ctx.fillRect(nx, ny + 6, 3, 2);
           } else if (isDoc) {
@@ -8892,7 +8995,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = '#222233'; ctx.fillRect(nx - 3, ny + 2, 3, 5); ctx.fillRect(nx, ny + 2, 3, 5);
           }
           // Body
-          if (isGuard2) {
+          if (isForeman) {
+            ctx.fillStyle = '#3a2a10'; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = '#f0d060'; ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 2);
+            ctx.fillStyle = '#aa8020'; ctx.fillRect(nx, ny - 3 + nBob2, 1, 4);
+            ctx.fillStyle = '#2a1a08'; ctx.fillRect(nx - 6, ny - 5 + nBob2, 2, 4); ctx.fillRect(nx + 4, ny - 5 + nBob2, 2, 4);
+            ctx.fillStyle = '#f0c040'; ctx.fillRect(nx + 3, ny - 4 + nBob2, 1, 1);
+          } else if (isClawWorker) {
+            ctx.fillStyle = '#1a3535'; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
+            ctx.fillStyle = '#2a5555'; ctx.fillRect(nx - 1, ny - 4 + nBob2, 2, 5);
+            ctx.fillStyle = '#0a2525'; ctx.fillRect(nx - 6, ny - 5 + nBob2, 2, 4); ctx.fillRect(nx + 4, ny - 5 + nBob2, 2, 4);
+          } else if (isGuard2) {
             ctx.fillStyle = hostile ? '#3a1515' : '#1a2235';
             ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
             ctx.fillStyle = hostile ? '#cc2233' : '#4466aa';
@@ -8917,7 +9030,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = nColorArr2[seed % nColorArr2.length]; ctx.fillRect(nx - 5, ny - 5 + nBob2, 10, 7);
           }
           // Arms
-          const narmCol2 = isGuard2 ? (hostile ? '#3a1515' : '#1a2235') : isDoc ? '#ddeeff' : isCleaner2 ? '#336633' : isCorp2 ? '#2a2a3a' : '#333355';
+          const narmCol2 = isForeman ? '#3a2a10' : isClawWorker ? '#1a3535' : isGuard2 ? (hostile ? '#3a1515' : '#1a2235') : isDoc ? '#ddeeff' : isCleaner2 ? '#336633' : isCorp2 ? '#2a2a3a' : '#333355';
           ctx.fillStyle = narmCol2;
           ctx.fillRect(nx - 8, ny - 4 + nBob2, 3, 6); ctx.fillRect(nx + 5, ny - 4 + nBob2, 3, 6);
           ctx.fillStyle = '#d4a07a';
@@ -8927,7 +9040,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#d4a07a'; ctx.beginPath(); ctx.arc(nx, ny - 11 + nBob2, 3.8, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#111'; ctx.fillRect(nx - 2, ny - 12 + nBob2, 1, 1); ctx.fillRect(nx + 1, ny - 12 + nBob2, 1, 1);
           // Hair / hat
-          if (isGuard2) {
+          if (isForeman) {
+            ctx.fillStyle = '#1a1008'; ctx.fillRect(nx - 4, ny - 16 + nBob2, 8, 4);
+            ctx.fillStyle = '#f0c040'; ctx.fillRect(nx - 5, ny - 14 + nBob2, 10, 1);
+          } else if (isClawWorker) {
+            const cwHair = ['#1a1a1a','#2a1a00','#0a1a1a','#222222'];
+            ctx.fillStyle = cwHair[seed % cwHair.length]; ctx.fillRect(nx - 4, ny - 16 + nBob2, 8, 4);
+          } else if (isGuard2) {
             ctx.fillStyle = hostile ? '#882222' : '#334466';
             ctx.fillRect(nx - 5, ny - 17 + nBob2, 10, 5);
             ctx.fillStyle = hostile ? '#662222' : '#223355';
@@ -8937,11 +9056,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = hairArr2[seed % hairArr2.length]; ctx.fillRect(nx - 4, ny - 16 + nBob2, 8, 4);
           }
           // Labels
-          const labelColor2 = isGuard2 ? (hostile ? 'rgba(255,80,60,.7)' : 'rgba(100,160,255,.7)') : isDoc ? 'rgba(100,220,255,.7)' : 'rgba(255,200,60,.6)';
-          ctx.fillStyle = labelColor2; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const labelColor2 = isForeman ? 'rgba(240,192,64,.9)' : isClawWorker ? 'rgba(80,200,180,.7)' : isGuard2 ? (hostile ? 'rgba(255,80,60,.7)' : 'rgba(100,160,255,.7)') : isDoc ? 'rgba(100,220,255,.7)' : 'rgba(255,200,60,.6)';
+          ctx.fillStyle = labelColor2; ctx.font = isForeman ? '6px "Share Tech Mono"' : '5px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(name, nx, ny - 20 + nBob2);
-          ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.font = '4px "Share Tech Mono"';
+          ctx.fillStyle = isForeman ? 'rgba(240,192,64,.4)' : isClawWorker ? 'rgba(80,200,180,.3)' : 'rgba(255,255,255,.25)'; ctx.font = '4px "Share Tech Mono"';
           ctx.fillText(role, nx, ny - 15 + nBob2);
+          if (isForeman) {
+            ctx.fillStyle = 'rgba(240,192,64,.15)';
+            ctx.beginPath(); ctx.arc(nx, ny - 2 + nBob2, 12, 0, Math.PI * 2); ctx.fill();
+          }
         };
 
         if (iDef.workers) {

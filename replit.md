@@ -114,3 +114,17 @@ Jean Claw's system prompt (`seed-bots-marketplace.ts`, slug `claw-bot`) contains
 - **Pricing tiers**: Free (Pablo) vs Jean Claw ($145/mo)
 
 Pablo (`chat.ts`) and Marco Atlas (`seed-bots-marketplace.ts`) also have updated knowledge of the full platform module structure and bot roster.
+
+## Jean Claw Workforce — In-Game NPCs
+
+Player-owned building interiors in Minx City now spawn Jean Claw + department workers as NPCs:
+- **JEAN CLAW** appears as FOREMAN at the front desk with gold suit, gold accent glow, and larger name label
+- **Department workers** spawn at workstations with serial designations (e.g., "LINDA G-468", "VIKTOR B-112")
+- Serial format: `{LETTER}-{001-999}` deterministic from floor seed (A-001 through Z-999)
+- Worker count scales by building size: tower (8), large (6), medium (4), small (3)
+- Workers drawn from 16 departments: Finance, Sales, E-Commerce, Creative, Operations, Trades, Publishing, Music, Education, Medical, Legal, Real Estate, Insurance, Design, Logistics, Core
+- Dark teal uniforms for workers, gold/brown suit for Jean Claw
+- All workers have dialogue (press [E] to talk)
+- Workers only appear in player-owned floors — they are paid personal staff, not public NPCs
+- Code: `generateClawWorkers()`, `CLAW_DEPARTMENTS`, `clawSerial()` in WorldPlay.tsx
+- Render: `isForeman` and `isClawWorker` branches in `drawInteriorNpcSprite()`
