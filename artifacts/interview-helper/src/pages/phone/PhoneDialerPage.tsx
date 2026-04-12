@@ -79,7 +79,7 @@ export default function PhoneDialerPage() {
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
-        if (r.status === 403) { rawNavigate('/upgrade'); return null; }
+        if (r.status === 403) { rawNavigate('/pricing'); return null; }
         return r.ok ? r.json() : null;
       })
       .then(d => {
@@ -92,7 +92,7 @@ export default function PhoneDialerPage() {
 
     fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(r => {
-        if (r.status === 403) { rawNavigate('/upgrade'); return null; }
+        if (r.status === 403) { rawNavigate('/pricing'); return null; }
         return r.ok ? r.json() : null;
       })
       .then(d => { if (d?.calls) setRecentCalls(d.calls.slice(0, 6)); })

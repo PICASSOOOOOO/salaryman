@@ -35,7 +35,7 @@ export default function PhoneSecretaryPage() {
 
   const handleAuthStatus = useCallback((r: Response): boolean => {
     if (r.status === 401) { setNeedsLogin(true); return true; }
-    if (r.status === 403) { navigate('/upgrade'); return true; }
+    if (r.status === 403) { navigate('/pricing'); return true; }
     return false;
   }, [navigate]);
 

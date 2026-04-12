@@ -81,7 +81,7 @@ export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerM
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0 }}
-        onClick={() => hasSayThis ? onAction('say_it') : navigate('/upgrade')}
+        onClick={() => hasSayThis ? onAction('say_it') : navigate('/pricing')}
         disabled={isStreaming && hasSayThis}
         className={`relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden ${
           hasSayThis

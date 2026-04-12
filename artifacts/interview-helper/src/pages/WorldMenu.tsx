@@ -2419,7 +2419,7 @@ export default function WorldMenu() {
                 </div>
                 <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => navigate('/upgrade')}
+                    onClick={() => navigate('/pricing')}
                     style={{ flex: 1, padding: '.55rem 1rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', ...VT, fontSize: '1rem', letterSpacing: '.12em', cursor: 'pointer' }}>
                     VIEW PLANS →
                   </button>

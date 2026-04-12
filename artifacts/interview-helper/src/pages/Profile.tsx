@@ -668,7 +668,7 @@ function AccountTab() {
                     </a>
                   </div>
                   <button
-                    onClick={() => navigate('/upgrade')}
+                    onClick={() => navigate('/pricing')}
                     className="w-full flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-muted/15 border border-border text-muted-foreground text-xs font-mono hover:bg-muted/25 transition-colors"
                   >
                     {boomerMode ? t('profile.addMoreTools') : t('profile.browseModules')}
@@ -685,7 +685,7 @@ function AccountTab() {
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate('/upgrade')}
+                    onClick={() => navigate('/pricing')}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-400 text-xs font-bold hover:bg-amber-500/25 transition-colors shrink-0 ml-3"
                   >
                     <Zap className="w-3 h-3" />

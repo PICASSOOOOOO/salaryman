@@ -41,7 +41,7 @@ export default function PhoneCoachPage() {
     if (r.status === 403) {
       const d = await r.json().catch(() => ({}));
       setError(d.error || 'Access denied — phone system subscription required.');
-      navigate('/upgrade');
+      navigate('/pricing');
       return true;
     }
     if (!r.ok) {

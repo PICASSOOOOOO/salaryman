@@ -1207,7 +1207,7 @@ export default function World() {
               ))}
             </div>
             <div style={{ display:'flex',gap:'.6rem' }}>
-              <button onClick={()=>{setShowStore(false);navigate('/upgrade');}} style={{ flex:1,padding:'.6rem',background:'rgba(56,189,248,.12)',border:'1px solid rgba(56,189,248,.65)',color:'#38bdf8',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={()=>{setShowStore(false);navigate('/pricing');}} style={{ flex:1,padding:'.6rem',background:'rgba(56,189,248,.12)',border:'1px solid rgba(56,189,248,.65)',color:'#38bdf8',fontFamily:"'VT323',monospace",fontSize:'1.1rem',letterSpacing:'.15em',cursor:'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
               <button onClick={()=>{setShowStore(false);setMsg(`> Device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press P to open.`);}} style={{ padding:'.6rem .9rem',background:'transparent',border:'1px solid rgba(56,189,248,.18)',color:'rgba(56,189,248,.4)',fontFamily:"'VT323',monospace",fontSize:'.9rem',cursor:'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
           </div>

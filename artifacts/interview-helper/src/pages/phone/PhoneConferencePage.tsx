@@ -234,7 +234,7 @@ export default function PhoneConferencePage() {
   const fetchConferences = useCallback(() => {
     fetch(apiUrl('twilio/conference/list'), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { navigate('/upgrade'); return; }
+        if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.rooms) setConferences(d.rooms); }
         else { setError(`Failed to load conferences (${r.status})`); }
       })
@@ -253,7 +253,7 @@ export default function PhoneConferencePage() {
         credentials: 'include',
         body: JSON.stringify({ label: confRoomName || 'New Conference' }),
       });
-      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.status === 403) { navigate('/pricing'); return; }
       if (r.ok) {
         fetchConferences();
         setConfRoomName('');
@@ -274,7 +274,7 @@ export default function PhoneConferencePage() {
         credentials: 'include',
         body: JSON.stringify({ phoneNumber: confAddNumber, name: confAddName }),
       });
-      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.status === 403) { navigate('/pricing'); return; }
       if (r.ok) {
         setConfAddNumber(''); setConfAddName('');
         fetchConferences();
@@ -289,7 +289,7 @@ export default function PhoneConferencePage() {
     setError('');
     try {
       const r = await fetch(apiUrl(`twilio/conference/${encodeURIComponent(roomName)}/end`), { method: 'POST', credentials: 'include' });
-      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.status === 403) { navigate('/pricing'); return; }
       if (r.ok) {
         setVideoRooms(prev => { const next = new Set(prev); next.delete(roomName); return next; });
         fetchConferences();

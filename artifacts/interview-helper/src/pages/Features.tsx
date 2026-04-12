@@ -677,7 +677,7 @@ function TrialModal({
       if (!res.ok) {
         if (res.status === 403 && data.upgrade) {
           onClose();
-          navigate('/upgrade');
+          navigate('/pricing');
           return;
         }
         throw new Error(data.error ?? 'Failed to start trial');

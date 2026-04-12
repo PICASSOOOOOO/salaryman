@@ -176,7 +176,7 @@ export default function CalllHomePage() {
               START 7-DAY FREE TRIAL
             </button>
             <button
-              onClick={() => navigate('/upgrade')}
+              onClick={() => navigate('/pricing')}
               style={{
                 padding: '10px 24px', fontSize: '0.55rem', letterSpacing: '0.12em',
                 background: 'transparent',

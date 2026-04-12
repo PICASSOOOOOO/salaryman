@@ -15624,7 +15624,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ))}
             </div>
             <div style={{ display: 'flex', gap: '.55rem', flexWrap: 'wrap' }}>
-              <button onClick={() => { setShowStore(false); navigate('/upgrade'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
+              <button onClick={() => { setShowStore(false); navigate('/pricing'); }} style={{ flex: 1, padding: '.55rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1rem', letterSpacing: '.15em', cursor: 'pointer' }}>{`GET ${PABLO_PRODUCTS.PRO_TIER.name}`}</button>
               <button onClick={() => { setShowStore(false); setNarr(`> PABLO CORP device active [${PABLO_PRODUCTS.FREE_TIER.short}]. Press [P] to open it.`); }} style={{ padding: '.55rem .85rem', background: 'transparent', border: '1px solid rgba(56,189,248,.18)', color: 'rgba(56,189,248,.38)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>{PABLO_PRODUCTS.FREE_TIER.short}</button>
             </div>
             {orgData && (

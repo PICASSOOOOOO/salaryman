@@ -36,7 +36,7 @@ export default function PhoneContactsPage() {
     setError('');
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { navigate('/upgrade'); return; }
+        if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
         else { setError(`Failed to load contacts (${r.status})`); }
       })
@@ -84,7 +84,7 @@ export default function PhoneContactsPage() {
         credentials: 'include',
         body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
       });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       const d = await r.json();
       if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setLoading(false); return; }
       if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
@@ -110,7 +110,7 @@ export default function PhoneContactsPage() {
         credentials: 'include',
         body: JSON.stringify({ numbers, userId, callerName }),
       });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       const d = await r.json();
       if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setBlasting(false); return; }
       if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }

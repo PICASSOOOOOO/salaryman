@@ -97,7 +97,7 @@ export default function PhoneVoicemailPage() {
   useEffect(() => {
     fetch(apiUrl('twilio/voicemail'), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { rawNavigate('/upgrade'); return; }
+        if (r.status === 403) { rawNavigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.voicemails) { setVoicemails(d.voicemails); setUnread(d.unread ?? 0); } }
         else { setError(`Failed to load voicemails (${r.status})`); }
       })
@@ -108,7 +108,7 @@ export default function PhoneVoicemailPage() {
   const markRead = async (id: number) => {
     try {
       const r = await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST', credentials: 'include' });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to mark as read'); return; }
       setVoicemails(prev => prev.map(v => v.id === id ? { ...v, isRead: true } : v));
       setUnread(prev => Math.max(0, prev - 1));
@@ -132,7 +132,7 @@ export default function PhoneVoicemailPage() {
         body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }),
       });
       const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/pricing'); return; }
       if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });

@@ -40,7 +40,7 @@ export default function PhoneSessionsPage() {
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { navigate('/upgrade'); return; }
+        if (r.status === 403) { navigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.contacts) setContacts(d.contacts); }
         else { setError(`Failed to load contacts (${r.status})`); }
       })
@@ -73,7 +73,7 @@ export default function PhoneSessionsPage() {
         credentials: 'include',
         body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
       });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       const d = await r.json();
       if (r.status === 403) {
         setError(d.error || 'Access denied — phone system subscription required.');

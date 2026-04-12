@@ -21,7 +21,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
 
   useEffect(() => {
     if (shouldRedirect) {
-      navigate("/upgrade");
+      navigate("/pricing");
     }
   }, [shouldRedirect, navigate]);
 
@@ -49,7 +49,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
   if (inline) {
     return (
       <span
-        onClick={() => navigate("/upgrade")}
+        onClick={() => navigate("/pricing")}
         title={`${displayName} — subscription required${priceHint ? ` (${priceHint})` : ""}`}
         className="inline-flex items-center gap-1 cursor-pointer text-amber-400/70 hover:text-amber-400 transition-colors"
       >
@@ -61,7 +61,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
 
   return (
     <div
-      onClick={() => navigate("/upgrade")}
+      onClick={() => navigate("/pricing")}
       className="relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 cursor-pointer hover:bg-amber-500/8 hover:border-amber-500/30 transition-colors group"
     >
       <div className="flex items-start gap-3">

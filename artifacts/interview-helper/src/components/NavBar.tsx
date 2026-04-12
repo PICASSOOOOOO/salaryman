@@ -102,7 +102,7 @@ export function NavBar() {
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
             {isPro || features.size > 0 ? (
-              <>
+              <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
                 <Zap className="w-2.5 h-2.5 text-amber-500" />
                 <span className="font-mono text-[10px] text-amber-400 tracking-wide">
                   {isOwner
@@ -111,15 +111,15 @@ export function NavBar() {
                         ? `${features.size} ${t('nav.active')}`
                         : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`)}
                 </span>
-              </>
+              </button>
             ) : (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                 <button
-                  onClick={() => navigate('/upgrade')}
-                  className="font-mono text-[10px] text-zinc-600 tracking-wide hover:text-amber-400 transition-colors"
+                  onClick={() => navigate('/pricing')}
+                  className="font-mono text-[10px] text-red-400 tracking-wide hover:text-red-300 transition-colors"
                 >
-                  {boomerMode ? t('nav.upgradeLabel') : t('nav.upgradeLabelCodename')}
+                  {boomerMode ? 'PRICING' : t('nav.upgradeLabelCodename')}
                 </button>
               </>
             )}

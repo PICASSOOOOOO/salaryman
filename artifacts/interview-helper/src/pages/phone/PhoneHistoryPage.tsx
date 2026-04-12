@@ -36,7 +36,7 @@ export default function PhoneHistoryPage() {
     setLoading(true);
     fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}${q}`), { credentials: 'include' })
       .then(async r => {
-        if (r.status === 403) { rawNavigate('/upgrade'); return; }
+        if (r.status === 403) { rawNavigate('/pricing'); return; }
         if (r.ok) { const d = await r.json(); if (d?.calls) setHistory(d.calls); }
         else { setError(`Failed to load history (${r.status})`); }
       })
@@ -56,7 +56,7 @@ export default function PhoneHistoryPage() {
         body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
       });
       const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/pricing'); return; }
       if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
@@ -68,7 +68,7 @@ export default function PhoneHistoryPage() {
   const emailCallSummary = async (callId: number) => {
     try {
       const r = await fetch(apiUrl(`twilio/history/${callId}/email-summary`), { method: 'POST', credentials: 'include' });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to send email summary'); }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not send email summary'); }
   };
@@ -84,7 +84,7 @@ export default function PhoneHistoryPage() {
         credentials: 'include',
         body: JSON.stringify({ title: followupForm.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() }),
       });
-      if (r.status === 403) { rawNavigate('/upgrade'); return; }
+      if (r.status === 403) { rawNavigate('/pricing'); return; }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.error || 'Failed to schedule follow-up'); return; }
       setFollowupCallSid(null);
       setFollowupForm({ title: '', startAt: '', endAt: '' });

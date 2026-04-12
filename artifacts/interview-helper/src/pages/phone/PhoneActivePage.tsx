@@ -102,7 +102,7 @@ export default function PhoneActivePage() {
       if (r.status === 403) {
         const d = await r.json().catch(() => ({}));
         setError(d.error || 'Access denied — phone system subscription required.');
-        navigate('/upgrade');
+        navigate('/pricing');
         return;
       }
     } catch (e: unknown) {
@@ -137,7 +137,7 @@ export default function PhoneActivePage() {
     setError('');
     try {
       const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
-      if (r.status === 403) { navigate('/upgrade'); return; }
+      if (r.status === 403) { navigate('/pricing'); return; }
       const d = await r.json();
       if (d.completed) {
         setDialingSession(null);
@@ -175,7 +175,7 @@ export default function PhoneActivePage() {
   const handleMute = async (sid: string, currentMuted: boolean) => {
     const result = await toggleMute(sid, currentMuted);
     if (!result.ok) {
-      if (result.status === 403) { navigate('/upgrade'); return; }
+      if (result.status === 403) { navigate('/pricing'); return; }
       setError(result.error || 'Could not mute call');
     }
   };
@@ -183,7 +183,7 @@ export default function PhoneActivePage() {
   const handleHold = async (sid: string, currentHold: boolean) => {
     const result = await toggleHold(sid, currentHold);
     if (!result.ok) {
-      if (result.status === 403) { navigate('/upgrade'); return; }
+      if (result.status === 403) { navigate('/pricing'); return; }
       setError(result.error || 'Could not hold call');
     }
   };
@@ -192,7 +192,7 @@ export default function PhoneActivePage() {
     if (!transferNumber.trim()) return;
     const result = await ctxTransfer(sid, transferNumber);
     if (!result.ok) {
-      if (result.status === 403) { navigate('/upgrade'); return; }
+      if (result.status === 403) { navigate('/pricing'); return; }
       setError(result.error || 'Transfer failed');
     } else {
       setTransferTarget(null);
@@ -203,7 +203,7 @@ export default function PhoneActivePage() {
   const handleHangup = async (sid: string) => {
     const result = await hangupOne(sid);
     if (!result.ok) {
-      if (result.status === 403) { navigate('/upgrade'); return; }
+      if (result.status === 403) { navigate('/pricing'); return; }
       setError(result.error || 'Could not hang up');
     }
   };
@@ -211,7 +211,7 @@ export default function PhoneActivePage() {
   const handleHangupAll = async () => {
     const result = await hangupAll();
     if (!result.ok) {
-      if (result.status === 403) { navigate('/upgrade'); return; }
+      if (result.status === 403) { navigate('/pricing'); return; }
       setError(result.error || 'Could not hang up all');
     }
     fetchHistory();

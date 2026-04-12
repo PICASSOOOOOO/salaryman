@@ -38,7 +38,7 @@ export default function PhoneCallCenterPage() {
 
   const handleAuthStatus = useCallback((r: Response): boolean => {
     if (r.status === 401) return true;
-    if (r.status === 403) { navigate('/upgrade'); return true; }
+    if (r.status === 403) { navigate('/pricing'); return true; }
     return false;
   }, [navigate]);
 

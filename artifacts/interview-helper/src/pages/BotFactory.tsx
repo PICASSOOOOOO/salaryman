@@ -2729,7 +2729,7 @@ export default function BotFactory() {
                         </button>
                       </>
                     ) : (
-                      <button onClick={() => navigate('/upgrade')}
+                      <button onClick={() => navigate('/pricing')}
                         className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/30">
                         <Zap className="w-4 h-4" />
                         {boomerMode ? 'ACTIVATE JEAN CLAW — $145/MO' : 'ACTIVATE JEAN CLAW — $145/MO'}
