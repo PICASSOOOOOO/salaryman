@@ -2402,7 +2402,7 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
     const col = i % 3;
     const row = Math.floor(i / 3);
     const wx = margin + Math.floor((col + 0.5) * (usableW / Math.min(maxWorkers, 3)));
-    const wy = Math.floor(h * 0.38) + row * 55;
+    const wy = Math.floor(h * 0.33) + row * 70;
     const dialIdx = Math.floor(hash(seed + i * 13 + 99) * CLAW_WORKER_DIALOGUE.length);
     workers.push({
       x: Math.min(wx, w - margin),
@@ -2418,8 +2418,8 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
 
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
   const scale = getBuildingScale(bid);
-  const baseW = scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
-  const baseH = scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
+  const baseW = isOwnedByPlayer ? 620 : scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
+  const baseH = isOwnedByPlayer ? 480 : scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
   const w = baseW, h = baseH;
   const seed = bid.length * 137 + fl.floor * 53;
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
@@ -2441,24 +2441,25 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.25)';
 
   if (isOwnedByPlayer && companyName) {
-    objects.push({ x: Math.floor(w * 0.42), y: 20, w: 60, h: 35, type: 'desk', label: 'FOREMAN DESK', color: 'rgba(80,60,0,.5)' });
-    objects.push({ x: Math.floor(w * 0.42) + 65, y: 20, w: 45, h: 35, type: 'terminal', label: 'COMMAND TERMINAL', color: 'rgba(60,50,0,.4)' });
-    objects.push({ x: 20, y: 30, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 45, y: 30, w: 25, h: 25, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: Math.floor(w * 0.38), y: 25, w: 65, h: 40, type: 'desk', label: 'FOREMAN DESK', color: 'rgba(80,60,0,.5)' });
+    objects.push({ x: Math.floor(w * 0.38) + 75, y: 25, w: 50, h: 40, type: 'terminal', label: 'COMMAND TERMINAL', color: 'rgba(60,50,0,.4)' });
+    objects.push({ x: 25, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 55, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 25, y: 80, w: 50, h: 35, type: 'server', label: 'COMPANY SERVER', color: 'rgba(40,0,80,.5)' });
+    objects.push({ x: Math.floor(w * 0.5) - 45, y: Math.floor(h * 0.58), w: 90, h: 45, type: 'conference_table', label: 'CONFERENCE TABLE', color: 'rgba(25,30,55,.5)' });
     const maxDesks = scale === 'tower' ? 8 : scale === 'large' ? 6 : scale === 'medium' ? 4 : 3;
     for (let di = 0; di < maxDesks; di++) {
       const col = di % 3;
       const row = Math.floor(di / 3);
-      const dx = 30 + Math.floor((col + 0.5) * ((w - 60) / Math.min(maxDesks, 3))) - 20;
-      const dy = Math.floor(h * 0.35) + row * 55;
-      objects.push({ x: dx, y: Math.min(dy, h - 70), w: 40, h: 25, type: 'desk', label: 'WORKSTATION', color: 'rgba(0,60,40,.4)' });
+      const dx = 40 + Math.floor((col + 0.5) * ((w - 80) / Math.min(maxDesks, 3))) - 20;
+      const dy = Math.floor(h * 0.3) + row * 70;
+      objects.push({ x: dx, y: Math.min(dy, h - 90), w: 45, h: 28, type: 'desk', label: 'WORKSTATION', color: 'rgba(0,60,40,.4)' });
     }
-    objects.push({ x: 30, y: Math.floor(h * 0.7), w: 35, h: 25, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: w - 70, y: Math.floor(h * 0.7), w: 40, h: 30, type: 'terminal', label: 'OPS TERMINAL', color: 'rgba(0,60,30,.4)' });
-    if (isTowerFloor) {
-      objects.push({ x: w - 70, y: 20, w: 60, h: 55, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
-      objects.push({ x: w - 80, y: 100, w: 45, h: 30, type: 'server', label: 'SECURE SERVER', color: 'rgba(40,0,80,.5)' });
-    }
+    objects.push({ x: 30, y: Math.floor(h * 0.78), w: 40, h: 28, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: w - 80, y: Math.floor(h * 0.78), w: 45, h: 30, type: 'terminal', label: 'OPS TERMINAL', color: 'rgba(0,60,30,.4)' });
+    objects.push({ x: w - 55, y: Math.floor(h * 0.5), w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
     const clawTeam = generateClawWorkers(w, h, seed, scale);
     for (const cw of clawTeam) workers.push(cw);
   } else {
