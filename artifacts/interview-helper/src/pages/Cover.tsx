@@ -7,7 +7,7 @@ import { PicassoLogo } from '../components/PicassoLogo';
 import { useTranslation } from 'react-i18next';
 import changelogData from '../changelog.json';
 
-const PabloMascot = lazy(() => import('../components/PabloMascot'));
+const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "").replace(/^\//, "");
 function apiUrl(path: string) {
@@ -235,11 +235,11 @@ export default function Cover() {
           className="w-full max-w-3xl mx-auto mb-14"
         >
           <Suspense fallback={
-            <div className="w-full rounded-xl" style={{ maxWidth: 480, margin: '0 auto', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="text-sky-500/30 text-xs font-mono tracking-widest">CLOCKING IN...</span>
+            <div className="w-full rounded-xl" style={{ maxWidth: 720, margin: '0 auto', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b', borderRadius: 12, border: '1px solid rgba(56,189,248,0.18)' }}>
+              <span className="text-sky-500/30 text-xs font-mono tracking-widest">LOADING TRAILER...</span>
             </div>
           }>
-            <PabloMascot />
+            <TrailerPlayer />
           </Suspense>
         </motion.div>
 
