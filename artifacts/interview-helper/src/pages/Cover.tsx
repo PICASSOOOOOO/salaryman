@@ -260,12 +260,13 @@ export default function Cover() {
           </motion.button>
 
           <motion.button
-            onClick={() => navigate('/features')}
-            whileHover={{ scale: 1.04, borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'rgba(255,255,255,0.07)' }}
+            onClick={() => navigate('/pricing')}
+            whileHover={{ scale: 1.04, borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.12)' }}
             whileTap={{ scale: 0.97 }}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg border border-white/10 text-zinc-300 text-sm transition-colors w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg border text-sm transition-colors w-full sm:w-auto"
+            style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
           >
-            {t('cover.seeAllFeatures')} <ChevronRight className="w-4 h-4" />
+            SEE PRICING <ChevronRight className="w-4 h-4" />
           </motion.button>
         </motion.div>
 

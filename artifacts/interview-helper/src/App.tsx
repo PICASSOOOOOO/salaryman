@@ -20,6 +20,7 @@ const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
+const Pricing = lazy(() => import("@/pages/Pricing"));
 const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
@@ -220,6 +221,7 @@ function AppShell() {
             <Route path="/profile" component={Profile} />
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={Upgrade} />
+            <Route path="/pricing" component={Pricing} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>

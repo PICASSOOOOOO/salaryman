@@ -125,8 +125,44 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-function getPriceIdForFeature(feature: FeatureKey): string | undefined {
-  return process.env[FEATURE_PRICE_ENV[feature]];
+const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {
+  claw_bot: "prod_UJskXbhcjQY4Ki",
+};
+
+const priceIdCache: Partial<Record<FeatureKey, string>> = {};
+
+async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
+  const envPrice = process.env[FEATURE_PRICE_ENV[feature]];
+  if (envPrice) return envPrice;
+
+  if (priceIdCache[feature]) return priceIdCache[feature];
+
+  const productId = FEATURE_PRODUCT_IDS[feature];
+  if (!productId) return undefined;
+
+  try {
+    const stripe = getStripe();
+    const prices = await stripe.prices.list({ product: productId, active: true, limit: 1 });
+    if (prices.data.length > 0) {
+      priceIdCache[feature] = prices.data[0].id;
+      console.log(`[Stripe] Resolved price for ${feature}: ${prices.data[0].id}`);
+      return prices.data[0].id;
+    }
+
+    const catalog = FEATURE_CATALOG[feature];
+    const newPrice = await stripe.prices.create({
+      product: productId,
+      unit_amount: catalog.price * 100,
+      currency: "usd",
+      recurring: { interval: "month" },
+    });
+    priceIdCache[feature] = newPrice.id;
+    console.log(`[Stripe] Created price for ${feature}: ${newPrice.id}`);
+    return newPrice.id;
+  } catch (err) {
+    console.error(`[Stripe] Failed to resolve price for ${feature}:`, err instanceof Error ? err.message : err);
+    return undefined;
+  }
 }
 
 const DONATION_TIERS = [
@@ -157,7 +193,7 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
     return;
   }
 
-  const priceId = getPriceIdForFeature(feature);
+  const priceId = await getPriceIdForFeature(feature);
   if (!priceId) {
     res.status(500).json({ error: `Pricing for ${FEATURE_CATALOG[feature].name} not configured yet` });
     return;
