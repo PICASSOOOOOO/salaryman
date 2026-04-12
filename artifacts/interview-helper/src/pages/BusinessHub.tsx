@@ -57,7 +57,7 @@ interface Summary {
 }
 
 const ROLES = ['ceo', 'executive', 'director', 'manager', 'specialist'] as const;
-const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'Legal', 'Real Estate', 'Marketing', 'Consulting', 'Education', 'Retail', 'Manufacturing', 'Media', 'Other'];
+const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'Insurance', 'Legal', 'Real Estate', 'Marketing', 'Consulting', 'Education', 'Retail', 'Manufacturing', 'Media', 'Other'];
 const SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
 const SECTIONS = [
@@ -114,7 +114,7 @@ const SECTIONS = [
       { path: '/intel/reports', label: 'REPORTS', boomer: 'REPORTS', desc: 'BUSINESS INTELLIGENCE AND DATA VISUALIZATION.', icon: BarChart2, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
       { path: '/intel/dashboard', label: 'DASHBOARD', boomer: 'DASHBOARD', desc: 'REAL-TIME KPI COMMAND DASHBOARD.', icon: LayoutDashboard, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
       { path: '/bots', label: 'BOT FACTORY', boomer: 'BOT FACTORY', desc: '77 SPECIALIZED AI BOTS BY JEAN CLAW.', icon: Bot, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-      { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', desc: 'SEARCH AND COMPARE INSURANCE CARRIERS.', icon: Shield, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
+      { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', desc: 'SEARCH AND COMPARE INSURANCE CARRIERS.', icon: Shield, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', requireIndustry: 'Insurance' },
     ],
   },
 ];
@@ -667,7 +667,13 @@ export default function BusinessHub() {
             </motion.div>
           )}
 
-          {SECTIONS.map((section, si) => (
+          {SECTIONS.map((section, si) => {
+            const orgIndustry = activeOrg?.industry?.toLowerCase() ?? '';
+            const filteredItems = section.items.filter((item: any) =>
+              !item.requireIndustry || item.requireIndustry.toLowerCase() === orgIndustry
+            );
+            if (filteredItems.length === 0) return null;
+            return (
             <motion.div key={section.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + si * 0.03 }}
               className="rounded-xl bg-card/50 border border-border/50 overflow-hidden">
               <div className="px-4 pt-4 pb-2">
@@ -675,7 +681,7 @@ export default function BusinessHub() {
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{section.subtitle}</p>
               </div>
               <div className="divide-y divide-border/30">
-                {section.items.map((item) => {
+                {filteredItems.map((item: any) => {
                   const Icon = item.icon;
                   return (
                     <Link key={item.path} href={item.path} className="group flex items-start gap-3 px-4 py-3.5 hover:bg-muted/10 transition-colors">
@@ -694,7 +700,8 @@ export default function BusinessHub() {
                 })}
               </div>
             </motion.div>
-          ))}
+            );
+          })}
 
           {!activeOrg && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
