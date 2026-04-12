@@ -102,3 +102,15 @@ Dedicated Gusto Payroll page at `/business/gusto` (component: `GustoPayroll.tsx`
 ## Bot Factory (Jean Claw)
 
 All 77 marketplace bots live under "JEAN CLAW — 77 BOTS" tab (no separate marketplace tab). The "MY BOTS" tab shows user's active/custom bots. Key finance bot is **Viktor Vault** (AI CFO) with Google Sheets, bank, Gusto, and Stripe integration capabilities.
+
+### Jean Claw Knowledge Base
+Jean Claw's system prompt (`seed-bots-marketplace.ts`, slug `claw-bot`) contains a comprehensive knowledge base covering:
+- **Complete platform module map** with exact paths for every page (Pablo, Phone, Bots, Console, Business, Creative, Marketing, Intel, World, Admin)
+- **Full 77-bot roster** organized by category with slug references and one-line descriptions
+- **Automated 5-step onboarding flow**: Discovery → Platform Setup → Bot Deployment → Channel Connection → Ongoing Optimization
+- **Business module expertise**: Knows all OPS-CORE tools (Team, Tasks, Time Tracking, Announcements, Invoices, Estimates, Vendors, P&L, etc.)
+- **Bot-to-business matching**: Maps industry types to recommended bot combinations
+- **Dual currency awareness**: FIAT (ƒ) vs AVAILABLE ($), debt display rules
+- **Pricing tiers**: Free (Pablo) vs Jean Claw ($145/mo)
+
+Pablo (`chat.ts`) and Marco Atlas (`seed-bots-marketplace.ts`) also have updated knowledge of the full platform module structure and bot roster.
