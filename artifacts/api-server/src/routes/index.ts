@@ -45,6 +45,7 @@ import leadsRouter from "./leads";
 import insuranceRouter from "./insurance";
 import platformApiRouter from "./platform-api";
 import adminRouter from "./admin";
+import businessOpsRouter from "./business-ops";
 
 const router: IRouter = Router();
 
@@ -94,5 +95,6 @@ router.use(leadsRouter);
 router.use(insuranceRouter);
 router.use(platformApiRouter);
 router.use(adminRouter);
+router.use(businessOpsRouter);
 
 export default router;

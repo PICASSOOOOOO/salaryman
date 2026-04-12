@@ -9,7 +9,7 @@ import {
   BarChart2, LayoutDashboard, Bot, Zap, Clock, Phone,
   Lightbulb, BookOpen, Star, Info, Plus, X, UserPlus,
   Edit2, Trash2, Check, Copy, ChevronDown, Mail, Crown,
-  Save,
+  Save, ClipboardList, Store, Timer,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -65,9 +65,13 @@ const SECTIONS = [
     title: 'PEOPLE & OPERATIONS',
     subtitle: 'MANAGE YOUR TEAM, CONTACTS, AND DAY-TO-DAY OPERATIONS',
     items: [
+      { path: '/business/team', label: 'TEAM DIRECTORY', boomer: 'TEAM DIRECTORY', desc: 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.', icon: Users, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
       { path: '/business/contacts', label: 'CONTACTS', boomer: 'CONTACTS', desc: 'MANAGE YOUR CONTACT DATABASE, COMPANY RELATIONSHIPS, AND INTERACTION HISTORY.', icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
       { path: '/business/hiring', label: 'HIRING', boomer: 'HIRING & HR', desc: 'POST JOBS, TRACK APPLICANTS, MANAGE STAFF DIRECTORY AND ONBOARDING.', icon: Briefcase, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
       { path: '/business/interview', label: 'INTERVIEW OFFICE', boomer: 'INTERVIEW OFFICE', desc: 'AI-POWERED INTERVIEWS AND TECHNICAL ASSESSMENTS.', icon: Code2, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
+      { path: '/business/tasks', label: 'TASK BOARD', boomer: 'TASK BOARD', desc: 'ASSIGN TASKS, SET PRIORITIES, TRACK PROGRESS AND DEADLINES.', icon: ClipboardList, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+      { path: '/business/time-tracking', label: 'TIME TRACKING', boomer: 'TIME TRACKING', desc: 'CLOCK IN/OUT, TIMESHEETS, BILLABLE HOURS, RATE TRACKING.', icon: Timer, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
+      { path: '/business/announcements', label: 'ANNOUNCEMENTS', boomer: 'ANNOUNCEMENTS', desc: 'COMPANY-WIDE UPDATES, POLICY CHANGES, AND TEAM BROADCASTS.', icon: Megaphone, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
       { path: '/business/calendar', label: 'CALENDAR', boomer: 'CALENDAR', desc: 'SCHEDULE MEETINGS, DEADLINES, AND EVENTS.', icon: CalendarDays, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
       { path: '/business/documents', label: 'DOCUMENTS', boomer: 'DOCUMENTS', desc: 'STORE AND ORGANIZE YOUR BUSINESS FILES.', icon: Archive, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
     ],
@@ -78,6 +82,7 @@ const SECTIONS = [
     items: [
       { path: '/business/deals', label: 'DEALS', boomer: 'DEALS', desc: 'KANBAN SALES PIPELINE FROM LEAD TO CLOSE.', icon: TrendingUp, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
       { path: '/business/invoices', label: 'INVOICES', boomer: 'INVOICES', desc: 'CREATE AND MANAGE CLIENT BILLING AND RECEIVABLES.', icon: FileText, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+      { path: '/business/estimates', label: 'ESTIMATES', boomer: 'ESTIMATES & QUOTES', desc: 'CREATE QUOTES AND PROPOSALS BEFORE INVOICING CLIENTS.', icon: FileText, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
       { path: '/marketing/leads', label: 'LEADS', boomer: 'LEAD DATABASE', desc: 'PROSPECT DATABASE WITH SCORING AND QUALIFICATION.', icon: Target, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
     ],
   },
@@ -89,6 +94,8 @@ const SECTIONS = [
       { path: '/business/gusto', label: 'GUSTO PAYROLL', boomer: 'GUSTO PAYROLL', desc: 'LIVE GUSTO DATA — EMPLOYEES, PAY RUNS, TAXES.', icon: Landmark, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
       { path: '/business/bills', label: 'BILLS', boomer: 'BILLS', desc: 'ACCOUNTS PAYABLE WITH VENDOR TRACKING.', icon: Receipt, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
       { path: '/business/expenses', label: 'EXPENSES', boomer: 'EXPENSES', desc: 'CATEGORIZED SPENDING WITH RECEIPT TRACKING.', icon: CreditCard, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
+      { path: '/business/vendors', label: 'VENDORS', boomer: 'VENDOR DIRECTORY', desc: 'MANAGE VENDOR CONTACTS, PAYMENT TERMS, AND RELATIONSHIPS.', icon: Store, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+      { path: '/business/profit-loss', label: 'P&L', boomer: 'PROFIT & LOSS', desc: 'INCOME STATEMENT — REVENUE, COSTS, AND NET PROFIT.', icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
       { path: '/business/balance-sheet', label: 'BALANCE SHEET', boomer: 'BALANCE SHEET', desc: 'COMPLETE FINANCIAL OVERVIEW AND LEDGER.', icon: Scale, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
     ],
   },

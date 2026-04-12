@@ -71,6 +71,13 @@ const GustoPayroll = lazy(() => import("@/pages/GustoPayroll"));
 const Bills = lazy(() => import("@/pages/Bills"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
 const BalanceSheet = lazy(() => import("@/pages/BalanceSheet"));
+const TimeTracking = lazy(() => import("@/pages/TimeTracking"));
+const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
+const TeamDirectory = lazy(() => import("@/pages/TeamDirectory"));
+const Announcements = lazy(() => import("@/pages/Announcements"));
+const Estimates = lazy(() => import("@/pages/Estimates"));
+const Vendors = lazy(() => import("@/pages/Vendors"));
+const ProfitLoss = lazy(() => import("@/pages/ProfitLoss"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
@@ -246,6 +253,13 @@ function AppShell() {
             <Route path="/business/deals" component={Deals} />
             <Route path="/business/payroll" component={Payroll} />
             <Route path="/business/gusto" component={GustoPayroll} />
+            <Route path="/business/time-tracking" component={TimeTracking} />
+            <Route path="/business/tasks" component={TaskBoard} />
+            <Route path="/business/team" component={TeamDirectory} />
+            <Route path="/business/announcements" component={Announcements} />
+            <Route path="/business/estimates" component={Estimates} />
+            <Route path="/business/vendors" component={Vendors} />
+            <Route path="/business/profit-loss" component={ProfitLoss} />
             <Route path="/business/bills" component={Bills} />
             <Route path="/business/expenses" component={Expenses} />
             <Route path="/business/leads">{() => <Redirect to="/marketing/leads" />}</Route>

@@ -53,8 +53,28 @@ The `/business` route renders a BusinessHub landing page that provides an overvi
 - Organization details (name, industry, member count, user role)
 - Financial summary stats (net profit, gross income, invoices, bills, employees, payroll, expenses, outgoings)
 - Action required alerts for overdue bills and invoices
-- Categorized navigation cards linking to all business sub-modules (Contacts, Hiring, Interview Office, Calendar, Documents, Deals, Invoices, Payroll, Bills, Expenses, Balance Sheet, Insurance API)
+- Categorized navigation cards linking to all business sub-modules:
+  - **People & Operations**: Team Directory, Contacts, Hiring, Interview Office, Task Board, Time Tracking, Announcements, Calendar, Documents
+  - **Sales & Revenue**: Deals, Invoices, Estimates/Quotes, Leads
+  - **Financials**: Payroll, Gusto Payroll, Bills, Expenses, Vendors, P&L, Balance Sheet
+  - **Marketing & Growth**: Campaigns, SEO
+  - **Analytics & AI**: Reports, Dashboard, Bot Factory, Insurance API
 - Backend summary endpoint at `/api/enterprise/summary` aggregates counts and financials across all enterprise tables
+
+## Business Operations Modules (New)
+
+Seven new modules added to fill real business-owner gaps:
+
+- **Time Tracking** (`/business/time-tracking`, `TimeTracking.tsx`): Clock in/out, timesheets, billable hours, hourly rate tracking. API: `/api/business/time-entries`
+- **Task Board** (`/business/tasks`, `TaskBoard.tsx`): Kanban board + list view, priorities (low/medium/high/urgent), status columns (todo/in_progress/review/done), assignees, due dates. API: `/api/business/tasks`
+- **Team Directory** (`/business/team`, `TeamDirectory.tsx`): Full org view with roles, departments, compensation, contact info. Uses existing staff/org data.
+- **Announcements** (`/business/announcements`, `Announcements.tsx`): Company-wide posts with priority levels and pinning. API: `/api/business/announcements`
+- **Estimates & Quotes** (`/business/estimates`, `Estimates.tsx`): Quote builder with line items, tax calculation, status workflow (draft → sent → accepted/declined). API: `/api/business/estimates`
+- **Vendor Directory** (`/business/vendors`, `Vendors.tsx`): Vendor contacts, payment terms, categories, status tracking. API: `/api/business/vendors`
+- **Profit & Loss** (`/business/profit-loss`, `ProfitLoss.tsx`): Income statement with revenue vs costs, net profit calculation, margin percentage. Uses existing financial data.
+
+DB schema: `lib/db/src/schema/business-ops.ts` (tables: time_entries, business_tasks, announcements, estimates, vendors)
+API routes: `artifacts/api-server/src/routes/business-ops.ts` (registered under `/api/business/`)
 
 ## Finance & Dual Currency System
 
