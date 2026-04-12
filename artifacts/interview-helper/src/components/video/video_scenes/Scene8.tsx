@@ -24,12 +24,17 @@ export function Scene8() {
       transition={{ duration: 0.5 }}
     >
       <motion.div
-        style={{ fontSize: 'clamp(24px, 6vw, 48px)' }}
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={phase >= 1 ? { opacity: 1, scale: 1 } : {}}
+        className="grid grid-cols-3"
+        style={{ width: 'clamp(24px, 5vw, 40px)', height: 'clamp(24px, 5vw, 40px)', gap: 'clamp(1px, 0.2vw, 2px)' }}
+        initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+        animate={phase >= 1 ? { opacity: 1, scale: 1, rotate: 0 } : {}}
         transition={{ duration: 0.5, ease: 'backOut' }}
       >
-        🤖
+        {['#7C3AED','#fff','#22C55E','#fff','#3B82F6','#fff','#EC4899','#fff','#1E3A5F'].map((c, i) => (
+          <motion.div key={i} style={{ background: c, borderRadius: i === 2 ? '50%' : 2, clipPath: i === 6 ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined, boxShadow: `0 0 4px ${c}30` }}
+            initial={{ opacity: 0, scale: 0 }} animate={phase >= 1 ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.05 + i * 0.03, duration: 0.2, ease: 'backOut' }} />
+        ))}
       </motion.div>
 
       <motion.div

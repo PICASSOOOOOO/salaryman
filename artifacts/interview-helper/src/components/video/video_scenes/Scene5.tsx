@@ -59,7 +59,11 @@ export function Scene5() {
           transition={{ duration: 0.35, ease: 'backOut' }}>
 
           <div style={{ padding: 'clamp(4px, 0.6vw, 6px) clamp(6px, 0.8vw, 8px)', borderBottom: '1px solid #ffffff08', display: 'flex', alignItems: 'center', gap: 'clamp(4px, 0.6vw, 6px)' }}>
-            <span style={{ fontSize: 'clamp(6px, 0.9vw, 9px)' }}>🤖</span>
+            <span className="inline-grid grid-cols-3" style={{ width: 'clamp(8px, 1vw, 10px)', height: 'clamp(8px, 1vw, 10px)', gap: 1 }}>
+              {['#7C3AED','#fff','#22C55E','#fff','#3B82F6','#fff','#EC4899','#fff','#1E3A5F'].map((c, i) => (
+                <span key={i} style={{ background: c, borderRadius: i === 2 ? '50%' : 1, clipPath: i === 6 ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined, display: 'block' }} />
+              ))}
+            </span>
             <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.55vw, 5px)', color: '#ef444480', letterSpacing: '0.12em' }}>
               JEAN CLAW TERMINAL
             </span>

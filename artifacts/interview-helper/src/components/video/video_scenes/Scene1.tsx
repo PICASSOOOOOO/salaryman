@@ -57,12 +57,17 @@ export function Scene1() {
 
       <div className="relative z-10 flex flex-col items-center">
         <motion.div
-          style={{ fontSize: 'clamp(40px, 10vw, 80px)', lineHeight: 1 }}
-          initial={{ opacity: 0, scale: 0.3 }}
-          animate={phase >= 2 ? { opacity: 1, scale: 1 } : {}}
+          className="grid grid-cols-3 mb-2"
+          style={{ width: 'clamp(28px, 6vw, 48px)', height: 'clamp(28px, 6vw, 48px)', gap: 'clamp(1px, 0.2vw, 2px)' }}
+          initial={{ opacity: 0, scale: 0.3, rotate: -45 }}
+          animate={phase >= 2 ? { opacity: 1, scale: 1, rotate: 0 } : {}}
           transition={{ duration: 0.6, ease: [0.175, 0.885, 0.32, 1.275] }}
         >
-          🤖
+          {['#7C3AED','#fff','#22C55E','#fff','#3B82F6','#fff','#EC4899','#fff','#1E3A5F'].map((c, i) => (
+            <motion.div key={i} style={{ background: c, borderRadius: i === 2 ? '50%' : i === 6 ? 0 : 2, clipPath: i === 6 ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined, boxShadow: `0 0 6px ${c}40` }}
+              initial={{ opacity: 0, scale: 0 }} animate={phase >= 2 ? { opacity: 1, scale: 1 } : {}}
+              transition={{ delay: 0.05 + i * 0.03, duration: 0.2, ease: 'backOut' }} />
+          ))}
         </motion.div>
 
         <motion.h1

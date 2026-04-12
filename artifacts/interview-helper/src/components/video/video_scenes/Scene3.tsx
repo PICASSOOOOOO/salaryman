@@ -40,7 +40,11 @@ export function Scene3() {
     >
       <motion.div className="absolute top-[3%] left-[3%] z-30 flex items-center gap-[0.6vw]"
         initial={{ opacity: 0, x: -10 }} animate={phase >= 1 ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.4 }}>
-        <span style={{ fontSize: 'clamp(8px, 1.2vw, 12px)' }}>🤖</span>
+        <span className="inline-grid grid-cols-3" style={{ width: 'clamp(10px, 1.4vw, 14px)', height: 'clamp(10px, 1.4vw, 14px)', gap: 1 }}>
+          {['#7C3AED','#fff','#22C55E','#fff','#3B82F6','#fff','#EC4899','#fff','#1E3A5F'].map((c, i) => (
+            <span key={i} style={{ background: c, borderRadius: i === 2 ? '50%' : 1, clipPath: i === 6 ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined, display: 'block' }} />
+          ))}
+        </span>
         <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#ef4444' }}>
           BOT FACTORY
         </span>
