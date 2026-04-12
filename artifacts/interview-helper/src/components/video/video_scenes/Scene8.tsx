@@ -55,7 +55,7 @@ export function Scene8() {
         animate={phase >= 2 ? { opacity: 0.6 } : {}}
         transition={{ duration: 0.3 }}
       >
-        BY PICASSO.AI
+        THE SALARYMAN PLATFORM
       </motion.div>
 
       {phase >= 2 && (
