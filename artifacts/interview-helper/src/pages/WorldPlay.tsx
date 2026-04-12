@@ -4764,8 +4764,8 @@ export default function WorldPlay() {
       } else if (m.type === 'floor_lock_result') {
         if (m.success && m.action === 'set') {
           if (!FLOOR_PASSWORDS.has(m.buildingId)) FLOOR_PASSWORDS.set(m.buildingId, new Map());
-          FLOOR_PASSWORDS.get(m.buildingId)!.set(m.floor, { owner: true });
-          setNarr(`> FLOOR ${m.floor} — Lock set. Only you and your company can enter freely. Others need the password.`);
+          FLOOR_PASSWORDS.get(m.buildingId)!.set(m.floor, { owner: true, ownerName: char.name, company: char.company, label: char.company || '' });
+          setNarr(`> FLOOR ${m.floor}${char.company ? ' — ' + char.company : ''} — Lock set. Only you and your company can enter freely.`);
           setElevatorPrompt(null);
         } else if (m.success && m.action === 'remove') {
           FLOOR_PASSWORDS.get(m.buildingId)?.delete(m.floor);
@@ -4778,7 +4778,9 @@ export default function WorldPlay() {
             const dir3 = BUILDING_FLOORS[m.buildingId];
             const bfl3 = dir3?.floors.find((f: any) => f.floor === m.floor);
             const offDef3 = bfl3 ? generateFloorInterior(m.buildingId, bfl3, dir3?.label ?? m.buildingId) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
-            g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(m.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+            const flLockInfo = FLOOR_PASSWORDS.get(m.buildingId)?.get(m.floor);
+            const flBizName = flLockInfo?.label || (bfl3 ? bfl3.name : '');
+            g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(m.floor).padStart(2,'0')}${flBizName ? ' — ' + flBizName : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
           }
           setCurrentFloor(m.floor);
           setElevatorPrompt(null);
@@ -15966,7 +15968,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl}${bfloor ? ' — ' + bfloor.name : ' — Vacant office'}. Use elevator to claim with a password.`);
                           }
                         }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
-                          FL {String(fl).padStart(2, '0')} {bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? 'YOUR OFFICE 🔒' : `RENTED 🔒${flInfo?.ownerName ? ' ' + flInfo.ownerName : ''}`) : 'VACANT'}
+                          FL {String(fl).padStart(2, '0')} {hasPw && flInfo?.label ? '— ' + flInfo.label.substring(0, 22) : bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? '🔒 YOUR OFFICE' : `🔒 ${flInfo?.ownerName ?? 'RENTED'}${flInfo?.company ? ' / ' + flInfo.company : ''}`) : 'VACANT'}
                         </button>
                         {!isCurrent && !hasPw && !bfloor?.restricted && (
                           <button onClick={() => {
@@ -15990,7 +15992,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   if (e.key === 'Enter' && elevatorPw.trim()) {
                     const err = VALID_PASSWORD(elevatorPw.trim());
                     if (err) { setElevatorPwError(err); return; }
-                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: '' }));
+                    const bizLabel = char.company || '';
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: bizLabel }));
                   }
                 }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
@@ -15998,7 +16001,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <button onClick={() => {
                     const err = VALID_PASSWORD(elevatorPw.trim());
                     if (err) { setElevatorPwError(err); return; }
-                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: '' }));
+                    const bizLabel = char.company || '';
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: bizLabel }));
                   }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>SET & ENTER</button>
                   <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
@@ -16007,7 +16011,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {elevatorPrompt.mode === 'enter_pw' && (
               <div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>ENTER PASSWORD — FLOOR {elevatorPrompt.floor} 🔒</div>
-                {(() => { const info = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor); return info?.ownerName ? <div style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.25)', marginBottom: '.4rem' }}>LOCKED BY {info.ownerName}{info.company ? ` / ${info.company}` : ''}</div> : null; })()}
+                {(() => { const info = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor); return info ? <div style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.25)', marginBottom: '.4rem' }}>{info.label ? <span style={{ color: 'rgba(255,200,0,.5)', fontWeight: 'bold' }}>{info.label}</span> : null}{info.label ? ' — ' : ''}LOCKED BY {info.ownerName ?? 'UNKNOWN'}{info.company ? ` / ${info.company}` : ''}</div> : null; })()}
                 <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
                   if (e.key === 'Enter' && elevatorPw.trim()) {
                     wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim() }));
