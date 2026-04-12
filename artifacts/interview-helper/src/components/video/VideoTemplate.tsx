@@ -10,13 +10,13 @@ import { Scene7 } from './video_scenes/Scene7';
 import { Scene8 } from './video_scenes/Scene8';
 
 const SCENE_DURATIONS = {
-  logo: 2800,
-  tagline: 3200,
-  city: 5500,
-  business: 4500,
-  creative: 4500,
-  phone: 4000,
-  hud: 4000,
+  intro: 2800,
+  pitch: 3200,
+  botGrid: 4500,
+  command: 4500,
+  workflow: 5000,
+  roster: 4000,
+  pricing: 4000,
   lockup: 3500,
 };
 
@@ -35,13 +35,13 @@ export default function VideoTemplate() {
       />
 
       <AnimatePresence mode="wait">
-        {currentScene === 0 && <Scene1 key="logo" />}
-        {currentScene === 1 && <Scene2 key="tagline" />}
-        {currentScene === 2 && <Scene3 key="city" />}
-        {currentScene === 3 && <Scene4 key="business" />}
-        {currentScene === 4 && <Scene5 key="creative" />}
-        {currentScene === 5 && <Scene6 key="phone" />}
-        {currentScene === 6 && <Scene7 key="hud" />}
+        {currentScene === 0 && <Scene1 key="intro" />}
+        {currentScene === 1 && <Scene2 key="pitch" />}
+        {currentScene === 2 && <Scene3 key="botGrid" />}
+        {currentScene === 3 && <Scene4 key="command" />}
+        {currentScene === 4 && <Scene5 key="workflow" />}
+        {currentScene === 5 && <Scene6 key="roster" />}
+        {currentScene === 6 && <Scene7 key="pricing" />}
         {currentScene === 7 && <Scene8 key="lockup" />}
       </AnimatePresence>
     </div>

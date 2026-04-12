@@ -1,149 +1,122 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 
-const WAVEFORM = Array.from({ length: 48 }, (_, i) => ({
-  h: 12 + Math.sin(i * 0.4) * 15 + Math.random() * 12,
-}));
-
-const TOOLS = [
-  { label: 'DARK ROOM', desc: 'AI IMAGE GEN', color: '#a855f7', icon: '◆' },
-  { label: '1999', desc: 'MUSIC STUDIO', color: '#f59e0b', icon: '♪' },
-  { label: 'HEMINGWAY', desc: 'AI COPYWRITER', color: '#10b981', icon: '¶' },
-  { label: 'BRAND KIT', desc: 'IDENTITY', color: '#ec4899', icon: '◎' },
+const CHAT_MSGS = [
+  { from: 'YOU', text: 'WRITE A COLD EMAIL FOR THE ACME CORP DEAL', color: '#38bdf8' },
+  { from: 'HEMINGWAY', text: 'DRAFTING... ANALYZING THEIR RECENT FUNDING ROUND AND PAIN POINTS...', color: '#10b981' },
+  { from: 'HEMINGWAY', text: 'DONE. 3 VARIANTS READY. OPEN RATE PREDICTION: 34%', color: '#10b981' },
+  { from: 'YOU', text: 'SEND VARIANT B. ALSO CHECK IF SCOUT HAS NEW LEADS', color: '#38bdf8' },
+  { from: 'SCOUT', text: '12 NEW LEADS FOUND. 4 HIGH-VALUE MATCHES. FORWARDING TO CLOSER.', color: '#f59e0b' },
+  { from: 'CLOSER', text: 'RECEIVED. INITIATING OUTREACH SEQUENCE FOR 4 PRIORITY LEADS.', color: '#ef4444' },
 ];
 
 export function Scene5() {
   const [phase, setPhase] = useState(0);
-
-  const imageGrid = useMemo(() =>
-    Array.from({ length: 8 }, (_, i) => ({
-      color: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#ec4899', '#38bdf8', '#84cc16'][i],
-      pattern: Math.floor(Math.random() * 3),
-    })), []);
+  const [visibleMsgs, setVisibleMsgs] = useState(0);
 
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 150),
-      setTimeout(() => setPhase(2), 600),
-      setTimeout(() => setPhase(3), 1200),
-      setTimeout(() => setPhase(4), 2200),
-      setTimeout(() => setPhase(5), 3200),
+      setTimeout(() => setPhase(2), 500),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  useEffect(() => {
+    if (phase >= 2 && visibleMsgs < CHAT_MSGS.length) {
+      const t = setTimeout(() => setVisibleMsgs(v => v + 1), 600);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [phase, visibleMsgs]);
+
   return (
     <motion.div className="absolute inset-0 overflow-hidden"
-      style={{ background: 'radial-gradient(ellipse 80% 60% at 35% 30%, #1a0a2e 0%, #0a0e1a 50%, #040608 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #060810 0%, #0a0e1a 100%)' }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
 
       <motion.div className="absolute top-[2.5%] left-[3%] z-20 flex items-center gap-[0.8vw]"
         initial={{ opacity: 0, x: -10 }} animate={phase >= 1 ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.4 }}>
-        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#a855f7' }}>
-          FORGE MATRIX
+        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#10b981' }}>
+          BOTS AT WORK
+        </span>
+      </motion.div>
+
+      <motion.div className="absolute top-[2.5%] right-[3%] z-20"
+        initial={{ opacity: 0 }} animate={phase >= 1 ? { opacity: 0.5 } : {}}>
+        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', color: '#ef4444', letterSpacing: '0.12em' }}>
+          3 BOTS ACTIVE IN CHAIN
         </span>
       </motion.div>
 
       {phase >= 1 && (
-        <motion.div className="absolute" style={{
-          top: '9%', left: '3%', width: '52%', height: '38%',
-          background: '#0c081a', border: '1px solid #a855f720', borderRadius: 6,
-          boxShadow: '0 4px 30px rgba(168,85,247,0.05)', overflow: 'hidden',
+        <motion.div style={{
+          position: 'absolute', top: '9%', left: '5%', right: '5%', bottom: '12%',
+          background: '#0a0d15', border: '1px solid #ffffff10', borderRadius: 6,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
-          initial={{ opacity: 0, scale: 0.9, x: -10 }} animate={{ opacity: 1, scale: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: 'backOut' }}>
-          <div className="absolute top-0 left-0 right-0 flex items-center px-2 gap-1" style={{
-            height: 'clamp(10px, 1.4vw, 14px)', background: '#150d28', borderBottom: '1px solid #a855f715',
-          }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 5px)', color: '#a855f760', letterSpacing: '0.12em' }}>
-              DARK ROOM · RENDERING
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.35, ease: 'backOut' }}>
+
+          <div style={{ padding: 'clamp(4px, 0.6vw, 6px) clamp(6px, 0.8vw, 8px)', borderBottom: '1px solid #ffffff08', display: 'flex', alignItems: 'center', gap: 'clamp(4px, 0.6vw, 6px)' }}>
+            <span style={{ fontSize: 'clamp(6px, 0.9vw, 9px)' }}>🤖</span>
+            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.55vw, 5px)', color: '#ef444480', letterSpacing: '0.12em' }}>
+              JEAN CLAW TERMINAL
             </span>
-            <motion.span className="ml-auto" style={{ fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#10b98160', fontFamily: '"Share Tech Mono", monospace' }}
-              animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 1.5, repeat: Infinity }}>
-              ● GENERATING
-            </motion.span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 'clamp(2px, 0.3vw, 3px)' }}>
+              {['HEMINGWAY', 'SCOUT', 'CLOSER'].map((b, i) => (
+                <span key={i} style={{
+                  fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.35vw, 3px)',
+                  color: ['#10b981', '#f59e0b', '#ef4444'][i], letterSpacing: '0.08em',
+                  padding: 'clamp(1px, 0.15vw, 2px) clamp(2px, 0.3vw, 4px)',
+                  border: `1px solid ${['#10b981', '#f59e0b', '#ef4444'][i]}25`, borderRadius: 2,
+                }}>● {b}</span>
+              ))}
+            </div>
           </div>
-          <div className="absolute" style={{ top: 'clamp(14px, 2vw, 18px)', left: '4%', right: '4%', bottom: '4%', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(2px, 0.3vw, 3px)' }}>
-            {imageGrid.map((img, i) => (
-              <motion.div key={i} style={{
-                background: img.pattern === 0
-                  ? `linear-gradient(135deg, ${img.color}25 0%, ${img.color}08 100%)`
-                  : img.pattern === 1
-                  ? `radial-gradient(circle at 30% 30%, ${img.color}30 0%, ${img.color}05 70%)`
-                  : `linear-gradient(45deg, ${img.color}20 25%, transparent 25%, transparent 75%, ${img.color}15 75%)`,
-                border: `1px solid ${img.color}18`, borderRadius: 2,
-              }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={phase >= 2 ? { opacity: [0.5, 0.9, 0.5], scale: 1 } : {}}
-                transition={{ delay: i * 0.08, duration: 2 + Math.random() * 2, repeat: Infinity }} />
+
+          <div style={{ flex: 1, padding: 'clamp(4px, 0.6vw, 8px)', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 'clamp(3px, 0.5vw, 6px)' }}>
+            {CHAT_MSGS.slice(0, visibleMsgs).map((msg, i) => (
+              <motion.div key={i}
+                style={{
+                  display: 'flex', gap: 'clamp(4px, 0.6vw, 6px)', alignItems: 'flex-start',
+                }}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}>
+                <span style={{
+                  fontFamily: '"VT323", monospace', fontSize: 'clamp(4px, 0.55vw, 5px)',
+                  color: msg.color, minWidth: 'clamp(30px, 5vw, 50px)', fontWeight: 600,
+                }}>
+                  {msg.from}
+                </span>
+                <span style={{
+                  fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 4px)',
+                  color: msg.from === 'YOU' ? '#e2e8f0' : msg.color, opacity: msg.from === 'YOU' ? 0.9 : 0.7,
+                  lineHeight: 1.4,
+                }}>
+                  {msg.text}
+                </span>
+              </motion.div>
             ))}
+            {visibleMsgs < CHAT_MSGS.length && phase >= 2 && (
+              <motion.div style={{ display: 'flex', gap: 'clamp(2px, 0.3vw, 3px)' }}
+                animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 0.6, repeat: Infinity }}>
+                {[0, 1, 2].map(d => (
+                  <div key={d} style={{ width: 'clamp(2px, 0.3vw, 3px)', height: 'clamp(2px, 0.3vw, 3px)', borderRadius: '50%', background: '#ef4444' }} />
+                ))}
+              </motion.div>
+            )}
           </div>
         </motion.div>
-      )}
-
-      {phase >= 2 && (
-        <motion.div className="absolute" style={{
-          top: '9%', right: '3%', width: '38%', height: '38%',
-          background: '#0a0d15', border: '1px solid #f59e0b18', borderRadius: 6,
-          boxShadow: '0 4px 30px rgba(245,158,11,0.03)', overflow: 'hidden',
-        }}
-          initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
-          <div className="absolute top-0 left-0 right-0 flex items-center px-2" style={{
-            height: 'clamp(10px, 1.4vw, 14px)', background: '#1a150a', borderBottom: '1px solid #f59e0b15',
-          }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 5px)', color: '#f59e0b60', letterSpacing: '0.12em' }}>
-              1999 · BEAT MACHINE
-            </span>
-          </div>
-          <div className="absolute flex items-end" style={{ top: 'clamp(16px, 2.2vw, 20px)', left: '6%', right: '6%', bottom: '18%', gap: 1 }}>
-            {WAVEFORM.map((bar, i) => (
-              <motion.div key={i} style={{
-                flex: 1, background: `linear-gradient(180deg, #f59e0b ${100 - bar.h}%, #f59e0b15 100%)`,
-                borderRadius: '1px 1px 0 0', minHeight: 1,
-              }}
-                initial={{ height: 0 }}
-                animate={phase >= 2 ? { height: [`${bar.h * 0.3}%`, `${bar.h}%`, `${bar.h * 0.5}%`, `${bar.h * 0.8}%`] } : {}}
-                transition={{ delay: i * 0.015, duration: 1.5, repeat: Infinity }} />
-            ))}
-          </div>
-          <motion.div className="absolute flex items-center justify-center" style={{ bottom: '5%', left: '50%', transform: 'translateX(-50%)' }}
-            animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1, repeat: Infinity }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.5vw, 5px)', color: '#f59e0b', letterSpacing: '0.15em' }}>
-              ▶ PLAYING · 2:34
-            </span>
-          </motion.div>
-        </motion.div>
-      )}
-
-      {phase >= 3 && (
-        <div className="absolute flex" style={{ bottom: '14%', left: '3%', right: '3%', gap: 'clamp(3px, 0.5vw, 6px)' }}>
-          {TOOLS.map((tool, i) => (
-            <motion.div key={i} className="flex-1 flex flex-col items-center" style={{
-              background: `${tool.color}06`, border: `1px solid ${tool.color}18`,
-              borderRadius: 4, padding: 'clamp(4px, 0.6vw, 8px) clamp(2px, 0.3vw, 4px)',
-              gap: 'clamp(2px, 0.25vw, 3px)',
-            }}
-              initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: i * 0.08, duration: 0.35, ease: 'backOut' }}>
-              <span style={{ fontSize: 'clamp(8px, 1.2vw, 12px)', color: tool.color, opacity: 0.8 }}>{tool.icon}</span>
-              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.55vw, 6px)', color: tool.color, letterSpacing: '0.1em', fontWeight: 600, textAlign: 'center' }}>
-                {tool.label}
-              </span>
-              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.35vw, 3px)', color: '#64748b', textAlign: 'center' }}>
-                {tool.desc}
-              </span>
-            </motion.div>
-          ))}
-        </div>
       )}
 
       <motion.div className="absolute bottom-[3%] left-[3%] z-20"
-        initial={{ opacity: 0, y: 8 }} animate={phase >= 5 ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4 }}>
-        <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#a855f7', letterSpacing: '0.08em', textShadow: '0 0 10px #a855f730' }}>
-          DESIGN · MUSIC · WRITE · BRAND
+        initial={{ opacity: 0, y: 8 }} animate={visibleMsgs >= CHAT_MSGS.length ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4 }}>
+        <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#10b981', letterSpacing: '0.08em', textShadow: '0 0 10px #10b98130' }}>
+          BOTS TALK TO EACH OTHER
         </div>
-        <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', color: '#f59e0b', letterSpacing: '0.2em', opacity: 0.4, marginTop: 3 }}>
-          YOUR CREATIVE SUITE · ALL AI-POWERED
+        <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', color: '#ef4444', letterSpacing: '0.2em', opacity: 0.4, marginTop: 3 }}>
+          CHAIN COMMANDS · AUTOMATED WORKFLOWS
         </div>
       </motion.div>
     </motion.div>

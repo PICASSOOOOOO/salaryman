@@ -1,29 +1,20 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-const MODULES = [
-  { x: 8, y: 42, w: 38, h: 24, label: 'CRM', color: '#38bdf8', rows: [
-    { text: 'Sarah M. — Follow Up', status: 'HOT', statusColor: '#ef4444' },
-    { text: 'Jake R. — New Lead', status: 'NEW', statusColor: '#10b981' },
-    { text: 'Corp Inc — $45K Proposal', status: 'SENT', statusColor: '#f59e0b' },
-  ]},
-  { x: 54, y: 42, w: 38, h: 24, label: 'DEALS PIPELINE', color: '#10b981', rows: [
-    { text: '$12,000 — Closing Friday', status: '●', statusColor: '#10b981' },
-    { text: '$8,500 — In Negotiation', status: '●', statusColor: '#f59e0b' },
-    { text: '$24,000 — Won ✓', status: '●', statusColor: '#38bdf8' },
-  ]},
-  { x: 8, y: 70, w: 25, h: 18, label: 'INVOICES', color: '#f59e0b', rows: [
-    { text: 'INV-0042  $3,200', status: 'PAID', statusColor: '#10b981' },
-    { text: 'INV-0043  $1,800', status: 'DUE', statusColor: '#f59e0b' },
-  ]},
-  { x: 37, y: 70, w: 25, h: 18, label: 'CALENDAR', color: '#a855f7', rows: [
-    { text: '10am — Client Call', status: '', statusColor: '' },
-    { text: '2pm — Team Standup', status: '', statusColor: '' },
-  ]},
-  { x: 66, y: 70, w: 26, h: 18, label: 'PAYROLL', color: '#ec4899', rows: [
-    { text: 'Q2 Run  $28,400', status: 'DONE', statusColor: '#10b981' },
-    { text: 'Next: Jul 1', status: '', statusColor: '' },
-  ]},
+const DEPLOY_LOG = [
+  { time: '09:01', bot: 'CLOSER', action: 'DEPLOYED TO SALES PIPELINE', color: '#ef4444' },
+  { time: '09:01', bot: 'SCOUT', action: 'RESEARCHING 48 LEADS', color: '#f59e0b' },
+  { time: '09:02', bot: 'HEMINGWAY', action: 'WRITING 12 EMAIL DRAFTS', color: '#10b981' },
+  { time: '09:03', bot: 'DISPATCH', action: 'SENDING OUTREACH BATCH #7', color: '#84cc16' },
+  { time: '09:04', bot: 'ORACLE', action: 'ANALYZING Q2 REVENUE DATA', color: '#ec4899' },
+  { time: '09:05', bot: 'SENTINEL', action: 'RESPONDING TO 3 TICKETS', color: '#06b6d4' },
+];
+
+const METRICS = [
+  { label: 'BOTS ACTIVE', value: '64/77', color: '#10b981' },
+  { label: 'TASKS TODAY', value: '1,247', color: '#38bdf8' },
+  { label: 'EFFICIENCY', value: '94.2%', color: '#f59e0b' },
+  { label: 'COST SAVED', value: '$12,400', color: '#a855f7' },
 ];
 
 export function Scene4() {
@@ -34,8 +25,8 @@ export function Scene4() {
       setTimeout(() => setPhase(1), 150),
       setTimeout(() => setPhase(2), 500),
       setTimeout(() => setPhase(3), 1000),
-      setTimeout(() => setPhase(4), 1800),
-      setTimeout(() => setPhase(5), 2800),
+      setTimeout(() => setPhase(4), 2000),
+      setTimeout(() => setPhase(5), 3200),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -47,87 +38,90 @@ export function Scene4() {
 
       <motion.div className="absolute top-[2.5%] left-[3%] z-20 flex items-center gap-[0.8vw]"
         initial={{ opacity: 0, x: -10 }} animate={phase >= 1 ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.4 }}>
-        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#38bdf8' }}>
-          YOUR OFFICE
+        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#ef4444' }}>
+          COMMAND CENTER
         </span>
-        <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', color: '#38bdf860' }}
+        <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', color: '#10b98160' }}
           animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2, repeat: Infinity }}>
           LIVE
         </motion.span>
       </motion.div>
 
       {phase >= 1 && (
-        <motion.div className="absolute" style={{
-          top: '7%', left: '50%', transform: 'translateX(-50%)', width: '86%', height: '30%',
-          background: 'linear-gradient(180deg, #111827 0%, #0a0f1a 100%)',
-          border: '1px solid #1e293b', borderRadius: 6,
-          boxShadow: '0 4px 30px rgba(0,0,0,0.5)',
-        }}
-          initial={{ opacity: 0, scaleY: 0.8, y: 10 }} animate={{ opacity: 1, scaleY: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'backOut' }}>
-          <div className="absolute top-0 left-0 right-0 flex items-center gap-[4px] px-2" style={{
-            height: 'clamp(10px, 1.6vw, 16px)', background: '#151c2c', borderRadius: '6px 6px 0 0', borderBottom: '1px solid #1e293b40',
-          }}>
-            {['#ef4444', '#f59e0b', '#10b981'].map((c, i) => (
-              <div key={i} style={{ width: 'clamp(3px, 0.5vw, 5px)', height: 'clamp(3px, 0.5vw, 5px)', borderRadius: '50%', background: c, opacity: 0.7 }} />
-            ))}
-            <span className="ml-2" style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.55vw, 5px)', color: '#475569' }}>
-              salaryman.app/business
-            </span>
-          </div>
-
-          <div className="absolute" style={{ top: 'clamp(14px, 2.2vw, 20px)', left: '3%', right: '3%', bottom: '6%' }}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <motion.div key={i} style={{
-                width: `${35 + Math.random() * 45}%`, height: 'clamp(2px, 0.4vw, 3px)',
-                background: `rgba(56,189,248,${0.08 + Math.random() * 0.12})`, borderRadius: 1, marginBottom: 'clamp(3px, 0.5vw, 5px)',
-              }}
-                initial={{ scaleX: 0 }} animate={phase >= 2 ? { scaleX: 1 } : {}}
-                transition={{ delay: 0.1 + i * 0.08, duration: 0.25 }} style-origin="left" />
-            ))}
-          </div>
-        </motion.div>
+        <div className="absolute flex gap-[1vw]" style={{ top: '8%', left: '3%', right: '3%' }}>
+          {METRICS.map((m, i) => (
+            <motion.div key={i} style={{
+              flex: 1, background: `${m.color}08`, border: `1px solid ${m.color}20`, borderRadius: 4,
+              padding: 'clamp(4px, 0.6vw, 8px)', textAlign: 'center',
+            }}
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, duration: 0.3 }}>
+              <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#64748b', letterSpacing: '0.15em' }}>
+                {m.label}
+              </div>
+              <motion.div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(8px, 1.6vw, 14px)', color: m.color, marginTop: 2 }}
+                initial={{ opacity: 0 }} animate={phase >= 2 ? { opacity: 1 } : {}} transition={{ delay: 0.2 + i * 0.1, duration: 0.3 }}>
+                {m.value}
+              </motion.div>
+            </motion.div>
+          ))}
+        </div>
       )}
 
-      {phase >= 3 && MODULES.map((mod, i) => (
-        <motion.div key={i} className="absolute" style={{
-          left: `${mod.x}%`, top: `${mod.y}%`, width: `${mod.w}%`, height: `${mod.h}%`,
-          background: `${mod.color}06`, border: `1px solid ${mod.color}20`,
-          borderRadius: 4, overflow: 'hidden',
+      {phase >= 2 && (
+        <motion.div style={{
+          position: 'absolute', top: '28%', left: '3%', right: '3%', bottom: '14%',
+          background: '#0a0e18', border: '1px solid #ffffff10', borderRadius: 4, overflow: 'hidden',
         }}
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: i * 0.1, duration: 0.35, ease: 'backOut' }}>
-          <div className="px-[6%] py-[3%]" style={{ borderBottom: `1px solid ${mod.color}15` }}>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.6vw, 6px)', color: mod.color, letterSpacing: '0.15em', fontWeight: 600 }}>
-              {mod.label}
+          initial={{ opacity: 0, scaleY: 0.9 }} animate={{ opacity: 1, scaleY: 1 }}
+          transition={{ duration: 0.35, ease: 'backOut' }}>
+          <div style={{ padding: 'clamp(4px, 0.6vw, 6px)', borderBottom: '1px solid #ffffff08', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.55vw, 5px)', color: '#ef444480', letterSpacing: '0.15em' }}>
+              DEPLOYMENT LOG
             </span>
+            <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#10b98160' }}
+              animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1, repeat: Infinity }}>
+              ● STREAMING
+            </motion.span>
           </div>
-          {mod.rows.map((row, ri) => (
-            <motion.div key={ri} className="flex justify-between items-center px-[6%]"
-              style={{ paddingTop: 'clamp(2px, 0.3vw, 3px)', paddingBottom: 'clamp(2px, 0.3vw, 3px)', borderBottom: `1px solid ${mod.color}08` }}
-              initial={{ opacity: 0, x: -6 }} animate={{ opacity: 0.8, x: 0 }}
-              transition={{ delay: 0.2 + i * 0.1 + ri * 0.06, duration: 0.2 }}>
-              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 4px)', color: '#94a3b8' }}>
-                {row.text}
+
+          {DEPLOY_LOG.map((entry, i) => (
+            <motion.div key={i} style={{
+              padding: 'clamp(4px, 0.6vw, 6px) clamp(6px, 0.8vw, 8px)',
+              borderBottom: '1px solid #ffffff05',
+              display: 'flex', alignItems: 'center', gap: 'clamp(4px, 0.6vw, 8px)',
+            }}
+              initial={{ opacity: 0, x: -15 }}
+              animate={phase >= 3 ? { opacity: 1, x: 0 } : {}}
+              transition={{ delay: i * 0.12, duration: 0.3 }}>
+              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.4vw, 4px)', color: '#475569', minWidth: 'clamp(16px, 2.5vw, 24px)' }}>
+                {entry.time}
               </span>
-              {row.status && (
-                <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.35vw, 3px)', color: row.statusColor, letterSpacing: '0.1em' }}>
-                  {row.status}
-                </span>
-              )}
+              <motion.div style={{
+                width: 'clamp(4px, 0.6vw, 6px)', height: 'clamp(4px, 0.6vw, 6px)',
+                borderRadius: '50%', background: entry.color,
+              }}
+                animate={{ boxShadow: [`0 0 0px ${entry.color}`, `0 0 6px ${entry.color}60`, `0 0 0px ${entry.color}`] }}
+                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+              />
+              <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(4px, 0.6vw, 6px)', color: entry.color, minWidth: 'clamp(30px, 5vw, 50px)' }}>
+                {entry.bot}
+              </span>
+              <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 4px)', color: '#94a3b8' }}>
+                {entry.action}
+              </span>
             </motion.div>
           ))}
         </motion.div>
-      ))}
+      )}
 
       <motion.div className="absolute bottom-[3%] left-[3%] z-20"
         initial={{ opacity: 0, y: 8 }} animate={phase >= 5 ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4 }}>
-        <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#38bdf8', letterSpacing: '0.08em', textShadow: '0 0 10px #38bdf830' }}>
-          CRM · INVOICES · DEALS · PAYROLL
+        <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#ef4444', letterSpacing: '0.08em', textShadow: '0 0 10px #ef444430' }}>
+          DEPLOY · MONITOR · SCALE
         </div>
-        <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', color: '#10b981', letterSpacing: '0.2em', opacity: 0.4, marginTop: 3 }}>
-          EVERYTHING IN ONE PLACE
+        <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', color: '#94a3b8', letterSpacing: '0.2em', opacity: 0.4, marginTop: 3 }}>
+          JEAN CLAW MANAGES EVERYTHING
         </div>
       </motion.div>
     </motion.div>

@@ -1,41 +1,33 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-const CALL_LOG = [
-  { name: 'Sarah Mitchell', time: '2:34', status: 'completed', color: '#10b981' },
-  { name: 'Corp Inc HQ', time: '5:12', status: 'completed', color: '#10b981' },
-  { name: 'Jake Rivera', time: '0:45', status: 'missed', color: '#ef4444' },
-  { name: 'New Lead — Marcus', time: '—', status: 'incoming', color: '#f59e0b' },
+const BOT_CATEGORIES = [
+  { category: 'SALES & OUTREACH', count: 14, bots: ['CLOSER', 'SCOUT', 'DISPATCH', 'QUALIFIER'], color: '#ef4444' },
+  { category: 'CONTENT & WRITING', count: 12, bots: ['HEMINGWAY', 'GHOSTWRITER', 'BLOGGER', 'TRANSLATOR'], color: '#10b981' },
+  { category: 'CREATIVE & DESIGN', count: 11, bots: ['PIXEL', 'DARK ROOM', 'BRAND KIT', 'THUMBNAIL'], color: '#a855f7' },
+  { category: 'DATA & RESEARCH', count: 10, bots: ['ORACLE', 'ANALYST', 'SCRAPER', 'FORECAST'], color: '#f59e0b' },
+  { category: 'SUPPORT & OPS', count: 15, bots: ['SENTINEL', 'TRIAGE', 'FAQ BOT', 'ONBOARD'], color: '#06b6d4' },
+  { category: 'CODE & DEV', count: 8, bots: ['FORGE', 'DEBUGGER', 'REVIEWER', 'DEPLOYER'], color: '#6366f1' },
+  { category: 'SOCIAL & MARKETING', count: 7, bots: ['HERALD', 'SCHEDULER', 'MAVEN', 'INFLUENCER'], color: '#ec4899' },
 ];
-
-const DIAL_PAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
 export function Scene6() {
   const [phase, setPhase] = useState(0);
-  const [ringPulse, setRingPulse] = useState(false);
 
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 200),
-      setTimeout(() => setPhase(2), 800),
-      setTimeout(() => setPhase(3), 1500),
-      setTimeout(() => setPhase(4), 2400),
+      setTimeout(() => setPhase(2), 600),
+      setTimeout(() => setPhase(3), 1200),
+      setTimeout(() => setPhase(4), 2800),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  useEffect(() => {
-    if (phase >= 3) {
-      const iv = setInterval(() => setRingPulse(p => !p), 600);
-      return () => clearInterval(iv);
-    }
-    return undefined;
-  }, [phase]);
-
   return (
     <motion.div
       className="absolute inset-0"
-      style={{ background: 'radial-gradient(ellipse at 60% 40%, #0a1a0f 0%, #0a0e1a 50%, #06080d 100%)' }}
+      style={{ background: 'radial-gradient(ellipse at 50% 30%, #1a0808 0%, #0a0e1a 50%, #06080d 100%)' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -45,198 +37,94 @@ export function Scene6() {
         style={{
           position: 'absolute', top: '3%', left: '4%',
           fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(6px, 1vw, 10px)',
-          letterSpacing: '0.25em', color: '#10b981',
+          letterSpacing: '0.25em', color: '#ef4444',
         }}
         initial={{ opacity: 0 }}
         animate={phase >= 1 ? { opacity: 0.7 } : {}}
       >
-        PHONE SYSTEM
+        THE FULL ROSTER
       </motion.div>
 
-      {phase >= 1 && (
-        <motion.div
-          style={{
-            position: 'absolute', top: '10%', left: '5%', width: '45%', height: '75%',
-            background: '#0a1210',
-            border: '1px solid #10b98120',
-            borderRadius: 4,
+      <motion.div
+        style={{ position: 'absolute', top: '3%', right: '4%' }}
+        initial={{ opacity: 0 }}
+        animate={phase >= 1 ? { opacity: 0.5 } : {}}>
+        <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(8px, 1.4vw, 12px)', color: '#f59e0b' }}>
+          77 BOTS
+        </span>
+      </motion.div>
+
+      <div className="absolute" style={{ top: '10%', left: '3%', right: '3%', bottom: '12%', display: 'flex', flexDirection: 'column', gap: 'clamp(2px, 0.4vw, 4px)' }}>
+        {BOT_CATEGORIES.map((cat, i) => (
+          <motion.div key={i} style={{
+            flex: 1, display: 'flex', alignItems: 'center',
+            background: `${cat.color}06`, border: `1px solid ${cat.color}18`,
+            borderRadius: 3, padding: '0 clamp(4px, 0.7vw, 8px)', gap: 'clamp(4px, 0.8vw, 8px)',
           }}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div style={{
-            padding: 'clamp(4px, 0.7vw, 6px)', borderBottom: '1px solid #10b98115',
-          }}>
-            <span style={{
-              fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.6vw, 5px)',
-              color: '#10b98180', letterSpacing: '0.15em',
-            }}>
-              RECENT CALLS
-            </span>
-          </div>
-
-          {CALL_LOG.map((call, i) => (
-            <motion.div
-              key={i}
-              style={{
-                padding: 'clamp(3px, 0.5vw, 5px) clamp(4px, 0.7vw, 6px)',
-                borderBottom: '1px solid #ffffff08',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}
-              initial={{ opacity: 0, x: -5 }}
-              animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: i * 0.1, duration: 0.2 }}
-            >
-              <div>
-                <div style={{
-                  fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.5vw, 5px)',
-                  color: '#e2e8f0',
-                }}>
-                  {call.name}
-                </div>
-                <div style={{
-                  fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.35vw, 3px)',
-                  color: call.color, opacity: 0.7,
-                }}>
-                  {call.status.toUpperCase()} · {call.time}
-                </div>
-              </div>
-              <div style={{
-                width: 'clamp(3px, 0.5vw, 5px)', height: 'clamp(3px, 0.5vw, 5px)',
-                borderRadius: '50%', background: call.color, opacity: 0.5,
-              }} />
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
-
-      {phase >= 2 && (
-        <motion.div
-          style={{
-            position: 'absolute', top: '10%', right: '5%', width: '42%', height: '50%',
-            background: '#0f1a14',
-            border: '1px solid #10b98118',
-            borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center',
-            padding: 'clamp(4px, 0.7vw, 8px)',
-          }}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div style={{
-            fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.5vw, 5px)',
-            color: '#10b98160', letterSpacing: '0.15em', marginBottom: 'clamp(3px, 0.5vw, 6px)',
-          }}>
-            DIAL PAD
-          </div>
-
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 'clamp(2px, 0.3vw, 3px)', width: '70%',
-          }}>
-            {DIAL_PAD.map((key, i) => (
-              <motion.div
-                key={i}
-                style={{
-                  aspectRatio: '1.3', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: '#10b98110',
-                  border: '1px solid #10b98118',
-                  borderRadius: 2,
-                  fontFamily: '"VT323", monospace', fontSize: 'clamp(4px, 0.7vw, 7px)',
-                  color: '#10b981', cursor: 'pointer',
-                }}
-                initial={{ opacity: 0 }}
-                animate={phase >= 2 ? { opacity: 1 } : {}}
-                transition={{ delay: i * 0.03, duration: 0.15 }}
-              >
-                {key}
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            style={{
-              marginTop: 'clamp(4px, 0.7vw, 8px)',
-              width: '60%', height: 'clamp(8px, 1.3vw, 12px)',
-              background: '#10b98130',
-              border: '1px solid #10b98140',
-              borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            animate={phase >= 3 ? { background: ['#10b98130', '#10b98150', '#10b98130'] } : {}}
-            transition={{ duration: 1, repeat: Infinity }}
+            initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
+            animate={phase >= 2 ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: i * 0.08, duration: 0.35, ease: 'backOut' }}
           >
-            <span style={{
-              fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.45vw, 4px)',
-              color: '#10b981', letterSpacing: '0.1em',
-            }}>
-              CALL
-            </span>
-          </motion.div>
-        </motion.div>
-      )}
-
-      {phase >= 3 && (
-        <motion.div
-          style={{
-            position: 'absolute', bottom: '18%', right: '5%', width: '42%',
-            background: ringPulse ? '#f59e0b15' : '#f59e0b08',
-            border: `1px solid ${ringPulse ? '#f59e0b40' : '#f59e0b20'}`,
-            borderRadius: 4, padding: 'clamp(4px, 0.7vw, 8px)',
-            transition: 'all 0.3s',
-          }}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: 'backOut' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(3px, 0.5vw, 6px)' }}>
-            <motion.div
-              style={{
-                width: 'clamp(6px, 1vw, 10px)', height: 'clamp(6px, 1vw, 10px)',
-                borderRadius: '50%', background: '#f59e0b',
-              }}
-              animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 0.6, repeat: Infinity }}
-            />
-            <div>
-              <div style={{
-                fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.6vw, 6px)',
-                color: '#f59e0b', letterSpacing: '0.1em',
-              }}>
-                INCOMING CALL
+            <div style={{ minWidth: 'clamp(24px, 4vw, 36px)', textAlign: 'center' }}>
+              <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(8px, 1.4vw, 12px)', color: cat.color }}>
+                {cat.count}
+              </span>
+            </div>
+            <div style={{ width: 1, height: '60%', background: `${cat.color}25` }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(4px, 0.6vw, 6px)', color: cat.color, letterSpacing: '0.1em' }}>
+                {cat.category}
               </div>
-              <div style={{
-                fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(3px, 0.4vw, 4px)',
-                color: '#f59e0b80',
-              }}>
-                AI Secretary answering...
+              <div style={{ display: 'flex', gap: 'clamp(2px, 0.4vw, 4px)', marginTop: 1 }}>
+                {cat.bots.map((b, bi) => (
+                  <motion.span key={bi} style={{
+                    fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.3vw, 3px)',
+                    color: '#64748b', letterSpacing: '0.05em',
+                  }}
+                    initial={{ opacity: 0 }}
+                    animate={phase >= 3 ? { opacity: 0.7 } : {}}
+                    transition={{ delay: 0.3 + i * 0.05 + bi * 0.03 }}>
+                    {b}{bi < cat.bots.length - 1 ? ' ·' : ''}
+                  </motion.span>
+                ))}
+                <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.3vw, 3px)', color: cat.color + '60' }}
+                  initial={{ opacity: 0 }} animate={phase >= 3 ? { opacity: 0.5 } : {}} transition={{ delay: 0.5 + i * 0.05 }}>
+                  +{cat.count - 4} MORE
+                </motion.span>
               </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+            <motion.div style={{
+              width: `${(cat.count / 15) * 100}%`, maxWidth: '25%', height: 'clamp(2px, 0.3vw, 3px)',
+              background: `linear-gradient(90deg, ${cat.color}40, ${cat.color}15)`, borderRadius: 1,
+            }}
+              initial={{ scaleX: 0 }} animate={phase >= 2 ? { scaleX: 1 } : {}}
+              transition={{ delay: 0.3 + i * 0.08, duration: 0.4 }} style-origin="left"
+            />
+          </motion.div>
+        ))}
+      </div>
 
       <motion.div
         style={{
           position: 'absolute', bottom: '3%', left: '4%',
           fontFamily: '"VT323", monospace', fontSize: 'clamp(8px, 1.6vw, 14px)',
-          color: '#10b981', letterSpacing: '0.06em',
+          color: '#ef4444', letterSpacing: '0.06em',
         }}
         initial={{ opacity: 0 }}
         animate={phase >= 4 ? { opacity: 1 } : {}}
       >
-        CALLS · AI SECRETARY · VOICEMAIL
+        EVERY CATEGORY COVERED
       </motion.div>
       <motion.div
         style={{
           position: 'absolute', bottom: '1%', left: '4%',
           fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(4px, 0.7vw, 6px)',
-          color: '#38bdf8', letterSpacing: '0.15em',
+          color: '#94a3b8', letterSpacing: '0.15em',
         }}
         initial={{ opacity: 0 }}
         animate={phase >= 4 ? { opacity: 0.5 } : {}}
       >
-        YOUR BUSINESS PHONE · BUILT IN
+        ALL 77 INCLUDED · NO ADD-ONS · NO UPSELLS
       </motion.div>
     </motion.div>
   );
