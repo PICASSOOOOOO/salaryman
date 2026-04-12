@@ -57,7 +57,7 @@ export default function Announcements() {
       setForm({ title: item.title, content: item.content, category: item.category, pinned: item.pinned, authorName: item.authorName });
     } else {
       setEditItem(null);
-      setForm({ ...EMPTY, authorName: user?.username || '' });
+      setForm({ ...EMPTY, authorName: user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Anonymous' : '' });
     }
     setShowForm(true);
   };

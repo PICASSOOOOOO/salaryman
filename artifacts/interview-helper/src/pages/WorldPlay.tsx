@@ -9922,6 +9922,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── TAXES: Street tax (police-enforced, city only, every ~45s) ──────
+        const inCity = inCityBounds(g.px, g.py);
         if (g.shakedownCd > 0) g.shakedownCd--;
         if (g.shakedownCd <= 0 && inCity && !g.interior && !gamePausedRef.current) {
           g.shakedownCd = 2700 + Math.floor(Math.random() * 900);
