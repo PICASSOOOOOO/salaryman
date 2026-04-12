@@ -2550,14 +2550,9 @@ export default function BotFactory() {
 
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <button onClick={() => setTab('jean-claw')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' || tab === 'marketplace' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
               <Sparkles className="w-4 h-4" />
-              JEAN CLAW
-            </button>
-            <button onClick={() => setTab('marketplace')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'marketplace' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
-              <Store className="w-4 h-4" />
-              {boomerMode ? t('botFactory.tabStore') : t('botFactory.tabStoreCodename')}
+              JEAN CLAW — 77 BOTS
             </button>
             <button onClick={() => setTab('my-bots')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'my-bots' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
