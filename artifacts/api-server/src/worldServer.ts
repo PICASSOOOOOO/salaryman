@@ -85,9 +85,19 @@ interface BuildingLock {
   rentedAt: number;
 }
 
+interface FloorLock {
+  password: string;
+  ownerId: string;
+  ownerName: string;
+  company: string;
+  label: string;
+  setAt: number;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 const players = new Map<string, Player>();
 const buildingLocks = new Map<string, BuildingLock>();
+const floorLocks = new Map<string, FloorLock>();
 const videoRooms = new Map<string, Set<string>>();
 const pendingCalls = new Map<string, { callerId: string; targetId: string; ts: number }>();
 const activeCalls = new Map<string, string>();
@@ -621,6 +631,74 @@ const handleMessage = (player: Player, raw: string) => {
       if (!lock || lock.ownerId !== player.id) break;
       lock.message = String(message ?? '').slice(0, 200);
       sendTo(player.id, { type: 'building_lock_result', success: true, buildingId, action: 'message_set' });
+      break;
+    }
+
+    case 'floor_lock_set': {
+      const { buildingId, floor, password, label } = msg;
+      if (!buildingId || floor == null || !password) break;
+      const floorKey = `${buildingId}:${floor}`;
+      const existing = floorLocks.get(floorKey);
+      if (existing && existing.ownerId !== player.id) {
+        sendTo(player.id, { type: 'floor_lock_result', success: false, buildingId, floor, error: 'Only the floor admin can change this lock.' });
+        break;
+      }
+      floorLocks.set(floorKey, {
+        password: String(password).slice(0, 64),
+        ownerId: player.id,
+        ownerName: player.name,
+        company: player.company,
+        label: String(label ?? '').slice(0, 80),
+        setAt: Date.now(),
+      });
+      sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'set' });
+      console.log(`[World] ${player.name} locked floor ${floor} of ${buildingId}`);
+      break;
+    }
+
+    case 'floor_lock_check': {
+      const { buildingId, floor, password } = msg;
+      const floorKey = `${buildingId}:${floor}`;
+      const lock = floorLocks.get(floorKey);
+      if (!lock) {
+        sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'open', unlocked: true });
+      } else if (lock.ownerId === player.id) {
+        sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'owner', unlocked: true });
+      } else if (lock.company && player.company && lock.company === player.company) {
+        sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'company', unlocked: true });
+      } else if (lock.password === password) {
+        sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'unlock', unlocked: true });
+      } else {
+        sendTo(player.id, { type: 'floor_lock_result', success: false, buildingId, floor, action: 'unlock', error: 'ACCESS DENIED — Wrong password.' });
+      }
+      break;
+    }
+
+    case 'floor_lock_remove': {
+      const { buildingId, floor } = msg;
+      const floorKey = `${buildingId}:${floor}`;
+      const lock = floorLocks.get(floorKey);
+      if (!lock) break;
+      if (lock.ownerId !== player.id) {
+        sendTo(player.id, { type: 'floor_lock_result', success: false, buildingId, floor, error: 'Only the floor admin can remove this lock.' });
+        break;
+      }
+      floorLocks.delete(floorKey);
+      sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'remove' });
+      console.log(`[World] ${player.name} removed floor lock ${floor} of ${buildingId}`);
+      break;
+    }
+
+    case 'floor_lock_query': {
+      const { buildingId } = msg;
+      const floors: Record<number, { ownerName: string; company: string; label: string; isOwner: boolean }> = {};
+      for (const [key, lock] of floorLocks) {
+        if (key.startsWith(`${buildingId}:`)) {
+          const fl = parseInt(key.split(':')[1], 10);
+          floors[fl] = { ownerName: lock.ownerName, company: lock.company, label: lock.label, isOwner: lock.ownerId === player.id };
+        }
+      }
+      sendTo(player.id, { type: 'floor_lock_status', buildingId, floors });
       break;
     }
 

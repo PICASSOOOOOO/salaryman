@@ -144,7 +144,8 @@ const MAX_CARGO = 5;
 
 const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub']);
 
-const FLOOR_PASSWORDS: Map<string, Map<number, string>> = new Map();
+interface FloorLockInfo { owner?: boolean; ownerName?: string; company?: string; label?: string; }
+const FLOOR_PASSWORDS: Map<string, Map<number, FloorLockInfo>> = new Map();
 const HOME_PASSWORDS: Map<string, string> = new Map();
 const INTERIOR_OBJ_COOLDOWNS: Map<string, number> = new Map();
 
@@ -3496,6 +3497,7 @@ export default function WorldPlay() {
   const [pwPrompt, setPwPrompt] = useState<{ bid: string; label: string; mode: 'enter'|'set' } | null>(null);
   const [pendingBid,setPendingBid]=useState<string|null>(null);
   const pendingBidRef = useRef<string | null>(null);
+  const pendingFloorUnlockRef = useRef<{ bid: string; floor: number } | null>(null);
   const [lockMap,  setLockMap]  = useState<Map<string,{ownerName:string;company?:string;message?:string}>>(new Map());
   const [rentedOffice,setRentedOffice]=useState<string|null>(()=>localStorage.getItem('sm_office'));
   const [hunger,      setHunger]      = useState(_ss?.hunger ?? 100);
@@ -4759,6 +4761,42 @@ export default function WorldPlay() {
         setLockMap(prev => { const nl = new Map(prev); nl.set(m.buildingId, { ownerName: m.ownerName, company: m.company }); return nl; });
       } else if (m.type === 'building_unlocked') {
         g.locks.delete(m.buildingId); setLockMap(prev => { const nl = new Map(prev); nl.delete(m.buildingId); return nl; });
+      } else if (m.type === 'floor_lock_result') {
+        if (m.success && m.action === 'set') {
+          if (!FLOOR_PASSWORDS.has(m.buildingId)) FLOOR_PASSWORDS.set(m.buildingId, new Map());
+          FLOOR_PASSWORDS.get(m.buildingId)!.set(m.floor, { owner: true });
+          setNarr(`> FLOOR ${m.floor} — Lock set. Only you and your company can enter freely. Others need the password.`);
+          setElevatorPrompt(null);
+        } else if (m.success && m.action === 'remove') {
+          FLOOR_PASSWORDS.get(m.buildingId)?.delete(m.floor);
+          setNarr(`> FLOOR ${m.floor} — Lock removed. Floor is now open.`);
+          setElevatorPrompt(null);
+        } else if (m.success && m.unlocked) {
+          setNarr(`> Floor ${m.floor} — Access granted.`);
+          const g = gs.current;
+          if (g.interior) {
+            const dir3 = BUILDING_FLOORS[m.buildingId];
+            const bfl3 = dir3?.floors.find((f: any) => f.floor === m.floor);
+            const offDef3 = bfl3 ? generateFloorInterior(m.buildingId, bfl3, dir3?.label ?? m.buildingId) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
+            g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(m.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+          }
+          setCurrentFloor(m.floor);
+          setElevatorPrompt(null);
+          setElevatorPwError('');
+        } else if (!m.success) {
+          sfxError();
+          setElevatorPwError(m.error ?? 'ACCESS DENIED');
+        }
+      } else if (m.type === 'floor_lock_status') {
+        const bid2 = m.buildingId;
+        if (!FLOOR_PASSWORDS.has(bid2)) FLOOR_PASSWORDS.set(bid2, new Map());
+        const fMap = FLOOR_PASSWORDS.get(bid2)!;
+        fMap.clear();
+        if (m.floors) {
+          for (const [flStr, info] of Object.entries(m.floors as Record<string, any>)) {
+            fMap.set(parseInt(flStr, 10), { owner: !!info.isOwner, ownerName: info.ownerName, company: info.company, label: info.label });
+          }
+        }
       } else if (m.type === 'pvp_hit') {
         if (!gamePausedRef.current) {
           const dmg = m.damage ?? 0;
@@ -5517,6 +5555,7 @@ export default function WorldPlay() {
               setElevatorPrompt({ bid: g.interior.bid, floor: 0, mode: 'select' });
               setElevatorPw('');
               setElevatorPwError('');
+              wsRef.current?.send(JSON.stringify({ type: 'floor_lock_query', buildingId: g.interior.bid }));
               setNarr('> ELEVATOR — Select a floor.');
               return;
             }
@@ -15902,7 +15941,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   const dirFloors = dir ? dir.floors.filter(f => f.floor > 1).map(f => f.floor) : [2, 3, 4, 5];
                   const floorList = dirFloors.length > 0 ? dirFloors : [2, 3, 4, 5];
                   return floorList.map(fl => {
-                    const hasPw = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.has(fl);
+                    const flInfo = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(fl);
+                    const hasPw = !!flInfo;
+                    const isFloorOwner = !!flInfo?.owner;
                     const isCurrent = currentFloor === fl;
                     const bfloor = dir?.floors.find(f => f.floor === fl);
                     return (
@@ -15912,8 +15953,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           if (bfloor?.restricted) {
                             sfxError(); setNarr(`> ACCESS DENIED — FL ${fl}: ${bfloor.name}. Clearance required.`); setElevatorPrompt(null); return;
                           }
-                          if (hasPw) {
+                          if (hasPw && !isFloorOwner) {
                             setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'enter_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                          } else if (hasPw && isFloorOwner) {
+                            wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: fl, password: '' }));
                           } else {
                             const g = gs.current;
                             if (g.interior) {
@@ -15923,7 +15966,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl}${bfloor ? ' — ' + bfloor.name : ' — Vacant office'}. Use elevator to claim with a password.`);
                           }
                         }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
-                          FL {String(fl).padStart(2, '0')} {bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? 'RENTED 🔒' : 'VACANT'}
+                          FL {String(fl).padStart(2, '0')} {bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? 'YOUR OFFICE 🔒' : `RENTED 🔒${flInfo?.ownerName ? ' ' + flInfo.ownerName : ''}`) : 'VACANT'}
                         </button>
                         {!isCurrent && !hasPw && !bfloor?.restricted && (
                           <button onClick={() => {
@@ -15942,23 +15985,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {elevatorPrompt.mode === 'set_pw' && (
               <div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>CLAIM FLOOR {elevatorPrompt.floor} — SET PASSWORD</div>
-                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>This will lock the floor. Only you and those with the password can enter. Min 6 characters, 1 number, 1 symbol.</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>This will lock the floor. Only you and your company can enter freely. Others need the password. Min 6 characters, 1 number, 1 symbol.</div>
                 <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
                   if (e.key === 'Enter' && elevatorPw.trim()) {
                     const err = VALID_PASSWORD(elevatorPw.trim());
                     if (err) { setElevatorPwError(err); return; }
-                    if (!FLOOR_PASSWORDS.has(elevatorPrompt.bid)) FLOOR_PASSWORDS.set(elevatorPrompt.bid, new Map());
-                    FLOOR_PASSWORDS.get(elevatorPrompt.bid)!.set(elevatorPrompt.floor, elevatorPw.trim());
-                    setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
-                    const g = gs.current;
-                    if (g.interior) {
-                      const dir2 = BUILDING_FLOORS[elevatorPrompt.bid];
-                      const bfl2 = dir2?.floors.find(f => f.floor === elevatorPrompt.floor);
-                      const offDef2 = bfl2 ? generateFloorInterior(elevatorPrompt.bid, bfl2, dir2?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
-                      g.interior = { bid: g.interior.bid, def: { ...offDef2, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl2 ? '— ' + bfl2.name : ''}` }, px: offDef2.exitX + offDef2.exitW / 2, py: offDef2.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                    }
-                    setCurrentFloor(elevatorPrompt.floor);
-                    setElevatorPrompt(null);
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: '' }));
                   }
                 }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
@@ -15966,18 +15998,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <button onClick={() => {
                     const err = VALID_PASSWORD(elevatorPw.trim());
                     if (err) { setElevatorPwError(err); return; }
-                    if (!FLOOR_PASSWORDS.has(elevatorPrompt.bid)) FLOOR_PASSWORDS.set(elevatorPrompt.bid, new Map());
-                    FLOOR_PASSWORDS.get(elevatorPrompt.bid)!.set(elevatorPrompt.floor, elevatorPw.trim());
-                    setNarr(`> Floor ${elevatorPrompt.floor} — Password set. Office claimed.`);
-                    const g = gs.current;
-                    if (g.interior) {
-                      const dir2 = BUILDING_FLOORS[elevatorPrompt.bid];
-                      const bfl2 = dir2?.floors.find(f => f.floor === elevatorPrompt.floor);
-                      const offDef2 = bfl2 ? generateFloorInterior(elevatorPrompt.bid, bfl2, dir2?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
-                      g.interior = { bid: g.interior.bid, def: { ...offDef2, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl2 ? '— ' + bfl2.name : ''}` }, px: offDef2.exitX + offDef2.exitW / 2, py: offDef2.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                    }
-                    setCurrentFloor(elevatorPrompt.floor);
-                    setElevatorPrompt(null);
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_set', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim(), label: '' }));
                   }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>SET & ENTER</button>
                   <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
@@ -15986,43 +16007,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {elevatorPrompt.mode === 'enter_pw' && (
               <div>
                 <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>ENTER PASSWORD — FLOOR {elevatorPrompt.floor} 🔒</div>
+                {(() => { const info = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor); return info?.ownerName ? <div style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.25)', marginBottom: '.4rem' }}>LOCKED BY {info.ownerName}{info.company ? ` / ${info.company}` : ''}</div> : null; })()}
                 <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => {
                   if (e.key === 'Enter' && elevatorPw.trim()) {
-                    const stored = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor);
-                    if (stored === elevatorPw.trim()) {
-                      setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
-                      const g = gs.current;
-                      if (g.interior) {
-                        const dir3 = BUILDING_FLOORS[elevatorPrompt.bid];
-                        const bfl3 = dir3?.floors.find(f => f.floor === elevatorPrompt.floor);
-                        const offDef3 = bfl3 ? generateFloorInterior(elevatorPrompt.bid, bfl3, dir3?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
-                        g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                      }
-                      setCurrentFloor(elevatorPrompt.floor);
-                      setElevatorPrompt(null);
-                    } else {
-                      setElevatorPwError('ACCESS DENIED — Wrong password.');
-                    }
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim() }));
                   }
                 }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
                 {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <button onClick={() => {
-                    const stored = FLOOR_PASSWORDS.get(elevatorPrompt.bid)?.get(elevatorPrompt.floor);
-                    if (stored === elevatorPw.trim()) {
-                      setNarr(`> Floor ${elevatorPrompt.floor} — Access granted.`);
-                      const g = gs.current;
-                      if (g.interior) {
-                        const dir3 = BUILDING_FLOORS[elevatorPrompt.bid];
-                        const bfl3 = dir3?.floors.find(f => f.floor === elevatorPrompt.floor);
-                        const offDef3 = bfl3 ? generateFloorInterior(elevatorPrompt.bid, bfl3, dir3?.label ?? elevatorPrompt.bid) : (INTERIOR_DEFS['_office_floor'] ?? INTERIOR_DEFS['_lobby']!);
-                        g.interior = { bid: g.interior.bid, def: { ...offDef3, id: g.interior.bid, label: `${BUILDINGS.find(b => b.id === g.interior!.bid)?.label ?? 'BUILDING'} — FL ${String(elevatorPrompt.floor).padStart(2,'0')} ${bfl3 ? '— ' + bfl3.name : ''}` }, px: offDef3.exitX + offDef3.exitW / 2, py: offDef3.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                      }
-                      setCurrentFloor(elevatorPrompt.floor);
-                      setElevatorPrompt(null);
-                    } else {
-                      setElevatorPwError('ACCESS DENIED — Wrong password.');
-                    }
+                    wsRef.current?.send(JSON.stringify({ type: 'floor_lock_check', buildingId: elevatorPrompt.bid, floor: elevatorPrompt.floor, password: elevatorPw.trim() }));
                   }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
                   <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
                 </div>
