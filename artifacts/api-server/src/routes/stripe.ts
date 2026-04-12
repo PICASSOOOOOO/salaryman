@@ -130,6 +130,37 @@ const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {
 };
 
 const priceIdCache: Partial<Record<FeatureKey, string>> = {};
+const productIdCache: Partial<Record<FeatureKey, string>> = {};
+
+async function ensureProductForFeature(feature: FeatureKey): Promise<string | undefined> {
+  if (FEATURE_PRODUCT_IDS[feature]) return FEATURE_PRODUCT_IDS[feature];
+  if (productIdCache[feature]) return productIdCache[feature];
+
+  try {
+    const stripe = getStripe();
+    const catalog = FEATURE_CATALOG[feature];
+
+    const existing = await stripe.products.search({ query: `metadata['feature']:'${feature}'`, limit: 1 });
+    if (existing.data.length > 0) {
+      productIdCache[feature] = existing.data[0].id;
+      console.log(`[Stripe] Found existing product for ${feature}: ${existing.data[0].id}`);
+      return existing.data[0].id;
+    }
+
+    const product = await stripe.products.create({
+      name: `${catalog.name} — THE SALARYMAN PLATFORM`,
+      description: catalog.desc,
+      metadata: { feature, brand: "Picasso.AI", product_line: "SALARYMAN" },
+    });
+    productIdCache[feature] = product.id;
+    FEATURE_PRODUCT_IDS[feature] = product.id;
+    console.log(`[Stripe] Created product for ${feature}: ${product.id}`);
+    return product.id;
+  } catch (err) {
+    console.error(`[Stripe] Failed to ensure product for ${feature}:`, err instanceof Error ? err.message : err);
+    return undefined;
+  }
+}
 
 async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undefined> {
   const envPrice = process.env[FEATURE_PRICE_ENV[feature]];
@@ -137,7 +168,7 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
 
   if (priceIdCache[feature]) return priceIdCache[feature];
 
-  const productId = FEATURE_PRODUCT_IDS[feature];
+  const productId = await ensureProductForFeature(feature);
   if (!productId) return undefined;
 
   try {
@@ -233,8 +264,8 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/upgrade?checkout=success&feature=${feature}`,
-    cancel_url: `${baseUrl}/upgrade?checkout=cancel`,
+    success_url: `${baseUrl}/pricing?checkout=success&feature=${feature}`,
+    cancel_url: `${baseUrl}/pricing?checkout=cancel`,
     client_reference_id: user.id,
     metadata: {
       userId: user.id,
