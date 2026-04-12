@@ -67,6 +67,7 @@ const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
 const BusinessHub = lazy(() => import("@/pages/BusinessHub"));
 const Payroll = lazy(() => import("@/pages/Payroll"));
+const GustoPayroll = lazy(() => import("@/pages/GustoPayroll"));
 const Bills = lazy(() => import("@/pages/Bills"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
 const BalanceSheet = lazy(() => import("@/pages/BalanceSheet"));
@@ -244,6 +245,7 @@ function AppShell() {
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
             <Route path="/business/payroll" component={Payroll} />
+            <Route path="/business/gusto" component={GustoPayroll} />
             <Route path="/business/bills" component={Bills} />
             <Route path="/business/expenses" component={Expenses} />
             <Route path="/business/leads">{() => <Redirect to="/marketing/leads" />}</Route>

@@ -68,7 +68,16 @@ The Balance Sheet page (`/business/balance-sheet`) shows both currencies side by
 - **Bank (Plaid)** — auto-import transactions (future integration)
 - **Google Sheets** — sync accounting data to live spreadsheets
 
-The ATM in-game (Banco Ombra) displays FIAT checking/savings in amber and AVAILABLE (real USD) in green, with Gusto connection status.
+The ATM in-game (Banco Ombra) displays FIAT checking/savings in amber and AVAILABLE (real USD) in green, with clickable links to the Gusto Payroll page.
+
+## Gusto Payroll Page
+
+Dedicated Gusto Payroll page at `/business/gusto` (component: `GustoPayroll.tsx`) with live data from Gusto API:
+- **Overview tab**: Company info, active employee count, locations, last payroll details, quick nav cards
+- **Employees tab**: Full roster with names, titles, departments, emails, pay rates, status badges
+- **Payroll Runs tab**: Processed payrolls with gross/net/taxes/deductions breakdown, expandable detail cards, aggregate summary stats
+- Accessible from: BusinessHub FINANCIALS section, in-game ATM (Banco Ombra), and Overview tab's Manual Payroll link back to `/business/payroll`
+- API endpoints: `/api/enterprise/gusto/company`, `/api/enterprise/gusto/employees`, `/api/enterprise/gusto/payrolls`
 
 ## Bot Factory (Jean Claw)
 

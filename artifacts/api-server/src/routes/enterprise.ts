@@ -716,4 +716,144 @@ router.get("/enterprise/gusto-status", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/enterprise/gusto/employees", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const gustoApiKey = process.env.GUSTO_API_KEY;
+  if (!gustoApiKey) return res.json({ connected: false, employees: [] });
+
+  try {
+    const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
+    if (!meRes.ok) return res.json({ connected: false, employees: [] });
+    const me = await meRes.json();
+    const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
+    if (!companyId) return res.json({ connected: true, employees: [] });
+
+    const empRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/employees`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+    if (!empRes.ok) return res.json({ connected: true, employees: [] });
+    const rawEmployees = await empRes.json();
+
+    const employees = Array.isArray(rawEmployees) ? rawEmployees.map((e: Record<string, unknown>) => ({
+      id: e.id,
+      firstName: e.first_name ?? "",
+      lastName: e.last_name ?? "",
+      email: e.email ?? "",
+      department: e.department ?? "",
+      jobTitle: (e.current_employment_status as Record<string, unknown>)?.job_title ?? (e as Record<string, unknown>).job_title ?? "",
+      status: e.terminated === true ? "terminated" : "active",
+      hireDate: e.date_of_birth ? "" : "",
+      payRate: "",
+      payFrequency: "",
+    })) : [];
+
+    const jobsRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/jobs`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+    if (jobsRes.ok) {
+      const jobs = await jobsRes.json();
+      if (Array.isArray(jobs)) {
+        for (const job of jobs) {
+          const emp = employees.find((e: { id: unknown }) => e.id === job.employee_id);
+          if (emp && job.compensations?.length > 0) {
+            const comp = job.compensations[job.compensations.length - 1];
+            emp.payRate = comp.rate ?? "";
+            emp.payFrequency = comp.payment_unit ?? "";
+            emp.jobTitle = job.title ?? emp.jobTitle;
+          }
+        }
+      }
+    }
+
+    res.json({ connected: true, employees });
+  } catch {
+    res.json({ connected: false, employees: [] });
+  }
+});
+
+router.get("/enterprise/gusto/payrolls", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const gustoApiKey = process.env.GUSTO_API_KEY;
+  if (!gustoApiKey) return res.json({ connected: false, payrolls: [] });
+
+  try {
+    const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
+    if (!meRes.ok) return res.json({ connected: false, payrolls: [] });
+    const me = await meRes.json();
+    const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
+    if (!companyId) return res.json({ connected: true, payrolls: [] });
+
+    const payRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/payrolls?processed=true&page=1&per=20`, {
+      headers: { Authorization: `Bearer ${gustoApiKey}` },
+    });
+    if (!payRes.ok) return res.json({ connected: true, payrolls: [] });
+    const rawPayrolls = await payRes.json();
+
+    const payrolls = Array.isArray(rawPayrolls) ? rawPayrolls.map((p: Record<string, unknown>) => ({
+      id: p.id,
+      payPeriodStart: (p.pay_period as Record<string, unknown>)?.start_date ?? p.pay_period_start ?? "",
+      payPeriodEnd: (p.pay_period as Record<string, unknown>)?.end_date ?? p.pay_period_end ?? "",
+      checkDate: p.check_date ?? "",
+      processed: p.processed ?? false,
+      totalGrossPay: p.totals ? (p.totals as Record<string, unknown>).gross_pay ?? "0" : "0",
+      totalNetPay: p.totals ? (p.totals as Record<string, unknown>).net_pay ?? "0" : "0",
+      totalTaxes: p.totals ? (p.totals as Record<string, unknown>).employee_taxes ?? "0" : "0",
+      totalDeductions: p.totals ? (p.totals as Record<string, unknown>).employee_deductions ?? "0" : "0",
+      employeeCount: Array.isArray(p.employee_compensations) ? p.employee_compensations.length : 0,
+    })) : [];
+
+    res.json({ connected: true, payrolls });
+  } catch {
+    res.json({ connected: false, payrolls: [] });
+  }
+});
+
+router.get("/enterprise/gusto/company", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const gustoApiKey = process.env.GUSTO_API_KEY;
+  if (!gustoApiKey) return res.json({ connected: false });
+
+  try {
+    const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
+    if (!meRes.ok) return res.json({ connected: false });
+    const me = await meRes.json();
+    const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
+    if (!companyId) return res.json({ connected: true, company: null });
+
+    const [compRes, empRes, payRes, locRes] = await Promise.all([
+      fetch(`https://api.gusto.com/v1/companies/${companyId}`, { headers: { Authorization: `Bearer ${gustoApiKey}` } }),
+      fetch(`https://api.gusto.com/v1/companies/${companyId}/employees`, { headers: { Authorization: `Bearer ${gustoApiKey}` } }),
+      fetch(`https://api.gusto.com/v1/companies/${companyId}/payrolls?processed=true&page=1&per=5`, { headers: { Authorization: `Bearer ${gustoApiKey}` } }),
+      fetch(`https://api.gusto.com/v1/companies/${companyId}/locations`, { headers: { Authorization: `Bearer ${gustoApiKey}` } }),
+    ]);
+
+    const company = compRes.ok ? await compRes.json() : {};
+    const employees = empRes.ok ? await empRes.json() : [];
+    const payrolls = payRes.ok ? await payRes.json() : [];
+    const locations = locRes.ok ? await locRes.json() : [];
+
+    const activeEmps = Array.isArray(employees) ? employees.filter((e: Record<string, unknown>) => e.terminated !== true) : [];
+    const lastPayroll = Array.isArray(payrolls) && payrolls.length > 0 ? payrolls[0] : null;
+
+    res.json({
+      connected: true,
+      company: {
+        name: company.name ?? company.trade_name ?? "Unknown",
+        ein: company.ein ?? "",
+        entityType: company.entity_type ?? "",
+        companyStatus: company.company_status ?? "",
+        employeeCount: activeEmps.length,
+        totalEmployees: Array.isArray(employees) ? employees.length : 0,
+        locationCount: Array.isArray(locations) ? locations.length : 0,
+        lastPayrollDate: lastPayroll?.check_date ?? null,
+        lastPayrollGross: lastPayroll?.totals?.gross_pay ?? null,
+        lastPayrollNet: lastPayroll?.totals?.net_pay ?? null,
+        payFrequency: company.primary_payroll?.pay_schedule_type ?? "",
+      },
+    });
+  } catch {
+    res.json({ connected: false });
+  }
+});
+
 export default router;

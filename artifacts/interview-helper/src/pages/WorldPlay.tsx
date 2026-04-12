@@ -17223,9 +17223,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.25)', marginTop: '.1rem' }}>REAL USD — STRIPE / GUSTO / BANK</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.3)', letterSpacing: '.1em' }}>GUSTO PAYROLL</div>
-                        <div style={{ fontSize: '.5rem', color: 'rgba(52,211,153,.5)', marginTop: '.15rem' }}>NOT CONNECTED</div>
-                        <div style={{ fontSize: '.4rem', color: 'rgba(52,211,153,.2)', marginTop: '.1rem' }}>LINK AT BALANCE SHEET →</div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(52,211,153,.3)', letterSpacing: '.1em', cursor: 'pointer' }} onClick={() => navigate('/business/gusto')}>GUSTO PAYROLL →</div>
+                        <div style={{ fontSize: '.5rem', color: 'rgba(52,211,153,.5)', marginTop: '.15rem', cursor: 'pointer' }} onClick={() => navigate('/business/gusto')}>VIEW LIVE DATA</div>
+                        <div style={{ fontSize: '.4rem', color: 'rgba(52,211,153,.2)', marginTop: '.1rem' }}>EMPLOYEES · PAY RUNS · TAXES</div>
                       </div>
                     </div>
                   </div>

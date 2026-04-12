@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase, Users, CalendarDays, Archive, FileText, TrendingUp,
-  DollarSign, Receipt, CreditCard, Scale, Shield, Code2, Loader2,
+  DollarSign, Receipt, CreditCard, Scale, Shield, Code2, Loader2, Landmark,
   ArrowRight, Building2, RefreshCw, AlertTriangle, CheckCircle2,
   ArrowUpRight, ArrowDownRight, Megaphone, Target, Search,
   BarChart2, LayoutDashboard, Bot, Zap, Clock, Phone,
@@ -86,6 +86,7 @@ const SECTIONS = [
     subtitle: 'PAYROLL, BILLS, EXPENSES, AND P&L',
     items: [
       { path: '/business/payroll', label: 'PAYROLL', boomer: 'PAYROLL', desc: 'EMPLOYEE COMPENSATION AND PAYROLL RUNS.', icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+      { path: '/business/gusto', label: 'GUSTO PAYROLL', boomer: 'GUSTO PAYROLL', desc: 'LIVE GUSTO DATA — EMPLOYEES, PAY RUNS, TAXES.', icon: Landmark, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
       { path: '/business/bills', label: 'BILLS', boomer: 'BILLS', desc: 'ACCOUNTS PAYABLE WITH VENDOR TRACKING.', icon: Receipt, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
       { path: '/business/expenses', label: 'EXPENSES', boomer: 'EXPENSES', desc: 'CATEGORIZED SPENDING WITH RECEIPT TRACKING.', icon: CreditCard, color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
       { path: '/business/balance-sheet', label: 'BALANCE SHEET', boomer: 'BALANCE SHEET', desc: 'COMPLETE FINANCIAL OVERVIEW AND LEDGER.', icon: Scale, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
