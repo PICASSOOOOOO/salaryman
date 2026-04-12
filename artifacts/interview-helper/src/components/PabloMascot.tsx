@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const walkingKeyframes = `
+@keyframes salarymanWalk {
+  0%   { transform: translateY(0px) rotate(0deg); }
+  15%  { transform: translateY(-6px) rotate(0.8deg); }
+  30%  { transform: translateY(-2px) rotate(0deg); }
+  50%  { transform: translateY(0px) rotate(0deg); }
+  65%  { transform: translateY(-6px) rotate(-0.8deg); }
+  80%  { transform: translateY(-2px) rotate(0deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+@keyframes salarymanShadow {
+  0%   { transform: scaleX(1) scaleY(1); opacity: 0.15; }
+  15%  { transform: scaleX(0.9) scaleY(0.8); opacity: 0.1; }
+  30%  { transform: scaleX(0.95) scaleY(0.9); opacity: 0.12; }
+  50%  { transform: scaleX(1) scaleY(1); opacity: 0.15; }
+  65%  { transform: scaleX(0.9) scaleY(0.8); opacity: 0.1; }
+  80%  { transform: scaleX(0.95) scaleY(0.9); opacity: 0.12; }
+  100% { transform: scaleX(1) scaleY(1); opacity: 0.15; }
+}
+`;
+
 const SALARYMAN_QUOTES = [
   "THE GRIND DOESN'T STOP. THE GRIND NEVER STOPS.",
   "I DIDN'T CHOOSE THE SALARYMAN LIFE. I SIGNED A CONTRACT.",
@@ -52,23 +73,26 @@ export default function PabloMascot() {
   return (
     <div className="relative w-full" style={{ maxWidth: 480, margin: '0 auto' }}>
       <div style={{ width: '100%', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <video
-            src={`${basePath}salaryman-walk.mp4`}
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster={`${basePath}salaryman.png`}
+        <style dangerouslySetInnerHTML={{ __html: walkingKeyframes }} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img
+            src={`${basePath}salaryman.png`}
+            alt="The Salaryman"
             style={{
               width: '100%',
-              maxWidth: 320,
+              maxWidth: 300,
               height: 'auto',
-              borderRadius: 16,
-              boxShadow: '0 0 40px rgba(56,189,248,0.08), 0 0 80px rgba(0,0,0,0.3)',
-              objectFit: 'cover',
+              animation: 'salarymanWalk 0.7s ease-in-out infinite',
             }}
           />
+          <div style={{
+            width: 80,
+            height: 12,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(56,189,248,0.15), transparent 70%)',
+            animation: 'salarymanShadow 0.7s ease-in-out infinite',
+            marginTop: -6,
+          }} />
         </div>
 
         <AnimatePresence>
