@@ -52,23 +52,24 @@ export default function PabloMascot() {
   return (
     <div className="relative w-full" style={{ maxWidth: 480, margin: '0 auto' }}>
       <div style={{ width: '100%', position: 'relative' }}>
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ display: 'flex', justifyContent: 'center' }}
-        >
-          <img
-            src={`${basePath}salaryman.png`}
-            alt="The Salaryman"
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <video
+            src={`${basePath}salaryman-walk.mp4`}
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={`${basePath}salaryman.png`}
             style={{
               width: '100%',
               maxWidth: 320,
               height: 'auto',
               borderRadius: 16,
               boxShadow: '0 0 40px rgba(56,189,248,0.08), 0 0 80px rgba(0,0,0,0.3)',
+              objectFit: 'cover',
             }}
           />
-        </motion.div>
+        </div>
 
         <AnimatePresence>
           {nameLabel && (
