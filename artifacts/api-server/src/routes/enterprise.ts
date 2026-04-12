@@ -679,7 +679,7 @@ router.get("/enterprise/gusto-status", async (req: Request, res: Response) => {
       return res.json({ connected: false });
     }
 
-    const data = await response.json();
+    const data = await response.json() as Record<string, any>;
     const companyId = data?.roles?.payroll_admin?.companies?.[0]?.id;
 
     if (!companyId) {
@@ -694,7 +694,7 @@ router.get("/enterprise/gusto-status", async (req: Request, res: Response) => {
       return res.json({ connected: true, companyName: "Gusto Account" });
     }
 
-    const company = await companyRes.json();
+    const company = await companyRes.json() as Record<string, any>;
     const employeesRes = await fetch(`https://api.gusto.com/v1/companies/${companyId}/employees`, {
       headers: { Authorization: `Bearer ${gustoApiKey}` },
     });
@@ -705,14 +705,14 @@ router.get("/enterprise/gusto-status", async (req: Request, res: Response) => {
     });
     const payrolls = payrollsRes.ok ? await payrollsRes.json() : [];
 
-    res.json({
+    return res.json({
       connected: true,
       companyName: company.name || "Gusto Account",
       employeeCount: Array.isArray(employees) ? employees.length : 0,
       lastPayroll: Array.isArray(payrolls) && payrolls.length > 0 ? payrolls[0].check_date : null,
     });
   } catch {
-    res.json({ connected: false });
+    return res.json({ connected: false });
   }
 });
 
@@ -724,7 +724,7 @@ router.get("/enterprise/gusto/employees", async (req: Request, res: Response) =>
   try {
     const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
     if (!meRes.ok) return res.json({ connected: false, employees: [] });
-    const me = await meRes.json();
+    const me = await meRes.json() as Record<string, any>;
     const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
     if (!companyId) return res.json({ connected: true, employees: [] });
 
@@ -765,9 +765,9 @@ router.get("/enterprise/gusto/employees", async (req: Request, res: Response) =>
       }
     }
 
-    res.json({ connected: true, employees });
+    return res.json({ connected: true, employees });
   } catch {
-    res.json({ connected: false, employees: [] });
+    return res.json({ connected: false, employees: [] });
   }
 });
 
@@ -779,7 +779,7 @@ router.get("/enterprise/gusto/payrolls", async (req: Request, res: Response) => 
   try {
     const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
     if (!meRes.ok) return res.json({ connected: false, payrolls: [] });
-    const me = await meRes.json();
+    const me = await meRes.json() as Record<string, any>;
     const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
     if (!companyId) return res.json({ connected: true, payrolls: [] });
 
@@ -802,9 +802,9 @@ router.get("/enterprise/gusto/payrolls", async (req: Request, res: Response) => 
       employeeCount: Array.isArray(p.employee_compensations) ? p.employee_compensations.length : 0,
     })) : [];
 
-    res.json({ connected: true, payrolls });
+    return res.json({ connected: true, payrolls });
   } catch {
-    res.json({ connected: false, payrolls: [] });
+    return res.json({ connected: false, payrolls: [] });
   }
 });
 
@@ -816,7 +816,7 @@ router.get("/enterprise/gusto/company", async (req: Request, res: Response) => {
   try {
     const meRes = await fetch("https://api.gusto.com/v1/me", { headers: { Authorization: `Bearer ${gustoApiKey}` } });
     if (!meRes.ok) return res.json({ connected: false });
-    const me = await meRes.json();
+    const me = await meRes.json() as Record<string, any>;
     const companyId = me?.roles?.payroll_admin?.companies?.[0]?.id;
     if (!companyId) return res.json({ connected: true, company: null });
 
@@ -827,15 +827,15 @@ router.get("/enterprise/gusto/company", async (req: Request, res: Response) => {
       fetch(`https://api.gusto.com/v1/companies/${companyId}/locations`, { headers: { Authorization: `Bearer ${gustoApiKey}` } }),
     ]);
 
-    const company = compRes.ok ? await compRes.json() : {};
-    const employees = empRes.ok ? await empRes.json() : [];
-    const payrolls = payRes.ok ? await payRes.json() : [];
-    const locations = locRes.ok ? await locRes.json() : [];
+    const company = (compRes.ok ? await compRes.json() : {}) as Record<string, any>;
+    const employees = (empRes.ok ? await empRes.json() : []) as any[];
+    const payrolls = (payRes.ok ? await payRes.json() : []) as any[];
+    const locations = (locRes.ok ? await locRes.json() : []) as any[];
 
     const activeEmps = Array.isArray(employees) ? employees.filter((e: Record<string, unknown>) => e.terminated !== true) : [];
     const lastPayroll = Array.isArray(payrolls) && payrolls.length > 0 ? payrolls[0] : null;
 
-    res.json({
+    return res.json({
       connected: true,
       company: {
         name: company.name ?? company.trade_name ?? "Unknown",
@@ -852,7 +852,7 @@ router.get("/enterprise/gusto/company", async (req: Request, res: Response) => {
       },
     });
   } catch {
-    res.json({ connected: false });
+    return res.json({ connected: false });
   }
 });
 

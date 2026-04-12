@@ -20,7 +20,7 @@ function requireAuth(req: Request, res: Response): boolean {
 }
 
 function uid(req: Request): string {
-  return (req.user as { claims: { sub: string } }).claims.sub;
+  return (req.user as { id: string }).id;
 }
 
 router.get("/business/time-entries", async (req: Request, res: Response) => {
@@ -38,7 +38,7 @@ router.post("/business/time-entries", async (req: Request, res: Response) => {
     hoursWorked: hoursWorked || "0", hourlyRate: hourlyRate || "0",
     project: project || "", description: description || "", billable: billable !== false, status: clockOut ? "completed" : "active",
   }).returning();
-  res.json({ entry: row });
+  return res.json({ entry: row });
 });
 
 router.put("/business/time-entries/:id", async (req: Request, res: Response) => {
@@ -81,7 +81,7 @@ router.post("/business/tasks", async (req: Request, res: Response) => {
     priority: priority || "medium", assignee: assignee || "", dueDate: dueDate || null,
     project: project || "", tags: tags || "",
   }).returning();
-  res.json({ task: row });
+  return res.json({ task: row });
 });
 
 router.put("/business/tasks/:id", async (req: Request, res: Response) => {
@@ -117,7 +117,7 @@ router.post("/business/announcements", async (req: Request, res: Response) => {
     userId: uid(req), title, content: content || "", category: category || "general",
     pinned: pinned || false, authorName: authorName || "",
   }).returning();
-  res.json({ announcement: row });
+  return res.json({ announcement: row });
 });
 
 router.put("/business/announcements/:id", async (req: Request, res: Response) => {
@@ -153,7 +153,7 @@ router.post("/business/estimates", async (req: Request, res: Response) => {
     subtotal: subtotal || "0", taxRate: taxRate || "0", total: total || "0",
     notes: notes || "", lineItems: lineItems || "[]",
   }).returning();
-  res.json({ estimate: row });
+  return res.json({ estimate: row });
 });
 
 router.put("/business/estimates/:id", async (req: Request, res: Response) => {
@@ -188,7 +188,7 @@ router.post("/business/vendors", async (req: Request, res: Response) => {
     address: address || "", category: category || "general", website: website || "",
     taxId: taxId || "", paymentTerms: paymentTerms || "net-30", notes: notes || "",
   }).returning();
-  res.json({ vendor: row });
+  return res.json({ vendor: row });
 });
 
 router.put("/business/vendors/:id", async (req: Request, res: Response) => {

@@ -361,7 +361,6 @@ router.get("/orgs/:orgId", async (req, res) => {
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
       profileImageUrl: usersTable.profileImageUrl,
-      username: usersTable.username,
     })
     .from(orgMembersTable)
     .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
