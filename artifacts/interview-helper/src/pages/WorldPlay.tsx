@@ -2341,16 +2341,16 @@ function provisionBizFloors(bid: string, companyName: string, ws: WebSocket | nu
   }
 }
 const WORKER_AMBIENT_LINES = [
-  'The message queue is empty. For now.',
-  'All systems operational. Waiting on authorization.',
-  'Relay confirmed. The transfer is pending.',
-  'Three contacts reached out. None of them said who they were.',
-  'The uplink is stable. The uplink has always been stable.',
-  'Your holdings are logged. Your position is tracked.',
-  'No new directives. Standing by as instructed.',
-  'The city does not stop. Neither do I.',
-  'Cycle complete. Beginning next cycle.',
-  'Message relay ready. Say the word.',
+  'The inbox is cleared. Waiting on the next batch.',
+  'All departments reporting in. No issues flagged.',
+  'Confirmed with the client. The paperwork is pending.',
+  'Three voicemails came in. Returning them after lunch.',
+  'The schedule is set for the week. No conflicts.',
+  'Your meeting notes are filed. CC\'d the team.',
+  'No new action items. Caught up for now.',
+  'Busy day. Back-to-back meetings until four.',
+  'Review complete. Sending the summary to management.',
+  'Ready for the afternoon stand-up. Just need the projector.',
 ];
 
 // ── Jean Claw Workforce ──────────────────────────────────────────────────────
@@ -2392,16 +2392,16 @@ const JEAN_CLAW_DIALOGUE = [
 ];
 
 const CLAW_WORKER_DIALOGUE = [
-  'Serial designation confirmed. Standing by for tasking.',
-  'Batch processing. Do not interrupt.',
-  'Report filed. Next task loading.',
-  'All metrics within tolerance. Continuing.',
-  'Queue depth nominal. Throughput stable.',
-  'Awaiting directive from Jean Claw.',
-  'Data relay active. No anomalies.',
-  'Task chain executing. Step 4 of 7.',
-  'Logs archived. Memory optimized.',
-  'Comms channel open. Monitoring.',
+  'I have a 2 o\'clock with the client. Pulling the brief now.',
+  'Filing the quarterly numbers. Should be done by end of day.',
+  'Just got off a call with the vendor — they\'re sending revised terms.',
+  'Running the monthly report. Numbers are looking solid.',
+  'Waiting on approval from management before I can proceed.',
+  'The new hire orientation is at 3. I\'ll handle the onboarding docs.',
+  'Email\'s backed up. Give me twenty minutes.',
+  'Conference room B is booked for the strategy meeting.',
+  'I forwarded the contract to legal for review.',
+  'Inventory check came back clean. Logging it now.',
 ];
 
 function generateClawWorkers(w: number, h: number, seed: number, scale: string): InteriorWorker[] {
@@ -2416,7 +2416,7 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
     x: Math.floor(w * 0.5),
     y: Math.floor(h * 0.18),
     name: 'JEAN CLAW',
-    role: 'FOREMAN',
+    role: 'OFFICE MANAGER',
     hostile: false,
     dialogue: JEAN_CLAW_DIALOGUE[jcDialIdx],
   });
@@ -2444,16 +2444,16 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
 }
 
 const DEPT_FURNITURE: Record<string, { objects: Array<{type: string; label: string; color: string}>; workerRole: string }> = {
-  'EXECUTIVE': { objects: [{ type: 'desk', label: 'EXEC DESK', color: 'rgba(80,60,0,.5)' }, { type: 'window', label: 'PANORAMIC VIEW', color: 'rgba(0,30,80,.4)' }, { type: 'conference_table', label: 'BOARDROOM TABLE', color: 'rgba(25,30,55,.5)' }], workerRole: 'Director' },
-  'OPERATIONS': { objects: [{ type: 'terminal', label: 'DISPATCH TERMINAL', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'OPS DESK', color: 'rgba(40,50,35,.5)' }, { type: 'shelf', label: 'SHIFT ROSTER', color: 'rgba(45,55,40,.4)' }], workerRole: 'Manager' },
-  'FINANCE': { objects: [{ type: 'terminal', label: 'LEDGER TERMINAL', color: 'rgba(0,60,40,.4)' }, { type: 'filing_cabinet', label: 'AUDIT FILES', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'ACCOUNTING DESK', color: 'rgba(40,50,35,.5)' }], workerRole: 'Finance' },
-  'SALES': { objects: [{ type: 'desk', label: 'CALL STATION', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'LEAD BOARD', color: 'rgba(0,80,30,.4)' }, { type: 'shelf', label: 'QUOTA BOARD', color: 'rgba(45,55,40,.4)' }], workerRole: 'Sales' },
-  'ENGINEERING': { objects: [{ type: 'terminal', label: 'DEV TERMINAL', color: 'rgba(60,0,120,.4)' }, { type: 'server', label: 'BUILD SERVER', color: 'rgba(40,0,80,.5)' }, { type: 'desk', label: 'DEV WORKSTATION', color: 'rgba(0,60,40,.4)' }], workerRole: 'Technician' },
-  'MARKETING': { objects: [{ type: 'desk', label: 'CAMPAIGN DESK', color: 'rgba(80,40,0,.4)' }, { type: 'shelf', label: 'BRAND ASSETS', color: 'rgba(45,55,40,.4)' }, { type: 'terminal', label: 'ANALYTICS SCREEN', color: 'rgba(0,80,30,.4)' }], workerRole: 'Creative' },
-  'HR': { objects: [{ type: 'filing_cabinet', label: 'PERSONNEL FILES', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'INTERVIEW DESK', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'ROSTER TERMINAL', color: 'rgba(0,60,40,.4)' }], workerRole: 'Clerk' },
-  'LEGAL': { objects: [{ type: 'desk', label: 'CONTRACT DESK', color: 'rgba(40,30,20,.5)' }, { type: 'bookshelf', label: 'LAW LIBRARY', color: 'rgba(50,40,25,.5)' }, { type: 'filing_cabinet', label: 'NDA ARCHIVE', color: 'rgba(50,25,35,.4)' }], workerRole: 'Clerk' },
-  'DESIGN': { objects: [{ type: 'desk', label: 'DRAFTING TABLE', color: 'rgba(0,50,60,.4)' }, { type: 'terminal', label: 'DESIGN TERMINAL', color: 'rgba(60,0,120,.4)' }, { type: 'shelf', label: 'SWATCH LIBRARY', color: 'rgba(45,55,40,.4)' }], workerRole: 'Creative' },
-  'SUPPORT': { objects: [{ type: 'terminal', label: 'TICKET QUEUE', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'SUPPORT DESK', color: 'rgba(40,50,35,.5)' }, { type: 'shelf', label: 'KB ARCHIVE', color: 'rgba(45,55,40,.4)' }], workerRole: 'Technician' },
+  'EXECUTIVE': { objects: [{ type: 'desk', label: 'EXECUTIVE DESK', color: 'rgba(80,60,0,.5)' }, { type: 'window', label: 'CORNER OFFICE WINDOW', color: 'rgba(0,30,80,.4)' }, { type: 'conference_table', label: 'BOARDROOM TABLE', color: 'rgba(25,30,55,.5)' }], workerRole: 'Director' },
+  'OPERATIONS': { objects: [{ type: 'terminal', label: 'SCHEDULING SCREEN', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'OPS MANAGER DESK', color: 'rgba(40,50,35,.5)' }, { type: 'filing_cabinet', label: 'PROCEDURE BINDER', color: 'rgba(45,55,40,.4)' }], workerRole: 'Manager' },
+  'FINANCE': { objects: [{ type: 'terminal', label: 'ACCOUNTING SOFTWARE', color: 'rgba(0,60,40,.4)' }, { type: 'filing_cabinet', label: 'AUDIT FILES', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'ACCOUNTANT DESK', color: 'rgba(40,50,35,.5)' }], workerRole: 'Finance' },
+  'SALES': { objects: [{ type: 'desk', label: 'SALES REP DESK', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'CRM SCREEN', color: 'rgba(0,80,30,.4)' }, { type: 'bookshelf', label: 'PITCH DECKS', color: 'rgba(45,55,40,.4)' }], workerRole: 'Sales' },
+  'ENGINEERING': { objects: [{ type: 'terminal', label: 'DEV WORKSTATION', color: 'rgba(60,0,120,.4)' }, { type: 'bookshelf', label: 'TECHNICAL DOCS', color: 'rgba(50,40,25,.5)' }, { type: 'desk', label: 'ENGINEER DESK', color: 'rgba(0,60,40,.4)' }], workerRole: 'Technician' },
+  'MARKETING': { objects: [{ type: 'desk', label: 'CAMPAIGN PLANNER DESK', color: 'rgba(80,40,0,.4)' }, { type: 'bookshelf', label: 'BRAND GUIDELINES', color: 'rgba(45,55,40,.4)' }, { type: 'terminal', label: 'ANALYTICS DASHBOARD', color: 'rgba(0,80,30,.4)' }], workerRole: 'Creative' },
+  'HR': { objects: [{ type: 'filing_cabinet', label: 'EMPLOYEE RECORDS', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'HR COORDINATOR DESK', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'PAYROLL SYSTEM', color: 'rgba(0,60,40,.4)' }], workerRole: 'Clerk' },
+  'LEGAL': { objects: [{ type: 'desk', label: 'PARALEGAL DESK', color: 'rgba(40,30,20,.5)' }, { type: 'bookshelf', label: 'LEGAL REFERENCE', color: 'rgba(50,40,25,.5)' }, { type: 'filing_cabinet', label: 'CONTRACT ARCHIVE', color: 'rgba(50,25,35,.4)' }], workerRole: 'Clerk' },
+  'DESIGN': { objects: [{ type: 'desk', label: 'DRAFTING TABLE', color: 'rgba(0,50,60,.4)' }, { type: 'terminal', label: 'DESIGN SOFTWARE', color: 'rgba(60,0,120,.4)' }, { type: 'bookshelf', label: 'SAMPLE LIBRARY', color: 'rgba(45,55,40,.4)' }], workerRole: 'Creative' },
+  'SUPPORT': { objects: [{ type: 'terminal', label: 'HELP DESK SYSTEM', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'SUPPORT AGENT DESK', color: 'rgba(40,50,35,.5)' }, { type: 'bookshelf', label: 'KNOWLEDGE BASE', color: 'rgba(45,55,40,.4)' }], workerRole: 'Technician' },
 };
 
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
@@ -2483,12 +2483,11 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.25)';
 
   if (isOwnedByPlayer && companyName) {
-    objects.push({ x: Math.floor(w * 0.38), y: 25, w: 65, h: 40, type: 'desk', label: 'FOREMAN DESK', color: 'rgba(80,60,0,.5)' });
-    objects.push({ x: Math.floor(w * 0.38) + 75, y: 25, w: 50, h: 40, type: 'terminal', label: 'COMMAND TERMINAL', color: 'rgba(60,50,0,.4)' });
+    objects.push({ x: Math.floor(w * 0.38), y: 25, w: 65, h: 40, type: 'desk', label: 'MANAGER DESK', color: 'rgba(80,60,0,.5)' });
+    objects.push({ x: Math.floor(w * 0.38) + 75, y: 25, w: 50, h: 40, type: 'terminal', label: 'ADMIN TERMINAL', color: 'rgba(60,50,0,.4)' });
     objects.push({ x: 25, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
     objects.push({ x: w - 55, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
-    objects.push({ x: 25, y: 80, w: 50, h: 35, type: 'server', label: 'COMPANY SERVER', color: 'rgba(40,0,80,.5)' });
+    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
     objects.push({ x: Math.floor(w * 0.5) - 45, y: Math.floor(h * 0.58), w: 90, h: 45, type: 'conference_table', label: 'CONFERENCE TABLE', color: 'rgba(25,30,55,.5)' });
     const maxDesks = scale === 'tower' ? 8 : scale === 'large' ? 6 : scale === 'medium' ? 4 : 3;
     for (let di = 0; di < maxDesks; di++) {
@@ -2498,19 +2497,19 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
       const dy = Math.floor(h * 0.3) + row * 70;
       objects.push({ x: dx, y: Math.min(dy, h - 90), w: 45, h: 28, type: 'desk', label: 'WORKSTATION', color: 'rgba(0,60,40,.4)' });
     }
-    objects.push({ x: 30, y: Math.floor(h * 0.78), w: 40, h: 28, type: 'shelf', label: 'RECORDS', color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: w - 80, y: Math.floor(h * 0.78), w: 45, h: 30, type: 'terminal', label: 'OPS TERMINAL', color: 'rgba(0,60,30,.4)' });
+    objects.push({ x: 30, y: Math.floor(h * 0.78), w: 40, h: 28, type: 'filing_cabinet', label: 'FILE CABINET', color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: w - 80, y: Math.floor(h * 0.78), w: 45, h: 30, type: 'terminal', label: 'OFFICE TERMINAL', color: 'rgba(0,60,30,.4)' });
     objects.push({ x: w - 55, y: Math.floor(h * 0.5), w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
     objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 25, y: 80, w: 40, h: 25, type: 'bookshelf', label: 'REFERENCE SHELF', color: 'rgba(50,40,25,.5)' });
     const clawTeam = generateClawWorkers(w, h, seed, scale);
     for (const cw of clawTeam) workers.push(cw);
   } else if (isDeptFloor && deptMatch) {
     const deptName = deptMatch[1];
     const dFurn = DEPT_FURNITURE[deptName];
-    const bizPrefix = fl.name.split('—')[0].trim();
     objects.push({ x: 25, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
     objects.push({ x: w - 55, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
     objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
     if (dFurn) {
       const deptObjs = dFurn.objects;
@@ -2549,29 +2548,28 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     const objCount = baseObjCount + Math.floor(hash(seed + 1) * 4);
     const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = isRestrictedFloor
       ? [
-          { type: 'server',         label: 'SERVER RACK',   color: 'rgba(40,0,60,.6)',  w: 45, h: 30 },
-          { type: 'terminal',       label: 'TERMINAL',      color: 'rgba(60,0,40,.5)',  w: 45, h: 35 },
-          { type: 'security_gate',  label: 'GATE',          color: 'rgba(80,20,40,.5)', w: 30, h: 20 },
-          { type: 'locker',         label: 'SEALED LOCKER', color: 'rgba(55,30,40,.5)', w: 25, h: 30 },
-          { type: 'filing_cabinet', label: 'CLASSIFIED',    color: 'rgba(50,25,35,.4)', w: 20, h: 25 },
+          { type: 'terminal',       label: 'SECURE TERMINAL', color: 'rgba(60,0,40,.5)',  w: 45, h: 35 },
+          { type: 'filing_cabinet', label: 'RESTRICTED FILES', color: 'rgba(50,25,35,.4)', w: 25, h: 30 },
+          { type: 'desk',           label: 'CLEARANCE DESK',  color: 'rgba(40,30,30,.5)', w: 50, h: 35 },
+          { type: 'bookshelf',      label: 'DOCUMENT ARCHIVE', color: 'rgba(50,40,25,.5)', w: 35, h: 20 },
         ]
       : isTowerFloor
       ? [
-          { type: 'desk',              label: 'EXEC DESK',      color: 'rgba(30,35,60,.55)', w: 55, h: 35 },
-          { type: 'terminal',          label: 'TERMINAL',       color: 'rgba(0,50,90,.5)',   w: 45, h: 35 },
-          { type: 'conference_table',  label: 'CONF TABLE',     color: 'rgba(25,30,55,.5)',  w: 75, h: 40 },
-          { type: 'window',            label: 'CITY VIEW',      color: 'rgba(0,30,80,.4)',   w: 50, h: 60 },
-          { type: 'server',            label: 'SERVER RACK',    color: 'rgba(40,0,80,.5)',   w: 40, h: 30 },
-          { type: 'bookshelf',         label: 'ARCHIVE',        color: 'rgba(50,40,25,.5)',  w: 35, h: 20 },
-          { type: 'water_cooler',      label: 'UNIT',           color: 'rgba(0,50,70,.4)',   w: 15, h: 20 },
+          { type: 'desk',              label: 'EXECUTIVE DESK',  color: 'rgba(30,35,60,.55)', w: 55, h: 35 },
+          { type: 'terminal',          label: 'WORKSTATION',     color: 'rgba(0,50,90,.5)',   w: 45, h: 35 },
+          { type: 'conference_table',  label: 'MEETING TABLE',   color: 'rgba(25,30,55,.5)',  w: 75, h: 40 },
+          { type: 'window',            label: 'OFFICE WINDOW',   color: 'rgba(0,30,80,.4)',   w: 50, h: 60 },
+          { type: 'bookshelf',         label: 'BOOKSHELF',       color: 'rgba(50,40,25,.5)',  w: 35, h: 20 },
+          { type: 'filing_cabinet',    label: 'FILE CABINET',    color: 'rgba(40,30,25,.4)',  w: 25, h: 30 },
+          { type: 'water_cooler',      label: 'WATER COOLER',    color: 'rgba(0,50,70,.4)',   w: 15, h: 20 },
         ]
       : [
-          { type: 'desk',    label: 'DESK',    color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
-          { type: 'terminal',label: 'TERMINAL',color: 'rgba(0,80,30,.4)', w: 45, h: 35 },
-          { type: 'shelf',   label: 'SHELF',   color: 'rgba(45,55,40,.4)',w: 30, h: 20 },
-          { type: 'chair',   label: 'CHAIR',   color: 'rgba(40,45,35,.4)',w: 20, h: 20 },
-          { type: 'window',  label: 'WINDOW',  color: 'rgba(0,40,60,.4)', w: 40, h: 45 },
-          { type: 'crate',   label: 'CRATE',   color: 'rgba(55,45,30,.5)',w: 25, h: 25 },
+          { type: 'desk',           label: 'DESK',           color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
+          { type: 'terminal',       label: 'COMPUTER',       color: 'rgba(0,80,30,.4)',  w: 45, h: 35 },
+          { type: 'filing_cabinet', label: 'FILE CABINET',   color: 'rgba(45,40,30,.4)', w: 25, h: 25 },
+          { type: 'chair',          label: 'CHAIR',          color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
+          { type: 'window',         label: 'WINDOW',         color: 'rgba(0,40,60,.4)',  w: 40, h: 45 },
+          { type: 'bookshelf',      label: 'BOOKSHELF',      color: 'rgba(50,40,25,.4)', w: 30, h: 20 },
         ];
     for (let i = 0; i < objCount; i++) {
       const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
@@ -2591,9 +2589,9 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`;
 
   const flAmbient = isOwnedByPlayer && companyName
-    ? `${companyName} — JEAN CLAW DIVISION. Operatives at workstations. The foreman monitors from the front desk. Serial designations on every badge.`
+    ? `${companyName} office. Staff at their desks. The manager oversees daily operations from the front.`
     : isDeptFloor && deptMatch
-    ? `${fl.name} department floor. ${fl.desc} Claw operatives manage this division.`
+    ? `${fl.name} department. ${fl.desc}`
     : fl.desc;
 
   return {
