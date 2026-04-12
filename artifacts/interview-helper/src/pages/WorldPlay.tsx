@@ -142,7 +142,7 @@ function initCommodityPrices(): Record<string,CargoPrices> {
 }
 const MAX_CARGO = 5;
 
-const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub']);
+const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_vault', 'oxide_labs', 'pablo_tower', 'hotel', 'eastside_flat', 'overlook', 'megabank', 'nightclub', 'radio', 'scrap', 'armory', 'arcade', 'east_market', 'market']);
 
 interface FloorLockInfo { owner?: boolean; ownerName?: string; company?: string; label?: string; }
 const FLOOR_PASSWORDS: Map<string, Map<number, FloorLockInfo>> = new Map();
@@ -2314,6 +2314,32 @@ const OFFICE_TIERS = [
 // ── Building floor directories ────────────────────────────────────────────────
 interface BFloor { floor: number; name: string; desc: string; restricted?: boolean; action?: string; }
 interface BDirectory { label: string; history: string; floors: BFloor[]; }
+
+const BIZ_DEPT_FLOORS: { dept: string; floorOffset: number; desc: string }[] = [
+  { dept: 'EXECUTIVE', floorOffset: 2, desc: 'Corner offices. Executive leadership. Mahogany desks and tinted glass.' },
+  { dept: 'OPERATIONS', floorOffset: 3, desc: 'Central operations hub. Dispatch boards and shift rosters.' },
+  { dept: 'FINANCE', floorOffset: 4, desc: 'Accounting terminals. Ledgers and audit trails.' },
+  { dept: 'SALES', floorOffset: 5, desc: 'Outbound call stations. Lead boards and quotas on every wall.' },
+  { dept: 'ENGINEERING', floorOffset: 6, desc: 'Dev stations and whiteboard walls. Server hum in the background.' },
+  { dept: 'MARKETING', floorOffset: 7, desc: 'Campaign mockups. Brand assets pinned to every surface.' },
+  { dept: 'HR', floorOffset: 8, desc: 'Personnel files. Interview rooms. The suggestion box is empty.' },
+  { dept: 'LEGAL', floorOffset: 9, desc: 'Contract stacks and notarized seals. NDAs on the intake desk.' },
+  { dept: 'DESIGN', floorOffset: 10, desc: 'Drafting tables. Color swatches. Prototype models under glass.' },
+  { dept: 'SUPPORT', floorOffset: 11, desc: 'Ticket queues on every screen. Headsets hanging from hooks.' },
+];
+
+function provisionBizFloors(bid: string, companyName: string, ws: WebSocket | null) {
+  if (!ws) return;
+  for (const df of BIZ_DEPT_FLOORS) {
+    ws.send(JSON.stringify({
+      type: 'floor_lock_set',
+      buildingId: bid,
+      floor: df.floorOffset,
+      password: `${companyName}-${df.dept}-AUTO`,
+      label: `${companyName} — ${df.dept}`,
+    }));
+  }
+}
 const WORKER_AMBIENT_LINES = [
   'The message queue is empty. For now.',
   'All systems operational. Waiting on authorization.',
@@ -2417,10 +2443,25 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
   return workers;
 }
 
+const DEPT_FURNITURE: Record<string, { objects: Array<{type: string; label: string; color: string}>; workerRole: string }> = {
+  'EXECUTIVE': { objects: [{ type: 'desk', label: 'EXEC DESK', color: 'rgba(80,60,0,.5)' }, { type: 'window', label: 'PANORAMIC VIEW', color: 'rgba(0,30,80,.4)' }, { type: 'conference_table', label: 'BOARDROOM TABLE', color: 'rgba(25,30,55,.5)' }], workerRole: 'Director' },
+  'OPERATIONS': { objects: [{ type: 'terminal', label: 'DISPATCH TERMINAL', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'OPS DESK', color: 'rgba(40,50,35,.5)' }, { type: 'shelf', label: 'SHIFT ROSTER', color: 'rgba(45,55,40,.4)' }], workerRole: 'Manager' },
+  'FINANCE': { objects: [{ type: 'terminal', label: 'LEDGER TERMINAL', color: 'rgba(0,60,40,.4)' }, { type: 'filing_cabinet', label: 'AUDIT FILES', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'ACCOUNTING DESK', color: 'rgba(40,50,35,.5)' }], workerRole: 'Finance' },
+  'SALES': { objects: [{ type: 'desk', label: 'CALL STATION', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'LEAD BOARD', color: 'rgba(0,80,30,.4)' }, { type: 'shelf', label: 'QUOTA BOARD', color: 'rgba(45,55,40,.4)' }], workerRole: 'Sales' },
+  'ENGINEERING': { objects: [{ type: 'terminal', label: 'DEV TERMINAL', color: 'rgba(60,0,120,.4)' }, { type: 'server', label: 'BUILD SERVER', color: 'rgba(40,0,80,.5)' }, { type: 'desk', label: 'DEV WORKSTATION', color: 'rgba(0,60,40,.4)' }], workerRole: 'Technician' },
+  'MARKETING': { objects: [{ type: 'desk', label: 'CAMPAIGN DESK', color: 'rgba(80,40,0,.4)' }, { type: 'shelf', label: 'BRAND ASSETS', color: 'rgba(45,55,40,.4)' }, { type: 'terminal', label: 'ANALYTICS SCREEN', color: 'rgba(0,80,30,.4)' }], workerRole: 'Creative' },
+  'HR': { objects: [{ type: 'filing_cabinet', label: 'PERSONNEL FILES', color: 'rgba(50,25,35,.4)' }, { type: 'desk', label: 'INTERVIEW DESK', color: 'rgba(40,50,35,.5)' }, { type: 'terminal', label: 'ROSTER TERMINAL', color: 'rgba(0,60,40,.4)' }], workerRole: 'Clerk' },
+  'LEGAL': { objects: [{ type: 'desk', label: 'CONTRACT DESK', color: 'rgba(40,30,20,.5)' }, { type: 'bookshelf', label: 'LAW LIBRARY', color: 'rgba(50,40,25,.5)' }, { type: 'filing_cabinet', label: 'NDA ARCHIVE', color: 'rgba(50,25,35,.4)' }], workerRole: 'Clerk' },
+  'DESIGN': { objects: [{ type: 'desk', label: 'DRAFTING TABLE', color: 'rgba(0,50,60,.4)' }, { type: 'terminal', label: 'DESIGN TERMINAL', color: 'rgba(60,0,120,.4)' }, { type: 'shelf', label: 'SWATCH LIBRARY', color: 'rgba(45,55,40,.4)' }], workerRole: 'Creative' },
+  'SUPPORT': { objects: [{ type: 'terminal', label: 'TICKET QUEUE', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'SUPPORT DESK', color: 'rgba(40,50,35,.5)' }, { type: 'shelf', label: 'KB ARCHIVE', color: 'rgba(45,55,40,.4)' }], workerRole: 'Technician' },
+};
+
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
   const scale = getBuildingScale(bid);
-  const baseW = isOwnedByPlayer ? 620 : scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
-  const baseH = isOwnedByPlayer ? 480 : scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
+  const deptMatch = fl.name.match(/—\s*(EXECUTIVE|OPERATIONS|FINANCE|SALES|ENGINEERING|MARKETING|HR|LEGAL|DESIGN|SUPPORT)$/);
+  const isDeptFloor = !!deptMatch;
+  const baseW = (isOwnedByPlayer || isDeptFloor) ? 620 : scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
+  const baseH = (isOwnedByPlayer || isDeptFloor) ? 480 : scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
   const w = baseW, h = baseH;
   const seed = bid.length * 137 + fl.floor * 53;
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
@@ -2463,6 +2504,46 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
     const clawTeam = generateClawWorkers(w, h, seed, scale);
     for (const cw of clawTeam) workers.push(cw);
+  } else if (isDeptFloor && deptMatch) {
+    const deptName = deptMatch[1];
+    const dFurn = DEPT_FURNITURE[deptName];
+    const bizPrefix = fl.name.split('—')[0].trim();
+    objects.push({ x: 25, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 55, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
+    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'CITY VIEW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    if (dFurn) {
+      const deptObjs = dFurn.objects;
+      for (let di = 0; di < deptObjs.length; di++) {
+        const dObj = deptObjs[di];
+        const ox = 40 + Math.floor(hash(seed + di * 19 + 7) * (w - 120));
+        const oy = 70 + Math.floor(hash(seed + di * 23 + 11) * (h * 0.35));
+        objects.push({ x: ox, y: oy, w: 50, h: 35, type: dObj.type as any, label: dObj.label, color: dObj.color });
+      }
+      const deskCount = 4 + Math.floor(hash(seed + 99) * 3);
+      for (let di = 0; di < deskCount; di++) {
+        const col = di % 3;
+        const row = Math.floor(di / 3);
+        const dx = 50 + Math.floor((col + 0.5) * ((w - 100) / 3)) - 22;
+        const dy = Math.floor(h * 0.45) + row * 70;
+        objects.push({ x: dx, y: Math.min(dy, h - 90), w: 45, h: 28, type: 'desk', label: `${deptName} DESK`, color: 'rgba(0,60,40,.4)' });
+      }
+      const deptRoster = CLAW_FULL_ROSTER.filter(r => r.role === dFurn.workerRole || r.dept === deptName);
+      const workerCount = Math.min(deptRoster.length, 4 + Math.floor(hash(seed + 55) * 3));
+      for (let wi = 0; wi < workerCount; wi++) {
+        const bot = deptRoster[wi % deptRoster.length];
+        const serial = clawSerial(seed * 31 + wi * 17 + fl.floor * 7);
+        const col = wi % 3;
+        const row = Math.floor(wi / 3);
+        const wx = 60 + Math.floor((col + 0.5) * ((w - 120) / 3));
+        const wy = Math.floor(h * 0.48) + row * 70 + 15;
+        const dialIdx = Math.floor(hash(seed + wi * 41 + 3) * CLAW_WORKER_DIALOGUE.length);
+        workers.push({ x: wx, y: Math.min(wy, h - 60), name: `${bot.firstName.toUpperCase()} ${serial}`, role: `${deptName} ${dFurn.workerRole}`, hostile: false, dialogue: CLAW_WORKER_DIALOGUE[dialIdx] });
+      }
+    }
+    objects.push({ x: Math.floor(w * 0.5) - 40, y: Math.floor(h * 0.78), w: 80, h: 40, type: 'conference_table', label: `${deptName} MEETING TABLE`, color: 'rgba(25,30,55,.5)' });
+    objects.push({ x: 30, y: Math.floor(h * 0.82), w: 40, h: 28, type: 'shelf', label: `${deptName} RECORDS`, color: 'rgba(40,60,40,.4)' });
+    objects.push({ x: w - 70, y: Math.floor(h * 0.82), w: 45, h: 30, type: 'terminal', label: `${deptName} TERMINAL`, color: 'rgba(0,60,30,.4)' });
   } else {
     const baseObjCount = isTowerFloor ? 5 : scale === 'large' ? 4 : 3;
     const objCount = baseObjCount + Math.floor(hash(seed + 1) * 4);
@@ -2503,19 +2584,27 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     }
   }
 
+  const flLabel = isOwnedByPlayer && companyName
+    ? `${companyName} — FL ${String(fl.floor).padStart(2, '0')}`
+    : isDeptFloor
+    ? `${fl.name} — FL ${String(fl.floor).padStart(2, '0')}`
+    : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`;
+
+  const flAmbient = isOwnedByPlayer && companyName
+    ? `${companyName} — JEAN CLAW DIVISION. Operatives at workstations. The foreman monitors from the front desk. Serial designations on every badge.`
+    : isDeptFloor && deptMatch
+    ? `${fl.name} department floor. ${fl.desc} Claw operatives manage this division.`
+    : fl.desc;
+
   return {
     id: `${bid}_fl${fl.floor}`,
-    label: isOwnedByPlayer && companyName
-      ? `${companyName} — FL ${String(fl.floor).padStart(2, '0')}`
-      : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`,
+    label: flLabel,
     width: w, height: h,
-    wallColor,
-    floorColor: isRestrictedFloor ? 'rgba(4,2,6,.95)' : isTowerFloor ? 'rgba(4,5,12,.95)' : 'rgba(6,12,8,.9)',
-    accentColor,
+    wallColor: isDeptFloor ? 'rgba(10,18,28,.97)' : wallColor,
+    floorColor: isDeptFloor ? 'rgba(4,8,14,.95)' : isRestrictedFloor ? 'rgba(4,2,6,.95)' : isTowerFloor ? 'rgba(4,5,12,.95)' : 'rgba(6,12,8,.9)',
+    accentColor: isDeptFloor ? 'rgba(56,189,248,.35)' : accentColor,
     exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
-    ambientText: isOwnedByPlayer && companyName
-      ? `${companyName} — JEAN CLAW DIVISION. Operatives at workstations. The foreman monitors from the front desk. Serial designations on every badge.`
-      : fl.desc,
+    ambientText: flAmbient,
     buildingSize: scale === 'tower' ? 'tower' : scale === 'large' ? 'large' : scale === 'medium' ? 'medium' : 'small',
     workers,
     objects,
@@ -18864,7 +18953,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             char.workstationLabel = wsEntry.label;
             char.workstationSlot = wsEntry.slot;
           }
-          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} in ${adminBizIndustry}. Revenue category: ${BIZ_INDUSTRY_INFO[resolvedIndustry].label}. ${BIZ_INDUSTRY_INFO[resolvedIndustry].desc}. Cut: ${Math.round(BIZ_INDUSTRY_INFO[resolvedIndustry].cut * 100)}% of matching transactions. ƒ${regFee.toLocaleString()} FIAT deducted.`);
+          if (wsEntry.bid && ELEVATOR_BUILDINGS.has(wsEntry.bid)) {
+            provisionBizFloors(wsEntry.bid, newBiz.companyName, wsRef.current);
+            const existingDir = BUILDING_FLOORS[wsEntry.bid];
+            if (existingDir) {
+              for (const df of BIZ_DEPT_FLOORS) {
+                if (!existingDir.floors.find(f => f.floor === df.floorOffset)) {
+                  existingDir.floors.push({ floor: df.floorOffset, name: `${newBiz.companyName} — ${df.dept}`, desc: df.desc });
+                }
+              }
+              existingDir.floors.sort((a, b) => a.floor - b.floor);
+            } else {
+              BUILDING_FLOORS[wsEntry.bid] = {
+                label: wsEntry.label,
+                history: `${newBiz.companyName} headquarters. Established ${new Date().getFullYear()}.`,
+                floors: [
+                  { floor: 1, name: 'LOBBY', desc: 'Main reception. Security desk. Visitor badges required.' },
+                  ...BIZ_DEPT_FLOORS.map(df => ({ floor: df.floorOffset, name: `${newBiz.companyName} — ${df.dept}`, desc: df.desc })),
+                ],
+              };
+            }
+            newBiz.floor = 2;
+          }
+          setNarr(`> DEPT. OF BUSINESS AFFAIRS — "${newBiz.companyName}" registered as ${adminBizType === 'real' ? 'REAL ENTERPRISE' : 'MINX CITY BUSINESS'} in ${adminBizIndustry}. ${BIZ_DEPT_FLOORS.length} department floors provisioned and locked at ${wsEntry.label}. Revenue category: ${BIZ_INDUSTRY_INFO[resolvedIndustry].label}. ƒ${regFee.toLocaleString()} FIAT deducted.`);
           setShowAdmin(false);
           setAdminBizName(''); setAdminBizIndustry('');
         };
