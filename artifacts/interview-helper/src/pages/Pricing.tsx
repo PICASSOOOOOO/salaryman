@@ -288,7 +288,7 @@ export default function Pricing() {
               "WORKSPACE & PROJECTS",
               "CONTENT STUDIO & CALENDAR",
               "DOCUMENTS & INVOICES",
-              "MINX CITY MMO ACCESS",
+              "SALARYMAN MMO ACCESS",
               "INTERVIEW PREP TOOLS",
             ].map((perk) => (
               <div key={perk} className="flex items-center gap-2">
