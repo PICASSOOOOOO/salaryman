@@ -72,7 +72,7 @@ export const orgMembersTable = pgTable(
   {
     orgId: serial("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
     userId: varchar("user_id").notNull(),
-    role: varchar("role", { length: 20 }).notNull().default("employee"),
+    role: varchar("role", { length: 20 }).notNull().default("specialist"),
     department: varchar("department", { length: 100 }),
     spawnLocation: varchar("spawn_location", { length: 100 }),
     featureBilling: varchar("feature_billing", { length: 20 }).notNull().default("individual"),

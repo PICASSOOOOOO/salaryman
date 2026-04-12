@@ -34,6 +34,10 @@ interface Member {
   salary: string | null;
   department: string | null;
   joinedAt: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  username: string | null;
 }
 
 interface OrgData {
@@ -199,6 +203,14 @@ export default function BusinessHub() {
               }
             } catch {}
           }
+        } else if (data.org?.id) {
+          try {
+            const detailRes = await apiFetch(`/api/orgs/${data.org.id}`);
+            if (detailRes.ok) {
+              const detail = await detailRes.json();
+              data.members = detail.members ?? [];
+            }
+          } catch {}
         }
         setOrgData(data);
       }
@@ -514,7 +526,7 @@ export default function BusinessHub() {
             </motion.div>
           )}
 
-          {activeOrg && isManager && (
+          {activeOrg && activeMember && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="rounded-xl bg-card/50 border border-border/50 overflow-hidden">
               <div className="px-4 pt-4 pb-2 flex items-center justify-between">
                 <div>
@@ -524,10 +536,20 @@ export default function BusinessHub() {
                   </div>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{activeMembers.length} ACTIVE MEMBER{activeMembers.length !== 1 ? 'S' : ''}</p>
                 </div>
-                <button onClick={() => { setShowInvite(!showInvite); setInviteUrl(''); setInviteError(''); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
-                  <UserPlus className="w-3.5 h-3.5" /> INVITE
-                </button>
+                <div className="flex items-center gap-2">
+                  {!isOwner && (
+                    <button onClick={() => { if (confirm('Are you sure you want to leave this organization?')) handleRemoveMember(user?.id ?? ''); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors">
+                      LEAVE ORG
+                    </button>
+                  )}
+                  {isManager && (
+                    <button onClick={() => { setShowInvite(!showInvite); setInviteUrl(''); setInviteError(''); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
+                      <UserPlus className="w-3.5 h-3.5" /> INVITE
+                    </button>
+                  )}
+                </div>
               </div>
 
               <AnimatePresence>
@@ -597,12 +619,16 @@ export default function BusinessHub() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${m.role === 'owner' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-muted/20 border border-border/30'}`}>
-                            {m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Users className="w-4 h-4 text-muted-foreground" />}
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ${m.role === 'owner' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-muted/20 border border-border/30'}`}>
+                            {m.profileImageUrl ? (
+                              <img src={m.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                            ) : m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Users className="w-4 h-4 text-muted-foreground" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold uppercase tracking-wider">{m.userId.slice(0, 8)}...</span>
+                              <span className="text-xs font-bold uppercase tracking-wider">
+                                {m.firstName ? `${m.firstName}${m.lastName ? ` ${m.lastName}` : ''}` : m.username || m.userId.slice(0, 12)}
+                              </span>
                               {isSelf && <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">YOU</span>}
                             </div>
                             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">

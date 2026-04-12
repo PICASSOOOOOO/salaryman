@@ -339,17 +339,44 @@ router.get("/orgs/:orgId", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(userId, orgId);
-  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+  if (!caller) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
   if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
 
-  const members = await db.select().from(orgMembersTable).where(eq(orgMembersTable.orgId, orgId));
+  const membersRaw = await db
+    .select({
+      orgId: orgMembersTable.orgId,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      department: orgMembersTable.department,
+      featureBilling: orgMembersTable.featureBilling,
+      status: orgMembersTable.status,
+      title: orgMembersTable.title,
+      salary: orgMembersTable.salary,
+      joinedAt: orgMembersTable.joinedAt,
+      createdAt: orgMembersTable.createdAt,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      profileImageUrl: usersTable.profileImageUrl,
+      username: usersTable.username,
+    })
+    .from(orgMembersTable)
+    .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(eq(orgMembersTable.orgId, orgId));
+
+  const isCallerManager = hasRoleAccess(caller.role as OrgRole, "manager");
+  const members = membersRaw.map(m => ({
+    ...m,
+    salary: isCallerManager ? m.salary : null,
+    featureBilling: isCallerManager ? m.featureBilling : null,
+  }));
+
   const featureGrants = await db.select().from(orgFeatureGrantsTable).where(eq(orgFeatureGrantsTable.orgId, orgId));
 
-  res.json({ org, members, featureGrants });
+  res.json({ org, members, featureGrants, callerRole: caller.role });
 });
 
 router.put("/orgs/:orgId", async (req, res) => {
