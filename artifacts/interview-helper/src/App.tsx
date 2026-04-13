@@ -87,6 +87,7 @@ const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 
+const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
 const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
@@ -279,6 +280,7 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
+            <Route path="/tools/media-center" component={MediaCenter} />
             <Route path="/creative">{() => <Redirect to="/creative/darkroom" />}</Route>
 
             {/* MARKETING module */}

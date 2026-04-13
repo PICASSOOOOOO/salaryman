@@ -66,3 +66,4 @@ export * from "./business-ops";
 export * from "./system-config";
 export * from "./email-security";
 export * from "./vault";
+export * from "./media-sharing";

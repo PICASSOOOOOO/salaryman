@@ -47,6 +47,7 @@ import platformApiRouter from "./platform-api";
 import adminRouter from "./admin";
 import businessOpsRouter from "./business-ops";
 import vaultRouter from "./vault";
+import mediaRouter from "./media";
 
 const router: IRouter = Router();
 
@@ -98,5 +99,6 @@ router.use(platformApiRouter);
 router.use(adminRouter);
 router.use(businessOpsRouter);
 router.use(vaultRouter);
+router.use(mediaRouter);
 
 export default router;
