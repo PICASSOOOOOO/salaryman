@@ -3006,6 +3006,10 @@ export default function BotFactory() {
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [finderQuery, setFinderQuery] = useState('');
+  const [finderLoading, setFinderLoading] = useState(false);
+  const [finderResults, setFinderResults] = useState<{ recommendations: Array<{ type: string; name: string; slug: string | null; reason: string; category: string }>; summary: string; tip?: string } | null>(null);
+  const [finderError, setFinderError] = useState('');
 
   const { isAuthenticated } = useAuth();
   const plan = usePlan();
@@ -3045,6 +3049,31 @@ export default function BotFactory() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  const handleBotFinder = async () => {
+    if (!finderQuery.trim()) return;
+    setFinderLoading(true);
+    setFinderError('');
+    setFinderResults(null);
+    try {
+      const res = await apiFetch('/api/bots/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: finderQuery }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const recs = Array.isArray(data?.recommendations) ? data.recommendations : [];
+        setFinderResults({ recommendations: recs, summary: data?.summary || 'Here are my recommendations.', tip: data?.tip || '' });
+      } else {
+        setFinderError('RECOMMENDATION ENGINE UNAVAILABLE. TRY AGAIN.');
+      }
+    } catch {
+      setFinderError('NETWORK ERROR. TRY AGAIN.');
+    } finally {
+      setFinderLoading(false);
+    }
+  };
 
   const activateMarketplaceBot = async (item: MarketplaceItem) => {
     setActivating(item.id);
@@ -3150,6 +3179,112 @@ export default function BotFactory() {
                     )}
                   </div>
                 </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/[0.04] via-transparent to-sky-500/[0.03] p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                    BOT FINDER — DESCRIBE WHAT YOU NEED
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground/50 mb-3" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                  TELL PABLO WHAT YOU WANT TO AUTOMATE AND HE'LL RECOMMEND THE RIGHT BOTS FROM JEAN CLAW'S ARSENAL.
+                </p>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Brain className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-violet-400/40 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={finderQuery}
+                      onChange={e => setFinderQuery(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !finderLoading) handleBotFinder(); }}
+                      placeholder={boomerMode ? 'e.g. "I need to automate my cold email outreach"' : 'E.G. "I NEED TO AUTOMATE INVOICE COLLECTION AND FOLLOW-UPS"'}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-violet-500/20 bg-background text-xs text-foreground placeholder:text-muted-foreground/25 focus:border-violet-500/40 focus:outline-none transition-colors"
+                      style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleBotFinder}
+                    disabled={finderLoading || !finderQuery.trim()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-violet-500 hover:bg-violet-600 text-white transition-colors shrink-0 disabled:opacity-50"
+                  >
+                    {finderLoading ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    ASK PABLO
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {finderError && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 p-2 rounded-lg border border-red-500/20 bg-red-500/[0.05]">
+                      <p className="text-[10px] text-red-400" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{finderError}</p>
+                    </motion.div>
+                  )}
+
+                  {finderLoading && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="mt-3 flex items-center gap-2 text-violet-400/60">
+                      <div className="w-3.5 h-3.5 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                      <span className="text-[10px]" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>PABLO IS ANALYZING YOUR NEEDS...</span>
+                    </motion.div>
+                  )}
+
+                  {finderResults && (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-3 space-y-2">
+                      <div className="p-2 rounded-lg bg-violet-500/[0.06] border border-violet-500/15">
+                        <p className="text-[11px] text-violet-300/80" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                          {finderResults.summary}
+                        </p>
+                      </div>
+
+                      {finderResults.recommendations.map((rec, i) => (
+                        <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+                          className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50 hover:border-violet-500/20 transition-colors cursor-pointer"
+                          onClick={() => {
+                            if (rec.slug) {
+                              setSearch(rec.name);
+                            } else {
+                              setShowCreate(true);
+                            }
+                          }}
+                        >
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${rec.type === 'marketplace' ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400' : 'bg-amber-500/15 border border-amber-500/25 text-amber-400'}`}>
+                            {i + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", fontSize: '0.95rem', letterSpacing: '0.04em' }}>
+                                {rec.name.toUpperCase()}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${rec.type === 'marketplace' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}`}
+                                style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                {rec.type === 'marketplace' ? 'MARKETPLACE' : 'CUSTOM TEMPLATE'}
+                              </span>
+                              <span className="text-[8px] text-muted-foreground/40" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                {rec.category.toUpperCase()}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground/60 leading-relaxed" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                              {rec.reason}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 shrink-0 mt-1" />
+                        </motion.div>
+                      ))}
+
+                      {finderResults.tip && (
+                        <div className="p-2 rounded-lg bg-sky-500/[0.05] border border-sky-500/15 flex items-start gap-2">
+                          <Zap className="w-3 h-3 text-sky-400 shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-sky-300/70" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                            {finderResults.tip}
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
 
               <div className="flex items-center gap-3">

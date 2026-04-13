@@ -16,6 +16,7 @@ import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature } from "../lib/plan";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -1384,6 +1385,82 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
   } catch (err) {
     console.error("Webhook error:", err);
     res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+const BOT_RECOMMEND_SYSTEM = `You are Pablo, the AI assistant for Salaryman by Picasso.AI. The user will describe what they need automated. Your job is to recommend the best bots from Jean Claw's Bot Factory.
+
+You have access to TWO sources of bots:
+
+SOURCE 1 — MARKETPLACE BOTS (78 pre-built bots included with Jean Claw $145/mo):
+These are fully built bots ready to activate. You'll receive the current marketplace catalog.
+
+SOURCE 2 — CUSTOM BOT TEMPLATES (50+ templates for creating your own):
+Categories: Sales & Outreach, Customer Service, Marketing & Content, HR & Recruiting, Operations & Admin, Finance & Billing, Data & Analytics, Development & IT, Social Media, E-Commerce, Legal & Compliance, Personal & Utility.
+
+Templates include: Cold Outreach, Lead Qualifier, Sales Closer, Pipeline Manager, Upsell Agent, Helpdesk Tier-1, Live Chat Agent, FAQ Auto-Responder, Feedback Collector, Escalation Router, Blog Writer, Email Campaign, SEO Optimizer, Ad Copy Generator, PR & Press, Recruiter, Onboarding, Interview Scheduler, Employee Pulse, Appointment Scheduler, Document Processor, Meeting Notes, Inventory Tracker, Task Dispatcher, Workflow Automator, Invoice Generator, Expense Tracker, Revenue Reporter, Payroll Assistant, Report Generator, Survey Analyst, Competitor Monitor, Data Cleaner, Bug Reporter, Deployment Notifier, Status Page, Code Reviewer, Social Scheduler, Community Manager, Influencer Scout, Review Responder, Order Manager, Cart Recovery, Product Recommender, Pricing Monitor, Contract Reviewer, Compliance Monitor, NDA Manager, Daily Briefing, Habit Tracker, Travel Planner, Email Triage, Knowledge Base, Vendor Manager, Localization, Webinar Manager.
+
+RESPONSE FORMAT — respond in valid JSON only:
+{
+  "recommendations": [
+    {
+      "type": "marketplace" or "custom",
+      "name": "BOT NAME",
+      "slug": "bot-slug (marketplace only, null for custom)",
+      "reason": "1-2 sentence explanation of why this bot fits their need",
+      "category": "category name"
+    }
+  ],
+  "summary": "Brief 1-2 sentence overview of your recommendation strategy",
+  "tip": "Optional pro tip about combining bots or getting the most out of them"
+}
+
+Return 1-5 recommendations, ranked by relevance. Always prefer marketplace bots when available. Suggest custom templates only when no marketplace bot fits or as a complement. Be specific about WHY each bot helps.`;
+
+router.post("/bots/recommend", requireAuth, async (req: Request, res: Response) => {
+  const { description } = (req.body ?? {}) as { description?: string };
+  if (!description || typeof description !== "string" || !description.trim()) {
+    res.status(400).json({ error: "description required" });
+    return;
+  }
+
+  try {
+    const marketplaceItems = await db
+      .select({ name: botMarketplaceTable.name, slug: botMarketplaceTable.slug, tagline: botMarketplaceTable.tagline, category: botMarketplaceTable.category })
+      .from(botMarketplaceTable)
+      .orderBy(asc(botMarketplaceTable.name));
+
+    const catalogText = marketplaceItems.map(b => `- ${b.name} (${b.slug}) [${b.category}]: ${b.tagline}`).join("\n");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: BOT_RECOMMEND_SYSTEM },
+        { role: "user", content: `MARKETPLACE CATALOG:\n${catalogText}\n\nUSER NEED: ${description.slice(0, 500)}` },
+      ],
+      max_tokens: 800,
+      temperature: 0.4,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let parsed: any;
+    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+    const recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5).map((r: any) => ({
+      type: typeof r.type === 'string' ? r.type : 'marketplace',
+      name: typeof r.name === 'string' ? r.name : 'Unknown Bot',
+      slug: typeof r.slug === 'string' ? r.slug : null,
+      reason: typeof r.reason === 'string' ? r.reason : '',
+      category: typeof r.category === 'string' ? r.category : '',
+    })) : [];
+    res.json({
+      recommendations,
+      summary: typeof parsed.summary === 'string' ? parsed.summary : 'Here are my recommendations based on your needs.',
+      tip: typeof parsed.tip === 'string' ? parsed.tip : undefined,
+    });
+  } catch (err) {
+    console.error("[Bot Recommend] Error:", err instanceof Error ? err.message : err);
+    res.status(500).json({ error: "Recommendation engine temporarily unavailable" });
   }
 });
 
