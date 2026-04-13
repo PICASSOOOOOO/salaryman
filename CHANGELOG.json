@@ -158,5 +158,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.3.3",
+    "date": "2026-04-13",
+    "commitHash": "f701d9dfb01913fb4b8e33952439f2b8bdaee4c1",
+    "changes": [
+      "Introduce a new design studio for creating and managing visual content",
+      "Add ability to export and save audio stems to the library",
+      "Add a new creative tool for playing and editing audio stems",
+      "Add a social media management tool for posting and analytics",
+      "Optimize the game page layout and button display for mobile devices"
+    ]
   }
 ]
