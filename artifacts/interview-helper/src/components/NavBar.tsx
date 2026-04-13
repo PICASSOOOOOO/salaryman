@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -6,7 +6,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useNotifications } from '../hooks/use-notifications';
 import { useOrg } from '../hooks/use-org';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
@@ -19,12 +19,14 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isOwner, features } = usePlan();
-  const { unreadCount } = useNotifications();
+  const { notifications, unreadCount, markRead } = useNotifications();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -33,6 +35,18 @@ export function NavBar() {
     const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (notifRef.current && !notifRef.current.contains(target)) {
+        const bellBtn = (target as Element)?.closest?.('[title="Notifications"]');
+        if (!bellBtn) setShowNotifications(false);
+      }
+    };
+    if (showNotifications) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
@@ -216,6 +230,21 @@ export function NavBar() {
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
+            {/* Notification bell — desktop */}
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowNotifications(prev => !prev)}
+                title="Notifications"
+                className="relative p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md hover:bg-sky-500/8"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             {/* Bug report button */}
             <button
               onClick={() => setShowFeedback(true)}
@@ -277,6 +306,21 @@ export function NavBar() {
 
         {/* Mobile: show only auth + language selector */}
         <div className="flex sm:hidden items-center gap-2">
+          {/* Notification bell — mobile */}
+          {isAuthenticated && (
+            <button
+              onClick={() => setShowNotifications(prev => !prev)}
+              title="Notifications"
+              className="relative p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
           {/* Bug report button — mobile */}
           <button
             onClick={() => setShowFeedback(true)}
@@ -359,6 +403,57 @@ export function NavBar() {
           >
             <ExternalLink className="w-3 h-3" />
           </button>
+        </div>
+      )}
+
+      {showNotifications && isAuthenticated && (
+        <div ref={notifRef} className="absolute right-2 sm:right-4 top-[60px] w-[calc(100vw-16px)] sm:w-80 max-h-96 bg-[#111113] border border-white/10 rounded-lg shadow-2xl z-[999] overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+            <span className="text-[11px] font-mono tracking-widest text-zinc-400 uppercase">Notifications</span>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markRead()}
+                className="text-[10px] font-mono text-sky-500 hover:text-sky-400 transition-colors"
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-zinc-600 text-[11px] font-mono">
+                No notifications
+              </div>
+            ) : (
+              notifications.slice(0, 30).map(n => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    if (!n.read) markRead([n.id]);
+                    if (n.link) { navigate(n.link); setShowNotifications(false); }
+                  }}
+                  className={`w-full text-left px-3 py-2.5 border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${!n.read ? 'bg-sky-500/[0.04]' : ''}`}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.read && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[11px] font-mono leading-tight truncate ${!n.read ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                        {n.title}
+                      </p>
+                      {n.body && (
+                        <p className="text-[10px] text-zinc-600 mt-0.5 line-clamp-2 leading-tight">
+                          {n.body}
+                        </p>
+                      )}
+                      <p className="text-[9px] text-zinc-700 mt-1 font-mono">
+                        {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
 

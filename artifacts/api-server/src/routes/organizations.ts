@@ -7,6 +7,7 @@ import {
   orgFeatureGrantsTable,
   orgInvitesTable,
   usersTable,
+  notificationsTable,
   balanceSheetTxTable,
   FEATURE_KEYS,
   type FeatureKey,
@@ -470,7 +471,36 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
     .returning();
 
   const baseUrl = process.env.APP_BASE_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  res.json({ invite, inviteUrl: `${baseUrl}/world?org_invite=${token}` });
+  const inviteUrl = `${baseUrl}/world?org_invite=${token}`;
+
+  try {
+    const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+    const orgName = org?.name ?? "an organization";
+
+    const lookupEmail = email ? String(email).toLowerCase().trim() : null;
+    const lookupUsername = username ? String(username).trim() : null;
+    let invitedUser: { id: string } | undefined;
+    if (lookupEmail) {
+      [invitedUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, lookupEmail)).limit(1);
+    }
+    if (!invitedUser && lookupUsername) {
+      [invitedUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, lookupUsername)).limit(1);
+    }
+
+    if (invitedUser) {
+      await db.insert(notificationsTable).values({
+        userId: invitedUser.id,
+        type: "org_invite",
+        title: `You've been invited to join ${orgName}`,
+        body: `A manager at ${orgName} has invited you to join their organization. Click to accept the invitation.`,
+        link: `/world?org_invite=${token}`,
+      });
+    }
+  } catch (err) {
+    console.error("[Org Invite] Failed to create notification:", err);
+  }
+
+  res.json({ invite, inviteUrl });
 });
 
 router.post("/orgs/invite/accept", async (req, res) => {
@@ -563,6 +593,22 @@ router.post("/orgs/invite/accept", async (req, res) => {
     for (const grant of grants) {
       await grantFeature(userId, grant.featureKey as FeatureKey, `org:${invite.orgId}`, grant.stripeSubscriptionId ?? undefined);
     }
+  }
+
+  try {
+    const orgName = invitedOrg?.name ?? "the organization";
+    const userName = user.firstName ?? user.email?.split('@')[0] ?? "A user";
+    if (invite.invitedByUserId) {
+      await db.insert(notificationsTable).values({
+        userId: invite.invitedByUserId,
+        type: "org_invite_accepted",
+        title: `${userName} accepted your invite`,
+        body: `${userName} has joined ${orgName} as a specialist.`,
+        link: `/business/company`,
+      });
+    }
+  } catch (err) {
+    console.error("[Org Invite Accept] Failed to create notification:", err);
   }
 
   res.json({ ok: true, orgId: invite.orgId });
