@@ -127,4 +127,31 @@ Player-owned building interiors in Minx City now spawn Jean Claw + department wo
 - All workers have dialogue (press [E] to talk)
 - Workers only appear in player-owned floors — they are paid personal staff, not public NPCs
 - Code: `generateClawWorkers()`, `CLAW_DEPARTMENTS`, `clawSerial()` in WorldPlay.tsx
-- Render: `isForeman` and `isClawWorker` branches in `drawInteriorNpcSprite()`
+
+## Corporate Admin Panel (Picasso Internal)
+
+Internal staff control center at `/profile/admin`, gated by `isOwner` / `requirePicassoAdmin`. Completely separate from Org Admin (`/business`).
+
+### 9 Tabs
+- **ANALYTICS**: Signup trends, top players, feature subscription counts
+- **USERS**: Search/detail view with save data, balance adjustment (FIAT), feature grant/revoke, destructive resets (save data / features)
+- **BUSINESSES**: Org listing with member counts
+- **FEATURE TOGGLES**: Toggle switches for platform features (maintenance mode, new user registration, etc.)
+- **SYSTEM CONFIG**: Key-value config store with categories and descriptions
+- **BROADCAST**: Send/manage platform announcements with targeting (all/free/paid) and expiration; public endpoint filters to `all` audience only
+- **REPORTS**: Feedback/bug report management with status workflow (open → investigating → resolved → dismissed)
+- **BANS**: User ban management
+- **AUDIT LOG**: All admin actions logged with actor, action type, target, and details
+
+### DB Tables
+- `system_config` — key/value with category, description, updatedBy
+- `broadcast_messages` — title, message, type, targetAudience, active, expiresAt, createdBy
+- `admin_audit_log` — adminId, action, targetType, targetId, details, createdAt
+
+### API Routes (all under `/api/admin/`)
+- Analytics: `GET /admin/analytics`
+- Users: `GET /admin/users`, `GET /admin/users/:userId`, `POST /admin/users/:userId/adjust-balance`, `POST /admin/users/:userId/grant-feature`, `POST /admin/users/:userId/revoke-feature`, `POST /admin/users/:userId/reset`
+- Config: `GET /admin/system-config`, `PUT /admin/system-config`, `DELETE /admin/system-config/:key`
+- Broadcasts: `GET /admin/broadcasts`, `POST /admin/broadcasts`, `PATCH /admin/broadcasts/:id`, `GET /admin/broadcasts/active` (public, filtered)
+- Reports: `GET /admin/reports`, `PATCH /admin/reports/:id`
+- Audit: `GET /admin/audit-log`
