@@ -5835,14 +5835,17 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'bookshelf') {
+              if (_objOnCooldown) { setNarr('> BOOKSHELF — You already read from here recently.'); return; }
               sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 120000);
+              g.xp += 10; setXp(g.xp);
               const bookMsgs = [
-                '"THE INVISIBLE HAND: A HISTORY OF SHADOW MARKETS" — Chapter 12 is missing.',
-                '"MINX CITY MUNICIPAL CODE, VOL. III" — Most of it has been redacted.',
-                '"REPLICANT INTEGRATION PROTOCOLS" — A technical manual from 2041, now illegal.',
-                '"CORPORATE SURVIVAL GUIDE" — "Rule 1: Never trust anyone with a business card."',
-                '"BEYOND THE WALL" — A banned novel. Someone hid it spine-in.',
-                '"FIAT AND FURY: THE ECONOMICS OF DESPERATION" — Dog-eared and annotated heavily.',
+                '"THE INVISIBLE HAND: A HISTORY OF SHADOW MARKETS" — Chapter 12 is missing. You read the rest. +10 XP.',
+                '"MINX CITY MUNICIPAL CODE, VOL. III" — Most of it has been redacted. What remains is illuminating. +10 XP.',
+                '"REPLICANT INTEGRATION PROTOCOLS" — A technical manual from 2041, now illegal. Fascinating. +10 XP.',
+                '"CORPORATE SURVIVAL GUIDE" — "Rule 1: Never trust anyone with a business card." Noted. +10 XP.',
+                '"BEYOND THE WALL" — A banned novel. Someone hid it spine-in. You read a chapter. +10 XP.',
+                '"FIAT AND FURY: THE ECONOMICS OF DESPERATION" — Dog-eared and annotated heavily. You absorb the thesis. +10 XP.',
               ];
               setNarr(`> BOOKSHELF — ${bookMsgs[Math.floor(Math.random() * bookMsgs.length)]}`);
               return;
@@ -5855,85 +5858,133 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'equipment') {
+              if (_objOnCooldown) { setNarr(`> ${tObj.label ?? 'EQUIPMENT'} — Already examined. Data logged.`); return; }
               sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
+              g.xp += 8; setXp(g.xp);
               const equipMsgs = [
-                'Biomonitor Array — All readings nominal. Three unknown anomalies.',
-                'Atmospheric Scrubber — Filter 78% saturated. Maintenance overdue.',
-                'Neural Interface Hub — 14 active connections. 2 unauthorized.',
-                'Power Regulation Unit — Drawing 340% rated capacity. No alerts filed.',
-                'Life Support Secondary — Running on backup. Primary offline since Tuesday.',
+                'Biomonitor Array — All readings nominal. Three unknown anomalies. You log the data. +8 XP.',
+                'Atmospheric Scrubber — Filter 78% saturated. You note the maintenance schedule. +8 XP.',
+                'Neural Interface Hub — 14 active connections. 2 unauthorized. You trace the rogue signals. +8 XP.',
+                'Power Regulation Unit — Drawing 340% rated capacity. You record the readings. +8 XP.',
+                'Life Support Secondary — Running on backup. You document the failure report. +8 XP.',
               ];
               setNarr(`> ${tObj.label ?? 'EQUIPMENT'} — ${equipMsgs[Math.floor(Math.random() * equipMsgs.length)]}`);
               return;
             }
-            if (tObj.type === 'counter' || tObj.type === 'table' || tObj.type === 'shelf' || tObj.type === 'reception') {
+            if (tObj.type === 'reception') {
               sfxEnter();
-              const examMsgs = [
-                'Nothing of immediate value. Ordinary surface clutter.',
-                'A coffee ring stain and some data chips, wiped clean.',
-                'Scratched markings on the underside. Numbers. An address?',
-                'Dust outlines where something used to sit. Recently moved.',
-                'Standard issue. Nothing distinguishes it from ten thousand others.',
+              g.xp += 5; setXp(g.xp);
+              const recMsgs = [
+                'You check the visitor log. Interesting names. You memorize a few. +5 XP.',
+                'A stack of business cards on the counter. You pocket one. Connections matter. +5 XP.',
+                'The receptionist\'s terminal is unlocked. You skim the daily schedule. +5 XP.',
+                'Building directory posted behind the desk. You study the tenant list. +5 XP.',
               ];
-              setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — ${examMsgs[Math.floor(Math.random() * examMsgs.length)]}`);
+              setNarr(`> ${tObj.label ?? 'RECEPTION'} — ${recMsgs[Math.floor(Math.random() * recMsgs.length)]}`);
+              return;
+            }
+            if (tObj.type === 'counter' || tObj.type === 'table' || tObj.type === 'shelf') {
+              if (_objOnCooldown) { setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — Already searched.`); return; }
+              sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
+              const examRoll = Math.random();
+              if (examRoll > 0.7) {
+                const lootAmt = Math.floor(Math.random() * 8 + 1);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — Found ƒ${lootAmt} tucked underneath.`);
+              } else {
+                const examMsgs = [
+                  'A coffee ring stain and some data chips. You pocket the chips.',
+                  'Scratched markings on the underside. Numbers. An address? You memorize them.',
+                  'Dust outlines where something used to sit. Recently moved.',
+                  'Standard issue. Nothing useful, but you searched thoroughly.',
+                ];
+                setNarr(`> ${tObj.label ?? tObj.type.toUpperCase()} — ${examMsgs[Math.floor(Math.random() * examMsgs.length)]}`);
+              }
               return;
             }
             if (tObj.type === 'plant') {
               sfxEnter();
-              const plantMsgs = [
-                'Synthetic. The label says "BioLux Living Decor™". It is not living.',
-                'Real, somehow. Someone has been watering it. That\'s dedication.',
-                'The leaves are dusty. No one has touched this in months.',
-                'A resilient little thing. Growing through concrete cracks.',
-              ];
-              setNarr(`> PLANT — ${plantMsgs[Math.floor(Math.random() * plantMsgs.length)]}`);
+              g.energy = Math.min(100, g.energy + 2);
+              setEnergy(g.energy);
+              const plantRoll = Math.random();
+              if (plantRoll > 0.85) {
+                const lootAmt = Math.floor(Math.random() * 5 + 1);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> PLANT — You find ƒ${lootAmt} hidden in the soil. Someone\'s emergency stash. Energy +2.`);
+              } else {
+                const plantMsgs = [
+                  'Synthetic. The label says "BioLux Living Decor™". It is not living. But it calms you. Energy +2.',
+                  'Real, somehow. Someone has been watering it. That\'s dedication. You water it too. Energy +2.',
+                  'The leaves are dusty. No one has touched this in months. You brush them off. Energy +2.',
+                  'A resilient little thing. Growing through concrete cracks. Inspiring. Energy +2.',
+                ];
+                setNarr(`> PLANT — ${plantMsgs[Math.floor(Math.random() * plantMsgs.length)]}`);
+              }
               return;
             }
             if (tObj.type === 'photocopier') {
+              if (_objOnCooldown) { setNarr('> PHOTOCOPIER — Still warming up. Try again later.'); return; }
               sfxEnter();
-              const copierMsgs = [
-                'The queue is 847 pages deep. Someone is running the system dry.',
-                'Paper jam on tray 3. Error code: SOUL_CRUSHED_47.',
-                'Output tray holds a single page: a resignation letter, unsigned.',
-                'Warm to the touch. It has been running all night. Nothing in the output.',
-              ];
-              setNarr(`> PHOTOCOPIER — ${copierMsgs[Math.floor(Math.random() * copierMsgs.length)]}`);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 60000);
+              const copierRoll = Math.random();
+              if (copierRoll > 0.6) {
+                const lootAmt = Math.floor(Math.random() * 10 + 2);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> PHOTOCOPIER — You find an unclaimed expense report in the output tray. You file it under your name. +ƒ${lootAmt}.`);
+              } else {
+                g.xp += 5; setXp(g.xp);
+                const copierMsgs = [
+                  'You copy the building directory. Useful intel. +5 XP.',
+                  'Paper jam on tray 3. Error code: SOUL_CRUSHED_47. You fix it. +5 XP.',
+                  'You photocopy the floor security schedule. Knowledge is power. +5 XP.',
+                  'Output tray holds a single page: a resignation letter, unsigned. You study it. +5 XP.',
+                ];
+                setNarr(`> PHOTOCOPIER — ${copierMsgs[Math.floor(Math.random() * copierMsgs.length)]}`);
+              }
               return;
             }
             if (tObj.type === 'tv_screen') {
               sfxEnter();
+              g.xp += 5; setXp(g.xp);
               const tvMsgs = [
-                'Breaking: FIAT reserves down 4% — Corp spokesperson calls it "healthy correction".',
-                'Weather: Acid particulates elevated. Stay indoors. Filter masks mandatory in sectors 7-12.',
-                'Tonight: "Shadow Markets" — an investigative series. Premieres never.',
-                'Ad: PABLO CORP NEURAL IMPLANTS — "See more. Feel less." ™',
-                'Emergency Broadcast: [SIGNAL INTERRUPTED] — [SIGNAL INTERRUPTED]',
+                'Breaking: FIAT reserves down 4% — Corp spokesperson calls it "healthy correction". You take notes. +5 XP.',
+                'Weather: Acid particulates elevated. Stay indoors. Useful survival intel. +5 XP.',
+                'Tonight: "Shadow Markets" — an investigative series. You watch the trailer. +5 XP.',
+                'Ad: PABLO CORP NEURAL IMPLANTS — "See more. Feel less." ™ You study the market pitch. +5 XP.',
+                'Market data scrolling. You memorize the commodity prices. +5 XP.',
               ];
               setNarr(`> TV SCREEN — ${tvMsgs[Math.floor(Math.random() * tvMsgs.length)]}`);
               return;
             }
             if (tObj.type === 'terminal') {
               sfxEnter();
-              const termMsgs = [
-                'ACCESS DENIED — Credentials not recognized. Incident logged.',
-                'SYSTEM OFFLINE — Maintenance window. Resume: UNKNOWN.',
-                'PABLO CORP SECURE TERMINAL — Login required. Unauthorized access prosecuted.',
-                'LOCKED — This terminal is restricted to authorized personnel.',
-                'CONNECTION TIMEOUT — Remote server unreachable.',
-              ];
-              setNarr(`> ${tObj.label ?? 'TERMINAL'} — ${termMsgs[Math.floor(Math.random() * termMsgs.length)]}`);
+              gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
+              setShowPablo(true);
+              setNarr(`> ${tObj.label ?? 'TERMINAL'} — Accessing PABLO CORP network. Terminal online.`);
               return;
             }
             if (tObj.type === 'server') {
+              if (_objOnCooldown) { setNarr('> SERVER — Already inspected. Data extraction in progress.'); return; }
               sfxEnter();
-              const serverMsgs = [
-                'RACK SERVER — Uptime: 847 days. Load: 98.7%. No maintenance window scheduled.',
-                'PROCESSING UNIT — Encrypted workload. Contents classified. Do not touch.',
-                'NODE 7-C — Active. Routing 14,000 requests/sec across the PABLO network.',
-                'BACKUP ARRAY — Last sync: 6 weeks ago. Integrity: UNKNOWN.',
-                'HOT STANDBY — Waiting for primary failure. It will come.',
-              ];
-              setNarr(`> SERVER — ${serverMsgs[Math.floor(Math.random() * serverMsgs.length)]}`);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 180000);
+              const serverRoll = Math.random();
+              if (serverRoll > 0.7) {
+                const lootAmt = Math.floor(Math.random() * 30 + 10);
+                g.salary += lootAmt; setSalary(g.salary);
+                setNarr(`> SERVER — You extract a cached FIAT transfer from the buffer. +ƒ${lootAmt}. Node rebooting.`);
+              } else if (serverRoll > 0.3) {
+                g.xp += 15; setXp(g.xp);
+                const serverMsgs = [
+                  'RACK SERVER — Uptime: 847 days. Load: 98.7%. You download the system logs. +15 XP.',
+                  'NODE 7-C — Active. Routing 14,000 requests/sec. You study the traffic patterns. +15 XP.',
+                  'BACKUP ARRAY — You analyze the backup integrity. Knowledge gained. +15 XP.',
+                ];
+                setNarr(`> ${serverMsgs[Math.floor(Math.random() * serverMsgs.length)]}`);
+              } else {
+                setNarr('> SERVER — HOT STANDBY — Waiting for primary failure. It will come. You find nothing useful in the logs.');
+              }
               return;
             }
             if (tObj.type === 'security_gate') {
@@ -5971,22 +6022,29 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'conference_table') {
+              if (_objOnCooldown) { setNarr('> CONFERENCE TABLE — Meeting in progress. Come back later.'); return; }
               sfxEnter();
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 60000);
+              g.energy = Math.min(100, g.energy + 10);
+              g.xp += 10; setXp(g.xp);
+              setEnergy(g.energy);
               const confMsgs = [
-                'Sixteen chairs. The important ones sit at the center. You are not invited.',
-                'This table has seen decisions that shaped the lives of thousands. All bad.',
-                'Scratched surface. Someone carved initials underneath. They are gone now.',
-                'Meeting room: BOOKED SOLID through 2031. Only if you know who to ask.',
+                'You sit through a meeting about synergy. Somehow, you feel more informed. +10 XP. Energy +10.',
+                'Q3 projections on the whiteboard. You absorb the data. +10 XP. Energy +10.',
+                'Someone left their notes. You study them. Strategy knowledge gained. +10 XP. Energy +10.',
+                'Empty meeting room. You sit and review the agenda on the display. +10 XP. Energy +10.',
               ];
               setNarr(`> CONFERENCE TABLE — ${confMsgs[Math.floor(Math.random() * confMsgs.length)]}`);
               return;
             }
             if (tObj.type === 'window') {
               sfxEnter();
+              g.energy = Math.min(100, g.energy + 3);
+              setEnergy(g.energy);
               const _isNight2 = (g.worldTime ?? 8) >= 19 || (g.worldTime ?? 8) < 4;
               const winMsgs = _isNight2
-                ? ['Neon reflects off the rain-slicked streets below. The city never sleeps.', 'Distant sirens. Someone else\'s problem for now.', 'The nightlife district pulses three blocks east. You can\'t afford it.', 'City lights streak in the smog. Beautiful in a toxic kind of way.']
-                : ['Grey sky, grey streets. The usual.', 'Minx City from above. Smaller than it feels from inside.', 'A maintenance drone passes the window without stopping.', 'You can see the PABLO CORP tower from here. Everyone can.'];
+                ? ['Neon reflects off the rain-slicked streets below. The city never sleeps. Energy +3.', 'Distant sirens. Someone else\'s problem for now. The view settles your nerves. Energy +3.', 'The nightlife district pulses three blocks east. You can\'t afford it. Energy +3.', 'City lights streak in the smog. Beautiful in a toxic kind of way. Energy +3.']
+                : ['Grey sky, grey streets. The usual. A moment of peace. Energy +3.', 'Minx City from above. Smaller than it feels from inside. Energy +3.', 'A maintenance drone passes the window without stopping. You watch it go. Energy +3.', 'You can see the PABLO CORP tower from here. Everyone can. Energy +3.'];
               setNarr(`> WINDOW — ${winMsgs[Math.floor(Math.random() * winMsgs.length)]}`);
               return;
             }
@@ -9166,34 +9224,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const isWindow = nObj.type === 'window';
           let prompt: string | null = null;
           if (isTerminal) prompt = g.officeTerminalRenting?.label === nObj.label ? '[E] RELEASE' : '[E] RENT';
-          else if (isGenTerminal) prompt = '[E] ACCESS';
+          else if (isGenTerminal) prompt = '[E] USE TERMINAL';
           else if (isWhiteboard) prompt = '[E] WRITE';
           else if (isElevator) prompt = '[E] FLOORS';
           else if (isDoorLock) prompt = HOME_PASSWORDS.has(itr.bid) ? '[E] LOCK' : '[E] SET LOCK';
           else if (isVending) prompt = '[E] SHOP';
           else if (isMedBed) prompt = '[E] USE BED';
           else if (isBed) prompt = '[E] SLEEP';
-          else if (isDesk) prompt = '[E] SEARCH';
+          else if (isDesk) prompt = '[E] SEARCH DESK';
           else if (isChair) prompt = '[E] SIT';
           else if (isLocker) prompt = '[E] SEARCH';
-          else if (isFiling) prompt = '[E] SEARCH';
-          else if (isBookshelf) prompt = '[E] READ';
+          else if (isFiling) prompt = '[E] SEARCH FILES';
+          else if (isBookshelf) prompt = '[E] READ (+XP)';
           else if (isNightstand) prompt = '[E] SEARCH';
-          else if (isCrate) prompt = '[E] SEARCH';
-          else if (isEquipment) prompt = '[E] EXAMINE';
-          else if (isCounter) prompt = '[E] EXAMINE';
-          else if (isTable) prompt = '[E] EXAMINE';
-          else if (isShelf) prompt = '[E] EXAMINE';
+          else if (isCrate) prompt = '[E] OPEN';
+          else if (isEquipment) prompt = '[E] EXAMINE (+XP)';
+          else if (isCounter) prompt = '[E] SEARCH';
+          else if (isTable) prompt = '[E] SEARCH';
+          else if (isShelf) prompt = '[E] SEARCH';
           else if (isPlant) prompt = '[E] EXAMINE';
-          else if (isReception) prompt = '[E] EXAMINE';
-          else if (isPhotocopier) prompt = '[E] USE';
-          else if (isTvScreen) prompt = '[E] WATCH';
+          else if (isReception) prompt = '[E] CHECK IN (+XP)';
+          else if (isPhotocopier) prompt = '[E] USE COPIER';
+          else if (isTvScreen) prompt = '[E] WATCH (+XP)';
           else if (isNewspaper) prompt = '[E] READ';
-          else if (isServer) prompt = '[E] INSPECT';
+          else if (isServer) prompt = '[E] HACK SERVER';
           else if (isSecGate) prompt = '[E] INSPECT';
           else if (isPortrait) prompt = '[E] EXAMINE';
           else if (isFlag) prompt = '[E] EXAMINE';
-          else if (isConferenceTable) prompt = '[E] EXAMINE';
+          else if (isConferenceTable) prompt = '[E] SIT IN (+XP)';
           else if (isWindow) prompt = '[E] LOOK OUT';
           if (prompt) {
             ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.4)';
