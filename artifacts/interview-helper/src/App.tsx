@@ -89,6 +89,7 @@ const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 
 const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
+const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 
@@ -314,8 +315,8 @@ function AppShell() {
               return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
-            {/* Jean Claw — redirect into Bot Factory */}
-            <Route path="/jean-claw">{() => <Redirect to="/bots" />}</Route>
+            {/* Jean Claw landing page */}
+            <Route path="/jean-claw" component={JeanClawLanding} />
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />

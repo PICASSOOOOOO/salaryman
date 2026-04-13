@@ -81,7 +81,7 @@ const TEAM_CATEGORIES = [
     color: '#22c55e',
     desc: 'Education, real estate, agriculture, travel, security, crypto, nonprofits, pet care, auto sales, interior design, and more. Every industry covered.',
     bots: ['Diana', 'Carlos', 'Mei', 'Ezra', 'Ingrid', 'Leo', 'Ava'],
-    stats: '77 bots total',
+    stats: '78 bots total',
   },
 ];
 
@@ -97,7 +97,7 @@ const DEPLOY_CHANNELS = [
 ];
 
 const INCLUDED = [
-  'All 77 Bots — Every Specialist',
+  'All 78 Bots — Every Specialist',
   'Jean Claw — Your AI Operations Manager',
   'Pablo Call Agent & Secretary',
   'Future Bot Releases Included',
@@ -140,7 +140,7 @@ function JeanClawLanding() {
           </div>
           <div>
             <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.2rem', color: '#10b981', letterSpacing: '0.15em' }}>JEAN CLAW</div>
-            <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY PICASSO AI</div>
+            <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY PICASSO.AI</div>
           </div>
         </div>
         <button
@@ -183,7 +183,7 @@ function JeanClawLanding() {
             marginBottom: 24,
           }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: '0.75rem', color: '#10b981', letterSpacing: '0.15em', fontWeight: 600 }}>77 BOTS OPERATIONAL</span>
+            <span style={{ fontSize: '0.75rem', color: '#10b981', letterSpacing: '0.15em', fontWeight: 600 }}>78 BOTS OPERATIONAL</span>
           </div>
 
           <h1 style={{
@@ -211,14 +211,14 @@ function JeanClawLanding() {
             maxWidth: 700, margin: '0 auto 12px',
             lineHeight: 1.6, fontWeight: 300,
           }}>
-            The manager of the Bot Factory. 77 specialized bots under one subscription. Sales, support, creative, finance, music, publishing, and more — Jean Claw assigns the right bot to every job.
+            The manager of the Bot Factory. 78 specialized bots under one subscription. Sales, support, creative, finance, music, publishing, and more — Jean Claw assigns the right bot to every job.
           </p>
 
           <p style={{
             fontSize: '0.85rem', color: 'rgba(16,185,129,0.6)',
             letterSpacing: '0.1em', marginBottom: 40,
           }}>
-            $145/MO · ALL 77 BOTS · ONE SUBSCRIPTION
+            $145/MO · ALL 78 BOTS · ONE SUBSCRIPTION
           </p>
 
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -279,7 +279,7 @@ function JeanClawLanding() {
           }}
         >
           {[
-            { value: '77', label: 'BOTS' },
+            { value: '78', label: 'BOTS' },
             { value: '8', label: 'CHANNELS' },
             { value: '95+', label: 'LANGUAGES' },
             { value: '24/7', label: 'UPTIME' },
@@ -303,7 +303,7 @@ function JeanClawLanding() {
             fontFamily: "'VT323', monospace", fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
             color: '#e4e4e7', letterSpacing: '0.08em',
           }}>
-            77 BOTS. ONE SUBSCRIPTION.
+            78 BOTS. ONE SUBSCRIPTION.
           </h2>
           <p style={{ color: 'rgba(161,161,170,0.6)', fontSize: '0.95rem', maxWidth: 600, margin: '12px auto 0' }}>
             Jean Claw manages the entire team. Every bot is a specialist. Subscribe once at $145/mo and unlock them all.
@@ -475,7 +475,7 @@ function JeanClawLanding() {
             color: 'rgba(161,161,170,0.6)', fontSize: '0.9rem',
             maxWidth: 500, margin: '0 auto 32px', lineHeight: 1.6,
           }}>
-            All 77 bots, 8 deployment channels, unlimited conversations, and everything below — included.
+            All 78 bots, 8 deployment channels, unlimited conversations, and everything below — included.
           </p>
 
           <div style={{
@@ -538,7 +538,7 @@ function JeanClawLanding() {
             fontSize: '0.7rem', color: 'rgba(161,161,170,0.3)',
             marginTop: 24, letterSpacing: '0.05em',
           }}>
-            Jean Claw is the flagship product of SALARYMAN by Picasso AI. All other platform features are free bonuses included with your account.
+            Jean Claw is the flagship product of SALARYMAN by Picasso.AI. All other platform features are free bonuses included with your account.
           </p>
         </div>
       </section>
@@ -548,7 +548,7 @@ function JeanClawLanding() {
         borderTop: '1px solid rgba(255,255,255,0.03)',
       }}>
         <p style={{ fontSize: '0.65rem', color: 'rgba(161,161,170,0.3)', letterSpacing: '0.1em' }}>
-          &copy; {new Date().getFullYear()} PICASSO AI &middot; SALARYMAN
+          &copy; {new Date().getFullYear()} PICASSO.AI &middot; SALARYMAN
         </p>
       </footer>
 

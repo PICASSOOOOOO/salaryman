@@ -243,11 +243,48 @@ export default function Cover() {
           </Suspense>
         </motion.div>
 
+        {/* Jean Claw featured card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.52 }}
+          className="w-full max-w-lg mx-auto mb-12"
+        >
+          <motion.button
+            onClick={() => navigate('/jean-claw')}
+            whileHover={{ scale: 1.02, borderColor: 'rgba(239,68,68,0.5)' }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full group relative overflow-hidden rounded-xl border border-red-500/25 bg-gradient-to-br from-red-500/8 via-transparent to-red-500/5 p-6 sm:p-8 text-left transition-all cursor-pointer"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/5 rounded-full blur-[80px] pointer-events-none" />
+            <div className="relative z-10 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-red-400/70 border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5">FEATURED</span>
+                <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-zinc-600">$145/MO · ALL-IN</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-100" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
+                JEAN CLAW
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
+                Your office manager. 78 AI bots under one subscription — sales, creative, finance, legal, engineering, and operations. The entire workforce, managed by one boss.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {['SALES', 'CREATIVE', 'FINANCE', 'LEGAL', 'ENGINEERING', 'OPS'].map(dept => (
+                  <span key={dept} className="text-[8px] font-mono text-red-400/50 border border-red-500/15 px-1.5 py-0.5 rounded tracking-wider">{dept}</span>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 text-red-400 text-xs font-medium group-hover:gap-2.5 transition-all">
+                MEET JEAN CLAW <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          </motion.button>
+        </motion.div>
+
         {/* CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.55 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5 w-full sm:w-auto"
         >
           <motion.button
