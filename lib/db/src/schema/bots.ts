@@ -16,6 +16,7 @@ export const PERMISSION_KEYS = [
   "phone_inbound", "phone_outbound",
   "sheets_read", "sheets_write",
   "music_generate", "audio_generate",
+  "bot_management",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
