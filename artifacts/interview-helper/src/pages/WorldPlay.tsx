@@ -2371,7 +2371,7 @@ const CLAW_DEPARTMENTS: { dept: string; role: string; members: string[] }[] = [
   { dept: 'INSURANCE', role: 'Agent', members: ['Chandler'] },
   { dept: 'DESIGN', role: 'Creative', members: ['Lux', 'Soren'] },
   { dept: 'LOGISTICS', role: 'Technician', members: ['Diesel', 'Sage', 'Atlas', 'Scout', 'Quinn', 'Blair', 'Hayes', 'Oakley', 'Piper', 'Rhett', 'Cleo'] },
-  { dept: 'CORE', role: 'Director', members: ['Marco'] },
+  { dept: 'CORE', role: 'Director', members: ['Kenji'] },
 ];
 const CLAW_FULL_ROSTER: ClawWorkerDef[] = [];
 for (const d of CLAW_DEPARTMENTS) for (const m of d.members) CLAW_FULL_ROSTER.push({ firstName: m, dept: d.dept, role: d.role });
