@@ -286,7 +286,7 @@ router.post("/campaigns/email/:id/send", async (req: Request, res: Response) => 
           userId: campaign.userId,
           type: "campaign_complete",
           title: `Email campaign "${campaign.name}" sent`,
-          body: `${sent} delivered, ${failed} failed out of ${recipients.length} total.`,
+          body: `${sent} delivered, ${failed} failed out of ${sent + failed} total.`,
           link: `/phone/campaigns`,
         });
       } catch {}
@@ -527,7 +527,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
           userId: campaign.userId,
           type: "campaign_complete",
           title: `SMS campaign "${campaign.name}" sent`,
-          body: `${sent} delivered, ${failed} failed out of ${recipients.length} total.`,
+          body: `${sent} delivered, ${failed} failed out of ${sent + failed} total.`,
           link: `/phone/campaigns`,
         });
       } catch {}

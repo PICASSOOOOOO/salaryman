@@ -324,14 +324,14 @@ router.patch("/tickets/:ticketId", async (req, res) => {
     .where(eq(ticketsTable.id, ticketId))
     .returning();
 
-  if (ticket.createdByUserId && ticket.createdByUserId !== userId) {
+  if (ticket.submittedByUserId && ticket.submittedByUserId !== userId) {
     try {
       const changes: string[] = [];
       if (updates.status) changes.push(`status changed to ${updates.status}`);
       if (updates.priority) changes.push(`priority set to ${updates.priority}`);
       if (updates.assignedToUserId !== undefined) changes.push(`assigned to a team member`);
       await db.insert(notificationsTable).values({
-        userId: ticket.createdByUserId,
+        userId: ticket.submittedByUserId,
         type: "ticket_update",
         title: `Ticket updated: ${ticket.subject}`,
         body: changes.length > 0 ? changes.join(", ").replace(/^./, c => c.toUpperCase()) + "." : "Your ticket has been updated.",
@@ -380,10 +380,10 @@ router.post("/tickets/:ticketId/comments", async (req, res) => {
     })
     .returning();
 
-  if (ticket.createdByUserId && ticket.createdByUserId !== userId && !isInternal) {
+  if (ticket.submittedByUserId && ticket.submittedByUserId !== userId && !isInternal) {
     try {
       await db.insert(notificationsTable).values({
-        userId: ticket.createdByUserId,
+        userId: ticket.submittedByUserId,
         type: "ticket_comment",
         title: `New reply on ticket: ${ticket.subject}`,
         body: body.trim().slice(0, 200),

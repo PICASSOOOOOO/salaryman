@@ -138,5 +138,25 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.3.1",
+    "date": "2026-04-13",
+    "commitHash": "cef14e5df7e14ee3d9899db98655cc3422e3eed5",
+    "changes": [
+      "Update documentation to clarify bug submission and feedback triage policy",
+      "Add comprehensive in-app notifications for various user actions and events",
+      "Ensure translations use the proper voice output system",
+      "Add a notification system to alert users of important events",
+      "Update work approach to prioritize unknowns"
+    ]
+  },
+  {
+    "version": "v.3.2",
+    "date": "2026-04-13",
+    "commitHash": "cef14e5df7e14ee3d9899db98655cc3422e3eed5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
