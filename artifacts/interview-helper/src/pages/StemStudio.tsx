@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { apiFetch } from '@/lib/api-client';
 
 const C = '#38bdf8';
 const C2 = 'rgba(56,189,248,';
@@ -319,6 +320,8 @@ export default function StemStudio() {
   const [looping, setLooping] = useState(false);
   const [selectedStem, setSelectedStem] = useState<string | null>(null);
   const [splitProgress, setSplitProgress] = useState(0);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState('');
 
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -543,6 +546,92 @@ export default function StemStudio() {
     });
   }, []);
 
+  const buildMixBuffer = useCallback((stemId: string): AudioBuffer | null => {
+    const ctx = getCtx();
+    if (stemId === 'all') {
+      const active = stems.filter(s => s.buffer && !s.muted);
+      if (active.length === 0) return null;
+      const len = active[0].buffer!.length;
+      const sr = active[0].buffer!.sampleRate;
+      const ch = active[0].buffer!.numberOfChannels;
+      const buf = ctx.createBuffer(ch, len, sr);
+      for (let c = 0; c < ch; c++) {
+        const out = buf.getChannelData(c);
+        active.forEach(s => {
+          const data = s.buffer!.getChannelData(c);
+          for (let i = 0; i < len; i++) out[i] += data[i] * s.volume;
+        });
+      }
+      return buf;
+    }
+    const stem = stems.find(s => s.id === stemId);
+    return stem?.buffer ?? null;
+  }, [stems]);
+
+  const getStemFileName = useCallback((stemId: string) => {
+    const base = fileName.replace(/\.[^.]+$/, '') || 'track';
+    return stemId === 'all' ? `${base}_mix.wav` : `${base}_${stemId}.wav`;
+  }, [fileName]);
+
+  const saveToLibrary = useCallback(async (stemId: string) => {
+    const buffer = buildMixBuffer(stemId);
+    if (!buffer) return;
+
+    setSavingId(stemId);
+    setSaveMsg('RENDERING...');
+    try {
+      const offCtx = new OfflineAudioContext(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+      const src = offCtx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(offCtx.destination);
+      src.start();
+      const rendered = await offCtx.startRendering();
+      const wavData = audioBufferToWav(rendered);
+      const wavBlob = new Blob([wavData], { type: 'audio/wav' });
+      const stemName = getStemFileName(stemId);
+
+      setSaveMsg('UPLOADING...');
+      const urlRes = await apiFetch('/api/storage/uploads/request-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: stemName, size: wavBlob.size, contentType: 'audio/wav' }),
+      });
+      if (!urlRes.ok) throw new Error('Failed to get upload URL');
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      const putRes = await fetch(uploadURL, {
+        method: 'PUT',
+        body: wavBlob,
+        headers: { 'Content-Type': 'audio/wav' },
+      });
+      if (!putRes.ok) throw new Error('Upload failed');
+
+      setSaveMsg('REGISTERING...');
+      const regRes = await apiFetch('/api/tools/documents/files/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: stemName,
+          objectPath,
+          mimeType: 'audio/wav',
+          fileSize: wavBlob.size,
+        }),
+      });
+
+      if (regRes.ok) {
+        setSaveMsg('SAVED TO LIBRARY');
+      } else {
+        const errData = await regRes.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[StemStudio] register failed:', errData);
+        setSaveMsg('REGISTER FAILED');
+      }
+    } catch (err: any) {
+      console.error('[StemStudio] save error:', err);
+      setSaveMsg('SAVE FAILED');
+    }
+    setTimeout(() => { setSavingId(null); setSaveMsg(''); }, 3000);
+  }, [buildMixBuffer, getStemFileName]);
+
   const applyPreset = useCallback((preset: StemPreset) => {
     preset.stems.forEach(ps => {
       updateStem(ps.type, { volume: ps.volume, muted: ps.muted });
@@ -726,8 +815,8 @@ export default function StemStudio() {
 
           {mode === 'player' && (
             <div style={{ padding: '0 20px 20px' }}>
-              <div style={{ display: 'flex', gap: 8, padding: '12px 0', flexWrap: 'wrap' }}>
-                <span style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.3)', alignSelf: 'center' }}>PRESETS</span>
+              <div style={{ display: 'flex', gap: 8, padding: '12px 0', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>PRESETS</span>
                 {PRESETS.map(p => (
                   <button
                     key={p.name}
@@ -740,6 +829,28 @@ export default function StemStudio() {
                     {p.name}
                   </button>
                 ))}
+                <div style={{ flex: 1 }} />
+                <button
+                  onClick={() => exportStem('all')}
+                  style={{
+                    ...VT, fontSize: 11, padding: '4px 12px', border: `1px solid ${C}`,
+                    background: 'transparent', color: C, cursor: 'pointer', letterSpacing: 1,
+                  }}
+                >
+                  DOWNLOAD MIX
+                </button>
+                <button
+                  onClick={() => saveToLibrary('all')}
+                  disabled={savingId === 'all'}
+                  style={{
+                    ...VT, fontSize: 11, padding: '4px 12px',
+                    border: `1px solid ${savingId === 'all' ? OC : '#44ff88'}`,
+                    background: savingId === 'all' ? 'rgba(255,140,0,0.15)' : 'transparent',
+                    color: savingId === 'all' ? OC : '#44ff88', cursor: 'pointer', letterSpacing: 1,
+                  }}
+                >
+                  {savingId === 'all' ? saveMsg : 'SAVE MIX TO LIBRARY'}
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -805,6 +916,30 @@ export default function StemStudio() {
                         </span>
                       </div>
 
+                      <button
+                        onClick={e => { e.stopPropagation(); exportStem(stem.id); }}
+                        title="Download WAV"
+                        style={{
+                          ...VT, fontSize: 10, padding: '2px 8px', border: `1px solid ${BORDER}`,
+                          background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                        }}
+                      >
+                        DL
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); saveToLibrary(stem.id); }}
+                        disabled={savingId === stem.id}
+                        title="Save to Media Library"
+                        style={{
+                          ...VT, fontSize: 10, padding: '2px 8px',
+                          border: `1px solid ${savingId === stem.id ? OC : '#44ff88'}`,
+                          background: savingId === stem.id ? 'rgba(255,140,0,0.15)' : 'transparent',
+                          color: savingId === stem.id ? OC : '#44ff88', cursor: 'pointer',
+                        }}
+                      >
+                        {savingId === stem.id ? saveMsg : 'SAVE'}
+                      </button>
+
                       {stem.analyser && <MeterBar analyser={stem.analyser} color={stem.color} />}
                     </div>
 
@@ -844,29 +979,57 @@ export default function StemStudio() {
                 </div>
 
                 <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: 16 }}>
-                  <div style={{ fontSize: 14, color: C, letterSpacing: 2, marginBottom: 8 }}>EXPORT</div>
+                  <div style={{ fontSize: 14, color: C, letterSpacing: 2, marginBottom: 8 }}>EXPORT &amp; SAVE</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      onClick={() => exportStem('all')}
-                      style={{
-                        ...VT, fontSize: 13, padding: '8px 16px', border: `1px solid ${C}`,
-                        background: `${C2}0.1)`, color: C, cursor: 'pointer', letterSpacing: 2, width: '100%',
-                      }}
-                    >
-                      EXPORT FULL MIX
-                    </button>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        onClick={() => exportStem('all')}
+                        style={{
+                          ...VT, fontSize: 12, padding: '8px 12px', border: `1px solid ${C}`,
+                          background: `${C2}0.1)`, color: C, cursor: 'pointer', letterSpacing: 2, flex: 1,
+                        }}
+                      >
+                        DOWNLOAD MIX
+                      </button>
+                      <button
+                        onClick={() => saveToLibrary('all')}
+                        disabled={savingId === 'all'}
+                        style={{
+                          ...VT, fontSize: 12, padding: '8px 12px',
+                          border: `1px solid ${savingId === 'all' ? OC : '#44ff88'}`,
+                          background: savingId === 'all' ? 'rgba(255,140,0,0.15)' : 'rgba(68,255,136,0.1)',
+                          color: savingId === 'all' ? OC : '#44ff88', cursor: 'pointer', letterSpacing: 2, flex: 1,
+                        }}
+                      >
+                        {savingId === 'all' ? saveMsg : 'SAVE MIX TO LIBRARY'}
+                      </button>
+                    </div>
+                    <div style={{ ...MONO, fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>INDIVIDUAL STEMS</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {stems.filter(s => s.buffer).map(s => (
-                        <button
-                          key={s.id}
-                          onClick={() => exportStem(s.id)}
-                          style={{
-                            ...VT, fontSize: 11, padding: '4px 8px', border: `1px solid ${s.color}`,
-                            background: 'transparent', color: s.color, cursor: 'pointer', flex: 1, minWidth: 60,
-                          }}
-                        >
-                          {STEM_ICONS[s.type]} {s.label}
-                        </button>
+                        <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 70 }}>
+                          <button
+                            onClick={() => exportStem(s.id)}
+                            style={{
+                              ...VT, fontSize: 10, padding: '4px 6px', border: `1px solid ${s.color}`,
+                              background: 'transparent', color: s.color, cursor: 'pointer', width: '100%',
+                            }}
+                          >
+                            {STEM_ICONS[s.type]} DL
+                          </button>
+                          <button
+                            onClick={() => saveToLibrary(s.id)}
+                            disabled={savingId === s.id}
+                            style={{
+                              ...VT, fontSize: 10, padding: '4px 6px',
+                              border: `1px solid ${savingId === s.id ? OC : '#44ff88'}`,
+                              background: savingId === s.id ? 'rgba(255,140,0,0.15)' : 'transparent',
+                              color: savingId === s.id ? OC : '#44ff88', cursor: 'pointer', width: '100%',
+                            }}
+                          >
+                            {savingId === s.id ? saveMsg : 'SAVE'}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -908,6 +1071,29 @@ export default function StemStudio() {
                       <span style={{ ...VT, fontSize: 14, color: stem.color, letterSpacing: 2 }}>{stem.label}</span>
                       <div style={{ flex: 1 }} />
                       <button
+                        onClick={() => exportStem(stem.id)}
+                        title="Download WAV"
+                        style={{
+                          ...VT, fontSize: 10, padding: '2px 8px', border: `1px solid ${BORDER}`,
+                          background: 'transparent', color: 'rgba(255,255,255,0.3)', cursor: 'pointer',
+                        }}
+                      >
+                        DL
+                      </button>
+                      <button
+                        onClick={() => saveToLibrary(stem.id)}
+                        disabled={savingId === stem.id}
+                        title="Save to Media Library"
+                        style={{
+                          ...VT, fontSize: 10, padding: '2px 8px',
+                          border: `1px solid ${savingId === stem.id ? OC : '#44ff88'}`,
+                          background: savingId === stem.id ? 'rgba(255,140,0,0.15)' : 'transparent',
+                          color: savingId === stem.id ? OC : '#44ff88', cursor: 'pointer',
+                        }}
+                      >
+                        {savingId === stem.id ? saveMsg : 'SAVE'}
+                      </button>
+                      <button
                         onClick={() => updateStem(stem.id, { muted: !stem.muted })}
                         style={{
                           ...VT, fontSize: 10, padding: '2px 8px', border: `1px solid ${stem.muted ? '#ff4444' : BORDER}`,
@@ -937,30 +1123,8 @@ export default function StemStudio() {
   );
 
   function exportStem(stemId: string) {
-    const ctx = getCtx();
-    let buffer: AudioBuffer;
-
-    if (stemId === 'all') {
-      const activeSteams = stems.filter(s => s.buffer && !s.muted);
-      if (activeSteams.length === 0) return;
-      const len = activeSteams[0].buffer!.length;
-      const sr = activeSteams[0].buffer!.sampleRate;
-      const ch = activeSteams[0].buffer!.numberOfChannels;
-      buffer = ctx.createBuffer(ch, len, sr);
-      for (let c = 0; c < ch; c++) {
-        const out = buffer.getChannelData(c);
-        activeSteams.forEach(s => {
-          const data = s.buffer!.getChannelData(c);
-          for (let i = 0; i < len; i++) {
-            out[i] += data[i] * s.volume;
-          }
-        });
-      }
-    } else {
-      const stem = stems.find(s => s.id === stemId);
-      if (!stem?.buffer) return;
-      buffer = stem.buffer;
-    }
+    const buffer = buildMixBuffer(stemId);
+    if (!buffer) return;
 
     const offCtx = new OfflineAudioContext(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
     const src = offCtx.createBufferSource();
@@ -974,7 +1138,7 @@ export default function StemStudio() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = stemId === 'all' ? `${fileName.replace(/\.[^.]+$/, '')}_mix.wav` : `${fileName.replace(/\.[^.]+$/, '')}_${stemId}.wav`;
+      a.download = getStemFileName(stemId);
       a.click();
       URL.revokeObjectURL(url);
     });
