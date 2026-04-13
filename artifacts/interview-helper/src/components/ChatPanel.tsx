@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
-import { useBoomerMode } from "@/hooks/use-mobile";
+import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 
 const CRT = (a: number) => `rgba(0,255,65,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -476,6 +476,7 @@ export function ChatPanel() {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
   const boomer = boomerMode;
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("pablo");
   const [activePrivateChannelId, setActivePrivateChannelId] = useState<number | null>(null);
@@ -561,8 +562,8 @@ export function ChatPanel() {
 
   if (!isAuthenticated) return null;
 
-  const PANEL_W = 340;
-  const PANEL_H = 480;
+  const PANEL_W = isMobile ? "100vw" : 340;
+  const PANEL_H = isMobile ? "100dvh" : 480;
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
@@ -584,27 +585,27 @@ export function ChatPanel() {
         <div
           style={{
             position: "fixed",
-            bottom: 56,
-            right: 16,
+            ...(isMobile
+              ? { top: 0, left: 0, right: 0, bottom: 0, borderRadius: 0 }
+              : { bottom: 56, right: 16, borderRadius: 10 }),
             width: PANEL_W,
             height: PANEL_H,
             background: BG,
-            border: `1px solid ${BORDER(0.25)}`,
-            borderRadius: 10,
+            border: isMobile ? "none" : `1px solid ${BORDER(0.25)}`,
             display: "flex",
             flexDirection: "column",
-            zIndex: 900,
-            boxShadow: `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
+            zIndex: 9999,
+            boxShadow: isMobile ? "none" : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
             fontFamily: fontFor(boomer),
             overflow: "hidden",
-            animation: "chatSlideUp 0.2s ease-out",
+            animation: isMobile ? "none" : "chatSlideUp 0.2s ease-out",
           }}
         >
           <div
             style={{
               background: `linear-gradient(90deg, rgba(0,255,65,0.06), rgba(0,0,0,0))`,
               borderBottom: `1px solid ${BORDER(0.15)}`,
-              padding: "8px 12px",
+              padding: isMobile ? "12px 16px" : "8px 12px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -623,7 +624,7 @@ export function ChatPanel() {
               />
               <span
                 style={{
-                  fontSize: "0.62rem",
+                  fontSize: isMobile ? "0.75rem" : "0.62rem",
                   color: CRT(0.7),
                   letterSpacing: "0.12em",
                 }}
@@ -636,13 +637,13 @@ export function ChatPanel() {
               style={{
                 background: "none",
                 border: "none",
-                color: CRT(0.4),
+                color: CRT(0.5),
                 cursor: "pointer",
-                padding: 2,
+                padding: isMobile ? 8 : 2,
                 display: "flex",
               }}
             >
-              <X size={14} />
+              <X size={isMobile ? 20 : 14} />
             </button>
           </div>
 
@@ -678,8 +679,8 @@ export function ChatPanel() {
                     borderBottom: isActive ? `2px solid ${CRT(0.8)}` : "2px solid transparent",
                     color: isActive ? CRT(0.9) : CRT(0.35),
                     cursor: "pointer",
-                    padding: "8px 4px",
-                    fontSize: "0.52rem",
+                    padding: isMobile ? "12px 6px" : "8px 4px",
+                    fontSize: isMobile ? "0.65rem" : "0.52rem",
                     letterSpacing: "0.1em",
                     fontFamily: fontFor(boomer),
                     display: "flex",
