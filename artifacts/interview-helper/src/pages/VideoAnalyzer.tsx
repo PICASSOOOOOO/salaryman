@@ -452,7 +452,7 @@ export default function VideoAnalyzer() {
               </h3>
               <p className="text-xs text-muted-foreground/50 max-w-md mx-auto leading-relaxed mb-6">
                 {boomerMode
-                  ? 'Share any video from YouTube, TikTok, Vimeo, Instagram, X, or any website. Pablo AI will extract the transcript, analyze the content, and give you actionable strategies to implement.'
+                  ? 'Share any video from YouTube, TikTok, Vimeo, Instagram, X, or any website. Pablo will extract the transcript, analyze the content, and give you actionable strategies to implement.'
                   : 'YOUTUBE · TIKTOK · VIMEO · INSTAGRAM · X · ANY URL. AI EXTRACTS TRANSCRIPT + METADATA. ANALYZES CONTENT. RETURNS STRUCTURED INTELLIGENCE REPORT.'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto">

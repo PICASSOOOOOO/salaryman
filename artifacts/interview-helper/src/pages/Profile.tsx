@@ -179,7 +179,7 @@ function MobileInstallSection() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-bold text-sky-400">Mobile Game Terminal</p>
-            <p className="text-[10px] text-muted-foreground">Check stats, chat with Pablo AI, and view your business overview from your phone</p>
+            <p className="text-[10px] text-muted-foreground">Check stats, chat with Pablo, and view your business overview from your phone</p>
           </div>
         </a>
       </div>

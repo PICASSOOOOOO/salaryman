@@ -799,7 +799,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     width: 580, height: 440,
     wallColor: 'rgba(8,4,18,.97)', floorColor: 'rgba(4,2,12,.95)', accentColor: 'rgba(160,60,255,.3)',
     exitX: 275, exitY: 425, exitW: 30, exitH: 15,
-    ambientText: 'Deep violet light pulses through the floors. Holographic blueprints rotate above workstations. Bot assembly lines hum. Pablo AI oversees everything from the executive platform.',
+    ambientText: 'Deep violet light pulses through the floors. Holographic blueprints rotate above workstations. Bot assembly lines hum. Pablo oversees everything from the executive platform.',
     workers: [
       { x: 275, y: 30, name: 'PABLO AI', role: 'Chief Architect', hostile: false },
       { x: 60, y: 80, name: 'ASSEMBLER-1', role: 'Bot Assembly', hostile: false },

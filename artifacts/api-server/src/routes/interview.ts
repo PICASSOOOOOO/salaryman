@@ -521,7 +521,7 @@ QUICK ORIENTATION you can give anyone:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EVERY FEATURE IN DETAIL:
 
-HOME PAGE (/) — Pablo AI + Website Analyzer:
+HOME PAGE (/) — Pablo + Website Analyzer:
 • PABLO tab (where this chat lives) — ask me anything, any topic, anytime.
 • Translator — free for all users. Translate text between languages, or speak and have it translated.
 • Website Analyzer tab — paste up to 5 website URLs, the app reads them and gives you a clean summary of key takeaways. Great for researching a company before a meeting.

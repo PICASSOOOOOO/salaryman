@@ -428,7 +428,7 @@ async function createOrUpdateContact(
     contactId,
     userId,
     type: "call",
-    note: `Pablo AI call — Reason: ${info.reason || "N/A"}. Qualification: ${info.qualification || "N/A"}. (Call SID: ${callSid})`,
+    note: `Pablo call — Reason: ${info.reason || "N/A"}. Qualification: ${info.qualification || "N/A"}. (Call SID: ${callSid})`,
   });
 
   await db
@@ -458,7 +458,7 @@ async function updateCallHistory(
       transcript,
       callType: "pablo_agent",
       callerName: info.callerName ?? undefined,
-      notes: `Pablo AI Agent Call\nCaller: ${info.callerName || "Unknown"}\nCompany: ${info.company || "N/A"}\nReason: ${info.reason || "N/A"}\nUrgency: ${info.urgency || "N/A"}`,
+      notes: `Pablo Agent Call\nCaller: ${info.callerName || "Unknown"}\nCompany: ${info.company || "N/A"}\nReason: ${info.reason || "N/A"}\nUrgency: ${info.urgency || "N/A"}`,
     })
     .where(and(eq(callHistoryTable.twilioCallSid, callSid), eq(callHistoryTable.userId, userId)));
 }

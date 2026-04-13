@@ -99,7 +99,7 @@ const DEPLOY_CHANNELS = [
 const INCLUDED = [
   'All 77 Bots — Every Specialist',
   'Jean Claw — Your AI Operations Manager',
-  'Pablo AI Call Agent & Secretary',
+  'Pablo Call Agent & Secretary',
   'Future Bot Releases Included',
   'Deploy to Telegram, WhatsApp, Discord & More',
   'Priority Support',
@@ -523,7 +523,7 @@ function JeanClawLanding() {
           <div style={{ fontSize: '0.7rem', color: 'rgba(161,161,170,0.4)', letterSpacing: '0.15em', marginBottom: 16 }}>ALSO INCLUDED WITH SALARYMAN</div>
           <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              'Pablo AI Chat', 'CRM & Contacts', 'Hiring & HR', 'Calendar',
+              'Pablo Chat', 'CRM & Contacts', 'Hiring & HR', 'Calendar',
               'Documents', 'Invoices', 'Dashboard', 'Studio', 'Reports',
             ].map(feat => (
               <div key={feat} style={{

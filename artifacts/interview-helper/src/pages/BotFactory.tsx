@@ -2743,7 +2743,7 @@ export default function BotFactory() {
                 </div>
                 <p className="text-xs text-muted-foreground/60 leading-relaxed mb-3">
                   {boomerMode
-                    ? 'Pablo AI handles all the basics for free — chat, voice, translation, website analysis, CRM, calendar, documents, invoices, dashboard, and more. Jean Claw adds the advanced automation layer on top.'
+                    ? 'Pablo handles all the basics for free — chat, voice, translation, website analysis, CRM, calendar, documents, invoices, dashboard, and more. Jean Claw adds the advanced automation layer on top.'
                     : 'PABLO AI HANDLES CORE OPS — CHAT, VOICE, TRANSLATION, ANALYSIS, CRM, CALENDAR, DOCUMENTS, INVOICES, DASHBOARD. JEAN CLAW ADDS ADVANCED AUTOMATION + MULTI-CHANNEL DEPLOYMENT.'}
                 </p>
                 <div className="flex flex-wrap gap-2">

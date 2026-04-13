@@ -2,7 +2,7 @@
 
 ## Overview
 
-SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered executive productivity platform. It integrates advanced AI agents, comprehensive communication tools, creative suites, and robust CRM functionalities. The platform offers specialized AI bots through its "Bot Factory," a free AI assistant named "Pablo AI," and tools for interview preparation, content creation, and video intelligence. The primary goal is to consolidate diverse business operations into a single, highly efficient environment, leveraging AI to boost productivity and creative output for professionals.
+SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered executive productivity platform. It integrates advanced AI agents, comprehensive communication tools, creative suites, and robust CRM functionalities. The platform offers specialized AI bots through its "Bot Factory," a free AI assistant named "Pablo," and tools for interview preparation, content creation, and video intelligence. The primary goal is to consolidate diverse business operations into a single, highly efficient environment, leveraging AI to boost productivity and creative output for professionals.
 
 ## User Preferences
 

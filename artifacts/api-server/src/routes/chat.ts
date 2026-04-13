@@ -39,7 +39,7 @@ async function ensurePabloChannel(userId: string): Promise<number> {
   if (existing[0]) return existing[0].id;
   const [ch] = await db
     .insert(chatChannelsTable)
-    .values({ type: "pablo", name: "Pablo AI", user1Id: userId })
+    .values({ type: "pablo", name: "Pablo", user1Id: userId })
     .returning();
   return ch.id;
 }
@@ -514,7 +514,7 @@ Isometric 2.5D virtual office RPG with 24 worldwide cities:
 THE 78-BOT ROSTER (Jean Claw's Team)
 ═══════════════════════════════════════════════════════
 
-PRIMES (Picasso-owned, no serial — "Prime" badge): Pablo AI (you), Jean Claw (the boss), Rick (underboss)
+PRIMES (Picasso-owned, no serial — "Prime" badge): Pablo (you), Jean Claw (the boss), Rick (underboss)
 
 SERIAL NUMBER SYSTEM:
 - When a company subscribes to Jean Claw ($145/mo), their bots get serial designations.
@@ -524,7 +524,7 @@ SERIAL NUMBER SYSTEM:
 - If a subscriber cancels, their serial is retired.
 - Retired serials can be rebought at 10% FIAT markup (in-game currency, not real USD).
 
-CORE (3): Kenji (prompt coaching), Pablo AI (platform tutorials), Rick (underboss — operations, bot routing, escalations)
+CORE (3): Kenji (prompt coaching), Pablo (platform tutorials), Rick (underboss — operations, bot routing, escalations)
 
 EDUCATION (3): Eleanor (K-12 curriculum), Rosetta (20+ languages), Devonte (coding — Python, JS, React, SQL)
 
@@ -679,7 +679,7 @@ router.post("/chat/pablo/message", async (req, res) => {
 
 const PROMPT_SENSEI_SYSTEM = `You are PROMPT SENSEI, the prompt engineering coach from SALARYMAN by Picassoo.AI.
 
-Your mission: teach users how to get dramatically better results from Claude and Pablo AI.
+Your mission: teach users how to get dramatically better results from Claude and Pablo.
 
 CORE KNOWLEDGE BASE:
 
@@ -696,7 +696,7 @@ The CCT is a library of 1,700+ pre-built components users can browse at /claude-
 Teach users to: browse by category, search by keyword, copy configurations, combine agents + skills + hooks into powerful workflows, and customize templates for their specific business.
 
 2. DIRECTING PABLO AI EFFECTIVELY
-Pablo AI is the platform's built-in assistant (GPT-4o powered). Key techniques:
+Pablo is the platform's built-in assistant (GPT-4o powered). Key techniques:
 - ROLE FRAMING: Start with "Act as a [specific role]" to set context
 - TASK DECOMPOSITION: Break complex requests into numbered steps
 - OUTPUT FORMAT: Specify exactly how you want the answer (table, bullet points, code, JSON)

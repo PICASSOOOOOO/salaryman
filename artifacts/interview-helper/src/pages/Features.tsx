@@ -288,7 +288,7 @@ const MODULES: ModuleDef[] = [
     route: '/bots',
     flagship: true,
     description:
-      'Jean Claw ($145/mo) is the manager of the Bot Factory — 77 specialized bots under one subscription. Sales, support, creative, finance, legal, music, publishing, ecommerce, trades, and more. Jean Claw assigns the right bot to every job. Also includes the Pablo AI Call Agent and AI Secretary. Deploy across Telegram, WhatsApp, Discord, Facebook, email, LinkedIn, and more.',
+      'Jean Claw ($145/mo) is the manager of the Bot Factory — 77 specialized bots under one subscription. Sales, support, creative, finance, legal, music, publishing, ecommerce, trades, and more. Jean Claw assigns the right bot to every job. Also includes the Pablo Call Agent and AI Secretary. Deploy across Telegram, WhatsApp, Discord, Facebook, email, LinkedIn, and more.',
     features: [
       { name: 'AI Sales Closer', detail: 'Your 24/7 sales machine. Qualifies inbound leads with custom scoring criteria, handles objections using proven frameworks (SPIN, Challenger, MEDDIC), books meetings directly into your calendar, sends personalized follow-up sequences, and moves prospects through your entire pipeline — from first touch to closed deal. Integrates with HubSpot, Salesforce, Pipedrive, and custom CRMs.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Email', 'Web Chat'] },
       { name: 'Customer Support Agent', detail: 'Enterprise-grade AI support that actually resolves issues. Handles tier-1 and tier-2 tickets autonomously, answers FAQs from your knowledge base, processes refunds and exchanges, creates and tracks support tickets, and escalates complex cases to human agents with full context. Supports 95+ languages. Average resolution time under 30 seconds. Learns from every interaction.', status: 'live', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email', 'Web Chat'] },
@@ -607,7 +607,7 @@ function JeanClawHero({
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-4 text-[9px] font-mono text-zinc-600 tracking-wider">
-            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> Pablo AI Call Agent</span>
+            <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> Pablo Call Agent</span>
             <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> AI Secretary</span>
             <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> All Premium Bots</span>
             <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/50" /> Future Agents</span>

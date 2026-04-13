@@ -3620,7 +3620,7 @@ export default function WorldPlay() {
     if (showPablo) {
       pabloTtsRef.current?.cancel();
       pabloTtsRef.current = speakGameTTS(
-        "Pablo AI online. Welcome back, operative. What do you need?",
+        "Pablo online. Welcome back, operative. What do you need?",
         () => { pabloTtsRef.current = null; },
       );
     } else {
@@ -14616,7 +14616,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* Sound panel is now inside the terminal menu */}
 
-      {/* TOP-RIGHT — Pause / Chat / Menu / Pablo AI dropdown */}
+      {/* TOP-RIGHT — Pause / Chat / Menu / Pablo dropdown */}
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
         <div style={{ display: 'flex', gap: '4px', position: 'relative' }} ref={topMenuRef}>
           <button
