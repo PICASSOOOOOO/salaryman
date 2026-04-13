@@ -40,7 +40,7 @@ router.get("/vault/entries", async (req: Request, res: Response) => {
 
 router.get("/vault/entries/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
   const [entry] = await db.select().from(vaultEntriesTable)
@@ -75,7 +75,7 @@ router.post("/vault/entries", async (req: Request, res: Response) => {
 
 router.put("/vault/entries/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
   const { title, content, entryType, tags, color } = req.body;
@@ -95,7 +95,7 @@ router.put("/vault/entries/:id", async (req: Request, res: Response) => {
 
 router.delete("/vault/entries/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
   const [entry] = await db.delete(vaultEntriesTable)
@@ -147,7 +147,7 @@ router.post("/vault/connections", async (req: Request, res: Response) => {
 
 router.delete("/vault/connections/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
   const [conn] = await db.delete(vaultConnectionsTable)
