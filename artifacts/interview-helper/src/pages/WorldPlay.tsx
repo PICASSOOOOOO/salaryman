@@ -3257,6 +3257,8 @@ export default function WorldPlay() {
   const pinchStartDistRef = useRef(0);
   const pinchStartZoomRef = useRef(ISO_ZOOM_DEFAULT);
   const touchJoystickRef = useRef<{ active: boolean; startX: number; startY: number; curX: number; curY: number }>({ active: false, startX: 0, startY: 0, curX: 0, curY: 0 });
+  const [joystickKnob, setJoystickKnob] = useState({ x: 0, y: 0, active: false });
+  const [mobileSprintActive, setMobileSprintActive] = useState(false);
   const isTouchDeviceRef = useRef(false);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
   const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
@@ -6514,8 +6516,11 @@ export default function WorldPlay() {
         const rect = canvas.getBoundingClientRect();
         const tx = t.clientX - rect.left;
         const ty = t.clientY - rect.top;
-        if (tx < rect.width * 0.35 && ty > rect.height * 0.55) {
+        if (tx < rect.width * 0.4 && ty > rect.height * 0.5) {
           touchJoystickRef.current = { active: true, startX: t.clientX, startY: t.clientY, curX: t.clientX, curY: t.clientY };
+          return;
+        }
+        if (tx > rect.width * 0.65 && ty > rect.height * 0.5) {
           return;
         }
         handleInteraction(t.clientX, t.clientY);
@@ -6537,12 +6542,18 @@ export default function WorldPlay() {
         e.preventDefault();
         touchJoystickRef.current.curX = e.touches[0].clientX;
         touchJoystickRef.current.curY = e.touches[0].clientY;
+        const jdx = touchJoystickRef.current.curX - touchJoystickRef.current.startX;
+        const jdy = touchJoystickRef.current.curY - touchJoystickRef.current.startY;
+        const dist = Math.min(Math.hypot(jdx, jdy), 30);
+        const angle = Math.atan2(jdy, jdx);
+        setJoystickKnob({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, active: true });
       }
     };
     const handleTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchStartDistRef.current = 0;
       if (e.touches.length === 0) {
         touchJoystickRef.current.active = false;
+        setJoystickKnob({ x: 0, y: 0, active: false });
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
@@ -7264,6 +7275,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
         if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD;
         if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD;
+        const ijoy = touchJoystickRef.current;
+        if (ijoy.active && dx === 0 && dy === 0) {
+          const ijdx = ijoy.curX - ijoy.startX;
+          const ijdy = ijoy.curY - ijoy.startY;
+          const ijDist = Math.hypot(ijdx, ijdy);
+          if (ijDist > 10) {
+            const ijNorm = Math.min(ijDist, 60) / 60;
+            dx = (ijdx / ijDist) * SPD * ijNorm;
+            dy = (ijdy / ijDist) * SPD * ijNorm;
+          }
+        }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         let nx = itr.px + dx, ny = itr.py + dy;
         if (iCol(nx, itr.py)) nx = itr.px;
@@ -7362,7 +7384,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
-        const shiftHeld = g.keys.has('shift');
+        const shiftHeld = g.keys.has('shift') || mobileSprintActive;
         const sprintMult = shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
         const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
@@ -7388,6 +7410,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             dx = (jdx / jDist) * SPD * vMult * jNorm;
             dy = (jdy / jDist) * SPD * vMult * jNorm;
             g.moveTarget = null;
+            g.aimAngle = Math.atan2(jdy, jdx);
           }
         }
         if (dx === 0 && dy === 0 && g.moveTarget) {
@@ -14512,37 +14535,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <>
           {/* Virtual Joystick — bottom-left */}
           <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 200, pointerEvents: 'none' }}>
-            <div style={{ width: 110, height: 110, borderRadius: '50%', border: '2px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(56,189,248,.3)', border: '1px solid rgba(56,189,248,.5)', transform: (() => {
-                const j = touchJoystickRef.current;
-                if (!j.active) return 'translate(0,0)';
-                const jdx = j.curX - j.startX;
-                const jdy = j.curY - j.startY;
-                const dist = Math.min(Math.hypot(jdx, jdy), 30);
-                const angle = Math.atan2(jdy, jdx);
-                return `translate(${Math.cos(angle) * dist}px,${Math.sin(angle) * dist}px)`;
-              })(), transition: 'transform 0.05s' }} />
+            <div style={{ width: 120, height: 120, borderRadius: '50%', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.45' : '.2'})`, background: `rgba(0,10,20,${joystickKnob.active ? '.65' : '.4'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s, background .15s' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: joystickKnob.active ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.7' : '.35'})`, transform: `translate(${joystickKnob.x}px,${joystickKnob.y}px)`, transition: joystickKnob.active ? 'none' : 'transform 0.15s, background 0.15s', boxShadow: joystickKnob.active ? '0 0 12px rgba(56,189,248,.3)' : 'none' }} />
             </div>
             <div style={{ textAlign: 'center', marginTop: 4, fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em' }}>MOVE</div>
           </div>
 
           {/* Action Buttons — bottom-right */}
-          <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
             <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add('e'); setTimeout(() => gs.current.keys.delete('e'), 200); }}
-              style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
               E
             </button>
             <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add(' '); setTimeout(() => gs.current.keys.delete(' '), 200); }}
-              style={{ width: 50, height: 50, borderRadius: '50%', border: '2px solid rgba(239,68,68,.4)', background: 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              style={{ width: 52, height: 52, borderRadius: '50%', border: '2px solid rgba(239,68,68,.4)', background: 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(239,68,68,.15)' }}>
               ATK
+            </button>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); setMobileSprintActive(true); }}
+              onTouchEnd={(e) => { e.preventDefault(); setMobileSprintActive(false); }}
+              onTouchCancel={() => setMobileSprintActive(false)}
+              style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid rgba(251,191,36,${mobileSprintActive ? '.7' : '.35'})`, background: mobileSprintActive ? 'rgba(251,191,36,.2)' : 'rgba(25,20,0,.7)', color: mobileSprintActive ? '#fbbf24' : 'rgba(251,191,36,.6)', fontFamily: "'VT323',monospace", fontSize: '.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileSprintActive ? '0 0 14px rgba(251,191,36,.3)' : 'none', transition: 'all .1s' }}>
+              RUN
             </button>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setShowMobilePhone(true)}
-                style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,10,20,.7)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,10,20,.7)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
                 TEL
               </button>
               <button onClick={() => setShowInventory(prev => !prev)}
-                style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(255,215,0,.3)', background: 'rgba(20,15,0,.7)', color: '#ffd700', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(255,215,0,.3)', background: 'rgba(20,15,0,.7)', color: '#ffd700', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
                 INV
               </button>
             </div>
