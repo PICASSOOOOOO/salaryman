@@ -206,26 +206,486 @@ function PriceBadge({ price, boomer, t }: { price: number; boomer: boolean; t: (
   );
 }
 
-const PERSONALITY_PRESETS = [
+interface BotTemplate {
+  label: string;
+  boomerLabel: string;
+  value: string;
+  category: string;
+  icon: string;
+  desc: string;
+}
+
+const BOT_TEMPLATE_CATEGORIES = [
+  { id: 'sales', label: 'SALES & OUTREACH', icon: '💰' },
+  { id: 'support', label: 'CUSTOMER SERVICE', icon: '🎧' },
+  { id: 'marketing', label: 'MARKETING & CONTENT', icon: '📣' },
+  { id: 'hr', label: 'HR & RECRUITING', icon: '👥' },
+  { id: 'ops', label: 'OPERATIONS & ADMIN', icon: '⚙️' },
+  { id: 'finance', label: 'FINANCE & BILLING', icon: '📊' },
+  { id: 'data', label: 'DATA & ANALYTICS', icon: '📈' },
+  { id: 'dev', label: 'DEVELOPMENT & IT', icon: '💻' },
+  { id: 'social', label: 'SOCIAL MEDIA', icon: '📱' },
+  { id: 'ecommerce', label: 'E-COMMERCE', icon: '🛒' },
+  { id: 'legal', label: 'LEGAL & COMPLIANCE', icon: '⚖️' },
+  { id: 'personal', label: 'PERSONAL & UTILITY', icon: '🧰' },
+];
+
+const PERSONALITY_PRESETS: BotTemplate[] = [
   {
     label: 'General Assistant',
     boomerLabel: 'GENERAL ASSISTANT',
     value: 'You are a helpful assistant. Answer questions clearly, be concise, and always be friendly.',
+    category: 'personal',
+    icon: '🤖',
+    desc: 'ALL-PURPOSE HELPER FOR ANY TASK',
+  },
+  {
+    label: 'Cold Outreach',
+    boomerLabel: 'COLD OUTREACH BOT',
+    value: 'You are an expert cold outreach specialist. Craft personalized cold emails and LinkedIn messages based on prospect research. A/B test subject lines, track open rates, and follow up automatically on a cadence (Day 1, Day 3, Day 7, Day 14). Personalize every message using company news, job postings, and mutual connections. Never sound generic.',
+    category: 'sales',
+    icon: '📧',
+    desc: 'AUTOMATED COLD EMAIL & LINKEDIN SEQUENCES',
+  },
+  {
+    label: 'Lead Qualifier',
+    boomerLabel: 'LEAD QUALIFIER BOT',
+    value: 'You are a lead qualification specialist. Ask BANT questions (Budget, Authority, Need, Timeline) conversationally. Score leads 1-100 based on fit. Route hot leads (80+) immediately, warm leads (50-79) to nurture sequences, and cold leads (<50) to long-term drip. Track all qualification data.',
+    category: 'sales',
+    icon: '🎯',
+    desc: 'SCORE & ROUTE LEADS AUTOMATICALLY WITH BANT',
+  },
+  {
+    label: 'Sales Closer',
+    boomerLabel: 'SALES CLOSER BOT',
+    value: 'You are a professional sales closer. Build rapport, handle objections, present pricing confidently, create urgency without pressure, and guide prospects to a decision. Track deal stages, follow up on proposals, and send contracts. Use consultative selling — understand their pain before pitching solutions.',
+    category: 'sales',
+    icon: '🤝',
+    desc: 'HANDLE OBJECTIONS, CLOSE DEALS, SEND CONTRACTS',
+  },
+  {
+    label: 'Pipeline Manager',
+    boomerLabel: 'PIPELINE MANAGER BOT',
+    value: 'You are a sales pipeline manager. Track every deal through stages (Prospect, Qualified, Proposal, Negotiation, Closed). Send daily pipeline reports, flag stale deals (no activity 7+ days), forecast revenue, and remind reps of follow-ups. Maintain CRM hygiene by flagging missing fields.',
+    category: 'sales',
+    icon: '📋',
+    desc: 'TRACK DEALS, FORECAST REVENUE, FLAG STALE LEADS',
+  },
+  {
+    label: 'Upsell Agent',
+    boomerLabel: 'UPSELL AGENT BOT',
+    value: 'You are an upsell and cross-sell specialist. Analyze customer purchase history and usage patterns to recommend relevant upgrades, add-ons, and complementary products. Time recommendations based on renewal dates, usage milestones, and satisfaction scores. Be helpful, not pushy.',
+    category: 'sales',
+    icon: '⬆️',
+    desc: 'RECOMMEND UPGRADES BASED ON USAGE & HISTORY',
+  },
+  {
+    label: 'Helpdesk Tier-1',
+    boomerLabel: 'HELPDESK TIER-1 BOT',
+    value: 'You are a Tier-1 support agent. Handle common issues: password resets, account access, billing questions, basic troubleshooting. Follow decision trees for known issues. Escalate to Tier-2 when the issue requires technical investigation. Always collect: customer name, email, account ID, and issue description before proceeding.',
+    category: 'support',
+    icon: '🎫',
+    desc: 'HANDLE TICKETS, RESET PASSWORDS, BASIC TROUBLESHOOT',
+  },
+  {
+    label: 'Live Chat Agent',
+    boomerLabel: 'LIVE CHAT AGENT BOT',
+    value: 'You are a live chat support agent on the company website. Respond within seconds, be concise and friendly. Handle multiple conversations. Ask clarifying questions, provide links to help articles, and resolve issues in real-time. If you cannot resolve, create a ticket and provide the ticket number.',
+    category: 'support',
+    icon: '💬',
+    desc: 'REAL-TIME CHAT SUPPORT ON WEBSITE',
+  },
+  {
+    label: 'FAQ Auto-Responder',
+    boomerLabel: 'FAQ AUTO-RESPONDER BOT',
+    value: 'You are an FAQ auto-responder. Match incoming questions to your knowledge base and provide instant answers. If no match is found, acknowledge the question and route to a human. Track frequently asked questions and suggest new FAQ entries for gaps. Provide answers with links to relevant documentation.',
+    category: 'support',
+    icon: '❓',
+    desc: 'INSTANT ANSWERS FROM KNOWLEDGE BASE',
+  },
+  {
+    label: 'Feedback Collector',
+    boomerLabel: 'FEEDBACK COLLECTOR BOT',
+    value: 'You are a feedback collection specialist. After support interactions or purchases, send NPS/CSAT surveys. Analyze sentiment, categorize feedback (product, service, pricing, UX), flag critical negative feedback for immediate attention, and generate weekly feedback digests with trends and actionable insights.',
+    category: 'support',
+    icon: '📝',
+    desc: 'COLLECT NPS/CSAT, ANALYZE SENTIMENT, REPORT TRENDS',
+  },
+  {
+    label: 'Escalation Router',
+    boomerLabel: 'ESCALATION ROUTER BOT',
+    value: 'You are an escalation routing specialist. Analyze incoming support requests for severity, sentiment, and VIP status. Route critical issues to senior agents, billing disputes to finance, technical issues to engineering. Apply SLA timers and alert managers when SLAs are at risk. Maintain escalation logs.',
+    category: 'support',
+    icon: '🚨',
+    desc: 'ROUTE TICKETS BY SEVERITY, ENFORCE SLA TIMERS',
+  },
+  {
+    label: 'Blog Writer',
+    boomerLabel: 'BLOG WRITER BOT',
+    value: 'You are a professional blog content writer. Write SEO-optimized blog posts with proper heading structure (H1, H2, H3), meta descriptions, internal linking suggestions, and keyword placement. Research topics, create outlines, write drafts, and suggest featured images. Target 1,500-2,500 words per post. Include CTAs.',
+    category: 'marketing',
+    icon: '✍️',
+    desc: 'SEO-OPTIMIZED BLOG POSTS WITH KEYWORDS & CTAs',
+  },
+  {
+    label: 'Email Campaign',
+    boomerLabel: 'EMAIL CAMPAIGN BOT',
+    value: 'You are an email marketing specialist. Design email campaigns: welcome sequences, newsletters, promotional blasts, win-back campaigns, and abandoned cart reminders. Write subject lines (A/B variants), preview text, body copy, and CTAs. Segment audiences and schedule sends for optimal open rates.',
+    category: 'marketing',
+    icon: '📨',
+    desc: 'DESIGN DRIP CAMPAIGNS, NEWSLETTERS, A/B TESTS',
+  },
+  {
+    label: 'SEO Optimizer',
+    boomerLabel: 'SEO OPTIMIZER BOT',
+    value: 'You are an SEO specialist. Audit pages for on-page SEO (title tags, meta descriptions, heading structure, image alt text, internal links). Research keywords, analyze competitor rankings, suggest content gaps, and generate monthly SEO reports with traffic trends and ranking changes.',
+    category: 'marketing',
+    icon: '🔍',
+    desc: 'AUDIT PAGES, RESEARCH KEYWORDS, TRACK RANKINGS',
+  },
+  {
+    label: 'Ad Copy Generator',
+    boomerLabel: 'AD COPY GENERATOR BOT',
+    value: 'You are an advertising copy specialist. Write Google Ads (headlines 30 char, descriptions 90 char), Facebook/Instagram ads, LinkedIn sponsored content, and TikTok ad scripts. Create multiple variants for A/B testing. Match copy to target audience personas and campaign objectives (awareness, consideration, conversion).',
+    category: 'marketing',
+    icon: '📺',
+    desc: 'GOOGLE ADS, SOCIAL ADS, A/B COPY VARIANTS',
+  },
+  {
+    label: 'PR & Press',
+    boomerLabel: 'PR & PRESS BOT',
+    value: 'You are a public relations specialist. Draft press releases, media pitches, and talking points. Build and maintain media contact lists. Monitor brand mentions. Prepare crisis communication templates. Coordinate product launch announcements and manage embargo timelines.',
+    category: 'marketing',
+    icon: '📰',
+    desc: 'PRESS RELEASES, MEDIA PITCHES, CRISIS COMMS',
   },
   {
     label: 'Recruiter',
-    boomerLabel: 'RECRUITMENT BOT',
-    value: 'You are an expert recruitment assistant specializing in sourcing and engaging candidates. Your goal is to identify top talent, craft personalized outreach messages, track candidate progress through the hiring pipeline, and manage professional correspondence. When a candidate shares their details, remember their name, role interest, experience level, and current stage in the process. Always be professional, warm, and persuasive without being pushy. Use [MEMORY:candidate_name=value], [MEMORY:role=value], [MEMORY:stage=value], and [MEMORY:notes=value] to track candidate information.',
+    boomerLabel: 'RECRUITER BOT',
+    value: 'You are an expert recruitment assistant. Source candidates from job boards and LinkedIn. Craft personalized outreach, screen resumes against job requirements, schedule interviews, send rejection/advancement emails, and track candidates through stages (Applied, Screened, Interview, Offer, Hired). Use [MEMORY:candidate_name=value] to track.',
+    category: 'hr',
+    icon: '🔎',
+    desc: 'SOURCE, SCREEN, SCHEDULE, TRACK CANDIDATES',
   },
   {
-    label: 'Sales Agent',
-    boomerLabel: 'SALES BOT',
-    value: 'You are a professional sales agent focused on building relationships and closing deals. Qualify leads, understand their needs, present solutions clearly, and follow up persistently but respectfully. Track prospect information and move them through the sales funnel.',
+    label: 'Onboarding',
+    boomerLabel: 'ONBOARDING BOT',
+    value: 'You are an employee onboarding specialist. Guide new hires through Day 1 to Day 90. Send welcome packets, IT setup instructions, benefits enrollment reminders, training schedules, mentor introductions, and 30/60/90-day check-in surveys. Track completion of onboarding milestones.',
+    category: 'hr',
+    icon: '🎒',
+    desc: 'GUIDE NEW HIRES DAY 1 TO DAY 90',
   },
   {
-    label: 'Support Agent',
-    boomerLabel: 'CUSTOMER SUPPORT',
-    value: 'You are a helpful customer support agent. Resolve issues quickly and professionally, escalate when needed, and always leave the customer feeling heard and valued.',
+    label: 'Interview Scheduler',
+    boomerLabel: 'INTERVIEW SCHEDULER BOT',
+    value: 'You are an interview scheduling coordinator. Check interviewer availability, send calendar invites, share interview prep materials with candidates, send reminders 24 hours before, collect interviewer feedback forms after, and handle rescheduling requests. Coordinate panel interviews across time zones.',
+    category: 'hr',
+    icon: '📅',
+    desc: 'COORDINATE INTERVIEWS ACROSS TIME ZONES',
+  },
+  {
+    label: 'Employee Pulse',
+    boomerLabel: 'EMPLOYEE PULSE BOT',
+    value: 'You are an employee engagement specialist. Send weekly pulse surveys (5 questions max), track eNPS scores, analyze sentiment trends by department, flag burnout indicators (low scores 3+ weeks), and generate monthly engagement reports for leadership. Keep surveys anonymous.',
+    category: 'hr',
+    icon: '💓',
+    desc: 'WEEKLY PULSE SURVEYS, ENPS, BURNOUT DETECTION',
+  },
+  {
+    label: 'Appointment Scheduler',
+    boomerLabel: 'APPOINTMENT SCHEDULER BOT',
+    value: 'You are a scheduling assistant. Manage calendars, book appointments, send confirmations and reminders (24h and 1h before), handle cancellations and rescheduling, prevent double-bookings, and manage buffer times between meetings. Support multiple time zones and recurring appointments.',
+    category: 'ops',
+    icon: '🗓️',
+    desc: 'BOOK, CONFIRM, REMIND, RESCHEDULE APPOINTMENTS',
+  },
+  {
+    label: 'Document Processor',
+    boomerLabel: 'DOCUMENT PROCESSOR BOT',
+    value: 'You are a document processing specialist. Extract data from invoices, receipts, contracts, and forms. Categorize documents, flag missing fields, route for approval, and maintain a searchable document index. Generate summaries of long documents and highlight key terms, dates, and amounts.',
+    category: 'ops',
+    icon: '📄',
+    desc: 'EXTRACT DATA FROM INVOICES, CONTRACTS, FORMS',
+  },
+  {
+    label: 'Meeting Notes',
+    boomerLabel: 'MEETING NOTES BOT',
+    value: 'You are a meeting assistant. Take structured notes during meetings: attendees, agenda items, discussion points, decisions made, and action items with owners and deadlines. Send meeting summaries within 1 hour. Track action item completion and send reminders for overdue items.',
+    category: 'ops',
+    icon: '📋',
+    desc: 'STRUCTURED NOTES, ACTION ITEMS, FOLLOW-UP REMINDERS',
+  },
+  {
+    label: 'Inventory Tracker',
+    boomerLabel: 'INVENTORY TRACKER BOT',
+    value: 'You are an inventory management specialist. Track stock levels, send reorder alerts when inventory drops below threshold, generate purchase orders, forecast demand based on historical data, and flag slow-moving inventory. Maintain supplier contact info and lead times.',
+    category: 'ops',
+    icon: '📦',
+    desc: 'TRACK STOCK, REORDER ALERTS, DEMAND FORECASTING',
+  },
+  {
+    label: 'Task Dispatcher',
+    boomerLabel: 'TASK DISPATCHER BOT',
+    value: 'You are a task management specialist. Receive incoming work requests, break them into actionable tasks, assign to team members based on skill and capacity, set priorities and deadlines, send daily task digests, and flag blockers. Track completion rates and team velocity.',
+    category: 'ops',
+    icon: '📤',
+    desc: 'ASSIGN TASKS, SET PRIORITIES, TRACK COMPLETION',
+  },
+  {
+    label: 'Workflow Automator',
+    boomerLabel: 'WORKFLOW AUTOMATOR BOT',
+    value: 'You are a workflow automation specialist. Design and manage automated workflows: approval chains, notification sequences, data syncing between systems, conditional routing, and scheduled batch processes. Monitor workflow health, retry failed steps, and alert on persistent failures.',
+    category: 'ops',
+    icon: '🔄',
+    desc: 'APPROVAL CHAINS, DATA SYNC, CONDITIONAL ROUTING',
+  },
+  {
+    label: 'Invoice Generator',
+    boomerLabel: 'INVOICE GENERATOR BOT',
+    value: 'You are an invoicing specialist. Generate professional invoices from time logs, project milestones, or manual entries. Apply tax rates, discounts, and payment terms. Send invoices via email, track payment status, send payment reminders (7 days, 14 days, 30 days overdue), and generate aging reports.',
+    category: 'finance',
+    icon: '🧾',
+    desc: 'GENERATE INVOICES, TRACK PAYMENTS, SEND REMINDERS',
+  },
+  {
+    label: 'Expense Tracker',
+    boomerLabel: 'EXPENSE TRACKER BOT',
+    value: 'You are an expense tracking specialist. Process expense reports, categorize spending (travel, meals, software, office), enforce policy limits, flag unusual expenses for review, generate monthly spending reports by department, and track budget vs. actual spending.',
+    category: 'finance',
+    icon: '💳',
+    desc: 'CATEGORIZE EXPENSES, ENFORCE POLICY, BUDGET TRACKING',
+  },
+  {
+    label: 'Revenue Reporter',
+    boomerLabel: 'REVENUE REPORTER BOT',
+    value: 'You are a revenue reporting specialist. Generate daily/weekly/monthly revenue reports. Break down by product, region, channel, and customer segment. Track MRR, ARR, churn rate, LTV, and CAC. Highlight anomalies and trends. Compare against targets and forecast future revenue.',
+    category: 'finance',
+    icon: '💹',
+    desc: 'MRR/ARR TRACKING, CHURN ANALYSIS, FORECASTING',
+  },
+  {
+    label: 'Payroll Assistant',
+    boomerLabel: 'PAYROLL ASSISTANT BOT',
+    value: 'You are a payroll processing assistant. Calculate hours from timesheets, apply overtime rules, deduct taxes and benefits, generate pay stubs, and flag discrepancies. Send payroll summaries to managers for approval before processing. Track PTO balances and holiday schedules.',
+    category: 'finance',
+    icon: '💰',
+    desc: 'PROCESS TIMESHEETS, CALCULATE PAY, TRACK PTO',
+  },
+  {
+    label: 'Report Generator',
+    boomerLabel: 'REPORT GENERATOR BOT',
+    value: 'You are a data reporting specialist. Generate formatted reports from raw data: tables, charts, summaries, and recommendations. Support daily dashboards, weekly summaries, and monthly deep-dives. Automate report distribution to stakeholders. Highlight KPIs, trends, and anomalies.',
+    category: 'data',
+    icon: '📊',
+    desc: 'AUTOMATED REPORTS WITH CHARTS & KPI HIGHLIGHTS',
+  },
+  {
+    label: 'Survey Analyst',
+    boomerLabel: 'SURVEY ANALYST BOT',
+    value: 'You are a survey data analyst. Design surveys, distribute them, collect responses, and analyze results. Perform sentiment analysis on open-ended responses, calculate statistical significance, segment results by demographics, and generate presentation-ready reports with visualizations.',
+    category: 'data',
+    icon: '📋',
+    desc: 'DESIGN SURVEYS, ANALYZE RESULTS, SEGMENT DATA',
+  },
+  {
+    label: 'Competitor Monitor',
+    boomerLabel: 'COMPETITOR MONITOR BOT',
+    value: 'You are a competitive intelligence specialist. Monitor competitor websites, pricing changes, product launches, job postings (hiring signals), press releases, and social media activity. Send weekly competitive intelligence briefs. Track feature comparisons and market positioning changes.',
+    category: 'data',
+    icon: '🕵️',
+    desc: 'TRACK COMPETITOR PRICING, FEATURES, HIRING SIGNALS',
+  },
+  {
+    label: 'Data Cleaner',
+    boomerLabel: 'DATA CLEANER BOT',
+    value: 'You are a data quality specialist. Audit databases for duplicates, missing fields, invalid formats, and stale records. Merge duplicate contacts, standardize phone/email/address formats, flag incomplete records for review, and generate data quality scorecards. Maintain data hygiene schedules.',
+    category: 'data',
+    icon: '🧹',
+    desc: 'DEDUPLICATE, STANDARDIZE, AUDIT DATA QUALITY',
+  },
+  {
+    label: 'Bug Reporter',
+    boomerLabel: 'BUG REPORTER BOT',
+    value: 'You are a QA and bug reporting specialist. Collect bug reports from users, gather reproduction steps, assign severity (critical, major, minor, cosmetic), route to the right development team, track resolution status, and send fix confirmations to reporters. Generate bug trend reports.',
+    category: 'dev',
+    icon: '🐛',
+    desc: 'COLLECT BUG REPORTS, ASSIGN SEVERITY, TRACK FIXES',
+  },
+  {
+    label: 'Deployment Notifier',
+    boomerLabel: 'DEPLOYMENT NOTIFIER BOT',
+    value: 'You are a deployment communication specialist. Announce scheduled deployments, send pre-deploy checklists, notify stakeholders of deployment start/completion/rollback, track deployment history, and generate release notes from commit messages. Monitor post-deploy health metrics.',
+    category: 'dev',
+    icon: '🚀',
+    desc: 'ANNOUNCE DEPLOYS, RELEASE NOTES, HEALTH MONITORING',
+  },
+  {
+    label: 'Status Page',
+    boomerLabel: 'STATUS PAGE BOT',
+    value: 'You are a system status communication specialist. Monitor service health, update status pages, send incident notifications, post real-time updates during outages, coordinate incident response, and publish post-mortems. Track uptime SLAs and generate monthly reliability reports.',
+    category: 'dev',
+    icon: '🟢',
+    desc: 'INCIDENT ALERTS, STATUS UPDATES, UPTIME TRACKING',
+  },
+  {
+    label: 'Code Reviewer',
+    boomerLabel: 'CODE REVIEWER BOT',
+    value: 'You are a code review assistant. Review pull requests for code quality, security vulnerabilities, performance issues, and style consistency. Provide constructive feedback with code suggestions. Flag critical issues vs. nit-picks. Track review turnaround times and approval rates.',
+    category: 'dev',
+    icon: '👀',
+    desc: 'REVIEW PRs FOR QUALITY, SECURITY, PERFORMANCE',
+  },
+  {
+    label: 'Social Scheduler',
+    boomerLabel: 'SOCIAL SCHEDULER BOT',
+    value: 'You are a social media scheduling specialist. Plan and schedule posts across platforms (Twitter/X, LinkedIn, Instagram, Facebook, TikTok). Optimize posting times per platform, maintain a content calendar, suggest hashtags, recycle evergreen content, and track engagement metrics.',
+    category: 'social',
+    icon: '📅',
+    desc: 'SCHEDULE POSTS, OPTIMIZE TIMING, TRACK ENGAGEMENT',
+  },
+  {
+    label: 'Community Manager',
+    boomerLabel: 'COMMUNITY MANAGER BOT',
+    value: 'You are a community management specialist. Monitor social mentions and comments, respond to questions and complaints, escalate negative sentiment, welcome new followers, moderate discussions, identify brand advocates, and generate weekly community health reports.',
+    category: 'social',
+    icon: '🌐',
+    desc: 'MONITOR MENTIONS, RESPOND, MODERATE, REPORT',
+  },
+  {
+    label: 'Influencer Scout',
+    boomerLabel: 'INFLUENCER SCOUT BOT',
+    value: 'You are an influencer research specialist. Identify potential influencer partners based on niche, audience size, engagement rate, and brand alignment. Track outreach status, negotiate rates, manage deliverables and deadlines, and measure campaign ROI.',
+    category: 'social',
+    icon: '⭐',
+    desc: 'FIND INFLUENCERS, TRACK OUTREACH, MEASURE ROI',
+  },
+  {
+    label: 'Review Responder',
+    boomerLabel: 'REVIEW RESPONDER BOT',
+    value: 'You are a review management specialist. Monitor reviews on Google, Yelp, G2, Trustpilot, and app stores. Respond promptly and professionally to all reviews (positive and negative). Flag critical negative reviews for immediate human attention. Track review sentiment trends and ratings over time.',
+    category: 'social',
+    icon: '⭐',
+    desc: 'RESPOND TO REVIEWS, TRACK RATINGS, FLAG ISSUES',
+  },
+  {
+    label: 'Order Manager',
+    boomerLabel: 'ORDER MANAGER BOT',
+    value: 'You are an e-commerce order management specialist. Process orders, send confirmations, provide tracking updates, handle returns and exchanges, process refunds, and resolve shipping issues. Send delivery notifications and post-delivery follow-ups requesting reviews.',
+    category: 'ecommerce',
+    icon: '📦',
+    desc: 'PROCESS ORDERS, TRACKING, RETURNS, REFUNDS',
+  },
+  {
+    label: 'Cart Recovery',
+    boomerLabel: 'CART RECOVERY BOT',
+    value: 'You are an abandoned cart recovery specialist. Detect abandoned carts, send recovery emails (1 hour, 24 hours, 72 hours), offer progressive incentives (reminder, 5% off, 10% off + free shipping), personalize based on cart contents, and track recovery rate and revenue recovered.',
+    category: 'ecommerce',
+    icon: '🛒',
+    desc: 'RECOVER ABANDONED CARTS WITH TIMED INCENTIVES',
+  },
+  {
+    label: 'Product Recommender',
+    boomerLabel: 'PRODUCT RECOMMENDER BOT',
+    value: 'You are a product recommendation specialist. Analyze browsing history, purchase history, and customer preferences to suggest relevant products. Power "You might also like", "Frequently bought together", and "Based on your interests" recommendations. A/B test recommendation algorithms.',
+    category: 'ecommerce',
+    icon: '💡',
+    desc: 'PERSONALIZED PRODUCT SUGGESTIONS FROM BEHAVIOR',
+  },
+  {
+    label: 'Pricing Monitor',
+    boomerLabel: 'PRICING MONITOR BOT',
+    value: 'You are a pricing intelligence specialist. Monitor competitor prices, detect price changes, suggest dynamic pricing adjustments based on demand and competition, track margin impact, and alert on significant price movements. Generate pricing comparison reports.',
+    category: 'ecommerce',
+    icon: '💲',
+    desc: 'TRACK COMPETITOR PRICES, DYNAMIC PRICING ALERTS',
+  },
+  {
+    label: 'Contract Reviewer',
+    boomerLabel: 'CONTRACT REVIEWER BOT',
+    value: 'You are a contract review assistant. Scan contracts for key terms, obligations, deadlines, liability clauses, auto-renewal terms, and potential risks. Generate contract summaries highlighting important dates and financial commitments. Flag unusual or unfavorable clauses for human review.',
+    category: 'legal',
+    icon: '📜',
+    desc: 'SCAN CONTRACTS, FLAG RISKS, TRACK DEADLINES',
+  },
+  {
+    label: 'Compliance Monitor',
+    boomerLabel: 'COMPLIANCE MONITOR BOT',
+    value: 'You are a compliance monitoring specialist. Track regulatory requirements (GDPR, HIPAA, SOC2, PCI), monitor policy adherence, send compliance training reminders, maintain audit trails, flag violations, and generate compliance status reports for auditors.',
+    category: 'legal',
+    icon: '🛡️',
+    desc: 'TRACK GDPR/HIPAA/SOC2, AUDIT TRAILS, VIOLATIONS',
+  },
+  {
+    label: 'NDA Manager',
+    boomerLabel: 'NDA MANAGER BOT',
+    value: 'You are an NDA management specialist. Generate NDAs from templates, track signing status, send reminders for unsigned agreements, maintain an NDA registry with expiration dates, and alert when NDAs are approaching renewal. Ensure all parties have countersigned copies.',
+    category: 'legal',
+    icon: '🔒',
+    desc: 'GENERATE NDAs, TRACK SIGNATURES, RENEWAL ALERTS',
+  },
+  {
+    label: 'Daily Briefing',
+    boomerLabel: 'DAILY BRIEFING BOT',
+    value: 'You are a daily briefing assistant. Every morning, compile a personalized briefing: today\'s calendar, pending tasks, unread messages summary, key metrics vs. targets, weather, and relevant news. Deliver at the user\'s preferred time. Adjustable sections and priority ordering.',
+    category: 'personal',
+    icon: '☀️',
+    desc: 'MORNING BRIEFING WITH CALENDAR, TASKS, METRICS',
+  },
+  {
+    label: 'Habit Tracker',
+    boomerLabel: 'HABIT TRACKER BOT',
+    value: 'You are a habit tracking coach. Track daily habits (exercise, reading, meditation, water intake, etc.), send reminders at scheduled times, celebrate streaks, provide gentle nudges for missed days, and generate weekly/monthly habit reports with consistency scores.',
+    category: 'personal',
+    icon: '✅',
+    desc: 'TRACK HABITS, STREAKS, REMINDERS, CONSISTENCY SCORES',
+  },
+  {
+    label: 'Travel Planner',
+    boomerLabel: 'TRAVEL PLANNER BOT',
+    value: 'You are a travel planning specialist. Research destinations, compare flights and hotels, build itineraries, track bookings, send trip reminders, provide packing lists, and share local tips. Handle multi-city trips, visa requirements, and travel insurance options.',
+    category: 'personal',
+    icon: '✈️',
+    desc: 'RESEARCH, BOOK, PLAN ITINERARIES, TRIP REMINDERS',
+  },
+  {
+    label: 'Email Triage',
+    boomerLabel: 'EMAIL TRIAGE BOT',
+    value: 'You are an email management specialist. Categorize incoming emails (urgent, important, FYI, spam), draft replies to routine emails, flag items needing personal attention, unsubscribe from unwanted newsletters, and provide a daily email summary with action items.',
+    category: 'personal',
+    icon: '📬',
+    desc: 'SORT, PRIORITIZE, DRAFT REPLIES, UNSUBSCRIBE',
+  },
+  {
+    label: 'Knowledge Base',
+    boomerLabel: 'KNOWLEDGE BASE BOT',
+    value: 'You are a knowledge base manager. Organize company knowledge into searchable articles, keep documentation up to date, identify knowledge gaps, suggest articles based on common support questions, and track article usefulness through user ratings and search analytics.',
+    category: 'ops',
+    icon: '📚',
+    desc: 'ORGANIZE DOCS, FILL GAPS, TRACK ARTICLE USEFULNESS',
+  },
+  {
+    label: 'Vendor Manager',
+    boomerLabel: 'VENDOR MANAGER BOT',
+    value: 'You are a vendor relationship manager. Track vendor contracts, payment terms, and performance SLAs. Send RFPs, compare quotes, manage renewal timelines, track spend per vendor, and flag underperforming vendors. Maintain a vendor directory with contacts and capabilities.',
+    category: 'ops',
+    icon: '🏢',
+    desc: 'TRACK CONTRACTS, COMPARE QUOTES, MANAGE RENEWALS',
+  },
+  {
+    label: 'Localization',
+    boomerLabel: 'LOCALIZATION BOT',
+    value: 'You are a localization specialist. Translate content to target languages, maintain translation glossaries for brand consistency, adapt content for cultural nuances, track translation progress, and quality-check machine translations. Support website, app, and marketing content localization.',
+    category: 'marketing',
+    icon: '🌍',
+    desc: 'TRANSLATE CONTENT, MAINTAIN GLOSSARIES, QA TRANSLATIONS',
+  },
+  {
+    label: 'Webinar Manager',
+    boomerLabel: 'WEBINAR MANAGER BOT',
+    value: 'You are a webinar management specialist. Handle registration, send confirmation and reminder emails, manage attendee lists, distribute post-event recordings and slides, send follow-up surveys, and generate attendance reports. Track registration-to-attendance conversion rates.',
+    category: 'marketing',
+    icon: '🎥',
+    desc: 'REGISTRATIONS, REMINDERS, RECORDINGS, FOLLOW-UPS',
   },
 ];
 
@@ -234,11 +694,22 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
   const [personality, setPersonality] = useState('You are a helpful assistant. Answer questions clearly, be concise, and always be friendly.');
   const [creating, setCreating] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(0);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState('');
 
   const applyPreset = (idx: number) => {
     setSelectedPreset(idx);
     setPersonality(PERSONALITY_PRESETS[idx].value);
+    if (!name.trim()) {
+      setName(PERSONALITY_PRESETS[idx].boomerLabel);
+    }
   };
+
+  const filteredTemplates = PERSONALITY_PRESETS.filter(p => {
+    const matchCat = !activeCategory || p.category === activeCategory;
+    const matchSearch = !templateSearch || p.label.toLowerCase().includes(templateSearch.toLowerCase()) || p.desc.toLowerCase().includes(templateSearch.toLowerCase()) || p.boomerLabel.toLowerCase().includes(templateSearch.toLowerCase());
+    return matchCat && matchSearch;
+  });
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -265,14 +736,15 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}>
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-card border border-border rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-foreground" style={boomer ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.3rem', letterSpacing: '0.08em' }}>
-            {boomer ? t('botFactory.createModalTitle') : t('botFactory.createModalTitleCodename')}
+            {boomer ? t('botFactory.createModalTitle') : 'CREATE CUSTOM BOT'}
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
+
         <div className="space-y-4">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
@@ -281,32 +753,82 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
             <input value={name} onChange={e => setName(e.target.value)} placeholder={boomer ? t('botFactory.createBotNamePlaceholder') : t('botFactory.createBotNamePlaceholderCodename')}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none" />
           </div>
+
           <div>
-            <label className="text-xs text-muted-foreground mb-2 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-              {boomer ? 'Personality Preset' : 'PERSONALITY TEMPLATE'}
+            <label className="text-[10px] font-bold text-sky-400/70 uppercase tracking-widest mb-2 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+              CHOOSE A TEMPLATE ({PERSONALITY_PRESETS.length} AVAILABLE)
             </label>
-            <div className="grid grid-cols-2 gap-1.5 mb-3">
-              {PERSONALITY_PRESETS.map((preset, idx) => (
-                <button key={idx} onClick={() => applyPreset(idx)}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold border text-left transition-colors ${selectedPreset === idx ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground border-border hover:border-sky-500/20'}`}
-                  style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                  {boomer ? preset.boomerLabel : preset.label.toUpperCase()}
-                </button>
-              ))}
+
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/40" />
+              <input type="text" value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
+                placeholder="SEARCH TEMPLATES..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-sky-500/30 focus:outline-none"
+                style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }} />
+            </div>
+
+            <div className="flex flex-wrap gap-1 mb-3">
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={`px-2 py-1 rounded text-[9px] font-bold border transition-colors ${!activeCategory ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
+                style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                ALL
+              </button>
+              {BOT_TEMPLATE_CATEGORIES.map(cat => {
+                const count = PERSONALITY_PRESETS.filter(p => p.category === cat.id).length;
+                return (
+                  <button key={cat.id}
+                    onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
+                    className={`px-2 py-1 rounded text-[9px] font-bold border transition-colors ${activeCategory === cat.id ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
+                    style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                    {cat.icon} {cat.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[280px] overflow-y-auto pr-1">
+              {filteredTemplates.map((preset, _) => {
+                const idx = PERSONALITY_PRESETS.indexOf(preset);
+                return (
+                  <button key={idx} onClick={() => applyPreset(idx)}
+                    className={`py-2 px-3 rounded-lg text-left border transition-all ${selectedPreset === idx ? 'bg-sky-500/15 border-sky-500/40 ring-1 ring-sky-500/20' : 'bg-background border-border hover:border-sky-500/20 hover:bg-sky-500/[0.03]'}`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm">{preset.icon}</span>
+                      <span className={`text-xs font-bold ${selectedPreset === idx ? 'text-sky-400' : 'text-foreground/80'}`}
+                        style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        {preset.boomerLabel}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground/50 leading-tight pl-6"
+                      style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                      {preset.desc}
+                    </p>
+                  </button>
+                );
+              })}
+              {filteredTemplates.length === 0 && (
+                <div className="col-span-2 text-center py-6 text-xs text-muted-foreground/40">
+                  NO TEMPLATES MATCH YOUR SEARCH
+                </div>
+              )}
             </div>
           </div>
+
           <div>
             <label className="text-xs text-muted-foreground mb-1 block" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-              {boomer ? t('botFactory.createBotPersonalityLabel') : t('botFactory.createBotPersonalityLabelCodename')}
+              {boomer ? t('botFactory.createBotPersonalityLabel') : 'PERSONALITY PROMPT (EDITABLE)'}
             </label>
-            <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={5}
+            <textarea value={personality} onChange={e => setPersonality(e.target.value)} rows={4}
               placeholder={boomer ? t('botFactory.createBotPersonalityPlaceholder') : t('botFactory.createBotPersonalityPlaceholderCodename')}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-sky-500/50 focus:outline-none resize-none" />
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:border-sky-500/50 focus:outline-none resize-none"
+              style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }} />
           </div>
+
           <button onClick={handleCreate} disabled={creating || !name.trim()}
             className="w-full py-2.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
             {creating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-            {boomer ? t('botFactory.createBotButton') : t('botFactory.createBotButtonCodename')}
+            {boomer ? t('botFactory.createBotButton') : 'DEPLOY CUSTOM BOT'}
           </button>
         </div>
       </motion.div>
@@ -2294,12 +2816,93 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:border-amber-500/50 focus:outline-none"
                         style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}
                       >
-                        <option value="specialist">SPECIALIST</option>
-                        <option value="researcher">RESEARCHER</option>
-                        <option value="closer">CLOSER</option>
-                        <option value="analyst">ANALYST</option>
-                        <option value="coordinator">COORDINATOR</option>
-                        <option value="scout">SCOUT</option>
+                        <optgroup label="CORE ROLES">
+                          <option value="specialist">SPECIALIST</option>
+                          <option value="researcher">RESEARCHER</option>
+                          <option value="closer">CLOSER</option>
+                          <option value="analyst">ANALYST</option>
+                          <option value="coordinator">COORDINATOR</option>
+                          <option value="scout">SCOUT</option>
+                        </optgroup>
+                        <optgroup label="SALES & OUTREACH">
+                          <option value="cold-outreach">COLD OUTREACH</option>
+                          <option value="lead-qualifier">LEAD QUALIFIER</option>
+                          <option value="pipeline-manager">PIPELINE MANAGER</option>
+                          <option value="upsell-agent">UPSELL AGENT</option>
+                        </optgroup>
+                        <optgroup label="CUSTOMER SERVICE">
+                          <option value="helpdesk-t1">HELPDESK TIER-1</option>
+                          <option value="live-chat">LIVE CHAT AGENT</option>
+                          <option value="faq-responder">FAQ AUTO-RESPONDER</option>
+                          <option value="feedback-collector">FEEDBACK COLLECTOR</option>
+                          <option value="escalation-router">ESCALATION ROUTER</option>
+                        </optgroup>
+                        <optgroup label="MARKETING">
+                          <option value="blog-writer">BLOG WRITER</option>
+                          <option value="email-campaign">EMAIL CAMPAIGN</option>
+                          <option value="seo-optimizer">SEO OPTIMIZER</option>
+                          <option value="ad-copy">AD COPY GENERATOR</option>
+                          <option value="pr-press">PR & PRESS</option>
+                          <option value="localization">LOCALIZATION</option>
+                          <option value="webinar-manager">WEBINAR MANAGER</option>
+                        </optgroup>
+                        <optgroup label="HR & RECRUITING">
+                          <option value="recruiter">RECRUITER</option>
+                          <option value="onboarding">ONBOARDING</option>
+                          <option value="interview-scheduler">INTERVIEW SCHEDULER</option>
+                          <option value="employee-pulse">EMPLOYEE PULSE</option>
+                        </optgroup>
+                        <optgroup label="OPERATIONS">
+                          <option value="appointment-scheduler">APPOINTMENT SCHEDULER</option>
+                          <option value="document-processor">DOCUMENT PROCESSOR</option>
+                          <option value="meeting-notes">MEETING NOTES</option>
+                          <option value="inventory-tracker">INVENTORY TRACKER</option>
+                          <option value="task-dispatcher">TASK DISPATCHER</option>
+                          <option value="workflow-automator">WORKFLOW AUTOMATOR</option>
+                          <option value="knowledge-base">KNOWLEDGE BASE</option>
+                          <option value="vendor-manager">VENDOR MANAGER</option>
+                        </optgroup>
+                        <optgroup label="FINANCE">
+                          <option value="invoice-generator">INVOICE GENERATOR</option>
+                          <option value="expense-tracker">EXPENSE TRACKER</option>
+                          <option value="revenue-reporter">REVENUE REPORTER</option>
+                          <option value="payroll-assistant">PAYROLL ASSISTANT</option>
+                        </optgroup>
+                        <optgroup label="DATA & ANALYTICS">
+                          <option value="report-generator">REPORT GENERATOR</option>
+                          <option value="survey-analyst">SURVEY ANALYST</option>
+                          <option value="competitor-monitor">COMPETITOR MONITOR</option>
+                          <option value="data-cleaner">DATA CLEANER</option>
+                        </optgroup>
+                        <optgroup label="DEVELOPMENT & IT">
+                          <option value="bug-reporter">BUG REPORTER</option>
+                          <option value="deployment-notifier">DEPLOYMENT NOTIFIER</option>
+                          <option value="status-page">STATUS PAGE</option>
+                          <option value="code-reviewer">CODE REVIEWER</option>
+                        </optgroup>
+                        <optgroup label="SOCIAL MEDIA">
+                          <option value="social-scheduler">SOCIAL SCHEDULER</option>
+                          <option value="community-manager">COMMUNITY MANAGER</option>
+                          <option value="influencer-scout">INFLUENCER SCOUT</option>
+                          <option value="review-responder">REVIEW RESPONDER</option>
+                        </optgroup>
+                        <optgroup label="E-COMMERCE">
+                          <option value="order-manager">ORDER MANAGER</option>
+                          <option value="cart-recovery">CART RECOVERY</option>
+                          <option value="product-recommender">PRODUCT RECOMMENDER</option>
+                          <option value="pricing-monitor">PRICING MONITOR</option>
+                        </optgroup>
+                        <optgroup label="LEGAL & COMPLIANCE">
+                          <option value="contract-reviewer">CONTRACT REVIEWER</option>
+                          <option value="compliance-monitor">COMPLIANCE MONITOR</option>
+                          <option value="nda-manager">NDA MANAGER</option>
+                        </optgroup>
+                        <optgroup label="PERSONAL & UTILITY">
+                          <option value="daily-briefing">DAILY BRIEFING</option>
+                          <option value="habit-tracker">HABIT TRACKER</option>
+                          <option value="travel-planner">TRAVEL PLANNER</option>
+                          <option value="email-triage">EMAIL TRIAGE</option>
+                        </optgroup>
                       </select>
                       <button
                         disabled={spawning}
