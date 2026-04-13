@@ -93,6 +93,7 @@ const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
+const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -287,6 +288,7 @@ function AppShell() {
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
+            <Route path="/marketing/social" component={SocialMediaManager} />
             <Route path="/marketing">{() => <Redirect to="/marketing/campaigns" />}</Route>
 
             {/* CONSOLE sub-routes (agents + video moved here) */}
