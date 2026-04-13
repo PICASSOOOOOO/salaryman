@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { apiFetch } from '@/lib/api-client';
+import { usePlan } from '@/hooks/use-plan';
 
 type ComponentType = 'agents' | 'commands' | 'mcps' | 'settings' | 'hooks' | 'skills' | 'templates' | 'sandbox' | 'plugins';
 
@@ -43,6 +44,7 @@ const VISIBLE_TYPES: ComponentType[] = ['agents', 'skills', 'commands', 'mcps', 
 
 export default function ClaudeTemplates() {
   const [boomerMode] = useBoomerMode();
+  const plan = usePlan();
   const [catalog, setCatalog] = useState<Record<string, TemplateComponent[]> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -141,6 +143,16 @@ export default function ClaudeTemplates() {
   const totalCount = useMemo(() => Object.values(typeCounts).reduce((a, b) => a + b, 0), [typeCounts]);
 
   const tc = TYPE_CONFIG[activeType];
+
+  if (!plan.isOwner) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background items-center justify-center p-8">
+        <Shield className="w-10 h-10 text-zinc-600 mb-4" />
+        <p className="text-sm font-mono tracking-widest text-zinc-400 mb-1">ACCESS RESTRICTED</p>
+        <p className="text-xs text-zinc-600">PICASSO ADMIN CREDENTIALS REQUIRED</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
