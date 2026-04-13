@@ -49,6 +49,7 @@ import businessOpsRouter from "./business-ops";
 import vaultRouter from "./vault";
 import mediaRouter from "./media";
 import socialMediaRouter from "./social-media";
+import designStudioRouter from "./design-studio";
 
 const router: IRouter = Router();
 
@@ -102,5 +103,6 @@ router.use(businessOpsRouter);
 router.use(vaultRouter);
 router.use(mediaRouter);
 router.use(socialMediaRouter);
+router.use(designStudioRouter);
 
 export default router;
