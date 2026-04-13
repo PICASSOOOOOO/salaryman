@@ -160,6 +160,7 @@ router.get("/platform/apps", async (req, res) => {
     { slug: "stripe", name: "STRIPE", description: "Payment processing, subscription management, invoice sync", status: "available", icon: "credit-card", category: "finance" },
     { slug: "quickbooks", name: "QUICKBOOKS", description: "Accounting sync — invoices, expenses, P&L, bank reconciliation", status: "available", icon: "calculator", category: "finance" },
     { slug: "shopify", name: "SHOPIFY", description: "E-commerce integration — products, orders, inventory, customers", status: "available", icon: "shopping-bag", category: "commerce" },
+    { slug: "etsy", name: "ETSY", description: "Marketplace integration — listings, orders, reviews, shop analytics", status: "available", icon: "palette", category: "commerce" },
     { slug: "zapier", name: "ZAPIER", description: "Connect to 6,000+ apps with automated workflows and triggers", status: "available", icon: "zap", category: "automation" },
     { slug: "make", name: "MAKE (INTEGROMAT)", description: "Visual workflow automation — connect APIs, transform data, schedule jobs", status: "available", icon: "workflow", category: "automation" },
     { slug: "notion", name: "NOTION", description: "Sync databases, pages, and project boards with Notion workspaces", status: "available", icon: "file-text", category: "productivity" },
