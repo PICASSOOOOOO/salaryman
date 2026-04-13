@@ -85,8 +85,9 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-// Fixed close zoom level — no scroll-wheel zoom
-const ISO_ZOOM_LOCKED = 2.2;
+const ISO_ZOOM_DEFAULT = 2.2;
+const ISO_ZOOM_MIN = 0.8;
+const ISO_ZOOM_MAX = 4.0;
 
 // ── Billboard locations ─────────────────────────────────────────────────────
 interface BillboardDef {
@@ -3251,8 +3252,12 @@ export default function WorldPlay() {
   const chatOpenRef   = useRef(false);
   const isOwnerPlanRef = useRef(isOwnerPlan);
   const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
-  const zoomRef       = useRef(ISO_ZOOM_LOCKED);
-  const targetZoomRef = useRef(ISO_ZOOM_LOCKED);
+  const zoomRef       = useRef(ISO_ZOOM_DEFAULT);
+  const targetZoomRef = useRef(ISO_ZOOM_DEFAULT);
+  const pinchStartDistRef = useRef(0);
+  const pinchStartZoomRef = useRef(ISO_ZOOM_DEFAULT);
+  const touchJoystickRef = useRef<{ active: boolean; startX: number; startY: number; curX: number; curY: number }>({ active: false, startX: 0, startY: 0, curX: 0, curY: 0 });
+  const isTouchDeviceRef = useRef(false);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
   const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
 
@@ -3718,6 +3723,9 @@ export default function WorldPlay() {
   const [isDead,       setIsDead]       = useState(false);
   const [gamePaused,   setGamePaused]   = useState(false);
   const gamePausedRef = useRef(false);
+  const [showMobilePhone, setShowMobilePhone] = useState(false);
+  const [showMobileControls, setShowMobileControls] = useState(true);
+  const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
   const [nearArcadeMachine, setNearArcadeMachine] = useState<string | null>(null);
   const [showNewspaper, setShowNewspaper] = useState<NewspaperIssue | null>(null);
@@ -6490,9 +6498,51 @@ export default function WorldPlay() {
     };
     const handleClick = (e: MouseEvent) => handleInteraction(e.clientX, e.clientY);
     const handleTouch = (e: TouchEvent) => {
+      isTouchDeviceRef.current = true;
+      if (!isTouchDevice) setIsTouchDevice(true);
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDistRef.current = Math.hypot(dx, dy);
+        pinchStartZoomRef.current = targetZoomRef.current;
+        return;
+      }
       if (e.touches.length === 1) {
         e.preventDefault();
-        handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const tx = t.clientX - rect.left;
+        const ty = t.clientY - rect.top;
+        if (tx < rect.width * 0.35 && ty > rect.height * 0.55) {
+          touchJoystickRef.current = { active: true, startX: t.clientX, startY: t.clientY, curX: t.clientX, curY: t.clientY };
+          return;
+        }
+        handleInteraction(t.clientX, t.clientY);
+      }
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (pinchStartDistRef.current > 0) {
+          const scale = dist / pinchStartDistRef.current;
+          targetZoomRef.current = Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_MAX, pinchStartZoomRef.current * scale));
+        }
+        return;
+      }
+      if (e.touches.length === 1 && touchJoystickRef.current.active) {
+        e.preventDefault();
+        touchJoystickRef.current.curX = e.touches[0].clientX;
+        touchJoystickRef.current.curY = e.touches[0].clientY;
+      }
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchStartDistRef.current = 0;
+      if (e.touches.length === 0) {
+        touchJoystickRef.current.active = false;
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
@@ -6533,8 +6583,10 @@ export default function WorldPlay() {
     };
     canvas.addEventListener('click', handleClick);
     canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
     canvas.addEventListener('mousemove', handleMouseMove);
-    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); canvas.removeEventListener('mousemove', handleMouseMove); };
+    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); canvas.removeEventListener('touchmove', handleTouchMove); canvas.removeEventListener('touchend', handleTouchEnd); canvas.removeEventListener('mousemove', handleMouseMove); };
   }, []);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
@@ -6826,7 +6878,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     resize(); window.addEventListener('resize', resize);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      // Zoom is locked at ISO_ZOOM_LOCKED — no scroll-wheel zoom
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      targetZoomRef.current = Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_MAX, targetZoomRef.current + delta));
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
@@ -7325,6 +7378,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.keys.has('arrowright') || g.keys.has('d')) { dx += SPD * vMult; g.moveTarget = null; }
         if (g.keys.has('arrowup')    || g.keys.has('w')) { dy -= SPD * vMult; g.moveTarget = null; }
         if (g.keys.has('arrowdown')  || g.keys.has('s')) { dy += SPD * vMult; g.moveTarget = null; }
+        const joy = touchJoystickRef.current;
+        if (joy.active && dx === 0 && dy === 0) {
+          const jdx = joy.curX - joy.startX;
+          const jdy = joy.curY - joy.startY;
+          const jDist = Math.hypot(jdx, jdy);
+          if (jDist > 10) {
+            const jNorm = Math.min(jDist, 60) / 60;
+            dx = (jdx / jDist) * SPD * vMult * jNorm;
+            dy = (jdy / jDist) * SPD * vMult * jNorm;
+            g.moveTarget = null;
+          }
+        }
         if (dx === 0 && dy === 0 && g.moveTarget) {
           const mtDist = Math.hypot(g.moveTarget.x - g.px, g.moveTarget.y - g.py);
           if (mtDist < 8) { g.moveTarget = null; }
@@ -7974,18 +8039,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
-      // Camera zoom is locked — always snap to ISO_ZOOM_LOCKED
-      const zoomLerp = 0.04;
-      zoomRef.current = ISO_ZOOM_LOCKED;
-      targetZoomRef.current = ISO_ZOOM_LOCKED;
+      const zoomLerp = 0.08;
+      zoomRef.current += (targetZoomRef.current - zoomRef.current) * zoomLerp;
 
-      // Building-entry cinematic zoom transition — keep zoom locked, just run the callback
       const entryZoom = buildingEntryZoomRef.current;
       if (entryZoom.active) {
         entryZoom.timer--;
         if (entryZoom.timer <= 0) {
           entryZoom.active = false;
-          targetZoomRef.current = ISO_ZOOM_LOCKED;
           if (entryZoom.callback) entryZoom.callback();
           entryZoom.callback = null;
         }
@@ -14444,7 +14505,78 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       `}</style>
       {/* Canvas — full screen game world */}
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }} />
+
+      {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
+      {isTouchDevice && showMobileControls && !gamePaused && !isDead && !showMobilePhone && (
+        <>
+          {/* Virtual Joystick — bottom-left */}
+          <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 200, pointerEvents: 'none' }}>
+            <div style={{ width: 110, height: 110, borderRadius: '50%', border: '2px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(56,189,248,.3)', border: '1px solid rgba(56,189,248,.5)', transform: (() => {
+                const j = touchJoystickRef.current;
+                if (!j.active) return 'translate(0,0)';
+                const jdx = j.curX - j.startX;
+                const jdy = j.curY - j.startY;
+                const dist = Math.min(Math.hypot(jdx, jdy), 30);
+                const angle = Math.atan2(jdy, jdx);
+                return `translate(${Math.cos(angle) * dist}px,${Math.sin(angle) * dist}px)`;
+              })(), transition: 'transform 0.05s' }} />
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 4, fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em' }}>MOVE</div>
+          </div>
+
+          {/* Action Buttons — bottom-right */}
+          <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add('e'); setTimeout(() => gs.current.keys.delete('e'), 200); }}
+              style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              E
+            </button>
+            <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add(' '); setTimeout(() => gs.current.keys.delete(' '), 200); }}
+              style={{ width: 50, height: 50, borderRadius: '50%', border: '2px solid rgba(239,68,68,.4)', background: 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              ATK
+            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setShowMobilePhone(true)}
+                style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,10,20,.7)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+                TEL
+              </button>
+              <button onClick={() => setShowInventory(prev => !prev)}
+                style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(255,215,0,.3)', background: 'rgba(20,15,0,.7)', color: '#ffd700', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+                INV
+              </button>
+            </div>
+          </div>
+
+          {/* Zoom Controls — right edge, middle */}
+          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button onClick={() => { targetZoomRef.current = Math.min(ISO_ZOOM_MAX, targetZoomRef.current + 0.3); }}
+              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              +
+            </button>
+            <button onClick={() => { targetZoomRef.current = Math.max(ISO_ZOOM_MIN, targetZoomRef.current - 0.3); }}
+              style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+              −
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── MOBILE PHONE OVERLAY ─────────────────────────────────────── */}
+      {showMobilePhone && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 500, background: 'rgba(0,0,0,.92)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(56,189,248,.2)' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#38bdf8', letterSpacing: '.1em' }}>TTC PHONE</span>
+            <button onClick={() => setShowMobilePhone(false)}
+              style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
+              CLOSE
+            </button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+            <PhoneDialer userId={char?.name ?? 'player'} callerName={char?.name ?? undefined} compact />
+          </div>
+        </div>
+      )}
 
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
@@ -14475,7 +14607,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', maxWidth: 340 }}>
+      <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
         {/* Compact health bar */}
         <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.35)', padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>HP</span>
@@ -14593,8 +14725,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       </div>
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
-      <div style={{ position: 'absolute', bottom: 10, left: 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-        <canvas ref={minimapRef} width={450} height={450} style={{ width: 200, height: 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)' }} />
+      <div style={{ position: 'absolute', bottom: isTouchDevice ? 140 : 10, left: isTouchDevice ? 'auto' : 10, right: isTouchDevice ? 'auto' : undefined, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: isTouchDevice ? 'center' : 'flex-start', gap: '4px', ...(isTouchDevice ? { left: '50%', transform: 'translateX(-50%)' } : {}) }}>
+        <canvas ref={minimapRef} width={450} height={450} style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)' }} />
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
@@ -14617,7 +14749,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* Sound panel is now inside the terminal menu */}
 
       {/* TOP-RIGHT — Pause / Chat / Menu / Pablo dropdown */}
-      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+      <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, right: isTouchDevice ? 6 : 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: isTouchDevice ? '2px' : '4px', transform: isTouchDevice ? 'scale(0.75)' : 'none', transformOrigin: 'top right' }}>
         <div style={{ display: 'flex', gap: '4px', position: 'relative' }} ref={topMenuRef}>
           <button
             onClick={() => {
