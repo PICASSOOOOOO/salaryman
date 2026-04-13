@@ -30,7 +30,6 @@ function BotNameDisplay({ name, className, style }: { name: string; className?: 
 }
 
 type BotStatus = 'active' | 'paused' | 'error';
-type Tab = 'jean-claw' | 'my-bots';
 
 const platformIcons: Record<string, string> = {
   whatsapp: '💬',
@@ -2392,17 +2391,9 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
   );
 }
 
-function tabFromPath(): Tab {
-  const p = window.location.pathname;
-  if (p.includes('/bots/my')) return 'my-bots';
-  if (p.includes('/bots/connectors')) return 'my-bots';
-  return 'jean-claw';
-}
-
 export default function BotFactory() {
   const { t } = useTranslation();
   const [boomerMode] = useBoomerMode();
-  const [tab, setTab] = useState<Tab>(tabFromPath);
   const [bots, setBots] = useState<BotData[]>([]);
   const [marketplace, setMarketplace] = useState<MarketplaceItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<Array<{ marketplaceItemId: number; status: string }>>([]);
@@ -2411,16 +2402,7 @@ export default function BotFactory() {
   const [selectedBot, setSelectedBot] = useState<BotData | null>(null);
   const [connectBot, setConnectBot] = useState<BotData | null>(null);
   const [activating, setActivating] = useState<number | null>(null);
-  const [jeanClawSkills, setJeanClawSkills] = useState<Record<string, boolean>>({
-    sales_closer: true,
-    customer_support: true,
-    content_writer: true,
-    ai_recruiter: true,
-    linkedin_prospector: true,
-    fb_ig_scout: true,
-    trading_bot: true,
-    podcast_academy: true,
-  });
+  const [search, setSearch] = useState('');
 
   const { isAuthenticated } = useAuth();
   const plan = usePlan();
@@ -2455,7 +2437,6 @@ export default function BotFactory() {
     const params = new URLSearchParams(window.location.search);
     const checkout = params.get('checkout');
     if (checkout === 'success') {
-      setTab('my-bots');
       window.history.replaceState({}, '', window.location.pathname);
     } else if (checkout === 'cancel') {
       window.history.replaceState({}, '', window.location.pathname);
@@ -2472,7 +2453,6 @@ export default function BotFactory() {
       });
       if (res.ok) {
         await Promise.all([loadBots(), loadMarketplace()]);
-        setTab('my-bots');
       } else {
         const data = await res.json().catch(() => ({}));
         if (data.requiresUpgrade) {
@@ -2522,56 +2502,6 @@ export default function BotFactory() {
             </div>
           </div>
 
-          {!hasAccess && (
-            <div onClick={() => setTab('jean-claw')}
-              className="block mb-6 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/[0.08] via-emerald-500/[0.04] to-transparent p-4 hover:border-emerald-500/40 transition-all group cursor-pointer">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                  <Bot className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em', fontSize: '1rem' }}>JEAN CLAW</span>
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">$145/MO</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {boomerMode
-                      ? '7 AI agents across 8 channels. Sales, support, recruiting, content, prospecting, scouting, and trading — all automated.'
-                      : 'SEVEN AUTONOMOUS AGENTS. EIGHT CHANNELS. SALES. SUPPORT. RECRUITING. CONTENT. PROSPECTING. SCOUTING. TRADING.'}
-                  </p>
-                </div>
-                <div className="shrink-0 flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors group-hover:shadow-lg group-hover:shadow-emerald-500/20">
-                  <Zap className="w-3.5 h-3.5" />
-                  {boomerMode ? 'SEE DETAILS' : 'VIEW INTEL'}
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 mb-6 flex-wrap">
-            <button onClick={() => setTab('jean-claw')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
-              <Sparkles className="w-4 h-4" />
-              JEAN CLAW — 78 BOTS
-            </button>
-            <button onClick={() => setTab('my-bots')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'my-bots' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
-              <Bot className="w-4 h-4" />
-              {boomerMode ? t('botFactory.tabMyBots') : t('botFactory.tabMyBotsCodename')}
-              {bots.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400">{bots.length}</span>
-              )}
-            </button>
-            {tab === 'my-bots' && (
-              <button onClick={() => setShowCreate(true)}
-                className="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors">
-                <Plus className="w-4 h-4" />
-                {boomerMode ? t('botFactory.newBot') : t('botFactory.newBotCodename')}
-              </button>
-            )}
-          </div>
-
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Bot className="w-6 h-6 animate-pulse mr-3" />
@@ -2579,449 +2509,206 @@ export default function BotFactory() {
                 {boomerMode ? t('botFactory.loadingBots') : t('botFactory.loadingBotsCodename')}
               </span>
             </div>
-          ) : tab === 'jean-claw' ? (
-            <div className="space-y-6">
+          ) : (
+            <div className="space-y-5">
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-80 h-80 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 right-0 w-60 h-60 bg-emerald-500/3 blur-[80px] rounded-full pointer-events-none" />
-
-                <div className="relative z-10 p-6">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                      <Bot className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1 flex-wrap">
-                        <h2 className="font-bold text-foreground text-2xl" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '2rem' }}>
-                          JEAN CLAW
-                        </h2>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          {hasAccess ? 'ACTIVE' : 'FLAGSHIP PRODUCT'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {boomerMode
-                          ? 'The complete AI workforce. Seven specialized agents that automate sales, support, content, recruiting, prospecting, social intelligence, and trading — deployed across every channel.'
-                          : 'SEVEN BATTLE-TESTED AGENTS. ONE SUBSCRIPTION. DEPLOY ACROSS EVERY CHANNEL. AUTOMATE EVERYTHING.'}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-2xl font-bold text-emerald-400" style={{ fontFamily: "'VT323', monospace" }}>$145</div>
-                      <div className="text-[10px] text-muted-foreground/50">/ MONTH</div>
-                    </div>
+                className="rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent p-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-60 h-60 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <Bot className="w-6 h-6 text-emerald-400" />
                   </div>
-
-                  <div className="h-px bg-emerald-500/10 mb-5" />
-
-                  <div className="mb-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Zap className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-                        {boomerMode ? 'INCLUDED AGENT SKILLS' : 'AGENT SKILLS // OPERATIONAL'}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <h2 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.4rem' }}>
+                        JEAN CLAW
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {hasAccess ? 'ACTIVE' : '$145/MO'}
                       </span>
-                      <div className="flex-1 h-px bg-emerald-500/10" />
-                      <span className="text-[10px] font-mono text-emerald-500/50">
-                        {Object.values(jeanClawSkills).filter(Boolean).length}/8 ACTIVE
-                      </span>
+                      <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} BOTS</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {[
-                        { key: 'sales_closer', label: 'AI SALES CLOSER', icon: Target, color: '#f59e0b', desc: 'Qualifies leads, handles objections, books meetings, moves deals through your pipeline 24/7.', channels: ['Telegram', 'WhatsApp', 'Email'], stat: '3X PIPELINE' },
-                        { key: 'customer_support', label: 'CUSTOMER SUPPORT', icon: MessageSquare, color: '#3b82f6', desc: 'Resolves tier-1 & tier-2 tickets, answers FAQs, processes refunds, escalates with full context.', channels: ['Telegram', 'WhatsApp', 'Discord', 'Email'], stat: '90% RESOLVED' },
-                        { key: 'content_writer', label: 'CONTENT WRITER', icon: PenTool, color: '#a855f7', desc: 'Blog posts, social captions, ad copy, email campaigns in your brand voice. SEO optimized.', channels: ['Email', 'Web'], stat: '10X OUTPUT' },
-                        { key: 'ai_recruiter', label: 'AI RECRUITER', icon: Users, color: '#10b981', desc: 'Screens candidates, conducts first-round interviews, generates scorecards, schedules follow-ups.', channels: ['Telegram', 'WhatsApp', 'Email'], stat: '70% FASTER' },
-                        { key: 'linkedin_prospector', label: 'LINKEDIN PROSPECTOR', icon: Search, color: '#0ea5e9', desc: 'Finds decision-makers by title, industry, company size. Auto-populates CRM with scored leads.', channels: ['LinkedIn', 'Email'], stat: '500+ LEADS' },
-                        { key: 'fb_ig_scout', label: 'FB & IG SCOUT', icon: Eye, color: '#ec4899', desc: 'Monitors Groups, Pages, business profiles for buying signals. Tags leads by intent level.', channels: ['Facebook', 'Instagram'], stat: 'REAL-TIME' },
-                        { key: 'trading_bot', label: 'TRADING BOT', icon: TrendingUp, color: '#22c55e', desc: 'Stock & options via thinkorswim. Covered calls, iron condors, momentum. Paper Trading default.', channels: ['thinkorswim'], stat: 'AUTOMATED' },
-                        { key: 'podcast_academy', label: 'PODCAST & ACADEMY', icon: Users, color: '#8b5cf6', desc: 'Hosts podcast episodes, teaches vibe coding, no-code workflows, AI tools, business skills. Full course builder with certs.', channels: ['Web', 'YouTube', 'Telegram'], stat: 'ALWAYS ON' },
-                      ].map(skill => {
-                        const SkillIcon = skill.icon;
-                        const checked = jeanClawSkills[skill.key] ?? true;
-                        return (
-                          <motion.div key={skill.key}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className={`rounded-xl border p-4 transition-all cursor-pointer group ${
-                              checked
-                                ? 'border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/40 hover:bg-emerald-500/[0.08]'
-                                : 'border-border/20 bg-transparent opacity-30 hover:opacity-50'
-                            }`}
-                            onClick={() => setJeanClawSkills(prev => ({ ...prev, [skill.key]: !checked }))}
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className={`w-9 h-9 rounded-lg border flex items-center justify-center ${
-                                checked ? 'border-emerald-500/25' : 'border-border/20'
-                              }`} style={{ background: checked ? `${skill.color}15` : 'transparent' }}>
-                                <SkillIcon className="w-4.5 h-4.5" style={{ color: checked ? skill.color : 'rgba(161,161,170,0.3)' }} />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {checked && (
-                                  <span className="text-[8px] font-bold tracking-wider" style={{ color: skill.color }}>{skill.stat}</span>
-                                )}
-                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
-                                  checked ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/20'
-                                }`}>
-                                  {checked && <Check className="w-3 h-3 text-white" />}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`text-[11px] font-bold uppercase tracking-wider ${checked ? 'text-foreground' : 'text-muted-foreground/30'}`}>
-                                {skill.label}
-                              </span>
-                              {checked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                            </div>
-                            <p className={`text-[10px] leading-relaxed mb-2 ${checked ? 'text-muted-foreground/60' : 'text-muted-foreground/20'}`}>
-                              {skill.desc}
-                            </p>
-                            {checked && (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {skill.channels.map(ch => (
-                                  <span key={ch} className="px-1.5 py-0.5 rounded text-[7px] font-mono tracking-wider border" style={{ color: `${skill.color}80`, borderColor: `${skill.color}20`, background: `${skill.color}08` }}>
-                                    {ch}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </div>
+                    <p className="text-[11px] text-muted-foreground/60">
+                      {boomerMode ? '78 bots. 7 agents. 8 channels. One subscription.' : '78 BOTS // 7 AGENTS // 8 CHANNELS // ONE SUB'}
+                    </p>
                   </div>
-
-                  <div className="h-px bg-emerald-500/10 mb-5" />
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                    {[
-                      { label: 'PABLO CALL AGENT', icon: Phone },
-                      { label: 'AI SECRETARY', icon: Settings },
-                      { label: 'ALL PREMIUM BOTS', icon: Bot },
-                      { label: 'FUTURE AGENTS', icon: Sparkles },
-                    ].map(perk => {
-                      const PerkIcon = perk.icon;
-                      return (
-                        <div key={perk.label} className="flex items-center gap-2 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.02] p-3">
-                          <PerkIcon className="w-3.5 h-3.5 text-emerald-400/60 shrink-0" />
-                          <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider">{perk.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="shrink-0 flex items-center gap-2">
                     {hasAccess ? (
-                      <>
-                        <button onClick={() => { const clawBotItem = marketplace.find(i => i.slug === 'claw-bot'); if (clawBotItem) activateMarketplaceBot(clawBotItem); }}
-                          className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-lg shadow-emerald-500/20">
-                          <Sparkles className="w-4 h-4" />
-                          {boomerMode ? 'DEPLOY JEAN CLAW' : '// DEPLOY JEAN CLAW'}
-                        </button>
-                        <button onClick={() => setTab('my-bots')}
-                          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-colors">
-                          <Settings className="w-4 h-4" />
-                          MANAGE BOTS
-                        </button>
-                      </>
+                      <a href={`${import.meta.env.BASE_URL}jean-claw`}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 transition-colors no-underline">
+                        <ExternalLink className="w-3 h-3" /> DETAILS
+                      </a>
                     ) : (
                       <button onClick={() => navigate('/pricing')}
-                        className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/30">
-                        <Zap className="w-4 h-4" />
-                        {boomerMode ? 'ACTIVATE JEAN CLAW — $145/MO' : 'ACTIVATE JEAN CLAW — $145/MO'}
-                        <ChevronRight className="w-4 h-4" />
+                        className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors shadow-lg shadow-emerald-500/20">
+                        <Zap className="w-3.5 h-3.5" /> ACTIVATE
                       </button>
                     )}
                   </div>
                 </div>
               </motion.div>
 
-              <div className="rounded-xl border border-border/50 bg-card/30 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="w-4 h-4 text-sky-400/60" />
-                  <span className="text-xs font-bold text-sky-400/80 uppercase tracking-wider">FREE WITH PABLO</span>
-                  <div className="flex-1 h-px bg-sky-500/10" />
+              <div className="flex items-center gap-3">
+                <div className="flex-1 relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
+                  <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                    placeholder={boomerMode ? 'Search bots...' : 'SEARCH BOTS...'}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/30 focus:border-emerald-500/30 focus:outline-none transition-colors"
+                    style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }} />
                 </div>
-                <p className="text-xs text-muted-foreground/60 leading-relaxed mb-3">
-                  {boomerMode
-                    ? 'Pablo handles all the basics for free — chat, voice, translation, website analysis, CRM, calendar, documents, invoices, dashboard, and more. Jean Claw adds the advanced automation layer on top.'
-                    : 'PABLO HANDLES CORE OPS — CHAT, VOICE, TRANSLATION, ANALYSIS, CRM, CALENDAR, DOCUMENTS, INVOICES, DASHBOARD. JEAN CLAW ADDS ADVANCED AUTOMATION + MULTI-CHANNEL DEPLOYMENT.'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {['AI CHAT', 'VOICE MODE', 'TRANSLATOR', 'WEBSITE ANALYZER', 'CRM', 'CALENDAR', 'DOCUMENTS', 'INVOICES', 'DASHBOARD', 'STUDIO', 'REPORTS'].map(feat => (
-                    <span key={feat} className="px-2 py-1 rounded-lg text-[9px] font-bold text-emerald-400/60 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
-                      {feat}
-                    </span>
-                  ))}
-                </div>
+                <button onClick={() => setShowCreate(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors shrink-0">
+                  <Plus className="w-3.5 h-3.5" />
+                  {boomerMode ? 'CUSTOM' : '+ CUSTOM'}
+                </button>
               </div>
 
-              {(() => {
-                const freeItems = marketplace.filter(i => i.priceMonthly === 0 && i.slug !== 'claw-bot');
-                const paidItems = marketplace.filter(i => i.priceMonthly > 0);
-                const categories: Record<string, MarketplaceItem[]> = {};
-                for (const item of paidItems) {
-                  if (!categories[item.category]) categories[item.category] = [];
-                  categories[item.category].push(item);
-                }
-
-                return (
-                  <>
-                    {freeItems.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {boomerMode ? 'FREE BOTS' : 'FREE // NO COST'}
-                          </span>
-                          <div className="flex-1 h-px bg-emerald-500/20" />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <AnimatePresence>
-                            {freeItems.map((item, i) => {
-                              const Icon = getIcon(item.icon);
-                              const sub = subscriptions.find(s => s.marketplaceItemId === item.id);
-                              const isActive = sub?.status === 'active';
-                              return (
-                                <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: i * 0.05 }}
-                                  className="rounded-2xl border border-emerald-500/15 bg-card p-5">
-                                  <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-xl border bg-emerald-500/10 border-emerald-500/25 flex items-center justify-center shrink-0">
-                                      <Icon className="w-5 h-5 text-emerald-400" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <BotNameDisplay name={item.name} className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }} />
-                                        <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
-                                      </div>
-                                      <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
-                                      <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
-                                      <div className="flex flex-wrap gap-1 mb-3">
-                                        {item.capabilities.map(cap => (
-                                          <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
-                                        ))}
-                                      </div>
-                                      {isActive ? (
-                                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
-                                          <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
-                                        </span>
-                                      ) : (
-                                        <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
-                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50">
-                                          {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                          {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
-                          </AnimatePresence>
-                        </div>
-                      </div>
-                    )}
-
-                    {Object.entries(categories).map(([category, items]) => {
-                      const isTrading = category === 'trading';
-                      return (
-                      <div key={category} className="mb-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isTrading ? 'text-green-400' : 'text-sky-400'}`} style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                            {isTrading ? (boomerMode ? '📈 TRADING BOTS' : '▲ TRADING AGENTS') : category}
-                          </span>
-                          <div className={`flex-1 h-px ${isTrading ? 'bg-green-500/20' : 'bg-sky-500/20'}`} />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <AnimatePresence>
-                            {items.map((item, i) => {
-                              const Icon = getIcon(item.icon);
-                              const sub = subscriptions.find(s => s.marketplaceItemId === item.id);
-                              const isActive = sub?.status === 'active';
-                              const isCanceled = sub?.status === 'canceled';
-                              return (
-                                <motion.div key={item.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: i * 0.05 }}
-                                  className={`rounded-2xl border bg-card p-5 ${isTrading ? 'border-green-500/20 bg-green-500/5' : item.featured ? 'border-amber-500/20' : 'border-border'}`}>
-                                  <div className="flex items-start gap-3">
-                                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isTrading ? 'bg-green-500/10 border-green-500/25' : item.featured ? 'bg-amber-500/10 border-amber-500/25' : 'bg-sky-500/10 border-sky-500/25'}`}>
-                                      <Icon className={`w-5 h-5 ${isTrading ? 'text-green-400' : item.featured ? 'text-amber-400' : 'text-sky-400'}`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <BotNameDisplay name={item.name} className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }} />
-                                        <PriceBadge price={item.priceMonthly} boomer={boomerMode} t={t} />
-                                        {isActive && (
-                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                            {boomerMode ? 'ACTIVE' : '// ACTIVE'}
-                                          </span>
-                                        )}
-                                        {isCanceled && (
-                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/25"
-                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                            {boomerMode ? 'CANCELED' : '// CANCELED'}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-xs text-muted-foreground mb-2">{item.tagline}</p>
-                                      <p className="text-xs text-muted-foreground/70 leading-relaxed mb-3">{item.description}</p>
-                                      <div className="flex flex-wrap gap-1 mb-3">
-                                        {item.capabilities.map(cap => (
-                                          <span key={cap} className="px-1.5 py-0.5 rounded text-[9px] text-muted-foreground/50 border border-border/50"
-                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{cap}</span>
-                                        ))}
-                                      </div>
-                                      {isActive ? (
-                                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
-                                          <Check className="w-3.5 h-3.5" /> {boomerMode ? t('botFactory.activated') : t('botFactory.activatedCodename')}
-                                        </span>
-                                      ) : (
-                                        <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
-                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors disabled:opacity-50">
-                                          {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                                          {boomerMode ? t('botFactory.activate') : t('botFactory.activateCodename')}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
-                          </AnimatePresence>
-                        </div>
-                      </div>
-                    );
-                    })}
-                  </>
-                );
-              })()}
-          </div>
-          ) : (
-            <div className="space-y-4">
-              {bots.length === 0 ? (
-                <div className="rounded-xl border border-border bg-card/50 p-12 text-center">
-                  <Bot className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {boomerMode ? t('botFactory.noBotsYet') : t('botFactory.noBotsYetCodename')}
-                  </p>
-                  <div className="flex items-center justify-center gap-3">
-                    <button onClick={() => setShowCreate(true)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white transition-colors">
-                      <Plus className="w-4 h-4" /> {boomerMode ? t('botFactory.createBot') : t('botFactory.createBotCodename')}
-                    </button>
-                    <button onClick={() => setTab('jean-claw')}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/20 transition-colors">
-                      <Sparkles className="w-4 h-4" /> JEAN CLAW'S ROSTER
-                    </button>
+              {bots.some(b => b.collaborationEnabled) && (
+                <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-3.5 h-3.5 text-violet-400" />
+                    <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">TEAM</span>
+                    <div className="flex-1 h-px bg-violet-500/10" />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {bots.filter(b => b.collaborationEnabled).map(b => (
+                      <span key={b.id} className="px-2 py-0.5 rounded text-[9px] font-bold border border-violet-500/20 bg-violet-500/[0.06] text-violet-300 flex items-center gap-1"
+                        style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />
+                        {b.name.toUpperCase()}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <>
-                {bots.some(b => b.collaborationEnabled) && (
-                  <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4 mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Users className="w-4 h-4 text-violet-400" />
-                      <span className="text-xs font-bold text-violet-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                        COLLABORATION MODE
-                      </span>
-                      <div className="flex-1 h-px bg-violet-500/10" />
-                      <span className="text-[10px] text-violet-400/50 font-mono">
-                        {bots.filter(b => b.collaborationEnabled).length} BOTS TEAMED
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60 leading-relaxed mb-3">
-                      TEAMED BOTS SHARE CONTEXT, DELEGATE TASKS TO EACH OTHER, AND CAN SPAWN CUSTOM SUB-BOTS TO HANDLE SPECIALIZED WORK. EACH BOT CONTRIBUTES ITS PERMISSIONS AND SKILLS TO THE COLLECTIVE.
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {bots.filter(b => b.collaborationEnabled).map(b => (
-                        <span key={b.id} className="px-2 py-1 rounded-lg text-[9px] font-bold border border-violet-500/20 bg-violet-500/[0.06] text-violet-300 flex items-center gap-1.5"
+              )}
+
+              {(() => {
+                const q = search.toLowerCase().trim();
+                const allItems = marketplace.filter(i => i.slug !== 'claw-bot');
+                const filtered = q ? allItems.filter(i => i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q) || i.tagline.toLowerCase().includes(q)) : allItems;
+                const categories: Record<string, MarketplaceItem[]> = {};
+                for (const item of filtered) {
+                  const cat = item.priceMonthly === 0 ? 'free' : item.category;
+                  if (!categories[cat]) categories[cat] = [];
+                  categories[cat].push(item);
+                }
+                const catOrder = ['free', ...Object.keys(categories).filter(c => c !== 'free').sort()];
+
+                const activeBotIds = new Set(bots.map(b => b.marketplaceItemId).filter(Boolean));
+
+                return catOrder.filter(c => categories[c]).map(category => {
+                  const items = categories[category];
+                  const isTrading = category === 'trading';
+                  const isFree = category === 'free';
+                  const catTextClass = isFree ? 'text-emerald-400' : isTrading ? 'text-green-400' : 'text-sky-400';
+                  const catLineClass = isFree ? 'bg-emerald-500/20' : isTrading ? 'bg-green-500/20' : 'bg-sky-500/20';
+                  return (
+                    <div key={category}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${catTextClass}`}
                           style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                          {b.name.toUpperCase()}
-                          {b.collaborationRole && <span className="text-violet-400/40">· {b.collaborationRole.toUpperCase()}</span>}
+                          {isFree ? (boomerMode ? 'FREE' : 'FREE // NO COST') : isTrading ? (boomerMode ? 'TRADING' : 'TRADING AGENTS') : category.toUpperCase()}
                         </span>
-                      ))}
+                        <div className={`flex-1 h-px ${catLineClass}`} />
+                        <span className="text-[9px] text-muted-foreground/30 font-mono">{items.length}</span>
+                      </div>
+                      <div className="space-y-1.5 mb-4">
+                        {items.map(item => {
+                          const Icon = getIcon(item.icon);
+                          const sub = subscriptions.find(s => s.marketplaceItemId === item.id);
+                          const isActive = sub?.status === 'active' || activeBotIds.has(item.id);
+                          const isCanceled = sub?.status === 'canceled';
+                          const activatedBot = bots.find(b => b.marketplaceItemId === item.id);
+                          return (
+                            <motion.div key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all ${
+                                isActive ? 'border-emerald-500/20 bg-emerald-500/[0.03]' : isCanceled ? 'border-red-500/15 bg-red-500/[0.02]' : 'border-border/50 bg-card/50 hover:border-emerald-500/15'
+                              }`}>
+                              <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${
+                                isTrading ? 'bg-green-500/10 border-green-500/20' : isFree ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-sky-500/10 border-sky-500/20'
+                              }`}>
+                                <Icon className={`w-4 h-4 ${isTrading ? 'text-green-400' : isFree ? 'text-emerald-400' : 'text-sky-400'}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <BotNameDisplay name={item.name} className="font-bold text-foreground text-xs" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '0.95rem' }} />
+                                  {item.priceMonthly > 0 && (
+                                    <span className="text-[9px] text-muted-foreground/40 font-mono">${item.priceMonthly}/mo</span>
+                                  )}
+                                  {isCanceled && <span className="text-[8px] font-bold text-red-400">CANCELED</span>}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground/50 truncate">{item.tagline}</p>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-2">
+                                {activatedBot && (
+                                  <>
+                                    <button onClick={(e) => { e.stopPropagation(); setConnectBot(activatedBot); }}
+                                      className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground/40 hover:text-sky-400 transition-colors" title="Connect platform">
+                                      <Plug className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setSelectedBot(activatedBot); }}
+                                      className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground/40 hover:text-foreground transition-colors" title="Settings">
+                                      <Settings className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                                {isActive ? (
+                                  <span className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                    <Check className="w-3 h-3" /> ACTIVE
+                                  </span>
+                                ) : (
+                                  <button onClick={() => activateMarketplaceBot(item)} disabled={activating === item.id}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50">
+                                    {activating === item.id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3 h-3" />}
+                                    ACTIVATE
+                                  </button>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
                     </div>
+                  );
+                });
+              })()}
+
+              {bots.filter(b => !b.marketplaceItemId).length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                      CUSTOM BOTS
+                    </span>
+                    <div className="flex-1 h-px bg-amber-500/20" />
                   </div>
-                )}
-                <AnimatePresence>
-                  {bots.map((bot, i) => {
-                    const sub = bot.marketplaceItemId
-                      ? subscriptions.find(s => s.marketplaceItemId === bot.marketplaceItemId)
-                      : null;
-                    const marketplaceItem = bot.marketplaceItemId
-                      ? marketplace.find(m => m.id === bot.marketplaceItemId)
-                      : null;
-                    return (
-                      <motion.div key={bot.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="rounded-2xl border border-border bg-card p-5 cursor-pointer hover:border-sky-500/20 transition-colors"
+                  <div className="space-y-1.5">
+                    {bots.filter(b => !b.marketplaceItemId).map(bot => (
+                      <div key={bot.id}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-500/15 bg-amber-500/[0.02] cursor-pointer hover:border-amber-500/30 transition-colors"
                         onClick={() => setSelectedBot(bot)}>
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
-                            <Bot className="w-6 h-6 text-sky-400" />
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                          <Bot className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground text-xs" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '0.95rem' }}>
+                              {bot.name.toUpperCase()}
+                            </span>
+                            <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                {bot.name.toUpperCase()}
-                              </h3>
-                              <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
-                              {marketplaceItem && marketplaceItem.priceMonthly > 0 && (
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${sub?.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' : sub?.status === 'canceled' ? 'bg-red-500/15 text-red-400 border-red-500/25' : 'bg-sky-500/15 text-sky-400 border-sky-500/25'}`}
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  {sub?.status === 'canceled'
-                                    ? (boomerMode ? 'Subscription Canceled' : '// SUB CANCELED')
-                                    : (boomerMode ? 'Subscribed' : '// SUBSCRIBED')
-                                  }
-                                </span>
-                              )}
-                              {(!marketplaceItem || marketplaceItem.priceMonthly === 0) && bot.marketplaceItemId && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  {boomerMode ? 'Free' : '// FREE'}
-                                </span>
-                              )}
-                              {bot.collaborationEnabled && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/25"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  TEAM
-                                </span>
-                              )}
-                              {bot.parentBotId && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  CUSTOM
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Plug className="w-3 h-3" />
-                                {bot.connections.length} {boomerMode ? t('botFactory.connections') : t('botFactory.connectionsCodename')}
-                              </span>
-                              {bot.connections.map(c => (
-                                <span key={c.id} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{c.platform.toUpperCase()}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={e => { e.stopPropagation(); setConnectBot(bot); }}
-                              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-sky-400 hover:border-sky-500/20 transition-colors"
-                              title={boomerMode ? t('botFactory.connectPlatformTitle') : t('botFactory.connectPlatformTitleCodename')}>
-                              <Plug className="w-4 h-4" />
-                            </button>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50">
+                            <span>{bot.connections.length} connections</span>
+                            {bot.connections.map(c => (
+                              <span key={c.id} className="px-1 py-0.5 rounded text-[8px] font-mono border border-border/30">{c.platform.toUpperCase()}</span>
+                            ))}
                           </div>
                         </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-                </>
+                        <Settings className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -3033,44 +2720,6 @@ export default function BotFactory() {
         {selectedBot && <BotDetailModal bot={selectedBot} onClose={() => setSelectedBot(null)} onRefresh={() => { loadBots(); setSelectedBot(null); }} boomer={boomerMode} t={t} />}
         {connectBot && <ConnectPlatformModal bot={connectBot} onClose={() => setConnectBot(null)} onConnected={loadBots} boomer={boomerMode} t={t} />}
       </AnimatePresence>
-
-      <div className="relative z-10 px-4 md:px-6 pb-6">
-        <div className="max-w-4xl mx-auto">
-          <motion.a href={`${import.meta.env.BASE_URL}jean-claw`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="block rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.04] via-transparent to-emerald-500/[0.02] overflow-hidden no-underline hover:border-emerald-500/30 transition-all group">
-            <div className="relative p-5">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
-              <div className="flex items-center gap-4 relative z-10">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                  <Bot className="w-7 h-7 text-emerald-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-foreground text-sm" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.08em', fontSize: '1.1rem' }}>
-                      {boomerMode ? 'POWER YOUR BUSINESS WITH JEAN CLAW' : 'JEAN CLAW // FLAGSHIP PRODUCT'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
-                    {boomerMode
-                      ? 'Jean Claw is how Picasso.AI keeps the lights on. Your subscription funds the servers, the free tools, and the entire platform. 78 bots. 8 channels. One price.'
-                      : 'YOUR SUBSCRIPTION POWERS THE SERVERS. FUNDS THE FREE TOOLS. KEEPS THE PLATFORM ALIVE. 7 AGENTS. 8 CHANNELS. $145/MO.'}
-                  </p>
-                </div>
-                <div className="shrink-0 flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-emerald-500 group-hover:bg-emerald-400 text-black transition-all shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/30">
-                  <Sparkles className="w-4 h-4" />
-                  {hasAccess ? 'VIEW PLAN' : (boomerMode ? 'LEARN MORE' : 'FULL BRIEFING')}
-                  <ExternalLink className="w-3 h-3" />
-                </div>
-              </div>
-              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-emerald-500/10 relative z-10 overflow-x-auto">
-                {['SALES CLOSER', 'CUSTOMER SUPPORT', 'CONTENT WRITER', 'AI RECRUITER', 'LINKEDIN PROSPECTOR', 'FB & IG SCOUT', 'TRADING BOT'].map(skill => (
-                  <span key={skill} className="text-[7px] font-bold text-emerald-400/40 uppercase tracking-widest whitespace-nowrap">{skill}</span>
-                ))}
-              </div>
-            </div>
-          </motion.a>
-        </div>
-      </div>
     </div>
   );
 }
