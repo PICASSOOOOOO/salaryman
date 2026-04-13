@@ -15834,12 +15834,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.2rem' }}>
                           <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>TRANSLATION OUTPUT</div>
                           <button onClick={() => {
-                            const u = new SpeechSynthesisUtterance(translatorResult);
-                            const langMap: Record<string,string> = { en:'en-US',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-BR',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',vi:'vi-VN',th:'th-TH',tl:'fil-PH',id:'id-ID',ms:'ms-MY',ar:'ar-SA',ru:'ru-RU',hi:'hi-IN',it:'it-IT',nl:'nl-NL',sv:'sv-SE',pl:'pl-PL',tr:'tr-TR' };
-                            u.lang = langMap[translatorTo] ?? translatorTo;
-                            u.rate = 0.9;
-                            window.speechSynthesis.cancel();
-                            window.speechSynthesis.speak(u);
+                            speakWithTTS(translatorResult, () => {}, undefined);
                           }} style={{ padding: '.2rem .5rem', background: 'rgba(56,189,248,.07)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', cursor: 'pointer', fontFamily: "'VT323',monospace", fontSize: '.7rem', letterSpacing: '.06em' }}>
                             🔊 HEAR IT
                           </button>

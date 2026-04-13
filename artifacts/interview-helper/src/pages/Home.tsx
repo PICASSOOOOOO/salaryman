@@ -967,12 +967,7 @@ export default function Home() {
                 <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 flex items-start gap-2">
                   <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300 flex-1`} style={{ fontFamily: "'Share Tech Mono', monospace", lineHeight: 1.6 }}>{translatorResult}</p>
                   <button onClick={() => {
-                    const u = new SpeechSynthesisUtterance(translatorResult);
-                    const langMap: Record<string,string> = { en:'en-US',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-BR',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',vi:'vi-VN',th:'th-TH',tl:'fil-PH',id:'id-ID',ms:'ms-MY',ar:'ar-SA',ru:'ru-RU',hi:'hi-IN',it:'it-IT',nl:'nl-NL',sv:'sv-SE',pl:'pl-PL',tr:'tr-TR' };
-                    u.lang = langMap[translatorTo] ?? translatorTo;
-                    u.rate = 0.9;
-                    window.speechSynthesis.cancel();
-                    window.speechSynthesis.speak(u);
+                    speakWithTTS(translatorResult, () => {}, undefined);
                   }}
                     className="shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors"
                     title="Hear translation">
