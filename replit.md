@@ -62,3 +62,11 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Database:** PostgreSQL
 - **Payment Processing:** Stripe
 - **Music Generation:** Replicate MusicGen API
+
+## Versioning
+
+- **VERSION file** at repo root holds the current serial (e.g. `2.8`).
+- **`prebuild` hook** in root `package.json` auto-bumps the minor serial on every `pnpm run build`.  Since Replit deployment calls `pnpm run build`, every publish increments the version automatically.
+- **`version-utils.cjs`** provides `bumpVersion()`, `getFormattedVersion()`, and changelog generation.
+- **`CHANGELOG.json`** (and mirrored to `artifacts/interview-helper/src/changelog.json`) tracks version history with dates, commit hashes, and auto-generated change summaries from git log.
+- **`__BUILD_VERSION__`** Vite define injects the formatted version (e.g. `v.2.8`) into the frontend at build time, displayed as "ALPHA v.2.8" in the NavBar, phone dialer, and terminal subtitle.

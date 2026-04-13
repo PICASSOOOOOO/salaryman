@@ -163,5 +163,17 @@
     "changes": [
       "Bug fixes and improvements"
     ]
+  },
+  {
+    "version": "v.2.8",
+    "date": "2026-04-13",
+    "commitHash": "8bdb65f6991f924d7f78bebf951ad7f82627ab22",
+    "changes": [
+      "Published your App",
+      "Expand office floors and add new amenities and furniture",
+      "Add fast travel option to mobile directory for easy building navigation",
+      "Update the directory to navigate floors within a building",
+      "Restrict mobile players to interiors and add a building directory"
+    ]
   }
 ]

@@ -5,9 +5,9 @@
     "commitHash": null,
     "changes": [
       "Initial alpha launch",
-      "CIPHER-X interview solver",
-      "PABLO chat assistant",
-      "Account creation and sign-in"
+      "CIPHER-X interview solver core",
+      "PABLO AI chat",
+      "Basic cover and auth flow"
     ]
   },
   {
@@ -15,8 +15,8 @@
     "date": "2025-10-18",
     "commitHash": null,
     "changes": [
-      "Screen scan module — real-time screen analysis",
-      "Live listen — audio capture and transcription",
+      "Screen scan module added",
+      "Live listen audio capture",
       "Auto-type printer mode"
     ]
   },
@@ -35,9 +35,9 @@
     "date": "2025-11-22",
     "commitHash": null,
     "changes": [
-      "Phone system with built-in dialer",
+      "Phone system and dialer",
       "Voicemail and call log",
-      "Dialing sessions with AI coaching"
+      "Dialing sessions and AI coach"
     ]
   },
   {
@@ -45,7 +45,7 @@
     "date": "2025-12-10",
     "commitHash": null,
     "changes": [
-      "Payments and module store",
+      "Stripe payments and module store",
       "Invoices and billing tools",
       "Revenue and expense tracking"
     ]
@@ -76,10 +76,10 @@
     "date": "2026-04-09",
     "commitHash": "eaabb62c36022925542cda71e0e525b240a2a39e",
     "changes": [
-      "Production Studio (PRD-X) — AI image and video generation",
-      "All paid APIs now gated behind Jean Claw subscription",
-      "Phone system renamed to GO ACTIVE with live call monitor",
-      "Live transcript panel with real-time AI coaching tips",
+      "Production Studio (PRD-X) — AI image and video production",
+      "Cost-gating: all paid APIs behind Jean Claw subscription",
+      "Phone system GO ACTIVE rename and enhanced live call monitor",
+      "Live transcript panel and AI coaching tips in call view",
       "Video Intelligence (VID-SCAN) analyzer"
     ]
   },
@@ -88,15 +88,16 @@
     "date": "2026-04-10",
     "commitHash": null,
     "changes": [
-      "Dark Room — unified Content Studio and Production Studio",
-      "Signal Corps marketing module with Campaigns, SEO, and Leads",
-      "Navigation reorganized for faster access",
-      "Trade bot upgraded with risk presets and 20+ international markets",
+      "Dark Room — merged Content Studio + Production Studio",
+      "Signal Corps (Marketing) module with Campaigns, SEO, Leads",
+      "Nav reorganization — Intel trimmed, AI Agents + Video Intel moved to Console",
+      "Trade bot enhanced with risk profile presets and 20+ international markets",
       "Multi-server architecture — 24 planned cities worldwide",
-      "Business registration and org management",
-      "Employment status display with salary and role info",
-      "Writer tool renamed to HEMINGWAY",
-      "SoundLab/1999 moved to Creative module"
+      "Business registration + org structure on main terminal",
+      "Employment status display with salary and role classification",
+      "Enterprise accounts limited to 1 save slot",
+      "Writer renamed to HEMINGWAY",
+      "SoundLab/1999 moved exclusively to Creative module"
     ]
   },
   {
@@ -104,11 +105,11 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Admin panel for user, org, and moderation management",
-      "Profile section now includes all admin and platform settings",
-      "Improved bot descriptions and API stability",
-      "Video scenes and module structure refinements",
-      "Music generation now powered by Replicate with role-based access"
+      "Add an admin panel for managing users, organizations, and bans",
+      "Consolidate admin and platform features into the user profile section",
+      "Update bot descriptions and fix API authentication",
+      "Update video scenes and module structure for improved organization",
+      "Update music generation to use Replicate and implement role hierarchy"
     ]
   },
   {
@@ -116,7 +117,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Performance and stability improvements"
+      "Bug fixes and improvements"
     ]
   },
   {
@@ -124,7 +125,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Performance and stability improvements"
+      "Bug fixes and improvements"
     ]
   },
   {
@@ -132,7 +133,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Performance and stability improvements"
+      "Bug fixes and improvements"
     ]
   },
   {
@@ -140,7 +141,7 @@
     "date": "2026-04-11",
     "commitHash": "f6034bad68f873c1d2a71dd223d15c96480fcda4",
     "changes": [
-      "Performance and stability improvements"
+      "Bug fixes and improvements"
     ]
   },
   {
@@ -148,9 +149,11 @@
     "date": "2026-04-11",
     "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
     "changes": [
-      "SEO improvements — meta tags, structured data, and sitemap",
-      "Business Hub with financial overview and management tools",
-      "Published to production"
+      "Enhance website SEO with detailed meta tags, structured data, and sitemap",
+      "Published your App",
+      "Add more stacked content sections to the Business Hub page",
+      "Add a comprehensive business management hub with financial overview",
+      "Published your App"
     ]
   },
   {
@@ -158,9 +161,19 @@
     "date": "2026-04-11",
     "commitHash": "e44bbfd2a964976d8c3df4c8508adc78ff02fd6e",
     "changes": [
-      "Jean Claw agents renamed — all bots now use real names",
-      "Jean Claw integrated into Bot Factory",
-      "Podcast & Academy bot category added — teaches vibe coding, AI tools, and more"
+      "Bug fixes and improvements"
+    ]
+  },
+  {
+    "version": "v.2.8",
+    "date": "2026-04-13",
+    "commitHash": "8bdb65f6991f924d7f78bebf951ad7f82627ab22",
+    "changes": [
+      "Published your App",
+      "Expand office floors and add new amenities and furniture",
+      "Add fast travel option to mobile directory for easy building navigation",
+      "Update the directory to navigate floors within a building",
+      "Restrict mobile players to interiors and add a building directory"
     ]
   }
 ]
