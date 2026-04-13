@@ -3727,6 +3727,7 @@ export default function WorldPlay() {
   const gamePausedRef = useRef(false);
   const [showMobilePhone, setShowMobilePhone] = useState(false);
   const [showMobileBuildingDir, setShowMobileBuildingDir] = useState(false);
+  const [mobileDirTab, setMobileDirTab] = useState<'floors' | 'travel'>('floors');
   const [showMobileControls, setShowMobileControls] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
@@ -5548,7 +5549,7 @@ export default function WorldPlay() {
           const g = gs.current;
           if (g.interior && g.near === '__interior_exit') {
             if (isTouchDevice) {
-              setNarr('> MOBILE MODE — Interior only. Use the FLOOR DIRECTORY to navigate this building.');
+              setNarr('> MOBILE MODE — Use the DIRECTORY to navigate floors or fast travel to other buildings.');
               return;
             }
             exitInterior(); return;
@@ -14584,7 +14585,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </button>
               <button onClick={() => setShowMobileBuildingDir(true)}
                 style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(168,85,247,.3)', background: 'rgba(20,0,30,.7)', color: '#a855f7', fontFamily: "'VT323',monospace", fontSize: '.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', lineHeight: 1.1 }}>
-                FLR
+                DIR
               </button>
             </div>
           </div>
@@ -14603,87 +14604,137 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </>
       )}
 
-      {/* ── MOBILE FLOOR DIRECTORY ─────────────────────────────────── */}
+      {/* ── MOBILE DIRECTORY (FLOORS + FAST TRAVEL) ─────────────────── */}
       {showMobileBuildingDir && (() => {
         const g = gs.current;
         const bid = g.interior?.bid ?? g.hamletBuildingId;
         const bld = BUILDINGS.find(b => b.id === bid);
         const dir = BUILDING_FLOORS[bid];
         const bldLabel = bld?.label ?? 'BUILDING';
+        const tabStyle = (active: boolean) => ({
+          flex: 1, padding: '8px 0', border: 'none', borderBottom: `2px solid ${active ? '#a855f7' : 'transparent'}`,
+          background: active ? 'rgba(168,85,247,.08)' : 'transparent',
+          color: active ? '#a855f7' : 'rgba(148,163,184,.5)',
+          fontFamily: "'VT323',monospace" as const, fontSize: '.85rem', letterSpacing: '.1em',
+          cursor: 'pointer', WebkitTapHighlightColor: 'transparent' as const, touchAction: 'manipulation' as const,
+        });
         return (
           <div style={{ position: 'absolute', inset: 0, zIndex: 500, background: 'rgba(0,0,0,.94)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(168,85,247,.2)' }}>
-              <div>
-                <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#a855f7', letterSpacing: '.1em' }}>FLOOR DIRECTORY</div>
-                <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(168,85,247,.5)', letterSpacing: '.08em' }}>{bldLabel}</div>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: '1px solid rgba(168,85,247,.15)' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#a855f7', letterSpacing: '.1em' }}>DIRECTORY</div>
               <button onClick={() => setShowMobileBuildingDir(false)}
                 style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
                 CLOSE
               </button>
             </div>
+            <div style={{ display: 'flex', borderBottom: '1px solid rgba(168,85,247,.1)' }}>
+              <button onClick={() => setMobileDirTab('floors')} style={tabStyle(mobileDirTab === 'floors')}>FLOORS</button>
+              <button onClick={() => setMobileDirTab('travel')} style={tabStyle(mobileDirTab === 'travel')}>FAST TRAVEL</button>
+            </div>
+
             <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button
-                onClick={() => {
-                  if (currentFloor === 0) { setShowMobileBuildingDir(false); return; }
-                  const lobbyDef = getInterior(bid);
-                  if (lobbyDef && g.interior) {
-                    g.interior = { bid, def: { ...lobbyDef, id: bid, label: `${bldLabel} — LOBBY` }, px: lobbyDef.exitX + lobbyDef.exitW / 2, py: lobbyDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                    setCurrentFloor(0);
-                    setNarr(`> ${bldLabel} — LOBBY`);
-                  }
-                  setShowMobileBuildingDir(false);
-                }}
-                style={{
-                  padding: '10px 14px', borderRadius: 8,
-                  border: `1px solid rgba(34,211,238,${currentFloor === 0 ? '.5' : '.15'})`,
-                  background: currentFloor === 0 ? 'rgba(34,211,238,.1)' : 'rgba(0,10,20,.6)',
-                  color: currentFloor === 0 ? '#22d3ee' : '#e2e8f0',
-                  fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-                }}>
-                <span>FL 01 — LOBBY</span>
-                <span style={{ fontSize: '.65rem', color: currentFloor === 0 ? '#22d3ee' : 'rgba(148,163,184,.5)' }}>
-                  {currentFloor === 0 ? 'HERE' : 'GO'}
-                </span>
-              </button>
-              {dir ? dir.floors.map(fl => {
-                const isCurrent = currentFloor === fl.floor;
-                const isRestricted = fl.restricted;
-                return (
-                  <button key={fl.floor}
+              {mobileDirTab === 'floors' ? (
+                <>
+                  <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(168,85,247,.4)', letterSpacing: '.08em', marginBottom: 2 }}>{bldLabel}</div>
+                  <button
                     onClick={() => {
-                      if (isCurrent) { setShowMobileBuildingDir(false); return; }
-                      if (isRestricted) { setNarr(`> Floor ${fl.floor} — RESTRICTED. Access denied.`); return; }
-                      if (g.interior) {
-                        const offDef = generateFloorInterior(bid, fl, bldLabel);
-                        g.interior = { bid, def: { ...offDef, id: bid, label: `${bldLabel} — FL ${String(fl.floor).padStart(2,'0')} ${fl.name ? '— ' + fl.name : ''}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
-                        setCurrentFloor(fl.floor);
-                        setNarr(`> Floor ${fl.floor}${fl.name ? ' — ' + fl.name : ''}`);
+                      if (currentFloor === 0) { setShowMobileBuildingDir(false); return; }
+                      const lobbyDef = getInterior(bid);
+                      if (lobbyDef && g.interior) {
+                        g.interior = { bid, def: { ...lobbyDef, id: bid, label: `${bldLabel} — LOBBY` }, px: lobbyDef.exitX + lobbyDef.exitW / 2, py: lobbyDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                        setCurrentFloor(0);
+                        setNarr(`> ${bldLabel} — LOBBY`);
                       }
                       setShowMobileBuildingDir(false);
                     }}
                     style={{
                       padding: '10px 14px', borderRadius: 8,
-                      border: `1px solid ${isCurrent ? 'rgba(34,211,238,.5)' : isRestricted ? 'rgba(239,68,68,.2)' : 'rgba(56,189,248,.15)'}`,
-                      background: isCurrent ? 'rgba(34,211,238,.1)' : isRestricted ? 'rgba(30,0,0,.4)' : 'rgba(0,10,20,.6)',
-                      color: isCurrent ? '#22d3ee' : isRestricted ? 'rgba(239,68,68,.5)' : '#e2e8f0',
+                      border: `1px solid rgba(34,211,238,${currentFloor === 0 ? '.5' : '.15'})`,
+                      background: currentFloor === 0 ? 'rgba(34,211,238,.1)' : 'rgba(0,10,20,.6)',
+                      color: currentFloor === 0 ? '#22d3ee' : '#e2e8f0',
                       fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-                      opacity: isRestricted ? 0.6 : 1,
                     }}>
-                    <span>FL {String(fl.floor).padStart(2,'0')}{fl.name ? ` — ${fl.name}` : ''}</span>
-                    <span style={{ fontSize: '.65rem', color: isCurrent ? '#22d3ee' : isRestricted ? 'rgba(239,68,68,.4)' : 'rgba(148,163,184,.5)' }}>
-                      {isCurrent ? 'HERE' : isRestricted ? 'LOCKED' : 'GO'}
+                    <span>FL 01 — LOBBY</span>
+                    <span style={{ fontSize: '.65rem', color: currentFloor === 0 ? '#22d3ee' : 'rgba(148,163,184,.5)' }}>
+                      {currentFloor === 0 ? 'HERE' : 'GO'}
                     </span>
                   </button>
-                );
-              }) : (
-                <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(148,163,184,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem' }}>
-                  Single-floor building. Walk around to explore.
-                </div>
+                  {dir ? dir.floors.map(fl => {
+                    const isCurrent = currentFloor === fl.floor;
+                    const isRestricted = fl.restricted;
+                    return (
+                      <button key={fl.floor}
+                        onClick={() => {
+                          if (isCurrent) { setShowMobileBuildingDir(false); return; }
+                          if (isRestricted) { setNarr(`> Floor ${fl.floor} — RESTRICTED. Access denied.`); return; }
+                          if (g.interior) {
+                            const offDef = generateFloorInterior(bid, fl, bldLabel);
+                            g.interior = { bid, def: { ...offDef, id: bid, label: `${bldLabel} — FL ${String(fl.floor).padStart(2,'0')} ${fl.name ? '— ' + fl.name : ''}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
+                            setCurrentFloor(fl.floor);
+                            setNarr(`> Floor ${fl.floor}${fl.name ? ' — ' + fl.name : ''}`);
+                          }
+                          setShowMobileBuildingDir(false);
+                        }}
+                        style={{
+                          padding: '10px 14px', borderRadius: 8,
+                          border: `1px solid ${isCurrent ? 'rgba(34,211,238,.5)' : isRestricted ? 'rgba(239,68,68,.2)' : 'rgba(56,189,248,.15)'}`,
+                          background: isCurrent ? 'rgba(34,211,238,.1)' : isRestricted ? 'rgba(30,0,0,.4)' : 'rgba(0,10,20,.6)',
+                          color: isCurrent ? '#22d3ee' : isRestricted ? 'rgba(239,68,68,.5)' : '#e2e8f0',
+                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+                          opacity: isRestricted ? 0.6 : 1,
+                        }}>
+                        <span>FL {String(fl.floor).padStart(2,'0')}{fl.name ? ` — ${fl.name}` : ''}</span>
+                        <span style={{ fontSize: '.65rem', color: isCurrent ? '#22d3ee' : isRestricted ? 'rgba(239,68,68,.4)' : 'rgba(148,163,184,.5)' }}>
+                          {isCurrent ? 'HERE' : isRestricted ? 'LOCKED' : 'GO'}
+                        </span>
+                      </button>
+                    );
+                  }) : (
+                    <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(148,163,184,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem' }}>
+                      Single-floor building. Walk around to explore.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: 2 }}>FAST TRAVEL — WALK TO ANOTHER BUILDING</div>
+                  {BUILDINGS.filter(b => b.id !== bid && getInterior(b.id)).map(b => {
+                    const isHome = g.hamletBuildingId === b.id;
+                    return (
+                      <button key={b.id}
+                        onClick={() => {
+                          g.px = b.x + b.w / 2;
+                          g.py = b.y + b.h + 20;
+                          g.interior = null;
+                          g.interiorFade = 0;
+                          g.interiorFadeDir = 0;
+                          g.interiorFadeCallback = null;
+                          setCurrentFloor(0);
+                          enterInterior(b.id);
+                          setShowMobileBuildingDir(false);
+                          setNarr(`> You walk to ${b.label}.`);
+                        }}
+                        style={{
+                          padding: '10px 14px', borderRadius: 8,
+                          border: `1px solid ${isHome ? 'rgba(168,85,247,.4)' : 'rgba(56,189,248,.15)'}`,
+                          background: isHome ? 'rgba(168,85,247,.08)' : 'rgba(0,10,20,.6)',
+                          color: '#e2e8f0',
+                          fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', textAlign: 'left',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+                        }}>
+                        <span>{b.label}</span>
+                        <span style={{ fontSize: '.65rem', color: isHome ? '#a855f7' : 'rgba(148,163,184,.5)' }}>
+                          {isHome ? 'HOME' : 'GO'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
               )}
             </div>
           </div>
