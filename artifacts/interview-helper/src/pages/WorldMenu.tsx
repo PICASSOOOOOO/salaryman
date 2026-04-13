@@ -1025,15 +1025,14 @@ export default function WorldMenu() {
       <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px)', backgroundSize: '32px 32px', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Top bar */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderBottom: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-          <button onClick={() => navigate('/')} style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.5)', border: '1px solid rgba(56,189,248,.25)', background: 'rgba(56,189,248,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>← BACK</button>
-          &nbsp;·&nbsp;
-          SALARYMAN OS ALPHA {__BUILD_VERSION__} &nbsp;·&nbsp;
+      <div style={{ position: 'relative', zIndex: 1, padding: isMobile ? '.3rem .5rem' : '.4rem 1.5rem', borderBottom: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.3rem' }}>
+        <span style={{ fontSize: isMobile ? '.5rem' : '.6rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.14em', display: 'flex', alignItems: 'center', gap: '.3rem', flexShrink: 1, minWidth: 0 }}>
+          <button onClick={() => navigate('/')} style={{ fontSize: isMobile ? '.5rem' : '.6rem', color: 'rgba(56,189,248,.5)', border: '1px solid rgba(56,189,248,.25)', background: 'rgba(56,189,248,.06)', padding: '2px 8px', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em', flexShrink: 0 }}>← BACK</button>
+          {!isMobile && <>&nbsp;·&nbsp; SALARYMAN OS ALPHA {__BUILD_VERSION__} &nbsp;·&nbsp;</>}
           <select
             value={selectedTimezone}
             onChange={e => setSelectedTimezone(e.target.value)}
-            style={{ background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em', padding: '2px 6px', cursor: 'pointer', outline: 'none' }}
+            style={{ background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.25)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: isMobile ? '.5rem' : '.6rem', letterSpacing: '.1em', padding: '2px 6px', cursor: 'pointer', outline: 'none', maxWidth: isMobile ? 120 : 'none' }}
           >
             {TIMEZONE_OPTIONS.map(tz => (
               <option key={tz.id} value={tz.id} style={{ background: '#030803', color: '#38bdf8' }}>
@@ -1042,8 +1041,8 @@ export default function WorldMenu() {
             ))}
           </select>
         </span>
-        <span style={{ fontSize: '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>
-          {players === -1 ? 'SERVER FULL — MAX 100' : players !== null ? `${players}/100 ONLINE` : 'CONNECTING...'}
+        <span style={{ fontSize: isMobile ? '.42rem' : '.5rem', color: players === -1 ? 'rgba(255,80,80,.6)' : 'rgba(56,189,248,.2)', letterSpacing: '.1em', flexShrink: 0 }}>
+          {players === -1 ? 'FULL' : players !== null ? `${players}/100` : '...'}
           {tick % 2 === 0 ? ' ▮' : ' ▯'}
         </span>
       </div>
@@ -1098,7 +1097,7 @@ export default function WorldMenu() {
             <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em' }}>PABLO CORP SERVERS — 11 PLANNED</div>
             <div style={{ fontSize: '.38rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.1em' }}>EXPANSION ROADMAP</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '.3rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '.3rem' }}>
             {[
               { name: 'MINX CITY', region: 'AMERICAS — NORTH', status: 'live' as const, color: '#38bdf8', icon: '🏙️' },
               { name: 'SOLARIS DRIFT', region: 'AMERICAS — CENTRAL', status: 'planned' as const, color: '#f59e0b', icon: '☀️' },
@@ -1127,7 +1126,7 @@ export default function WorldMenu() {
         {/* ── PABLO TOOLS GRID ── */}
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
           <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '.5rem' }}>
             <button onClick={() => navigate('/hiring')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
               <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{PABLO_PRODUCTS.PRESENTER.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(180,100,255,.5)', lineHeight: 1.6 }}>{boomerMode ? 'Create slide decks and presentations with AI.' : PABLO_PRODUCTS.PRESENTER.desc}</div>
@@ -1168,23 +1167,26 @@ export default function WorldMenu() {
         </div>
 
         {/* ── TAB BAR ── */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(56,189,248,.18)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', border: '1px solid rgba(56,189,248,.18)', overflow: isMobile ? 'auto' : 'hidden', WebkitOverflowScrolling: 'touch', flexWrap: isMobile ? 'wrap' : 'nowrap', width: '100%', maxWidth: 720 }}>
           {([['enter', 'IMMIGRATION'], ['guide', 'FIELD GUIDE'], ['pass', 'CORP QUARTER'], ['merch', 'MERCH DEPT'], ['slush', "PABLO'S SLUSH FUND"]] as const).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id as 'enter' | 'guide' | 'pass' | 'merch' | 'slush')}
               style={{
-                padding: '.55rem 1.8rem',
+                padding: isMobile ? '.4rem .6rem' : '.55rem 1.8rem',
                 background: tab === id ? (id === 'slush' ? 'rgba(255,200,50,.1)' : id === 'pass' ? 'rgba(255,204,0,.1)' : 'rgba(56,189,248,.1)') : 'transparent',
                 border: 'none',
                 borderRight: id !== 'slush' ? '1px solid rgba(56,189,248,.18)' : 'none',
+                borderBottom: isMobile ? '1px solid rgba(56,189,248,.18)' : 'none',
                 color: tab === id ? (id === 'slush' ? '#ffcc44' : id === 'pass' ? '#ffcc00' : '#38bdf8') : (id === 'slush' ? 'rgba(255,200,50,.35)' : id === 'pass' ? 'rgba(255,204,0,.4)' : 'rgba(56,189,248,.3)'),
                 ...VT,
-                fontSize: '1.2rem',
-                letterSpacing: '.14em',
+                fontSize: isMobile ? '.85rem' : '1.2rem',
+                letterSpacing: isMobile ? '.08em' : '.14em',
                 cursor: 'pointer',
                 textShadow: tab === id ? (id === 'slush' ? '0 0 10px rgba(255,200,50,.4)' : id === 'pass' ? '0 0 10px rgba(255,204,0,.4)' : '0 0 10px rgba(56,189,248,.4)') : 'none',
                 transition: 'all .12s',
+                whiteSpace: 'nowrap',
+                flex: isMobile ? '1 0 auto' : undefined,
               }}
             >
               {label}
@@ -1200,7 +1202,7 @@ export default function WorldMenu() {
             {screen === 'saves' && !showCinematic && showEntryButtons && (
               <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.14em', marginBottom: '.2rem' }}>SELECT OPERATION MODE</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '.6rem' }}>
                   {/* WAKE UP — new game (locked on mobile) */}
                   <button
                     onClick={() => {
@@ -2442,14 +2444,16 @@ export default function WorldMenu() {
       </div>
 
       {/* Bottom bar */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '.4rem 1.5rem', borderTop: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em' }}>
-          {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 11 TOWERS · 11 SERVERS · PABLO CORP INTERNATIONAL
-        </span>
-        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+      <div style={{ position: 'relative', zIndex: 1, padding: isMobile ? '.3rem .5rem' : '.4rem 1.5rem', borderTop: '1px solid rgba(56,189,248,.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.3rem', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+        {!isMobile && (
+          <span style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.1em' }}>
+            {TIMEZONE_OPTIONS.find(tz => tz.id === selectedTimezone)?.label ?? 'Minx City (PST)'} · WASTELAND · 14 LOCATIONS · LVL SYSTEM · SURVIVAL · 11 TOWERS · 11 SERVERS · PABLO CORP INTERNATIONAL
+          </span>
+        )}
+        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
-          <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>₿ CRYPTO STORE</button>
-          <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', background: 'transparent', border: '1px solid rgba(56,189,248,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK TO APP</button>
+          {!isMobile && <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>₿ CRYPTO STORE</button>}
+          <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', background: 'transparent', border: '1px solid rgba(56,189,248,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK</button>
         </div>
       </div>
 
