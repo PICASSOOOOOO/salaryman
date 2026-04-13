@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
+import { Globe } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +82,7 @@ export function MobileModuleNav() {
         className="flex items-center gap-1 px-3 py-2 overflow-x-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {MODULES.filter(mod => mod.id !== 'phone').map(mod => {
+        {MODULES.map(mod => {
           const active = isModuleActive(mod);
           const Icon = mod.icon;
           const label = boomerMode
@@ -102,6 +103,17 @@ export function MobileModuleNav() {
             </button>
           );
         })}
+        <button
+          onClick={() => navigate('/world')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+            pathname.startsWith('/world')
+              ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
+              : 'text-sky-400/70 border border-sky-500/20 hover:text-sky-300'
+          }`}
+        >
+          <Globe className="w-3 h-3 shrink-0" />
+          {t('nav.explore', 'EXPLORE')}
+        </button>
       </div>
     </div>
   );
