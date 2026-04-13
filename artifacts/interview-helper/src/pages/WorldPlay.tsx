@@ -5838,7 +5838,7 @@ export default function WorldPlay() {
               if (_objOnCooldown) { setNarr('> BOOKSHELF — You already read from here recently.'); return; }
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 120000);
-              g.xp += 10; setXp(g.xp);
+              applyExpGain(g, 10, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               const bookMsgs = [
                 '"THE INVISIBLE HAND: A HISTORY OF SHADOW MARKETS" — Chapter 12 is missing. You read the rest. +10 XP.',
                 '"MINX CITY MUNICIPAL CODE, VOL. III" — Most of it has been redacted. What remains is illuminating. +10 XP.',
@@ -5861,7 +5861,7 @@ export default function WorldPlay() {
               if (_objOnCooldown) { setNarr(`> ${tObj.label ?? 'EQUIPMENT'} — Already examined. Data logged.`); return; }
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 90000);
-              g.xp += 8; setXp(g.xp);
+              applyExpGain(g, 8, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               const equipMsgs = [
                 'Biomonitor Array — All readings nominal. Three unknown anomalies. You log the data. +8 XP.',
                 'Atmospheric Scrubber — Filter 78% saturated. You note the maintenance schedule. +8 XP.',
@@ -5874,7 +5874,7 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'reception') {
               sfxEnter();
-              g.xp += 5; setXp(g.xp);
+              applyExpGain(g, 5, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               const recMsgs = [
                 'You check the visitor log. Interesting names. You memorize a few. +5 XP.',
                 'A stack of business cards on the counter. You pocket one. Connections matter. +5 XP.',
@@ -5934,7 +5934,7 @@ export default function WorldPlay() {
                 g.salary += lootAmt; setSalary(g.salary);
                 setNarr(`> PHOTOCOPIER — You find an unclaimed expense report in the output tray. You file it under your name. +ƒ${lootAmt}.`);
               } else {
-                g.xp += 5; setXp(g.xp);
+                applyExpGain(g, 5, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
                 const copierMsgs = [
                   'You copy the building directory. Useful intel. +5 XP.',
                   'Paper jam on tray 3. Error code: SOUL_CRUSHED_47. You fix it. +5 XP.',
@@ -5947,7 +5947,7 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'tv_screen') {
               sfxEnter();
-              g.xp += 5; setXp(g.xp);
+              applyExpGain(g, 5, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               const tvMsgs = [
                 'Breaking: FIAT reserves down 4% — Corp spokesperson calls it "healthy correction". You take notes. +5 XP.',
                 'Weather: Acid particulates elevated. Stay indoors. Useful survival intel. +5 XP.',
@@ -5975,7 +5975,7 @@ export default function WorldPlay() {
                 g.salary += lootAmt; setSalary(g.salary);
                 setNarr(`> SERVER — You extract a cached FIAT transfer from the buffer. +ƒ${lootAmt}. Node rebooting.`);
               } else if (serverRoll > 0.3) {
-                g.xp += 15; setXp(g.xp);
+                applyExpGain(g, 15, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
                 const serverMsgs = [
                   'RACK SERVER — Uptime: 847 days. Load: 98.7%. You download the system logs. +15 XP.',
                   'NODE 7-C — Active. Routing 14,000 requests/sec. You study the traffic patterns. +15 XP.',
@@ -6026,7 +6026,7 @@ export default function WorldPlay() {
               sfxEnter();
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 60000);
               g.energy = Math.min(100, g.energy + 10);
-              g.xp += 10; setXp(g.xp);
+              applyExpGain(g, 10, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
               setEnergy(g.energy);
               const confMsgs = [
                 'You sit through a meeting about synergy. Somehow, you feel more informed. +10 XP. Energy +10.',

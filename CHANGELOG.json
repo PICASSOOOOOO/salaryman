@@ -122,5 +122,21 @@
       "All office objects interactive with XP, energy, and FIAT rewards",
       "Full-screen COMMS chat panel on mobile"
     ]
+  },
+  {
+    "version": "v.2.9",
+    "date": "2026-04-13",
+    "commitHash": "ae19fb734c919bc6c0078ed7d8601c2746d4af8c",
+    "changes": [
+      "Make chat panel full screen on mobile for better interaction"
+    ]
+  },
+  {
+    "version": "v.3.0",
+    "date": "2026-04-13",
+    "commitHash": "ae19fb734c919bc6c0078ed7d8601c2746d4af8c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
