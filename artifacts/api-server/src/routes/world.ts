@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable } from "@workspace/db";
-import { getServerStatus, getLiberationProgress, recordHeartbeat } from "../worldServer";
+import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers } from "../worldServer";
 
 const router = Router();
 
@@ -378,6 +378,15 @@ router.get("/world/my-business", async (req, res) => {
     console.error("[World] my-business error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+router.get("/world/online", (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const all = getOnlinePlayers();
+  res.json({ players: all, count: all.length, ts: Date.now() });
 });
 
 router.get("/world/server-status", (_req, res) => {

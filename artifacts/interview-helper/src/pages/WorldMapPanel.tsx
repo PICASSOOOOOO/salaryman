@@ -19,6 +19,12 @@ interface PlayerPin {
   zone: string;
   status: string;
   lastAction: string | null;
+  class: string | null;
+  company: string | null;
+  level: number | null;
+  hp: number | null;
+  maxHp: number | null;
+  speaking: boolean;
 }
 
 const W = 14400, H = 12400;
@@ -104,6 +110,12 @@ export default function WorldMapPanel() {
             zone: getZoneForCoords(rawX, rawY),
             status: p.status ?? 'online',
             lastAction: p.lastAction ?? null,
+            class: p.class ?? null,
+            company: p.company ?? null,
+            level: p.level ?? null,
+            hp: p.hp ?? null,
+            maxHp: p.maxHp ?? null,
+            speaking: p.speaking ?? false,
           };
         });
         setPlayers(mapped);
@@ -320,6 +332,8 @@ export default function WorldMapPanel() {
 
             {players.map(p => {
               const isSelected = selectedPlayer?.userId === p.userId;
+              const classColor = p.class === 'replicant' ? '#38bdf8' : p.class === 'outcast' ? '#f97316' :
+                p.class === 'corporate' ? '#a78bfa' : p.class === 'contractor' ? '#fbbf24' : '#10b981';
               return (
                 <g key={p.userId} style={{ cursor: 'pointer' }}
                   onClick={(e) => { e.stopPropagation(); setSelectedPlayer(isSelected ? null : p); setSelectedDistrict(null); }}>
@@ -328,10 +342,19 @@ export default function WorldMapPanel() {
                       <animate attributeName="r" values="15;22;15" dur="2s" repeatCount="indefinite" />
                     </circle>
                   )}
-                  <circle cx={p.x} cy={p.y} r={5} fill="rgba(16,185,129,0.4)" stroke="#10b981" strokeWidth={1.5} />
-                  <circle cx={p.x} cy={p.y} r={2} fill="#34d399" />
+                  {p.speaking && (
+                    <circle cx={p.x} cy={p.y} r={12} fill="none" stroke="#fbbf24" strokeWidth={0.8} opacity={0.5}>
+                      <animate attributeName="r" values="10;16;10" dur="1.5s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.5;0.1;0.5" dur="1.5s" repeatCount="indefinite" />
+                    </circle>
+                  )}
+                  <circle cx={p.x} cy={p.y} r={5} fill={`${classColor}66`} stroke={classColor} strokeWidth={1.5} />
+                  <circle cx={p.x} cy={p.y} r={2} fill={classColor} />
+                  {p.status === 'idle' && (
+                    <text x={p.x + 7} y={p.y + 2} fill="rgba(251,191,36,0.6)" fontSize={6} fontFamily="Share Tech Mono">z</text>
+                  )}
                   {(zoom > 1.5 || isSelected) && (
-                    <text x={p.x} y={p.y - 9} textAnchor="middle" fill="#10b981" fontSize={5} fontFamily="Share Tech Mono">
+                    <text x={p.x} y={p.y - 9} textAnchor="middle" fill={classColor} fontSize={5} fontFamily="Share Tech Mono">
                       {p.firstName || 'ANON'}
                     </text>
                   )}
@@ -432,9 +455,14 @@ export default function WorldMapPanel() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground truncate">{selectedPlayer.firstName || 'Anonymous'}</p>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <MapPin className="w-2.5 h-2.5 text-zinc-500" />
                     <span className="text-[10px] text-zinc-400">{selectedPlayer.zone}</span>
+                    {selectedPlayer.speaking && (
+                      <span className="text-[9px] text-amber-400 flex items-center gap-0.5">
+                        <Radio className="w-2.5 h-2.5" /> VOICE
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -447,7 +475,39 @@ export default function WorldMapPanel() {
                   <p className="text-[9px] text-zinc-600 uppercase tracking-wider">POSITION</p>
                   <p className="text-xs font-bold text-foreground">{Math.round(selectedPlayer.x)}, {Math.round(selectedPlayer.y)}</p>
                 </div>
+                {selectedPlayer.class && (
+                  <div className="bg-muted/20 rounded-lg px-3 py-2">
+                    <p className="text-[9px] text-zinc-600 uppercase tracking-wider">CLASS</p>
+                    <p className="text-xs font-bold text-sky-400 uppercase">{selectedPlayer.class}</p>
+                  </div>
+                )}
+                {selectedPlayer.level != null && (
+                  <div className="bg-muted/20 rounded-lg px-3 py-2">
+                    <p className="text-[9px] text-zinc-600 uppercase tracking-wider">LEVEL</p>
+                    <p className="text-xs font-bold text-amber-400">LVL {selectedPlayer.level}</p>
+                  </div>
+                )}
               </div>
+              {selectedPlayer.hp != null && selectedPlayer.maxHp != null && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] text-zinc-600 uppercase tracking-wider">HP</span>
+                    <span className="text-[9px] font-mono text-zinc-400">{selectedPlayer.hp} / {selectedPlayer.maxHp}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{
+                      width: `${Math.round((selectedPlayer.hp / selectedPlayer.maxHp) * 100)}%`,
+                      backgroundColor: selectedPlayer.hp / selectedPlayer.maxHp > 0.5 ? '#10b981' : selectedPlayer.hp / selectedPlayer.maxHp > 0.25 ? '#f59e0b' : '#ef4444',
+                    }} />
+                  </div>
+                </div>
+              )}
+              {selectedPlayer.company && (
+                <div className="mt-2 bg-muted/10 rounded-lg px-3 py-2">
+                  <p className="text-[9px] text-zinc-600 uppercase tracking-wider mb-0.5">COMPANY</p>
+                  <p className="text-xs text-foreground font-mono">{selectedPlayer.company}</p>
+                </div>
+              )}
               {selectedPlayer.lastAction && (
                 <div className="mt-2 bg-muted/10 rounded-lg px-3 py-2">
                   <p className="text-[9px] text-zinc-600 uppercase tracking-wider mb-0.5">LAST ACTION</p>
@@ -478,6 +538,35 @@ export default function WorldMapPanel() {
                   <span className="text-[9px] text-zinc-500 tracking-wider">{l}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-muted/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">LIVE ROSTER</span>
+              </div>
+              <span className="text-[9px] font-mono text-emerald-400">{players.length}</span>
+            </div>
+            <div className="p-2 space-y-0.5 max-h-[200px] overflow-y-auto">
+              {players.length === 0 ? (
+                <p className="text-[10px] text-zinc-600 text-center py-3">No players online</p>
+              ) : players.map(p => {
+                const cColor = p.class === 'replicant' ? 'text-sky-400' : p.class === 'outcast' ? 'text-orange-400' :
+                  p.class === 'corporate' ? 'text-violet-400' : p.class === 'contractor' ? 'text-amber-400' : 'text-emerald-400';
+                return (
+                  <button key={p.userId}
+                    onClick={() => { setSelectedPlayer(p); setSelectedDistrict(null); setViewCenter({ x: p.x, y: p.y }); setZoom(2); setMapMode('city'); }}
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded-md transition-colors text-left ${selectedPlayer?.userId === p.userId ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.status === 'active' ? 'bg-emerald-400' : p.status === 'idle' ? 'bg-amber-400' : 'bg-zinc-500'}`} />
+                    <span className={`text-[10px] font-mono flex-1 truncate ${cColor}`}>{p.firstName || 'ANON'}</span>
+                    {p.speaking && <Radio className="w-2.5 h-2.5 text-amber-400 shrink-0" />}
+                    {p.level != null && <span className="text-[8px] font-mono text-zinc-600 shrink-0">L{p.level}</span>}
+                    <span className="text-[8px] font-mono text-zinc-700 shrink-0">{p.zone.split(' ')[0]}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

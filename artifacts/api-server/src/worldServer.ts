@@ -798,6 +798,55 @@ export const getHeartbeatCount = () => {
   return heartbeats.size;
 };
 
+const simpleHash = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+};
+
+export const getOnlinePlayers = () => {
+  const wsList = Array.from(players.values()).map(p => ({
+    userId: p.id,
+    username: p.name,
+    firstName: p.name,
+    profileImageUrl: null as string | null,
+    x: p.x,
+    y: p.y,
+    status: p.paused ? 'idle' : 'active',
+    class: p.class,
+    company: p.company,
+    level: p.level,
+    hp: p.hp,
+    maxHp: p.maxHp,
+    speaking: p.speaking,
+    lastAction: p.speaking ? 'Speaking' : p.paused ? 'AFK' : null,
+  }));
+  pruneHeartbeats();
+  const wsNames = new Set(wsList.map(p => p.username.toUpperCase()));
+  const hbList = Array.from(heartbeats.entries())
+    .filter(([, hb]) => !wsNames.has(hb.name.toUpperCase()))
+    .map(([uid, hb]) => {
+      const h = simpleHash(uid);
+      return {
+        userId: uid,
+        username: hb.name,
+        firstName: hb.name,
+        profileImageUrl: null as string | null,
+        x: 6400 + (Math.sin(h * 0.713) * 800),
+        y: 6100 + (Math.cos(h * 0.317) * 400),
+        status: 'online' as string,
+        class: null as string | null,
+        company: null as string | null,
+        level: null as number | null,
+        hp: null as number | null,
+        maxHp: null as number | null,
+        speaking: false,
+        lastAction: null as string | null,
+      };
+    });
+  return [...wsList, ...hbList];
+};
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 export const getServerStatus = () => {
   const wsOnline = players.size;
