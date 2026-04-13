@@ -284,17 +284,17 @@ export interface SalaryBreakdown {
 }
 
 export const CLASS_GOV_SALARY: Record<string, number> = {
-  corporate: 100,
-  replicant: 50,
-  outlaw: 25,
+  corporate: 0,
+  replicant: 0,
+  outlaw: 0,
 };
 
-export const MINX_BUSINESS_PROFIT_BASE = 30;
+export const MINX_BUSINESS_PROFIT_BASE = 0;
 
 export const CLASS_GOV_SALARY_LABEL: Record<string, string> = {
-  corporate: 'ƒ100/min',
-  replicant: 'ƒ50/min',
-  outlaw: 'ƒ25/min',
+  corporate: 'ƒ0',
+  replicant: 'ƒ0',
+  outlaw: 'ƒ0',
 };
 
 export function calcEffectiveSalary(breakdown: SalaryBreakdown): number {

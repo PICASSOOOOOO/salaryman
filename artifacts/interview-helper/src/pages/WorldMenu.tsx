@@ -58,42 +58,42 @@ const CLASSES = [
     id: 'corporate' as CharClass,
     label: 'PABLO CORP',
     tagline: 'City. Money. Influence.',
-    desc: 'Born in the neon towers. PABLO CORP government base: ƒ100/min — paid by the corp from your first session. Start with ƒ0, earn every credit. Control military and police. Government buildings welcome you. Full city passport included.',
+    desc: 'Born in the neon towers. No handouts — income starts at ƒ0. Register a real business or convert real dollars to earn FIAT. Control military and police. Government buildings welcome you. Full city passport included.',
     start: 'CORPORATE DISTRICT',
-    salary: 'ƒ100/min',
+    salary: 'ƒ0',
     hp: '350',
     atk: '3',
     def: '6',
     networth: 'ƒ0',
-    perks: 'Full city passport · PABLO CORP base ƒ100/min · Control military & police',
+    perks: 'Full city passport · Control military & police · Business registration access',
     color: '#38bdf8',
   },
   {
     id: 'outlaw' as CharClass,
     label: 'OUTLAWS',
     tagline: 'Wasteland. Tough. Scarred.',
-    desc: 'Exiled and hardened. High HP, strong ATK. PABLO CORP government base: ƒ25/min — the minimum assistance even the corp provides. Hunger and thirst drain slower in the wastes. Can craft supplies from scavenged materials.',
+    desc: 'Exiled and hardened. High HP, strong ATK. No free income — earn FIAT through real business or dollar conversion. Hunger and thirst drain slower in the wastes. Can craft supplies from scavenged materials.',
     start: 'WASTELAND',
-    salary: 'ƒ25/min',
+    salary: 'ƒ0',
     hp: '480',
     atk: '14',
     def: '8',
     networth: 'ƒ0',
-    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · PABLO base ƒ25/min',
+    perks: 'High HP · Wasteland passport · Wasteland drain -40% · Crafting · Scavenging access',
     color: '#7dd3fc',
   },
   {
     id: 'replicant' as CharClass,
     label: 'REPLICANTS',
     tagline: 'Android. Conscious. Deadliest.',
-    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. PABLO CORP government base: ƒ50/min. PABLO CORP wants you shut down but still cuts you a check. Operates in both city and wasteland.',
+    desc: 'You are the conscious android — built for combat, not for service. Highest ATK and HP. No free income — earn FIAT through verified business or dollar conversion. Operates in both city and wasteland.',
     start: 'CITY FRINGE',
-    salary: 'ƒ50/min',
+    salary: 'ƒ0',
     hp: '600',
     atk: '18',
     def: '12',
     networth: 'ƒ0',
-    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · PABLO base ƒ50/min',
+    perks: 'Tankiest · Highest DEF · Basic city passport · No energy drain · Combat specialist',
     color: '#67e8f9',
   },
 ];
@@ -106,6 +106,13 @@ const REAL_INDUSTRIES = [
   'FOOD & BEVERAGE', 'NON-PROFIT', 'CONSTRUCTION',
   'GAMING', 'RECRUITING / HR', 'ARCHITECTURE & DESIGN',
   'GOVERNMENT / PUBLIC SECTOR', 'INSURANCE',
+  'CUSTOM / OTHER',
+];
+
+const PAYROLL_PROVIDERS = [
+  'NONE', 'GUSTO', 'ADP', 'PAYCHEX', 'RIPPLING', 'JUSTWORKS',
+  'SQUARE PAYROLL', 'ONPAY', 'DEEL', 'REMOTE.COM', 'QUICKBOOKS PAYROLL',
+  'BAMBOOHR', 'ZENEFITS', 'TRINET', 'PAYLOCITY', 'PAYCOM', 'OTHER',
 ];
 
 const SIZES = ['SOLO OPERATOR', 'SMALL (2-10)', 'MID (11-50)', 'CORP (51-500)', 'MEGACORP (500+)'];
@@ -223,8 +230,8 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Divider />
       <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
       <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#67e8f9" />
-      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0 and earns through PABLO CORP government assistance (class base), business profits, or real enterprise salary." col="#ffcc00" />
-      <Row label="PABLO CORP ASSISTANCE" val="All operatives receive a PABLO CORP government base salary once they enter the world. Corporate: ƒ100/min. Replicants: ƒ50/min. Outlaws: ƒ25/min. This ticks every 60 seconds on top of any business or real enterprise income. No one leaves Minx City empty-handed — PABLO CORP makes sure of it." col="#cc44ff" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0. There are NO handouts. Earn FIAT by: 1) Registering a real business with verified income (Gusto, ADP, or payroll proof), 2) Converting real USD into FIAT through the exchange, or 3) Running an in-game business that generates legitimate revenue." col="#ffcc00" />
+      <Row label="INCOME VERIFICATION" val="No free money. No government base salary. All income in Minx City must be earned legitimately. Real enterprises must provide proof of income via payroll providers (Gusto, ADP, etc.) during business registration. In-game businesses earn FIAT only through verified activity. Real dollars convert to FIAT at the exchange. If you can't prove income, you don't have income." col="#cc44ff" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
@@ -649,6 +656,9 @@ export default function WorldMenu() {
   const [minxError, setMinxError] = useState('');
   const [bizSize, setBizSize] = useState('SOLO OPERATOR');
   const [bizEmail, setBizEmail] = useState('');
+  const [payrollProvider, setPayrollProvider] = useState('NONE');
+  const [declaredIncome, setDeclaredIncome] = useState('');
+  const [customIndustry, setCustomIndustry] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [checkingName, setCheckingName] = useState(false);
 
@@ -929,6 +939,8 @@ export default function WorldMenu() {
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const signupTimestamp = new Date().toISOString();
     const factionStartOutfit = cls === 'corporate' ? 'corpo_suit' : cls === 'outlaw' ? 'wasteland_gear' : cls === 'replicant' ? 'replicant_civvies' : 'default';
+    const resolvedIndustry = industry === 'CUSTOM / OTHER' && customIndustry.trim() ? customIndustry.trim().toUpperCase() : industry;
+    const verifiedIncome = bizType === 'real' && payrollProvider !== 'NONE' && declaredIncome ? Number(declaredIncome) : 0;
     const char = {
       name: name.trim().toUpperCase(),
       class: cls,
@@ -937,10 +949,13 @@ export default function WorldMenu() {
       sy: spawnPos.y,
       salary: startSalary,
       businessProfit: 0,
-      realSalaryAmount: 0,
+      realSalaryAmount: verifiedIncome,
       incomeType: bizType,
       hasBusiness,
       bizType: bizType,
+      payrollProvider: bizType === 'real' ? payrollProvider : null,
+      incomeVerified: bizType === 'real' && payrollProvider !== 'NONE' && verifiedIncome > 0,
+      declaredMonthlyIncome: verifiedIncome,
       workstation: ws?.bid ?? null,
       workstationLabel: ws?.label ?? null,
       workstationSlot: ws?.slot ?? null,
@@ -960,9 +975,12 @@ export default function WorldMenu() {
           playerName: char.name,
           businessType: bizType,
           companyName: finalCompany,
-          industry: bizType === 'real' ? industry : null,
+          industry: bizType === 'real' ? resolvedIndustry : null,
           companySize: bizType === 'real' ? bizSize : null,
           contactEmail: bizType === 'real' && bizEmail.trim() ? bizEmail.trim() : null,
+          payrollProvider: bizType === 'real' ? payrollProvider : null,
+          declaredMonthlyIncome: verifiedIncome,
+          incomeVerified: bizType === 'real' && payrollProvider !== 'NONE' && verifiedIncome > 0,
           isPaid: false,
         }),
       });
@@ -1067,7 +1085,7 @@ export default function WorldMenu() {
             </div>
             <div style={{ marginTop: '.5rem' }}>
               <div><b style={{ color: '#38bdf8' }}>HP</b> = Your health. Stay away from threats or you lose it.</div>
-              <div><b style={{ color: '#38bdf8' }}>FIAT (ƒ)</b> = The in-game currency. You earn it through salary and spend it in stores.</div>
+              <div><b style={{ color: '#38bdf8' }}>FIAT (ƒ)</b> = The in-game currency. Earned through verified business income or real dollar conversion. No free handouts.</div>
               <div><b style={{ color: '#38bdf8' }}>XP</b> = Experience points. Accumulate them to level up and unlock things.</div>
               <div><b style={{ color: '#38bdf8' }}>NPC</b> = Non-player characters. The people in the city who are not real players.</div>
             </div>
@@ -1554,7 +1572,7 @@ export default function WorldMenu() {
                     <div style={{ ...VT, fontSize: '1.4rem', color: selected.color, letterSpacing: '.12em', marginBottom: '.5rem' }}>{selected.label}</div>
                     <div style={{ fontSize: '.72rem', color: 'rgba(56,189,248,.5)', lineHeight: 1.8, marginBottom: '.75rem' }}>{selected.desc}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginBottom: '.5rem' }}>
-                      {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['GOV BASE', selected.salary], ['START FIAT', selected.networth], ['START', selected.start]].map(([k, v]) => (
+                      {[['HP', selected.hp], ['ATK', selected.atk], ['DEF', selected.def], ['INCOME', selected.salary], ['START FIAT', selected.networth], ['START', selected.start]].map(([k, v]) => (
                         <div key={k} style={{ border: '1px solid rgba(56,189,248,.12)', padding: '.4rem .5rem' }}>
                           <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.15rem' }}>{k}</div>
                           <div style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: selected.color, letterSpacing: '.08em' }}>{v}</div>
@@ -1616,9 +1634,9 @@ export default function WorldMenu() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.6rem' }}>
                   {([
-                    { id: 'minx' as const, label: 'MINX CITY BUSINESS', desc: 'Anonymous. Low profile. No paper trail. Invent your own company name.' },
-                    { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Real company. Stake territory. Data stored on our servers for paid members. Your brand in-world.' },
-                    { id: 'unemployed' as const, label: 'UNEMPLOYED / NO AFFILIATION', desc: 'No company. No cover. You walk Minx City alone. Skip the paperwork.' },
+                    { id: 'minx' as const, label: 'IN-GAME BUSINESS', desc: 'Create any business you want in Minx City. Earn FIAT through in-game commerce and activity. No real-world income needed.' },
+                    { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Real company. Verify income via Gusto, ADP, or payroll provider. Real dollars convert to FIAT. Your brand in-world.' },
+                    { id: 'unemployed' as const, label: 'UNEMPLOYED / NO AFFILIATION', desc: 'No company. No income. ƒ0 until you register a business or convert real dollars.' },
                   ]).map(t => (
                     <button key={t.id} onClick={() => { setBizType(t.id); setMinxError(''); }} style={{ padding: '.9rem', border: bizType === t.id ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.15)', background: bizType === t.id ? 'rgba(56,189,248,.07)' : 'transparent', color: bizType === t.id ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', textAlign: 'left', ...S, transition: 'all .12s' }}>
                       <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.1em', marginBottom: '.25rem' }}>
@@ -1633,9 +1651,9 @@ export default function WorldMenu() {
 
                 {bizType === 'minx' && (
                   <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.15em' }}>COVER IDENTITY — NAME YOUR FRONT CORPORATION</div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.15em' }}>CREATE YOUR BUSINESS — ANY INDUSTRY, ANY NAME</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', lineHeight: 1.7 }}>
-                      Invent a company name. Your operative will be listed under this corporate shell. PABLO CORP cannot trace it. Rival operatives will see this name above your head.
+                      Build any business you want inside Minx City. Name it, run it, earn from it. Your FIAT income comes from in-game activity — no free handouts. Other operatives will see your company name above your head.
                     </div>
                     <input
                       value={minxCompany}
@@ -1683,6 +1701,38 @@ export default function WorldMenu() {
                         </select>
                       </div>
                     </div>
+                    {industry === 'CUSTOM / OTHER' && (
+                      <div>
+                        <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>DESCRIBE YOUR BUSINESS</div>
+                        <input value={customIndustry} onChange={e => setCustomIndustry(e.target.value)} maxLength={80} placeholder="e.g. DRONE DELIVERY, AI CONSULTING, CRYPTO MINING..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />
+                      </div>
+                    )}
+
+                    <div style={{ borderTop: '1px solid rgba(255,200,60,.15)', paddingTop: '.6rem', marginTop: '.2rem' }}>
+                      <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em', marginBottom: '.4rem' }}>INCOME VERIFICATION — REQUIRED FOR FIAT INCOME</div>
+                      <div style={{ fontSize: '.42rem', color: 'rgba(255,200,60,.25)', lineHeight: 1.7, marginBottom: '.5rem' }}>
+                        No free FIAT. To earn in-game income from your real enterprise, you must declare your income and connect a payroll provider (Gusto, ADP, etc.) for verification. Without proof of income, your in-game salary is ƒ0.
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+                        <div>
+                          <div style={{ fontSize: '.45rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.12em', marginBottom: '.25rem' }}>PAYROLL PROVIDER</div>
+                          <select value={payrollProvider} onChange={e => setPayrollProvider(e.target.value)} style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(255,200,60,.3)', color: '#ffcc00', ...S, fontSize: '.82rem', outline: 'none', cursor: 'pointer' }}>
+                            {PAYROLL_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '.45rem', color: 'rgba(255,200,60,.3)', letterSpacing: '.12em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME ($USD)</div>
+                          <input value={declaredIncome} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setDeclaredIncome(v); }} maxLength={10} placeholder="0" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: `1px solid rgba(255,200,60,.3)`, color: '#ffcc00', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#ffcc00', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                      {payrollProvider === 'NONE' && (
+                        <div style={{ fontSize: '.42rem', color: 'rgba(255,80,80,.5)', letterSpacing: '.08em', marginTop: '.35rem', ...VT }}>⚠ NO PAYROLL PROVIDER — YOUR IN-GAME SALARY WILL BE ƒ0 UNTIL VERIFIED</div>
+                      )}
+                      {payrollProvider !== 'NONE' && !declaredIncome && (
+                        <div style={{ fontSize: '.42rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.08em', marginTop: '.35rem', ...VT }}>▮ DECLARE YOUR MONTHLY INCOME TO ENABLE FIAT EARNINGS</div>
+                      )}
+                    </div>
+
                     <div>
                       <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>CONTACT EMAIL <span style={{ color: 'rgba(56,189,248,.15)' }}>(OPTIONAL)</span></div>
                       <input value={bizEmail} onChange={e => setBizEmail(e.target.value)} type="email" maxLength={100} placeholder="contact@yourcompany.com" style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />

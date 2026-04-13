@@ -37,7 +37,7 @@ router.get("/world/check-company", async (req, res) => {
 
 router.post("/world/register", async (req, res) => {
   try {
-    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid } = req.body;
+    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
@@ -73,6 +73,9 @@ router.post("/world/register", async (req, res) => {
         industry: finalBizType === "unemployed" ? null : (industry ? String(industry).slice(0, 60) : null),
         companySize: finalBizType === "unemployed" ? null : (companySize ? String(companySize).slice(0, 30) : null),
         contactEmail: finalBizType === "unemployed" ? null : (contactEmail ? String(contactEmail).slice(0, 120) : null),
+        payrollProvider: finalBizType === "real" && payrollProvider ? String(payrollProvider).slice(0, 40) : null,
+        declaredMonthlyIncome: finalBizType === "real" && typeof declaredMonthlyIncome === "number" ? Math.max(0, Math.min(declaredMonthlyIncome, 10_000_000)) : 0,
+        incomeVerified: Boolean(incomeVerified) && finalBizType === "real" && payrollProvider && payrollProvider !== "NONE",
         isPaid: Boolean(isPaid),
         sessionId,
       })
@@ -190,18 +193,29 @@ router.post("/world/declare-salary", async (req, res) => {
       return;
     }
     const playerName = derivePlayerName(req);
-    const govBase = charClass === "corporate" ? 100 : charClass === "replicant" ? 50 : 25;
+    const userId = String(req.user.id);
+    const verified = await db
+      .select({ incomeVerified: worldBusinessesTable.incomeVerified, payrollProvider: worldBusinessesTable.payrollProvider })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, userId))
+      .orderBy(desc(worldBusinessesTable.createdAt))
+      .limit(1);
+    const isVerified = verified.length > 0 && verified[0].incomeVerified === true && verified[0].payrollProvider && verified[0].payrollProvider !== "NONE";
+    if (!isVerified) {
+      res.status(403).json({ error: "Income verification required. Connect a payroll provider (Gusto, ADP, etc.) to declare salary." });
+      return;
+    }
     await db.insert(businessSnapshotsTable).values({
       playerName: String(playerName).slice(0, 32).toUpperCase(),
-      userId: String(req.user.id),
+      userId,
       slotIndex: Number(slotIndex ?? 0),
       balance: 0,
       salary: 0,
       businessProfit: 0,
-      governmentBaseSalary: govBase,
+      governmentBaseSalary: 0,
       realSalaryAmount: Math.round(realSalaryAmount),
       incomeType: "real",
-      data: { proofObjectPath: proofObjectPath ?? null, companyName: companyName ?? null, declaredAt: new Date().toISOString() },
+      data: { proofObjectPath: proofObjectPath ?? null, companyName: companyName ?? null, declaredAt: new Date().toISOString(), verificationStatus: "pending" },
       snapshotReason: "real_salary_declaration",
     });
     res.json({ ok: true });
@@ -230,8 +244,7 @@ router.post("/world/snapshots", async (req, res) => {
       return;
     }
     const safeIncomeType = ["unemployed","minx","real"].includes(String(incomeType)) ? String(incomeType) : "unemployed";
-    // Derive gov base from most recent declaration instead of trusting client value
-    const govBase = [25, 50, 100].includes(Number(governmentBaseSalary)) ? Number(governmentBaseSalary) : 25;
+    const govBase = 0;
     const safeBizProfit = safeIncomeType === "minx" ? Math.min(Math.round(businessProfit ?? 0), MAX_RATE) : 0;
     const safeRealSal = safeIncomeType === "real" ? Math.min(Math.round(realSalaryAmount ?? 0), MAX_RATE) : 0;
     const playerName = derivePlayerName(req);

@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { PABLO_PRODUCTS } from '../lib/product-names';
-import { boomerize, CITY_NAME, CLASS_GOV_SALARY, TransactionCategory } from '../gameSystems';
+import { boomerize, CITY_NAME, TransactionCategory } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import ServerSelect from '../components/world/ServerSelect';
 import { type CityEntry, PLANNED_CITIES } from '@/lib/world-servers';
@@ -557,7 +557,8 @@ export default function World() {
     return()=>clearInterval(id);
   },[char?.name]);
 
-  // ── Salary tick: gov base + business profit + real salary (every 60s = 1 game-minute) ──
+  // ── Salary tick: business profit + real salary only (every 60s = 1 game-minute) ──
+  // NO free gov base income — all FIAT must come from verified business or real $ conversion
   useEffect(()=>{
     if(!char) return;
     const tick=()=>{
@@ -565,13 +566,11 @@ export default function World() {
         const stored = localStorage.getItem('sm_char');
         if(!stored) return;
         const c = JSON.parse(stored);
-        // governmentBaseSalary is derived from class — never stored at char creation, always computed
-        const govBase = CLASS_GOV_SALARY[char.class] ?? 25;
-        // Business XOR real enterprise — only one non-base income path is active at a time
         const incomeType: string = c.incomeType ?? 'unemployed';
         const bizProfit = incomeType === 'minx' ? (c.businessProfit ?? 0) : 0;
         const realSal = incomeType === 'real' ? (c.realSalaryAmount ?? 0) : 0;
-        const totalTick = govBase + bizProfit + realSal;
+        const totalTick = bizProfit + realSal;
+        if (totalTick <= 0) return;
         gs.current.salary += totalTick;
         setSalary(gs.current.salary);
         c.salary = gs.current.salary;
@@ -579,9 +578,8 @@ export default function World() {
         salaryTickRef.current++;
         const cname = char.name;
         const company = char.company;
-        if(govBase>0) pushTx(ledgerRef.current,{desc:'PABLO CORP GOV ASSISTANCE',amount:govBase,bal:gs.current.salary,category:'gov_salary'},cname,company);
         if(bizProfit>0) pushTx(ledgerRef.current,{desc:`${c.company??'BUSINESS'} PROFIT`,amount:bizProfit,bal:gs.current.salary,category:'business_profit'},cname,company);
-        if(realSal>0) pushTx(ledgerRef.current,{desc:'ENTERPRISE SALARY',amount:realSal,bal:gs.current.salary,category:'real_salary'},cname,company);
+        if(realSal>0) pushTx(ledgerRef.current,{desc:'VERIFIED ENTERPRISE SALARY',amount:realSal,bal:gs.current.salary,category:'real_salary'},cname,company);
         setLedger([...ledgerRef.current]);
       } catch { /* ignore */ }
     };
@@ -597,7 +595,7 @@ export default function World() {
         const s=localStorage.getItem('sm_char');
         if(!s) return;
         const c=JSON.parse(s);
-        const govBase = CLASS_GOV_SALARY[char.class]??25;
+        const govBase = 0;
         const bizProfit = c.businessProfit??0;
         const realSal = c.realSalaryAmount??0;
         const incomeType = c.incomeType??'unemployed';
@@ -996,12 +994,12 @@ export default function World() {
       {/* BALANCE SHEET PANEL */}
       {showBalanceSheet&&(()=>{
         const stored = (() => { try { const s=localStorage.getItem('sm_char'); return s?JSON.parse(s):{}; } catch { return {}; } })();
-        const govBase = CLASS_GOV_SALARY[char?.class??'outlaw'] ?? 25;
         const incomeType: string = stored.incomeType ?? stored.bizType ?? 'unemployed';
-        // XOR semantics: business OR real, not both simultaneously
         const bizProfit = incomeType === 'minx' ? (stored.businessProfit ?? 0) : 0;
         const realSal = incomeType === 'real' ? (stored.realSalaryAmount ?? 0) : 0;
-        const totalIncome = govBase + bizProfit + realSal;
+        const totalIncome = bizProfit + realSal;
+        const isVerified = stored.incomeVerified === true;
+        const payrollProv = stored.payrollProvider ?? 'NONE';
         const fmtCat = (cat: string) => {
           if(cat==='gov_salary') return 'GOV';
           if(cat==='business_profit') return 'BIZ';
@@ -1032,8 +1030,8 @@ export default function World() {
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'.5rem',marginBottom:'.75rem' }}>
                   {[
                     {l:'CURRENT BALANCE',v:`ƒ${salary.toLocaleString()}`,col:'#ffcc00',big:true},
-                    {l:'INCOME TYPE',v:incomeType==='unemployed'?'UNEMPLOYED':incomeType==='minx'?'MINX BUSINESS':'REAL ENTERPRISE',col:'#38bdf8',big:false},
-                    {l:'PABLO CORP GOV BASE',v:`ƒ${govBase}/min`,col:'rgba(56,189,248,.7)',big:false},
+                    {l:'INCOME TYPE',v:incomeType==='unemployed'?'UNEMPLOYED':incomeType==='minx'?'IN-GAME BUSINESS':'REAL ENTERPRISE',col:'#38bdf8',big:false},
+                    {l:'INCOME VERIFIED',v:isVerified?`YES — ${payrollProv}`:'NOT VERIFIED',col:isVerified?'rgba(100,255,180,.7)':'rgba(255,100,100,.5)',big:false},
                     {l:'BUSINESS PROFIT',v:bizProfit>0?`ƒ${bizProfit}/min`:'—',col:bizProfit>0?'rgba(100,255,180,.7)':'rgba(56,189,248,.2)',big:false},
                     {l:'ENTERPRISE SALARY',v:realSal>0?`ƒ${realSal}/min`:'—',col:realSal>0?'rgba(100,200,255,.7)':'rgba(56,189,248,.2)',big:false},
                     {l:'TOTAL INCOME/MIN',v:`ƒ${totalIncome}/min`,col:'#ffcc00',big:false},
