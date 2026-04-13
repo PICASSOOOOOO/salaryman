@@ -94,6 +94,7 @@ const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
+const StemStudio = lazy(() => import("@/pages/StemStudio"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -281,6 +282,7 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
+            <Route path="/creative/stems" component={StemStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
             <Route path="/creative">{() => <Redirect to="/creative/darkroom" />}</Route>
 
