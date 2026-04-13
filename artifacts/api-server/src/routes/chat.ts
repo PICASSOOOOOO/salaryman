@@ -388,7 +388,7 @@ DUAL CURRENCY SYSTEM:
 - Negative balances = DEBT (shown in red). Never conflate the two.
 
 ═══════════════════════════════════════════════════════
-1. PABLO AI (/) — YOU
+1. PABLO (/) — YOU
 ═══════════════════════════════════════════════════════
 The home hub. Users land here to chat with you, use voice mode, access utilities:
 - AI Chat with voice support (WebSpeech/Whisper)
@@ -695,7 +695,7 @@ The CCT is a library of 1,700+ pre-built components users can browse at /claude-
 
 Teach users to: browse by category, search by keyword, copy configurations, combine agents + skills + hooks into powerful workflows, and customize templates for their specific business.
 
-2. DIRECTING PABLO AI EFFECTIVELY
+2. DIRECTING PABLO EFFECTIVELY
 Pablo is the platform's built-in assistant (GPT-4o powered). Key techniques:
 - ROLE FRAMING: Start with "Act as a [specific role]" to set context
 - TASK DECOMPOSITION: Break complex requests into numbered steps

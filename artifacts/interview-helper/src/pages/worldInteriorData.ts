@@ -801,7 +801,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     exitX: 275, exitY: 425, exitW: 30, exitH: 15,
     ambientText: 'Deep violet light pulses through the floors. Holographic blueprints rotate above workstations. Bot assembly lines hum. Pablo oversees everything from the executive platform.',
     workers: [
-      { x: 275, y: 30, name: 'PABLO AI', role: 'Chief Architect', hostile: false },
+      { x: 275, y: 30, name: 'PABLO', role: 'Chief Architect', hostile: false },
       { x: 60, y: 80, name: 'ASSEMBLER-1', role: 'Bot Assembly', hostile: false },
       { x: 140, y: 80, name: 'ASSEMBLER-2', role: 'Bot Assembly', hostile: false },
       { x: 60, y: 180, name: 'DR. NEXUS', role: 'AI Researcher', hostile: false },

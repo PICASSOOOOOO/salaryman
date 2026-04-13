@@ -183,7 +183,7 @@ export async function setUserTier(userId: string, tier: Tier, grantedBy: string)
 }
 
 export const FREE_FEATURES = [
-  "PABLO AI Chat — unlimited conversations",
+  "PABLO Chat — unlimited conversations",
   "Presentation builder",
   "Contacts & CRM",
   "Workspace — projects, notes, brand settings",

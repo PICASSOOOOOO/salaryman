@@ -121,7 +121,7 @@ const FEATURE_CARDS: FeatureCard[] = [
 ];
 
 const FREE_PERKS = [
-  "PABLO AI Chat — unlimited conversations",
+  "PABLO CHAT — UNLIMITED CONVERSATIONS",
   "Presentation builder — create slide decks from scratch",
   "Contacts & CRM — save and manage your network",
   "Workspace — projects, notes, and brand settings",
@@ -791,7 +791,7 @@ export default function Upgrade() {
                   boomerMode ? "What do I get for free?" : "What's included for standard employees?",
                   boomerMode
                     ? "AI chat, presentations, contacts/CRM, workspace, content studio, calendar, documents, invoices, hiring tools, and analysis are all free."
-                    : "All standard-issue modules: PABLO AI, presentation fabrication, contact registry, workspace terminal, content studio, temporal array, documents, invoice engine, and hiring toolkit.",
+                    : "All standard-issue modules: PABLO, presentation fabrication, contact registry, workspace terminal, content studio, temporal array, documents, invoice engine, and hiring toolkit.",
                 ],
                 [
                   boomerMode ? "Can I cancel anytime?" : "What happens if I deactivate a module?",

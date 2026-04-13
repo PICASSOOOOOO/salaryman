@@ -229,7 +229,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       </div>
       <Divider />
       <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
-      <Row label="TERMINALS" val="PABLO AI is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#67e8f9" />
+      <Row label="TERMINALS" val="PABLO is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#67e8f9" />
       <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0. There are NO handouts. Earn FIAT by: 1) Registering a real business with verified income (Gusto, ADP, or payroll proof), 2) Converting real USD into FIAT through the exchange, or 3) Running an in-game business that generates legitimate revenue." col="#ffcc00" />
       <Row label="INCOME VERIFICATION" val="No free money. No government base salary. All income in Minx City must be earned legitimately. Real enterprises must provide proof of income via payroll providers (Gusto, ADP, etc.) during business registration. In-game businesses earn FIAT only through verified activity. Real dollars convert to FIAT at the exchange. If you can't prove income, you don't have income." col="#cc44ff" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
@@ -422,18 +422,18 @@ function GuideContent({ section }: { section: GuideSection }) {
     <div style={S}>
       <SectionHead>TERMINALS & DEVICES</SectionHead>
       <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        PABLO AI is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
+        PABLO is free on every terminal — no purchase required. Terminals are your link to the PABLO CORP network: AI chat, productivity tools, status reports, and intel. Access them through a personal device or any public terminal in the world.
       </div>
       <Divider />
       <SectionHead>PERSONAL DEVICE</SectionHead>
       <Row label="AVAILABILITY" val="Suits start with a personal handheld device. Outlaws and Replicants must find or purchase one." col="#67e8f9" />
-      <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO AI access, status, intel, and chat." col="#38bdf8" />
+      <Row label="ACCESS" val="Press [P] to open your personal device. Full PABLO access, status, intel, and chat." col="#38bdf8" />
       <Row label="BREAKAGE" val="Combat damage can break your device (4% chance per hit, durability loss). When broken, the screen cracks and you lose personal terminal access." col="#ff4444" />
       <Row label="REPAIR" val="Visit CITY CLINIC (ƒ5,000 FIAT) or purchase a DEVICE REPAIR KIT from the VENDING MACHINE (ƒ5,000 FIAT). Full heal at CITY CLINIC (ƒ10,000) includes device repair." col="#ffcc00" />
       <Divider />
       <SectionHead>PUBLIC TERMINALS</SectionHead>
       <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-        Public terminals are physical objects in the game world. Walk up and press [E] to access. PABLO AI is free on all of them. Use these when your personal device is broken, missing, or if you never had one.
+        Public terminals are physical objects in the game world. Walk up and press [E] to access. PABLO is free on all of them. Use these when your personal device is broken, missing, or if you never had one.
       </div>
       <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── CITY PAYPHONES & KIOSKS ──</div>
       {[
@@ -447,8 +447,8 @@ function GuideContent({ section }: { section: GuideSection }) {
       ))}
       <Divider />
       <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── OUTPOST TERMINALS ──</div>
-      <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO AI access." col="#7dd3fc" />
-      <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO AI access." col="#7dd3fc" />
+      <Row label="OUTPOST ALPHA" val="Wasteland outpost terminal. Free PABLO access." col="#7dd3fc" />
+      <Row label="OUTPOST BETA" val="Wasteland outpost terminal. Free PABLO access." col="#7dd3fc" />
       <Divider />
       <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── TERMINAL VANS ──</div>
       <div style={{ fontSize: '.75rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.5rem' }}>
@@ -459,7 +459,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <Row label="EAST VAN" val="Eastern wasteland, near Deep Camp." col="#7dd3fc" />
       <Divider />
       <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em', lineHeight: 1.8, fontStyle: 'italic', marginTop: '.4rem' }}>
-        PABLO AI is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
+        PABLO is a service of PABLO CORP. All transmissions are logged. All terminals are monitored.
       </div>
     </div>
   );
@@ -1133,7 +1133,7 @@ export default function WorldMenu() {
               <div style={{ fontSize: '.45rem', color: 'rgba(180,100,255,.5)', lineHeight: 1.6 }}>{boomerMode ? 'Create slide decks and presentations with AI.' : PABLO_PRODUCTS.PRESENTER.desc}</div>
             </button>
             <button onClick={() => navigate('/')} style={{ padding: '.65rem .5rem', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
-              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'PABLO AI' : PABLO_PRODUCTS.PROBLEM_DESC.short}</div>
+              <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'PABLO' : PABLO_PRODUCTS.PROBLEM_DESC.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Ask anything. Get answers instantly.' : 'Code analysis and problem solving.'}</div>
             </button>
             <button onClick={() => navigate('/contacts')} style={{ padding: '.65rem .5rem', background: 'rgba(100,180,255,.06)', border: '1px solid rgba(100,180,255,.4)', color: '#55bbff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>

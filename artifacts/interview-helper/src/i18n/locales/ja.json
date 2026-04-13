@@ -121,7 +121,7 @@
   },
   "branded": {
     "name": "サラリーマン",
-    "description": "PABLO AI — エグゼクティブフィールドユニット"
+    "description": "PABLO — エグゼクティブフィールドユニット"
   },
   "common": {
     "loading": "読み込み中...",
@@ -213,7 +213,7 @@
     "classifiedModulesSealed": "機密モジュールは封印済み — 有効化して解除",
     "unlock": "解除",
     "freeFeatures": [
-      "PABLO AIチャット — 無制限会話",
+      "PABLOチャット — 無制限会話",
       "プレゼンテーションビルダー — スライドデッキをゼロから作成",
       "連絡先 & CRM — ネットワークを保存・管理",
       "ワークスペース — プロジェクト、メモ、ブランド設定",

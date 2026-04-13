@@ -1491,11 +1491,11 @@ export default function Home() {
             )}
           </div>
 
-          {/* PABLO AI Chat — FREE */}
+          {/* PABLO Chat — FREE */}
           <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 180px)' }}>
             <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30 shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO AI' : 'PABLO NEURAL CORE'}
+                <Bot className="w-3.5 h-3.5" /> {boomerMode ? 'PABLO' : 'PABLO NEURAL CORE'}
                 {currentAgent && (
                   <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider border ${
                     currentAgent.provider === 'claude'

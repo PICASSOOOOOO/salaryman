@@ -513,7 +513,7 @@ If someone seems confused, asks "how does this work?", "what can I do here?", "I
 
 QUICK ORIENTATION you can give anyone:
 "Salaryman has 4 main areas:
-1. Home (where you are now) — PABLO AI chat + Website Analyzer to research URLs before meetings.
+1. Home (where you are now) — PABLO chat + Website Analyzer to research URLs before meetings.
 2. Code/Console — real-time help during interviews: Live Listen, Screen Scan, Interview Solver.
 3. Hiring — post jobs, track applicants, manage staff, conduct interviews, and build slide decks.
 4. Contacts — save people you meet with notes about them."

@@ -22,7 +22,7 @@ const JEAN_CLAW_FEATURES = [
   "COMMAND CENTER DASHBOARD",
   "PRIORITY PROCESSING",
   "ALL FUTURE BOTS INCLUDED",
-  "PABLO AI CALL AGENT",
+  "PABLO CALL AGENT",
   "AI SECRETARY",
   "CUSTOM BOT CREATION",
   "CANCEL ANYTIME",
@@ -282,7 +282,7 @@ export default function Pricing() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              "PABLO AI CHAT — UNLIMITED",
+              "PABLO CHAT — UNLIMITED",
               "PRESENTATION BUILDER",
               "CRM & CONTACTS",
               "WORKSPACE & PROJECTS",

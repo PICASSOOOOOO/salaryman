@@ -3112,7 +3112,7 @@ function createEstablishBusinessMission(char: Char): Quest | null {
       { id: 'get_device', label: 'Pick up your PABLO CORP device from the PABLO CORP store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
       { id: 'customize_costume', label: 'Customize your operative appearance', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'SIGNAGE' : 'SHADOW TOWER' } },
-      { id: 'pablo_auto', label: '(Optional) Use PABLO AI to automate business setup', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
+      { id: 'pablo_auto', label: '(Optional) Use PABLO to automate business setup', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
     ],
   };
 }
@@ -4498,9 +4498,9 @@ export default function WorldPlay() {
       completeQuestTask('report_to_terminal', 'visit_tower_intake');
       if (IS_VAN(bid)) {
         g.energy = Math.min(100, g.energy + 15); setEnergy(g.energy);
-        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. PABLO AI online. Energy +15. Press [ESC] to leave.`);
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'TERMINAL VAN'} — Sliding door. Cot in the back. Terminal on the dash. PABLO online. Energy +15. Press [ESC] to leave.`);
       } else {
-        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'PUBLIC TERMINAL'} — PABLO AI online. Free access. All productivity apps available. Press [ESC] to close.`);
+        setNarr(`> ${BUILDINGS.find(b2 => b2.id === bid)?.label ?? 'PUBLIC TERMINAL'} — PABLO online. Free access. All productivity apps available. Press [ESC] to close.`);
       }
     }
     else if (['crystal4','crystal5','crystal6','crystal7'].includes(bid)) {
@@ -6658,14 +6658,14 @@ export default function WorldPlay() {
     } catch { sfxError(); setNarr('> NETWORK ERROR — Content update failed.'); }
   }, [bbAdText, bbAdUrl, fetchBillboards]);
 
-  // ── PABLO AI ──────────────────────────────────────────────────────────────
+  // ── PABLO ──────────────────────────────────────────────────────────────
   const buildPabloContext = useCallback(() => {
     const g = gs.current;
     const nearbyNpcs = NPCS.filter(n => { const sp = getNpcSchedulePos(n, g.worldTime ?? 0); return Math.hypot(g.px - sp.x, g.py - sp.y) < 150; }).map(n => n.name).join(', ') || 'none';
     const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
     const loanStr = g.loan ? `ACTIVE LOAN ƒ${g.loan.amount.toLocaleString()} + ƒ${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
-    return `SYSTEM: You are PABLO AI — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
+    return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
 WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of SHADOW TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by RUST SYNDICATE, VOID RUNNERS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by BANCO OMBRA. Combat earns bounties. Economy matters.
 
@@ -14760,7 +14760,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
             }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.04)', border: showPablo ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.25)', color: showPablo ? '#38bdf8' : (hasDevice && !deviceBroken) ? '#38bdf8' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-              🤖 PABLO AI [P] — FREE{deviceBroken ? ' ⚠' : ''}
+              🤖 PABLO [P] — FREE{deviceBroken ? ' ⚠' : ''}
             </button>
             <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>QUICK ACCESS</div>
@@ -15326,7 +15326,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.PROBLEM_DESC.name}</span> — {PABLO_PRODUCTS.PROBLEM_DESC.desc}<br/>
                         ▸ <span style={{ color: '#ff4444' }}>{PABLO_PRODUCTS.SCAN_SCREEN.name}</span> — {PABLO_PRODUCTS.SCAN_SCREEN.desc}<br/>
                         ▸ <span style={{ color: '#33aaff' }}>{PABLO_PRODUCTS.LIVE_LISTEN.name}</span> — {PABLO_PRODUCTS.LIVE_LISTEN.desc}<br/>
-                        ▸ <span style={{ color: '#38bdf8' }}>PABLO AI</span> — Neural assistant (this terminal)
+                        ▸ <span style={{ color: '#38bdf8' }}>PABLO</span> — Neural assistant (this terminal)
                       </div>
                     </div>
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem' }}>
@@ -15739,26 +15739,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   );
                 })()}
 
-                {/* PABLO AI CHAT TAB */}
+                {/* PABLO CHAT TAB */}
                 {pabloTab === 'chat' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 280 }}>
                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '.35rem', paddingBottom: '.3rem', minHeight: 180 }}>
                       {pabloMsgs.length === 0 && (
                         <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', lineHeight: 1.8 }}>
-                          &gt; PABLO AI ONLINE<br/>
+                          &gt; PABLO ONLINE<br/>
                           &gt; Ask anything. I know Minx City. Some of it I won't tell you.
                         </div>
                       )}
                       {pabloMsgs.map((m, i) => (
                         <div key={i} style={{ fontSize: '.6rem', lineHeight: 1.6, color: m.role === 'user' ? 'rgba(56,189,248,.5)' : '#38bdf8', paddingLeft: m.role === 'pablo' ? '.45rem' : 0, borderLeft: m.role === 'pablo' ? '2px solid rgba(56,189,248,.25)' : 'none' }}>
                           <span style={{ ...VT, fontSize: '.72rem', color: 'rgba(56,189,248,.3)', marginRight: '.25rem' }}>
-                            {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO AI]'}
+                            {m.role === 'user' ? `[${char.name.slice(0,10)}]` : '[PABLO]'}
                           </span>
                           {m.text}
                         </div>
                       ))}
                       {pabloLoad && (
-                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>PABLO AI . . .</div>
+                        <div style={{ ...VT, fontSize: '.85rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>PABLO . . .</div>
                       )}
                     </div>
                     {worldConv.isConvMode ? (
@@ -15832,7 +15832,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             value={pabloIn}
                             onChange={e => setPabloIn(e.target.value)}
                             onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') sendPablo(); }}
-                            placeholder="Type to PABLO AI..."
+                            placeholder="Type to PABLO..."
                             style={{ flex: 1, background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.2)', color: '#38bdf8', ...ST, fontSize: '.7rem', padding: '.4rem .5rem', outline: 'none', caretColor: '#38bdf8', minHeight: 36 }}
                           />
                           <button onClick={sendPablo} disabled={pabloLoad}
@@ -15869,7 +15869,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#38bdf8', textShadow: '0 0 12px rgba(56,189,248,.4)', letterSpacing: '.15em', marginBottom: '.2rem' }}>PABLO CORP DEVICE</div>
             <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.08em', marginBottom: '1.25rem' }}>REGISTERED — {char.name.toUpperCase()}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.55rem', marginBottom: '1.1rem' }}>
-              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO AI chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
+              {([[PABLO_PRODUCTS.FREE_TIER.name, ['PABLO chat', 'World access']], [`${PABLO_PRODUCTS.PRO_TIER.name} — $4–6/mo`, [PABLO_PRODUCTS.PABLO_AI_PRO.short, PABLO_PRODUCTS.LIVE_LISTEN.short, PABLO_PRODUCTS.SCAN_SCREEN.short, PABLO_PRODUCTS.SAY_THIS.short, PABLO_PRODUCTS.CONTACTS.short]]] as [string, string[]][]).map(([t, f]) => (
                 <div key={t} style={{ border: t === PABLO_PRODUCTS.FREE_TIER.name ? '1px solid rgba(56,189,248,.15)' : '1px solid rgba(56,189,248,.5)', padding: '.7rem', background: t !== PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.05)' : 'transparent' }}>
                   <div style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.45)' : '#38bdf8', letterSpacing: '.1em', marginBottom: '.35rem' }}>{t}</div>
                   {f.map(ff => <div key={ff} style={{ fontSize: '.54rem', color: t === PABLO_PRODUCTS.FREE_TIER.name ? 'rgba(56,189,248,.32)' : 'rgba(56,189,248,.62)', lineHeight: 1.9 }}>▸ {ff}</div>)}
@@ -19402,12 +19402,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         completeQuestTask('establish_business', 'pablo_auto');
                         setShowQuests(false);
                         setShowPablo(true);
-                        setNarr('> PABLO AI — Business setup automation initiated. Use the PABLO CORP device to configure your enterprise.');
+                        setNarr('> PABLO — Business setup automation initiated. Use the PABLO CORP device to configure your enterprise.');
                       }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(56,189,248,.06)', border:'1px solid rgba(56,189,248,.25)', color:'rgba(56,189,248,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
-                        USE PABLO AI TO AUTOMATE BUSINESS SETUP
+                        USE PABLO TO AUTOMATE BUSINESS SETUP
                       </button>
                       <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.2)', marginTop:'.2rem' }}>
-                        Optional: Let PABLO AI handle signage, workspace configuration, and registration paperwork.
+                        Optional: Let PABLO handle signage, workspace configuration, and registration paperwork.
                       </div>
                     </div>
                   )}

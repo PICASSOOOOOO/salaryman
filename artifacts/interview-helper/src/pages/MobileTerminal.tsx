@@ -316,7 +316,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
 
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0 }}>
           {([
-            { id: 'chat' as TabId, label: '🤖 PABLO AI', boomerLabel: '🤖 AI CHAT', locked: false },
+            { id: 'chat' as TabId, label: '🤖 PABLO', boomerLabel: '🤖 AI CHAT', locked: false },
             { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
             { id: 'overview' as TabId, label: `🏙 OVERVIEW`, boomerLabel: `🏙 OVERVIEW`, locked: false },
           ]).map(t => (
@@ -387,7 +387,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               <div style={{ flex: 1, overflowY: 'auto', padding: '.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                 {pabloMsgs.length === 0 && (
                   <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.22)', lineHeight: 1.8, padding: '.5rem 0' }}>
-                    &gt; PABLO AI ONLINE — MOBILE LINK<br />
+                    &gt; PABLO ONLINE — MOBILE LINK<br />
                     &gt; Remote terminal access active.<br />
                     &gt; Ask anything. I know Minx City.
                   </div>
@@ -497,7 +497,7 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ border: '1px solid rgba(0,180,255,.15)', padding: '.6rem', background: 'rgba(0,180,255,.03)' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,180,255,.5)', lineHeight: 1.8, ...stFont(boomerMode) }}>
-                    Trading, building purchases, and cargo runs require physical terminal access in Minx City. Use the PABLO AI tab to get business advice remotely.
+                    Trading, building purchases, and cargo runs require physical terminal access in Minx City. Use the PABLO tab to get business advice remotely.
                   </div>
                 </div>
               </div>

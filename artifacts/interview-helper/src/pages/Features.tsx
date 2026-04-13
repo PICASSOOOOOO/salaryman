@@ -37,8 +37,8 @@ interface ModuleDef {
 const MODULES: ModuleDef[] = [
   {
     id: 'pablo',
-    label: 'PABLO AI',
-    boomerLabel: 'PABLO AI',
+    label: 'PABLO',
+    boomerLabel: 'PABLO',
     codename: 'Neural Core v5.0',
     boomerCodename: 'AI Assistant',
     tagline: 'Your personal business intelligence operator — always on, always sharp.',

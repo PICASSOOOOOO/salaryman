@@ -10,7 +10,7 @@ export const BRANDED_CONFIG = {
   sub: `PABLO TERMINAL MX-75 · ALPHA ${buildVersion}`,
   navLabel: 'PABLO' as const,
   emailSender: 'Salaryman' as const,
-  description: 'PABLO AI — Executive Field Unit' as const,
+  description: 'PABLO — Executive Field Unit' as const,
 };
 
 export const DISCREET_CONFIG = {

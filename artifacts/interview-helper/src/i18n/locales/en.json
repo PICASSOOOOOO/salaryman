@@ -1,6 +1,6 @@
 {
   "nav": {
-    "pablo": "PABLO AI",
+    "pablo": "PABLO",
     "console": "CONSOLE",
     "business": "BUSINESS",
     "creative": "CREATIVE",
@@ -68,7 +68,7 @@
     "numbers": "NUM-VAULT"
   },
   "labels": {
-    "pablo": "PABLO AI",
+    "pablo": "PABLO",
     "console": "CONSOLE",
     "business": "BUSINESS",
     "creative": "CREATIVE",
@@ -121,7 +121,7 @@
   },
   "branded": {
     "name": "SALARYMAN",
-    "description": "PABLO AI — Executive Field Unit"
+    "description": "PABLO — Executive Field Unit"
   },
   "common": {
     "loading": "LOADING...",
@@ -214,7 +214,7 @@
     "classifiedModulesSealed": "CLASSIFIED MODULES SEALED — ACTIVATE TO UNLOCK",
     "unlock": "UNLOCK",
     "freeFeatures": [
-      "PABLO AI CHAT — UNLIMITED CONVERSATIONS",
+      "PABLO CHAT — UNLIMITED CONVERSATIONS",
       "PRESENTATION BUILDER — CREATE SLIDE DECKS FROM SCRATCH",
       "CONTACTS & CRM — SAVE AND MANAGE YOUR NETWORK",
       "WORKSPACE — PROJECTS, NOTES, AND BRAND SETTINGS",
@@ -267,7 +267,7 @@
     "typingComplete": "TYPING COMPLETE.",
     "typeModeActive": "TYPE MODE ACTIVE.",
     "pasteQuestion": "OR PASTE THE QUESTION HERE...",
-    "signInContext": "SIGN IN TO ACCESS PABLO AI AND ALL TOOLS.",
+    "signInContext": "SIGN IN TO ACCESS PABLO AND ALL TOOLS.",
     "signInContextCodename": "OPERATIVE CREDENTIALS REQUIRED. PABLO TERMINAL ACCESS LOCKED."
   },
   "cover": {

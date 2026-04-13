@@ -17,15 +17,16 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 
 function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  if (name.endsWith(' Prime')) {
-    const base = name.slice(0, -6);
+  const upper = name.toUpperCase();
+  if (upper.endsWith(' PRIME')) {
+    const base = upper.slice(0, -6);
     return (
       <span className={className} style={style}>
-        {base} <span style={{ color: '#f59e0b', textShadow: '0 0 8px rgba(245,158,11,0.3)' }}>Prime</span>
+        {base} <span style={{ color: '#f59e0b', textShadow: '0 0 8px rgba(245,158,11,0.3)' }}>PRIME</span>
       </span>
     );
   }
-  return <span className={className} style={style}>{name}</span>;
+  return <span className={className} style={style}>{upper}</span>;
 }
 
 type BotStatus = 'active' | 'paused' | 'error';
@@ -2552,7 +2553,7 @@ export default function BotFactory() {
             <button onClick={() => setTab('jean-claw')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'jean-claw' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
               <Sparkles className="w-4 h-4" />
-              JEAN CLAW — 77 BOTS
+              JEAN CLAW — 78 BOTS
             </button>
             <button onClick={() => setTab('my-bots')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'my-bots' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-card text-muted-foreground border-border hover:border-sky-500/20'}`}>
@@ -2738,13 +2739,13 @@ export default function BotFactory() {
               <div className="rounded-xl border border-border/50 bg-card/30 p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Shield className="w-4 h-4 text-sky-400/60" />
-                  <span className="text-xs font-bold text-sky-400/80 uppercase tracking-wider">FREE WITH PABLO AI</span>
+                  <span className="text-xs font-bold text-sky-400/80 uppercase tracking-wider">FREE WITH PABLO</span>
                   <div className="flex-1 h-px bg-sky-500/10" />
                 </div>
                 <p className="text-xs text-muted-foreground/60 leading-relaxed mb-3">
                   {boomerMode
                     ? 'Pablo handles all the basics for free — chat, voice, translation, website analysis, CRM, calendar, documents, invoices, dashboard, and more. Jean Claw adds the advanced automation layer on top.'
-                    : 'PABLO AI HANDLES CORE OPS — CHAT, VOICE, TRANSLATION, ANALYSIS, CRM, CALENDAR, DOCUMENTS, INVOICES, DASHBOARD. JEAN CLAW ADDS ADVANCED AUTOMATION + MULTI-CHANNEL DEPLOYMENT.'}
+                    : 'PABLO HANDLES CORE OPS — CHAT, VOICE, TRANSLATION, ANALYSIS, CRM, CALENDAR, DOCUMENTS, INVOICES, DASHBOARD. JEAN CLAW ADDS ADVANCED AUTOMATION + MULTI-CHANNEL DEPLOYMENT.'}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['AI CHAT', 'VOICE MODE', 'TRANSLATOR', 'WEBSITE ANALYZER', 'CRM', 'CALENDAR', 'DOCUMENTS', 'INVOICES', 'DASHBOARD', 'STUDIO', 'REPORTS'].map(feat => (
@@ -2965,7 +2966,7 @@ export default function BotFactory() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.1rem' }}>
-                                {bot.name}
+                                {bot.name.toUpperCase()}
                               </h3>
                               <StatusBadge status={bot.status} boomer={boomerMode} t={t} />
                               {marketplaceItem && marketplaceItem.priceMonthly > 0 && (
@@ -3051,7 +3052,7 @@ export default function BotFactory() {
                   </div>
                   <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
                     {boomerMode
-                      ? 'Jean Claw is how Picasso AI keeps the lights on. Your subscription funds the servers, the free tools, and the entire platform. 7 AI agents. 8 channels. One price.'
+                      ? 'Jean Claw is how Picasso.AI keeps the lights on. Your subscription funds the servers, the free tools, and the entire platform. 78 bots. 8 channels. One price.'
                       : 'YOUR SUBSCRIPTION POWERS THE SERVERS. FUNDS THE FREE TOOLS. KEEPS THE PLATFORM ALIVE. 7 AGENTS. 8 CHANNELS. $145/MO.'}
                   </p>
                 </div>

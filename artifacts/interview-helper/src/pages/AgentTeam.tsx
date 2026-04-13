@@ -102,7 +102,7 @@ export default function AgentTeam() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: boomerMode ? undefined : "'VT323', monospace", letterSpacing: boomerMode ? undefined : '0.1em', fontSize: boomerMode ? undefined : '1.4rem' }}>
-                  {boomerMode ? 'AI Team' : 'PABLO AI NETWORK'}
+                  {boomerMode ? 'AI Team' : 'PABLO NETWORK'}
                 </h1>
                 <p className="text-xs text-muted-foreground" style={{ fontFamily: boomerMode ? undefined : "'Share Tech Mono', monospace" }}>
                   {boomerMode ? 'The specialist AIs working behind the scenes' : 'MULTI-AGENT ORCHESTRATION LAYER · ACTIVE SPECIALISTS'}

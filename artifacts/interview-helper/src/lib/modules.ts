@@ -34,7 +34,7 @@ export const MODULES: Module[] = [
     id: 'pablo',
     path: '/',
     label: 'Pablo',
-    codename: 'PABLO AI',
+    codename: 'PABLO',
     icon: Terminal,
     defaultPath: '/',
     subs: [],

@@ -121,7 +121,7 @@
   },
   "branded": {
     "name": "SALARYMAN",
-    "description": "PABLO AI — Unité de Terrain Exécutif"
+    "description": "PABLO — Unité de Terrain Exécutif"
   },
   "common": {
     "loading": "CHARGEMENT...",
@@ -214,7 +214,7 @@
     "classifiedModulesSealed": "Modules classifiés scellés — activez pour déverrouiller",
     "unlock": "Déverrouiller",
     "freeFeatures": [
-      "Chat PABLO AI — conversations illimitées",
+      "Chat PABLO — conversations illimitées",
       "Créateur de présentation — créez des diapositives depuis zéro",
       "Contacts & CRM — sauvegardez et gérez votre réseau",
       "Espace de travail — projets, notes et paramètres de marque",
