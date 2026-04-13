@@ -9,6 +9,7 @@ import {
   salarymanSavesTable,
   systemConfigTable,
   broadcastMessagesTable,
+  notificationsTable,
   adminAuditLogTable,
   feedbackReportsTable,
   blockedEmailDomainsTable,
@@ -394,6 +395,27 @@ router.post("/admin/broadcasts", async (req: Request, res: Response) => {
     expiresAt: expiresAt ? new Date(expiresAt) : null,
   }).returning();
   await logAudit(req.user!.id, "send_broadcast", "broadcast", String(row.id), title);
+
+  try {
+    const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
+    const notifValues = allUsers.map(u => ({
+      userId: u.id,
+      type: "broadcast" as const,
+      title: `${title}`,
+      body: String(message).slice(0, 500),
+      link: null,
+      read: false,
+    }));
+    if (notifValues.length > 0) {
+      const BATCH = 500;
+      for (let i = 0; i < notifValues.length; i += BATCH) {
+        await db.insert(notificationsTable).values(notifValues.slice(i, i + BATCH));
+      }
+    }
+  } catch (err) {
+    console.error("[Broadcast] Failed to create notifications:", err);
+  }
+
   return res.json({ broadcast: row });
 });
 

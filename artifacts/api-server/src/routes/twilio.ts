@@ -12,6 +12,7 @@ import {
   appointmentsTable,
   contactInteractionsTable,
   usersTable,
+  notificationsTable,
   pabloCallSessionsTable,
   pabloOutboundCampaignsTable,
   callCenterAgentsTable,
@@ -983,6 +984,19 @@ router.post("/twilio/voicemail/webhook", async (req, res) => {
       } catch (e: unknown) {
         console.error("[CalllHome] voicemail summary error:", e instanceof Error ? e.message : "Unknown");
       }
+    }
+
+    try {
+      const callerLabel = vmCrmMatch?.contactName ?? From;
+      await db.insert(notificationsTable).values({
+        userId,
+        type: "voicemail",
+        title: `New voicemail from ${callerLabel}`,
+        body: transcript ? transcript.slice(0, 200) : `You received a voicemail from ${callerLabel}.`,
+        link: `/phone/voicemail`,
+      });
+    } catch (nErr) {
+      console.error("[Voicemail] notification error:", nErr);
     }
 
     await sendMissedCallEmail(userId, From, vmCrmMatch?.contactName);
@@ -2522,7 +2536,19 @@ router.post("/twilio/webhook/status", async (req, res) => {
         .limit(1);
       const record = records[0];
       if (record && record.direction === "inbound") {
+        const callerLabel = record.callerName ?? From ?? record.recipientNumber;
         await sendMissedCallEmail(record.userId, From ?? record.recipientNumber, record.callerName ?? undefined);
+        try {
+          await db.insert(notificationsTable).values({
+            userId: record.userId,
+            type: "missed_call",
+            title: `Missed call from ${callerLabel}`,
+            body: `You missed an inbound call from ${callerLabel}.`,
+            link: `/phone/history`,
+          });
+        } catch (nErr) {
+          console.error("[MissedCall] notification error:", nErr);
+        }
       }
     }
 

@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
-import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable } from '@workspace/db';
+import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable } from '@workspace/db';
 import { eq, and, or } from 'drizzle-orm';
 
 interface ChatClient {
@@ -148,6 +148,15 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
       if (otherClient && !otherClient.subscribedChannels.has(channelId)) {
         send(otherClient.ws, { type: 'new_private_channel', channelId });
         send(otherClient.ws, payload);
+      }
+      if (!otherClient) {
+        db.insert(notificationsTable).values({
+          userId: otherUserId,
+          type: "dm",
+          title: `New message from ${client.userName}`,
+          body: content.slice(0, 200),
+          link: `/console/chat`,
+        }).catch(err => console.error("[Chat] DM notification error:", err));
       }
     }
   }

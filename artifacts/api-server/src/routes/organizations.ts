@@ -702,6 +702,29 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
 
+  if (memberId !== callerId) {
+    try {
+      const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+      const orgName = org?.name ?? "your organization";
+      const changes: string[] = [];
+      if (updates.role) changes.push(`role changed to ${updates.role}`);
+      if (updates.title !== undefined) changes.push(`title updated to "${updates.title}"`);
+      if (updates.salary !== undefined) changes.push(`salary updated`);
+      if (updates.department !== undefined) changes.push(`department changed`);
+      if (changes.length > 0) {
+        await db.insert(notificationsTable).values({
+          userId: memberId,
+          type: "org_member_update",
+          title: `Your position at ${orgName} has been updated`,
+          body: changes.join(", ").replace(/^./, c => c.toUpperCase()) + ".",
+          link: `/business/company`,
+        });
+      }
+    } catch (err) {
+      console.error("[Org] Failed to create member update notification:", err);
+    }
+  }
+
   res.json({ member: updated });
 });
 
@@ -743,6 +766,22 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
     .update(orgMembersTable)
     .set({ status: "removed" })
     .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  if (!isSelf) {
+    try {
+      const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+      const orgName = org?.name ?? "the organization";
+      await db.insert(notificationsTable).values({
+        userId: memberId,
+        type: "org_member_removed",
+        title: `You have been removed from ${orgName}`,
+        body: `Your membership at ${orgName} has been terminated.`,
+        link: `/business`,
+      });
+    } catch (err) {
+      console.error("[Org] Failed to create removal notification:", err);
+    }
+  }
 
   res.json({ ok: true });
 });

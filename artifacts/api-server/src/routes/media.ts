@@ -7,6 +7,7 @@ import {
   screenSessionsTable,
   orgMembersTable,
   usersTable,
+  notificationsTable,
 } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
 
@@ -248,6 +249,20 @@ router.post("/media/share", requireAuth, async (req, res) => {
         callHistoryId: callHistoryId ? Number(callHistoryId) : undefined,
       })
       .returning();
+
+    try {
+      const [sender] = await db.select({ firstName: usersTable.firstName, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, fromUserId)).limit(1);
+      const senderName = sender?.firstName ?? sender?.email?.split('@')[0] ?? "Someone";
+      await db.insert(notificationsTable).values({
+        userId: toUserId,
+        type: "media_shared",
+        title: `${senderName} shared ${mediaType} with you`,
+        body: title.slice(0, 200),
+        link: `/tools/media-center`,
+      });
+    } catch (nErr) {
+      console.error("[Media] notification error:", nErr);
+    }
 
     res.json({ ok: true, id: shared.id });
   } catch (err: unknown) {
