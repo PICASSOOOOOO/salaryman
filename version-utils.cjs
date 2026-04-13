@@ -57,6 +57,41 @@ function getCurrentCommitHash() {
   }
 }
 
+const NOISE_PATTERNS = [
+  /^published/i,
+  /^publish/i,
+  /^merge\b/i,
+  /^bump\b/i,
+  /^version\b/i,
+  /^fix typo/i,
+  /^lint/i,
+  /^format/i,
+  /^chore/i,
+  /^wip\b/i,
+  /^minor/i,
+  /^cleanup/i,
+  /^clean up/i,
+  /^refactor/i,
+  /^revert/i,
+  /^update.*package/i,
+  /^update.*depend/i,
+  /^update.*config/i,
+  /^automatically\b/i,
+  /checkpoint/i,
+  /^\s*$/,
+];
+
+function isFeatureCommit(msg) {
+  return !NOISE_PATTERNS.some((rx) => rx.test(msg));
+}
+
+function cleanCommitMessage(msg) {
+  return msg
+    .replace(/^(add|implement|create|build|introduce|enable|wire up)\s+/i, (m) => m.charAt(0).toUpperCase() + m.slice(1))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function getChangelogSummary(sinceCommitHash) {
   try {
     const { execSync } = require("child_process");
@@ -67,12 +102,14 @@ function getChangelogSummary(sinceCommitHash) {
     const lines = log.trim().split("\n").filter(Boolean);
     const summaries = lines
       .map((l) => l.replace(/^[a-f0-9]+\s+/, "").trim())
-      .filter((l) => l.length > 3 && l.length < 80)
+      .filter((l) => l.length > 10 && l.length < 80)
+      .filter(isFeatureCommit)
+      .map(cleanCommitMessage)
       .slice(0, 5);
     if (summaries.length > 0) return summaries;
   } catch {
   }
-  return ["Bug fixes and improvements"];
+  return ["Performance and stability improvements"];
 }
 
 function addChangelogEntry(versionRaw) {
