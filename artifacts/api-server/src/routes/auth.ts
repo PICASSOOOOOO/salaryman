@@ -18,6 +18,7 @@ import {
   ISSUER_URL,
   type SessionData,
 } from "../lib/auth";
+import { screenEmail, logLoginAttempt, flagUser } from "../lib/email-security";
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
@@ -164,9 +165,27 @@ router.get("/callback", async (req: Request, res: Response) => {
     return;
   }
 
+  const email = (claims.email as string) || null;
+  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+  const screening = await screenEmail(email);
+
+  if (!screening.allowed) {
+    await logLoginAttempt(email, clientIp, true, screening.reason);
+    console.warn(`[Auth] Blocked login — email: ${email}, reason: ${screening.reason}`);
+    res.redirect(`${returnTo}?auth_error=email_blocked`);
+    return;
+  }
+
   const dbUser = await upsertUser(
     claims as unknown as Record<string, unknown>,
   );
+
+  await logLoginAttempt(email, clientIp, false, null);
+
+  if (screening.severity === "flag") {
+    await flagUser(dbUser.id, email, "suspicious_email", screening.reason);
+    console.warn(`[Auth] Flagged user — id: ${dbUser.id}, email: ${email}, reason: ${screening.reason}`);
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const sessionData: SessionData = {
@@ -234,9 +253,26 @@ router.post(
         return;
       }
 
+      const mobileEmail = (claims.email as string) || null;
+      const mobileIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+      const mobileScreening = await screenEmail(mobileEmail);
+
+      if (!mobileScreening.allowed) {
+        await logLoginAttempt(mobileEmail, mobileIp, true, mobileScreening.reason);
+        console.warn(`[Auth] Blocked mobile login — email: ${mobileEmail}, reason: ${mobileScreening.reason}`);
+        res.status(403).json({ error: "Email address not allowed" });
+        return;
+      }
+
       const dbUser = await upsertUser(
         claims as unknown as Record<string, unknown>,
       );
+
+      await logLoginAttempt(mobileEmail, mobileIp, false, null);
+
+      if (mobileScreening.severity === "flag") {
+        await flagUser(dbUser.id, mobileEmail, "suspicious_email", mobileScreening.reason);
+      }
 
       const now = Math.floor(Date.now() / 1000);
       const sessionData: SessionData = {

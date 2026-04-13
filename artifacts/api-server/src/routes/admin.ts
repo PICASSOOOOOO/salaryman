@@ -11,11 +11,15 @@ import {
   broadcastMessagesTable,
   adminAuditLogTable,
   feedbackReportsTable,
+  blockedEmailDomainsTable,
+  flaggedUsersTable,
+  loginAttemptsTable,
   ORG_ROLE_HIERARCHY,
   type OrgRole,
 } from "@workspace/db";
 import { eq, and, desc, sql, ilike, or, count, gte } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
+import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 
 const router = Router();
 
@@ -443,6 +447,118 @@ router.get("/admin/audit-log", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;
   const rows = await db.select().from(adminAuditLogTable).orderBy(desc(adminAuditLogTable.createdAt)).limit(100);
   return res.json({ logs: rows });
+});
+
+router.get("/admin/email-security/stats", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const [blockedDomainCount] = await db.select({ count: count() }).from(blockedEmailDomainsTable).where(eq(blockedEmailDomainsTable.active, true));
+  const [flaggedCount] = await db.select({ count: count() }).from(flaggedUsersTable).where(eq(flaggedUsersTable.resolved, false));
+  const [blockedLoginsToday] = await db.select({ count: count() }).from(loginAttemptsTable)
+    .where(and(eq(loginAttemptsTable.blocked, true), gte(loginAttemptsTable.createdAt, new Date(Date.now() - 86400000))));
+  const [totalLoginsToday] = await db.select({ count: count() }).from(loginAttemptsTable)
+    .where(gte(loginAttemptsTable.createdAt, new Date(Date.now() - 86400000)));
+  return res.json({
+    builtinDomains: getBuiltinBlockedDomainCount(),
+    customBlockedDomains: blockedDomainCount?.count ?? 0,
+    flaggedUsers: flaggedCount?.count ?? 0,
+    blockedLoginsToday: blockedLoginsToday?.count ?? 0,
+    totalLoginsToday: totalLoginsToday?.count ?? 0,
+  });
+});
+
+router.get("/admin/email-security/blocked-domains", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const rows = await db.select().from(blockedEmailDomainsTable).orderBy(desc(blockedEmailDomainsTable.createdAt));
+  return res.json({ domains: rows });
+});
+
+router.post("/admin/email-security/blocked-domains", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const { domain, reason } = req.body;
+  if (!domain || typeof domain !== "string") return res.status(400).json({ error: "domain required" });
+  const normalized = domain.toLowerCase().trim();
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(normalized)) {
+    return res.status(400).json({ error: "Invalid domain format" });
+  }
+
+  try {
+    const [row] = await db.insert(blockedEmailDomainsTable).values({
+      domain: normalized,
+      reason: reason || "manual",
+      addedBy: req.user!.id,
+    }).returning();
+    invalidateBlockedDomainsCache();
+    await logAudit(req.user!.id, "add_blocked_domain", "email_security", normalized, `Reason: ${reason || "manual"}`);
+    return res.json({ domain: row });
+  } catch (err: any) {
+    if (err.code === "23505") return res.status(409).json({ error: "Domain already blocked" });
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/admin/email-security/blocked-domains/:id", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+  const [row] = await db.delete(blockedEmailDomainsTable).where(eq(blockedEmailDomainsTable.id, id)).returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  invalidateBlockedDomainsCache();
+  await logAudit(req.user!.id, "remove_blocked_domain", "email_security", row.domain);
+  return res.json({ ok: true });
+});
+
+router.get("/admin/email-security/flagged-users", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const showResolved = req.query.resolved === "true";
+  const rows = await db.select({
+    flag: flaggedUsersTable,
+    user: {
+      id: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      profileImageUrl: usersTable.profileImageUrl,
+    },
+  }).from(flaggedUsersTable)
+    .leftJoin(usersTable, eq(flaggedUsersTable.userId, usersTable.id))
+    .where(eq(flaggedUsersTable.resolved, showResolved))
+    .orderBy(desc(flaggedUsersTable.createdAt))
+    .limit(100);
+  return res.json({ flaggedUsers: rows });
+});
+
+router.patch("/admin/email-security/flagged-users/:id", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+  const { resolved } = req.body;
+  const [row] = await db.update(flaggedUsersTable).set({
+    resolved: !!resolved,
+    resolvedBy: resolved ? req.user!.id : null,
+    resolvedAt: resolved ? new Date() : null,
+  }).where(eq(flaggedUsersTable.id, id)).returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  await logAudit(req.user!.id, resolved ? "resolve_flag" : "unresolve_flag", "email_security", String(id));
+  return res.json({ flag: row });
+});
+
+router.get("/admin/email-security/login-attempts", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const blockedOnly = req.query.blocked === "true";
+  let query = db.select().from(loginAttemptsTable).orderBy(desc(loginAttemptsTable.createdAt)).limit(100).$dynamic();
+  if (blockedOnly) {
+    query = query.where(eq(loginAttemptsTable.blocked, true));
+  }
+  const rows = await query;
+  return res.json({ attempts: rows });
+});
+
+router.post("/admin/email-security/screen-test", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const { email } = req.body;
+  if (!email || typeof email !== "string") return res.status(400).json({ error: "email required" });
+  const result = await screenEmail(email);
+  return res.json({ email, result });
 });
 
 export default router;

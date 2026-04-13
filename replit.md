@@ -132,7 +132,7 @@ Player-owned building interiors in Minx City now spawn Jean Claw + department wo
 
 Internal staff control center at `/profile/admin`, gated by `isOwner` / `requirePicassoAdmin`. Completely separate from Org Admin (`/business`).
 
-### 9 Tabs
+### 10 Tabs
 - **ANALYTICS**: Signup trends, top players, feature subscription counts
 - **USERS**: Search/detail view with save data, balance adjustment (FIAT), feature grant/revoke, destructive resets (save data / features)
 - **BUSINESSES**: Org listing with member counts
@@ -142,11 +142,15 @@ Internal staff control center at `/profile/admin`, gated by `isOwner` / `require
 - **REPORTS**: Feedback/bug report management with status workflow (open → investigating → resolved → dismissed)
 - **BANS**: User ban management
 - **AUDIT LOG**: All admin actions logged with actor, action type, target, and details
+- **EMAIL SECURITY**: Overview stats, blocked domain management (add/remove custom domains, 80+ builtin), flagged user review, blocked login attempt log, email screen test tool
 
 ### DB Tables
 - `system_config` — key/value with category, description, updatedBy
 - `broadcast_messages` — title, message, type, targetAudience, active, expiresAt, createdBy
 - `admin_audit_log` — adminId, action, targetType, targetId, details, createdAt
+- `blocked_email_domains` — domain, reason, addedBy, active
+- `flagged_users` — userId, email, reason, details, resolved, resolvedBy, resolvedAt
+- `login_attempts` — email, ipAddress, blocked, blockReason
 
 ### API Routes (all under `/api/admin/`)
 - Analytics: `GET /admin/analytics`
@@ -155,3 +159,4 @@ Internal staff control center at `/profile/admin`, gated by `isOwner` / `require
 - Broadcasts: `GET /admin/broadcasts`, `POST /admin/broadcasts`, `PATCH /admin/broadcasts/:id`, `GET /admin/broadcasts/active` (public, filtered)
 - Reports: `GET /admin/reports`, `PATCH /admin/reports/:id`
 - Audit: `GET /admin/audit-log`
+- Email Security: `GET /admin/email-security/stats`, `GET/POST/DELETE /admin/email-security/blocked-domains`, `GET/PATCH /admin/email-security/flagged-users`, `GET /admin/email-security/login-attempts`, `POST /admin/email-security/screen-test`

@@ -5,7 +5,8 @@ import {
   ShieldCheck, Loader2, Ban, Search, ChevronRight,
   BarChart3, ToggleLeft, Settings, Megaphone, MessageSquareWarning,
   ScrollText, Wallet, RotateCcw, Plus, X, Trash2, Check,
-  TrendingUp, UserPlus, Gamepad2, Send, FileText,
+  TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
+  Globe, Flag, Lock, Unlock, RefreshCw,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -116,7 +117,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit';
+type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security';
 
 const FEATURE_LABELS: Record<string, string> = {
   live_listen: 'LIVE LISTEN',
@@ -212,6 +213,74 @@ export default function AdminPanel() {
 
   const [reportFilter, setReportFilter] = useState('open');
 
+  const [secStats, setSecStats] = useState<{ builtinDomains: number; customBlockedDomains: number; flaggedUsers: number; blockedLoginsToday: number; totalLoginsToday: number } | null>(null);
+  const [blockedDomains, setBlockedDomains] = useState<{ id: number; domain: string; reason: string; active: boolean; createdAt: string }[]>([]);
+  const [flaggedUsers, setFlaggedUsers] = useState<{ flag: any; user: any }[]>([]);
+  const [loginAttempts, setLoginAttempts] = useState<{ id: number; email: string | null; ipAddress: string | null; blocked: boolean; blockReason: string | null; createdAt: string }[]>([]);
+  const [secView, setSecView] = useState<'overview' | 'domains' | 'flagged' | 'attempts'>('overview');
+  const [newDomain, setNewDomain] = useState('');
+  const [newDomainReason, setNewDomainReason] = useState('');
+  const [secLoading, setSecLoading] = useState(false);
+  const [screenTestEmail, setScreenTestEmail] = useState('');
+  const [screenTestResult, setScreenTestResult] = useState<any>(null);
+
+  const loadSecurityData = useCallback(async () => {
+    setSecLoading(true);
+    try {
+      const [stats, domains, flagged, attempts] = await Promise.all([
+        apiFetch('/api/admin/email-security/stats').then(r => r.json()).catch(() => null),
+        apiFetch('/api/admin/email-security/blocked-domains').then(r => r.json()).catch(() => ({ domains: [] })),
+        apiFetch('/api/admin/email-security/flagged-users').then(r => r.json()).catch(() => ({ flaggedUsers: [] })),
+        apiFetch('/api/admin/email-security/login-attempts?blocked=true').then(r => r.json()).catch(() => ({ attempts: [] })),
+      ]);
+      setSecStats(stats);
+      setBlockedDomains(domains.domains ?? []);
+      setFlaggedUsers(flagged.flaggedUsers ?? []);
+      setLoginAttempts(attempts.attempts ?? []);
+    } finally { setSecLoading(false); }
+  }, []);
+
+  const handleAddDomain = async () => {
+    if (!newDomain) return;
+    setSecLoading(true);
+    try {
+      const resp = await apiFetch('/api/admin/email-security/blocked-domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: newDomain, reason: newDomainReason || 'manual' }),
+      });
+      if (resp.ok) { setNewDomain(''); setNewDomainReason(''); loadSecurityData(); }
+    } finally { setSecLoading(false); }
+  };
+
+  const handleRemoveDomain = async (id: number) => {
+    try {
+      await apiFetch(`/api/admin/email-security/blocked-domains/${id}`, { method: 'DELETE' });
+      loadSecurityData();
+    } catch {}
+  };
+
+  const handleResolveFlag = async (id: number, resolved: boolean) => {
+    try {
+      await apiFetch(`/api/admin/email-security/flagged-users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolved }),
+      });
+      loadSecurityData();
+    } catch {}
+  };
+
+  const handleScreenTest = async () => {
+    if (!screenTestEmail) return;
+    const resp = await apiFetch('/api/admin/email-security/screen-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: screenTestEmail }),
+    });
+    if (resp.ok) setScreenTestResult(await resp.json());
+  };
+
   const setTab = useCallback((tab: AdminTab) => {
     navigate(tab === 'analytics' ? '/profile/admin' : `/profile/admin?tab=${tab}`);
   }, [navigate]);
@@ -245,6 +314,10 @@ export default function AdminPanel() {
     if (!isAuthenticated) return;
     loadData();
   }, [isAuthenticated, loadData]);
+
+  useEffect(() => {
+    if (activeTab === 'security' && isAuthenticated) loadSecurityData();
+  }, [activeTab, isAuthenticated, loadSecurityData]);
 
   const loadUserDetail = async (userId: string) => {
     setUserDetailLoading(true);
@@ -442,6 +515,7 @@ export default function AdminPanel() {
     { key: 'reports', label: 'REPORTS', icon: MessageSquareWarning },
     { key: 'bans', label: 'BANS', icon: AlertTriangle },
     { key: 'audit', label: 'AUDIT LOG', icon: ScrollText },
+    { key: 'security', label: 'EMAIL SECURITY', icon: ShieldAlert },
   ];
 
   return (
@@ -1019,6 +1093,132 @@ export default function AdminPanel() {
                   </div>
                 ))}
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'security' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                {(['overview', 'domains', 'flagged', 'attempts'] as const).map(v => (
+                  <button key={v} onClick={() => setSecView(v)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-mono tracking-widest uppercase transition-colors ${
+                      secView === v ? 'bg-red-500/15 text-red-400 border border-red-500/25' : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                    }`}>{v === 'overview' ? 'OVERVIEW' : v === 'domains' ? 'BLOCKED DOMAINS' : v === 'flagged' ? 'FLAGGED USERS' : 'LOGIN ATTEMPTS'}</button>
+                ))}
+                <button onClick={loadSecurityData} className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
+                  <RefreshCw className={`w-3.5 h-3.5 ${secLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              {secView === 'overview' && secStats && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <StatCard label="BUILTIN BLOCKED DOMAINS" value={secStats.builtinDomains} color="red" icon={Lock} />
+                    <StatCard label="CUSTOM BLOCKED DOMAINS" value={secStats.customBlockedDomains} color="amber" icon={Globe} />
+                    <StatCard label="FLAGGED USERS" value={secStats.flaggedUsers} color="pink" icon={Flag} />
+                    <StatCard label="BLOCKED LOGINS (24H)" value={secStats.blockedLoginsToday} color="red" icon={ShieldAlert} />
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                    <p className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">SCREEN TEST</p>
+                    <div className="flex gap-2">
+                      <input value={screenTestEmail} onChange={e => setScreenTestEmail(e.target.value)}
+                        placeholder="test@example.com" className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground" />
+                      <button onClick={handleScreenTest} className="px-4 py-2 bg-red-500/15 text-red-400 border border-red-500/25 rounded-lg text-xs font-medium hover:bg-red-500/25">TEST</button>
+                    </div>
+                    {screenTestResult && (
+                      <div className={`p-3 rounded-lg border text-xs font-mono ${
+                        screenTestResult.result?.allowed ? 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400' : 'bg-red-500/5 border-red-500/15 text-red-400'
+                      }`}>
+                        <span className="font-bold">{screenTestResult.result?.allowed ? 'ALLOWED' : 'BLOCKED'}</span>
+                        {screenTestResult.result?.reason && <span className="ml-2 text-zinc-500">{screenTestResult.result.reason}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {secView === 'domains' && (
+                <div className="space-y-3">
+                  <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                    <p className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">ADD BLOCKED DOMAIN</p>
+                    <div className="flex gap-2">
+                      <input value={newDomain} onChange={e => setNewDomain(e.target.value)}
+                        placeholder="spammer.com" className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground" />
+                      <input value={newDomainReason} onChange={e => setNewDomainReason(e.target.value)}
+                        placeholder="Reason (optional)" className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground" />
+                      <button onClick={handleAddDomain} disabled={!newDomain || secLoading}
+                        className="px-4 py-2 bg-red-500/15 text-red-400 border border-red-500/25 rounded-lg text-xs font-medium hover:bg-red-500/25 disabled:opacity-40">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="grid grid-cols-[1fr_120px_100px_60px] gap-4 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
+                      <span>DOMAIN</span><span>REASON</span><span>ADDED</span><span></span>
+                    </div>
+                    {blockedDomains.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-zinc-600">No custom blocked domains yet. Builtin list is always active.</div>
+                    ) : blockedDomains.map(d => (
+                      <div key={d.id} className="grid grid-cols-[1fr_120px_100px_60px] gap-4 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
+                        <span className="text-sm text-foreground font-mono">{d.domain}</span>
+                        <span className="text-[10px] text-zinc-500">{d.reason}</span>
+                        <span className="text-[10px] text-zinc-500">{new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <button onClick={() => handleRemoveDomain(d.id)} className="p-1 text-red-400 hover:bg-red-500/10 rounded">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {secView === 'flagged' && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-[1fr_1fr_120px_100px_80px] gap-4 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
+                    <span>USER</span><span>REASON</span><span>DETAILS</span><span>FLAGGED</span><span></span>
+                  </div>
+                  {flaggedUsers.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-zinc-600">No flagged users</div>
+                  ) : flaggedUsers.map(({ flag, user }) => (
+                    <div key={flag.id} className="grid grid-cols-[1fr_1fr_120px_100px_80px] gap-4 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {user?.profileImageUrl && <img src={user.profileImageUrl} className="w-6 h-6 rounded-full" alt="" />}
+                        <div className="min-w-0">
+                          <p className="text-sm text-foreground truncate">{user?.firstName ?? 'Unknown'} {user?.lastName ?? ''}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">{user?.email ?? flag.email}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-amber-400 font-mono uppercase">{flag.reason}</span>
+                      <span className="text-[10px] text-zinc-500 truncate">{flag.details || '\u2014'}</span>
+                      <span className="text-[10px] text-zinc-500">{new Date(flag.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <button onClick={() => handleResolveFlag(flag.id, !flag.resolved)}
+                        className={`px-2 py-1 rounded text-[10px] font-mono ${flag.resolved ? 'text-amber-400 hover:bg-amber-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'}`}>
+                        {flag.resolved ? 'UNRESOLVE' : 'RESOLVE'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {secView === 'attempts' && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="grid grid-cols-[1fr_120px_120px_100px] gap-4 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
+                    <span>EMAIL</span><span>IP</span><span>REASON</span><span>TIME</span>
+                  </div>
+                  {loginAttempts.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-zinc-600">No blocked login attempts</div>
+                  ) : loginAttempts.map(a => (
+                    <div key={a.id} className="grid grid-cols-[1fr_120px_120px_100px] gap-4 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
+                      <span className="text-sm text-foreground font-mono truncate">{a.email ?? '\u2014'}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">{a.ipAddress ?? '\u2014'}</span>
+                      <span className="text-[10px] text-red-400 font-mono uppercase">{a.blockReason ?? '\u2014'}</span>
+                      <span className="text-[10px] text-zinc-500">
+                        {new Date(a.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </>
