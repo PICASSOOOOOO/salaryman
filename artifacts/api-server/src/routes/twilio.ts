@@ -110,7 +110,7 @@ async function matchContactByPhone(userId: string, phoneNumber: string): Promise
   return null;
 }
 
-const HIPAA_RETENTION_DAYS = 2190;
+const HIPAA_RETENTION_DAYS = 3650;
 
 function getRetentionDate(): Date {
   const d = new Date();
