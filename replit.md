@@ -16,6 +16,9 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 5. Call out bad logic, weak assumptions, and blind spots immediately.
 6. Never open with "that's a great point" or "you're absolutely right." Use more useful words.
 
+**Work approach:**
+- When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
+
 ## System Architecture
 
 The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
