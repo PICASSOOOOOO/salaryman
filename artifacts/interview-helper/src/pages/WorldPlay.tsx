@@ -3726,6 +3726,7 @@ export default function WorldPlay() {
   const [gamePaused,   setGamePaused]   = useState(false);
   const gamePausedRef = useRef(false);
   const [showMobilePhone, setShowMobilePhone] = useState(false);
+  const [showMobileBuildingDir, setShowMobileBuildingDir] = useState(false);
   const [showMobileControls, setShowMobileControls] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
@@ -5545,7 +5546,13 @@ export default function WorldPlay() {
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
-          if (g.interior && g.near === '__interior_exit') { exitInterior(); return; }
+          if (g.interior && g.near === '__interior_exit') {
+            if (isTouchDevice) {
+              setNarr('> MOBILE MODE — Interior only. Use the BUILDING DIRECTORY to visit other locations.');
+              return;
+            }
+            exitInterior(); return;
+          }
           if (g.interior) {
             const itr = g.interior;
             const openInteriorNpcDlg = (npcName: string, npcRole: string) => {
@@ -7381,6 +7388,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (escaped) break;
         }
+      }
+
+      if (isTouchDevice && !g.interior && !g.subwayTransit) {
+        const spawnBid = g.hamletBuildingId;
+        const spawnB = BUILDINGS.find(b => b.id === spawnBid) ?? BUILDINGS.find(b => b.id === 'minx_arms')!;
+        g.px = spawnB.x + spawnB.w / 2;
+        g.py = spawnB.y + spawnB.h + 20;
+        enterInterior(spawnBid);
       }
 
       if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
@@ -14531,7 +14546,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }} />
 
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
-      {isTouchDevice && showMobileControls && !gamePaused && !isDead && !showMobilePhone && (
+      {isTouchDevice && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
           {/* Virtual Joystick — bottom-left */}
           <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 200, pointerEvents: 'none' }}>
@@ -14558,7 +14573,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid rgba(251,191,36,${mobileSprintActive ? '.7' : '.35'})`, background: mobileSprintActive ? 'rgba(251,191,36,.2)' : 'rgba(25,20,0,.7)', color: mobileSprintActive ? '#fbbf24' : 'rgba(251,191,36,.6)', fontFamily: "'VT323',monospace", fontSize: '.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileSprintActive ? '0 0 14px rgba(251,191,36,.3)' : 'none', transition: 'all .1s' }}>
               RUN
             </button>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 140 }}>
               <button onClick={() => setShowMobilePhone(true)}
                 style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,10,20,.7)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
                 TEL
@@ -14566,6 +14581,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <button onClick={() => setShowInventory(prev => !prev)}
                 style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(255,215,0,.3)', background: 'rgba(20,15,0,.7)', color: '#ffd700', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
                 INV
+              </button>
+              <button onClick={() => setShowMobileBuildingDir(true)}
+                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(168,85,247,.3)', background: 'rgba(20,0,30,.7)', color: '#a855f7', fontFamily: "'VT323',monospace", fontSize: '.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
+                MAP
               </button>
             </div>
           </div>
@@ -14582,6 +14601,60 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
           </div>
         </>
+      )}
+
+      {/* ── MOBILE BUILDING DIRECTORY ────────────────────────────────── */}
+      {showMobileBuildingDir && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 500, background: 'rgba(0,0,0,.94)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(168,85,247,.2)' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: '#a855f7', letterSpacing: '.1em' }}>BUILDING DIRECTORY</span>
+            <button onClick={() => setShowMobileBuildingDir(false)}
+              style={{ background: 'rgba(255,60,60,.15)', border: '1px solid rgba(255,60,60,.3)', color: '#ff4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', padding: '4px 12px', borderRadius: 6, WebkitTapHighlightColor: 'transparent' }}>
+              CLOSE
+            </button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {BUILDINGS.filter(b => getInterior(b.id)).map(b => {
+              const isCurrentBld = gs.current.interior?.bid === b.id;
+              const isHome = gs.current.hamletBuildingId === b.id;
+              return (
+                <button key={b.id}
+                  onClick={() => {
+                    if (isCurrentBld) { setShowMobileBuildingDir(false); return; }
+                    const g = gs.current;
+                    g.px = b.x + b.w / 2;
+                    g.py = b.y + b.h + 20;
+                    g.interior = null;
+                    g.interiorFade = 0;
+                    g.interiorFadeDir = 0;
+                    g.interiorFadeCallback = null;
+                    enterInterior(b.id);
+                    setShowMobileBuildingDir(false);
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${isCurrentBld ? 'rgba(34,211,238,.5)' : isHome ? 'rgba(168,85,247,.4)' : 'rgba(56,189,248,.15)'}`,
+                    background: isCurrentBld ? 'rgba(34,211,238,.1)' : isHome ? 'rgba(168,85,247,.08)' : 'rgba(0,10,20,.6)',
+                    color: isCurrentBld ? '#22d3ee' : '#e2e8f0',
+                    fontFamily: "'Share Tech Mono',monospace",
+                    fontSize: '.8rem',
+                    textAlign: 'left',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                  }}>
+                  <span>{b.label}</span>
+                  <span style={{ fontSize: '.65rem', color: isCurrentBld ? '#22d3ee' : isHome ? '#a855f7' : 'rgba(148,163,184,.5)' }}>
+                    {isCurrentBld ? 'HERE' : isHome ? 'HOME' : 'VISIT'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* ── MOBILE PHONE OVERLAY ─────────────────────────────────────── */}
