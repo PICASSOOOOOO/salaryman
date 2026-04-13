@@ -7,7 +7,7 @@ import {
   Store, Plug, FolderOpen, PenTool, Video, Crosshair, BookOpen, Clapperboard,
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
-  User, Eye, Map, AlertTriangle, Activity,
+  User, Eye, Map, AlertTriangle, Activity, Brain,
 } from 'lucide-react';
 
 export type Module = {
@@ -85,6 +85,7 @@ export const MODULES: Module[] = [
       { id: 'terminal', path: '/console', label: 'TERMINAL', boomerLabel: 'TERMINAL', codename: 'CIPHER-X', icon: Code2 },
       { id: 'agents', path: '/console/agents', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
+      { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
     ],
   },
   {

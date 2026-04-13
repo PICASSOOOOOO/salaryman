@@ -46,6 +46,7 @@ import insuranceRouter from "./insurance";
 import platformApiRouter from "./platform-api";
 import adminRouter from "./admin";
 import businessOpsRouter from "./business-ops";
+import vaultRouter from "./vault";
 
 const router: IRouter = Router();
 
@@ -96,5 +97,6 @@ router.use(insuranceRouter);
 router.use(platformApiRouter);
 router.use(adminRouter);
 router.use(businessOpsRouter);
+router.use(vaultRouter);
 
 export default router;

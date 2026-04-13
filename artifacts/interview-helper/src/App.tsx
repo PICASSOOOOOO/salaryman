@@ -87,6 +87,7 @@ const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 
+const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
@@ -152,8 +153,11 @@ function AppShell() {
   const showNavBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
 
   const isHome = pathname === "/";
-  const isConsole = pathname === "/console" || pathname.startsWith("/console/");
-  const isKeepAliveActive = isHome || isConsole;
+  const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault"];
+  const isConsoleTerminal = pathname === "/console";
+  const isConsoleSubRoute = consoleSubRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const isConsole = isConsoleTerminal || pathname.startsWith("/console/");
+  const isKeepAliveActive = isHome || (isConsole && !isConsoleSubRoute);
 
   const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
 
@@ -204,8 +208,8 @@ function AppShell() {
         </Suspense>
       </ErrorBoundary>
       <ErrorBoundary>
-        <Suspense fallback={isConsole ? <CRTFallback /> : null}>
-          <div style={{ display: isConsole ? "block" : "none" }}>
+        <Suspense fallback={isConsoleTerminal ? <CRTFallback /> : null}>
+          <div style={{ display: isConsoleTerminal ? "block" : "none" }}>
             <MemoConsole />
           </div>
         </Suspense>
@@ -285,6 +289,7 @@ function AppShell() {
             {/* CONSOLE sub-routes (agents + video moved here) */}
             <Route path="/console/agents" component={AgentTeam} />
             <Route path="/console/video" component={VideoAnalyzer} />
+            <Route path="/console/vault" component={KnowledgeVault} />
 
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />
