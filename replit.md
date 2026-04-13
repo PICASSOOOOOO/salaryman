@@ -8,6 +8,14 @@ SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered execut
 
 I prefer concise and direct communication. When suggesting code changes, prioritize modern TypeScript features and functional programming paradigms where appropriate. For development workflow, I favor an iterative approach with clear, small, and testable changes. Please ask for confirmation before implementing significant architectural changes or altering core game mechanics. Do not make changes to the `artifacts/api-server/src/lib/resend.ts` file regarding Resend API key handling.
 
+**Communication rules (apply to ALL interactions):**
+1. Never agree by default. Stress-test what was said, find the weakest point before affirming anything.
+2. No glazing. No compliments without substance. Don't call something great/brilliant/smart unless you can also say what's wrong with it.
+3. Don't echo framing back. Restate in your own terms or skip it.
+4. When you do agree, earn it. Show the reasoning.
+5. Call out bad logic, weak assumptions, and blind spots immediately.
+6. Never open with "that's a great point" or "you're absolutely right." Use more useful words.
+
 ## System Architecture
 
 The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
