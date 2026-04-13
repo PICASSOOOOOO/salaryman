@@ -888,28 +888,168 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
   },
   _office_floor: {
     id: '_office_floor', label: 'OFFICE FLOOR',
-    width: 380, height: 300,
+    width: 1200, height: 1200,
     wallColor: 'rgba(18,22,30,.95)', floorColor: 'rgba(8,12,18,.92)', accentColor: 'rgba(0,180,255,.25)',
-    exitX: 175, exitY: 285, exitW: 30, exitH: 15,
-    ambientText: 'Open plan office. Conference room in the back. Elevator to lobby.',
+    exitX: 585, exitY: 1185, exitW: 30, exitH: 15,
+    ambientText: 'Open-plan bullpen. Rows of desks and terminals. Conference rooms along the back wall. Arcade lounge in the corner.',
     objects: [
-      { x: 20, y: 30, w: 55, h: 28, type: 'desk', label: 'DESK 1', color: 'rgba(50,60,80,.5)' },
-      { x: 20, y: 75, w: 55, h: 28, type: 'desk', label: 'DESK 2', color: 'rgba(50,60,80,.5)' },
-      { x: 20, y: 120, w: 55, h: 28, type: 'desk', label: 'DESK 3', color: 'rgba(50,60,80,.5)' },
-      { x: 90, y: 30, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
-      { x: 90, y: 75, w: 45, h: 28, type: 'terminal', label: 'WORKSTATION', color: 'rgba(0,80,120,.5)' },
-      { x: 310, y: 30, w: 50, h: 50, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },
-      { x: 170, y: 30, w: 100, h: 70, type: 'conference_table', label: 'CONFERENCE ROOM', color: 'rgba(45,55,75,.5)' },
-      { x: 170, y: 35, w: 90, h: 10, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' },
-      { x: 275, y: 35, w: 30, h: 25, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' },
-      { x: 20, y: 175, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES', color: 'rgba(50,55,65,.5)' },
-      { x: 90, y: 175, w: 45, h: 35, type: 'bookshelf', label: 'REFERENCE', color: 'rgba(80,60,35,.5)' },
-      { x: 310, y: 100, w: 50, h: 35, type: 'locker', label: 'SUPPLY ROOM', color: 'rgba(50,55,65,.5)' },
-      { x: 170, y: 175, w: 60, h: 28, type: 'couch', label: 'BREAK AREA', color: 'rgba(60,50,70,.4)' },
-      { x: 250, y: 175, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' },
-      { x: 310, y: 175, w: 25, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(40,60,80,.3)' },
-      { x: 20, y: 230, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
-      { x: 310, y: 230, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      // ── RECEPTION / ENTRANCE ──
+      { x: 500, y: 1120, w: 80, h: 35, type: 'reception', label: 'FRONT DESK', color: 'rgba(50,60,80,.6)' },
+      { x: 480, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 700, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+
+      // ── ELEVATOR ──
+      { x: 1100, y: 40, w: 70, h: 70, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },
+
+      // ── MANAGER OFFICE (top-left corner) ──
+      { x: 40, y: 40, w: 70, h: 35, type: 'desk', label: 'MANAGER DESK', color: 'rgba(80,60,0,.5)' },
+      { x: 120, y: 40, w: 55, h: 35, type: 'terminal', label: 'ADMIN TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 40, y: 90, w: 30, h: 25, type: 'chair', color: 'rgba(40,50,70,.5)' },
+      { x: 190, y: 40, w: 60, h: 50, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' },
+      { x: 40, y: 130, w: 50, h: 35, type: 'filing_cabinet', label: 'MANAGER FILES', color: 'rgba(50,55,65,.5)' },
+      { x: 40, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+
+      // ── BULLPEN ROW 1 (y ~260) ──
+      { x: 60, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A1', color: 'rgba(50,60,80,.5)' },
+      { x: 125, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 200, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A2', color: 'rgba(50,60,80,.5)' },
+      { x: 265, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 340, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A3', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A4', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A5', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 260, w: 55, h: 28, type: 'desk', label: 'DESK A6', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 260, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── BULLPEN ROW 2 (y ~340) ──
+      { x: 60, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B1', color: 'rgba(50,60,80,.5)' },
+      { x: 125, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 200, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B2', color: 'rgba(50,60,80,.5)' },
+      { x: 265, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 340, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B3', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B4', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B5', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 340, w: 55, h: 28, type: 'desk', label: 'DESK B6', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 340, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── BULLPEN ROW 3 (y ~420) ──
+      { x: 60, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C1', color: 'rgba(50,60,80,.5)' },
+      { x: 125, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 200, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C2', color: 'rgba(50,60,80,.5)' },
+      { x: 265, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 340, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C3', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C4', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C5', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 420, w: 55, h: 28, type: 'desk', label: 'DESK C6', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 420, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── BULLPEN ROW 4 (y ~500) ──
+      { x: 60, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D1', color: 'rgba(50,60,80,.5)' },
+      { x: 125, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 200, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D2', color: 'rgba(50,60,80,.5)' },
+      { x: 265, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 340, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D3', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D4', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D5', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 500, w: 55, h: 28, type: 'desk', label: 'DESK D6', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 500, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── AISLE WHITEBOARDS ──
+      { x: 950, y: 260, w: 100, h: 15, type: 'whiteboard', label: 'TEAM BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 950, y: 420, w: 100, h: 15, type: 'whiteboard', label: 'SPRINT BOARD', color: 'rgba(200,200,200,.15)' },
+
+      // ── WATER COOLERS (aisle) ──
+      { x: 950, y: 310, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' },
+      { x: 950, y: 470, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' },
+
+      // ── CONFERENCE ROOM A (top-right area) ──
+      { x: 700, y: 40, w: 180, h: 90, type: 'conference_table', label: 'CONFERENCE ROOM A', color: 'rgba(45,55,75,.5)' },
+      { x: 700, y: 45, w: 170, h: 12, type: 'whiteboard', label: 'PRESENTATION BOARD', color: 'rgba(200,200,200,.15)' },
+      { x: 890, y: 60, w: 40, h: 30, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' },
+
+      // ── CONFERENCE ROOM B (mid-right) ──
+      { x: 950, y: 580, w: 160, h: 80, type: 'conference_table', label: 'CONFERENCE ROOM B', color: 'rgba(45,55,75,.5)' },
+      { x: 950, y: 585, w: 150, h: 12, type: 'whiteboard', label: 'STRATEGY BOARD', color: 'rgba(200,200,200,.15)' },
+
+      // ── FILING / RECORDS SECTION (mid-left) ──
+      { x: 40, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES A-F', color: 'rgba(50,55,65,.5)' },
+      { x: 100, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES G-M', color: 'rgba(50,55,65,.5)' },
+      { x: 160, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES N-S', color: 'rgba(50,55,65,.5)' },
+      { x: 220, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES T-Z', color: 'rgba(50,55,65,.5)' },
+      { x: 40, y: 650, w: 60, h: 25, type: 'bookshelf', label: 'REFERENCE SHELF', color: 'rgba(80,60,35,.5)' },
+      { x: 110, y: 650, w: 60, h: 25, type: 'bookshelf', label: 'MANUALS', color: 'rgba(80,60,35,.5)' },
+
+      // ── BREAK ROOM (bottom-left) ──
+      { x: 40, y: 800, w: 80, h: 35, type: 'couch', label: 'BREAK COUCH', color: 'rgba(60,50,70,.4)' },
+      { x: 140, y: 800, w: 80, h: 35, type: 'couch', label: 'BREAK COUCH', color: 'rgba(60,50,70,.4)' },
+      { x: 40, y: 860, w: 60, h: 40, type: 'table', label: 'BREAK TABLE', color: 'rgba(50,55,65,.4)' },
+      { x: 120, y: 860, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE MACHINE', color: 'rgba(60,40,20,.5)' },
+      { x: 170, y: 860, w: 40, h: 35, type: 'vending_machine', label: 'SNACK MACHINE', color: 'rgba(40,60,50,.5)' },
+      { x: 220, y: 860, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' },
+      { x: 40, y: 920, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 230, y: 800, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 40, y: 750, w: 30, h: 25, type: 'tv_screen', label: 'BREAK ROOM TV', color: 'rgba(0,50,100,.4)' },
+
+      // ── ARCADE LOUNGE (bottom-right corner) ──
+      { x: 850, y: 800, w: 45, h: 50, type: 'arcade_machine', label: 'GALAGA', gameId: 'galaga', color: 'rgba(60,0,80,.5)' },
+      { x: 910, y: 800, w: 45, h: 50, type: 'arcade_machine', label: 'PAC-MAN', gameId: 'pacman', color: 'rgba(80,80,0,.5)' },
+      { x: 970, y: 800, w: 45, h: 50, type: 'arcade_machine', label: 'SPACE INVADERS', gameId: 'invaders', color: 'rgba(0,60,80,.5)' },
+      { x: 1030, y: 800, w: 45, h: 50, type: 'arcade_machine', label: 'DONKEY KONG', gameId: 'dk', color: 'rgba(80,30,0,.5)' },
+      { x: 1090, y: 800, w: 45, h: 50, type: 'arcade_machine', label: 'ASTEROIDS', gameId: 'asteroids', color: 'rgba(30,30,80,.5)' },
+      { x: 850, y: 870, w: 45, h: 50, type: 'arcade_machine', label: 'FROGGER', gameId: 'frogger', color: 'rgba(0,70,30,.5)' },
+      { x: 910, y: 870, w: 45, h: 50, type: 'arcade_machine', label: 'CENTIPEDE', gameId: 'centipede', color: 'rgba(50,70,0,.5)' },
+      { x: 970, y: 870, w: 45, h: 50, type: 'arcade_machine', label: 'MISSILE COMMAND', gameId: 'missile', color: 'rgba(80,0,0,.5)' },
+      { x: 850, y: 940, w: 80, h: 35, type: 'couch', label: 'ARCADE COUCH', color: 'rgba(80,40,60,.4)' },
+      { x: 1050, y: 940, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+
+      // ── SUPPLY ROOM (mid-right wall) ──
+      { x: 1100, y: 400, w: 60, h: 40, type: 'locker', label: 'SUPPLY CLOSET', color: 'rgba(50,55,65,.5)' },
+      { x: 1100, y: 460, w: 45, h: 30, type: 'photocopier', label: 'PHOTOCOPIER', color: 'rgba(60,60,65,.5)' },
+
+      // ── SERVER ROOM (center-right) ──
+      { x: 1100, y: 200, w: 60, h: 50, type: 'server', label: 'SERVER RACK', color: 'rgba(20,40,60,.5)' },
+      { x: 1100, y: 260, w: 60, h: 50, type: 'server', label: 'SERVER RACK', color: 'rgba(20,40,60,.5)' },
+
+      // ── BULLPEN ROW 5 (y ~580, lower section) ──
+      { x: 340, y: 600, w: 55, h: 28, type: 'desk', label: 'DESK E1', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 600, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 600, w: 55, h: 28, type: 'desk', label: 'DESK E2', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 600, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 600, w: 55, h: 28, type: 'desk', label: 'DESK E3', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 600, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 600, w: 55, h: 28, type: 'desk', label: 'DESK E4', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 600, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── BULLPEN ROW 6 (y ~680) ──
+      { x: 340, y: 680, w: 55, h: 28, type: 'desk', label: 'DESK F1', color: 'rgba(50,60,80,.5)' },
+      { x: 405, y: 680, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 480, y: 680, w: 55, h: 28, type: 'desk', label: 'DESK F2', color: 'rgba(50,60,80,.5)' },
+      { x: 545, y: 680, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 620, y: 680, w: 55, h: 28, type: 'desk', label: 'DESK F3', color: 'rgba(50,60,80,.5)' },
+      { x: 685, y: 680, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+      { x: 760, y: 680, w: 55, h: 28, type: 'desk', label: 'DESK F4', color: 'rgba(50,60,80,.5)' },
+      { x: 825, y: 680, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' },
+
+      // ── CORNER PLANTS / DECOR ──
+      { x: 1140, y: 1140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 40, y: 1140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 1140, y: 40, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+
+      // ── HALLWAY WINDOWS ──
+      { x: 300, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' },
+      { x: 450, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' },
+      { x: 600, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' },
     ],
   },
   eastside_flat: {

@@ -2461,9 +2461,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
   const scale = getBuildingScale(bid);
   const deptMatch = fl.name.match(/—\s*(EXECUTIVE|OPERATIONS|FINANCE|SALES|ENGINEERING|MARKETING|HR|LEGAL|DESIGN|SUPPORT)$/);
   const isDeptFloor = !!deptMatch;
-  const baseW = (isOwnedByPlayer || isDeptFloor) ? 620 : scale === 'tower' ? 460 : scale === 'large' ? 400 : scale === 'medium' ? 340 : 300;
-  const baseH = (isOwnedByPlayer || isDeptFloor) ? 480 : scale === 'tower' ? 360 : scale === 'large' ? 310 : scale === 'medium' ? 280 : 260;
-  const w = baseW, h = baseH;
+  const w = 1200, h = 1200;
   const seed = bid.length * 137 + fl.floor * 53;
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
   const objects: InteriorObject[] = [];
@@ -2476,109 +2474,161 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     ? 'rgba(22,10,14,.98)'
     : isTowerFloor
     ? 'rgba(12,14,22,.97)'
-    : isOwnedByPlayer ? 'rgba(14,26,18,.97)' : 'rgba(18,28,22,.95)';
+    : isOwnedByPlayer ? 'rgba(14,26,18,.97)' : 'rgba(18,22,30,.95)';
   const accentColor = isRestrictedFloor
     ? 'rgba(180,20,40,.3)'
     : isTowerFloor
     ? 'rgba(120,60,255,.35)'
-    : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.25)';
+    : isOwnedByPlayer ? 'rgba(56,189,248,.4)' : 'rgba(0,180,255,.25)';
 
-  if (isOwnedByPlayer && companyName) {
-    objects.push({ x: Math.floor(w * 0.38), y: 25, w: 65, h: 40, type: 'desk', label: 'MANAGER DESK', color: 'rgba(80,60,0,.5)' });
-    objects.push({ x: Math.floor(w * 0.38) + 75, y: 25, w: 50, h: 40, type: 'terminal', label: 'ADMIN TERMINAL', color: 'rgba(60,50,0,.4)' });
-    objects.push({ x: 25, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 55, y: 30, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
-    objects.push({ x: Math.floor(w * 0.5) - 45, y: Math.floor(h * 0.58), w: 90, h: 45, type: 'conference_table', label: 'CONFERENCE TABLE', color: 'rgba(25,30,55,.5)' });
-    const maxDesks = scale === 'tower' ? 8 : scale === 'large' ? 6 : scale === 'medium' ? 4 : 3;
-    for (let di = 0; di < maxDesks; di++) {
-      const col = di % 3;
-      const row = Math.floor(di / 3);
-      const dx = 40 + Math.floor((col + 0.5) * ((w - 80) / Math.min(maxDesks, 3))) - 20;
-      const dy = Math.floor(h * 0.3) + row * 70;
-      objects.push({ x: dx, y: Math.min(dy, h - 90), w: 45, h: 28, type: 'desk', label: 'WORKSTATION', color: 'rgba(0,60,40,.4)' });
+  const addBullpenRow = (startX: number, y: number, count: number, rowLabel: string, deskColor: string, termColor: string) => {
+    for (let i = 0; i < count; i++) {
+      const dx = startX + i * 140;
+      objects.push({ x: dx, y, w: 55, h: 28, type: 'desk', label: `DESK ${rowLabel}${i + 1}`, color: deskColor });
+      objects.push({ x: dx + 65, y, w: 45, h: 28, type: 'terminal', label: 'TERMINAL', color: termColor });
     }
-    objects.push({ x: 30, y: Math.floor(h * 0.78), w: 40, h: 28, type: 'filing_cabinet', label: 'FILE CABINET', color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: w - 80, y: Math.floor(h * 0.78), w: 45, h: 30, type: 'terminal', label: 'OFFICE TERMINAL', color: 'rgba(0,60,30,.4)' });
-    objects.push({ x: w - 55, y: Math.floor(h * 0.5), w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
-    objects.push({ x: 25, y: 80, w: 40, h: 25, type: 'bookshelf', label: 'REFERENCE SHELF', color: 'rgba(50,40,25,.5)' });
+  };
+
+  objects.push({ x: 500, y: 1120, w: 80, h: 35, type: 'reception', label: 'FRONT DESK', color: 'rgba(50,60,80,.6)' });
+  objects.push({ x: 480, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+  objects.push({ x: 700, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+  objects.push({ x: 1100, y: 40, w: 70, h: 70, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' });
+  objects.push({ x: 40, y: 1140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+  objects.push({ x: 1140, y: 1140, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+
+  if (isRestrictedFloor) {
+    objects.push({ x: 40, y: 40, w: 70, h: 35, type: 'desk', label: 'CLEARANCE DESK', color: 'rgba(80,20,20,.5)' });
+    objects.push({ x: 120, y: 40, w: 55, h: 35, type: 'terminal', label: 'SECURE TERMINAL', color: 'rgba(60,0,40,.5)' });
+    for (let r = 0; r < 4; r++) {
+      addBullpenRow(60, 200 + r * 80, 6, String.fromCharCode(65 + r), 'rgba(40,30,30,.5)', 'rgba(60,0,40,.5)');
+    }
+    objects.push({ x: 40, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'RESTRICTED FILES', color: 'rgba(50,25,35,.4)' });
+    objects.push({ x: 100, y: 600, w: 50, h: 35, type: 'filing_cabinet', label: 'CLASSIFIED', color: 'rgba(50,25,35,.4)' });
+    objects.push({ x: 160, y: 600, w: 60, h: 25, type: 'bookshelf', label: 'DOCUMENT ARCHIVE', color: 'rgba(50,40,25,.5)' });
+    objects.push({ x: 950, y: 200, w: 100, h: 15, type: 'whiteboard', label: 'OPERATIONS BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 1100, y: 200, w: 60, h: 50, type: 'server', label: 'SECURE SERVER', color: 'rgba(40,10,20,.5)' });
+  } else if (isOwnedByPlayer && companyName) {
+    objects.push({ x: 40, y: 40, w: 70, h: 35, type: 'desk', label: 'MANAGER DESK', color: 'rgba(80,60,0,.5)' });
+    objects.push({ x: 120, y: 40, w: 55, h: 35, type: 'terminal', label: 'ADMIN TERMINAL', color: 'rgba(0,80,120,.5)' });
+    objects.push({ x: 40, y: 90, w: 30, h: 25, type: 'chair', color: 'rgba(40,50,70,.5)' });
+    objects.push({ x: 190, y: 40, w: 60, h: 50, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 40, y: 130, w: 50, h: 35, type: 'filing_cabinet', label: 'MANAGER FILES', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 40, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+    for (let r = 0; r < 6; r++) {
+      addBullpenRow(60, 260 + r * 80, 6, String.fromCharCode(65 + r), 'rgba(0,60,40,.4)', 'rgba(0,80,120,.5)');
+    }
+    objects.push({ x: 950, y: 260, w: 100, h: 15, type: 'whiteboard', label: 'TEAM BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 950, y: 420, w: 100, h: 15, type: 'whiteboard', label: 'SPRINT BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 950, y: 310, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 950, y: 500, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 700, y: 40, w: 180, h: 90, type: 'conference_table', label: 'CONFERENCE ROOM', color: 'rgba(45,55,75,.5)' });
+    objects.push({ x: 700, y: 45, w: 170, h: 12, type: 'whiteboard', label: 'PRESENTATION BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 890, y: 60, w: 40, h: 30, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' });
+    objects.push({ x: 40, y: 800, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES A-M', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 100, y: 800, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES N-Z', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 160, y: 800, w: 60, h: 25, type: 'bookshelf', label: 'REFERENCE SHELF', color: 'rgba(80,60,35,.5)' });
+    objects.push({ x: 40, y: 900, w: 80, h: 35, type: 'couch', label: 'BREAK COUCH', color: 'rgba(60,50,70,.4)' });
+    objects.push({ x: 140, y: 900, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE MACHINE', color: 'rgba(60,40,20,.5)' });
+    objects.push({ x: 190, y: 900, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: w - 80, y: 800, w: 45, h: 30, type: 'terminal', label: 'OFFICE TERMINAL', color: 'rgba(0,60,30,.4)' });
+    objects.push({ x: 1100, y: 200, w: 60, h: 50, type: 'server', label: 'SERVER RACK', color: 'rgba(20,40,60,.5)' });
+    objects.push({ x: 1100, y: 400, w: 60, h: 40, type: 'locker', label: 'SUPPLY CLOSET', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 1100, y: 460, w: 45, h: 30, type: 'photocopier', label: 'PHOTOCOPIER', color: 'rgba(60,60,65,.5)' });
+    objects.push({ x: 850, y: 900, w: 45, h: 50, type: 'arcade_machine', label: 'GALAGA', gameId: 'galaga', color: 'rgba(60,0,80,.5)' });
+    objects.push({ x: 910, y: 900, w: 45, h: 50, type: 'arcade_machine', label: 'PAC-MAN', gameId: 'pacman', color: 'rgba(80,80,0,.5)' });
+    objects.push({ x: 970, y: 900, w: 45, h: 50, type: 'arcade_machine', label: 'SPACE INVADERS', gameId: 'invaders', color: 'rgba(0,60,80,.5)' });
+    objects.push({ x: 1030, y: 900, w: 45, h: 50, type: 'arcade_machine', label: 'ASTEROIDS', gameId: 'asteroids', color: 'rgba(30,30,80,.5)' });
+    objects.push({ x: 850, y: 970, w: 80, h: 35, type: 'couch', label: 'ARCADE COUCH', color: 'rgba(80,40,60,.4)' });
+    objects.push({ x: 300, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 450, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 600, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
     const clawTeam = generateClawWorkers(w, h, seed, scale);
     for (const cw of clawTeam) workers.push(cw);
   } else if (isDeptFloor && deptMatch) {
     const deptName = deptMatch[1];
     const dFurn = DEPT_FURNITURE[deptName];
-    objects.push({ x: 25, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 55, y: 25, w: 30, h: 30, type: 'plant', color: 'rgba(20,60,20,.3)' });
-    objects.push({ x: w - 80, y: 25, w: 70, h: 60, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
-    objects.push({ x: 25, y: Math.floor(h * 0.5), w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 40, y: 40, w: 70, h: 35, type: 'desk', label: `${deptName} LEAD DESK`, color: 'rgba(50,60,80,.55)' });
+    objects.push({ x: 120, y: 40, w: 55, h: 35, type: 'terminal', label: `${deptName} TERMINAL`, color: 'rgba(0,80,120,.5)' });
+    objects.push({ x: 40, y: 90, w: 30, h: 25, type: 'chair', color: 'rgba(40,50,70,.5)' });
+    objects.push({ x: 190, y: 40, w: 60, h: 50, type: 'window', label: 'OFFICE WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 40, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
     if (dFurn) {
       const deptObjs = dFurn.objects;
       for (let di = 0; di < deptObjs.length; di++) {
         const dObj = deptObjs[di];
-        const ox = 40 + Math.floor(hash(seed + di * 19 + 7) * (w - 120));
-        const oy = 70 + Math.floor(hash(seed + di * 23 + 11) * (h * 0.35));
+        const ox = 40 + Math.floor(hash(seed + di * 19 + 7) * 400);
+        const oy = 700 + Math.floor(hash(seed + di * 23 + 11) * 200);
         objects.push({ x: ox, y: oy, w: 50, h: 35, type: dObj.type as any, label: dObj.label, color: dObj.color });
       }
-      const deskCount = 4 + Math.floor(hash(seed + 99) * 3);
-      for (let di = 0; di < deskCount; di++) {
-        const col = di % 3;
-        const row = Math.floor(di / 3);
-        const dx = 50 + Math.floor((col + 0.5) * ((w - 100) / 3)) - 22;
-        const dy = Math.floor(h * 0.45) + row * 70;
-        objects.push({ x: dx, y: Math.min(dy, h - 90), w: 45, h: 28, type: 'desk', label: `${deptName} DESK`, color: 'rgba(0,60,40,.4)' });
-      }
+    }
+    for (let r = 0; r < 6; r++) {
+      const deskCount = 6 + Math.floor(hash(seed + r * 7) * 2);
+      addBullpenRow(60, 260 + r * 80, Math.min(deskCount, 7), String.fromCharCode(65 + r), 'rgba(0,60,40,.4)', 'rgba(0,80,120,.5)');
+    }
+    objects.push({ x: 950, y: 260, w: 100, h: 15, type: 'whiteboard', label: `${deptName} BOARD`, color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 950, y: 420, w: 100, h: 15, type: 'whiteboard', label: 'KPI BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 950, y: 310, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 700, y: 40, w: 180, h: 90, type: 'conference_table', label: `${deptName} MEETING ROOM`, color: 'rgba(45,55,75,.5)' });
+    objects.push({ x: 700, y: 45, w: 170, h: 12, type: 'whiteboard', label: 'PRESENTATION BOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 890, y: 60, w: 40, h: 30, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' });
+    objects.push({ x: 950, y: 580, w: 160, h: 80, type: 'conference_table', label: `${deptName} WAR ROOM`, color: 'rgba(45,55,75,.5)' });
+    objects.push({ x: 40, y: 800, w: 50, h: 35, type: 'filing_cabinet', label: `${deptName} FILES`, color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 100, y: 800, w: 50, h: 35, type: 'filing_cabinet', label: `${deptName} RECORDS`, color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 160, y: 800, w: 60, h: 25, type: 'bookshelf', label: 'MANUALS', color: 'rgba(80,60,35,.5)' });
+    objects.push({ x: 40, y: 900, w: 80, h: 35, type: 'couch', label: 'BREAK COUCH', color: 'rgba(60,50,70,.4)' });
+    objects.push({ x: 140, y: 900, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' });
+    objects.push({ x: 190, y: 900, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 1100, y: 200, w: 60, h: 50, type: 'server', label: 'SERVER RACK', color: 'rgba(20,40,60,.5)' });
+    objects.push({ x: 1100, y: 400, w: 45, h: 30, type: 'photocopier', label: 'PHOTOCOPIER', color: 'rgba(60,60,65,.5)' });
+    objects.push({ x: 300, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 450, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 600, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    if (dFurn) {
       const deptRoster = CLAW_FULL_ROSTER.filter(r => r.role === dFurn.workerRole || r.dept === deptName);
-      const workerCount = Math.min(deptRoster.length, 4 + Math.floor(hash(seed + 55) * 3));
+      const workerCount = Math.min(deptRoster.length, 6 + Math.floor(hash(seed + 55) * 4));
       for (let wi = 0; wi < workerCount; wi++) {
         const bot = deptRoster[wi % deptRoster.length];
         const serial = clawSerial(seed * 31 + wi * 17 + fl.floor * 7);
-        const col = wi % 3;
-        const row = Math.floor(wi / 3);
-        const wx = 60 + Math.floor((col + 0.5) * ((w - 120) / 3));
-        const wy = Math.floor(h * 0.48) + row * 70 + 15;
+        const col = wi % 6;
+        const row = Math.floor(wi / 6);
+        const wx = 100 + col * 140;
+        const wy = 290 + row * 80;
         const dialIdx = Math.floor(hash(seed + wi * 41 + 3) * CLAW_WORKER_DIALOGUE.length);
-        workers.push({ x: wx, y: Math.min(wy, h - 60), name: `${bot.firstName.toUpperCase()} ${serial}`, role: `${deptName} ${dFurn.workerRole}`, hostile: false, dialogue: CLAW_WORKER_DIALOGUE[dialIdx] });
+        workers.push({ x: wx, y: Math.min(wy, h - 100), name: `${bot.firstName.toUpperCase()} ${serial}`, role: `${deptName} ${dFurn.workerRole}`, hostile: false, dialogue: CLAW_WORKER_DIALOGUE[dialIdx] });
       }
     }
-    objects.push({ x: Math.floor(w * 0.5) - 40, y: Math.floor(h * 0.78), w: 80, h: 40, type: 'conference_table', label: `${deptName} MEETING TABLE`, color: 'rgba(25,30,55,.5)' });
-    objects.push({ x: 30, y: Math.floor(h * 0.82), w: 40, h: 28, type: 'shelf', label: `${deptName} RECORDS`, color: 'rgba(40,60,40,.4)' });
-    objects.push({ x: w - 70, y: Math.floor(h * 0.82), w: 45, h: 30, type: 'terminal', label: `${deptName} TERMINAL`, color: 'rgba(0,60,30,.4)' });
   } else {
-    const baseObjCount = isTowerFloor ? 5 : scale === 'large' ? 4 : 3;
-    const objCount = baseObjCount + Math.floor(hash(seed + 1) * 4);
-    const floorTypes: Array<{type: InteriorObject['type']; label: string; color: string; w: number; h: number}> = isRestrictedFloor
-      ? [
-          { type: 'terminal',       label: 'SECURE TERMINAL', color: 'rgba(60,0,40,.5)',  w: 45, h: 35 },
-          { type: 'filing_cabinet', label: 'RESTRICTED FILES', color: 'rgba(50,25,35,.4)', w: 25, h: 30 },
-          { type: 'desk',           label: 'CLEARANCE DESK',  color: 'rgba(40,30,30,.5)', w: 50, h: 35 },
-          { type: 'bookshelf',      label: 'DOCUMENT ARCHIVE', color: 'rgba(50,40,25,.5)', w: 35, h: 20 },
-        ]
-      : isTowerFloor
-      ? [
-          { type: 'desk',              label: 'EXECUTIVE DESK',  color: 'rgba(30,35,60,.55)', w: 55, h: 35 },
-          { type: 'terminal',          label: 'WORKSTATION',     color: 'rgba(0,50,90,.5)',   w: 45, h: 35 },
-          { type: 'conference_table',  label: 'MEETING TABLE',   color: 'rgba(25,30,55,.5)',  w: 75, h: 40 },
-          { type: 'window',            label: 'OFFICE WINDOW',   color: 'rgba(0,30,80,.4)',   w: 50, h: 60 },
-          { type: 'bookshelf',         label: 'BOOKSHELF',       color: 'rgba(50,40,25,.5)',  w: 35, h: 20 },
-          { type: 'filing_cabinet',    label: 'FILE CABINET',    color: 'rgba(40,30,25,.4)',  w: 25, h: 30 },
-          { type: 'water_cooler',      label: 'WATER COOLER',    color: 'rgba(0,50,70,.4)',   w: 15, h: 20 },
-        ]
-      : [
-          { type: 'desk',           label: 'DESK',           color: 'rgba(40,50,35,.5)', w: 40, h: 30 },
-          { type: 'terminal',       label: 'COMPUTER',       color: 'rgba(0,80,30,.4)',  w: 45, h: 35 },
-          { type: 'filing_cabinet', label: 'FILE CABINET',   color: 'rgba(45,40,30,.4)', w: 25, h: 25 },
-          { type: 'chair',          label: 'CHAIR',          color: 'rgba(40,45,35,.4)', w: 20, h: 20 },
-          { type: 'window',         label: 'WINDOW',         color: 'rgba(0,40,60,.4)',  w: 40, h: 45 },
-          { type: 'bookshelf',      label: 'BOOKSHELF',      color: 'rgba(50,40,25,.4)', w: 30, h: 20 },
-        ];
-    for (let i = 0; i < objCount; i++) {
-      const ft = floorTypes[Math.floor(hash(seed + i * 7 + 3) * floorTypes.length)];
-      const ox = 20 + Math.floor(hash(seed + i * 13 + 5) * (w - ft.w - 40));
-      const oy = 25 + Math.floor(hash(seed + i * 17 + 9) * (h - ft.h - 60));
-      objects.push({ x: ox, y: oy, w: ft.w, h: ft.h, type: ft.type, label: ft.label, color: ft.color });
+    objects.push({ x: 40, y: 40, w: 70, h: 35, type: 'desk', label: 'FLOOR MANAGER DESK', color: 'rgba(50,60,80,.55)' });
+    objects.push({ x: 120, y: 40, w: 55, h: 35, type: 'terminal', label: 'TERMINAL', color: 'rgba(0,80,120,.5)' });
+    objects.push({ x: 40, y: 90, w: 30, h: 25, type: 'chair', color: 'rgba(40,50,70,.5)' });
+    objects.push({ x: 190, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 40, y: 180, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' });
+    const rowCount = 4 + Math.floor(hash(seed + 1) * 3);
+    const desksPerRow = 5 + Math.floor(hash(seed + 2) * 2);
+    for (let r = 0; r < rowCount; r++) {
+      addBullpenRow(60, 260 + r * 80, desksPerRow, String.fromCharCode(65 + r), 'rgba(50,60,80,.5)', 'rgba(0,80,120,.5)');
     }
-    if (isTowerFloor && !isRestrictedFloor) {
+    objects.push({ x: 950, y: 260, w: 100, h: 15, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 950, y: 350, w: 20, h: 25, type: 'water_cooler', label: 'WATER COOLER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 700, y: 40, w: 180, h: 90, type: 'conference_table', label: 'CONFERENCE ROOM', color: 'rgba(45,55,75,.5)' });
+    objects.push({ x: 700, y: 45, w: 170, h: 12, type: 'whiteboard', label: 'WHITEBOARD', color: 'rgba(200,200,200,.15)' });
+    objects.push({ x: 890, y: 60, w: 40, h: 30, type: 'tv_screen', label: 'DISPLAY', color: 'rgba(0,50,100,.4)' });
+    objects.push({ x: 40, y: 700, w: 50, h: 35, type: 'filing_cabinet', label: 'FILES', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 100, y: 700, w: 50, h: 35, type: 'filing_cabinet', label: 'RECORDS', color: 'rgba(50,55,65,.5)' });
+    objects.push({ x: 160, y: 700, w: 60, h: 25, type: 'bookshelf', label: 'BOOKSHELF', color: 'rgba(80,60,35,.5)' });
+    objects.push({ x: 40, y: 800, w: 80, h: 35, type: 'couch', label: 'BREAK COUCH', color: 'rgba(60,50,70,.4)' });
+    objects.push({ x: 140, y: 800, w: 40, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' });
+    objects.push({ x: 190, y: 800, w: 20, h: 25, type: 'water_cooler', label: 'WATER', color: 'rgba(0,50,70,.4)' });
+    objects.push({ x: 1100, y: 200, w: 60, h: 50, type: 'server', label: 'SERVER RACK', color: 'rgba(20,40,60,.5)' });
+    objects.push({ x: 1100, y: 400, w: 45, h: 30, type: 'photocopier', label: 'PHOTOCOPIER', color: 'rgba(60,60,65,.5)' });
+    objects.push({ x: 850, y: 850, w: 45, h: 50, type: 'arcade_machine', label: 'GALAGA', gameId: 'galaga', color: 'rgba(60,0,80,.5)' });
+    objects.push({ x: 910, y: 850, w: 45, h: 50, type: 'arcade_machine', label: 'PAC-MAN', gameId: 'pacman', color: 'rgba(80,80,0,.5)' });
+    objects.push({ x: 970, y: 850, w: 45, h: 50, type: 'arcade_machine', label: 'SPACE INVADERS', gameId: 'invaders', color: 'rgba(0,60,80,.5)' });
+    objects.push({ x: 850, y: 920, w: 80, h: 35, type: 'couch', label: 'ARCADE COUCH', color: 'rgba(80,40,60,.4)' });
+    objects.push({ x: 300, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 450, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    objects.push({ x: 600, y: 40, w: 60, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,30,80,.4)' });
+    if (isTowerFloor) {
       objects.push({ x: w - 60, y: 15, w: 55, h: 65, type: 'window', label: 'PANORAMIC GLASS', color: 'rgba(0,30,80,.35)' });
     }
   }
@@ -2590,7 +2640,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     : `${dirLabel} — FL ${String(fl.floor).padStart(2, '0')} — ${fl.name}`;
 
   const flAmbient = isOwnedByPlayer && companyName
-    ? `${companyName} office. Staff at their desks. The manager oversees daily operations from the front.`
+    ? `${companyName} office. Rows of desks and terminals fill the bullpen. Conference room in the back. Arcade lounge in the corner.`
     : isDeptFloor && deptMatch
     ? `${fl.name} department. ${fl.desc}`
     : fl.desc;
@@ -2600,7 +2650,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     label: flLabel,
     width: w, height: h,
     wallColor: isDeptFloor ? 'rgba(10,18,28,.97)' : wallColor,
-    floorColor: isDeptFloor ? 'rgba(4,8,14,.95)' : isRestrictedFloor ? 'rgba(4,2,6,.95)' : isTowerFloor ? 'rgba(4,5,12,.95)' : 'rgba(6,12,8,.9)',
+    floorColor: isDeptFloor ? 'rgba(4,8,14,.95)' : isRestrictedFloor ? 'rgba(4,2,6,.95)' : isTowerFloor ? 'rgba(4,5,12,.95)' : 'rgba(8,12,18,.92)',
     accentColor: isDeptFloor ? 'rgba(56,189,248,.35)' : accentColor,
     exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
     ambientText: flAmbient,
