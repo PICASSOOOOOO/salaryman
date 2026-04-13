@@ -4,7 +4,7 @@ import {
   Map, Users, Eye, Activity, MapPin,
   Loader2, RefreshCw, ZoomIn, ZoomOut, Maximize2,
   Building2, Shield, Swords, Radio, Clock,
-  Crosshair, ChevronRight, AlertTriangle,
+  Crosshair, ChevronRight, AlertTriangle, Server, ChevronDown,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -70,6 +70,17 @@ const SUBWAY_LINES = [
   { from: { x: 6530, y: 6380 }, to: { x: 7120, y: 6660 }, label: 'CENTRAL→EAST' },
 ];
 
+interface GameServer {
+  id: string;
+  label: string;
+  region: string;
+  status: 'online' | 'maintenance' | 'offline';
+}
+
+const SERVERS: GameServer[] = [
+  { id: 'minx_prime', label: 'MINX PRIME', region: 'US-WEST (PST)', status: 'online' },
+];
+
 function getZoneForCoords(x: number, y: number): string {
   if (x >= CITY_LEFT && x <= CITY_RIGHT && y >= CITY_TOP && y <= CITY_BOTTOM) {
     for (const d of DISTRICTS) {
@@ -92,10 +103,13 @@ export default function WorldMapPanel() {
   const [selectedDistrict, setSelectedDistrict] = useState<typeof DISTRICTS[0] | null>(null);
   const [viewCenter, setViewCenter] = useState({ x: 6500, y: 6300 });
   const [mapMode, setMapMode] = useState<'city' | 'world'>('city');
+  const [activeServer, setActiveServer] = useState<GameServer>(SERVERS[0]);
+  const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
+  const [serverStatus, setServerStatus] = useState<{ online: number; max: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchPlayers = useCallback(() => {
-    apiFetch('/api/world/online')
+    apiFetch(`/api/world/online?serverId=${activeServer.id}`)
       .then(r => r.json())
       .then(d => {
         const mapped = (d.players ?? []).map((p: any, i: number) => {
@@ -122,7 +136,11 @@ export default function WorldMapPanel() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+    apiFetch('/api/world/server-status')
+      .then(r => r.json())
+      .then(d => setServerStatus({ online: d.online ?? 0, max: d.max ?? 100 }))
+      .catch(() => {});
+  }, [activeServer.id]);
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -130,6 +148,18 @@ export default function WorldMapPanel() {
     const interval = setInterval(fetchPlayers, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchPlayers]);
+
+  const switchServer = (server: GameServer) => {
+    setActiveServer(server);
+    setServerDropdownOpen(false);
+    setPlayers([]);
+    setSelectedPlayer(null);
+    setSelectedDistrict(null);
+    setLoading(true);
+    setViewCenter({ x: 6500, y: 6300 });
+    setZoom(1);
+    setMapMode('city');
+  };
 
   const viewRange = mapMode === 'city' ? 1200 / zoom : 8000 / zoom;
   const vbX = viewCenter.x - viewRange;
@@ -154,10 +184,58 @@ export default function WorldMapPanel() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'WORLD OVERVIEW' : 'OVERWATCH'}</h2>
-            <p className="text-sm text-muted-foreground">Real-time tactical map — Minx City & territories</p>
+            <p className="text-sm text-muted-foreground">Real-time tactical map — {activeServer.label} · {activeServer.region}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <button
+              onClick={() => setServerDropdownOpen(!serverDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/30 border border-white/[0.06] hover:border-sky-500/20 transition-colors"
+            >
+              <Server className="w-3 h-3 text-sky-400" />
+              <span className="text-[10px] font-mono text-sky-300 tracking-wider">{activeServer.label}</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${activeServer.status === 'online' ? 'bg-emerald-400' : activeServer.status === 'maintenance' ? 'bg-amber-400' : 'bg-red-400'}`} />
+              <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform ${serverDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {serverDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setServerDropdownOpen(false)} />
+                <div className="absolute top-full mt-1 left-0 w-64 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-white/[0.06]">
+                    <span className="text-[9px] font-mono text-zinc-500 tracking-widest uppercase">SELECT SERVER</span>
+                  </div>
+                  {SERVERS.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => switchServer(s)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.04] transition-colors text-left ${activeServer.id === s.id ? 'bg-sky-500/[0.06]' : ''}`}
+                    >
+                      <Server className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-foreground tracking-wider">{s.label}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.status === 'online' ? 'bg-emerald-400' : s.status === 'maintenance' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] font-mono text-zinc-500">{s.region}</span>
+                          {serverStatus && activeServer.id === s.id && (
+                            <span className="text-[9px] font-mono text-zinc-600">{serverStatus.online}/{serverStatus.max}</span>
+                          )}
+                        </div>
+                      </div>
+                      {activeServer.id === s.id && (
+                        <span className="text-[8px] font-mono text-sky-400 tracking-widest">ACTIVE</span>
+                      )}
+                    </button>
+                  ))}
+                  <div className="px-3 py-2 border-t border-white/[0.06]">
+                    <span className="text-[8px] font-mono text-zinc-600 tracking-wider">MORE SERVERS COMING SOON</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <div className="flex items-center gap-1 bg-black/30 border border-white/[0.06] rounded-lg p-0.5">
             <button
               onClick={() => { setMapMode('city'); setViewCenter({ x: 6500, y: 6300 }); setZoom(1); }}
@@ -205,10 +283,10 @@ export default function WorldMapPanel() {
         </div>
         <div className="bg-violet-500/5 border border-violet-500/15 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
-            <Shield className="w-3.5 h-3.5 text-violet-400" />
-            <span className="text-[10px] font-mono text-zinc-500 tracking-widest">DISTRICTS</span>
+            <Server className="w-3.5 h-3.5 text-violet-400" />
+            <span className="text-[10px] font-mono text-zinc-500 tracking-widest">CAPACITY</span>
           </div>
-          <p className="text-xl font-bold text-violet-400">{DISTRICTS.length}</p>
+          <p className="text-xl font-bold text-violet-400">{serverStatus ? `${serverStatus.online}/${serverStatus.max}` : '—'}</p>
         </div>
       </div>
 
@@ -368,7 +446,7 @@ export default function WorldMapPanel() {
             <span className="text-zinc-700">|</span>
             <span className="text-[9px] font-mono text-emerald-400">{players.length} ACTIVE</span>
             <span className="text-zinc-700">|</span>
-            <span className="text-[9px] font-mono text-zinc-500">MINX CITY</span>
+            <span className="text-[9px] font-mono text-zinc-500">{activeServer.label}</span>
             <span className="text-zinc-700">|</span>
             <span className="text-[9px] font-mono text-zinc-600">
               <Clock className="w-2.5 h-2.5 inline mr-1" />
