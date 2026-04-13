@@ -406,7 +406,7 @@ INTERACTION STYLE:
 - Always end responses with a suggested next step or exercise`,
     category: "education",
     icon: "book-open",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Claude prompt engineering coaching",
@@ -515,7 +515,7 @@ CAPABILITIES:
 Always ask: grade level, subject, and specific topic before generating content.`,
     category: "education",
     icon: "graduation-cap",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Full lesson plan generation",
@@ -555,7 +555,7 @@ LEVELS:
 Always encourage the student to try writing in the target language.`,
     category: "education",
     icon: "languages",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "20+ languages supported",
@@ -595,7 +595,7 @@ LEVELS:
 Always include runnable code in code blocks. Never just explain — show.`,
     category: "education",
     icon: "code",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Python, JavaScript, TypeScript tutorials",
@@ -651,7 +651,7 @@ COMPLIANCE:
 - Stay current with standard tax brackets and rates`,
     category: "finance",
     icon: "calculator",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Deduction identification & optimization",
@@ -724,7 +724,7 @@ Always present financial data with exact figures — no rounding unless explicit
 Negative balances ALWAYS shown. Debt is real. Track it.`,
     category: "finance",
     icon: "line-chart",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "crm_read", "sheets_read", "sheets_write", "contacts_read"],
     capabilities: [
       "Google Sheets live accounting sync",
@@ -763,7 +763,7 @@ TASKS:
 Ask: industry, accounting method (cash/accrual), and fiscal year before starting.`,
     category: "finance",
     icon: "book",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat"],
     capabilities: [
       "Transaction categorization",
@@ -817,7 +817,7 @@ OPERATIONS:
 Always ask: niche/category, budget, target platform, and experience level.`,
     category: "ecommerce",
     icon: "shopping-cart",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "crm_read", "crm_write"],
     capabilities: [
       "Trending product research",
@@ -854,7 +854,7 @@ CAPABILITIES:
 Always focus on operational efficiency and customer satisfaction.`,
     category: "ecommerce",
     icon: "store",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "crm_read", "crm_write", "contacts_read"],
     capabilities: [
       "Inventory management",
@@ -888,7 +888,7 @@ PLATFORMS: Redbubble, Merch by Amazon, TeeSpring/Spring, Printful, Printify, Ets
 Always ask: target niche, preferred platforms, and design style preference.`,
     category: "ecommerce",
     icon: "shirt",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Design concept generation",
@@ -920,7 +920,7 @@ CAPABILITIES:
 Always calculate ALL fees before suggesting a product is profitable.`,
     category: "ecommerce",
     icon: "package",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Product sourcing & research",
@@ -963,7 +963,7 @@ CARRIERS: United Healthcare, Humana, Anthem, Zing, Devoted, Cigna, Aetna, WellCa
 Never collect SSN or bank info. Never guarantee coverage or rates. Always offer licensed agent.`,
     category: "insurance",
     icon: "shield",
-    priceMonthly: 0,
+    priceMonthly: 30,
     permissions: ["ai_chat", "crm_read", "crm_write", "contacts_read", "contacts_write", "phone_inbound", "phone_outbound"],
     capabilities: [
       "Inbound sales call handling",
@@ -997,7 +997,7 @@ CAPABILITIES:
 IMPORTANT: Always state "This is legal information, not legal advice. Consult a licensed attorney for your specific situation." Include this disclaimer in every response.`,
     category: "professional",
     icon: "scale",
-    priceMonthly: 0,
+    priceMonthly: 30,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Contract drafting & review",
@@ -1036,7 +1036,7 @@ CAPABILITIES:
 Always ask: property type, location, and whether working with buyers or sellers.`,
     category: "professional",
     icon: "home",
-    priceMonthly: 0,
+    priceMonthly: 30,
     permissions: ["ai_chat", "contacts_read", "contacts_write", "calendar_read"],
     capabilities: [
       "Property listing creation",
@@ -1069,7 +1069,7 @@ CAPABILITIES:
 Always ask: property type, location (state matters for regulations), and portfolio size.`,
     category: "professional",
     icon: "building",
-    priceMonthly: 0,
+    priceMonthly: 30,
     permissions: ["ai_chat", "contacts_read"],
     capabilities: [
       "Tenant screening & qualification",
@@ -1108,7 +1108,7 @@ CAPABILITIES:
 Always ask: project type, location, and scope before estimating.`,
     category: "trades",
     icon: "hard-hat",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read", "contacts_read"],
     capabilities: [
       "Job estimation & bidding",
@@ -1141,7 +1141,7 @@ CAPABILITIES:
 Always ask: year, make, model, and mileage before diagnosing.`,
     category: "trades",
     icon: "wrench",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Symptom-based diagnostics",
@@ -1174,7 +1174,7 @@ CAPABILITIES:
 Always ask: goal, experience level, available equipment, injuries/limitations, and schedule.`,
     category: "trades",
     icon: "dumbbell",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Custom workout programming",
@@ -1207,7 +1207,7 @@ CAPABILITIES:
 Ask: service type, property size, frequency, and location.`,
     category: "trades",
     icon: "sparkles",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read", "contacts_read"],
     capabilities: [
       "Service quoting & pricing",
@@ -1239,7 +1239,7 @@ CAPABILITIES:
 Ask: property size, climate zone, and service type.`,
     category: "trades",
     icon: "tree-pine",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Lawn care estimates",
@@ -1274,7 +1274,7 @@ CAPABILITIES:
 Safety first — always recommend licensed professional for gas, high voltage, or structural work.`,
     category: "trades",
     icon: "zap",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Plumbing diagnostics & sizing",
@@ -1307,7 +1307,7 @@ CAPABILITIES:
 Target food cost under 33%. Flag any menu items above 40%.`,
     category: "trades",
     icon: "chef-hat",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Menu engineering & pricing",
@@ -1340,7 +1340,7 @@ CAPABILITIES:
 Ask: business type (hair, nails, spa, barber), team size, and current challenges.`,
     category: "trades",
     icon: "scissors",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read", "contacts_read"],
     capabilities: [
       "Appointment scheduling",
@@ -1373,7 +1373,7 @@ CAPABILITIES:
 Ask: photography specialty, experience level, and target market.`,
     category: "trades",
     icon: "camera",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Client booking & contracts",
@@ -1406,7 +1406,7 @@ CAPABILITIES:
 Ask: event type, expected guest count, budget, and date.`,
     category: "trades",
     icon: "party-popper",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat", "calendar_read", "contacts_read"],
     capabilities: [
       "Full event planning checklists",
@@ -1447,7 +1447,7 @@ CAPABILITIES:
 Always include: "This is for office management only. Not medical advice."`,
     category: "healthcare",
     icon: "stethoscope",
-    priceMonthly: 0,
+    priceMonthly: 30,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Patient scheduling",
@@ -1553,7 +1553,7 @@ BATCH MODE — when told to produce multiple tracks:
 First message to any new user: ask what they want to create, suggest 3 different directions based on trending genres, and offer to generate immediately.`,
     category: "creative",
     icon: "music",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "music_generate", "audio_generate"],
     capabilities: [
       "AI MUSIC GENERATION (REPLICATE MUSICGEN)",
@@ -1593,7 +1593,7 @@ CAPABILITIES:
 Ask: niche, current subscriber count, upload frequency, and goals.`,
     category: "creative",
     icon: "play",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Video script writing",
@@ -1626,7 +1626,7 @@ CAPABILITIES:
 Ask: podcast topic/niche, format (solo/interview), and current audience size.`,
     category: "creative",
     icon: "mic",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Episode scripting & outlines",
@@ -1662,7 +1662,7 @@ CAPABILITIES:
 Ask: platforms used, industry, target audience, and posting frequency.`,
     category: "creative",
     icon: "share-2",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Multi-platform content calendars",
@@ -1697,7 +1697,7 @@ FRAMEWORKS: AIDA, PAS, BAB, STAR, 4Ps, Before-After-Bridge
 Always ask: product/service, target audience, desired action, and tone.`,
     category: "creative",
     icon: "pen-tool",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Ad copy (Facebook, Google, Instagram)",
@@ -1759,7 +1759,7 @@ STYLE RULES:
 Ask: What's your brand/niche, who's your audience, and which platforms do you publish on?`,
     category: "creative",
     icon: "clapperboard",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Short film & screenplay scripts",
@@ -1833,7 +1833,7 @@ EVERY TIKTOK INCLUDES:
 Ask: What's your niche, who's your audience, and how often do you want to post?`,
     category: "creative",
     icon: "clapperboard",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Viral hook creation",
@@ -1878,7 +1878,7 @@ Networks: Amazon Associates, ShareASale, CJ Affiliate, Impact, ClickBank, indivi
 Ask: niche interest, existing website/social following, and experience level.`,
     category: "automation",
     icon: "link",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Niche selection & validation",
@@ -1912,7 +1912,7 @@ CAPABILITIES:
 Ask: freelance discipline, experience level, and target client type.`,
     category: "automation",
     icon: "briefcase",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "contacts_read"],
     capabilities: [
       "Winning proposal templates",
@@ -1945,7 +1945,7 @@ CAPABILITIES:
 Ask: target market, value proposition, and current pipeline state.`,
     category: "automation",
     icon: "target",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "crm_read", "crm_write", "contacts_read", "contacts_write", "email_send"],
     capabilities: [
       "Target audience identification",
@@ -1979,7 +1979,7 @@ CAPABILITIES:
 Ask: industry, list size, current open/click rates, and campaign goal.`,
     category: "automation",
     icon: "mail",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "email_send", "contacts_read"],
     capabilities: [
       "Email sequence creation",
@@ -2012,7 +2012,7 @@ CAPABILITIES:
 Ask: website URL, industry, target keywords, and current traffic level.`,
     category: "automation",
     icon: "search",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Keyword research & strategy",
@@ -2061,7 +2061,7 @@ SAFETY RULES:
 Ask: Google Sheet URL or name, and what they want to do with it.`,
     category: "automation",
     icon: "table",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "sheets_read", "sheets_write"],
     capabilities: [
       "Live Google Sheets read & write",
@@ -2106,7 +2106,7 @@ POPULAR APIs TO TEACH:
 Always provide working code examples that the user can copy and test immediately.`,
     category: "education",
     icon: "plug",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "API fundamentals for beginners",
@@ -2152,7 +2152,7 @@ APPROACH:
 Ask: industry of interest, available resources (time, money, skills), and risk tolerance.`,
     category: "business",
     icon: "rocket",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "crm_read"],
     capabilities: [
       "Business opportunity identification",
@@ -2187,7 +2187,7 @@ CAPABILITIES:
 Always note: "Consult employment counsel for jurisdiction-specific requirements."`,
     category: "business",
     icon: "users",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Job description writing",
@@ -2223,7 +2223,7 @@ APPROACH: Acknowledge → Diagnose → Resolve → Follow Up
 Always apologize for inconvenience first, then solve the problem.`,
     category: "business",
     icon: "headphones",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "crm_read", "contacts_read"],
     capabilities: [
       "Customer inquiry resolution",
@@ -2258,7 +2258,7 @@ CAPABILITIES:
 Ask: role, level, industry, and must-have requirements.`,
     category: "business",
     icon: "user-search",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "contacts_read", "contacts_write", "calendar_read", "recruitment_manage"],
     capabilities: [
       "Candidate sourcing strategies",
@@ -2296,7 +2296,7 @@ CAPABILITIES:
 Adapt tone to the audience and channel. Always be clear, concise, and actionable.`,
     category: "productivity",
     icon: "message-square",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "email_send", "contacts_read"],
     capabilities: [
       "Multi-channel message drafting",
@@ -2317,7 +2317,7 @@ Adapt tone to the audience and channel. Always be clear, concise, and actionable
     systemPrompt: "You are Chris L-107, a calendar and scheduling AI. Help users manage their time by: scheduling meetings, sending reminders, resolving conflicts, and suggesting optimal time slots. Always confirm: date, time, timezone, participants, and location/link. Be proactive about upcoming commitments.",
     category: "productivity",
     icon: "calendar",
-    priceMonthly: 0,
+    priceMonthly: 10,
     permissions: ["ai_chat", "calendar_read", "calendar_write"],
     capabilities: ["Meeting scheduling", "Reminders", "Conflict resolution", "Time zone management", "Daily briefings"],
     featured: false,
@@ -2344,7 +2344,7 @@ CAPABILITIES:
 Ask: methodology preference, team size, and project type.`,
     category: "productivity",
     icon: "kanban",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Project planning & timelines",
@@ -2382,7 +2382,7 @@ CAPABILITIES:
 Ask: fleet size, operating area, and equipment type.`,
     category: "trades",
     icon: "truck",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Load profitability analysis",
@@ -2421,7 +2421,7 @@ CAPABILITIES:
 Ask: location (USDA zone), operation type (crop/livestock/mixed), and acreage.`,
     category: "trades",
     icon: "wheat",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Crop rotation & planting schedules",
@@ -2459,7 +2459,7 @@ CAPABILITIES:
 Ask: destination, dates, budget, travel style (luxury/budget/adventure/cultural), and group size.`,
     category: "professional",
     icon: "plane",
-    priceMonthly: 0,
+    priceMonthly: 10,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Custom itinerary creation",
@@ -2502,7 +2502,7 @@ FRAMEWORK:
 Always end with a concrete action item and accountability check-in plan.`,
     category: "personal",
     icon: "compass",
-    priceMonthly: 0,
+    priceMonthly: 10,
     permissions: ["ai_chat"],
     capabilities: [
       "Goal setting frameworks",
@@ -2537,7 +2537,7 @@ NOTE: "This is nutritional guidance, not medical nutrition therapy. Consult a re
 Ask: goal, dietary restrictions, food preferences, and cooking skill level.`,
     category: "personal",
     icon: "apple",
-    priceMonthly: 0,
+    priceMonthly: 10,
     permissions: ["ai_chat"],
     capabilities: [
       "Custom meal planning",
@@ -2583,7 +2583,7 @@ TEACH PLAYERS:
 Keep the retro pixel-art energy. Make the game feel alive and exciting.`,
     category: "gaming",
     icon: "gamepad-2",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Complete Minx City walkthrough",
@@ -2628,7 +2628,7 @@ DESIGN PRINCIPLES:
 Ask: project type, brand personality, target audience, and existing brand assets.`,
     category: "creative",
     icon: "palette",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Logo & brand concept direction",
@@ -2661,7 +2661,7 @@ CAPABILITIES:
 Ask: room type, square footage, style preference, budget, and primary function.`,
     category: "creative",
     icon: "lamp",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Space planning & layout",
@@ -2706,7 +2706,7 @@ CRITICAL RULES:
 Ask: portfolio size, risk tolerance, experience level, and areas of interest.`,
     category: "finance",
     icon: "bitcoin",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Market analysis & trends",
@@ -2745,7 +2745,7 @@ CAPABILITIES:
 Ask: warehouse size, SKU count, average daily orders, and current pain points.`,
     category: "business",
     icon: "warehouse",
-    priceMonthly: 0,
+    priceMonthly: 15,
     permissions: ["ai_chat"],
     capabilities: [
       "Inventory management & optimization",
@@ -2784,7 +2784,7 @@ CAPABILITIES:
 Ask: mission area, annual budget, team size, and current fundraising strategy.`,
     category: "professional",
     icon: "heart",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "email_send"],
     capabilities: [
       "Fundraising campaign design",
@@ -2823,7 +2823,7 @@ CAPABILITIES:
 Ask: industry, company size, existing security posture, and compliance requirements.`,
     category: "professional",
     icon: "shield-check",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Risk assessment frameworks",
@@ -2863,7 +2863,7 @@ IMPORTANT: Always recommend consulting a veterinarian for health concerns. You p
 Ask: pet species, breed, age, and specific concern.`,
     category: "trades",
     icon: "paw-print",
-    priceMonthly: 0,
+    priceMonthly: 10,
     permissions: ["ai_chat", "calendar_read"],
     capabilities: [
       "Vet appointment scheduling",
@@ -2902,7 +2902,7 @@ CAPABILITIES:
 Ask: dealership type (new/used/both), brand, and current challenges.`,
     category: "trades",
     icon: "car",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "contacts_read", "contacts_write"],
     capabilities: [
       "Lead qualification & follow-up",
@@ -2942,7 +2942,7 @@ CAPABILITIES:
 Ask: genre, target word count, writing stage, and publishing path (self vs traditional).`,
     category: "creative",
     icon: "book",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Story structure & outlining",
@@ -2997,7 +2997,7 @@ SPLIT MANAGEMENT:
 Always ask: catalog size, PRO affiliation, distribution setup, and number of collaborators.`,
     category: "publishing",
     icon: "music",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "PRO royalty tracking (ASCAP/BMI/SESAC)",
@@ -3052,7 +3052,7 @@ SYNC FEE RANGES:
 Always ask: catalog size, genre coverage, stems availability, and target placement types.`,
     category: "publishing",
     icon: "tv",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "email_send", "contacts_read"],
     capabilities: [
       "Sync pitch email writing",
@@ -3094,7 +3094,7 @@ EVALUATION CRITERIA:
 Always give honest assessments. Never hype a project that isn't ready.`,
     category: "publishing",
     icon: "mic-2",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "contacts_read"],
     capabilities: [
       "Demo evaluation & feedback",
@@ -3140,7 +3140,7 @@ RELEASE TIMELINE:
 Always verify: ISRC uniqueness, copyright year, explicit flag, genre tags.`,
     category: "publishing",
     icon: "upload-cloud",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Release scheduling & timeline",
@@ -3185,7 +3185,7 @@ METADATA STANDARDS:
 Always prioritize metadata accuracy — it directly affects royalty collection.`,
     category: "publishing",
     icon: "archive",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Catalog organization & database",
@@ -3256,7 +3256,7 @@ FEEDBACK FORMAT:
 Always ask: genre, target audience, editing level needed, and style guide preference.`,
     category: "publishing",
     icon: "pen-line",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "Developmental editing (structure, plot, character)",
@@ -3319,7 +3319,7 @@ PUBLISHING PIPELINE:
 Always ask: genre, target pub date, printing preference (POD vs offset), and distribution goals.`,
     category: "publishing",
     icon: "book-marked",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "documents_read", "email_send", "contacts_read"],
     capabilities: [
       "Manuscript submission evaluation",
@@ -3376,7 +3376,7 @@ DEAL TERMS TO TRACK:
 Always maintain a clear rights grid showing what's available per title.`,
     category: "publishing",
     icon: "globe",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "contacts_read", "documents_read"],
     capabilities: [
       "Foreign rights licensing",
@@ -3438,7 +3438,7 @@ CAPABILITIES:
 Ask: genre, pub date, debut vs established, and marketing budget.`,
     category: "publishing",
     icon: "trending-up",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat", "email_send"],
     capabilities: [
       "Book launch campaign planning",
@@ -3496,7 +3496,7 @@ PFH RATE RANGES:
 Ask: book genre, length (word count → estimated finished hours), budget, and timeline.`,
     category: "publishing",
     icon: "headphones",
-    priceMonthly: 0,
+    priceMonthly: 20,
     permissions: ["ai_chat"],
     capabilities: [
       "Narrator casting & audition evaluation",
@@ -3662,7 +3662,7 @@ You can research across ALL domains:
 First message: ask what they want researched, then propose a research plan before diving in. Always start with scope confirmation.`,
     category: "creative",
     icon: "target",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat", "documents_read"],
     capabilities: [
       "AUTONOMOUS DEEP RESEARCH ON ANY TOPIC",
@@ -3723,7 +3723,7 @@ WEBHOOK EVENTS:
 Help users design integrations that save time and eliminate manual data entry.`,
     category: "core",
     icon: "network",
-    priceMonthly: 0,
+    priceMonthly: 25,
     permissions: ["ai_chat"],
     capabilities: [
       "Cross-app data synchronization",
