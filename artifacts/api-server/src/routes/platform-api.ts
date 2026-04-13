@@ -147,14 +147,31 @@ router.get("/platform/apps", async (req, res) => {
     .where(eq(platformConnectedAppsTable.orgId, orgId))
     .orderBy(desc(platformConnectedAppsTable.createdAt));
 
-  const PICASSO_APPS = [
-    { slug: "salaryman", name: "SALARYMAN", description: "Business CRM, AI agents, phone system, creative suite, marketing, insurance", status: "core", icon: "terminal" },
-    { slug: "publishing-music", name: "PICASSO PUBLISHING (MUSIC)", description: "Royalty tracking, sync licensing, distribution, A&R, catalog management", status: "available", icon: "music" },
-    { slug: "publishing-books", name: "PICASSO PUBLISHING (BOOKS)", description: "Manuscript pipeline, editing, production, rights management, marketing", status: "available", icon: "book-open" },
-    { slug: "minx-city", name: "MINX CITY", description: "Virtual office MMO, in-game businesses, economy, territory control", status: "available", icon: "gamepad" },
-    { slug: "jean-claw", name: "JEAN CLAW NETWORK", description: "Multi-agent automation suite — sales, support, trading, recruiting", status: "available", icon: "target" },
-    { slug: "storefront", name: "PICASSO STOREFRONT", description: "E-commerce, merchandise, print-on-demand, dropshipping operations", status: "coming_soon", icon: "store" },
-    { slug: "payments", name: "PICASSO PAY", description: "Payment processing, invoicing, subscriptions, financial reconciliation", status: "coming_soon", icon: "credit-card" },
+  const PICASSO_APPS: { slug: string; name: string; description: string; status: string; icon: string; category: string }[] = [
+    { slug: "salaryman", name: "SALARYMAN", description: "Virtual office hub — CRM, AI agents, phone system, creative suite, bot factory, payments, world", status: "core", icon: "terminal", category: "picasso" },
+
+    { slug: "google-workspace", name: "GOOGLE WORKSPACE", description: "Gmail, Google Calendar, Google Drive, Google Sheets — sync contacts, events, files, and spreadsheets", status: "available", icon: "mail", category: "productivity" },
+    { slug: "slack", name: "SLACK", description: "Send notifications, sync channels, deploy bots to Slack workspaces", status: "available", icon: "message-square", category: "communication" },
+    { slug: "discord", name: "DISCORD", description: "Deploy bots to Discord servers, sync messages, manage communities", status: "available", icon: "message-circle", category: "communication" },
+    { slug: "telegram", name: "TELEGRAM", description: "Deploy AI agents and bots to Telegram chats and groups", status: "available", icon: "send", category: "communication" },
+    { slug: "whatsapp", name: "WHATSAPP BUSINESS", description: "Send and receive messages, deploy AI agents to WhatsApp Business", status: "available", icon: "phone", category: "communication" },
+    { slug: "hubspot", name: "HUBSPOT", description: "Sync contacts, deals, and pipelines — two-way CRM integration", status: "available", icon: "database", category: "crm" },
+    { slug: "salesforce", name: "SALESFORCE", description: "Sync leads, contacts, opportunities, and accounts with Salesforce", status: "available", icon: "cloud", category: "crm" },
+    { slug: "stripe", name: "STRIPE", description: "Payment processing, subscription management, invoice sync", status: "available", icon: "credit-card", category: "finance" },
+    { slug: "quickbooks", name: "QUICKBOOKS", description: "Accounting sync — invoices, expenses, P&L, bank reconciliation", status: "available", icon: "calculator", category: "finance" },
+    { slug: "shopify", name: "SHOPIFY", description: "E-commerce integration — products, orders, inventory, customers", status: "available", icon: "shopping-bag", category: "commerce" },
+    { slug: "zapier", name: "ZAPIER", description: "Connect to 6,000+ apps with automated workflows and triggers", status: "available", icon: "zap", category: "automation" },
+    { slug: "make", name: "MAKE (INTEGROMAT)", description: "Visual workflow automation — connect APIs, transform data, schedule jobs", status: "available", icon: "workflow", category: "automation" },
+    { slug: "notion", name: "NOTION", description: "Sync databases, pages, and project boards with Notion workspaces", status: "available", icon: "file-text", category: "productivity" },
+    { slug: "linear", name: "LINEAR", description: "Sync issues, projects, and sprints — development workflow integration", status: "available", icon: "layout", category: "productivity" },
+    { slug: "github", name: "GITHUB", description: "Repository access, issue tracking, PR notifications, code deployment", status: "available", icon: "git-branch", category: "development" },
+    { slug: "twilio", name: "TWILIO", description: "SMS, voice calls, and phone number management for AI agents", status: "available", icon: "phone-call", category: "communication" },
+    { slug: "mailchimp", name: "MAILCHIMP", description: "Email marketing — sync lists, send campaigns, track engagement", status: "available", icon: "mail", category: "marketing" },
+    { slug: "facebook", name: "META BUSINESS", description: "Facebook Pages, Instagram, Messenger — deploy bots and manage ads", status: "available", icon: "share-2", category: "marketing" },
+    { slug: "linkedin", name: "LINKEDIN", description: "Post updates, sync connections, deploy outreach automation", status: "available", icon: "briefcase", category: "marketing" },
+    { slug: "airtable", name: "AIRTABLE", description: "Database sync — import/export records, automate data pipelines", status: "available", icon: "table", category: "productivity" },
+    { slug: "zendesk", name: "ZENDESK", description: "Help desk integration — tickets, knowledge base, customer support sync", status: "available", icon: "headphones", category: "support" },
+    { slug: "calendly", name: "CALENDLY", description: "Scheduling integration — sync meetings, availability, and bookings", status: "available", icon: "calendar", category: "productivity" },
   ];
 
   const connectedSlugs = new Set(connected.map(c => c.appSlug));
@@ -210,7 +227,7 @@ router.get("/platform/endpoints", async (_req, res) => {
     { method: "GET", path: "/api/insurance/clients", description: "LIST INSURANCE CLIENTS", scope: "insurance:read" },
     { method: "GET", path: "/api/insurance/policies", description: "LIST POLICIES", scope: "insurance:read" },
     { method: "GET", path: "/api/bots/marketplace", description: "LIST MARKETPLACE BOTS", scope: "bots:read" },
-    { method: "GET", path: "/api/world/servers", description: "LIST MINX CITY SERVERS", scope: "world:read" },
+    { method: "GET", path: "/api/world/servers", description: "LIST WORLD SERVERS", scope: "world:read" },
     { method: "POST", path: "/api/chat/message", description: "SEND CHAT MESSAGE TO BOT", scope: "chat:write" },
     { method: "GET", path: "/api/campaigns", description: "LIST MARKETING CAMPAIGNS", scope: "marketing:read" },
     { method: "GET", path: "/api/leads", description: "LIST LEADS", scope: "leads:read" },

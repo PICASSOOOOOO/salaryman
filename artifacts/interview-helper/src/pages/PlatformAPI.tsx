@@ -37,15 +37,15 @@ function OverviewTab() {
       <div className="border border-cyan-500/20 rounded-lg p-6 bg-gradient-to-br from-cyan-500/5 to-blue-500/5">
         <h2 className="text-lg font-bold text-cyan-400 tracking-wider mb-3">SALARYMAN PLATFORM API</h2>
         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-          THE SALARYMAN PLATFORM API CONNECTS ALL SALARYMAN PRODUCTS INTO ONE UNIFIED SYSTEM.
-          SYNC DATA BETWEEN SALARYMAN, PUBLISHING, MINX CITY, AND JEAN CLAW NETWORK.
+          THE SALARYMAN PLATFORM API CONNECTS YOUR TOOLS INTO ONE UNIFIED SYSTEM.
+          SYNC DATA BETWEEN SALARYMAN AND YOUR FAVORITE APPS — CRM, MESSAGING, PAYMENTS, E-COMMERCE, AND MORE.
           USE API KEYS FOR AUTHENTICATION, WEBHOOKS FOR REAL-TIME EVENTS, AND THE REST API FOR EVERYTHING ELSE.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
           {[
             { icon: Key, label: "API KEYS", desc: "AUTHENTICATE REQUESTS WITH SCOPED API KEYS", color: "text-amber-400" },
             { icon: Webhook, label: "WEBHOOKS", desc: "RECEIVE REAL-TIME EVENTS WHEN DATA CHANGES", color: "text-purple-400" },
-            { icon: Globe, label: "CONNECTED APPS", desc: "LINK SALARYMAN PRODUCTS FOR CROSS-APP WORKFLOWS", color: "text-emerald-400" },
+            { icon: Globe, label: "CONNECTED APPS", desc: "CONNECT THIRD-PARTY TOOLS FOR CROSS-APP WORKFLOWS", color: "text-emerald-400" },
           ].map(({ icon: Icon, label, desc, color }) => (
             <div key={label} className="border border-zinc-700/50 rounded-lg p-4 bg-zinc-800/30">
               <Icon className={`w-6 h-6 ${color} mb-2`} />
@@ -408,49 +408,77 @@ function AppsTab() {
     coming_soon: { border: "border-zinc-700/30", badge: "bg-zinc-800/50 text-zinc-600", badgeText: "COMING SOON" },
   };
 
+  const categoryLabels: Record<string, string> = {
+    picasso: "PICASSO PLATFORM",
+    communication: "COMMUNICATION",
+    crm: "CRM & SALES",
+    productivity: "PRODUCTIVITY",
+    finance: "FINANCE & PAYMENTS",
+    commerce: "E-COMMERCE",
+    automation: "AUTOMATION",
+    marketing: "MARKETING & SOCIAL",
+    development: "DEVELOPMENT",
+    support: "SUPPORT",
+  };
+
+  const grouped = apps.reduce<Record<string, typeof apps>>((acc, app) => {
+    const cat = app.category || "other";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(app);
+    return acc;
+  }, {});
+
+  const categoryOrder = ["picasso", "communication", "crm", "productivity", "finance", "commerce", "automation", "marketing", "development", "support"];
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-bold text-zinc-300 tracking-wider">SALARYMAN APPS</h3>
-      <div className="grid grid-cols-1 gap-3">
-        {apps.map((app) => {
-          const style = statusStyle[app.status] ?? statusStyle.available;
-          return (
-            <div key={app.slug} className={`border ${style.border} rounded-lg p-5 bg-zinc-800/20 flex items-center justify-between`}>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-bold text-zinc-200 tracking-wider">{app.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${style.badge} tracking-wider font-bold`}>{style.badgeText}</span>
-                  {app.connected && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 tracking-wider font-bold flex items-center gap-1">
-                      <Check className="w-3 h-3" /> CONNECTED
-                    </span>
+    <div className="space-y-6">
+      <h3 className="text-sm font-bold text-zinc-300 tracking-wider">CONNECTED APPS</h3>
+      {categoryOrder.filter(cat => grouped[cat]?.length).map(cat => (
+        <div key={cat} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-[10px] font-mono text-zinc-500 tracking-widest">{categoryLabels[cat] || cat.toUpperCase()}</span>
+            <div className="h-px flex-1 bg-zinc-800" />
+          </div>
+          <div className="grid grid-cols-1 gap-2">
+            {grouped[cat].map((app) => {
+              const style = statusStyle[app.status] ?? statusStyle.available;
+              return (
+                <div key={app.slug} className={`border ${style.border} rounded-lg p-4 bg-zinc-800/20 flex items-center justify-between gap-3`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-sm font-bold text-zinc-200 tracking-wider">{app.name}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${style.badge} tracking-wider font-bold`}>{style.badgeText}</span>
+                      {app.connected && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 tracking-wider font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3" /> CONNECTED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500">{app.description}</p>
+                    {app.lastSyncAt && (
+                      <p className="text-[10px] text-zinc-600 mt-1">LAST SYNC: {new Date(app.lastSyncAt).toLocaleString()}</p>
+                    )}
+                  </div>
+                  {app.status === "available" && !app.connected && (
+                    <button
+                      onClick={() => connect(app.slug, app.name)}
+                      disabled={connecting === app.slug}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold tracking-wider hover:bg-emerald-500/20 disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      {connecting === app.slug ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />}
+                      CONNECT
+                    </button>
+                  )}
+                  {app.status === "core" && (
+                    <Shield className="w-5 h-5 text-cyan-400/50 shrink-0" />
                   )}
                 </div>
-                <p className="text-xs text-zinc-500">{app.description}</p>
-                {app.lastSyncAt && (
-                  <p className="text-xs text-zinc-600 mt-1">LAST SYNC: {new Date(app.lastSyncAt).toLocaleString()}</p>
-                )}
-              </div>
-              {app.status === "available" && !app.connected && (
-                <button
-                  onClick={() => connect(app.slug, app.name)}
-                  disabled={connecting === app.slug}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold tracking-wider hover:bg-emerald-500/20 disabled:opacity-40 transition-colors"
-                >
-                  {connecting === app.slug ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />}
-                  CONNECT
-                </button>
-              )}
-              {app.status === "coming_soon" && (
-                <span className="text-xs text-zinc-600 tracking-wider">COMING SOON</span>
-              )}
-              {app.status === "core" && (
-                <Shield className="w-5 h-5 text-cyan-400/50" />
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
