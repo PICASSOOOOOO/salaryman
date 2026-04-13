@@ -3,6 +3,7 @@ import { pgTable, serial, varchar, integer, timestamp, text, boolean } from "dri
 export const callHistoryTable = pgTable("call_history", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 256 }).notNull(),
+  orgId: integer("org_id"),
   callerName: varchar("caller_name", { length: 64 }),
   recipientNumber: varchar("recipient_number", { length: 32 }).notNull(),
   twilioCallSid: varchar("twilio_call_sid", { length: 64 }),
@@ -13,9 +14,12 @@ export const callHistoryTable = pgTable("call_history", {
   transcript: text("transcript"),
   summary: text("summary"),
   recordingUrl: varchar("recording_url", { length: 512 }),
+  recordingSid: varchar("recording_sid", { length: 64 }),
   notes: text("notes"),
   calendarEventId: integer("calendar_event_id"),
   contactId: integer("contact_id"),
+  consentGiven: boolean("consent_given").notNull().default(true),
+  recordingRetainUntil: timestamp("recording_retain_until", { withTimezone: true }),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
@@ -26,9 +30,11 @@ export type InsertCallHistory = typeof callHistoryTable.$inferInsert;
 export const voicemailsTable = pgTable("voicemails", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 256 }).notNull(),
+  orgId: integer("org_id"),
   fromNumber: varchar("from_number", { length: 32 }).notNull(),
   fromName: varchar("from_name", { length: 128 }),
   twilioCallSid: varchar("twilio_call_sid", { length: 64 }),
+  contactId: integer("contact_id"),
   recordingUrl: varchar("recording_url", { length: 512 }),
   recordingSid: varchar("recording_sid", { length: 64 }),
   durationSeconds: integer("duration_seconds").default(0),

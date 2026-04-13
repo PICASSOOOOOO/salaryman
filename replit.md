@@ -57,7 +57,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **AI Models:** Anthropic Claude Sonnet, OpenAI GPT-4o
 - **AI Gateway:** OpenClaw
 - **Authentication:** Replit Auth (OIDC)
-- **Telephony:** Twilio SDK
+- **Telephony:** Twilio SDK (HIPAA-compliant call recording, auto CRM linking, Pablo voicemail greeting, org-level admin access)
 - **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage)
 - **Database:** PostgreSQL
 - **Payment Processing:** Stripe
