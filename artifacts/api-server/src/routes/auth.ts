@@ -25,9 +25,10 @@ const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 const router: IRouter = Router();
 
 function getOrigin(req: Request): string {
-  const proto = req.headers["x-forwarded-proto"] || "https";
-  const host =
-    req.headers["x-forwarded-host"] || req.headers["host"] || "localhost";
+  const rawProto = (req.headers["x-forwarded-proto"] as string) || "https";
+  const proto = rawProto.split(",")[0].trim();
+  const rawHost = (req.headers["x-forwarded-host"] as string) || (req.headers["host"] as string) || "localhost";
+  const host = rawHost.split(",")[0].trim();
   return `${proto}://${host}`;
 }
 
@@ -135,8 +136,9 @@ router.get("/callback", async (req: Request, res: Response) => {
     return;
   }
 
+  const safeHost = ((req.headers.host as string) || "localhost").split(",")[0].trim();
   const currentUrl = new URL(
-    `${callbackUrl}?${new URL(req.url, `http://${req.headers.host}`).searchParams}`,
+    `${callbackUrl}?${new URL(req.url, `http://${safeHost}`).searchParams}`,
   );
 
   let tokens: oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers;
@@ -147,7 +149,10 @@ router.get("/callback", async (req: Request, res: Response) => {
       expectedState,
       idTokenExpected: true,
     });
-  } catch {
+  } catch (err) {
+    console.error("[Auth] OIDC token exchange failed:", err instanceof Error ? err.message : err);
+    console.error("[Auth] Callback URL was:", callbackUrl);
+    console.error("[Auth] Origin was:", getOrigin(req));
     res.redirect("/api/login");
     return;
   }
