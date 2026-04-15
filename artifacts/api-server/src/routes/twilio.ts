@@ -205,24 +205,53 @@ router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
   }
 });
 
+let _cachedApiKey: { sid: string; secret: string } | null = null;
+let _cachedTwimlAppSid: string | null = null;
+
+async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
+  if (process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET) {
+    return { sid: process.env.TWILIO_API_KEY_SID, secret: process.env.TWILIO_API_KEY_SECRET };
+  }
+  if (_cachedApiKey) return _cachedApiKey;
+  const client = getTwilioClient();
+  const key = await client.newKeys.create({ friendlyName: "Salaryman Voice Key" });
+  _cachedApiKey = { sid: key.sid, secret: key.secret! };
+  process.env.TWILIO_API_KEY_SID = key.sid;
+  process.env.TWILIO_API_KEY_SECRET = key.secret!;
+  console.log("[Twilio] Auto-provisioned API Key:", key.sid);
+  return _cachedApiKey;
+}
+
+async function ensureTwimlApp(): Promise<string> {
+  if (process.env.TWILIO_TWIML_APP_SID) return process.env.TWILIO_TWIML_APP_SID;
+  if (_cachedTwimlAppSid) return _cachedTwimlAppSid;
+  const client = getTwilioClient();
+  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
+  const voiceUrl = domain ? `https://${domain}/api/twilio/twiml/client-voice` : "";
+  const app = await client.applications.create({
+    friendlyName: "Salaryman Voice App",
+    voiceMethod: "POST",
+    voiceUrl,
+  });
+  _cachedTwimlAppSid = app.sid;
+  process.env.TWILIO_TWIML_APP_SID = app.sid;
+  console.log("[Twilio] Auto-provisioned TwiML App:", app.sid, "voiceUrl:", voiceUrl);
+  return app.sid;
+}
+
 router.get("/twilio/token", requireAuth, async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const apiKeySid = process.env.TWILIO_API_KEY_SID;
-    const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
-    const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
-    if (!accountSid || !apiKeySid || !apiKeySecret) {
-      res.status(503).json({ error: "Twilio API key not configured. Set TWILIO_API_KEY_SID and TWILIO_API_KEY_SECRET." });
+    if (!accountSid) {
+      res.status(503).json({ error: "Twilio not configured. TWILIO_ACCOUNT_SID is required." });
       return;
     }
-    if (!twimlAppSid) {
-      res.status(503).json({ error: "TWILIO_TWIML_APP_SID not configured. Create a TwiML Application in Twilio Console and set this env var." });
-      return;
-    }
+    const apiKey = await ensureTwilioApiKey();
+    const twimlAppSid = await ensureTwimlApp();
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
-    const token = new AccessToken(accountSid, apiKeySid, apiKeySecret, { identity: userId, ttl: 3600 });
+    const token = new AccessToken(accountSid, apiKey.sid, apiKey.secret, { identity: userId, ttl: 3600 });
     const voiceGrant = new VoiceGrant({ incomingAllow: true, outgoingApplicationSid: twimlAppSid });
     token.addGrant(voiceGrant);
     res.json({ token: token.toJwt(), identity: userId });
