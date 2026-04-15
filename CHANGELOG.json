@@ -170,5 +170,25 @@
       "Add a social media management tool for posting and analytics",
       "Optimize the game page layout and button display for mobile devices"
     ]
+  },
+  {
+    "version": "v.3.4",
+    "date": "2026-04-15",
+    "commitHash": "9337e687e3c71a3c818bc571399e99a3b929bf71",
+    "changes": [
+      "Update office button to display \"my office\"",
+      "Restrict access to the office view based on property ownership",
+      "Add a web scraper tool for extracting content from various websites",
+      "Add a personalized second brain system with Obsidian compatibility",
+      "Persist Twilio credentials and app information in the database"
+    ]
+  },
+  {
+    "version": "v.3.5",
+    "date": "2026-04-15",
+    "commitHash": "9337e687e3c71a3c818bc571399e99a3b929bf71",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, type ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, X, Trash2, Link2, Unlink, Save,
@@ -80,9 +80,9 @@ function getTypeIcon(type: string) {
   return ENTRY_TYPES.find(t => t.key === type)?.icon ?? FileText;
 }
 
-function renderMarkdown(text: string, onClickLink: (title: string) => void): JSX.Element[] {
+function renderMarkdown(text: string, onClickLink: (title: string) => void): React.JSX.Element[] {
   const lines = text.split('\n');
-  const elements: JSX.Element[] = [];
+  const elements: React.JSX.Element[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -115,8 +115,8 @@ function renderMarkdown(text: string, onClickLink: (title: string) => void): JSX
   return elements;
 }
 
-function renderInline(text: string, onClickLink: (title: string) => void): (string | JSX.Element)[] {
-  const parts: (string | JSX.Element)[] = [];
+function renderInline(text: string, onClickLink: (title: string) => void): (string | React.JSX.Element)[] {
+  const parts: (string | React.JSX.Element)[] = [];
   const regex = /(\[\[([^\]]+)\]\])|(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)/g;
   let lastIndex = 0;
   let match;
