@@ -91,24 +91,24 @@ export function NavBar() {
     <header className="app-header shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
 
       {/* Top strip — plan / trial info (hidden on mobile) */}
-      <div className="hidden sm:flex items-center justify-between px-4 py-0.5 border-b border-white/[0.04] bg-white/[0.01]">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-zinc-600 tracking-widest uppercase">
+      <div className="hidden sm:flex items-center justify-between px-4 py-1 border-b border-white/[0.04] bg-white/[0.015]">
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-xs text-zinc-500 tracking-widest uppercase">
             {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
           </span>
-          <span className="text-zinc-700 text-[9px]">◆</span>
-          <span className="font-mono text-[9px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-1.5 py-0.5 rounded tracking-widest uppercase">
+          <span className="text-zinc-700 text-xs">◆</span>
+          <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
             ALPHA {__BUILD_VERSION__}
           </span>
           <button
             onClick={() => navigate('/investors')}
-            className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
+            className="font-mono text-[11px] text-zinc-500 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
           >
             {t('nav.investors')}
           </button>
           <button
             onClick={() => navigate('/feedback')}
-            className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
+            className="font-mono text-[11px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
           >
             Feedback
           </button>
@@ -117,8 +117,8 @@ export function NavBar() {
           <span className="flex items-center gap-1.5">
             {isPro || features.size > 0 ? (
               <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-                <Zap className="w-2.5 h-2.5 text-amber-500" />
-                <span className="font-mono text-[10px] text-amber-400 tracking-wide">
+                <Zap className="w-3 h-3 text-amber-500" />
+                <span className="font-mono text-xs text-amber-400 tracking-wide">
                   {isOwner
                     ? t('nav.corpAdmin')
                     : (boomerMode
@@ -131,7 +131,7 @@ export function NavBar() {
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                 <button
                   onClick={() => navigate('/pricing')}
-                  className="font-mono text-[10px] text-red-400 tracking-wide hover:text-red-300 transition-colors"
+                  className="font-mono text-xs text-red-400 tracking-wide hover:text-red-300 transition-colors"
                 >
                   {boomerMode ? 'PRICING' : t('nav.upgradeLabelCodename')}
                 </button>
@@ -145,7 +145,7 @@ export function NavBar() {
                 setBoomerMode(nb);
                 try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
               }}
-              className={`font-mono text-[10px] tracking-wide px-1.5 py-0.5 rounded border transition-colors ${
+              className={`font-mono text-xs tracking-wide px-2 py-0.5 rounded border transition-colors ${
                 boomerMode
                   ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
                   : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
@@ -160,22 +160,22 @@ export function NavBar() {
       </div>
 
       {/* Main nav row */}
-      <div className="flex items-center justify-between px-4 h-11">
+      <div className="flex items-center justify-between px-4 h-12">
 
         {/* Brand / Logo */}
         <div
           className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
           onClick={() => navigate('/')}
         >
-          <div className="w-7 h-7 rounded-md flex items-center justify-center">
-            <PicassoLogo size={22} gap={2} glow />
+          <div className="w-8 h-8 rounded-md flex items-center justify-center">
+            <PicassoLogo size={24} gap={2} glow />
           </div>
           {!isMobile && (
             <div>
               <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
                 {config.name}
               </h1>
-              <p className="font-mono text-[9px] text-zinc-600 tracking-widest leading-none mt-0.5">
+              <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
                 {config.sub}
               </p>
             </div>
@@ -185,10 +185,10 @@ export function NavBar() {
             title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
             className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
           >
-            {isDiscreet ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+            {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
           </button>
           {isMobile && (
-            <span className="font-mono text-[8px] text-sky-500/60 border border-sky-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
+            <span className="font-mono text-[10px] text-sky-500/60 border border-sky-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
               ALPHA {__BUILD_VERSION__}
             </span>
           )}
@@ -204,13 +204,13 @@ export function NavBar() {
               <button
                 key={mod.id}
                 onClick={() => handleModuleClick(mod)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors ${
                   active || expanded
                     ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >
-                <Icon className="w-3 h-3 shrink-0" />
+                <Icon className="w-3.5 h-3.5 shrink-0" />
                 {getModuleLabel(mod)}
                 {mod.subs.length > 0 && (
                   <ChevronDown className={`w-2.5 h-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -223,7 +223,7 @@ export function NavBar() {
           {isAuthenticated && (
             <button
               onClick={() => navigate('/bots/office')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
                 pathname === '/bots/office'
                   ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
                   : 'text-amber-400/70 border-amber-500/20 hover:bg-amber-500/8 hover:text-amber-300'
@@ -237,13 +237,13 @@ export function NavBar() {
           {/* EXPLORE button — desktop */}
           <button
             onClick={() => navigate('/world')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
               pathname.startsWith('/world')
                 ? 'bg-sky-500/10 text-sky-300 border-sky-500/20'
                 : 'text-sky-400/70 border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300'
             }`}
           >
-            <Globe className="w-3 h-3" />
+            <Globe className="w-3.5 h-3.5" />
             {t('nav.explore')}
           </button>
 
@@ -293,11 +293,11 @@ export function NavBar() {
                     </div>
                   )}
                   <div className="hidden sm:block text-right">
-                    <p className="text-[11px] font-mono text-zinc-300 leading-none">
+                    <p className="text-xs font-mono text-zinc-300 leading-none">
                       {user.firstName ?? user.email?.split('@')[0] ?? 'USER'}
                     </p>
                     {user.email && (
-                      <p className="text-[9px] font-mono text-zinc-600 leading-none mt-0.5">
+                      <p className="text-[11px] font-mono text-zinc-500 leading-none mt-0.5">
                         {user.email}
                       </p>
                     )}
@@ -314,7 +314,7 @@ export function NavBar() {
             ) : (
               <button
                 onClick={login}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 hover:bg-white/8 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 {t('nav.login')}
@@ -390,8 +390,8 @@ export function NavBar() {
 
       {/* Sub-nav row — shown when a module with subs is expanded (desktop only) */}
       {expandedModule && expandedModule.subs.length > 0 && (
-        <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.01] overflow-x-auto scrollbar-hide">
-          <span className="font-mono text-[9px] text-zinc-700 tracking-widest uppercase mr-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.015] overflow-x-auto scrollbar-hide">
+          <span className="font-mono text-xs text-zinc-600 tracking-widest uppercase mr-2 shrink-0">
             {boomerMode ? t(`nav.${expandedModule.id}`, expandedModule.label) : t(`codenames.${expandedModule.id}`, expandedModule.codename)}
           </span>
           {expandedModule.subs.map(sub => {
@@ -401,13 +401,13 @@ export function NavBar() {
               <button
                 key={sub.id}
                 onClick={() => { navigate(sub.path); setActiveModuleId(null); }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono tracking-widest uppercase transition-colors shrink-0 ${
                   isSubActive
                     ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
                 }`}
               >
-                <Icon className="w-3 h-3 shrink-0" />
+                <Icon className="w-3.5 h-3.5 shrink-0" />
                 {getSubLabel(sub)}
               </button>
             );
@@ -427,12 +427,12 @@ export function NavBar() {
 
       {showNotifications && isAuthenticated && (
         <div ref={notifRef} className="absolute right-2 sm:right-4 top-[60px] w-[calc(100vw-16px)] sm:w-80 max-h-96 bg-[#111113] border border-white/10 rounded-lg shadow-2xl z-[999] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
-            <span className="text-[11px] font-mono tracking-widest text-zinc-400 uppercase">Notifications</span>
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.06]">
+            <span className="text-xs font-mono tracking-widest text-zinc-400 uppercase">Notifications</span>
             {unreadCount > 0 && (
               <button
                 onClick={() => markRead()}
-                className="text-[10px] font-mono text-sky-500 hover:text-sky-400 transition-colors"
+                className="text-xs font-mono text-sky-500 hover:text-sky-400 transition-colors"
               >
                 Mark all read
               </button>
@@ -440,7 +440,7 @@ export function NavBar() {
           </div>
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-zinc-600 text-[11px] font-mono">
+              <div className="px-4 py-8 text-center text-zinc-600 text-xs font-mono">
                 No notifications
               </div>
             ) : (
@@ -456,15 +456,15 @@ export function NavBar() {
                   <div className="flex items-start gap-2">
                     {!n.read && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[11px] font-mono leading-tight truncate ${!n.read ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                      <p className={`text-xs font-mono leading-tight truncate ${!n.read ? 'text-zinc-200' : 'text-zinc-500'}`}>
                         {n.title}
                       </p>
                       {n.body && (
-                        <p className="text-[10px] text-zinc-600 mt-0.5 line-clamp-2 leading-tight">
+                        <p className="text-xs text-zinc-600 mt-0.5 line-clamp-2 leading-tight">
                           {n.body}
                         </p>
                       )}
-                      <p className="text-[9px] text-zinc-700 mt-1 font-mono">
+                      <p className="text-[11px] text-zinc-600 mt-1 font-mono">
                         {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>

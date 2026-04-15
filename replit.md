@@ -31,8 +31,9 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
 
 ### UI/UX Decisions
-- **Non-game pages:** Modern, dark SaaS aesthetic inspired by Linear/Vercel (dark zinc, emerald green accents, Inter font for body, Share Tech Mono for headings).
-- **Game pages:** CRT/Pip-Boy aesthetic (phosphor green on black, scan lines, VT323 and Share Tech Mono fonts, square borders).
+- **Non-game pages (office sim):** Practical dark office aesthetic — warm dark slate base (hsl 225 12% 7%), readable font floor (minimum 11px, CSS overrides for text-[8px] through text-[11px]), Inter for body, Share Tech Mono for headings, subtle noise texture overlay, worn border treatment. Priority: readability and utility first, game style second.
+- **Game pages (.game-route):** CRT/Pip-Boy aesthetic (phosphor blue on black, scan lines, VT323 and Share Tech Mono fonts, square borders). Font floor rules do NOT apply to game routes.
+- **Font floor system:** CSS rules in index.css override Tailwind's text-[8px] through text-[11px] to 11-13px for all non-game pages, applied via `body:not(.game-route)` selector. This ensures readability across all 60+ page components without touching each file individually.
 
 ### Technical Implementations
 - **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL with Drizzle ORM, Zod for validation, Orval for API codegen, esbuild for bundling.

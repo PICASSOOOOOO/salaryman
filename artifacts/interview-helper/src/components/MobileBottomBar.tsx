@@ -41,13 +41,13 @@ export function MobileSubNav() {
             <button
               key={sub.id}
               onClick={() => navigate(sub.path)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono tracking-widest uppercase transition-colors shrink-0 ${
                 isActive
                   ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
                   : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
               }`}
             >
-              <Icon className="w-3 h-3 shrink-0" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               {label}
             </button>
           );
@@ -123,7 +123,7 @@ export function MobileModuleNav() {
 
   return (
     <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="flex items-center px-1 h-11">
+      <div className="flex items-center px-1 h-12">
         {visibleTabs.map(tab => {
           const active = isTabActive(tab);
           const Icon = tab.icon;
@@ -138,8 +138,8 @@ export function MobileModuleNav() {
                   : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className={`w-4 h-4 ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`} />
-              <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`}>
+              <Icon className={`w-5 h-5 ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`} />
+              <span className={`text-[10px] font-mono tracking-wider uppercase leading-none ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`}>
                 {tab.label}
               </span>
             </button>
@@ -157,16 +157,16 @@ export function MobileModuleNav() {
           >
             {activeDropdownItem ? (
               <>
-                <activeDropdownItem.icon className="w-4 h-4 text-sky-400" />
-                <span className="text-[7px] font-mono tracking-wider uppercase leading-none text-sky-400 flex items-center gap-0.5">
+                <activeDropdownItem.icon className="w-5 h-5 text-sky-400" />
+                <span className="text-[10px] font-mono tracking-wider uppercase leading-none text-sky-400 flex items-center gap-0.5">
                   {activeDropdownItem.label}
                   <ChevronDown className={`w-2.5 h-2.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                 </span>
               </>
             ) : (
               <>
-                <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                <span className="text-[7px] font-mono tracking-wider uppercase leading-none">
+                <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="text-[10px] font-mono tracking-wider uppercase leading-none">
                   MORE
                 </span>
               </>
@@ -195,7 +195,7 @@ export function MobileModuleNav() {
                       }`}
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-sky-400' : 'text-zinc-600'}`} />
-                      <span className="text-[11px] font-mono tracking-widest uppercase">{label}</span>
+                      <span className="text-xs font-mono tracking-widest uppercase">{label}</span>
                     </button>
                   );
                 })}
@@ -208,7 +208,7 @@ export function MobileModuleNav() {
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
                 >
                   <User className="w-4 h-4 shrink-0 text-zinc-600" />
-                  <span className="text-[11px] font-mono tracking-widest uppercase">LOGIN</span>
+                  <span className="text-xs font-mono tracking-widest uppercase">LOGIN</span>
                 </button>
               )}
             </div>
