@@ -10,7 +10,7 @@ import {
   type CRMContact, type CallRecord, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
-import { useTwilioDevice } from '@/lib/useTwilioDevice';
+import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -42,7 +42,7 @@ export default function PhoneDialerPage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
-  const { connectToConference, disconnect: disconnectDevice } = useTwilioDevice({ BASE });
+  const { connectToConference, disconnect: disconnectDevice } = useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
   const [loading, setLoading] = useState(false);

@@ -11,7 +11,7 @@ import {
   saveActiveCalls, callStatusToSignalLevel,
   type ActiveCall,
 } from '@/lib/phone-utils';
-import { useTwilioDevice } from '@/lib/useTwilioDevice';
+import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
 
 const SESSION_KEY = 'phone_dialing_session';
 
@@ -80,7 +80,7 @@ export default function PhoneActivePage() {
   const hubNav = useCalllHomeNavigate();
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
-  const { connectToConference } = useTwilioDevice({ BASE });
+  const { connectToConference } = useTwilioDeviceContext();
 
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, transferCall: ctxTransfer, hangupOne, hangupAll } = useActiveCallContext();
 

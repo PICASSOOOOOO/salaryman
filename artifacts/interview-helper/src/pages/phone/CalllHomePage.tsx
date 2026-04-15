@@ -7,6 +7,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { crt, amber } from '@/lib/phone-utils';
 import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
+import { TwilioDeviceProvider } from '@/contexts/TwilioDeviceContext';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneDialerPage = lazy(() => import('./PhoneDialerPage'));
@@ -302,18 +303,20 @@ export default function CalllHomePage() {
         </div>
 
         <div style={{ paddingBottom: 48 }}>
-          <CalllHomeProvider switchTab={setActiveTab}>
-            <Suspense fallback={
-              <div style={{
-                padding: '80px 0', textAlign: 'center',
-                fontSize: '0.55rem', color: crt(0.25), letterSpacing: '0.15em',
-              }}>
-                LOADING {TABS.find(t => t.key === activeTab)?.label}...
-              </div>
-            }>
-              <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} />
-            </Suspense>
-          </CalllHomeProvider>
+          <TwilioDeviceProvider>
+            <CalllHomeProvider switchTab={setActiveTab}>
+              <Suspense fallback={
+                <div style={{
+                  padding: '80px 0', textAlign: 'center',
+                  fontSize: '0.55rem', color: crt(0.25), letterSpacing: '0.15em',
+                }}>
+                  LOADING {TABS.find(t => t.key === activeTab)?.label}...
+                </div>
+              }>
+                <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} />
+              </Suspense>
+            </CalllHomeProvider>
+          </TwilioDeviceProvider>
         </div>
 
         <div style={{
