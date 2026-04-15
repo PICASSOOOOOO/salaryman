@@ -97,6 +97,7 @@ const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
 const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
+const WebScraper = lazy(() => import("@/pages/WebScraper"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -159,7 +160,7 @@ function AppShell() {
   const showNavBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
 
   const isHome = pathname === "/";
-  const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault"];
+  const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault", "/console/scraper"];
   const isConsoleTerminal = pathname === "/console";
   const isConsoleSubRoute = consoleSubRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
   const isConsole = isConsoleTerminal || pathname.startsWith("/console/");
@@ -301,6 +302,7 @@ function AppShell() {
             <Route path="/console/agents" component={AgentTeam} />
             <Route path="/console/video" component={VideoAnalyzer} />
             <Route path="/console/vault" component={KnowledgeVault} />
+            <Route path="/console/scraper" component={WebScraper} />
 
             {/* INTEL module */}
             <Route path="/intel/reports" component={Reporting} />

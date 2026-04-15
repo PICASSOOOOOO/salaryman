@@ -86,6 +86,7 @@ export const MODULES: Module[] = [
       { id: 'agents', path: '/console/agents', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
+      { id: 'scraper', path: '/console/scraper', label: 'SCRAPER', boomerLabel: 'WEB SCRAPER', codename: 'SIGNAL-INT', icon: Globe },
     ],
   },
   {
