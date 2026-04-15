@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -10,6 +10,7 @@ import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
 import { TwilioDeviceProvider } from '@/contexts/TwilioDeviceContext';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
+const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
 const PhoneDialerPage = lazy(() => import('./PhoneDialerPage'));
 const PhoneActivePage = lazy(() => import('./PhoneActivePage'));
 const PhoneHistoryPage = lazy(() => import('./PhoneHistoryPage'));
@@ -23,13 +24,11 @@ const PhoneCallCenterPage = lazy(() => import('./PhoneCallCenterPage'));
 type AiSubMode = 'coach' | 'secretary';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+  { key: 'cmd', label: 'CMD', icon: <Activity size={12} /> },
   { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
-  { key: 'dial', label: 'DIAL', icon: <Phone size={12} /> },
-  { key: 'live', label: 'LIVE', icon: <Zap size={12} /> },
   { key: 'log', label: 'LOG', icon: <Clock size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
-  { key: 'auto', label: 'AUTO', icon: <Radio size={12} /> },
   { key: 'ai', label: 'AI', icon: <Bot size={12} /> },
   { key: 'cc', label: 'CC', icon: <Headphones size={12} /> },
 ];
@@ -58,6 +57,7 @@ function AiTabContent({ subMode, setSubMode }: { subMode: AiSubMode; setSubMode:
 
 function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: AiSubMode; setAiSubMode: (m: AiSubMode) => void }) {
   switch (tab) {
+    case 'cmd': return <PhoneCommandCenter />;
     case 'contacts': return <PhoneContactsPage />;
     case 'dial': return <PhoneDialerPage />;
     case 'live': return <PhoneActivePage />;
@@ -71,10 +71,11 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
   }
 }
 
-const VALID_TABS = new Set<TabKey>(['contacts','dial','live','log','vm','conf','auto','ai','cc']);
+const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','vm','conf','auto','ai','cc']);
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
-  return p && VALID_TABS.has(p as TabKey) ? (p as TabKey) : 'contacts';
+  if (p === 'dial' || p === 'live' || p === 'auto') return 'cmd';
+  return p && VALID_TABS.has(p as TabKey) ? (p as TabKey) : 'cmd';
 }
 
 export default function CalllHomePage() {

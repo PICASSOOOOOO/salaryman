@@ -320,9 +320,9 @@ function AppShell() {
             <Route path="/phone" component={CalllHomePage} />
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               const TAB_MAP: Record<string, string> = {
-                contacts: 'contacts', dialer: 'dial', active: 'live',
+                contacts: 'contacts', dialer: 'cmd', active: 'cmd', cmd: 'cmd',
                 history: 'log', voicemail: 'vm', conference: 'conf',
-                sessions: 'auto', coach: 'ai', secretary: 'ai', numbers: 'contacts',
+                sessions: 'cmd', coach: 'ai', secretary: 'ai', numbers: 'contacts',
               };
               const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
               return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
