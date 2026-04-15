@@ -6,5 +6,5 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
     : path.startsWith('api/')
     ? `${BASE}${path}`
     : path;
-  return fetch(fullPath, opts);
+  return fetch(fullPath, { credentials: 'include', ...opts });
 }

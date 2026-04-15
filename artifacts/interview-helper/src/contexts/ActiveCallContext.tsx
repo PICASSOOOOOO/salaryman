@@ -3,6 +3,7 @@ import {
   loadActiveCalls, saveActiveCalls,
   type ActiveCall, ENDED_STATUSES, callStatusToSignalLevel,
 } from '@/lib/phone-utils';
+import { apiFetch } from '@/lib/api-client';
 
 export interface CallActionResult {
   ok: boolean;
@@ -29,14 +30,11 @@ export function useActiveCallContext() {
 }
 
 export function ActiveCallProvider({ children }: { children: ReactNode }) {
-  const BASE = import.meta.env.BASE_URL;
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(() => loadActiveCalls());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeCallsRef = useRef<ActiveCall[]>(activeCalls);
   activeCallsRef.current = activeCalls;
-
-  const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
   useEffect(() => { saveActiveCalls(activeCalls); }, [activeCalls]);
 
@@ -63,7 +61,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       }
       try {
         const callSids = current.map(c => c.callSid);
-        const r = await fetch(apiUrl('twilio/call-status-batch'), {
+        const r = await apiFetch('/api/twilio/call-status-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callSids }),
@@ -80,7 +78,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
         console.warn('[ActiveCallContext] poll error:', e instanceof Error ? e.message : e);
       }
     }, 3000);
-  }, [apiUrl, stopPolling]);
+  }, [stopPolling]);
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
 
@@ -106,7 +104,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
 
   const toggleMute = useCallback(async (sid: string, currentMuted: boolean): Promise<CallActionResult> => {
     try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/mute`), {
+      const r = await apiFetch(`/api/twilio/call/${sid}/mute`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ muted: !currentMuted }),
       });
@@ -119,11 +117,11 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       console.warn('[ActiveCallContext] mute error:', error);
       return { ok: false, error };
     }
-  }, [apiUrl, handleResponse]);
+  }, [handleResponse]);
 
   const toggleHold = useCallback(async (sid: string, currentHold: boolean): Promise<CallActionResult> => {
     try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/hold`), {
+      const r = await apiFetch(`/api/twilio/call/${sid}/hold`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hold: !currentHold }),
       });
@@ -136,12 +134,12 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       console.warn('[ActiveCallContext] hold error:', error);
       return { ok: false, error };
     }
-  }, [apiUrl, handleResponse]);
+  }, [handleResponse]);
 
   const transferCall = useCallback(async (sid: string, transferNumber: string): Promise<CallActionResult> => {
     if (!transferNumber.trim()) return { ok: false, error: 'No transfer number' };
     try {
-      const r = await fetch(apiUrl(`twilio/call/${sid}/transfer`), {
+      const r = await apiFetch(`/api/twilio/call/${sid}/transfer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transferTo: transferNumber }),
       });
@@ -154,11 +152,11 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       console.warn('[ActiveCallContext] transfer error:', error);
       return { ok: false, error };
     }
-  }, [apiUrl, handleResponse]);
+  }, [handleResponse]);
 
   const hangupOne = useCallback(async (sid: string): Promise<CallActionResult> => {
     try {
-      const r = await fetch(apiUrl(`twilio/hangup/${sid}`), { method: 'POST' });
+      const r = await apiFetch(`/api/twilio/hangup/${sid}`, { method: 'POST' });
       if (r.ok) {
         setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
       }
@@ -168,13 +166,13 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       console.warn('[ActiveCallContext] hangup error:', error);
       return { ok: false, error };
     }
-  }, [apiUrl, handleResponse]);
+  }, [handleResponse]);
 
   const hangupAll = useCallback(async (): Promise<CallActionResult> => {
     const sids = activeCallsRef.current.filter(c => !ENDED_STATUSES.includes(c.status)).map(c => c.callSid);
     if (sids.length === 0) return { ok: true };
     try {
-      const r = await fetch(apiUrl('twilio/hangup-all'), {
+      const r = await apiFetch('/api/twilio/hangup-all', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ callSids: sids }),
       });
@@ -187,7 +185,7 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
       console.warn('[ActiveCallContext] hangup-all error:', error);
       return { ok: false, error };
     }
-  }, [apiUrl, handleResponse]);
+  }, [handleResponse]);
 
   return (
     <ActiveCallContext.Provider value={{

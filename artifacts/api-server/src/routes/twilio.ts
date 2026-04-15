@@ -86,7 +86,12 @@ function getTwilioNumber() {
 
 
 function getAppHost(req?: Request): string {
-  return process.env.APP_DOMAIN ?? process.env.REPLIT_DOMAINS?.split(",")[0] ?? process.env.REPLIT_DEV_DOMAIN ?? req?.headers?.host ?? "";
+  if (process.env.APP_DOMAIN) return process.env.APP_DOMAIN;
+  if (process.env.REPLIT_DEPLOYMENT_URL) return process.env.REPLIT_DEPLOYMENT_URL.replace(/^https?:\/\//, "");
+  if (process.env.REPLIT_DOMAINS) return process.env.REPLIT_DOMAINS.split(",")[0].trim();
+  if (process.env.REPLIT_DEV_DOMAIN) return process.env.REPLIT_DEV_DOMAIN;
+  const rawHost = req?.headers?.host as string | undefined;
+  return rawHost ? rawHost.split(",")[0].trim() : "";
 }
 
 async function verifyCallOwnership(userId: string, callSid: string): Promise<boolean> {
@@ -103,11 +108,24 @@ function validateTwilioWebhook(req: Request): boolean {
   if (!authToken) return false;
   const signature = req.headers["x-twilio-signature"] as string;
   if (!signature) return false;
+
   const rawProto = (req.headers["x-forwarded-proto"] as string) ?? "https";
   const protocol = rawProto.split(",")[0].trim();
-  const host = req.headers.host ?? "";
+  const rawHost = (req.headers.host as string) ?? "";
+  const host = rawHost.split(",")[0].trim();
   const url = `${protocol}://${host}${req.originalUrl}`;
-  return twilio.validateRequest(authToken, signature, url, req.body ?? {});
+
+  const valid = twilio.validateRequest(authToken, signature, url, req.body ?? {});
+  if (!valid) {
+    const appDomain = getAppHost(req);
+    if (appDomain && appDomain !== host) {
+      const altUrl = `https://${appDomain}${req.originalUrl}`;
+      const altValid = twilio.validateRequest(authToken, signature, altUrl, req.body ?? {});
+      if (altValid) return true;
+    }
+    console.warn("[Twilio] Webhook signature mismatch. URL tried:", url);
+  }
+  return valid;
 }
 
 function escapeTwiml(text: string): string {
