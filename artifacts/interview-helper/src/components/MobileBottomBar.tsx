@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { Globe, User } from 'lucide-react';
+import { Globe, User, Building2 } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -110,6 +110,21 @@ export function MobileModuleNav() {
             </button>
           );
         })}
+        {isAuthenticated && (
+          <button
+            onClick={() => navigate('/bots/office')}
+            className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
+              pathname === '/bots/office'
+                ? 'text-amber-400'
+                : 'text-zinc-600 active:text-zinc-400'
+            }`}
+          >
+            <Building2 className={`w-5 h-5 ${pathname === '/bots/office' ? 'text-amber-400' : ''}`} />
+            <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname === '/bots/office' ? 'text-amber-400' : ''}`}>
+              OFFICE
+            </span>
+          </button>
+        )}
         <button
           onClick={() => navigate('/world')}
           className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${

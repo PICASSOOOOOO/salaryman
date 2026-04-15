@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2 } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -219,10 +219,29 @@ export function NavBar() {
             );
           })}
 
-          {/* EXPLORE button — desktop only */}
+          {/* MY OFFICE button — desktop */}
+          {isAuthenticated && (
+            <button
+              onClick={() => navigate('/bots/office')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
+                pathname === '/bots/office'
+                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                  : 'text-amber-400/70 border-amber-500/20 hover:bg-amber-500/8 hover:text-amber-300'
+              }`}
+            >
+              <Building2 className="w-3 h-3" />
+              MY OFFICE
+            </button>
+          )}
+
+          {/* EXPLORE button — desktop */}
           <button
             onClick={() => navigate('/world')}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors text-sky-400/70 border border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors border ${
+              pathname.startsWith('/world')
+                ? 'bg-sky-500/10 text-sky-300 border-sky-500/20'
+                : 'text-sky-400/70 border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300'
+            }`}
           >
             <Globe className="w-3 h-3" />
             {t('nav.explore')}
