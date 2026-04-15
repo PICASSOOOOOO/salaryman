@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { Globe, User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2 } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2 } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -62,7 +62,6 @@ const PRIMARY_TABS = [
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
   { id: 'office', path: '/bots/office', label: 'OFFICE', icon: Building2, authOnly: true },
-  { id: 'explore', path: '/world', label: 'EXPLORE', icon: Globe },
 ];
 
 const DROPDOWN_ITEMS = [
@@ -107,7 +106,6 @@ export function MobileModuleNav() {
     if (tab.id === 'office') return pathname === '/bots/office';
     if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
     if (tab.id === 'phone') return pathname.startsWith('/phone');
-    if (tab.id === 'explore') return pathname.startsWith('/world');
     return false;
   };
 
@@ -129,6 +127,24 @@ export function MobileModuleNav() {
           const Icon = tab.icon;
           const isOffice = tab.id === 'office';
           const activeColor = isOffice ? 'text-emerald-400' : 'text-sky-400';
+          if (isOffice) {
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation relative ${
+                  active ? 'text-emerald-400' : 'text-emerald-500 active:text-emerald-400'
+                }`}
+                style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}
+              >
+                <div className="absolute inset-x-2 inset-y-0 rounded-md bg-emerald-400/8 border border-emerald-400/20" />
+                <Icon className="w-5 h-5 relative z-10 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
+                <span className="text-[10px] font-mono tracking-wider uppercase leading-none relative z-10">
+                  {tab.label}
+                </span>
+              </button>
+            );
+          }
           return (
             <button
               key={tab.id}

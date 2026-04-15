@@ -247,10 +247,10 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
           No operative record found. Start the game on desktop to create your character.
         </div>
         <button
-          onClick={() => navigate('/world')}
-          style={{ padding: '.6rem 1.5rem', background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', ...vtFont(boomerMode), fontSize: '1.1rem', letterSpacing: '.15em', cursor: 'pointer' }}
+          onClick={() => navigate('/bots/office')}
+          style={{ padding: '.6rem 1.5rem', background: 'rgba(52,211,153,.08)', border: '1px solid rgba(52,211,153,.5)', color: '#34d399', ...vtFont(boomerMode), fontSize: '1.1rem', letterSpacing: '.15em', cursor: 'pointer' }}
         >
-          GO TO GAME
+          GO TO OFFICE
         </button>
       </div>
     );
@@ -511,10 +511,10 @@ The operative is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
               {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
             </div>
             <button
-              onClick={() => navigate('/world')}
+              onClick={() => navigate('/')}
               style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', padding: '.2rem .5rem', cursor: 'pointer', ...stFont(boomerMode) }}
             >
-              DESKTOP
+              HOME
             </button>
           </div>
         </div>
