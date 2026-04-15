@@ -15068,7 +15068,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left',
             }}
           >
-            🏢 THE OFFICE
+            🏢 MY OFFICE
           </button>
         );
       })()}
