@@ -358,7 +358,7 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
   const confName = (req.body?.To ?? req.query?.To ?? "") as string;
   res.set("Content-Type", "text/xml");
   if (confName && confName.startsWith("conf-")) {
-    res.send(`<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`);
+    res.send(`<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`);
   } else {
     res.send(`<Response><Say>Unable to connect. Please try again.</Say></Response>`);
   }
