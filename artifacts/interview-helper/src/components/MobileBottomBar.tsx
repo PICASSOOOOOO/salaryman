@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { Globe, User, Building2 } from 'lucide-react';
+import { Globe, User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2 } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -57,12 +57,29 @@ export function MobileSubNav() {
   );
 }
 
-const BOTTOM_NAV_MODULES = ['pablo', 'phone', 'bots', 'console', 'business'];
+const PRIMARY_TABS = [
+  { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
+  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
+  { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
+  { id: 'office', path: '/bots/office', label: 'OFFICE', icon: Building2, authOnly: true },
+];
+
+const DROPDOWN_ITEMS = [
+  { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
+  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
+  { id: 'creative', path: '/creative/darkroom', label: 'CREATIVE', icon: Layers },
+  { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
+  { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
+  { id: 'explore', path: '/world', label: 'EXPLORE', icon: Globe },
+  { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
+];
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -72,85 +89,133 @@ export function MobileModuleNav() {
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
+
   const pathname = location.split('?')[0];
 
   if (pathname.startsWith('/world')) return null;
 
-  const isModuleActive = (mod: typeof MODULES[0]) => {
-    if (mod.id === 'pablo') return pathname === '/';
-    if (mod.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    return pathname.startsWith(mod.path + '/') || pathname === mod.path;
+  const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
+    if (tab.id === 'pablo') return pathname === '/';
+    if (tab.id === 'office') return pathname === '/bots/office';
+    if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
+    if (tab.id === 'phone') return pathname.startsWith('/phone');
+    return false;
   };
 
-  const bottomModules = MODULES.filter(m => BOTTOM_NAV_MODULES.includes(m.id));
+  const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
+    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    if (item.id === 'explore') return pathname.startsWith('/world');
+    if (item.id === 'profile') return pathname.startsWith('/profile');
+    return pathname.startsWith('/' + item.id);
+  };
+
+  const activeDropdownItem = DROPDOWN_ITEMS.find(d => isDropdownItemActive(d));
+
+  const visibleTabs = PRIMARY_TABS.filter(tab => !tab.authOnly || isAuthenticated);
 
   return (
     <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08]">
-      <div className="flex items-center justify-around px-1 h-11">
-        {bottomModules.map(mod => {
-          const active = isModuleActive(mod);
-          const Icon = mod.icon;
-          const label = boomerMode
-            ? t(`nav.${mod.id}`, mod.label)
-            : mod.label;
+      <div className="flex items-center px-1 h-11">
+        {visibleTabs.map(tab => {
+          const active = isTabActive(tab);
+          const Icon = tab.icon;
+          const isOffice = tab.id === 'office';
           return (
             <button
-              key={mod.id}
-              onClick={() => navigate(mod.defaultPath)}
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
                 active
-                  ? 'text-sky-400'
+                  ? isOffice ? 'text-amber-400' : 'text-sky-400'
                   : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className={`w-4 h-4 ${active ? 'text-sky-400' : ''}`} />
-              <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${active ? 'text-sky-400' : ''}`}>
-                {label.length > 8 ? label.slice(0, 7) : label}
+              <Icon className={`w-4 h-4 ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`} />
+              <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${active ? (isOffice ? 'text-amber-400' : 'text-sky-400') : ''}`}>
+                {tab.label}
               </span>
             </button>
           );
         })}
-        {isAuthenticated && (
+
+        <div className="relative flex-1" ref={dropdownRef}>
           <button
-            onClick={() => navigate('/bots/office')}
-            className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
-              pathname === '/bots/office'
-                ? 'text-amber-400'
+            onClick={() => setDropdownOpen(prev => !prev)}
+            className={`flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
+              activeDropdownItem
+                ? 'text-sky-400'
                 : 'text-zinc-600 active:text-zinc-400'
             }`}
           >
-            <Building2 className={`w-4 h-4 ${pathname === '/bots/office' ? 'text-amber-400' : ''}`} />
-            <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname === '/bots/office' ? 'text-amber-400' : ''}`}>
-              OFFICE
-            </span>
+            {activeDropdownItem ? (
+              <>
+                <activeDropdownItem.icon className="w-4 h-4 text-sky-400" />
+                <span className="text-[7px] font-mono tracking-wider uppercase leading-none text-sky-400 flex items-center gap-0.5">
+                  {activeDropdownItem.label}
+                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </span>
+              </>
+            ) : (
+              <>
+                <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <span className="text-[7px] font-mono tracking-wider uppercase leading-none">
+                  MORE
+                </span>
+              </>
+            )}
           </button>
-        )}
-        <button
-          onClick={() => navigate('/world')}
-          className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
-            pathname.startsWith('/world')
-              ? 'text-sky-400'
-              : 'text-zinc-600 active:text-zinc-400'
-          }`}
-        >
-          <Globe className={`w-4 h-4 ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`} />
-          <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`}>
-            EXPLORE
-          </span>
-        </button>
-        <button
-          onClick={() => navigate('/profile')}
-          className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
-            pathname.startsWith('/profile')
-              ? 'text-sky-400'
-              : 'text-zinc-600 active:text-zinc-400'
-          }`}
-        >
-          <User className={`w-4 h-4 ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`} />
-          <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`}>
-            {isAuthenticated ? 'PROFILE' : 'LOGIN'}
-          </span>
-        </button>
+
+          {dropdownOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
+              {DROPDOWN_ITEMS
+                .filter(item => !item.authOnly || isAuthenticated)
+                .map(item => {
+                  const active = isDropdownItemActive(item);
+                  const Icon = item.icon;
+                  const label = item.id === 'profile' && !isAuthenticated ? 'LOGIN' : item.label;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        navigate(item.path);
+                        setDropdownOpen(false);
+                      }}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${
+                        active
+                          ? 'bg-sky-500/10 text-sky-400'
+                          : 'text-zinc-400 active:bg-white/5'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-sky-400' : 'text-zinc-600'}`} />
+                      <span className="text-[11px] font-mono tracking-widest uppercase">{label}</span>
+                    </button>
+                  );
+                })}
+              {!isAuthenticated && (
+                <button
+                  onClick={() => {
+                    navigate('/profile');
+                    setDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation text-zinc-400 active:bg-white/5"
+                >
+                  <User className="w-4 h-4 shrink-0 text-zinc-600" />
+                  <span className="text-[11px] font-mono tracking-widest uppercase">LOGIN</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
