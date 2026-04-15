@@ -201,10 +201,10 @@ function AppShell() {
       {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
           <NavBar />
-          <MobileModuleNav />
           <MobileSubNav />
         </div>
       )}
+      {showNavBar && <MobileModuleNav />}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
       {/* Keep-alive panels */}

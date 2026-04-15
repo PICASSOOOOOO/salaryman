@@ -519,26 +519,26 @@ export default function AdminPanel() {
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto w-full">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-amber-400" />
+    <div className="p-3 sm:p-6 max-w-6xl mx-auto w-full">
+      <div className="flex items-center gap-3 mb-4 sm:mb-6">
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
+          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'ADMIN PANEL' : 'PICASSO COMMAND CENTER'}</h2>
-          <p className="text-sm text-muted-foreground">Internal platform management for Picasso.ai staff</p>
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground truncate">{boomerMode ? 'ADMIN PANEL' : 'PICASSO COMMAND CENTER'}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Internal platform management for Picasso.ai staff</p>
         </div>
       </div>
 
       {stats && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
           <StatCard label="TOTAL USERS" value={stats.totalUsers} color="sky" icon={Users} />
           <StatCard label="ORGANIZATIONS" value={stats.totalOrgs} color="violet" icon={Building2} />
           <StatCard label="ACTIVE BANS" value={stats.activeBans} color={stats.activeBans > 0 ? 'red' : 'emerald'} icon={Ban} />
         </div>
       )}
 
-      <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide border-b border-white/[0.06] pb-2 -mx-2 px-2 sticky top-[52px] z-30 bg-background/95 backdrop-blur-sm pt-2">
+      <div className="flex gap-1 sm:gap-1.5 mb-4 sm:mb-6 overflow-x-auto scrollbar-hide border-b border-white/[0.06] pb-2 -mx-3 sm:-mx-2 px-3 sm:px-2 sticky top-0 sm:top-[52px] z-30 bg-background/95 backdrop-blur-sm pt-2">
         {tabs.map(tab => (
           <button
             key={tab.key}

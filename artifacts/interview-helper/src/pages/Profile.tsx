@@ -922,8 +922,8 @@ export default function Profile() {
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="sticky top-0 z-40 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.06]">
-        <div className="flex items-center gap-1 px-4 py-2 overflow-x-auto scrollbar-hide max-w-5xl mx-auto">
+      <div className="sticky top-[88px] sm:top-0 z-40 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.06]">
+        <div className="flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 overflow-x-auto scrollbar-hide max-w-5xl mx-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           {TAB_CONFIG.map(tab => {
             if ((tab.id === 'admin' || tab.id === 'moderator' || tab.id === 'world-map') && !showAdminTabs) return null;
             const active = activeTab === tab.id;
@@ -933,14 +933,15 @@ export default function Profile() {
                 key={tab.id}
                 type="button"
                 onClick={() => navigate(tab.path)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[40px] rounded-md text-[11px] font-mono tracking-widest uppercase transition-colors shrink-0 cursor-pointer select-none touch-manipulation ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] rounded-md text-[10px] sm:text-[11px] font-mono tracking-widest uppercase transition-colors shrink-0 cursor-pointer select-none touch-manipulation ${
                   active
                     ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent active:bg-white/[0.08]'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                {boomerMode ? tab.boomerLabel : tab.label}
+                <span className="hidden sm:inline">{boomerMode ? tab.boomerLabel : tab.label}</span>
+                <span className="sm:hidden">{tab.label}</span>
               </button>
             );
           })}

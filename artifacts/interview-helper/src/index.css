@@ -398,6 +398,17 @@ header {
   visibility: visible !important;
 }
 
+/* ─── Mobile bottom nav safe area ─── */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 639px) {
+  body {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* ─── Override Radix / shadcn components ─── */
 [data-radix-popper-content-wrapper] {
   z-index: 9999 !important;

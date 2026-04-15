@@ -1,9 +1,10 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, User } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@workspace/replit-auth-web';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -56,8 +57,11 @@ export function MobileSubNav() {
   );
 }
 
+const BOTTOM_NAV_MODULES = ['pablo', 'phone', 'bots', 'console', 'business'];
+
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const { t } = useTranslation();
 
@@ -70,49 +74,67 @@ export function MobileModuleNav() {
 
   const pathname = location.split('?')[0];
 
+  if (pathname.startsWith('/world')) return null;
+
   const isModuleActive = (mod: typeof MODULES[0]) => {
     if (mod.id === 'pablo') return pathname === '/';
     if (mod.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     return pathname.startsWith(mod.path + '/') || pathname === mod.path;
   };
 
+  const bottomModules = MODULES.filter(m => BOTTOM_NAV_MODULES.includes(m.id));
+
   return (
-    <div className="sm:hidden bg-[#0a0a0b] border-b border-white/[0.06] overflow-hidden">
-      <div
-        className="flex items-center gap-1 px-3 py-2 overflow-x-auto scrollbar-hide"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {MODULES.map(mod => {
+    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0b]/98 backdrop-blur-md border-t border-white/[0.08] safe-area-bottom">
+      <div className="flex items-center justify-around px-1 h-14">
+        {bottomModules.map(mod => {
           const active = isModuleActive(mod);
           const Icon = mod.icon;
           const label = boomerMode
-            ? t(`nav.${mod.id}`, mod.label).split(' ')[0]
-            : t(`codenames.${mod.id}`, mod.codename).split(' ')[0];
+            ? t(`nav.${mod.id}`, mod.label)
+            : mod.label;
           return (
             <button
               key={mod.id}
               onClick={() => navigate(mod.defaultPath)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
                 active
-                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
-                  : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
+                  ? 'text-sky-400'
+                  : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className="w-3 h-3 shrink-0" />
-              {label}
+              <Icon className={`w-5 h-5 ${active ? 'text-sky-400' : ''}`} />
+              <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${active ? 'text-sky-400' : ''}`}>
+                {label.length > 8 ? label.slice(0, 7) : label}
+              </span>
             </button>
           );
         })}
         <button
           onClick={() => navigate('/world')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors shrink-0 ${
+          className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
             pathname.startsWith('/world')
-              ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
-              : 'text-sky-400/70 border border-sky-500/20 hover:text-sky-300'
+              ? 'text-sky-400'
+              : 'text-zinc-600 active:text-zinc-400'
           }`}
         >
-          <Globe className="w-3 h-3 shrink-0" />
-          {t('nav.explore', 'EXPLORE')}
+          <Globe className={`w-5 h-5 ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`} />
+          <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`}>
+            EXPLORE
+          </span>
+        </button>
+        <button
+          onClick={() => navigate('/profile')}
+          className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
+            pathname.startsWith('/profile')
+              ? 'text-sky-400'
+              : 'text-zinc-600 active:text-zinc-400'
+          }`}
+        >
+          <User className={`w-5 h-5 ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`} />
+          <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`}>
+            {isAuthenticated ? 'PROFILE' : 'LOGIN'}
+          </span>
         </button>
       </div>
     </div>

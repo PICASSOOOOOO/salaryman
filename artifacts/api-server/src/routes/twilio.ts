@@ -24,7 +24,7 @@ import {
 import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
-import { hasFeature } from "../lib/plan";
+import { hasFeature, isOwnerEmail } from "../lib/plan";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 
@@ -50,14 +50,16 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
     res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
     return;
   }
-  const userId = String(req.user.id);
-  const allowed = await isInPlatformTwilioOrg(userId);
-  if (!allowed) {
-    res.status(403).json({
-      error: "Platform phone system is restricted to authorized organizations. Connect your own Twilio API credentials in Settings to enable phone features.",
-      code: "TWILIO_ORG_RESTRICTED",
-    });
-    return;
+  if (!isOwnerEmail(req.user.email)) {
+    const userId = String(req.user.id);
+    const allowed = await isInPlatformTwilioOrg(userId);
+    if (!allowed) {
+      res.status(403).json({
+        error: "Platform phone system is restricted to authorized organizations. Connect your own Twilio API credentials in Settings to enable phone features.",
+        code: "TWILIO_ORG_RESTRICTED",
+      });
+      return;
+    }
   }
   next();
 }
