@@ -19,8 +19,28 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
   const [deviceState, setDeviceState] = useState<DeviceState>('uninitialized');
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const initializingRef = useRef(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const apiUrl = (path: string) => `${BASE}api/${path}`;
+
+  const TOKEN_REFRESH_MS = 50 * 60 * 1000;
+
+  const scheduleTokenRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(async () => {
+      if (!deviceRef.current) return;
+      try {
+        const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+        if (!r.ok) return;
+        const data = await r.json();
+        deviceRef.current.updateToken(data.token);
+        console.log('[TwilioDevice] token refreshed');
+        scheduleTokenRefresh();
+      } catch (err) {
+        console.warn('[TwilioDevice] token refresh failed:', err instanceof Error ? err.message : 'Unknown');
+      }
+    }, TOKEN_REFRESH_MS);
+  }, [BASE]);
 
   const initDevice = useCallback(async () => {
     if (initializingRef.current) return;
@@ -61,9 +81,21 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
         if (deviceState !== 'error') setDeviceState('uninitialized');
       });
 
+      device.on('tokenWillExpire', async () => {
+        try {
+          const tr = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+          if (tr.ok) {
+            const td = await tr.json();
+            device.updateToken(td.token);
+            console.log('[TwilioDevice] token refreshed via tokenWillExpire');
+          }
+        } catch {}
+      });
+
       await device.register();
       deviceRef.current = device;
       setDeviceState('ready');
+      scheduleTokenRefresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to initialize Twilio device';
       console.warn('[TwilioDevice] init warning (non-fatal):', msg);
@@ -72,11 +104,12 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
     } finally {
       initializingRef.current = false;
     }
-  }, [BASE]);
+  }, [BASE, scheduleTokenRefresh]);
 
   useEffect(() => {
     initDevice();
     return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       if (deviceRef.current) {
         try { deviceRef.current.destroy(); } catch { }
         deviceRef.current = null;

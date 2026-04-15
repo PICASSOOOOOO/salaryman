@@ -97,7 +97,8 @@ function validateTwilioWebhook(req: Request): boolean {
   if (!authToken) return false;
   const signature = req.headers["x-twilio-signature"] as string;
   if (!signature) return false;
-  const protocol = req.headers["x-forwarded-proto"] ?? "https";
+  const rawProto = (req.headers["x-forwarded-proto"] as string) ?? "https";
+  const protocol = rawProto.split(",")[0].trim();
   const host = req.headers.host ?? "";
   const url = `${protocol}://${host}${req.originalUrl}`;
   return twilio.validateRequest(authToken, signature, url, req.body ?? {});
@@ -270,16 +271,29 @@ async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
 async function ensureTwimlApp(): Promise<string> {
   if (process.env.TWILIO_TWIML_APP_SID) return process.env.TWILIO_TWIML_APP_SID;
   if (_cachedTwimlAppSid) return _cachedTwimlAppSid;
+
+  const domain = process.env.APP_DOMAIN || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
+  const voiceUrl = domain ? `https://${domain}/api/twilio/twiml/client-voice` : "";
+
   const dbAppSid = await getSystemConfig("twilio_twiml_app_sid");
   if (dbAppSid) {
     _cachedTwimlAppSid = dbAppSid;
     process.env.TWILIO_TWIML_APP_SID = dbAppSid;
-    console.log("[Twilio] Restored TwiML App from DB:", dbAppSid);
+    if (voiceUrl) {
+      try {
+        const client = getTwilioClient();
+        const existingApp = await client.applications(dbAppSid).fetch();
+        if (existingApp.voiceUrl !== voiceUrl) {
+          await client.applications(dbAppSid).update({ voiceUrl, voiceMethod: "POST" });
+          console.log("[Twilio] Updated TwiML App voiceUrl to:", voiceUrl);
+        }
+      } catch (e: unknown) {
+        console.warn("[Twilio] Could not sync TwiML App voiceUrl:", e instanceof Error ? e.message : "Unknown");
+      }
+    }
     return dbAppSid;
   }
   const client = getTwilioClient();
-  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
-  const voiceUrl = domain ? `https://${domain}/api/twilio/twiml/client-voice` : "";
   const app = await client.applications.create({
     friendlyName: "Salaryman Voice App",
     voiceMethod: "POST",
@@ -1154,7 +1168,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
@@ -1169,7 +1183,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
@@ -1271,7 +1285,8 @@ End with asking if there's anything else you can help with.`,
       action = `<Dial>${safeForward}</Dial>`;
     } else {
       const safeResponse = escapeTwiml(response);
-      action = `<Gather input="speech" timeout="5" action="${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Gather><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
+      const secGatherUrl = `${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}`;
+      action = `<Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Gather><Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Are you still there? I'm here to help.</Say></Gather><Say voice="Google.en-US-Neural2-F">I didn't hear anything. Please leave a message after the tone.</Say><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
     }
 
     res.type("text/xml").send(`<Response>${action}</Response>`);
@@ -1343,14 +1358,17 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     }
 
     res.type("text/xml").send(`<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
 </Gather>
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">Are you still there?</Say>
 </Gather>
-<Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say>
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Say voice="Google.en-US-Neural2-F">Are you still there? Take your time.</Say>
+</Gather>
+<Say voice="Google.en-US-Neural2-F">It seems like you may have stepped away. Please leave a message after the tone, or call back anytime.</Say>
+<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] gather error:", err instanceof Error ? err.message : "Unknown");
@@ -1450,11 +1468,11 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
     }
 
     res.type("text/xml").send(`<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">Are you still there?</Say>
 </Gather>
 <Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
@@ -1588,7 +1606,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     }
 
     res.type("text/xml").send(`<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say>
@@ -1631,7 +1649,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
     const call = await client.calls.create({
       to: phoneNumber,
       from: fromNumber,
-      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1763,7 +1781,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
         const call = await client.calls.create({
           to: lead.phone,
           from: campaignFromNumber,
-          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="5" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
+          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -2463,7 +2481,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       });
       const timeLimit = config.screeningTimeLimit ?? 120;
       const twiml = `<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${Date.now()}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${Date.now()}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${escapeTwiml(screeningGreeting)}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Let me transfer you now.</Say>
@@ -2491,7 +2509,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
           const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
-<Gather input="speech" timeout="5" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
@@ -2506,7 +2524,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
-<Gather input="speech" timeout="5" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
+<Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
 <Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
 </Gather>
 <Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
