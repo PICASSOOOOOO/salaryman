@@ -15,6 +15,7 @@ import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
+import BotCommandCenter from './BotCommandCenter';
 
 function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const upper = name.toUpperCase();
@@ -40,14 +41,14 @@ const platformIcons: Record<string, string> = {
   linkedin: '💼',
 };
 
-interface BotConnection {
+export interface BotConnection {
   id: number;
   platform: string;
   status: string;
   lastActiveAt: string | null;
 }
 
-interface BotData {
+export interface BotData {
   id: number;
   name: string;
   personality: string;
@@ -3180,6 +3181,15 @@ export default function BotFactory() {
                   </div>
                 </div>
               </motion.div>
+
+              {bots.length > 0 && (
+                <BotCommandCenter
+                  bots={bots}
+                  onRefresh={loadBots}
+                  onSelectBot={setSelectedBot}
+                  onConnectBot={setConnectBot}
+                />
+              )}
 
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 className="rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-500/[0.04] via-transparent to-sky-500/[0.03] p-4">
