@@ -15046,27 +15046,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* Sound panel is now inside the terminal menu */}
 
-      {/* THE OFFICE quick button — navigates to god-view */}
-      {!gamePaused && !isDead && (
-        <button
-          onClick={() => {
-            doSaveRef.current(buildSaveData());
-            window.location.href = '/bots/office';
-          }}
-          style={{
-            position: 'absolute', top: isTouchDevice ? 50 : 60, left: isTouchDevice ? 6 : 10, zIndex: 150,
-            padding: '.4rem .7rem', cursor: 'pointer',
-            background: 'rgba(0,8,16,.92)', border: '1px solid rgba(56,189,248,.35)',
-            color: 'rgba(56,189,248,.7)',
-            fontFamily: "'VT323',monospace", fontSize: isTouchDevice ? '.85rem' : '1rem', letterSpacing: '.08em',
-            display: 'flex', alignItems: 'center', gap: '.4rem',
-            textShadow: '0 0 8px rgba(56,189,248,.3)',
-            transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left',
-          }}
-        >
-          🏢 THE OFFICE
-        </button>
-      )}
+      {/* THE OFFICE quick button — only for players with a proper office (claimed floor) */}
+      {!gamePaused && !isDead && (() => {
+        const g = gs.current;
+        const hasProperOffice = (g.businesses ?? []).some(b => b.buildingId && b.floor != null);
+        if (!hasProperOffice) return null;
+        return (
+          <button
+            onClick={() => {
+              doSaveRef.current(buildSaveData());
+              window.location.href = '/bots/office';
+            }}
+            style={{
+              position: 'absolute', top: isTouchDevice ? 50 : 60, left: isTouchDevice ? 6 : 10, zIndex: 150,
+              padding: '.4rem .7rem', cursor: 'pointer',
+              background: 'rgba(0,8,16,.92)', border: '1px solid rgba(56,189,248,.35)',
+              color: 'rgba(56,189,248,.7)',
+              fontFamily: "'VT323',monospace", fontSize: isTouchDevice ? '.85rem' : '1rem', letterSpacing: '.08em',
+              display: 'flex', alignItems: 'center', gap: '.4rem',
+              textShadow: '0 0 8px rgba(56,189,248,.3)',
+              transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left',
+            }}
+          >
+            🏢 THE OFFICE
+          </button>
+        );
+      })()}
 
       {/* TOP-RIGHT — Pause / Chat / Menu / Pablo dropdown */}
       <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, right: isTouchDevice ? 6 : 10, zIndex: 150, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: isTouchDevice ? '2px' : '4px', transform: isTouchDevice ? 'scale(0.75)' : 'none', transformOrigin: 'top right' }}>
