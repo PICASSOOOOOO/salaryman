@@ -101,6 +101,7 @@ export const MODULES: Module[] = [
       { id: 'team', path: '/business/team', label: 'TEAM', boomerLabel: 'TEAM DIRECTORY', codename: 'ROSTER-X', icon: Users },
       { id: 'contacts', path: '/business/contacts', label: 'CONTACTS', boomerLabel: 'CONTACTS', codename: 'RECALL-6', icon: Users },
       { id: 'hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
+      { id: 'resume', path: '/business/resume', label: 'RESUME', boomerLabel: 'RESUME BUILDER', codename: 'CV-FORGE', icon: FileText },
       { id: 'tasks', path: '/business/tasks', label: 'TASKS', boomerLabel: 'TASK BOARD', codename: 'TASK-OPS', icon: ClipboardList },
       { id: 'time-tracking', path: '/business/time-tracking', label: 'TIME', boomerLabel: 'TIME TRACKING', codename: 'CHRONO-7', icon: Timer },
       { id: 'announcements', path: '/business/announcements', label: 'ANNOUNCE', boomerLabel: 'ANNOUNCEMENTS', codename: 'BROADCAST', icon: Megaphone },

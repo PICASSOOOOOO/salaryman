@@ -55,6 +55,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Job Command Center (JCC):** AI-powered job search automation with pipeline scoring, application tracking, resume tailoring, and interview prep.
 - **Claude Code Templates (CCT):** A browser for a template library of AI agents, skills, and commands.
 - **Music Production (Tempo Prime):** Uses Replicate MusicGen for AI music generation, covering songwriting, mixing, mastering, and distribution.
+- **Resume Builder (CV-FORGE):** At `/business/resume` under BUSINESS module. Full resume editor with 4 templates (Professional, Modern, Minimal, Executive), 8 sections (Contact, Summary, Experience, Education, Skills, Certifications, Projects, Languages), live preview, PDF export via jsPDF, localStorage persistence with auto-save. Tag-based input for Skills and Languages. Multi-entry with add/remove for Experience, Education, Certifications, Projects.
 - **Business Management Hub:** `/business` route offering an overview of business tools, financial summaries, and categorized navigation to sub-modules like Time Tracking, Task Board, Team Directory, Announcements, Estimates & Quotes, Vendor Directory, Profit & Loss, and Partnerships.
 - **Org Partnerships:** Cross-org connection system at `/business/partnerships`. Organizations can request partnerships (types: partnership, shared_office, rental, affiliate), accept/decline/dissolve partnerships, with full state machine guards (self-approval prevention, valid status transitions only). DB table: `org_partnerships`. API: `GET/POST /api/orgs/:orgId/partnerships`, `PATCH /api/orgs/:orgId/partnerships/:id`. Org search: `GET /api/orgs/search`, user's orgs: `GET /api/orgs/mine`.
 - **Calendar Google Sync:** "GOOGLE SYNC" button in Calendar header opens upcoming events one-by-one in Google Calendar's event creation page (no API key needed). Step-through UI with NEXT/DONE progress bar. .ics bulk export also available via EXPORT button.
@@ -83,8 +84,9 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 
 ## Versioning
 
-- **VERSION file** at repo root holds the current serial (e.g. `2.8`).
-- **`prebuild` hook** in root `package.json` auto-bumps the minor serial on every `pnpm run build`.  Since Replit deployment calls `pnpm run build`, every publish increments the version automatically.
+- **VERSION file** at repo root holds the current serial (e.g. `3.5`).
+- **Auto-bump on build:** `vite.config.ts` calls `bumpVersion()` during production builds, incrementing the minor version. Since Replit deployment calls `pnpm run build`, every publish increments the version automatically.
+- **Build number:** `getFormattedVersion()` appends git commit count as build serial (e.g. `v.3.5.819`), so the version changes with every commit even without a manual bump.
 - **`version-utils.cjs`** provides `bumpVersion()`, `getFormattedVersion()`, and changelog generation.
 - **`CHANGELOG.json`** (and mirrored to `artifacts/interview-helper/src/changelog.json`) tracks version history with dates, commit hashes, and auto-generated change summaries from git log.
-- **`__BUILD_VERSION__`** Vite define injects the formatted version (e.g. `v.2.8`) into the frontend at build time, displayed as "ALPHA v.2.8" in the NavBar, phone dialer, and terminal subtitle.
+- **`__BUILD_VERSION__`** Vite define injects the formatted version (e.g. `v.3.5.819`) into the frontend at build time, displayed as "ALPHA v.3.5.819" in the NavBar, phone dialer, and terminal subtitle.
