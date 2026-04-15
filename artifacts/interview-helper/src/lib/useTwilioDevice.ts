@@ -18,7 +18,7 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
   const deviceRef = useRef<Device | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState>('uninitialized');
   const [deviceError, setDeviceError] = useState<string | null>(null);
-  const initializingRef = useRef(false);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const apiUrl = (path: string) => `${BASE}api/${path}`;
@@ -43,66 +43,80 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
   }, [BASE]);
 
   const initDevice = useCallback(async () => {
-    if (initializingRef.current) return;
     if (deviceRef.current && deviceState === 'ready') return;
-    initializingRef.current = true;
-    setDeviceState('initializing');
-    setDeviceError(null);
-    try {
-      const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        throw new Error(d.error || `Failed to get token (${r.status})`);
-      }
-      const data = await r.json();
+    if (initPromiseRef.current) {
+      await initPromiseRef.current;
+      return;
+    }
 
-      if (deviceRef.current) {
-        try { deviceRef.current.destroy(); } catch { }
-        deviceRef.current = null;
-      }
+    const promise = (async () => {
+      setDeviceState('initializing');
+      setDeviceError(null);
+      try {
+        console.log('[TwilioDevice] fetching token...');
+        const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error(d.error || `Failed to get token (${r.status})`);
+        }
+        const data = await r.json();
+        console.log('[TwilioDevice] token received, identity:', data.identity);
 
-      const device = new Device(data.token, {
-        logLevel: 1,
-        codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
-      });
+        if (deviceRef.current) {
+          try { deviceRef.current.destroy(); } catch { }
+          deviceRef.current = null;
+        }
 
-      device.on('error', (err: Error) => {
-        console.error('[TwilioDevice] error:', err.message);
-        setDeviceError(err.message);
-        setDeviceState('error');
-      });
+        const device = new Device(data.token, {
+          logLevel: 1,
+          codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+        });
 
-      device.on('registered', () => {
+        device.on('error', (err: Error) => {
+          console.error('[TwilioDevice] error:', err.message);
+          setDeviceError(err.message);
+          setDeviceState('error');
+        });
+
+        device.on('registered', () => {
+          console.log('[TwilioDevice] registered and ready');
+          setDeviceState('ready');
+          setDeviceError(null);
+        });
+
+        device.on('unregistered', () => {
+          if (deviceState !== 'error') setDeviceState('uninitialized');
+        });
+
+        device.on('tokenWillExpire', async () => {
+          try {
+            const tr = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
+            if (tr.ok) {
+              const td = await tr.json();
+              device.updateToken(td.token);
+              console.log('[TwilioDevice] token refreshed via tokenWillExpire');
+            }
+          } catch {}
+        });
+
+        await device.register();
+        deviceRef.current = device;
         setDeviceState('ready');
-        setDeviceError(null);
-      });
+        scheduleTokenRefresh();
+        console.log('[TwilioDevice] device registered successfully');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to initialize Twilio device';
+        console.error('[TwilioDevice] init failed:', msg);
+        setDeviceError(msg);
+        setDeviceState('error');
+      }
+    })();
 
-      device.on('unregistered', () => {
-        if (deviceState !== 'error') setDeviceState('uninitialized');
-      });
-
-      device.on('tokenWillExpire', async () => {
-        try {
-          const tr = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
-          if (tr.ok) {
-            const td = await tr.json();
-            device.updateToken(td.token);
-            console.log('[TwilioDevice] token refreshed via tokenWillExpire');
-          }
-        } catch {}
-      });
-
-      await device.register();
-      deviceRef.current = device;
-      setDeviceState('ready');
-      scheduleTokenRefresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to initialize Twilio device';
-      console.warn('[TwilioDevice] init warning (non-fatal):', msg);
-      setDeviceError(msg);
-      setDeviceState('error');
+    initPromiseRef.current = promise;
+    try {
+      await promise;
     } finally {
-      initializingRef.current = false;
+      initPromiseRef.current = null;
     }
   }, [BASE, scheduleTokenRefresh]);
 
@@ -119,16 +133,20 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
 
   const connectToConference = useCallback(async (conferenceName: string): Promise<Call | null> => {
     if (!deviceRef.current || deviceState !== 'ready') {
+      console.log('[TwilioDevice] device not ready, re-initializing before connect...');
       await initDevice();
     }
     if (!deviceRef.current) {
-      console.warn('[TwilioDevice] No device available to connect');
+      console.error('[TwilioDevice] No device available after init attempt');
+      setDeviceError('Phone device failed to initialize. Check microphone permissions and try refreshing.');
       return null;
     }
     try {
+      console.log('[TwilioDevice] connecting to conference:', conferenceName);
       const call = await deviceRef.current.connect({
         params: { To: conferenceName },
       });
+      console.log('[TwilioDevice] connected to conference successfully');
       return call;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to connect to conference';

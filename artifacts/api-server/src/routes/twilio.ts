@@ -85,6 +85,10 @@ function getTwilioNumber() {
 }
 
 
+function getAppHost(req?: Request): string {
+  return process.env.APP_DOMAIN ?? process.env.REPLIT_DOMAINS?.split(",")[0] ?? process.env.REPLIT_DEV_DOMAIN ?? req?.headers?.host ?? "";
+}
+
 async function verifyCallOwnership(userId: string, callSid: string): Promise<boolean> {
   const rows = await db
     .select({ id: callHistoryTable.id })
@@ -274,8 +278,9 @@ async function ensureTwimlApp(): Promise<string> {
   if (process.env.TWILIO_TWIML_APP_SID) return process.env.TWILIO_TWIML_APP_SID;
   if (_cachedTwimlAppSid) return _cachedTwimlAppSid;
 
-  const domain = process.env.APP_DOMAIN || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
+  const domain = getAppHost();
   const voiceUrl = domain ? `https://${domain}/api/twilio/twiml/client-voice` : "";
+  console.log("[Twilio] Resolved domain for TwiML App:", domain || "(none)");
 
   const dbAppSid = await getSystemConfig("twilio_twiml_app_sid");
   if (dbAppSid) {
@@ -360,7 +365,7 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
     const confName = `conf-${userId}-${Date.now()}`;
 
     const _protocol = "https";
-    const _host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _host = getAppHost();
     const _baseUrl = _host ? `${_protocol}://${_host}/api` : "/api";
     const _statusCallbackUrl = _host ? `${_baseUrl}/twilio/webhook/status` : undefined;
     const _recordingCallback = _host ? `${_baseUrl}/twilio/webhook/recording?userId=${encodeURIComponent(userId)}&type=call` : undefined;
@@ -616,7 +621,7 @@ router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) =>
     }
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
-    const _confHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _confHost = getAppHost();
     const _confStatusUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/status` : undefined;
     const _confEventUrl = _confHost ? `https://${_confHost}/api/twilio/webhook/conference-status` : undefined;
     const confTwiml = _confEventUrl
@@ -721,7 +726,7 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
     const settingsConcurrency = typeof settings?.concurrency === "number" ? Math.min(Math.max(settings.concurrency, 2), 5) : 3;
     let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, numbers.length) : 1;
     const results: Array<{ ok: boolean; phone: string; name?: string; callSid?: string; error?: string; status?: string; conferenceName?: string }> = [];
-    const _dialingHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _dialingHost = getAppHost();
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
 
     for (let i = 0; i < dialCount; i++) {
@@ -811,7 +816,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
     }
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
-    const _nextHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const _nextHost = getAppHost();
     const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
     const confName = `conf-${userId}-${Date.now()}`;
     const call = await client.calls.create({
@@ -1116,7 +1121,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
     const { From, CallSid } = req.body;
     const userId = req.query.userId as string;
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const configRows = userId
@@ -1277,7 +1282,7 @@ End with asking if there's anything else you can help with.`,
       });
     }
 
-    const secHost = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const secHost = getAppHost(req);
     const secBase = secHost ? `https://${secHost}/api` : "/api";
 
     const forwardTo = config?.forwardToNumber;
@@ -1313,7 +1318,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
       return;
     }
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "inbound");
@@ -1394,7 +1399,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
       return;
     }
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
@@ -1499,7 +1504,7 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
       return;
     }
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const agent = await getNextRoundRobinAgent(userId);
@@ -1584,7 +1589,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
       return;
     }
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     let outboundScript: string | undefined;
@@ -1640,7 +1645,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
     const fromNumber = outboundDid || userNumbers[0].number;
 
     const client = getTwilioClient();
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const outboundScript = script ?? "";
@@ -1772,7 +1777,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
     }).returning();
 
     const client = getTwilioClient();
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
     const greeting = campaign.script.split('.')[0] + ".";
     let dialed = 0;
@@ -2182,7 +2187,7 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
     const protocol = process.env.NODE_ENV === "production" ? "https" : "https";
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? "";
+    const host = getAppHost();
     const statusCallbackUrl = host ? `${protocol}://${host}/api/twilio/webhook/status` : undefined;
     const results = await Promise.allSettled(
       numbers.map(async (entry: { phone: string; name?: string }) => {
@@ -2399,7 +2404,7 @@ router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
 });
 
 router.get("/twilio/webhook-config", requireAuth, async (req, res) => {
-  const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+  const host = getAppHost(req);
   const base = host ? `https://${host}/api` : "/api";
   const userId = getAuthUserId(req);
   res.json({
@@ -2432,7 +2437,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
     const { From, To, CallSid } = req.body;
     const userId = req.query.userId as string;
 
-    const host = process.env.APP_DOMAIN ?? process.env.REPLIT_DEV_DOMAIN ?? req.headers.host ?? "";
+    const host = getAppHost(req);
     const base = host ? `https://${host}/api` : "/api";
 
     const configRows = userId

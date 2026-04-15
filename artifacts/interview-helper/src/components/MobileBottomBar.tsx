@@ -85,8 +85,8 @@ export function MobileModuleNav() {
   const bottomModules = MODULES.filter(m => BOTTOM_NAV_MODULES.includes(m.id));
 
   return (
-    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0b]/98 backdrop-blur-md border-t border-white/[0.08] safe-area-bottom">
-      <div className="flex items-center justify-around px-1 h-14">
+    <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08]">
+      <div className="flex items-center justify-around px-1 h-11">
         {bottomModules.map(mod => {
           const active = isModuleActive(mod);
           const Icon = mod.icon;
@@ -103,8 +103,8 @@ export function MobileModuleNav() {
                   : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className={`w-5 h-5 ${active ? 'text-sky-400' : ''}`} />
-              <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${active ? 'text-sky-400' : ''}`}>
+              <Icon className={`w-4 h-4 ${active ? 'text-sky-400' : ''}`} />
+              <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${active ? 'text-sky-400' : ''}`}>
                 {label.length > 8 ? label.slice(0, 7) : label}
               </span>
             </button>
@@ -119,8 +119,8 @@ export function MobileModuleNav() {
                 : 'text-zinc-600 active:text-zinc-400'
             }`}
           >
-            <Building2 className={`w-5 h-5 ${pathname === '/bots/office' ? 'text-amber-400' : ''}`} />
-            <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname === '/bots/office' ? 'text-amber-400' : ''}`}>
+            <Building2 className={`w-4 h-4 ${pathname === '/bots/office' ? 'text-amber-400' : ''}`} />
+            <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname === '/bots/office' ? 'text-amber-400' : ''}`}>
               OFFICE
             </span>
           </button>
@@ -133,8 +133,8 @@ export function MobileModuleNav() {
               : 'text-zinc-600 active:text-zinc-400'
           }`}
         >
-          <Globe className={`w-5 h-5 ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`} />
-          <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`}>
+          <Globe className={`w-4 h-4 ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`} />
+          <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/world') ? 'text-sky-400' : ''}`}>
             EXPLORE
           </span>
         </button>
@@ -146,8 +146,8 @@ export function MobileModuleNav() {
               : 'text-zinc-600 active:text-zinc-400'
           }`}
         >
-          <User className={`w-5 h-5 ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`} />
-          <span className={`text-[8px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`}>
+          <User className={`w-4 h-4 ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`} />
+          <span className={`text-[7px] font-mono tracking-wider uppercase leading-none ${pathname.startsWith('/profile') ? 'text-sky-400' : ''}`}>
             {isAuthenticated ? 'PROFILE' : 'LOGIN'}
           </span>
         </button>
