@@ -70,11 +70,112 @@ interface Worker {
   wf: number;
   speech: string | null;
   speechT: number;
+  activityLine: string;
   col: string;
   hair: string;
   skin: string;
   facing: 'left' | 'right' | 'down' | 'up';
 }
+
+const TASK_DETAILS: Record<BotTask, string[]> = {
+  desk: [
+    'Updating CRM records for Q2 pipeline',
+    'Writing follow-up emails to 12 leads',
+    'Building revenue forecast spreadsheet',
+    'Reviewing contract terms for renewal',
+    'Syncing data between platforms',
+    'Analyzing customer churn metrics',
+    'Preparing onboarding docs for new client',
+    'Debugging automation workflow',
+    'Compiling weekly performance report',
+    'Cross-referencing invoices with payments',
+  ],
+  coffee: [
+    'Brewing a fresh pot — dark roast',
+    'Refilling the mug for round three',
+    'Waiting for the espresso machine',
+    'Adding cream, debating sugar',
+  ],
+  phone: [
+    'Confirming appointment with client',
+    'Following up on invoice #4782',
+    'Transferring call to sales team',
+    'Discussing contract amendments',
+    'Walking through pricing options',
+    'Scheduling a product demo',
+  ],
+  meeting: [
+    'Reviewing quarterly targets with team',
+    'Brainstorming campaign concepts',
+    'Going through the sprint backlog',
+    'Presenting client feedback analysis',
+    'Discussing hiring plan for next month',
+    'Aligning on product roadmap priorities',
+  ],
+  presenting: [
+    'Showing revenue data on projector',
+    'Walking through competitive analysis',
+    'Demonstrating new feature prototype',
+    'Presenting monthly KPI dashboard',
+  ],
+  copier: [
+    'Printing 30 copies of the proposal',
+    'Scanning signed contracts to PDF',
+    'Collating materials for client deck',
+    'Fixing paper jam — tray 2 again',
+  ],
+  filing: [
+    'Organizing invoices by date',
+    'Archiving completed project files',
+    'Pulling records for compliance audit',
+    'Labeling folders for new accounts',
+  ],
+  water: [
+    'Quick hydration break',
+    'Chatting about the weekend',
+    'Refilling the water bottle',
+  ],
+  walk: [
+    'Heading to the next meeting',
+    'Walking to check on a colleague',
+    'Moving between departments',
+  ],
+  idle: [
+    'Waiting for next assignment',
+    'Reviewing task queue',
+    'Standing by for instructions',
+  ],
+  server: [
+    'Checking server rack temperatures',
+    'Applying security patch to Node 3',
+    'Reviewing system uptime logs',
+    'Rebooting secondary DNS server',
+  ],
+  reception: [
+    'Greeting a walk-in visitor',
+    'Issuing temporary access badge',
+    'Directing delivery to loading dock',
+    'Answering the front desk phone',
+  ],
+  exec: [
+    'Reviewing board meeting agenda',
+    'Signing off on budget proposal',
+    'Reviewing executive summary',
+    'Approving vendor contract',
+  ],
+  lounge: [
+    'Taking a quick break on the couch',
+    'Scrolling through news on phone',
+    'Resting before afternoon meetings',
+    'Catching up with a coworker',
+  ],
+};
+
+const TASK_ICONS: Record<BotTask, string> = {
+  desk: '💻', coffee: '☕', phone: '📞', copier: '🖨️', filing: '📁',
+  meeting: '🤝', presenting: '📊', water: '💧', walk: '🚶', idle: '⏳',
+  server: '🖥️', reception: '🛎️', exec: '📋', lounge: '🛋️',
+};
 
 const WW = 3600, WH = 2400;
 
@@ -651,10 +752,22 @@ function getDeskPositions(count: number): { x: number; y: number; room: string }
   return positions;
 }
 
-function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number) {
+function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number, isSelected: boolean) {
   const moving = Math.hypot(w.tx - w.x, w.ty - w.y) > 2;
   const bob = Math.sin(w.phase) * (moving ? 1.5 : 0.5);
   const nx = Math.round(w.x), ny = Math.round(w.y + bob);
+
+  if (isSelected) {
+    ctx.strokeStyle = 'rgba(200,160,60,.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(nx, ny, 24, 0, Math.PI * 2); ctx.stroke();
+    const pulse = 0.08 + Math.sin(f * 0.04) * 0.04;
+    const selGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, 28);
+    selGrad.addColorStop(0, `rgba(200,160,60,${pulse})`);
+    selGrad.addColorStop(1, 'rgba(200,160,60,0)');
+    ctx.fillStyle = selGrad;
+    ctx.fillRect(nx - 28, ny - 28, 56, 56);
+  }
 
   ctx.fillStyle = 'rgba(0,0,0,.08)';
   ctx.beginPath(); ctx.ellipse(nx, ny + 18, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
@@ -663,14 +776,12 @@ function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number) {
   ctx.fillStyle = '#2a2a3a';
   ctx.fillRect(nx - 5, ny + 10, 4, 8 + legSwing);
   ctx.fillRect(nx + 1, ny + 10, 4, 8 - legSwing);
-
   ctx.fillStyle = '#333';
   ctx.fillRect(nx - 6, ny + 17 + legSwing, 5, 3);
   ctx.fillRect(nx, ny + 17 - legSwing, 5, 3);
 
   ctx.fillStyle = w.col;
   ctx.fillRect(nx - 7, ny - 2, 14, 12);
-
   ctx.fillStyle = 'rgba(255,255,255,.15)';
   ctx.fillRect(nx - 2, ny - 1, 4, 8);
 
@@ -678,18 +789,15 @@ function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number) {
   ctx.fillStyle = w.col;
   ctx.fillRect(nx - 10, ny - 1 + armSwing, 4, 8);
   ctx.fillRect(nx + 6, ny - 1 - armSwing, 4, 8);
-
   ctx.fillStyle = w.skin;
   ctx.fillRect(nx - 10, ny + 6 + armSwing, 4, 3);
   ctx.fillRect(nx + 6, ny + 6 - armSwing, 4, 3);
 
   ctx.fillStyle = w.skin;
   ctx.beginPath(); ctx.arc(nx, ny - 8, 6, 0, Math.PI * 2); ctx.fill();
-
   ctx.fillStyle = '#222';
   ctx.beginPath(); ctx.arc(nx - 2, ny - 9, 1.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(nx + 2, ny - 9, 1.2, 0, Math.PI * 2); ctx.fill();
-
   ctx.fillStyle = w.hair;
   ctx.fillRect(nx - 6, ny - 15, 12, 5);
   ctx.fillRect(nx - 7, ny - 12, 2, 4);
@@ -698,15 +806,26 @@ function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number) {
   if (w.task === 'phone') {
     ctx.fillStyle = '#555';
     ctx.fillRect(nx + 7, ny - 12, 4, 8);
+    const wave = Math.sin(f * 0.15) * 2;
+    ctx.strokeStyle = 'rgba(80,180,80,.4)';
+    ctx.lineWidth = 1;
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath(); ctx.arc(nx + 12, ny - 10, 4 + r * 3 + wave, -0.8, 0.8); ctx.stroke();
+    }
   }
   if (w.task === 'coffee') {
     ctx.fillStyle = '#f0f0f0';
     ctx.fillRect(nx + 7, ny + 2, 5, 6);
     ctx.fillStyle = '#6a3a18';
     ctx.fillRect(nx + 8, ny + 3, 3, 4);
-    if (f % 50 < 25) {
-      ctx.fillStyle = 'rgba(200,200,200,.3)';
-      ctx.fillRect(nx + 8, ny - 2, 3, 4);
+    for (let s = 0; s < 3; s++) {
+      const steamY = ny - 2 - s * 5 - ((f * 0.5 + s * 10) % 15);
+      const steamX = nx + 9 + Math.sin(f * 0.04 + s) * 2;
+      const steamA = 0.25 - s * 0.07;
+      if (steamA > 0) {
+        ctx.fillStyle = `rgba(200,200,200,${steamA})`;
+        ctx.beginPath(); ctx.arc(steamX, steamY, 2, 0, Math.PI * 2); ctx.fill();
+      }
     }
   }
   if (w.task === 'presenting') {
@@ -714,37 +833,114 @@ function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number) {
     ctx.fillStyle = w.col;
     ctx.fillRect(nx + 6, ny - 6 + armUp, 4, 6);
   }
+  if (w.task === 'desk' && !moving) {
+    const dotPhase = Math.floor(f * 0.05) % 4;
+    ctx.fillStyle = 'rgba(80,160,80,.5)';
+    for (let d = 0; d < Math.min(dotPhase, 3); d++) {
+      ctx.fillRect(nx + 14 + d * 4, ny - 4, 2, 2);
+    }
+  }
+  if (w.task === 'filing' && !moving) {
+    ctx.fillStyle = 'rgba(180,160,120,.5)';
+    ctx.fillRect(nx + 7, ny + 0, 6, 8);
+    ctx.fillRect(nx + 8, ny + 1, 4, 1);
+    ctx.fillRect(nx + 8, ny + 3, 4, 1);
+    ctx.fillRect(nx + 8, ny + 5, 4, 1);
+  }
+  if (w.task === 'copier' && !moving) {
+    if (f % 40 < 20) {
+      ctx.fillStyle = 'rgba(255,255,255,.15)';
+      ctx.fillRect(nx - 15, ny + 5, 30, 2);
+    }
+  }
+  if (w.task === 'meeting' && !moving) {
+    ctx.fillStyle = 'rgba(60,100,180,.3)';
+    ctx.fillRect(nx + 7, ny + 0, 5, 7);
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.fillRect(nx + 8, ny + 1, 3, 1);
+    ctx.fillRect(nx + 8, ny + 3, 3, 1);
+  }
 
-  ctx.fillStyle = 'rgba(60,50,40,.8)';
-  ctx.font = 'bold 10px "Inter","Segoe UI",sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(w.bot.name.toUpperCase(), nx, ny - 20);
+  const icon = TASK_ICONS[w.task];
+  const cardW = 200;
+  const cardX = nx - cardW / 2;
+  const cardY = ny - 78;
 
-  ctx.fillStyle = 'rgba(100,90,80,.5)';
-  ctx.font = '8px "Inter","Segoe UI",sans-serif';
-  ctx.fillText(TASK_LABELS[w.task], nx, ny - 28);
+  ctx.fillStyle = 'rgba(255,255,255,.94)';
+  ctx.beginPath(); ctx.roundRect(cardX, cardY, cardW, 48, 6); ctx.fill();
+  ctx.strokeStyle = 'rgba(160,140,110,.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(cardX, cardY, cardW, 48, 6); ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(nx - 5, cardY + 48);
+  ctx.lineTo(nx, cardY + 54);
+  ctx.lineTo(nx + 5, cardY + 48);
+  ctx.fillStyle = 'rgba(255,255,255,.94)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(nx - 5, cardY + 48);
+  ctx.lineTo(nx, cardY + 54);
+  ctx.lineTo(nx + 5, cardY + 48);
+  ctx.strokeStyle = 'rgba(160,140,110,.3)';
+  ctx.stroke();
+
+  ctx.font = '13px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(icon, cardX + 6, cardY + 18);
+
+  ctx.fillStyle = 'rgba(40,35,30,.9)';
+  ctx.font = 'bold 11px "Inter","Segoe UI",sans-serif';
+  ctx.fillText(w.bot.name.toUpperCase(), cardX + 24, cardY + 16);
+
+  ctx.fillStyle = w.col;
+  ctx.font = 'bold 8px "Inter","Segoe UI",sans-serif';
+  const catText = w.bot.category.toUpperCase();
+  const catW = ctx.measureText(catText).width + 8;
+  ctx.fillStyle = w.col + '18';
+  ctx.beginPath(); ctx.roundRect(cardX + 24 + ctx.measureText(w.bot.name.toUpperCase()).width + 6, cardY + 7, catW, 13, 3); ctx.fill();
+  ctx.fillStyle = w.col;
+  ctx.fillText(catText, cardX + 28 + ctx.measureText(w.bot.name.toUpperCase()).width + 6, cardY + 16);
+
+  ctx.fillStyle = 'rgba(80,70,55,.7)';
+  ctx.font = '10px "Inter","Segoe UI",sans-serif';
+  const actLine = w.activityLine || TASK_LABELS[w.task];
+  const maxChars = 30;
+  const displayLine = actLine.length > maxChars ? actLine.slice(0, maxChars - 1) + '…' : actLine;
+  ctx.fillText(displayLine, cardX + 8, cardY + 36);
+
+  if (w.task === 'desk' && !moving) {
+    const progress = Math.min(1, (w.timer > 0 ? 1 - w.timer / 700 : 1));
+    const barW = cardW - 16;
+    ctx.fillStyle = 'rgba(0,0,0,.06)';
+    ctx.beginPath(); ctx.roundRect(cardX + 8, cardY + 41, barW, 3, 1.5); ctx.fill();
+    ctx.fillStyle = 'rgba(60,160,80,.4)';
+    ctx.beginPath(); ctx.roundRect(cardX + 8, cardY + 41, barW * progress, 3, 1.5); ctx.fill();
+  }
 
   if (w.speech && w.speechT > 0) {
-    const alpha = Math.min(1, w.speechT / 30);
-    const tw = ctx.measureText(w.speech).width + 16;
-    const bx = nx - tw / 2, by = ny - 48;
-    ctx.fillStyle = `rgba(255,255,255,${0.92 * alpha})`;
-    ctx.beginPath(); ctx.roundRect(bx, by, tw, 18, 4); ctx.fill();
-    ctx.strokeStyle = `rgba(180,170,155,${0.5 * alpha})`;
+    const alpha = Math.min(1, w.speechT / 40);
+    ctx.font = '10px "Inter","Segoe UI",sans-serif';
+    const speechW = ctx.measureText(`"${w.speech}"`).width + 20;
+    const sbx = nx - speechW / 2, sby = cardY - 28;
+
+    ctx.fillStyle = `rgba(245,240,230,${0.95 * alpha})`;
+    ctx.beginPath(); ctx.roundRect(sbx, sby, speechW, 22, 5); ctx.fill();
+    ctx.strokeStyle = `rgba(180,160,120,${0.4 * alpha})`;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx, by, tw, 18, 4); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(sbx, sby, speechW, 22, 5); ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(nx - 4, by + 18);
-    ctx.lineTo(nx, by + 24);
-    ctx.lineTo(nx + 4, by + 18);
-    ctx.fillStyle = `rgba(255,255,255,${0.92 * alpha})`;
+    ctx.moveTo(nx - 4, sby + 22);
+    ctx.lineTo(nx, sby + 27);
+    ctx.lineTo(nx + 4, sby + 22);
+    ctx.fillStyle = `rgba(245,240,230,${0.95 * alpha})`;
     ctx.fill();
 
-    ctx.fillStyle = `rgba(50,45,40,${0.85 * alpha})`;
-    ctx.font = '9px "Inter","Segoe UI",sans-serif';
+    ctx.fillStyle = `rgba(60,50,35,${0.8 * alpha})`;
+    ctx.font = `italic 10px "Inter","Segoe UI",sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(w.speech, nx, by + 13);
+    ctx.fillText(`"${w.speech}"`, nx, sby + 15);
   }
 }
 
@@ -834,11 +1030,14 @@ export default function TheOffice() {
   const [data, setData] = useState<OfficeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Worker | null>(null);
+  const selectedRef = useRef<Worker | null>(null);
   const workersRef = useRef<Worker[]>([]);
   const frameRef = useRef(0);
   const animRef = useRef(0);
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<OfficeTab>('floor');
+
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const camRef = useRef({ x: 400, y: 200 });
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 });
@@ -859,6 +1058,7 @@ export default function TheOffice() {
             deskX: dk.x, deskY: dk.y,
             phase: Math.random() * Math.PI * 2, wf: 0,
             speech: null, speechT: 0,
+            activityLine: pick(TASK_DETAILS['desk']),
             col: CAT_COLORS[bot.category] || '#3aaa7a',
             hair: pick(HAIR),
             skin: pick(SKIN),
@@ -897,8 +1097,9 @@ export default function TheOffice() {
     for (let i = 0; i < tasks.length; i++) { roll -= wts[i]; if (roll <= 0) { t = tasks[i]; break; } }
     w.task = t;
     w.timer = 200 + Math.random() * 500;
+    w.activityLine = pick(TASK_DETAILS[t]);
     const lines = TASK_SPEECH[t];
-    if (lines && lines.length && Math.random() < 0.3) { w.speech = pick(lines); w.speechT = 250; }
+    if (lines && lines.length && Math.random() < 0.6) { w.speech = pick(lines); w.speechT = 350; }
     else { w.speech = null; w.speechT = 0; }
     const target = getTaskTarget(w);
     w.tx = target.x;
@@ -962,7 +1163,9 @@ export default function TheOffice() {
         }
         w.phase += 0.04;
 
-        drawWorker(ctx, w, f);
+        const sel = selectedRef.current;
+        const isSel = sel != null && w.bot.slug === sel.bot.slug;
+        drawWorker(ctx, w, f, isSel);
       }
 
       ctx.restore();
@@ -1155,62 +1358,94 @@ export default function TheOffice() {
             />
           </div>
 
-          <div className="w-60 border-l border-amber-900/8 overflow-y-auto bg-white/60 backdrop-blur-sm shrink-0">
-            <div className="px-3 py-2 border-b border-amber-900/8">
-              <h3 className="font-sans text-[10px] text-amber-800/50 tracking-widest font-medium">OFFICE ROSTER</h3>
-            </div>
-            {data.bots.map((bot, i) => {
-              const w = workersRef.current[i];
-              const isSel = selected?.bot.slug === bot.slug;
-              const cc = CAT_COLORS[bot.category] || '#3aaa7a';
-              return (
-                <div
-                  key={bot.slug}
-                  onClick={() => {
-                    const worker = workersRef.current[i];
-                    setSelected(worker || null);
-                    if (worker) {
-                      camRef.current.x = worker.x - canvasSizeRef.current.w / 2;
-                      camRef.current.y = worker.y - canvasSizeRef.current.h / 2;
-                    }
-                  }}
-                  className={`px-3 py-2 border-b border-amber-900/4 cursor-pointer transition-colors ${isSel ? 'bg-amber-100/60' : 'hover:bg-amber-50/60'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cc }} />
-                    <span className="font-sans text-[10px] text-amber-900/70 tracking-wider font-medium">{bot.name.toUpperCase()}</span>
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-2 pl-4">
-                    <span className="font-sans text-[8px] tracking-wider font-medium" style={{ color: cc }}>{bot.category.toUpperCase()}</span>
-                    {w && <span className="font-sans text-[8px] text-amber-700/35 tracking-wider">{TASK_LABELS[w.task]}</span>}
-                  </div>
-                </div>
-              );
-            })}
-
-            {selected && (
-              <div className="p-3 border-t border-amber-300/30 bg-amber-50/60">
-                <h4 className="font-sans text-[10px] text-amber-900/80 tracking-widest font-medium mb-1">{selected.bot.name.toUpperCase()}</h4>
-                <p className="font-sans text-[9px] text-amber-700/40 mb-2">{selected.bot.tagline}</p>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans text-[8px] text-amber-700/30 tracking-wider">STATUS</span>
-                    <span className="font-sans text-[8px] text-green-700/60 font-medium">{TASK_LABELS[selected.task]}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans text-[8px] text-amber-700/30 tracking-wider">DEPT</span>
-                    <span className="font-sans text-[8px] font-medium" style={{ color: selected.col }}>{selected.bot.category.toUpperCase()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans text-[8px] text-amber-700/30 tracking-wider">POS</span>
-                    <span className="font-sans text-[8px] text-amber-700/40">{Math.round(selected.x)}, {Math.round(selected.y)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <ActivityFeed
+            bots={data.bots}
+            workersRef={workersRef}
+            selected={selected}
+            onSelect={(w) => {
+              setSelected(w);
+              if (w) {
+                camRef.current.x = w.x - canvasSizeRef.current.w / 2;
+                camRef.current.y = w.y - canvasSizeRef.current.h / 2;
+              }
+            }}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+function ActivityFeed({ bots, workersRef, selected, onSelect }: {
+  bots: OfficeBotWorker[];
+  workersRef: React.RefObject<Worker[]>;
+  selected: Worker | null;
+  onSelect: (w: Worker | null) => void;
+}) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const workers = workersRef.current ?? [];
+
+  return (
+    <div className="w-72 border-l border-amber-900/8 overflow-y-auto bg-white/60 backdrop-blur-sm shrink-0 flex flex-col">
+      <div className="px-3 py-2 border-b border-amber-900/8 shrink-0">
+        <h3 className="font-sans text-[10px] text-amber-800/50 tracking-widest font-medium">LIVE ACTIVITY FEED</h3>
+        <p className="font-sans text-[8px] text-amber-700/25 mt-0.5">{workers.length} employees active</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {bots.map((bot, i) => {
+          const w = workers[i];
+          if (!w) return null;
+          const isSel = selected?.bot.slug === bot.slug;
+          const cc = CAT_COLORS[bot.category] || '#3aaa7a';
+          const icon = TASK_ICONS[w.task];
+
+          return (
+            <div
+              key={bot.slug}
+              onClick={() => onSelect(isSel ? null : w)}
+              className={`px-3 py-2.5 border-b border-amber-900/4 cursor-pointer transition-all ${isSel ? 'bg-amber-100/80 border-l-2 border-l-amber-500' : 'hover:bg-amber-50/60'}`}
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-sm mt-0.5 shrink-0">{icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-sans text-[11px] text-amber-900/80 font-semibold truncate">{bot.name.toUpperCase()}</span>
+                    <span className="font-sans text-[7px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                      style={{ backgroundColor: cc + '15', color: cc }}>{bot.category.toUpperCase()}</span>
+                  </div>
+                  <div className="font-sans text-[10px] text-amber-800/60 mt-0.5 font-medium">
+                    {TASK_LABELS[w.task]}
+                  </div>
+                  <div className="font-sans text-[9px] text-amber-700/45 mt-0.5 leading-relaxed">
+                    {w.activityLine}
+                  </div>
+                  {w.speech && w.speechT > 0 && (
+                    <div className="font-sans text-[9px] text-amber-600/50 mt-1 italic">
+                      &ldquo;{w.speech}&rdquo;
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {isSel && (
+                <div className="mt-2 pt-2 border-t border-amber-200/40 space-y-1">
+                  <p className="font-sans text-[9px] text-amber-700/40 italic">{bot.tagline}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="font-sans text-[8px] text-amber-700/30">LOCATION: <span className="text-amber-800/50 font-medium">{Math.round(w.x)}, {Math.round(w.y)}</span></span>
+                    <span className="font-sans text-[8px]"><span className="text-green-600/60">●</span> ACTIVE</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
