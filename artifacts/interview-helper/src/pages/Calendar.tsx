@@ -1124,25 +1124,48 @@ export default function Calendar() {
     toast({ title: "Calendar exported", description: "Import the .ics file into Google Calendar, Outlook, or Apple Calendar." });
   }
 
+  const [gcalSyncQueue, setGcalSyncQueue] = useState<Appointment[]>([]);
+  const [gcalSyncIdx, setGcalSyncIdx] = useState(0);
+
   function syncToGoogle() {
     if (appointments.length === 0) { toast({ title: "No appointments to sync" }); return; }
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const toGCal = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
     const upcoming = appointments
       .filter(a => new Date(a.endAt) >= new Date())
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
-    const toSync = upcoming.length > 0 ? upcoming : appointments.slice(0, 5);
-    for (const a of toSync.slice(0, 10)) {
-      const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: a.title || 'Salaryman Mission',
-        dates: `${toGCal(new Date(a.startAt))}/${toGCal(new Date(a.endAt))}`,
-      });
-      if (a.description) params.set('details', a.description);
-      if (a.location) params.set('location', a.location);
-      window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    const toSync = upcoming.length > 0 ? upcoming : appointments.slice(0, 10);
+    setGcalSyncQueue(toSync);
+    setGcalSyncIdx(0);
+    openGcalEvent(toSync[0]);
+  }
+
+  function openGcalEvent(a: Appointment) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toGCal = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: a.title || 'Salaryman Mission',
+      dates: `${toGCal(new Date(a.startAt))}/${toGCal(new Date(a.endAt))}`,
+    });
+    if (a.description) params.set('details', a.description);
+    if (a.location) params.set('location', a.location);
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+  }
+
+  function gcalSyncNext() {
+    const nextIdx = gcalSyncIdx + 1;
+    if (nextIdx >= gcalSyncQueue.length) {
+      toast({ title: "Google Calendar sync complete", description: `All ${gcalSyncQueue.length} event(s) synced.` });
+      setGcalSyncQueue([]);
+      setGcalSyncIdx(0);
+      return;
     }
-    toast({ title: "Google Calendar sync", description: `Opened ${Math.min(toSync.length, 10)} event(s) in Google Calendar. Confirm each to add.` });
+    setGcalSyncIdx(nextIdx);
+    openGcalEvent(gcalSyncQueue[nextIdx]);
+  }
+
+  function gcalSyncDismiss() {
+    setGcalSyncQueue([]);
+    setGcalSyncIdx(0);
   }
 
   function openNew(slotDate?: Date) {
@@ -1621,6 +1644,32 @@ export default function Calendar() {
             onClose={() => { setModalOpen(false); setEditTarget(null); }}
             saving={saving}
           />
+        )}
+
+        {gcalSyncQueue.length > 0 && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded"
+            style={{ background: "rgba(0,0,0,0.9)", border: "1px solid rgba(52,211,153,0.4)", boxShadow: "0 0 20px rgba(52,211,153,0.2)" }}>
+            <span className="display-text text-xs" style={{ color: "#34d399", letterSpacing: "0.1em" }}>
+              SYNCING {gcalSyncIdx + 1} / {gcalSyncQueue.length}
+            </span>
+            <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)", maxWidth: 200 }} title={gcalSyncQueue[gcalSyncIdx]?.title}>
+              {(gcalSyncQueue[gcalSyncIdx]?.title || '').slice(0, 30)}
+            </span>
+            {gcalSyncIdx < gcalSyncQueue.length - 1 ? (
+              <button onClick={gcalSyncNext} className="display-text text-xs px-3 py-1"
+                style={{ color: "#34d399", border: "1px solid rgba(52,211,153,0.4)", background: "rgba(52,211,153,0.1)" }}>
+                NEXT
+              </button>
+            ) : (
+              <button onClick={gcalSyncDismiss} className="display-text text-xs px-3 py-1"
+                style={{ color: "#34d399", border: "1px solid rgba(52,211,153,0.4)", background: "rgba(52,211,153,0.1)" }}>
+                DONE
+              </button>
+            )}
+            <button onClick={gcalSyncDismiss} style={{ color: "rgba(255,255,255,0.3)" }}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
 
         {/* Email confirmation modal */}
