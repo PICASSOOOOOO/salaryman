@@ -8,10 +8,13 @@ export const vaultEntriesTable = pgTable("vault_entries", {
   entryType: varchar("entry_type", { length: 50 }).notNull().default("note"),
   tags: jsonb("tags").notNull().default([]),
   color: varchar("color", { length: 20 }),
+  folder: varchar("folder", { length: 500 }).notNull().default("/"),
+  frontmatter: jsonb("frontmatter").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("vault_entries_user_idx").on(t.userId),
+  index("vault_entries_folder_idx").on(t.userId, t.folder),
 ]);
 
 export const vaultConnectionsTable = pgTable("vault_connections", {
