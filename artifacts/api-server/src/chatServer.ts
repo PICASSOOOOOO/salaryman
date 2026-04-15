@@ -162,6 +162,14 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
   }
 }
 
+export function broadcastChatMessage(channelId: number, message: {
+  id: number; channelId: number; senderUserId: string | null;
+  senderName: string; senderProfileImageUrl: string | null;
+  isBot: boolean; content: string; createdAt: string | Date;
+}) {
+  broadcastToChannel(channelId, { type: 'chat_message', channelId, message });
+}
+
 export function broadcastBotMessage(channelId: number, content: string, senderName = 'SYSTEM') {
   const payload = {
     type: 'chat_message',

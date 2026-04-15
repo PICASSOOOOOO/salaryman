@@ -66,6 +66,7 @@ export function useChatSocket(): UseChatSocket {
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
   const retriesRef = useRef(0);
   const MAX_RETRIES = 10;
@@ -170,11 +171,20 @@ export function useChatSocket(): UseChatSocket {
   useEffect(() => {
     isMounted.current = true;
     if (isAuthenticated && user) {
+      refreshChannels();
       connect();
+      pollTimerRef.current = setInterval(() => {
+        if (!isMounted.current) return;
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          refreshChannels();
+        }
+      }, 8000);
     }
     return () => {
       isMounted.current = false;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -184,9 +194,22 @@ export function useChatSocket(): UseChatSocket {
 
   const send: SendFn = useCallback((channelId, content) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "send_message", channelId, content }));
-  }, []);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "send_message", channelId, content }));
+      return;
+    }
+    fetch(`${import.meta.env.BASE_URL}api/chat/channels/${channelId}/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ content }),
+    }).then(async res => {
+      if (res.ok) {
+        const data = await res.json();
+        if (data.message) appendMessage(data.message);
+      }
+    }).catch(() => {});
+  }, [appendMessage]);
 
   const markRead: MarkReadFn = useCallback((channelId, lastMessageId) => {
     const ws = wsRef.current;

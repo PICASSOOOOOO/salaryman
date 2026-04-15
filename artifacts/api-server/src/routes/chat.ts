@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { broadcastChatMessage } from "../chatServer";
 
 const router = Router();
 
@@ -289,6 +290,54 @@ router.post("/chat/private", async (req, res) => {
     .returning();
 
   res.json({ channelId: ch.id });
+});
+
+router.post("/chat/channels/:channelId/send", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const channelId = parseInt(req.params.channelId);
+  if (isNaN(channelId)) { res.status(400).json({ error: "Invalid channel ID" }); return; }
+  const { content } = (req.body ?? {}) as { content?: string };
+  if (!content || typeof content !== "string" || !content.trim()) {
+    res.status(400).json({ error: "content is required" }); return;
+  }
+
+  const [channel] = await db.select().from(chatChannelsTable).where(eq(chatChannelsTable.id, channelId));
+  if (!channel) { res.status(404).json({ error: "Channel not found" }); return; }
+
+  if (channel.type === "pablo") {
+    if (channel.user1Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
+  } else if (channel.type === "private") {
+    if (channel.user1Id !== userId && channel.user2Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
+  } else if (channel.type === "company") {
+    const membership = await getCallerOrgMembership(userId);
+    if (!membership || membership.org.id !== channel.orgId) { res.status(403).json({ error: "Not authorized" }); return; }
+  }
+
+  const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const senderName = sender ? `${sender.firstName ?? ""} ${sender.lastName ?? ""}`.trim() || sender.email || "User" : "User";
+
+  const [msg] = await db.insert(chatMessagesTable).values({
+    channelId,
+    senderUserId: userId,
+    senderName,
+    isBot: false,
+    content: content.trim().slice(0, 2000),
+  }).returning();
+
+  const message = {
+    id: msg.id,
+    channelId: msg.channelId,
+    senderUserId: msg.senderUserId,
+    senderName,
+    senderProfileImageUrl: sender?.profileImageUrl ?? null,
+    isBot: false,
+    content: msg.content,
+    createdAt: msg.createdAt,
+  };
+
+  broadcastChatMessage(channelId, message);
+  res.json({ message });
 });
 
 router.post("/chat/channels/:channelId/read", async (req, res) => {
